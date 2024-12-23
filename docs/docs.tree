@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE
+        instance-profile
+        SYSTEM
+        "https://resources.jetbrains.com/writerside/1.0/product-profile.dtd"
+        >
+<instance-profile
+        id="docs"
+        name="FastyBird Smart Panel"
+        start-page="Overview.md"
+>
+    <toc-element topic="Overview.md"/>
+    <toc-element topic="GettingStarted.md"/>
+    <toc-element topic="SupportedHardware.md"/>
+    <toc-element topic="API.md"/>
+    <toc-element topic="SupportedDevices.md">
+        <toc-element topic="AirParticulate.md" hidden="true"/>
+        <toc-element topic="Alarm.md" hidden="true"/>
+        <toc-element topic="Battery.md" hidden="true"/>
+        <toc-element topic="Camera.md" hidden="true"/>
+        <toc-element topic="CarbonDioxide.md" hidden="true"/>
+        <toc-element topic="CarbonMonoxide.md" hidden="true"/>
+        <toc-element topic="Contact.md" hidden="true"/>
+        <toc-element topic="Cooler.md" hidden="true"/>
+        <toc-element topic="DeviceInformation.md" hidden="true"/>
+        <toc-element topic="Door.md" hidden="true"/>
+        <toc-element topic="Doorbell.md" hidden="true"/>
+        <toc-element topic="ElectricalEnergy.md" hidden="true"/>
+        <toc-element topic="ElectricalPower.md" hidden="true"/>
+        <toc-element topic="Fan.md" hidden="true"/>
+        <toc-element topic="Flow.md" hidden="true"/>
+        <toc-element topic="Heater.md" hidden="true"/>
+        <toc-element topic="Humidity.md" hidden="true"/>
+        <toc-element topic="Illuminance.md" hidden="true"/>
+        <toc-element topic="Leak.md" hidden="true"/>
+        <toc-element topic="Light.md" hidden="true"/>
+        <toc-element topic="Lock.md" hidden="true"/>
+        <toc-element topic="Microphone.md" hidden="true"/>
+        <toc-element topic="Motion.md" hidden="true"/>
+        <toc-element topic="NitrogenDioxide.md" hidden="true"/>
+        <toc-element topic="Occupancy.md" hidden="true"/>
+        <toc-element topic="Outlet.md" hidden="true"/>
+        <toc-element topic="Ozone.md" hidden="true"/>
+        <toc-element topic="Pressure.md" hidden="true"/>
+        <toc-element topic="RobotVacuum.md" hidden="true"/>
+        <toc-element topic="Smoke.md" hidden="true"/>
+        <toc-element topic="Speaker.md" hidden="true"/>
+        <toc-element topic="SulphurDioxide.md" hidden="true"/>
+        <toc-element topic="Switcher.md" hidden="true"/>
+        <toc-element topic="Television.md" hidden="true"/>
+        <toc-element topic="Temperature.md" hidden="true"/>
+        <toc-element topic="Thermostat.md" hidden="true"/>
+        <toc-element topic="Valve.md" hidden="true"/>
+        <toc-element topic="VolatileOrganicCompounds.md" hidden="true"/>
+        <toc-element topic="WindowCovering.md" hidden="true"/>
+    </toc-element>
+</instance-profile>

@@ -1,0 +1,697 @@
+[
+  {
+    "id": "3b1f13c9-cdd1-4f8d-93a3-5232df6f7d6c",
+    "category": "thermostat",
+    "name": "Thermostat 01",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "858c6ee2-56fc-4bbe-96dc-e4899579589c",
+    "category": "temperature",
+    "name": "Temperature Sensor 01",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "05df7787-a49e-4679-ae0f-9a04ea5cbafe"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "d4933c20-e283-437b-9b71-31b3b4ea8c87",
+    "category": "humidity",
+    "name": "Humidity Sensor 01",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "68e7c635-2882-47e6-b55e-cac5f4543c40"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "18c312ec-428c-49f0-a439-5fd8445d49ff",
+    "category": "heater",
+    "name": "Heater 01",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "7d3bdfd9-d954-4099-9167-fecab53fc5af",
+    "category": "contact",
+    "name": "Contact Sensor 01",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "properties": [
+      "bd1d7a34-bc00-49e7-8254-08fde4d26283",
+      "e4e85734-e634-45ca-b872-d5575b5d10ad",
+      "1eb02b66-0db2-44f3-a33d-b8922d88e1ad",
+      "553c85e7-2de5-4ea1-851d-ccb273f392c8",
+      "06efea34-73ca-40a8-856d-392755ba22a6",
+      "d099441b-8eb9-41e9-b5f9-58c7e197f5bf"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "properties": [
+      "bd86eb7e-23e6-4b38-9567-cbac68ef72ba",
+      "e0eb3332-39ad-420f-b032-d867db6fbe09",
+      "ec06640c-5907-44d4-8fe1-410f0d5ce695",
+      "915b6991-f503-4cbf-bd5c-1db5d429597b",
+      "ef708ba0-aca4-485e-bd70-69782d68f885"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "8b99607a-6e25-4661-871e-bd004a92d1e8",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "properties": [
+      "416f2efa-ba58-456e-aea2-eb6b9d225b21"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ac6d42a9-be6c-405a-89b0-f9d3d273395d",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "properties": [
+      "350f2fa6-4078-4de7-944d-f27511afe661",
+      "2f7b015a-6148-4240-b501-dc0f44a31c47"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "1b343aee-39a0-45cd-9080-9cd40b0f1b46",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "be49951d-21da-49d2-904f-98756d9b9521",
+    "properties": [
+      "fdb32135-e7ce-4755-8af8-9ce83b4647b4",
+      "811920ce-1eeb-4b01-b92d-48ff764b08c8"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "a12367a9-9676-4f9a-8276-f54ce9811e83",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "properties": [
+      "7baaf66b-7f0c-4c25-bc29-1fa88755583e",
+      "9179723e-feed-4e1d-b3ae-fbf1e8f3c7d3"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "f8645d85-f13d-4633-98e1-05ce7a7ccc38",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "bb9514b9-b846-420b-9357-fd621d681162",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b514d815-c699-417f-a67b-69f0820a809a",
+    "category": "light",
+    "name": "Light 02",
+    "description": null,
+    "device": "bb9514b9-b846-420b-9357-fd621d681162",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "661c5ced-86f6-48c9-919c-d8a2ab473d89",
+    "category": "contact",
+    "name": "Contact Sensor 01",
+    "description": null,
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "631873a2-ec3e-4c0d-8432-464dcd00ecb0"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "0b85ff3e-7c21-4c2d-bce6-99059b096d75",
+    "category": "television",
+    "name": "Television 01",
+    "description": null,
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "4bdd2e91-8ffd-4b10-a145-bb581b50a02c",
+    "category": "speaker",
+    "name": "Speaker 01",
+    "description": null,
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "05eadcfd-6a9b-4f5d-873d-84a7d0831211",
+    "category": "temperature",
+    "name": "Temperature Sensor 01",
+    "description": null,
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "ec0a9dd4-dd3e-4ce5-8b88-66c23973cb0f"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "48fa591d-22f5-4007-84cc-a911f17137d2",
+    "category": "humidity",
+    "name": "Humidity Sensor 01",
+    "description": null,
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "5cb1d63e-cc0f-4d92-8e89-dee5bf15566a"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "4f170064-916d-4ab7-903a-c7f6588d533d",
+    "category": "motion",
+    "name": "Motion Sensor 01",
+    "description": null,
+    "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "a25291a9-fb6a-4d5e-86dc-ba365214f892"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "5aa6392e-f9ad-4f4d-9684-d00be56e10d4",
+    "category": "motion",
+    "name": "Motion Sensor 01",
+    "description": null,
+    "device": "33540346-df58-4826-a9b3-d49ababb3040",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "fd9b8aa0-db68-4dce-abdc-61cd477a44f8"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b00f6ca8-a1fd-44c0-bb99-f07e8bc4a563",
+    "category": "window_covering",
+    "name": "Window Covering 01",
+    "description": null,
+    "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "4efa9481-4a9f-4632-982d-968195701ae5",
+    "category": "window_covering",
+    "name": "Window Covering 01",
+    "description": null,
+    "device": "9931b235-fae0-4977-b0e5-16caf193e5ce",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "db8c9433-3351-4d56-be3c-97653f035059",
+    "category": "thermostat",
+    "name": "Thermostat 01",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "184c3194-d7de-4df8-b094-35ca08842e5d",
+    "category": "temperature",
+    "name": "Temperature Sensor 01",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "c076bb20-78d5-4051-a80b-a0a2d4924703"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "63012a29-67db-4f4b-bc19-bbad35a1c636",
+    "category": "humidity",
+    "name": "Humidity Sensor 01",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "49707a76-a0e9-4dcd-bf9c-3686d46e6340"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "7d04cb26-c870-4edc-87ff-ee84c3b15aaf",
+    "category": "heater",
+    "name": "Heater 01",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b9545d0a-af68-4a5a-861b-63c7a568cb1d",
+    "category": "contact",
+    "name": "Contact Sensor 01",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "55accac5-513b-4d16-9e07-94534f363b2e",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3aa8a478-75d3-40f7-a3a1-0871fe928feb",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "9b2710ae-008a-4366-891a-586a570a451d",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3c37ab7b-857b-4755-9456-933af336eacd",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "7246c342-44ef-49b8-8629-70fa26f5ce7f",
+    "category": "light",
+    "name": "Light 02",
+    "description": null,
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "2d7d7327-e521-480f-b7be-e7308f9b1b6c",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "96b0c798-d489-4166-b578-11b746e5af96",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "11b93efd-0134-4938-86f3-fed75e2da339",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "f9839723-7db4-4377-bbb9-58634ae7b9d3",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "808322f2-cea3-40d5-a6f0-a727b1d6d4ea",
+    "category": "fan",
+    "name": "Fan 01",
+    "description": null,
+    "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "77d59dcf-a5d2-4dcc-b80f-6dc0bddfd00b",
+    "category": "window_covering",
+    "name": "Window Covering 01",
+    "description": null,
+    "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "8aa383a2-75d7-4956-b733-31c48bf06ed0",
+    "category": "outlet",
+    "name": "Outlet 01",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "a2993eed-d69c-4eb4-a018-8dfd45167ba8",
+    "category": "outlet",
+    "name": "Outlet 02",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "8ea89a91-7c21-42ec-82a2-9ee77a35ff97",
+    "category": "outlet",
+    "name": "Outlet 03",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "44eb3190-8e8f-4148-a46c-dcab83e95ba7",
+    "category": "outlet",
+    "name": "Outlet 04",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "e63aef3f-fdc9-4552-b8e6-dafcefc9d96c",
+    "category": "outlet",
+    "name": "Outlet 05",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "properties": [
+    ],
+    "controls": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "5e88e0db-845e-4563-b9da-12fafd31885e",
+    "category": "outlet",
+    "name": "Outlet 01",
+    "description": null,
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "dd1711f7-f11b-4274-8495-40482936ec74",
+    "category": "outlet",
+    "name": "Outlet 02",
+    "description": null,
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "4df09adb-7926-4b81-b398-dd741f63a59e",
+    "category": "outlet",
+    "name": "Outlet 03",
+    "description": null,
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "c55abe7d-ed0c-4690-b633-bc702beae050",
+    "category": "temperature",
+    "name": "Temperature Sensor 01",
+    "description": null,
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "e5c039e3-ee57-449d-a6f6-67253f1a22a8"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "0f4f23a7-7681-405f-b87b-831c49c17d29",
+    "category": "humidity",
+    "name": "Humidity Sensor 01",
+    "description": null,
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+      "9cf815a5-803c-41ea-946a-6216db0c9c25"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "6fb50391-5674-4c5b-bc0e-9ddc0d2ed331",
+    "category": "contact",
+    "name": "Contact Sensor 01",
+    "description": null,
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "5821f640-fb8c-4ba4-a53e-797b58eb3550",
+    "category": "contact",
+    "name": "Contact Sensor 01",
+    "description": null,
+    "device": "0fd22c2e-7297-4a07-9d1c-455ad424a57a",
+    "properties": [
+      "e0b3cf91-f431-486b-9c5c-79180f2a6f99"
+    ],
+    "controls": [
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  }
+]

@@ -1,0 +1,662 @@
+[
+  {
+    "id": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "category": "thermostat",
+    "name": "Thermostat",
+    "description": null,
+    "channels": [
+      "3b1f13c9-cdd1-4f8d-93a3-5232df6f7d6c",
+      "858c6ee2-56fc-4bbe-96dc-e4899579589c",
+      "d4933c20-e283-437b-9b71-31b3b4ea8c87",
+      "18c312ec-428c-49f0-a439-5fd8445d49ff",
+      "7d3bdfd9-d954-4099-9167-fecab53fc5af"
+    ],
+    "properties": [
+      "d4caa6b9-9aab-4395-a30b-3532bc3903ff",
+      "572c7c79-f73e-4c62-afee-f60b2e5e0b77",
+      "9431cc2d-d447-44c1-b2d0-4398624e4921",
+      "19818cbe-d09b-4c56-a973-39e1e9d451da",
+      "dfaba55f-1582-4054-8b42-072885485e45",
+      "655cc18e-9c4e-42a1-a986-92c9002e0448"
+    ],
+    "controls": [
+      "4271284b-98b7-49d6-844f-c4969aa66434"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "category": "lighting",
+    "name": "TV LED Strip",
+    "description": null,
+    "icon": 58235,
+    "channels": [
+      "2538383c-8b27-4bba-bf4e-0fba34d7cd28"
+    ],
+    "properties": [
+      "45dd06f6-ed14-4668-9431-f02cb533d022",
+      "ee2c0dac-080c-4395-b081-28ee818c99f3",
+      "10d6b627-beed-440b-8a5e-41ef2ac62cf1",
+      "f3bbcff0-9882-424f-865d-43204fbfc3dc",
+      "6bd798bb-6f65-4f7a-9564-5a6ad2fa2cf5"
+    ],
+    "controls": [
+      "bfbe6fba-ccbe-4849-be52-d3036a6478a5"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "category": "lighting",
+    "name": "Couch LED Strip",
+    "description": null,
+    "icon": 58235,
+    "channels": [
+      "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886"
+    ],
+    "properties": [
+      "a8063a21-917d-4d51-b7b5-ac839848578e",
+      "17789d63-94d8-4c6d-80f3-d2cb011dc5df",
+      "9478e93d-973f-447e-8d50-d9dace18ba82",
+      "15033eff-4e47-4f09-94a6-fa27527a82d9",
+      "e044a5a8-fae0-414a-b70b-3f2f8b1b21e6"
+    ],
+    "controls": [
+      "1db99e83-dde5-4355-aaaf-9297e6e2f15d"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "category": "lighting",
+    "name": "Main Light",
+    "description": null,
+    "icon": 58233,
+    "channels": [
+      "8b99607a-6e25-4661-871e-bd004a92d1e8"
+    ],
+    "properties": [
+      "9fce3d3c-c53d-43e3-b155-982a705ac7d9",
+      "e1aa4a23-890e-45ae-af19-0f08573c54aa",
+      "3b6e4bfe-28c2-4c0e-9075-bbe158c7f548",
+      "62b29149-ce6a-4c62-bb8d-b96b9620b942",
+      "bdecff99-5d29-4161-82df-308efc294434"
+    ],
+    "controls": [
+      "ce25a0a8-b073-4be0-bb1e-5751e9ea1560"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "category": "lighting",
+    "name": "Entry Light",
+    "description": null,
+    "icon": 59099,
+    "channels": [
+      "ac6d42a9-be6c-405a-89b0-f9d3d273395d"
+    ],
+    "properties": [
+      "f935eb33-6a5f-4e8d-bbd7-a0aca7eb8364",
+      "11d50f64-adf9-43ac-8c19-485209d197de",
+      "6783464d-a1b5-417b-b868-d5d26b03fea9",
+      "1c897fb9-3bc8-44e2-9336-37ce3f1956f7",
+      "4781065e-5256-4700-b24b-7f4daf4de3c6"
+    ],
+    "controls": [
+      "a417be02-9583-42a3-a012-b45ab35c907b"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "be49951d-21da-49d2-904f-98756d9b9521",
+    "category": "lighting",
+    "name": "TV Spot Light",
+    "description": null,
+    "icon": 59099,
+    "channels": [
+      "1b343aee-39a0-45cd-9080-9cd40b0f1b46"
+    ],
+    "properties": [
+      "29dea6c4-f572-4ab9-bdc1-19fadbfef211",
+      "06174c57-f190-4fba-9b9e-4a28b52e05d2",
+      "d05c8abb-fad7-4716-b18d-5a94d4456e78",
+      "ee22a0ce-1fa1-40c2-98bb-94c4f7d09664",
+      "85dca790-9c3f-40c2-b657-e1c7c1f66837"
+    ],
+    "controls": [
+      "3daac4fd-2db3-48c4-98c9-09ba8830ac61"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "category": "lighting",
+    "name": "Couch Spot Light",
+    "description": null,
+    "icon": 59099,
+    "channels": [
+      "a12367a9-9676-4f9a-8276-f54ce9811e83"
+    ],
+    "properties": [
+      "2aa314cd-0c87-4f40-8693-930008bc9202",
+      "6f5de88e-e13d-411f-8d44-b2caa7ae37fc",
+      "174b8bef-a681-4912-97d2-4920a3c484c8",
+      "75a89c1a-b6e1-457a-8842-385cab12500b",
+      "2ccd0f19-67ef-466e-bf3c-9a859fd3f8e3"
+    ],
+    "controls": [
+      "c91e3180-675f-47f9-b3f2-6e1fceaeb583"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "bb9514b9-b846-420b-9357-fd621d681162",
+    "category": "lighting",
+    "name": "Living Room Terrace Light",
+    "description": null,
+    "channels": [
+      "f8645d85-f13d-4633-98e1-05ce7a7ccc38",
+      "b514d815-c699-417f-a67b-69f0820a809a"
+    ],
+    "properties": [
+      "01fd0f59-57f2-487a-802e-37285024e645",
+      "20292b2e-69de-4615-bff6-4ff7e4c6bac2",
+      "0c8a11c1-d02b-4ee2-9a54-25585b32c54b",
+      "28a3c4db-b532-47c4-a38a-4374e1ac5a06",
+      "716b69c4-0a85-40fe-9c39-ec978a091832"
+    ],
+    "controls": [
+      "1cb75547-cd9a-4de7-8a38-70464417c8e5"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "2ff80d54-4036-4554-8332-470d5182f259",
+    "category": "sensor",
+    "name": "Terrace Door",
+    "description": null,
+    "channels": [
+      "661c5ced-86f6-48c9-919c-d8a2ab473d89"
+    ],
+    "properties": [
+      "be1ccc91-c1a0-4a08-b45b-9cb0bc1d557b",
+      "e0030d07-1c99-4f15-9b17-682b44ea3bf7",
+      "b9ca841c-5fae-4d48-b52a-2d93a9f41b73",
+      "49df7790-bd23-4369-af03-b2e3214b6cdd",
+      "20f404f7-cfe4-48a8-96cb-373e85a932d5"
+    ],
+    "controls": [
+      "e52e17e1-4c6d-4ea2-a7aa-4b90f9a2a066"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "category": "television",
+    "name": "TV",
+    "description": null,
+    "channels": [
+      "0b85ff3e-7c21-4c2d-bce6-99059b096d75",
+      "4bdd2e91-8ffd-4b10-a145-bb581b50a02c"
+    ],
+    "properties": [
+      "fbad3040-52e7-43b4-bb6f-53411ef4a2c7",
+      "3d76371a-35e7-4437-814b-bece5a02fc46",
+      "3b7d3665-fb13-4335-9eb7-57b8c69569ac",
+      "7cc52839-3352-4e0c-bbc7-043cb0c1988d",
+      "a69a793b-5bea-4bd6-b7f6-39e3b75eccb6"
+    ],
+    "controls": [
+      "ecd73a09-045c-4146-865e-1af57d02df5e"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ce2ff119-ceac-4867-bf36-7103b078de11",
+    "category": "robotic",
+    "name": "Vacuum Cleaner",
+    "description": null,
+    "icon": 57703,
+    "channels": [
+    ],
+    "properties": [
+      "37f2b208-7e68-44cd-83ba-a70287f6b9c2",
+      "2f27ff44-4a3e-4e0d-9111-53c5db1692f4",
+      "756358c7-3c90-4515-934a-06a6899a066d",
+      "6833ba13-a579-4364-946f-a588e3611148",
+      "ba28d1cd-1403-4144-95f9-f9135dab6c0f"
+    ],
+    "controls": [
+      "315ddff5-9cfb-40da-8e9e-02914fc3da3b"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76",
+    "category": "sensor",
+    "name": "Living Room Temperature & Humidity",
+    "description": null,
+    "channels": [
+      "05eadcfd-6a9b-4f5d-873d-84a7d0831211",
+      "48fa591d-22f5-4007-84cc-a911f17137d2"
+    ],
+    "properties": [
+      "6a9a19e2-0014-4062-8c5c-971291087211",
+      "025996cc-17b6-4bf2-a777-969eaf68ab0a",
+      "d2cb354d-815c-46f5-bafd-25c047271f1d",
+      "32f51f95-f6dc-40ed-8020-85ab122ac6ef",
+      "eb607e9b-1310-430b-8b0c-9bf652452d42"
+    ],
+    "controls": [
+      "9ac77817-29c4-4499-b484-1dfc83841054"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
+    "category": "sensor",
+    "name": "Terrace Motion Detection",
+    "description": null,
+    "channels": [
+      "4f170064-916d-4ab7-903a-c7f6588d533d"
+    ],
+    "properties": [
+      "d497c147-47e6-46e0-923b-bab5013bb5c8",
+      "66106f20-18b2-4451-9363-c357ddd44ec9",
+      "86f056c0-dab9-451b-94b5-540edff83284",
+      "3da5db0d-9665-489d-9708-1e939d2dc22a",
+      "19e4eed0-427c-46cc-aa9f-f40455a81d40"
+    ],
+    "controls": [
+      "c2a1d408-de12-4e33-8f00-7924be659722"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "33540346-df58-4826-a9b3-d49ababb3040",
+    "category": "sensor",
+    "name": "Entrance Motion Detection",
+    "description": null,
+    "channels": [
+      "5aa6392e-f9ad-4f4d-9684-d00be56e10d4"
+    ],
+    "properties": [
+      "352d9e96-f7b5-43f0-9fd5-93bf171b9c5a",
+      "65faba38-7241-46d9-9ad8-a621f651eb0c",
+      "f789d111-c11e-40e1-a3ec-384627971960",
+      "8e2e7658-35e0-465c-9339-6cdf3de85cd3",
+      "ce182c2b-7d81-4090-9576-6e4c1747cdee"
+    ],
+    "controls": [
+      "0837107d-eb60-44a8-9ede-2f359c8b23b9"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
+    "category": "window_covering",
+    "name": "Terrace Blind",
+    "description": null,
+    "icon": 985020,
+    "channels": [
+      "b00f6ca8-a1fd-44c0-bb99-f07e8bc4a563"
+    ],
+    "properties": [
+      "e67025a5-4042-42fb-b680-e4fc34555530",
+      "a86410db-d6b4-41c9-8151-32cf59bb76a4",
+      "76617407-d9a3-406e-a42c-44b6648934ae",
+      "dc65bd6b-2d3d-4be1-8c9e-bd73a77de08b",
+      "19d27ad0-2154-44ef-9b63-a20279f7cb94"
+    ],
+    "controls": [
+      "fc0a94dd-a568-4288-b7fe-7adbbc1b0c71"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "9931b235-fae0-4977-b0e5-16caf193e5ce",
+    "category": "window_covering",
+    "name": "Window Blind",
+    "description": null,
+    "icon": 985020,
+    "channels": [
+      "4efa9481-4a9f-4632-982d-968195701ae5"
+    ],
+    "properties": [
+      "8f50cabd-bc8b-4802-83de-a8cf0e9a2dac",
+      "7f2c701a-4954-4c28-9d99-81b0ec6aa189",
+      "cdecb79a-bc8b-426c-900b-2cc7b6d8183c",
+      "a448e2c1-13df-4270-9cbc-ec5d2a499250",
+      "309a0c71-7a9c-4ec6-b746-4707d71bac87"
+    ],
+    "controls": [
+      "df1e73a4-badc-4bd0-80b3-a73950cf27a4"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "48287140-de58-446b-97a0-9437957fa7c6",
+    "category": "thermostat",
+    "name": "Kitchen Thermostat",
+    "description": null,
+    "channels": [
+      "db8c9433-3351-4d56-be3c-97653f035059",
+      "184c3194-d7de-4df8-b094-35ca08842e5d",
+      "63012a29-67db-4f4b-bc19-bbad35a1c636",
+      "7d04cb26-c870-4edc-87ff-ee84c3b15aaf",
+      "b9545d0a-af68-4a5a-861b-63c7a568cb1d"
+    ],
+    "properties": [
+      "d59969d2-84e8-40f9-b96d-d6ad612f79cc",
+      "4db710f6-f072-450a-a6c0-cbdca33fc4c1",
+      "9a6af71d-c1c6-40f2-893a-86c1d52de1ef",
+      "3d57a9cd-869c-4bd4-914f-2e8bd7f2288a",
+      "cf1369fc-8b82-4fc5-9f78-6a948bc8a80d",
+      "66cdbd9e-b776-4e1b-9daa-e3bb74ecc15d"
+    ],
+    "controls": [
+      "cb8f6222-895b-4c3d-8cda-5e458f03edfd"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "category": "lighting",
+    "name": "Main Light",
+    "description": null,
+    "icon": 58233,
+    "channels": [
+      "55accac5-513b-4d16-9e07-94534f363b2e"
+    ],
+    "properties": [
+      "026df2a7-2383-49da-92dd-38fdd56495aa",
+      "5680f5c6-4bb3-41e8-8258-dd1cb7eb5362",
+      "22e7629e-11ba-4644-98b0-7e2740f67d6d",
+      "2e863ccd-6d65-4326-b8e3-7babdc4d0a0c",
+      "183803a8-14a0-40b8-963d-e3494fc371ed"
+    ],
+    "controls": [
+      "76b67c79-31ee-4b87-acb4-564f0c353cd1"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "9b2710ae-008a-4366-891a-586a570a451d",
+    "category": "lighting",
+    "name": "Spot Light",
+    "description": null,
+    "channels": [
+      "3aa8a478-75d3-40f7-a3a1-0871fe928feb"
+    ],
+    "properties": [
+      "6d170904-b22d-46a6-88cb-ecb66b80e752",
+      "d7fcc287-4cab-43ef-aa1e-17f2a2b3945f",
+      "da2927d5-31bd-4769-aacc-1f657d73de72",
+      "edf4a95e-3974-47e0-8a4e-38e3ef29ab54",
+      "0da787c9-080d-46ce-82e9-ced1477d61fb"
+    ],
+    "controls": [
+      "5d994cb4-89d2-443c-b76f-bfd7d7ca6c37"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "category": "lighting",
+    "name": "Bar",
+    "description": null,
+    "channels": [
+      "3c37ab7b-857b-4755-9456-933af336eacd",
+      "7246c342-44ef-49b8-8629-70fa26f5ce7f"
+    ],
+    "properties": [
+      "b02a5d5e-9834-4c39-b597-53b3290c780f",
+      "7c4dab28-8b89-4f20-b203-d00be814f60a",
+      "09c58370-ae0c-4b5e-bc7b-801f4bbfb791",
+      "5af45cfd-95b6-400f-b6f0-a1e04b37d8b6",
+      "380df4ea-9844-48bf-bc2e-cb4259ab6a02"
+    ],
+    "controls": [
+      "87ce19fd-a5c1-441c-bc25-c2d95912aa05"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "category": "lighting",
+    "name": "Under Cabinet",
+    "description": null,
+    "channels": [
+      "2d7d7327-e521-480f-b7be-e7308f9b1b6c"
+    ],
+    "properties": [
+      "89523943-0eb7-4659-9167-41a909acb49f",
+      "3e0b2140-9ec0-4b34-a686-5c00e8e0d795",
+      "9ee2ad68-f9e7-42e9-8c79-50e59f03fc96",
+      "739cca9e-f172-4b99-9048-ffca3afaf3e2",
+      "fa8f0aa8-61b2-4f45-80c9-40c8067f4270"
+    ],
+    "controls": [
+      "fd475924-0a85-4416-be05-1a5e2746923f"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "category": "lighting",
+    "name": "High Cabinet",
+    "description": null,
+    "channels": [
+      "96b0c798-d489-4166-b578-11b746e5af96"
+    ],
+    "properties": [
+      "92ef813c-f140-4ca2-80cc-1f0012f4e8ee",
+      "b40ea993-e097-4412-94c4-8d378e917687",
+      "1d44fb71-ff7f-406f-ac93-10cac5aa617b",
+      "b1db8550-d1c7-4760-aa21-5c1653a9e6f3",
+      "edad9a5d-012b-407c-8f9b-d339452251c8"
+    ],
+    "controls": [
+      "418b0bc1-abfa-46bc-8521-e3ebad9ab75b"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "f9839723-7db4-4377-bbb9-58634ae7b9d3",
+    "category": "lighting",
+    "name": "Stove Light",
+    "description": null,
+    "channels": [
+      "11b93efd-0134-4938-86f3-fed75e2da339"
+    ],
+    "properties": [
+      "2bcf15bc-63a8-480a-94fb-a418c1d97c47",
+      "ea7c4bdc-f269-4f27-bed1-ded956c9d5dd",
+      "d6b383c0-a114-4b04-b763-c7bdef2e2f63",
+      "157fc487-9335-4695-a3c2-26a78990c397",
+      "ba305851-263c-4ba0-9cb2-282210e849c6"
+    ],
+    "controls": [
+      "2f54ee9e-3801-476c-93ed-45ccb02c8548"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
+    "category": "fan",
+    "name": "Stove Fan",
+    "description": null,
+    "channels": [
+      "808322f2-cea3-40d5-a6f0-a727b1d6d4ea"
+    ],
+    "properties": [
+      "5db2a049-bda7-4484-b090-7f913b721dab",
+      "a211e672-411e-4e87-80a6-3a11412352de",
+      "65d59c54-4ee3-4dd0-ade6-dd8701c6f2bf",
+      "3dae7868-2e78-4894-9c04-9682586784be",
+      "ee409af8-5938-418e-a62b-cedcaee905ef"
+    ],
+    "controls": [
+      "ecbdb5e4-0709-41aa-920e-f19fc08ca09e"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
+    "category": "window_covering",
+    "name": "Window Blind",
+    "description": null,
+    "icon": 985020,
+    "channels": [
+      "77d59dcf-a5d2-4dcc-b80f-6dc0bddfd00b"
+    ],
+    "properties": [
+      "0531a7c6-8dc2-4489-9344-76171bb33686",
+      "cc24aa1a-0f0f-4055-8f87-e77f140a292b",
+      "058440c8-d16b-453e-9bfc-cf876b6e4e88",
+      "aac229a9-8257-4029-a73f-f5b3e563a149",
+      "345f37d0-0fc3-4233-9ded-dcb2c7195791"
+    ],
+    "controls": [
+      "cf6b1ca9-9d46-4303-89c3-89f1fb875c9e"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "category": "outlet",
+    "name": "Kitchen Wall Outlet 01",
+    "description": null,
+    "channels": [
+      "8aa383a2-75d7-4956-b733-31c48bf06ed0",
+      "a2993eed-d69c-4eb4-a018-8dfd45167ba8",
+      "8ea89a91-7c21-42ec-82a2-9ee77a35ff97",
+      "44eb3190-8e8f-4148-a46c-dcab83e95ba7",
+      "e63aef3f-fdc9-4552-b8e6-dafcefc9d96c"
+    ],
+    "properties": [
+      "a134a3d7-919e-48e1-a278-e35837200aab",
+      "977e24a6-a3dc-4d42-947f-8767b87deb9d",
+      "bc537853-19ea-44a3-a0e9-a0424e987f75",
+      "ff6b85cb-ffc5-4040-b19a-c122b63b5384",
+      "2c4ceaa4-9b73-4b48-abad-89d3505837d9"
+    ],
+    "controls": [
+      "d7f6b566-ae9d-48ea-a89f-19ea1f867872"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "category": "outlet",
+    "name": "Kitchen Wall Outlet 02",
+    "description": null,
+    "channels": [
+      "5e88e0db-845e-4563-b9da-12fafd31885e",
+      "dd1711f7-f11b-4274-8495-40482936ec74",
+      "4df09adb-7926-4b81-b398-dd741f63a59e"
+    ],
+    "properties": [
+      "c40144e4-27aa-4cde-bedd-912302104735",
+      "dfe59b5f-2973-4bbf-8257-336c7bccccdc",
+      "de4dbfcf-7ffd-4117-8310-d3a89c4af7aa",
+      "7a9306f1-1db5-433c-8ac5-397450fef182",
+      "da3ffd58-7379-406c-ae70-118df7c37a04"
+    ],
+    "controls": [
+      "1f34c6d2-6d79-4710-a558-7ce91047b450"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "390ed2c3-9a64-4818-8211-6c2c7be67622",
+    "category": "sensor",
+    "name": "Kitchen Temperature & Humidity",
+    "description": null,
+    "channels": [
+      "c55abe7d-ed0c-4690-b633-bc702beae050",
+      "0f4f23a7-7681-405f-b87b-831c49c17d29"
+    ],
+    "properties": [
+      "77221b71-90ac-4f5b-871a-14c12fad47db",
+      "d9e5f34a-cc10-4876-843b-cdefd3f84aca",
+      "ae6d2229-6b1d-49f6-947d-9b173ee96728",
+      "34b08163-a6b3-4269-ad72-a24d4d17a4ae",
+      "49503435-5f8a-40fd-803e-9f3029a89b8e"
+    ],
+    "controls": [
+      "f866d326-f4c2-40b4-bf91-d27ae68c81f9"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b6bbdbfa-51fa-4bed-946c-25a00076babb",
+    "category": "appliance",
+    "name": "Kitchen Smart Pot",
+    "description": null,
+    "channels": [
+    ],
+    "properties": [
+      "20c7e118-d604-4e09-936c-1b8a4a95a745",
+      "0c256ada-003f-4f1c-b5d5-d53966a2c784",
+      "b57bd352-a148-40dd-a597-40aad9287a38",
+      "ea43a004-1523-4bd8-be7b-36a214849338",
+      "f8c68b17-52ab-4747-bcd3-82d0872f60a4"
+    ],
+    "controls": [
+      "2eb9bcb8-750d-481a-bf1f-638ea4f79f6e"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "0fd22c2e-7297-4a07-9d1c-455ad424a57a",
+    "category": "sensor",
+    "name": "Kitchen Window",
+    "description": null,
+    "channels": [
+      "6fb50391-5674-4c5b-bc0e-9ddc0d2ed331"
+    ],
+    "properties": [
+      "8d22d073-c828-4198-92f2-327639f05c01",
+      "353445e0-45f8-40d8-841c-e9f2b2a47e6a",
+      "86cda5f9-d832-4f98-83e2-1de616a0d5d3",
+      "6e9ef040-dfc2-4579-9428-993d20b239b5",
+      "5c435f7b-6771-4ef5-b0fc-f21d1459bf5d"
+    ],
+    "controls": [
+      "06fcc6be-93b8-4d79-9aa5-c3064ae5bdd0"
+    ],
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  }
+]

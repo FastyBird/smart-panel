@@ -1,0 +1,422 @@
+[
+  {
+    "id": "bd1d7a34-bc00-49e7-8254-08fde4d26283",
+    "category": "on",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "bool",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "step": null,
+    "value": true,
+    "channel": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "e4e85734-e634-45ca-b872-d5575b5d10ad",
+    "category": "brightness",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": "%",
+    "format": [
+      0,
+      100
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 33,
+    "channel": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "1eb02b66-0db2-44f3-a33d-b8922d88e1ad",
+    "category": "color_red",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": null,
+    "format": [
+      0,
+      255
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 33,
+    "channel": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "553c85e7-2de5-4ea1-851d-ccb273f392c8",
+    "category": "color_green",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": null,
+    "format": [
+      0,
+      255
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 33,
+    "channel": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "06efea34-73ca-40a8-856d-392755ba22a6",
+    "category": "color_blue",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": null,
+    "format": [
+      0,
+      255
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 33,
+    "channel": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "d099441b-8eb9-41e9-b5f9-58c7e197f5bf",
+    "category": "color_white",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": null,
+    "format": [
+      0,
+      255
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 100,
+    "channel": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "bd86eb7e-23e6-4b38-9567-cbac68ef72ba",
+    "category": "on",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "bool",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "step": null,
+    "value": false,
+    "channel": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "e0eb3332-39ad-420f-b032-d867db6fbe09",
+    "category": "brightness",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": "%",
+    "format": [
+      0,
+      100
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 33,
+    "channel": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ec06640c-5907-44d4-8fe1-410f0d5ce695",
+    "category": "hue",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": null,
+    "format": [
+      0,
+      360
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 100,
+    "channel": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "915b6991-f503-4cbf-bd5c-1db5d429597b",
+    "category": "saturation",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": "%",
+    "format": [
+      0,
+      100
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 100,
+    "channel": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ef708ba0-aca4-485e-bd70-69782d68f885",
+    "category": "color_white",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": null,
+    "format": [
+      0,
+      255
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 30,
+    "channel": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "fdb32135-e7ce-4755-8af8-9ce83b4647b4",
+    "category": "on",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "bool",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "step": null,
+    "value": false,
+    "channel": "1b343aee-39a0-45cd-9080-9cd40b0f1b46",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "811920ce-1eeb-4b01-b92d-48ff764b08c8",
+    "category": "brightness",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": "%",
+    "format": [
+      0,
+      100
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 33,
+    "channel": "1b343aee-39a0-45cd-9080-9cd40b0f1b46",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "7baaf66b-7f0c-4c25-bc29-1fa88755583e",
+    "category": "on",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "bool",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "step": null,
+    "value": false,
+    "channel": "a12367a9-9676-4f9a-8276-f54ce9811e83",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "9179723e-feed-4e1d-b3ae-fbf1e8f3c7d3",
+    "category": "brightness",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": "%",
+    "format": [
+      0,
+      100
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 33,
+    "channel": "a12367a9-9676-4f9a-8276-f54ce9811e83",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "350f2fa6-4078-4de7-944d-f27511afe661",
+    "category": "on",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "bool",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "step": null,
+    "value": false,
+    "channel": "ac6d42a9-be6c-405a-89b0-f9d3d273395d",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "2f7b015a-6148-4240-b501-dc0f44a31c47",
+    "category": "brightness",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": "%",
+    "format": [
+      0,
+      100
+    ],
+    "invalid": null,
+    "step": 1.0,
+    "value": 33,
+    "channel": "ac6d42a9-be6c-405a-89b0-f9d3d273395d",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "416f2efa-ba58-456e-aea2-eb6b9d225b21",
+    "category": "on",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "bool",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "step": null,
+    "value": false,
+    "channel": "8b99607a-6e25-4661-871e-bd004a92d1e8",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b6931dce-de09-4387-a320-a72705ebf2ee",
+    "category": "on",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "bool",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "step": null,
+    "value": false,
+    "channel": "0b85ff3e-7c21-4c2d-bce6-99059b096d75",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "257fe8e0-afce-4cfb-af08-23c26f123db8",
+    "category": "brightness",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": null,
+    "format": [
+      0,
+      100
+    ],
+    "invalid": -1,
+    "step": 1,
+    "value": 55,
+    "channel": "0b85ff3e-7c21-4c2d-bce6-99059b096d75",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "e43c406d-1ccc-40c2-b398-fabf64015efc",
+    "category": "volume",
+    "name": null,
+    "permission": [
+      "rw",
+      "ev"
+    ],
+    "data_type": "uchar",
+    "unit": null,
+    "format": [
+      0,
+      100
+    ],
+    "invalid": -1,
+    "step": 1,
+    "value": 20,
+    "channel": "4bdd2e91-8ffd-4b10-a145-bb581b50a02c",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  }
+]

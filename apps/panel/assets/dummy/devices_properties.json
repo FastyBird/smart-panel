@@ -1,0 +1,2312 @@
+[
+  {
+    "id": "572c7c79-f73e-4c62-afee-f60b2e5e0b77",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "5fp8r77s8h",
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "19818cbe-d09b-4c56-a973-39e1e9d451da",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "dfaba55f-1582-4054-8b42-072885485e45",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ee2c0dac-080c-4395-b081-28ee818c99f3",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "10d6b627-beed-440b-8a5e-41ef2ac62cf1",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "jxh3xku5s0",
+    "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "f3bbcff0-9882-424f-865d-43204fbfc3dc",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "6bd798bb-6f65-4f7a-9564-5a6ad2fa2cf5",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "17789d63-94d8-4c6d-80f3-d2cb011dc5df",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "9478e93d-973f-447e-8d50-d9dace18ba82",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "jwt3y9m20p",
+    "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "15033eff-4e47-4f09-94a6-fa27527a82d9",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "e044a5a8-fae0-414a-b70b-3f2f8b1b21e6",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "e1aa4a23-890e-45ae-af19-0f08573c54aa",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3b6e4bfe-28c2-4c0e-9075-bbe158c7f548",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "xn8ovw4dn6",
+    "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "62b29149-ce6a-4c62-bb8d-b96b9620b942",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "bdecff99-5d29-4161-82df-308efc294434",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "11d50f64-adf9-43ac-8c19-485209d197de",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "6783464d-a1b5-417b-b868-d5d26b03fea9",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "etqo2roe9y",
+    "device": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "1c897fb9-3bc8-44e2-9336-37ce3f1956f7",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "4781065e-5256-4700-b24b-7f4daf4de3c6",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "06174c57-f190-4fba-9b9e-4a28b52e05d2",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "be49951d-21da-49d2-904f-98756d9b9521",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "d05c8abb-fad7-4716-b18d-5a94d4456e78",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "q8fk3ng55x",
+    "device": "be49951d-21da-49d2-904f-98756d9b9521",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ee22a0ce-1fa1-40c2-98bb-94c4f7d09664",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "be49951d-21da-49d2-904f-98756d9b9521",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "85dca790-9c3f-40c2-b657-e1c7c1f66837",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "be49951d-21da-49d2-904f-98756d9b9521",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "6f5de88e-e13d-411f-8d44-b2caa7ae37fc",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "174b8bef-a681-4912-97d2-4920a3c484c8",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "vo75coq4ie",
+    "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "75a89c1a-b6e1-457a-8842-385cab12500b",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "2ccd0f19-67ef-466e-bf3c-9a859fd3f8e3",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "20292b2e-69de-4615-bff6-4ff7e4c6bac2",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "bb9514b9-b846-420b-9357-fd621d681162",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "0c8a11c1-d02b-4ee2-9a54-25585b32c54b",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "7fbpfgt0r2",
+    "device": "bb9514b9-b846-420b-9357-fd621d681162",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "28a3c4db-b532-47c4-a38a-4374e1ac5a06",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "bb9514b9-b846-420b-9357-fd621d681162",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "716b69c4-0a85-40fe-9c39-ec978a091832",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "bb9514b9-b846-420b-9357-fd621d681162",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "e0030d07-1c99-4f15-9b17-682b44ea3bf7",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b9ca841c-5fae-4d48-b52a-2d93a9f41b73",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "qzae0zok6w",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "49df7790-bd23-4369-af03-b2e3214b6cdd",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "20f404f7-cfe4-48a8-96cb-373e85a932d5",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3d76371a-35e7-4437-814b-bece5a02fc46",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3b7d3665-fb13-4335-9eb7-57b8c69569ac",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "fd54q4zbdh",
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "7cc52839-3352-4e0c-bbc7-043cb0c1988d",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "a69a793b-5bea-4bd6-b7f6-39e3b75eccb6",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "2f27ff44-4a3e-4e0d-9111-53c5db1692f4",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "ce2ff119-ceac-4867-bf36-7103b078de11",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "756358c7-3c90-4515-934a-06a6899a066d",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "9438lond02",
+    "device": "ce2ff119-ceac-4867-bf36-7103b078de11",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "6833ba13-a579-4364-946f-a588e3611148",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "ce2ff119-ceac-4867-bf36-7103b078de11",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ba28d1cd-1403-4144-95f9-f9135dab6c0f",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "ce2ff119-ceac-4867-bf36-7103b078de11",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "025996cc-17b6-4bf2-a777-969eaf68ab0a",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "d2cb354d-815c-46f5-bafd-25c047271f1d",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "l527rqsn2s",
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "32f51f95-f6dc-40ed-8020-85ab122ac6ef",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "eb607e9b-1310-430b-8b0c-9bf652452d42",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "66106f20-18b2-4451-9363-c357ddd44ec9",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "86f056c0-dab9-451b-94b5-540edff83284",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "8chfmc0z6r",
+    "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3da5db0d-9665-489d-9708-1e939d2dc22a",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "19e4eed0-427c-46cc-aa9f-f40455a81d40",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "65faba38-7241-46d9-9ad8-a621f651eb0c",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "33540346-df58-4826-a9b3-d49ababb3040",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "f789d111-c11e-40e1-a3ec-384627971960",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "edo0r3ty6r",
+    "device": "33540346-df58-4826-a9b3-d49ababb3040",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "8e2e7658-35e0-465c-9339-6cdf3de85cd3",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "33540346-df58-4826-a9b3-d49ababb3040",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ce182c2b-7d81-4090-9576-6e4c1747cdee",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "33540346-df58-4826-a9b3-d49ababb3040",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "a86410db-d6b4-41c9-8151-32cf59bb76a4",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "76617407-d9a3-406e-a42c-44b6648934ae",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "r0itqns5s0",
+    "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "dc65bd6b-2d3d-4be1-8c9e-bd73a77de08b",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "19d27ad0-2154-44ef-9b63-a20279f7cb94",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "7f2c701a-4954-4c28-9d99-81b0ec6aa189",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "9931b235-fae0-4977-b0e5-16caf193e5ce",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "cdecb79a-bc8b-426c-900b-2cc7b6d8183c",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "o9kj4606np",
+    "device": "9931b235-fae0-4977-b0e5-16caf193e5ce",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "a448e2c1-13df-4270-9cbc-ec5d2a499250",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "9931b235-fae0-4977-b0e5-16caf193e5ce",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "309a0c71-7a9c-4ec6-b746-4707d71bac87",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "9931b235-fae0-4977-b0e5-16caf193e5ce",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "4db710f6-f072-450a-a6c0-cbdca33fc4c1",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "9a6af71d-c1c6-40f2-893a-86c1d52de1ef",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "qoefxilhhz",
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3d57a9cd-869c-4bd4-914f-2e8bd7f2288a",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "cf1369fc-8b82-4fc5-9f78-6a948bc8a80d",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "5680f5c6-4bb3-41e8-8258-dd1cb7eb5362",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "22e7629e-11ba-4644-98b0-7e2740f67d6d",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "6lcvrh05gd",
+    "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "2e863ccd-6d65-4326-b8e3-7babdc4d0a0c",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "183803a8-14a0-40b8-963d-e3494fc371ed",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "d7fcc287-4cab-43ef-aa1e-17f2a2b3945f",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "9b2710ae-008a-4366-891a-586a570a451d",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "da2927d5-31bd-4769-aacc-1f657d73de72",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "cslsiyi8r4",
+    "device": "9b2710ae-008a-4366-891a-586a570a451d",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "edf4a95e-3974-47e0-8a4e-38e3ef29ab54",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "9b2710ae-008a-4366-891a-586a570a451d",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "0da787c9-080d-46ce-82e9-ced1477d61fb",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "9b2710ae-008a-4366-891a-586a570a451d",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "7c4dab28-8b89-4f20-b203-d00be814f60a",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "09c58370-ae0c-4b5e-bc7b-801f4bbfb791",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "f3qndgy6m8",
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "5af45cfd-95b6-400f-b6f0-a1e04b37d8b6",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "380df4ea-9844-48bf-bc2e-cb4259ab6a02",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3e0b2140-9ec0-4b34-a686-5c00e8e0d795",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "9ee2ad68-f9e7-42e9-8c79-50e59f03fc96",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "rwsd9uxyf4",
+    "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "739cca9e-f172-4b99-9048-ffca3afaf3e2",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "fa8f0aa8-61b2-4f45-80c9-40c8067f4270",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b40ea993-e097-4412-94c4-8d378e917687",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "1d44fb71-ff7f-406f-ac93-10cac5aa617b",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "6utxwbi2vq",
+    "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b1db8550-d1c7-4760-aa21-5c1653a9e6f3",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "edad9a5d-012b-407c-8f9b-d339452251c8",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ea7c4bdc-f269-4f27-bed1-ded956c9d5dd",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "f9839723-7db4-4377-bbb9-58634ae7b9d3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "d6b383c0-a114-4b04-b763-c7bdef2e2f63",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "9r0iv0sd2s",
+    "device": "f9839723-7db4-4377-bbb9-58634ae7b9d3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "157fc487-9335-4695-a3c2-26a78990c397",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "f9839723-7db4-4377-bbb9-58634ae7b9d3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ba305851-263c-4ba0-9cb2-282210e849c6",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "f9839723-7db4-4377-bbb9-58634ae7b9d3",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "a211e672-411e-4e87-80a6-3a11412352de",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "65d59c54-4ee3-4dd0-ade6-dd8701c6f2bf",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "5sb0o2bo3v",
+    "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "3dae7868-2e78-4894-9c04-9682586784be",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ee409af8-5938-418e-a62b-cedcaee905ef",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "cc24aa1a-0f0f-4055-8f87-e77f140a292b",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "058440c8-d16b-453e-9bfc-cf876b6e4e88",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "2nkuh7aw2q",
+    "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "aac229a9-8257-4029-a73f-f5b3e563a149",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "345f37d0-0fc3-4233-9ded-dcb2c7195791",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "977e24a6-a3dc-4d42-947f-8767b87deb9d",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "bc537853-19ea-44a3-a0e9-a0424e987f75",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "gu4f3crsnv",
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ff6b85cb-ffc5-4040-b19a-c122b63b5384",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "2c4ceaa4-9b73-4b48-abad-89d3505837d9",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "dfe59b5f-2973-4bbf-8257-336c7bccccdc",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "de4dbfcf-7ffd-4117-8310-d3a89c4af7aa",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "5n7acizx8o",
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "7a9306f1-1db5-433c-8ac5-397450fef182",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "da3ffd58-7379-406c-ae70-118df7c37a04",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "d9e5f34a-cc10-4876-843b-cdefd3f84aca",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ae6d2229-6b1d-49f6-947d-9b173ee96728",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "nir1s0j7xb",
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "34b08163-a6b3-4269-ad72-a24d4d17a4ae",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "49503435-5f8a-40fd-803e-9f3029a89b8e",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "0c256ada-003f-4f1c-b5d5-d53966a2c784",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "b6bbdbfa-51fa-4bed-946c-25a00076babb",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "b57bd352-a148-40dd-a597-40aad9287a38",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "t9u6k4fkvp",
+    "device": "b6bbdbfa-51fa-4bed-946c-25a00076babb",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "ea43a004-1523-4bd8-be7b-36a214849338",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "b6bbdbfa-51fa-4bed-946c-25a00076babb",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "f8c68b17-52ab-4747-bcd3-82d0872f60a4",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "b6bbdbfa-51fa-4bed-946c-25a00076babb",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "353445e0-45f8-40d8-841c-e9f2b2a47e6a",
+    "category": "firmware_revision",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "1.0.0",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "86cda5f9-d832-4f98-83e2-1de616a0d5d3",
+    "category": "serial_number",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "7if96wnp5k",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "6e9ef040-dfc2-4579-9428-993d20b239b5",
+    "category": "model",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "string",
+    "unit": null,
+    "format": null,
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "dummy",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  },
+  {
+    "id": "5c435f7b-6771-4ef5-b0fc-f21d1459bf5d",
+    "category": "status",
+    "name": null,
+    "permission": [
+      "ro"
+    ],
+    "data_type": "enum",
+    "unit": null,
+    "format": [
+      "connected",
+      "disconnected",
+      "alert",
+      "unknown"
+    ],
+    "invalid": null,
+    "scale": null,
+    "step": null,
+    "value": "connected",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "created_at": "2024-12-11T12:00:00Z",
+    "updated_at": "2024-12-11T12:00:00Z"
+  }
+]
