@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE
+        instance-profile
+        SYSTEM
+        "https://resources.jetbrains.com/writerside/1.0/product-profile.dtd"
+        >
+<instance-profile
+        id="docs"
+        name="FastyBird Smart Panel"
+        start-page="Overview.md"
+>
+    <toc-element topic="Overview.md"/>
+    <toc-element topic="GettingStarted.md"/>
+    <toc-element topic="SupportedHardware.md"/>
+    <toc-element topic="API.md"/>
+    <toc-element topic="API_Reference.md">
+        <toc-element topic="Get_a_list_of_all_available_devices.md"/>
+    </toc-element>
+    <toc-element topic="SupportedDevicesChannels.md">
+        <toc-element topic="SupportedDevices.md">
+            <toc-element topic="AirConditionerDevice.md" />
+            <toc-element topic="AirDehumidifierDevice.md" />
+            <toc-element topic="AirHumidifierDevice.md" />
+            <toc-element topic="AirPurifierDevice.md" />
+            <toc-element topic="AlarmDevice.md" />
+            <toc-element topic="CameraDevice.md" />
+            <toc-element topic="DoorDevice.md" />
+            <toc-element topic="DoorbellDevice.md" />
+            <toc-element topic="FanDevice.md" />
+            <toc-element topic="HeaterDevice.md" />
+            <toc-element topic="LightingDevice.md" />
+            <toc-element topic="LockDevice.md" />
+            <toc-element topic="MediaDevice.md" />
+            <toc-element topic="OutletDevice.md" />
+            <toc-element topic="PumpDevice.md" />
+            <toc-element topic="RobotVacuumDevice.md" />
+            <toc-element topic="SensorDevice.md" />
+            <toc-element topic="SprinklerDevice.md" />
+            <toc-element topic="SwitcherDevice.md" />
+            <toc-element topic="TelevisionDevice.md" />
+            <toc-element topic="ThermostatDevice.md" />
+            <toc-element topic="ValveDevice.md" />
+            <toc-element topic="WindowCoveringDevice.md" />
+        </toc-element>
+        <toc-element topic="SupportedChannels.md">
+            <toc-element topic="AirParticulateChannel.md" />
+            <toc-element topic="AlarmChannel.md" />
+            <toc-element topic="BatteryChannel.md" />
+            <toc-element topic="CameraChannel.md" />
+            <toc-element topic="CarbonDioxideChannel.md" />
+            <toc-element topic="CarbonMonoxideChannel.md" />
+            <toc-element topic="ContactChannel.md" />
+            <toc-element topic="CoolerChannel.md" />
+            <toc-element topic="DeviceInformationChannel.md" />
+            <toc-element topic="DoorbellChannel.md" />
+            <toc-element topic="DoorChannel.md" />
+            <toc-element topic="ElectricalEnergyChannel.md" />
+            <toc-element topic="ElectricalPowerChannel.md" />
+            <toc-element topic="FanChannel.md" />
+            <toc-element topic="FlowChannel.md" />
+            <toc-element topic="HeaterChannel.md" />
+            <toc-element topic="HumidityChannel.md" />
+            <toc-element topic="IlluminanceChannel.md" />
+            <toc-element topic="LeakChannel.md" />
+            <toc-element topic="LightChannel.md" />
+            <toc-element topic="LockChannel.md" />
+            <toc-element topic="MediaInputChannel.md" />
+            <toc-element topic="MediaPlaybackChannel.md" />
+            <toc-element topic="MicrophoneChannel.md" />
+            <toc-element topic="MotionChannel.md" />
+            <toc-element topic="NitrogenDioxideChannel.md" />
+            <toc-element topic="OccupancyChannel.md" />
+            <toc-element topic="OutletChannel.md" />
+            <toc-element topic="OzoneChannel.md" />
+            <toc-element topic="PressureChannel.md" />
+            <toc-element topic="RobotVacuumChannel.md" />
+            <toc-element topic="SmokeChannel.md" />
+            <toc-element topic="SpeakerChannel.md" />
+            <toc-element topic="SulphurDioxideChannel.md" />
+            <toc-element topic="SwitcherChannel.md" />
+            <toc-element topic="TelevisionChannel.md" />
+            <toc-element topic="TemperatureChannel.md" />
+            <toc-element topic="ThermostatChannel.md" />
+            <toc-element topic="ValveChannel.md" />
+            <toc-element topic="VolatileOrganicCompoundsChannel.md" />
+            <toc-element topic="WindowCoveringChannel.md" />
+        </toc-element>
+        <toc-element topic="DeviceIntegrationGuide.md" />
+        <toc-element topic="ChannelIntegrationGuide.md" />
+    </toc-element>
+</instance-profile>

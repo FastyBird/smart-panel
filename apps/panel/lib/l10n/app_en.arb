@@ -1,0 +1,615 @@
+{
+  "@@locale": "en",
+  "value_not_available": "N/A",
+  "@value_not_available": {
+    "description": "Displayed when no value is available for a property"
+  },
+  "value_not_set": "Not Set",
+  "@value_not_set": {
+    "description": "Displayed when a value has not been configured or assigned."
+  },
+  "information": "Information",
+  "@information": {
+    "description": "General informational message"
+  },
+  "warning": "Warning",
+  "@warning": {
+    "description": "A message indicating a potential issue or caution"
+  },
+  "error": "Error",
+  "@error": {
+    "description": "A message indicating an error occurred"
+  },
+  "action_failed": "Action could not be processed",
+  "@action_failed": {
+    "description": "Error message when an action fails"
+  },
+  "button_ok": "Ok",
+  "@button_ok": {
+    "description": "Text for OK button"
+  },
+  "button_cancel": "Cancel",
+  "@button_cancel": {
+    "description": "Text for Cancel button"
+  },
+  "button_close": "Close",
+  "@button_close": {
+    "description": "Text for Close button"
+  },
+  "button_confirm": "Confirm",
+  "@button_confirm": {
+    "description": "Text for Confirm button"
+  },
+  "unit_celsius": "Celsius",
+  "@unit_celsius": {
+    "description": "Label for Celsius temperature unit."
+  },
+  "unit_fahrenheit": "Fahrenheit",
+  "@unit_fahrenheit": {
+    "description": "Label for Fahrenheit temperature unit."
+  },
+  "time_format_12h": "12-hour",
+  "@time_format_12h": {
+    "description": "Label for 12-hour time format, commonly used in English-speaking countries."
+  },
+  "time_format_24h": "24-hour",
+  "@time_format_24h": {
+    "description": "Label for 24-hour time format, commonly used internationally."
+  },
+  "day_monday": "Monday",
+  "@day_monday": {
+    "description": "Full name for Monday in English."
+  },
+  "day_tuesday": "Tuesday",
+  "@day_tuesday": {
+    "description": "Full name for Tuesday in English."
+  },
+  "day_wednesday": "Wednesday",
+  "@day_wednesday": {
+    "description": "Full name for Wednesday in English."
+  },
+  "day_thursday": "Thursday",
+  "@day_thursday": {
+    "description": "Full name for Thursday in English."
+  },
+  "day_friday": "Friday",
+  "@day_friday": {
+    "description": "Full name for Friday in English."
+  },
+  "day_saturday": "Saturday",
+  "@day_saturday": {
+    "description": "Full name for Saturday in English."
+  },
+  "day_sunday": "Sunday",
+  "@day_sunday": {
+    "description": "Full name for Sunday in English."
+  },
+  "day_monday_short": "Mon",
+  "@day_monday_short": {
+    "description": "Short abbreviation for Monday in English."
+  },
+  "day_tuesday_short": "Tue",
+  "@day_tuesday_short": {
+    "description": "Short abbreviation for Tuesday in English."
+  },
+  "day_wednesday_short": "Wed",
+  "@day_wednesday_short": {
+    "description": "Short abbreviation for Wednesday in English."
+  },
+  "day_thursday_short": "Thu",
+  "@day_thursday_short": {
+    "description": "Short abbreviation for Thursday in English."
+  },
+  "day_friday_short": "Fri",
+  "@day_friday_short": {
+    "description": "Short abbreviation for Friday in English."
+  },
+  "day_saturday_short": "Sat",
+  "@day_saturday_short": {
+    "description": "Short abbreviation for Saturday in English."
+  },
+  "day_sunday_short": "Sun",
+  "@day_sunday_short": {
+    "description": "Short abbreviation for Sunday in English."
+  },
+  "message_error_home_not_configured_title": "Home is not configured!",
+  "@message_error_home_not_configured_title": {
+    "description": "Title for error when no home configuration exists"
+  },
+  "message_error_home_not_configured_description": "Please configure at least one tile on the home screen.",
+  "@message_error_home_not_configured_description": {
+    "description": "Indicates that no home configuration is available"
+  },
+  "message_error_tiles_not_configured_title": "No tiles configured!",
+  "@message_error_tiles_not_configured_title": {
+    "description": "Title for error when no tiles are configured"
+  },
+  "message_error_tiles_not_configured_description": "Please configure at least one tile on the screen.",
+  "@message_error_tiles_not_configured_description": {
+    "description": "Indicates that no tiles have been configured for the screen"
+  },
+  "message_error_device_not_found_title": "Device Not Found!",
+  "@message_error_device_not_found_title": {
+    "description": "Title for error when a requested device cannot be found"
+  },
+  "message_error_device_not_found_description": "Requested device could not be found in the application.",
+  "@message_error_device_not_found_description": {
+    "description": "Indicates that the requested device is unavailable in the system"
+  },
+  "message_error_no_device_detail_title": "No device detail!",
+  "@message_error_no_device_detail_title": {
+    "description": "Title for error when no device detail is available"
+  },
+  "message_error_no_device_detail_description": "For selected device is not available a detail page.",
+  "@message_error_no_device_detail_description": {
+    "description": "Indicates that the selected device has no detailed page available"
+  },
+  "message_error_no_device_detail_preparing_title": "Device detail not ready!",
+  "@message_error_no_device_detail_preparing_title": {
+    "description": "Title for error when no device detail is available"
+  },
+  "message_error_no_device_detail_preparing_description": "For selected device detail page is not ready yet.",
+  "@message_error_no_device_detail_preparing_description": {
+    "description": "Indicates that the selected device has no detailed page available"
+  },
+  "electrical_energy_consumption_title": "Energy Consumption",
+  "@electrical_energy_consumption_title": {
+    "description": "Title for total energy consumption"
+  },
+  "electrical_energy_consumption_description": "Total energy consumed over time",
+  "@electrical_energy_consumption_description": {
+    "description": "Detailed description of energy consumption measurement"
+  },
+  "electrical_energy_rate_title": "Current Power Rate",
+  "@electrical_energy_rate_title": {
+    "description": "Title for the current power usage rate"
+  },
+  "electrical_energy_rate_description": "Real-time power usage in kilowatts",
+  "@electrical_energy_rate_description": {
+    "description": "Detailed description of real-time power rate measurement"
+  },
+  "electrical_power_current_title": "Current",
+  "@electrical_power_current_title": {
+    "description": "Title for the current flow measurement"
+  },
+  "electrical_power_current_description": "How much electricity is flowing",
+  "@electrical_power_current_description": {
+    "description": "Detailed description of current measurement in amperes"
+  },
+  "electrical_power_voltage_title": "Voltage",
+  "@electrical_power_voltage_title": {
+    "description": "Title for voltage measurement"
+  },
+  "electrical_power_voltage_description": "The strength of the electricity",
+  "@electrical_power_voltage_description": {
+    "description": "Detailed description of voltage measurement in volts"
+  },
+  "electrical_power_power_title": "Power",
+  "@electrical_power_power_title": {
+    "description": "Title for power measurement"
+  },
+  "electrical_power_power_description": "How much energy is being used",
+  "@electrical_power_power_description": {
+    "description": "Detailed description of power measurement in watts"
+  },
+  "electrical_power_frequency_title": "Frequency",
+  "@electrical_power_frequency_title": {
+    "description": "Title for electrical frequency"
+  },
+  "electrical_power_frequency_description": "How steady the electricity is",
+  "@electrical_power_frequency_description": {
+    "description": "Detailed description of frequency measurement in hertz"
+  },
+  "electrical_power_over_current_title": "Over Current",
+  "@electrical_power_over_current_title": {
+    "description": "Title for over current warning"
+  },
+  "electrical_power_over_current_description": "Warning: Too much electricity is flowing",
+  "@electrical_power_over_current_description": {
+    "description": "Detailed description of over current warning"
+  },
+  "electrical_power_over_voltage_title": "Over Voltage",
+  "@electrical_power_over_voltage_title": {
+    "description": "Title for over voltage warning"
+  },
+  "electrical_power_over_voltage_description": "Warning: Electricity is too strong",
+  "@electrical_power_over_voltage_description": {
+    "description": "Detailed description of over voltage warning"
+  },
+  "light_state_off": "Off",
+  "@light_state_off": {
+    "description": "State when the light is turned off"
+  },
+  "light_state_off_description": "Light is turned off",
+  "@light_state_off_description": {
+    "description": "Detailed description of the light being turned off"
+  },
+  "light_state_brightness_description": "Current brightness",
+  "@light_state_brightness_description": {
+    "description": "Description of the current brightness level"
+  },
+  "light_mode_off": "Off",
+  "@light_mode_off": {
+    "description": "Mode when the light is off"
+  },
+  "light_mode_brightness": "Brightness",
+  "@light_mode_brightness": {
+    "description": "Mode for adjusting brightness"
+  },
+  "light_mode_color": "Color",
+  "@light_mode_color": {
+    "description": "Mode for adjusting color"
+  },
+  "light_mode_temperature": "Temperature",
+  "@light_mode_temperature": {
+    "description": "Mode for adjusting color temperature"
+  },
+  "light_mode_white": "White",
+  "@light_mode_white": {
+    "description": "Mode for adjusting white color"
+  },
+  "light_mode_swatches": "Swatches",
+  "@light_mode_swatches": {
+    "description": "Mode for selecting predefined color swatches"
+  },
+  "thermostat_state_title": "Thermostat state",
+  "@thermostat_state_title": {
+    "description": "Title displayed for the thermostat state section"
+  },
+  "thermostat_state_configured_temperature_description": "Configured temperature",
+  "@thermostat_state_configured_temperature_description": {
+    "description": "Displays the user-configured target temperature"
+  },
+  "thermostat_state_current_temperature_description": "Current temperature",
+  "@thermostat_state_current_temperature_description": {
+    "description": "Displays the current room temperature"
+  },
+  "thermostat_state_current_humidity_description": "Current humidity",
+  "@thermostat_state_current_humidity_description": {
+    "description": "Displays the current room humidity level"
+  },
+  "thermostat_child_lock_title": "Child lock",
+  "@thermostat_child_lock_title": {
+    "description": "Indicates whether the child lock is active"
+  },
+  "thermostat_openings_state_title": "Window is opened",
+  "@thermostat_openings_state_title": {
+    "description": "Indicates an open window detected near the thermostat"
+  },
+  "thermostat_openings_state_description": "Thermostat is disabled",
+  "@thermostat_openings_state_description": {
+    "description": "Displays that the thermostat is disabled due to an open window"
+  },
+  "thermostat_lock_locked": "Locked",
+  "@thermostat_lock_locked": {
+    "description": "Indicates the child lock is active"
+  },
+  "thermostat_lock_unlocked": "Unlocked",
+  "@thermostat_lock_unlocked": {
+    "description": "Indicates the child lock is not active"
+  },
+  "thermostat_mode_off": "Off",
+  "@thermostat_mode_off": {
+    "description": "Thermostat is turned off"
+  },
+  "thermostat_mode_heat": "Heat",
+  "@thermostat_mode_heat": {
+    "description": "Thermostat is set to heating mode"
+  },
+  "thermostat_mode_cool": "Cool",
+  "@thermostat_mode_cool": {
+    "description": "Thermostat is set to cooling mode"
+  },
+  "thermostat_mode_auto": "Auto",
+  "@thermostat_mode_auto": {
+    "description": "Thermostat automatically adjusts between heating and cooling"
+  },
+  "thermostat_mode_manual": "Manual",
+  "@thermostat_mode_manual": {
+    "description": "Thermostat is set to manual adjustment mode"
+  },
+  "thermostat_min": "min",
+  "@thermostat_min": {
+    "description": "Represents the minimum adjustable temperature"
+  },
+  "thermostat_max": "max",
+  "@thermostat_max": {
+    "description": "Represents the maximum adjustable temperature"
+  },
+  "thermostat_state_off": "Off",
+  "@thermostat_state_off": {
+    "description": "Indicates the thermostat is turned off"
+  },
+  "thermostat_state_heating": "Heating",
+  "@thermostat_state_heating": {
+    "description": "Indicates the thermostat is actively heating the space"
+  },
+  "thermostat_state_cooling": "Cooling",
+  "@thermostat_state_cooling": {
+    "description": "Indicates the thermostat is actively cooling the space"
+  },
+  "thermostat_state_idling": "Idling",
+  "@thermostat_state_idling": {
+    "description": "Indicates the thermostat is in idle state"
+  },
+  "thermostat_with_invalid_configuration": "This thermostat device is wrongly configured.",
+  "@thermostat_with_invalid_configuration": {
+    "description": "Displays an error when the thermostat configuration is invalid"
+  },
+  "on_state_on": "On",
+  "@on_state_on": {
+    "description": "Indicates that a device or feature is turned on"
+  },
+  "on_state_off": "Off",
+  "@on_state_off": {
+    "description": "Indicates that a device or feature is turned off"
+  },
+  "message_info_app_reboot_title": "Rebooting Device!",
+  "@message_info_app_reboot_title": {
+    "description": "Title displayed during a device reboot operation."
+  },
+  "message_info_app_reboot_description": "Please wait while the device reboots. This may take a few moments. The system will restart automatically once the process is complete.",
+  "@message_info_app_reboot_description": {
+    "description": "Message displayed during a device reboot operation."
+  },
+  "message_info_app_power_off_title": "Shutting Down!",
+  "@message_info_app_power_off_title": {
+    "description": "Title displayed when the device is powering off."
+  },
+  "message_info_app_power_off_description": "The device is powering off. To turn it back on, please use the power button. Thank you for using FastyBird! Smart Panel.",
+  "@message_info_app_power_off_description": {
+    "description": "Message displayed when the device is powering off."
+  },
+  "message_info_factory_reset_title": "Resetting Device!",
+  "@message_info_factory_reset_title": {
+    "description": "Title displayed during a factory reset operation."
+  },
+  "message_info_factory_reset_description": "All settings and data will be erased, and the device will be restored to its factory defaults. Please do not turn off the device during the reset process. This may take a few minutes.",
+  "@message_info_factory_reset_description": {
+    "description": "Message displayed during a factory reset operation."
+  },
+  "settings_general_settings_title": "General Settings",
+  "@settings_general_settings_title": {
+    "description": "Title for the General Settings section."
+  },
+  "settings_general_settings_button_display_settings": "Display settings",
+  "@settings_general_settings_button_display_settings": {
+    "description": "Button label for navigating to Display Settings."
+  },
+  "settings_general_settings_button_language_settings": "Language settings",
+  "@settings_general_settings_button_language_settings": {
+    "description": "Button label for navigating to Language Settings."
+  },
+  "settings_general_settings_button_audio_settings": "Audio settings",
+  "@settings_general_settings_button_audio_settings": {
+    "description": "Button label for navigating to Audio Settings."
+  },
+  "settings_general_settings_button_weather_settings": "Weather settings",
+  "@settings_general_settings_button_weather_settings": {
+    "description": "Button label for navigating to Weather Settings."
+  },
+  "settings_general_settings_button_about": "About application",
+  "@settings_general_settings_button_about": {
+    "description": "Button label for navigating to About Application section."
+  },
+  "settings_general_settings_button_maintenance": "Maintenance",
+  "@settings_general_settings_button_maintenance": {
+    "description": "Button label for navigating to Maintenance section."
+  },
+  "settings_weather_settings_title": "Weather Settings",
+  "@settings_weather_settings_title": {
+    "description": "Title for the Weather Settings section."
+  },
+  "settings_weather_settings_temperature_unit_title": "Temperature Unit",
+  "@settings_weather_settings_temperature_unit_title": {
+    "description": "Label for selecting the temperature unit for weather display."
+  },
+  "settings_weather_settings_temperature_unit_description": "Set the preferred temperature unit for weather display.",
+  "@settings_weather_settings_temperature_unit_description": {
+    "description": "Description explaining the purpose of the temperature unit setting."
+  },
+  "settings_weather_settings_temperature_location_title": "Weather Location",
+  "@settings_weather_settings_temperature_location_title": {
+    "description": "Label for displaying the weather location setting."
+  },
+  "settings_weather_settings_temperature_location_description": "Weather location is configured in the administrator app.",
+  "@settings_weather_settings_temperature_location_description": {
+    "description": "Description explaining that the weather location is configured externally."
+  },
+  "settings_maintenance_title": "Maintenance",
+  "@settings_maintenance_title": {
+    "description": "Title for the Maintenance section."
+  },
+  "settings_maintenance_restart_title": "Restart",
+  "@settings_maintenance_restart_title": {
+    "description": "Label for the restart action in Maintenance settings."
+  },
+  "settings_maintenance_restart_description": "Restart the device to apply changes or resolve issues.",
+  "@settings_maintenance_restart_description": {
+    "description": "Description for the restart action, explaining its purpose."
+  },
+  "settings_maintenance_restart_confirm_title": "Restart Device",
+  "@settings_maintenance_restart_confirm_title": {
+    "description": "Title for the confirmation dialog when restarting the device."
+  },
+  "settings_maintenance_restart_confirm_description": "Are you sure you want to restart the device? This action will temporarily interrupt functionality.",
+  "@settings_maintenance_restart_confirm_description": {
+    "description": "Message displayed in the confirmation dialog for restarting the device."
+  },
+  "settings_maintenance_power_off_title": "Power Off",
+  "@settings_maintenance_power_off_title": {
+    "description": "Label for the power off action in Maintenance settings."
+  },
+  "settings_maintenance_power_off_description": "Power off the device completely.",
+  "@settings_maintenance_power_off_description": {
+    "description": "Description for the power off action, explaining its purpose."
+  },
+  "settings_maintenance_power_off_confirm_title": "Power Off Device",
+  "@settings_maintenance_power_off_confirm_title": {
+    "description": "Title for the confirmation dialog when powering off the device."
+  },
+  "settings_maintenance_power_off_confirm_description": "Are you sure you want to power off the device? It will need to be manually turned on again.",
+  "@settings_maintenance_power_off_confirm_description": {
+    "description": "Message displayed in the confirmation dialog for powering off the device."
+  },
+  "settings_maintenance_factory_reset_title": "Factory Reset",
+  "@settings_maintenance_factory_reset_title": {
+    "description": "Label for the factory reset action in Maintenance settings."
+  },
+  "settings_maintenance_factory_reset_description": "Restore the device to its original factory settings.",
+  "@settings_maintenance_factory_reset_description": {
+    "description": "Description for the factory reset action, explaining its purpose."
+  },
+  "settings_maintenance_factory_reset_confirm_title": "Factory Reset Device",
+  "@settings_maintenance_factory_reset_confirm_title": {
+    "description": "Title for the confirmation dialog when performing a factory reset."
+  },
+  "settings_maintenance_factory_reset_confirm_description": "Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible.",
+  "@settings_maintenance_factory_reset_confirm_description": {
+    "description": "Message displayed in the confirmation dialog for performing a factory reset."
+  },
+  "settings_language_settings_title": "Language Settings",
+  "@settings_language_settings_title": {
+    "description": "Title for the Language Settings section."
+  },
+  "settings_language_settings_language_title": "Language",
+  "@settings_language_settings_language_title": {
+    "description": "Label for selecting the preferred language."
+  },
+  "settings_language_settings_language_description": "Select your preferred language.",
+  "@settings_language_settings_language_description": {
+    "description": "Description explaining the purpose of the language setting."
+  },
+  "settings_language_settings_timezone_title": "Timezone",
+  "@settings_language_settings_timezone_title": {
+    "description": "Label for selecting the timezone."
+  },
+  "settings_language_settings_timezone_description": "Select your timezone.",
+  "@settings_language_settings_timezone_description": {
+    "description": "Description explaining the purpose of the timezone setting."
+  },
+  "settings_language_settings_time_format_title": "Time Format",
+  "@settings_language_settings_time_format_title": {
+    "description": "Label for selecting the time format."
+  },
+  "settings_language_settings_time_format_description": "Select your preferred time format.",
+  "@settings_language_settings_time_format_description": {
+    "description": "Description explaining the purpose of the time format setting."
+  },
+  "settings_display_settings_title": "Display Settings",
+  "@settings_display_settings_title": {
+    "description": "Title for the Display Settings section."
+  },
+  "settings_display_settings_theme_mode_title": "Theme Mode",
+  "@settings_display_settings_theme_mode_title": {
+    "description": "Label for selecting the theme mode."
+  },
+  "settings_display_settings_theme_mode_description": "Choose between light or dark mode.",
+  "@settings_display_settings_theme_mode_description": {
+    "description": "Description explaining the theme mode setting."
+  },
+  "settings_display_settings_brightness_title": "Brightness",
+  "@settings_display_settings_brightness_title": {
+    "description": "Label for adjusting the display brightness."
+  },
+  "settings_display_settings_screen_lock_title": "Screen Lock",
+  "@settings_display_settings_screen_lock_title": {
+    "description": "Label for setting the screen lock delay."
+  },
+  "settings_display_settings_screen_lock_description": "Set screen lock delay duration.",
+  "@settings_display_settings_screen_lock_description": {
+    "description": "Description explaining the screen lock delay setting."
+  },
+  "settings_display_settings_screen_saver_title": "Screen Saver",
+  "@settings_display_settings_screen_saver_title": {
+    "description": "Label for enabling or disabling the screen saver."
+  },
+  "settings_display_settings_screen_saver_description": "Enable or disable the screen saver.",
+  "@settings_display_settings_screen_saver_description": {
+    "description": "Description explaining the screen saver setting."
+  },
+  "settings_audio_settings_title": "Audio Settings",
+  "@settings_audio_settings_title": {
+    "description": "Title for the Audio Settings section."
+  },
+  "settings_audio_settings_speaker_title": "Speaker",
+  "@settings_audio_settings_speaker_title": {
+    "description": "Label for enabling or disabling the speaker."
+  },
+  "settings_audio_settings_speaker_description": "Enable or disable the speaker.",
+  "@settings_audio_settings_speaker_description": {
+    "description": "Description explaining the speaker setting."
+  },
+  "settings_audio_settings_speaker_volume_title": "Speaker Volume",
+  "@settings_audio_settings_speaker_volume_title": {
+    "description": "Label for adjusting the speaker volume."
+  },
+  "settings_audio_settings_microphone_title": "Microphone",
+  "@settings_audio_settings_microphone_title": {
+    "description": "Label for enabling or disabling the microphone."
+  },
+  "settings_audio_settings_microphone_description": "Enable or disable the microphone.",
+  "@settings_audio_settings_microphone_description": {
+    "description": "Description explaining the microphone setting."
+  },
+  "settings_audio_settings_microphone_volume_title": "Microphone Volume",
+  "@settings_audio_settings_microphone_volume_title": {
+    "description": "Label for adjusting the microphone volume."
+  },
+  "settings_about_title": "About Application",
+  "@settings_about_title": {
+    "description": "Title for the About Application section."
+  },
+  "settings_about_about_heading": "About",
+  "@settings_about_about_heading": {
+    "description": "Heading for the about information section."
+  },
+  "settings_about_about_info": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities.",
+  "@settings_about_about_info": {
+    "description": "General information about the FastyBird Smart Panel application."
+  },
+  "settings_about_developed_by_heading": "Developed By",
+  "@settings_about_developed_by_heading": {
+    "description": "Heading for the developer information section."
+  },
+  "settings_about_license_heading": "License",
+  "@settings_about_license_heading": {
+    "description": "Heading for the license information section."
+  },
+  "settings_about_device_information_heading": "Device Information",
+  "@settings_about_device_information_heading": {
+    "description": "Heading for the device information section."
+  },
+  "settings_about_show_license_button": "View License",
+  "@settings_about_show_license_button": {
+    "description": "Button label for viewing license details."
+  },
+  "settings_about_ip_address_title": "IP Address",
+  "@settings_about_ip_address_title": {
+    "description": "Label for displaying the device's IP address."
+  },
+  "settings_about_mac_address_title": "MAC Address",
+  "@settings_about_mac_address_title": {
+    "description": "Label for displaying the device's MAC address."
+  },
+  "settings_about_cpu_usage_title": "CPU Usage",
+  "@settings_about_cpu_usage_title": {
+    "description": "Label for displaying the device's CPU usage."
+  },
+  "settings_about_memory_usage_title": "Memory Usage",
+  "@settings_about_memory_usage_title": {
+    "description": "Label for displaying the device's memory usage."
+  },
+  "weather_forecast_title": "7 day forecast",
+  "@weather_forecast_title": {
+    "description": ""
+  },
+  "weather_forecast_feels_like": "Feels like:",
+  "@weather_forecast_feels_like": {
+    "description": ""
+  },
+  "weather_forecast_humidity": "Humidity:",
+  "@weather_forecast_humidity": {
+    "description": ""
+  }
+}

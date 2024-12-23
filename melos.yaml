@@ -1,0 +1,14 @@
+name: fastybird_smart_app
+
+packages:
+  - apps/*
+
+scripts:
+  analyze:
+    exec: dart analyze .
+  generate-run-config:
+    run: bash ./bin/generate_app_run_config.sh
+
+command:
+  bootstrap:
+    runPubGetInParallel: false

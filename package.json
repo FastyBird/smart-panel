@@ -1,0 +1,50 @@
+{
+  "name": "@fastybird/smart-panel",
+  "private": true,
+  "version": "1.0.0-dev.1",
+  "description": "Repository for FastyBird Smart Panel packages development",
+  "keywords": [
+    "fastybird",
+    "fb",
+    "ui",
+    "smart-panel",
+    "vue"
+  ],
+  "homepage": "https://www.fastybird.com",
+  "bugs": "https://github.com/FastyBird/smart-panel/issues",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "FastyBird s.r.o.",
+    "email": "code@fastybird.com",
+    "url": "https://www.fastybird.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FastyBird/smart-panel.git"
+  },
+  "workspaces": [
+    "apps/**/*"
+  ],
+  "scripts": {
+    "dev": "lerna run dev --stream",
+    "build": "lerna run build --stream",
+    "build:dev": "lerna run build:dev --stream",
+    "clean": "lerna clean && rm -rf node_modules",
+    "fix": "lerna run fix",
+    "graph": "nx graph",
+    "types": "lerna run types --stream",
+    "lint:js": "lerna run lint:js --stream",
+    "lint:js:fix": "lerna run lint:js:fix --stream",
+    "lint:styles": "lerna run lint:styles --stream",
+    "pretty": "yarn pretty:write && yarn pretty:check",
+    "pretty:check": "lerna run pretty:check",
+    "pretty:write": "lerna run pretty:write",
+    "test": "lerna run test --stream"
+  },
+  "devDependencies": {
+    "lerna": "^8.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE buildprofiles SYSTEM "https://resources.jetbrains.com/writerside/1.0/build-profiles.dtd">
+<buildprofiles
+        xsi:noNamespaceSchemaLocation="https://resources.jetbrains.com/writerside/1.0/build-profiles.xsd"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+>
+    <build-profile instance="docs">
+        <variables>
+            <primary-color>ruby</primary-color>
+
+            <header-logo>fb_bird.svg</header-logo>
+            <product-web-url>https://smart-panel.fastybird.com</product-web-url>
+
+            <download-title>Get FastyBird:SmartPanel!</download-title>
+            <download-page>https://www.github.com/fastybird/smart-panel</download-page>
+            <showDownloadButton>true</showDownloadButton>
+        </variables>
+
+        <footer>
+            <social type="blog" href="https://blog.fastybird.com/smart-panel/">FastyBird Blog</social>
+            <social type="twitter" href="https://twitter.com/fastybird">FastyBird on Twitter</social>
+
+            <link href="https://github.com/FastyBird/smart-panel/issues">Issue tracker</link>
+            <link href="https://github.com/FastyBird/smart-panel/issues">Submit support request</link>
+            <link href="mailto:code@fastybird.com">Contact us</link>
+
+            <copyright>2024 FastyBird s.r.o.</copyright>
+        </footer>
+    </build-profile>
+
+</buildprofiles>

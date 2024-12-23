@@ -1,0 +1,381 @@
+[
+  {
+    "_debug": "time_tile",
+    "id": "542f217b-328f-4e47-8e7d-5684cbe93b9f",
+    "type": "clock",
+    "data_source": [],
+    "row": 1,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "weather_tile",
+    "id": "82dc2341-af7d-43f1-8af1-e94244dfba61",
+    "type": "weather_day",
+    "data_source": [],
+    "row": 3,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "forecast_tile",
+    "id": "8a044651-90d1-4bd6-a807-a2b9c2503cec",
+    "type": "weather_forecast",
+    "data_source": [],
+    "row": 5,
+    "col": 1,
+    "col_span": 8,
+    "row_span": 2
+  },
+  {
+    "_debug": "scene_tile_1",
+    "id": "c421f139-40ca-4596-90f6-a62b2cd31577",
+    "type": "scene",
+    "scene": "518574a0-83eb-4b71-bb74-6bc1ba6714c6",
+    "data_source": [],
+    "label": "Lights",
+    "status": "Turned off",
+    "icon": 58235,
+    "is_on": false,
+    "row": 7,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "scene_tile_2",
+    "id": "1cf51b1f-01cd-41f3-abd8-74cebf097d21",
+    "type": "scene",
+    "scene": "13b788a8-e1e7-41f4-8e90-ae16f7b972ec",
+    "data_source": [],
+    "label": "Lock",
+    "status": "Unlocked",
+    "icon": 58288,
+    "is_on": true,
+    "row": 7,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-tv-led-strip",
+    "id": "eee59eb8-b756-4cc5-bc56-5700a0bfe0f8",
+    "type": "device",
+    "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "data_source": [
+      "fbf3cea1-a52e-4e83-b6d7-1c09344d6d5b"
+    ],
+    "row": 1,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-couch-led-strip",
+    "id": "a5f78c87-5c62-4349-97db-6bf5305e8c8b",
+    "type": "device",
+    "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "data_source": [
+      "a9e90df9-a20c-495f-98dc-6567d0ad0b94"
+    ],
+    "row": 3,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-tv-spot-light",
+    "id": "6c0e04a0-d077-41e9-9352-7ed62f98ba21",
+    "type": "device",
+    "device": "be49951d-21da-49d2-904f-98756d9b9521",
+    "data_source": [
+      "1dcf5188-0ace-4811-9e61-e81991d62846",
+      "56f863a8-1fe8-4f1b-8683-407c64d4449c"
+    ],
+    "row": 1,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-couch-spot-light",
+    "id": "d81fa00c-d764-4d6e-abd6-1b58d8951a00",
+    "type": "device",
+    "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "data_source": [
+      "02041cdc-2df7-4199-8902-05756e2e105f",
+      "efbf16fb-05c3-442c-a49d-6ceaad0666a3"
+    ],
+    "row": 3,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-entry-light",
+    "id": "26fc7cda-b5e0-460a-82be-0207b932435f",
+    "type": "device",
+    "device": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "data_source": [
+      "0a203dc7-7d97-4d5c-8a0f-a4434c78fb52"
+    ],
+    "row": 5,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-dining-room-light",
+    "id": "034d8c31-5282-4a4d-9da6-0986b492b6c1",
+    "type": "device",
+    "device": "3f3e73d9-4faa-4b38-9859-0a915ae9e85d",
+    "data_source": [
+      "3b72d5a0-994a-42c8-a81b-6e66d0b13a21"
+    ],
+    "row": 7,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-main-light",
+    "id": "90089256-d1a7-4742-ace5-13d9f59c52e7",
+    "type": "device",
+    "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "data_source": [
+      "864d88f3-ebff-488d-99fd-3dbd92b80023"
+    ],
+    "row": 5,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "living-room-tv",
+    "id": "ce2e33c1-e249-4625-895b-dd6cdf125f64",
+    "type": "device",
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "data_source": [
+      "6cce1994-0b87-4bc1-a35e-e3050a2ffce0"
+    ],
+    "row": 5,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "living-room-vacuum-cleaner",
+    "id": "f612c995-b4ff-45b1-b936-cabfe604ee77",
+    "type": "device",
+    "device": "ce2ff119-ceac-4867-bf36-7103b078de11",
+    "data_source": [
+      "0fd22c2e-7297-4a07-9d1c-455ad424a57a"
+    ],
+    "row": 1,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "living-room-terrace-blind",
+    "id": "46a1a985-cc2f-4759-938c-696cb281a414",
+    "type": "device",
+    "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
+    "data_source": [
+      "012a5b00-ed55-492b-9c96-e2135ba30a86"
+    ],
+    "row": 5,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-window-blind",
+    "id": "7153efde-571d-4096-907d-88ab1d2da950",
+    "type": "device",
+    "device": "9931b235-fae0-4977-b0e5-16caf193e5ce",
+    "data_source": [
+      "5821f640-fb8c-4ba4-a53e-797b58eb3550"
+    ],
+    "row": 7,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-thermostat",
+    "id": "a2ad3a63-0118-4192-a47d-a9b049f0f096",
+    "type": "device",
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "data_source": [
+      "5b4dd586-6499-49d8-8166-47291e3f9b36",
+      "ab6d2530-0750-46c7-adf3-7a549fcad2f1",
+      "dbbe5515-1b2e-4480-a935-40b2bf8c0dfd"
+    ],
+    "row": 1,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "kitchen-main-light",
+    "id": "fae5587e-f75b-4aff-8557-e96cca6ac91a",
+    "type": "device",
+    "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "data_source": [
+      "073e7d92-fc66-48c6-85e0-78149055148c"
+    ],
+    "row": 1,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "kitchen-spot-light",
+    "id": "de0c9b70-9202-4a27-a66e-afdd76bc6a05",
+    "type": "device",
+    "device": "9b2710ae-008a-4366-891a-586a570a451d",
+    "data_source": [
+      "c389bbb1-e54b-4360-af76-51b92f3ed398"
+    ],
+    "row": 1,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "kitchen-high-cabinet-light",
+    "id": "d2df8287-188d-49cb-b94e-69ca1108aa17",
+    "type": "device",
+    "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "data_source": [
+      "731c04be-a667-4932-af44-6aace52cd6b4"
+    ],
+    "row": 5,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "kitchen-under-cabinet-light",
+    "id": "89c8fde1-6355-4fee-b1f4-75e1fae9bb16",
+    "type": "device",
+    "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "data_source": [
+      "11239ca8-8184-4e08-a3d2-5ef8f3ec925d"
+    ],
+    "row": 7,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "kitchen-bar-light",
+    "id": "85f1e3e6-2c2d-4d14-b015-51a1585ac312",
+    "type": "device",
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "data_source": [
+      "7bb3bb11-b3a4-498c-8217-490581c2be57",
+      "ce8503dc-8f68-440f-b837-502605d74a7d"
+    ],
+    "row": 5,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "kitchen-thermostat",
+    "id": "04d9cb75-bc45-472a-a672-fac811d34d23",
+    "type": "device",
+    "device": "48287140-de58-446b-97a0-9437957fa7c6",
+    "data_source": [
+      "0a203dc7-7d97-4d5c-8a0f-a4434c78fb52",
+      "3b72d5a0-994a-42c8-a81b-6e66d0b13a21",
+      "864d88f3-ebff-488d-99fd-3dbd92b80023"
+    ],
+    "row": 1,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "kitchen-window-blind",
+    "id": "18b6e149-a91a-44a2-a45b-26e686c293b9",
+    "type": "device",
+    "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
+    "data_source": [
+      "5b4dd586-6499-49d8-8166-47291e3f9b36"
+    ],
+    "row": 5,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "kitchen-stove-fan",
+    "id": "a48d7298-c658-4482-b56a-63795ab8278b",
+    "type": "device",
+    "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
+    "data_source": [
+      "012a5b00-ed55-492b-9c96-e2135ba30a86"
+    ],
+    "row": 1,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 4
+  },
+  {
+    "_debug": "living-room-motion-detection-entrance",
+    "id": "085dc2da-2c92-47ce-bcac-5b174e360d7b",
+    "type": "device",
+    "device": "33540346-df58-4826-a9b3-d49ababb3040",
+    "data_source": [
+      "9823bb3f-3d26-46c9-b799-fe9d74a41314"
+    ],
+    "row": 5,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-motion-detection-terrace",
+    "id": "3fc64920-52a6-4f08-8d45-4b3a57e7883d",
+    "type": "device",
+    "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
+    "data_source": [
+      "21fbbd12-a326-4749-96b4-4e78582f4a9b"
+    ],
+    "row": 5,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "living-room-terrace-door-sensor",
+    "id": "f3c1bbfe-c647-4b7a-9294-67f49dc65b57",
+    "type": "device",
+    "device": "2ff80d54-4036-4554-8332-470d5182f259",
+    "data_source": [
+      "d9c80d4b-7f57-415d-a65c-e0ca91d67996"
+    ],
+    "row": 3,
+    "col": 1,
+    "col_span": 4,
+    "row_span": 2
+  },
+  {
+    "_debug": "kitchen-window-sensor",
+    "id": "0818325e-df3e-4e37-be0e-d79b398b7f81",
+    "type": "device",
+    "device": "0fd22c2e-7297-4a07-9d1c-455ad424a57a",
+    "data_source": [
+      "a9e90df9-a20c-495f-98dc-6567d0ad0b94"
+    ],
+    "row": 3,
+    "col": 5,
+    "col_span": 4,
+    "row_span": 2
+  }
+]
