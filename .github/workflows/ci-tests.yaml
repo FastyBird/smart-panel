@@ -39,6 +39,15 @@ jobs:
           key: "${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}"
           restore-keys: "${{ runner.os }}-node-modules-"
 
+      - name: "Start InfluxDB"
+        run: |
+          docker run -d --name influxdb \
+            -p 8086:8086 \
+            -e INFLUXDB_DB=fastybird \
+            -e INFLUXDB_ADMIN_USER= \
+            -e INFLUXDB_ADMIN_PASSWORD= \
+            influxdb:1.8
+
       - name: "Install NPM dependencies"
         shell: "bash"
         run: "yarn install"
