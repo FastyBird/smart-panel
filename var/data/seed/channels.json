@@ -1,0 +1,642 @@
+[
+  {
+    "_debug_name": "Living Room Thermostat",
+    "id": "0a655133-d6d9-4c4f-85cc-5a7b311b2bbc",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e"
+  },
+  {
+    "_debug_name": "Living Room Thermostat",
+    "id": "3b1f13c9-cdd1-4f8d-93a3-5232df6f7d6c",
+    "category": "thermostat",
+    "name": "Thermostat",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e"
+  },
+  {
+    "_debug_name": "Living Room Thermostat",
+    "id": "858c6ee2-56fc-4bbe-96dc-e4899579589c",
+    "category": "temperature",
+    "name": "Temperature Sensor",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e"
+  },
+  {
+    "_debug_name": "Living Room Thermostat",
+    "id": "d4933c20-e283-437b-9b71-31b3b4ea8c87",
+    "category": "humidity",
+    "name": "Humidity Sensor",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e"
+  },
+  {
+    "_debug_name": "Living Room Thermostat",
+    "id": "18c312ec-428c-49f0-a439-5fd8445d49ff",
+    "category": "heater",
+    "name": "Heater",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e"
+  },
+  {
+    "_debug_name": "Living Room Thermostat",
+    "id": "7d3bdfd9-d954-4099-9167-fecab53fc5af",
+    "category": "contact",
+    "name": "Contact Sensor",
+    "description": null,
+    "device": "b211e597-d5fb-4573-8cc5-8027db15f61e"
+  },
+  {
+    "_debug_name": "Living Room TV LED Strip",
+    "id": "66f2235e-e0dd-4fc2-b261-559ced438dd1",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3"
+  },
+  {
+    "_debug_name": "Living Room TV LED Strip",
+    "id": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3"
+  },
+  {
+    "_debug_name": "Living Room Couch LED Strip",
+    "id": "65c1ff3a-fa55-4135-82c6-e9c821b93259",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa"
+  },
+  {
+    "_debug_name": "Living Room Couch LED Strip",
+    "id": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa"
+  },
+  {
+    "_debug_name": "Living Room Main Light",
+    "id": "50fc1e0e-c98e-4969-8cb9-f837a4a071a3",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae"
+  },
+  {
+    "_debug_name": "Living Room Main Light",
+    "id": "8b99607a-6e25-4661-871e-bd004a92d1e8",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae"
+  },
+  {
+    "_debug_name": "Living Room Entry Light",
+    "id": "b857aa3c-bc48-426c-aeca-74dc499abf1b",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "20c27c06-053b-439a-8cb4-615ae05ce254"
+  },
+  {
+    "_debug_name": "Living Room Entry Light",
+    "id": "ac6d42a9-be6c-405a-89b0-f9d3d273395d",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "20c27c06-053b-439a-8cb4-615ae05ce254"
+  },
+  {
+    "_debug_name": "Living Room Dining Room Light",
+    "id": "46edcd91-d4b2-4be8-8bd4-ae56056f8ef5",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "3f3e73d9-4faa-4b38-9859-0a915ae9e85d"
+  },
+  {
+    "_debug_name": "Living Room Dining Room Light",
+    "id": "f8efca2a-cc6b-4c03-912b-ad5733df575d",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "3f3e73d9-4faa-4b38-9859-0a915ae9e85d"
+  },
+  {
+    "_debug_name": "Living Room TV Spot Light",
+    "id": "9df4cfb3-929d-4c41-82bf-104d3263dfe5",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "be49951d-21da-49d2-904f-98756d9b9521"
+  },
+  {
+    "_debug_name": "Living Room TV Spot Light",
+    "id": "1b343aee-39a0-45cd-9080-9cd40b0f1b46",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "be49951d-21da-49d2-904f-98756d9b9521"
+  },
+  {
+    "_debug_name": "Living Room Couch Spot Light",
+    "id": "e1cb18fd-bb0e-4ba9-a228-4dcf1299e863",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89"
+  },
+  {
+    "_debug_name": "Living Room Couch Spot Light",
+    "id": "a12367a9-9676-4f9a-8276-f54ce9811e83",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89"
+  },
+  {
+    "_debug_name": "Living Room Terrace Light",
+    "id": "436e6eff-a56f-461f-afca-b770fc1d92f6",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "bb9514b9-b846-420b-9357-fd621d681162"
+  },
+  {
+    "_debug_name": "Living Room Terrace Light",
+    "id": "f8645d85-f13d-4633-98e1-05ce7a7ccc38",
+    "category": "light",
+    "name": "Light 01",
+    "description": null,
+    "device": "bb9514b9-b846-420b-9357-fd621d681162"
+  },
+  {
+    "_debug_name": "Living Room Terrace Light",
+    "id": "b514d815-c699-417f-a67b-69f0820a809a",
+    "category": "light",
+    "name": "Light 02",
+    "description": null,
+    "device": "bb9514b9-b846-420b-9357-fd621d681162"
+  },
+  {
+    "_debug_name": "Living Room Terrace Door",
+    "id": "a95d6a03-a349-4572-a26b-04c86795dd51",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "2ff80d54-4036-4554-8332-470d5182f259"
+  },
+  {
+    "_debug_name": "Living Room Terrace Door",
+    "id": "661c5ced-86f6-48c9-919c-d8a2ab473d89",
+    "category": "contact",
+    "name": "Contact Sensor",
+    "description": null,
+    "device": "2ff80d54-4036-4554-8332-470d5182f259"
+  },
+  {
+    "_debug_name": "Living Room Television",
+    "id": "8dcd6f85-c4a2-462f-a6bf-facb90ed1e02",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562"
+  },
+  {
+    "_debug_name": "Living Room Television",
+    "id": "0b85ff3e-7c21-4c2d-bce6-99059b096d75",
+    "category": "television",
+    "name": "Television",
+    "description": null,
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562"
+  },
+  {
+    "_debug_name": "Living Room Television",
+    "id": "4bdd2e91-8ffd-4b10-a145-bb581b50a02c",
+    "category": "speaker",
+    "name": "Speaker",
+    "description": null,
+    "device": "f539c311-4e21-4bbc-9669-a61f742fb562"
+  },
+  {
+    "_debug_name": "Living Room Robot Vacuum Cleaner",
+    "id": "f474e959-c8a0-4d6e-a4f5-466110bfc415",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "ce2ff119-ceac-4867-bf36-7103b078de11"
+  },
+  {
+    "_debug_name": "Living Room Robot Vacuum Cleaner",
+    "id": "dcbe8a15-1f89-4f5c-b449-dc4bab153246",
+    "category": "robot_vacuum",
+    "name": "Robot Vacuum",
+    "description": null,
+    "device": "ce2ff119-ceac-4867-bf36-7103b078de11"
+  },
+  {
+    "_debug_name": "Living Room Robot Vacuum Cleaner",
+    "id": "41d12944-0a9e-483e-b91f-a105c14de803",
+    "category": "battery",
+    "name": "Battery",
+    "description": null,
+    "device": "ce2ff119-ceac-4867-bf36-7103b078de11"
+  },
+  {
+    "_debug_name": "Living Room Temperature & Humidity",
+    "id": "da9a61e3-ac3e-42cc-9dd3-3d7ffa7b6608",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76"
+  },
+  {
+    "_debug_name": "Living Room Temperature & Humidity",
+    "id": "05eadcfd-6a9b-4f5d-873d-84a7d0831211",
+    "category": "temperature",
+    "name": "Temperature Sensor",
+    "description": null,
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76"
+  },
+  {
+    "_debug_name": "Living Room Temperature & Humidity",
+    "id": "48fa591d-22f5-4007-84cc-a911f17137d2",
+    "category": "humidity",
+    "name": "Humidity Sensor",
+    "description": null,
+    "device": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76"
+  },
+  {
+    "_debug_name": "Living Room Terrace Motion Detection",
+    "id": "c13164e4-0b0d-4438-8e73-2c4aa9a2d9b8",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce"
+  },
+  {
+    "_debug_name": "Living Room Terrace Motion Detection",
+    "id": "4f170064-916d-4ab7-903a-c7f6588d533d",
+    "category": "motion",
+    "name": "Motion Sensor",
+    "description": null,
+    "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce"
+  },
+  {
+    "_debug_name": "Living Room Entrance Motion Detection",
+    "id": "2453a523-4577-4bff-b72a-cf17efc268ce",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "33540346-df58-4826-a9b3-d49ababb3040"
+  },
+  {
+    "_debug_name": "Living Room Entrance Motion Detection",
+    "id": "5aa6392e-f9ad-4f4d-9684-d00be56e10d4",
+    "category": "motion",
+    "name": "Motion Sensor",
+    "description": null,
+    "device": "33540346-df58-4826-a9b3-d49ababb3040"
+  },
+  {
+    "_debug_name": "Living Room Terrace Blind",
+    "id": "78095609-b3a8-4265-a6ae-77d36372e6fb",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72"
+  },
+  {
+    "_debug_name": "Living Room Terrace Blind",
+    "id": "b00f6ca8-a1fd-44c0-bb99-f07e8bc4a563",
+    "category": "window_covering",
+    "name": "Window Covering",
+    "description": null,
+    "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72"
+  },
+  {
+    "_debug_name": "Living Room Window Blind",
+    "id": "421fcc3a-40ea-4f2b-af25-3de7bf32fb44",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "9931b235-fae0-4977-b0e5-16caf193e5ce"
+  },
+  {
+    "_debug_name": "Living Room Window Blind",
+    "id": "4efa9481-4a9f-4632-982d-968195701ae5",
+    "category": "window_covering",
+    "name": "Window Covering",
+    "description": null,
+    "device": "9931b235-fae0-4977-b0e5-16caf193e5ce"
+  },
+  {
+    "_debug_name": "Kitchen Thermostat",
+    "id": "a108fdb6-ff46-48a4-8286-83cab40e6e71",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6"
+  },
+  {
+    "_debug_name": "Kitchen Thermostat",
+    "id": "db8c9433-3351-4d56-be3c-97653f035059",
+    "category": "thermostat",
+    "name": "Thermostat",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6"
+  },
+  {
+    "_debug_name": "Kitchen Thermostat",
+    "id": "184c3194-d7de-4df8-b094-35ca08842e5d",
+    "category": "temperature",
+    "name": "Temperature Sensor",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6"
+  },
+  {
+    "_debug_name": "Kitchen Thermostat",
+    "id": "63012a29-67db-4f4b-bc19-bbad35a1c636",
+    "category": "humidity",
+    "name": "Humidity Sensor",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6"
+  },
+  {
+    "_debug_name": "Kitchen Thermostat",
+    "id": "7d04cb26-c870-4edc-87ff-ee84c3b15aaf",
+    "category": "heater",
+    "name": "Heater",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6"
+  },
+  {
+    "_debug_name": "Kitchen Thermostat",
+    "id": "b9545d0a-af68-4a5a-861b-63c7a568cb1d",
+    "category": "contact",
+    "name": "Contact Sensor",
+    "description": null,
+    "device": "48287140-de58-446b-97a0-9437957fa7c6"
+  },
+  {
+    "_debug_name": "Kitchen Main Light",
+    "id": "1528a04d-6fc8-4da2-b7af-2bde57df2e7a",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8"
+  },
+  {
+    "_debug_name": "Kitchen Main Light",
+    "id": "55accac5-513b-4d16-9e07-94534f363b2e",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8"
+  },
+  {
+    "_debug_name": "Kitchen Spot Light",
+    "id": "7d2f3be4-a351-4928-b710-4418608e291c",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "9b2710ae-008a-4366-891a-586a570a451d"
+  },
+  {
+    "_debug_name": "Kitchen Spot Light",
+    "id": "3aa8a478-75d3-40f7-a3a1-0871fe928feb",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "9b2710ae-008a-4366-891a-586a570a451d"
+  },
+  {
+    "_debug_name": "Kitchen Bar Light",
+    "id": "144a9162-f296-44e9-b3da-d5e268229ed7",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1"
+  },
+  {
+    "_debug_name": "Kitchen Bar Light",
+    "id": "3c37ab7b-857b-4755-9456-933af336eacd",
+    "category": "light",
+    "name": "Side",
+    "description": null,
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1"
+  },
+  {
+    "_debug_name": "Kitchen Bar Light",
+    "id": "7246c342-44ef-49b8-8629-70fa26f5ce7f",
+    "category": "light",
+    "name": "Center",
+    "description": null,
+    "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1"
+  },
+  {
+    "_debug_name": "Kitchen Under Cabinet Light",
+    "id": "72b454c2-b1db-4753-b49b-8eb9722d9bf6",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7"
+  },
+  {
+    "_debug_name": "Kitchen Under Cabinet Light",
+    "id": "2d7d7327-e521-480f-b7be-e7308f9b1b6c",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7"
+  },
+  {
+    "_debug_name": "Kitchen High Cabinet Light",
+    "id": "03400857-d130-43fc-b853-1f8af56a78b4",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3"
+  },
+  {
+    "_debug_name": "Kitchen High Cabinet Light",
+    "id": "96b0c798-d489-4166-b578-11b746e5af96",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3"
+  },
+  {
+    "_debug_name": "Kitchen Stove Light",
+    "id": "8b3b9758-3af9-4e73-a0fa-16349f034a7a",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "f9839723-7db4-4377-bbb9-58634ae7b9d3"
+  },
+  {
+    "_debug_name": "Kitchen Stove Light",
+    "id": "11b93efd-0134-4938-86f3-fed75e2da339",
+    "category": "light",
+    "name": "Light",
+    "description": null,
+    "device": "f9839723-7db4-4377-bbb9-58634ae7b9d3"
+  },
+  {
+    "_debug_name": "Kitchen Stove Fan",
+    "id": "22a6e929-7937-461a-8c5c-53c4095967f9",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5"
+  },
+  {
+    "_debug_name": "Kitchen Stove Fan",
+    "id": "808322f2-cea3-40d5-a6f0-a727b1d6d4ea",
+    "category": "fan",
+    "name": "Fan",
+    "description": null,
+    "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5"
+  },
+  {
+    "_debug_name": "Kitchen Window Blind",
+    "id": "8d3f4a9e-77d6-4d2a-a6f3-54a0851ea3e8",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64"
+  },
+  {
+    "_debug_name": "Kitchen Window Blind",
+    "id": "77d59dcf-a5d2-4dcc-b80f-6dc0bddfd00b",
+    "category": "window_covering",
+    "name": "Window Covering",
+    "description": null,
+    "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 01",
+    "id": "828d653a-dd0d-4af2-a7fd-f1ceee0505b7",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 01",
+    "id": "8aa383a2-75d7-4956-b733-31c48bf06ed0",
+    "category": "outlet",
+    "name": "Outlet 01",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 01",
+    "id": "a2993eed-d69c-4eb4-a018-8dfd45167ba8",
+    "category": "outlet",
+    "name": "Outlet 02",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 01",
+    "id": "8ea89a91-7c21-42ec-82a2-9ee77a35ff97",
+    "category": "outlet",
+    "name": "Outlet 03",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 01",
+    "id": "44eb3190-8e8f-4148-a46c-dcab83e95ba7",
+    "category": "outlet",
+    "name": "Outlet 04",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 01",
+    "id": "e63aef3f-fdc9-4552-b8e6-dafcefc9d96c",
+    "category": "outlet",
+    "name": "Outlet 05",
+    "description": null,
+    "device": "59f7ca30-9e90-40d8-a7d0-a331562ece2e"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 02",
+    "id": "69d56e17-9a80-4ec4-900c-48936725eddc",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 02",
+    "id": "5e88e0db-845e-4563-b9da-12fafd31885e",
+    "category": "outlet",
+    "name": "Outlet 01",
+    "description": null,
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 02",
+    "id": "dd1711f7-f11b-4274-8495-40482936ec74",
+    "category": "outlet",
+    "name": "Outlet 02",
+    "description": null,
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb"
+  },
+  {
+    "_debug_name": "Kitchen Wall Outlet 02",
+    "id": "4df09adb-7926-4b81-b398-dd741f63a59e",
+    "category": "outlet",
+    "name": "Outlet 03",
+    "description": null,
+    "device": "dde11cae-5735-48ef-bb87-5e97d53b35bb"
+  },
+  {
+    "_debug_name": "Kitchen Temperature & Humidity",
+    "id": "59f906f6-dad6-4266-a63b-6f044501df46",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622"
+  },
+  {
+    "_debug_name": "Kitchen Temperature & Humidity",
+    "id": "c55abe7d-ed0c-4690-b633-bc702beae050",
+    "category": "temperature",
+    "name": "Temperature Sensor",
+    "description": null,
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622"
+  },
+  {
+    "_debug_name": "Kitchen Temperature & Humidity",
+    "id": "0f4f23a7-7681-405f-b87b-831c49c17d29",
+    "category": "humidity",
+    "name": "Humidity Sensor",
+    "description": null,
+    "device": "390ed2c3-9a64-4818-8211-6c2c7be67622"
+  },
+  {
+    "_debug_name": "Kitchen Window Contact",
+    "id": "68a8bad4-1177-4a62-a081-8c2a10ba2a08",
+    "category": "device_information",
+    "name": "Device Information",
+    "description": null,
+    "device": "0fd22c2e-7297-4a07-9d1c-455ad424a57a"
+  },
+  {
+    "_debug_name": "Kitchen Window Contact",
+    "id": "6fb50391-5674-4c5b-bc0e-9ddc0d2ed331",
+    "category": "contact",
+    "name": "Contact Sensor",
+    "description": null,
+    "device": "0fd22c2e-7297-4a07-9d1c-455ad424a57a"
+  }
+]

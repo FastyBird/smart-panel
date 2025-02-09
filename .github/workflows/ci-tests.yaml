@@ -1,0 +1,53 @@
+name: "CI Tests"
+
+on:
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "spec/**"
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*"
+  schedule:
+    - cron: "0 8 * * 1" # At 08:00 on Monday
+
+jobs:
+  backend-tests:
+    name: "Backend Tests"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "20"
+
+      - name: "Cache JS dependencies"
+        uses: "actions/cache@v3"
+        with:
+          path: "${{ steps.yarn-cache-dir-path.outputs.dir }}"
+          key: "${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}"
+          restore-keys: "${{ runner.os }}-node-modules-"
+
+      - name: "Install NPM dependencies"
+        shell: "bash"
+        run: "yarn install"
+
+      - name: "Run Unit Tests"
+        run: "make server-unit-tests"
+
+      - name: "Run E2E Tests"
+        run: "make server-e2e-tests"
+
+      - name: "Generate Coverage Report"
+        run: "make server-cov-tests"

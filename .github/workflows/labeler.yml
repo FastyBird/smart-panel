@@ -1,0 +1,17 @@
+name: Labeler
+
+on:
+  pull_request_target: # required for auto labeler
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  labeler:
+    name: "Labeler"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: "Label"
+        uses: "actions/labeler@v5"
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}

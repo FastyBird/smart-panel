@@ -1,0 +1,43 @@
+[
+  {
+    "id": "f800f29b-899b-4978-a1f4-e425a01d01df",
+    "type": "tiles",
+    "title": "Home",
+    "order": 0
+  },
+  {
+    "id": "542f217b-328f-4e47-8e7d-5684cbe93b9f",
+    "type": "tiles",
+    "title": "Living Room Lighting",
+    "icon": 58233,
+    "order": 1
+  },
+  {
+    "id": "c4882838-3b55-49a6-b380-2b496c3e7cc9",
+    "type": "tiles",
+    "title": "Living Room Appliances",
+    "icon": 59105,
+    "order": 2
+  },
+  {
+    "id": "0c9e46ff-9d13-4cb8-805d-0e79f5e7db86",
+    "type": "tiles",
+    "title": "Kitchen Lighting",
+    "icon": 58233,
+    "order": 3
+  },
+  {
+    "id": "ca626264-0f50-4861-932c-5402dcda4f81",
+    "type": "tiles",
+    "title": "Kitchen Appliance",
+    "icon": 58206,
+    "order": 4
+  },
+  {
+    "id": "572c6fb2-adc6-4597-9ef0-c6fb76fec9f2",
+    "type": "tiles",
+    "title": "Sensors",
+    "icon": 58742,
+    "order": 5
+  }
+]
