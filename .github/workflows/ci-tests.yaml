@@ -43,6 +43,9 @@ jobs:
         shell: "bash"
         run: "yarn install"
 
+      - name: "Reinstall bcrypt for Linux"
+        run: "yarn remove bcrypt && yarn add bcrypt"
+
       - name: "Run Unit Tests"
         run: "make server-unit-tests"
 
