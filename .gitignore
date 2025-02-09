@@ -30,3 +30,12 @@
 *.swp
 
 .env.local
+
+# Node.js Tools for Visual Studio
+.ntvs_analysis.dat
+node_modules/
+
+# Application
+
+var/data/config.yaml
+var/db/database.sqlite

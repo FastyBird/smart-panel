@@ -52,9 +52,6 @@ jobs:
         shell: "bash"
         run: "yarn install"
 
-      - name: "Reinstall bcrypt for Linux"
-        run: "yarn workspace @fastybird/smart-panel-backend remove bcrypt && yarn workspace @fastybird/smart-panel-backend add bcrypt"
-
       - name: "Run Unit Tests"
         run: "make server-unit-tests"
 
