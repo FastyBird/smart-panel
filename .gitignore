@@ -9,6 +9,9 @@
 **/flutter_export_environment.sh
 **/flutter_export_environment.json
 
+# npm
+**/yarn.lock
+
 # macOS related
 .DS_Store
 
@@ -25,3 +28,5 @@
 *.log
 *.tmp
 *.swp
+
+.env.local

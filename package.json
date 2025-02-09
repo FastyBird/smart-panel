@@ -26,20 +26,25 @@
     "apps/**/*"
   ],
   "scripts": {
-    "dev": "lerna run dev --stream",
+    "start": "lerna run start --stream",
+    "start:dev": "lerna run start:dev --stream",
+    "start:debug": "lerna run start:debug --stream",
+    "start:prod": "lerna run start:prod --stream",
     "build": "lerna run build --stream",
-    "build:dev": "lerna run build:dev --stream",
     "clean": "lerna clean && rm -rf node_modules",
     "fix": "lerna run fix",
     "graph": "nx graph",
-    "types": "lerna run types --stream",
     "lint:js": "lerna run lint:js --stream",
     "lint:js:fix": "lerna run lint:js:fix --stream",
     "lint:styles": "lerna run lint:styles --stream",
     "pretty": "yarn pretty:write && yarn pretty:check",
     "pretty:check": "lerna run pretty:check",
     "pretty:write": "lerna run pretty:write",
-    "test": "lerna run test --stream"
+    "test:unit": "lerna run test:unit --stream",
+    "test:watch": "lerna run test:watch --stream",
+    "test:cov": "lerna run test:cov --stream",
+    "test:debug": "lerna run test:debug --stream",
+    "test:e2e": "lerna run test:e2e --stream"
   },
   "devDependencies": {
     "lerna": "^8.1"

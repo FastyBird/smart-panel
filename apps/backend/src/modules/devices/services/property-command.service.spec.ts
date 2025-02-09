@@ -1,0 +1,246 @@
+import { Expose, Transform } from 'class-transformer';
+import { IsString, useContainer } from 'class-validator';
+import { v4 as uuid } from 'uuid';
+
+import { Logger } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+
+import {
+	ChannelCategoryEnum,
+	DataTypeEnum,
+	DeviceCategoryEnum,
+	PermissionEnum,
+	PropertyCategoryEnum,
+} from '../devices.constants';
+import { PropertyCommandDto } from '../dto/property-command.dto';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { IDevicePlatform } from '../platforms/device.platform';
+import { ChannelPropertyExistsConstraintValidator } from '../validators/channel-property-exists-constraint.validator';
+import { DeviceChannelExistsConstraintValidator } from '../validators/device-channel-exists-constraint.validator';
+import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
+
+import { ChannelsPropertiesService } from './channels.properties.service';
+import { ChannelsService } from './channels.service';
+import { DevicesService } from './devices.service';
+import { PlatformRegistryService } from './platform.registry.service';
+import { PropertyCommandService } from './property-command.service';
+
+class MockDevice extends DeviceEntity {
+	@Expose({ name: 'mock_value' })
+	@IsString()
+	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
+		toClassOnly: true,
+	})
+	mockValue: string;
+
+	@Expose()
+	get type(): string {
+		return 'mock';
+	}
+}
+
+describe('PropertyCommandService', () => {
+	let service: PropertyCommandService;
+	let devicesService: DevicesService;
+	let channelsService: ChannelsService;
+	let channelsPropertiesService: ChannelsPropertiesService;
+	let platformRegistryService: PlatformRegistryService;
+	let mockPlatform: IDevicePlatform;
+	let loggerErrorSpy: jest.SpyInstance;
+	let loggerWarnSpy: jest.SpyInstance;
+	let loggerLogSpy: jest.SpyInstance;
+
+	const mockDevice: MockDevice = {
+		id: uuid().toString(),
+		type: 'mock',
+		category: DeviceCategoryEnum.GENERIC,
+		name: 'Test Device',
+		description: null,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		controls: [],
+		channels: [],
+		mockValue: 'Some value',
+	};
+
+	const mockChannel: ChannelEntity = {
+		id: uuid().toString(),
+		category: ChannelCategoryEnum.GENERIC,
+		name: 'Test Channel',
+		description: 'Test description',
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		device: mockDevice.id,
+		controls: [],
+		properties: [],
+	};
+
+	const mockChannelProperty: ChannelPropertyEntity = {
+		id: uuid().toString(),
+		name: 'Test Property',
+		category: PropertyCategoryEnum.GENERIC,
+		permission: [PermissionEnum.READ_WRITE],
+		dataType: DataTypeEnum.BOOL,
+		unit: null,
+		format: null,
+		invalid: null,
+		step: null,
+		value: false,
+		channel: mockChannel.id,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
+
+	beforeEach(async () => {
+		const module: TestingModule = await Test.createTestingModule({
+			providers: [
+				PropertyCommandService,
+				DeviceExistsConstraintValidator,
+				DeviceChannelExistsConstraintValidator,
+				ChannelPropertyExistsConstraintValidator,
+				{
+					provide: DevicesService,
+					useValue: {
+						findOne: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: ChannelsService,
+					useValue: {
+						findOne: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: ChannelsPropertiesService,
+					useValue: {
+						findOne: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: PlatformRegistryService,
+					useValue: { get: jest.fn() },
+				},
+			],
+		}).compile();
+
+		useContainer(module, { fallbackOnErrors: true });
+
+		service = module.get<PropertyCommandService>(PropertyCommandService);
+		devicesService = module.get<DevicesService>(DevicesService);
+		channelsService = module.get<ChannelsService>(ChannelsService);
+		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
+		platformRegistryService = module.get<PlatformRegistryService>(PlatformRegistryService);
+
+		mockPlatform = {
+			getType: jest.fn().mockReturnValue('mock'),
+			process: jest.fn(),
+			processBatch: jest.fn(),
+		};
+
+		loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+		loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+		loggerLogSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
+	const validPayload: PropertyCommandDto = {
+		properties: [
+			{
+				device: mockDevice.id,
+				channel: mockChannel.id,
+				property: mockChannelProperty.id,
+				value: true,
+			},
+		],
+	};
+
+	it('should validate and process a valid command', async () => {
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
+		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(mockChannelProperty);
+		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
+
+		const result = await service.handle(validPayload);
+
+		expect(result.success).toBe(true);
+		expect(result.results).toEqual([{ device: mockDevice.id, success: true }]);
+		expect(loggerLogSpy).toHaveBeenCalledWith(
+			expect.stringContaining(`[COMMAND] Successfully executed batch command for deviceId=${mockDevice.id}`),
+		);
+	});
+
+	it('should return an error if validation fails', async () => {
+		const invalidPayload = { properties: [{ device: 'invalid-id' }] };
+
+		const result = await service.handle(invalidPayload);
+
+		expect(result.success).toBe(false);
+		expect(result.results).toBe('Invalid payload');
+		expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('[VALIDATION] Command validation failed'));
+	});
+
+	it('should return an error if device is not found', async () => {
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(null);
+
+		const result = await service.handle(validPayload);
+
+		expect(result.success).toBe(false);
+		expect(result.results).toEqual('Invalid payload');
+	});
+
+	it('should return an error if channel is not found', async () => {
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(null);
+
+		const result = await service.handle(validPayload);
+
+		expect(result.success).toBe(false);
+		expect(result.results).toEqual('Invalid payload');
+	});
+
+	it('should return an error if property is not found', async () => {
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
+		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
+
+		const result = await service.handle(validPayload);
+
+		expect(result.success).toBe(false);
+		expect(result.results).toEqual('Invalid payload');
+	});
+
+	it('should return an error if platform is not registered', async () => {
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
+		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(mockChannelProperty);
+		jest.spyOn(platformRegistryService, 'get').mockReturnValue(null);
+
+		const result = await service.handle(validPayload);
+
+		expect(result.success).toBe(false);
+		expect(result.results).toEqual([{ device: mockDevice.id, success: false, reason: 'Unsupported device type' }]);
+		expect(loggerWarnSpy).toHaveBeenCalledWith(
+			`[COMMAND] No platform registered for device id=${mockDevice.id} type=mock`,
+		);
+	});
+
+	it('should return an error if batch execution fails', async () => {
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
+		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(mockChannelProperty);
+		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(false);
+
+		const result = await service.handle(validPayload);
+
+		expect(result.success).toBe(false);
+		expect(result.results).toEqual([{ device: mockDevice.id, success: false, reason: 'Execution failed' }]);
+		expect(loggerErrorSpy).toHaveBeenCalledWith(
+			`[COMMAND] Batch command execution failed for deviceId=${mockDevice.id}`,
+		);
+	});
+});

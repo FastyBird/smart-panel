@@ -1,0 +1,254 @@
+[
+  {
+    "type": "third-party",
+    "id": "b211e597-d5fb-4573-8cc5-8027db15f61e",
+    "category": "thermostat",
+    "name": "Thermostat",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
+    "category": "lighting",
+    "name": "TV LED Strip",
+    "description": null,
+    "icon": 58235,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
+    "category": "lighting",
+    "name": "Couch LED Strip",
+    "description": null,
+    "icon": 58235,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
+    "category": "lighting",
+    "name": "Main Light",
+    "description": null,
+    "icon": 58233,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "20c27c06-053b-439a-8cb4-615ae05ce254",
+    "category": "lighting",
+    "name": "Entry Light",
+    "description": null,
+    "icon": 59099,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "3f3e73d9-4faa-4b38-9859-0a915ae9e85d",
+    "category": "lighting",
+    "name": "Dining Room Light",
+    "description": null,
+    "icon": 59099,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "be49951d-21da-49d2-904f-98756d9b9521",
+    "category": "lighting",
+    "name": "TV Spot Light",
+    "description": null,
+    "icon": 59099,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
+    "category": "lighting",
+    "name": "Couch Spot Light",
+    "description": null,
+    "icon": 59099,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "bb9514b9-b846-420b-9357-fd621d681162",
+    "category": "lighting",
+    "name": "Living Room Terrace Light",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "2ff80d54-4036-4554-8332-470d5182f259",
+    "category": "sensor",
+    "name": "Terrace Door",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "f539c311-4e21-4bbc-9669-a61f742fb562",
+    "category": "television",
+    "name": "TV",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "ce2ff119-ceac-4867-bf36-7103b078de11",
+    "category": "robot_vacuum",
+    "name": "Vacuum Cleaner",
+    "description": null,
+    "icon": 57703,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "1622001d-ea5c-4b9f-a9ab-2ff4504daf76",
+    "category": "sensor",
+    "name": "Living Room Temperature & Humidity",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
+    "category": "sensor",
+    "name": "Terrace Motion Detection",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "33540346-df58-4826-a9b3-d49ababb3040",
+    "category": "sensor",
+    "name": "Entrance Motion Detection",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
+    "category": "window_covering",
+    "name": "Terrace Blind",
+    "description": null,
+    "icon": 985020,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "9931b235-fae0-4977-b0e5-16caf193e5ce",
+    "category": "window_covering",
+    "name": "Window Blind",
+    "description": null,
+    "icon": 985020,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "48287140-de58-446b-97a0-9437957fa7c6",
+    "category": "thermostat",
+    "name": "Kitchen Thermostat",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
+    "category": "lighting",
+    "name": "Main Light",
+    "description": null,
+    "icon": 58233,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "9b2710ae-008a-4366-891a-586a570a451d",
+    "category": "lighting",
+    "name": "Spot Light",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
+    "category": "lighting",
+    "name": "Bar",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
+    "category": "lighting",
+    "name": "Under Cabinet",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
+    "category": "lighting",
+    "name": "High Cabinet",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "f9839723-7db4-4377-bbb9-58634ae7b9d3",
+    "category": "lighting",
+    "name": "Stove Light",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
+    "category": "fan",
+    "name": "Stove Fan",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
+    "category": "window_covering",
+    "name": "Window Blind",
+    "description": null,
+    "icon": 985020,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "59f7ca30-9e90-40d8-a7d0-a331562ece2e",
+    "category": "outlet",
+    "name": "Kitchen Wall Outlet 01",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "dde11cae-5735-48ef-bb87-5e97d53b35bb",
+    "category": "outlet",
+    "name": "Kitchen Wall Outlet 02",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "390ed2c3-9a64-4818-8211-6c2c7be67622",
+    "category": "sensor",
+    "name": "Kitchen Temperature & Humidity",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  },
+  {
+    "type": "third-party",
+    "id": "0fd22c2e-7297-4a07-9d1c-455ad424a57a",
+    "category": "sensor",
+    "name": "Kitchen Window",
+    "description": null,
+    "service_address": "http://localhost/webhook"
+  }
+]
