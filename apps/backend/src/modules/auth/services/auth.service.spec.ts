@@ -1,4 +1,4 @@
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { v4 as uuid } from 'uuid';
 

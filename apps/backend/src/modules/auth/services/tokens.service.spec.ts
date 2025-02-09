@@ -7,7 +7,7 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt';
 import { Expose } from 'class-transformer';
 import { plainToInstance } from 'class-transformer';
 import { DataSource, Repository } from 'typeorm';
