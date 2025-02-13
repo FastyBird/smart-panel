@@ -5,13 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import {
-	ChannelCategoryEnum,
-	DataTypeEnum,
-	DeviceCategoryEnum,
-	PermissionEnum,
-	PropertyCategoryEnum,
-} from '../devices.constants';
+import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 import { PropertyCommandDto } from '../dto/property-command.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
@@ -53,7 +47,7 @@ describe('PropertyCommandService', () => {
 	const mockDevice: MockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -65,7 +59,7 @@ describe('PropertyCommandService', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),
@@ -78,9 +72,9 @@ describe('PropertyCommandService', () => {
 	const mockChannelProperty: ChannelPropertyEntity = {
 		id: uuid().toString(),
 		name: 'Test Property',
-		category: PropertyCategoryEnum.GENERIC,
-		permission: [PermissionEnum.READ_WRITE],
-		dataType: DataTypeEnum.BOOL,
+		category: PropertyCategory.GENERIC,
+		permission: [PermissionType.READ_WRITE],
+		dataType: DataTypeType.BOOL,
 		unit: null,
 		format: null,
 		invalid: null,

@@ -16,7 +16,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
-import { ChannelCategoryEnum, DeviceCategoryEnum, EventType } from '../devices.constants';
+import { ChannelCategory, DeviceCategory, EventType } from '../devices.constants';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
@@ -48,7 +48,7 @@ describe('ChannelsService', () => {
 	const mockDevice: MockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -60,7 +60,7 @@ describe('ChannelsService', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),
@@ -176,7 +176,7 @@ describe('ChannelsService', () => {
 	describe('create', () => {
 		it('should create and return a new channel', async () => {
 			const createDto: CreateChannelDto = {
-				category: ChannelCategoryEnum.GENERIC,
+				category: ChannelCategory.GENERIC,
 				name: 'New channel',
 				device: uuid().toString(),
 			};

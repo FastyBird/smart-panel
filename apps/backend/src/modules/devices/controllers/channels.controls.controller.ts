@@ -15,7 +15,7 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DevicesModulePrefix } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
+import { ReqCreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity';
 import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
@@ -64,13 +64,13 @@ export class ChannelsControlsController {
 	@Header('Location', `:baseUrl/${DevicesModulePrefix}/channels/:channel/controls/:id`)
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-		@Body() createControlDto: CreateChannelControlDto,
+		@Body() createControlDto: ReqCreateChannelControlDto,
 	): Promise<ChannelControlEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new control for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 
-		const existingControl = await this.channelsControlsService.findOneByName(createControlDto.name, channel.id);
+		const existingControl = await this.channelsControlsService.findOneByName(createControlDto.data.name, channel.id);
 
 		if (existingControl === null) {
 			throw ValidationExceptionFactory.createException([
@@ -89,7 +89,7 @@ export class ChannelsControlsController {
 		}
 
 		try {
-			const control = await this.channelsControlsService.create(channel.id, createControlDto);
+			const control = await this.channelsControlsService.create(channel.id, createControlDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for channelId=${channel.id}`);
 

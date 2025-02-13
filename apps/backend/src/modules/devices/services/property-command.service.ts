@@ -3,7 +3,7 @@ import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { DataTypeEnum } from '../devices.constants';
+import { DataTypeType } from '../devices.constants';
 import { PropertyCommandDto, PropertyCommandValueDto } from '../dto/property-command.dto';
 import { IDevicePropertyData } from '../platforms/device.platform';
 
@@ -135,20 +135,20 @@ export class PropertyCommandService {
 		return { device: deviceId, success: true };
 	}
 
-	private validateValueType(dataType: DataTypeEnum, value: unknown): boolean {
+	private validateValueType(dataType: DataTypeType, value: unknown): boolean {
 		switch (dataType) {
-			case DataTypeEnum.STRING:
-			case DataTypeEnum.ENUM:
+			case DataTypeType.STRING:
+			case DataTypeType.ENUM:
 				return typeof value === 'string';
-			case DataTypeEnum.BOOL:
+			case DataTypeType.BOOL:
 				return typeof value === 'boolean';
-			case DataTypeEnum.CHAR:
-			case DataTypeEnum.UCHAR:
-			case DataTypeEnum.SHORT:
-			case DataTypeEnum.USHORT:
-			case DataTypeEnum.INT:
-			case DataTypeEnum.UINT:
-			case DataTypeEnum.FLOAT:
+			case DataTypeType.CHAR:
+			case DataTypeType.UCHAR:
+			case DataTypeType.SHORT:
+			case DataTypeType.USHORT:
+			case DataTypeType.INT:
+			case DataTypeType.UINT:
+			case DataTypeType.FLOAT:
 				return typeof value === 'number';
 			default:
 				return false;

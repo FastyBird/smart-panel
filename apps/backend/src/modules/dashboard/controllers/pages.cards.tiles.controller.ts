@@ -1,6 +1,5 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import get from 'lodash.get';
 
 import {
 	BadRequestException,
@@ -21,8 +20,9 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DashboardModulePrefix } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
+import { ReqCreateCardTileDto } from '../dto/create-card-tile.dto';
 import { CreateTileDto } from '../dto/create-tile.dto';
-import { UpdateTileDto } from '../dto/update-tile.dto';
+import { ReqUpdateTileDto, UpdateTileDto } from '../dto/update-tile.dto';
 import { CardEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
 import { CardsService } from '../services/cards.service';
 import { PagesService } from '../services/pages.service';
@@ -80,14 +80,14 @@ export class PagesCardsTilesController {
 	async create(
 		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
 		@Param('cardId', new ParseUUIDPipe({ version: '4' })) cardId: string,
-		@Body() createTileDto: any,
+		@Body() createDto: ReqCreateCardTileDto,
 	): Promise<TileEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new card tile for cardId=${cardId}`);
 
 		const page = await this.getPageOrThrow(pageId);
 		const card = await this.getCardOrThrow(cardId, page.id);
 
-		const type: string | undefined = get(createTileDto, 'type', undefined) as string | undefined;
+		const type: string | undefined = createDto.data.type;
 
 		if (!type) {
 			this.logger.error('[VALIDATION] Missing required field: type');
@@ -115,7 +115,7 @@ export class PagesCardsTilesController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, createTileDto, {
+		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -132,7 +132,7 @@ export class PagesCardsTilesController {
 		}
 
 		try {
-			const tile = await this.tilesService.create(createTileDto as CreateTileDto, { cardId: card.id });
+			const tile = await this.tilesService.create(createDto.data, { cardId: card.id });
 
 			this.logger.debug(`[CREATE] Successfully created card tile id=${tile.id} for cardId=${card.id}`);
 
@@ -151,7 +151,7 @@ export class PagesCardsTilesController {
 		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
 		@Param('cardId', new ParseUUIDPipe({ version: '4' })) cardId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateTileDto: any,
+		@Body() updateDto: ReqUpdateTileDto,
 	): Promise<TileEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for card tile id=${id} for cardId=${cardId}`);
 
@@ -180,7 +180,7 @@ export class PagesCardsTilesController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.updateDto, updateTileDto, {
+		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -199,7 +199,7 @@ export class PagesCardsTilesController {
 		}
 
 		try {
-			const updatedTile = await this.tilesService.update(tile.id, updateTileDto as UpdateTileDto);
+			const updatedTile = await this.tilesService.update(tile.id, updateDto.data);
 
 			this.logger.debug(`[UPDATE] Successfully updated card tile id=${updatedTile.id} for cardId=${card.id}`);
 

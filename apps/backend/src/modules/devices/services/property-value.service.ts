@@ -4,7 +4,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { DataTypeEnum } from '../devices.constants';
+import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
 @Injectable()
@@ -24,22 +24,22 @@ export class PropertyValueService {
 			const formattedValue: { stringValue?: string; numberValue?: number } = {};
 
 			switch (property.dataType) {
-				case DataTypeEnum.ENUM:
-				case DataTypeEnum.STRING:
+				case DataTypeType.ENUM:
+				case DataTypeType.STRING:
 					formattedValue.stringValue = String(value);
 					break;
 
-				case DataTypeEnum.BOOL:
+				case DataTypeType.BOOL:
 					formattedValue.stringValue = String(value ? 'true' : 'false');
 					break;
 
-				case DataTypeEnum.CHAR:
-				case DataTypeEnum.UCHAR:
-				case DataTypeEnum.SHORT:
-				case DataTypeEnum.USHORT:
-				case DataTypeEnum.INT:
-				case DataTypeEnum.UINT:
-				case DataTypeEnum.FLOAT:
+				case DataTypeType.CHAR:
+				case DataTypeType.UCHAR:
+				case DataTypeType.SHORT:
+				case DataTypeType.USHORT:
+				case DataTypeType.INT:
+				case DataTypeType.UINT:
+				case DataTypeType.FLOAT:
 					formattedValue.numberValue = Number(value);
 					break;
 
@@ -102,25 +102,25 @@ export class PropertyValueService {
 			let parsedValue: string | number | boolean | null = null;
 
 			switch (property.dataType) {
-				case DataTypeEnum.ENUM:
-				case DataTypeEnum.STRING:
+				case DataTypeType.ENUM:
+				case DataTypeType.STRING:
 					parsedValue = latest.stringValue ?? null;
 					break;
 
-				case DataTypeEnum.BOOL:
+				case DataTypeType.BOOL:
 					parsedValue = latest.stringValue ? latest.stringValue === 'true' : null;
 					break;
 
-				case DataTypeEnum.CHAR:
-				case DataTypeEnum.UCHAR:
-				case DataTypeEnum.SHORT:
-				case DataTypeEnum.USHORT:
-				case DataTypeEnum.INT:
-				case DataTypeEnum.UINT:
+				case DataTypeType.CHAR:
+				case DataTypeType.UCHAR:
+				case DataTypeType.SHORT:
+				case DataTypeType.USHORT:
+				case DataTypeType.INT:
+				case DataTypeType.UINT:
 					parsedValue = latest.numberValue ? Math.round(latest.numberValue) : null;
 					break;
 
-				case DataTypeEnum.FLOAT:
+				case DataTypeType.FLOAT:
 					parsedValue = latest.numberValue ? latest.numberValue : null;
 					break;
 			}

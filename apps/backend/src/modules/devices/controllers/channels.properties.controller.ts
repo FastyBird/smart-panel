@@ -15,8 +15,8 @@ import {
 
 import { DevicesModulePrefix } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
-import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { ReqCreateChannelPropertyDto } from '../dto/create-channel-property.dto';
+import { ReqUpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
@@ -65,14 +65,14 @@ export class ChannelsPropertiesController {
 	@Header('Location', `:baseUrl/${DevicesModulePrefix}/channels/:channel/properties/:id`)
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-		@Body() createPropertyDto: CreateDeviceChannelPropertyDto,
+		@Body() createDto: ReqCreateChannelPropertyDto,
 	): Promise<ChannelPropertyEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new property for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 
 		try {
-			const property = await this.channelsPropertiesService.create(channel.id, createPropertyDto);
+			const property = await this.channelsPropertiesService.create(channel.id, createDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created property id=${property.id} for channelId=${channel.id}`);
 
@@ -90,14 +90,14 @@ export class ChannelsPropertiesController {
 	async update(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updatePropertyDto: UpdateChannelPropertyDto,
+		@Body() updateDto: ReqUpdateChannelPropertyDto,
 	): Promise<ChannelPropertyEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for property id=${id} for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 
 		try {
-			const updatedProperty = await this.channelsPropertiesService.update(id, updatePropertyDto);
+			const updatedProperty = await this.channelsPropertiesService.update(id, updateDto.data);
 
 			this.logger.debug(`[UPDATE] Successfully updated property id=${updatedProperty.id} for channelId=${channel.id}`);
 

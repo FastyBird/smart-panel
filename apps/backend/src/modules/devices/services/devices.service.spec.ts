@@ -16,7 +16,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
-import { DeviceCategoryEnum, EventType } from '../devices.constants';
+import { DeviceCategory, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -63,7 +63,7 @@ describe('DevicesService', () => {
 	const mockDevice: MockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -206,7 +206,7 @@ describe('DevicesService', () => {
 		it('should create and return a new device', async () => {
 			const createDto: CreateMockDeviceDto = {
 				type: 'mock',
-				category: DeviceCategoryEnum.GENERIC,
+				category: DeviceCategory.GENERIC,
 				name: 'New device',
 				mock_value: 'Random text',
 			};
@@ -275,7 +275,7 @@ describe('DevicesService', () => {
 
 		it('should throw DevicesException if the device type is not provided', async () => {
 			const createDto: Partial<CreateDeviceDto> = {
-				category: DeviceCategoryEnum.GENERIC,
+				category: DeviceCategory.GENERIC,
 				name: 'New device',
 			};
 

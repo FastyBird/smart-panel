@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ChannelCategoryEnum, DeviceCategoryEnum } from '../devices.constants';
+import { ChannelCategory, DeviceCategory } from '../devices.constants';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
@@ -24,7 +24,7 @@ describe('ChannelsController', () => {
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -35,7 +35,7 @@ describe('ChannelsController', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),
@@ -88,12 +88,12 @@ describe('ChannelsController', () => {
 
 		it('should create a new channel', async () => {
 			const createDto: CreateChannelDto = {
-				category: ChannelCategoryEnum.GENERIC,
+				category: ChannelCategory.GENERIC,
 				name: 'New Channel',
 				device: mockDevice.id,
 			};
 
-			const result = await controller.create(createDto);
+			const result = await controller.create({ data: createDto });
 
 			expect(result).toEqual(mockChannel);
 			expect(channelsService.create).toHaveBeenCalledWith(createDto);
@@ -104,7 +104,7 @@ describe('ChannelsController', () => {
 				name: 'Updated Channel',
 			};
 
-			const result = await controller.update(mockChannel.id, updateDto);
+			const result = await controller.update(mockChannel.id, { data: updateDto });
 
 			expect(result).toEqual(mockChannel);
 			expect(channelsService.update).toHaveBeenCalledWith(mockChannel.id, updateDto);

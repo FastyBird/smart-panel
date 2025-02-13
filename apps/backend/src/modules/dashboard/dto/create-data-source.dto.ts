@@ -16,17 +16,13 @@ export abstract class CreateDataSourceDto implements CreateDataSourceBase {
 	readonly id?: string;
 
 	@Expose()
-	@IsNotEmpty({
-		message: '[{"field":"type","reason":"Type must be a valid string representing a supported data source type."}]',
-	})
-	@IsString({
-		message: '[{"field":"type","reason":"Type must be a valid string representing a supported data source type."}]',
-	})
+	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported data source type."}]' })
+	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported data source type."}]' })
 	readonly type: string;
 }
 
 export class CreateDeviceChannelDataSourceDto extends CreateDataSourceDto implements CreateDeviceChannelDataSource {
-	readonly type: 'device_channel';
+	readonly type: 'device-channel';
 
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })

@@ -2,12 +2,13 @@ import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { DeviceCategoryEnum } from '../devices.constants';
+import { DeviceCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
 
 import { CreateDeviceChannelDto } from './create-device-channel.dto';
 import { CreateDeviceControlDto } from './create-device-control.dto';
 
+type ReqCreateDevice = components['schemas']['DevicesReqCreateDevice'];
 type CreateDeviceBase = components['schemas']['DevicesCreateDeviceBase'];
 type CreateThirdPartyDevice = components['schemas']['DevicesCreateThirdPartyDevice'];
 
@@ -30,10 +31,10 @@ export abstract class CreateDeviceDto implements CreateDeviceBase {
 	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid device category."}]',
 	})
-	@IsEnum(DeviceCategoryEnum, {
+	@IsEnum(DeviceCategory, {
 		message: '[{"field":"category","reason":"Category must be a valid device category."}]',
 	})
-	category: DeviceCategoryEnum;
+	category: DeviceCategory;
 
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
@@ -72,4 +73,11 @@ export class CreateThirdPartyDeviceDto extends CreateDeviceDto implements Create
 	@IsNotEmpty({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
 	@IsString({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
 	service_address: string;
+}
+
+export class ReqCreateDeviceDto implements ReqCreateDevice {
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateThirdPartyDeviceDto)
+	data: CreateThirdPartyDeviceDto;
 }

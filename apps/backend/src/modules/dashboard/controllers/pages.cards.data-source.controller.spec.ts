@@ -14,11 +14,11 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import {
-	ChannelCategoryEnum,
-	DataTypeEnum,
-	DeviceCategoryEnum,
-	PermissionEnum,
-	PropertyCategoryEnum,
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
 } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
@@ -61,7 +61,7 @@ describe('PagesCardsDataSourceController', () => {
 	const mockDevice: MockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -73,7 +73,7 @@ describe('PagesCardsDataSourceController', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),
@@ -86,9 +86,9 @@ describe('PagesCardsDataSourceController', () => {
 	const mockChannelProperty: ChannelPropertyEntity = {
 		id: uuid().toString(),
 		name: 'Test Property',
-		category: PropertyCategoryEnum.GENERIC,
-		permission: [PermissionEnum.READ_ONLY],
-		dataType: DataTypeEnum.STRING,
+		category: PropertyCategory.GENERIC,
+		permission: [PermissionType.READ_ONLY],
+		dataType: DataTypeType.STRING,
 		unit: '°C',
 		format: null,
 		invalid: null,
@@ -242,7 +242,7 @@ describe('PagesCardsDataSourceController', () => {
 
 		it('should create a new data source', async () => {
 			const createDto: CreateDeviceChannelDataSourceDto = {
-				type: 'device_channel',
+				type: 'device-channel',
 				device: mockDevice.id,
 				channel: mockChannel.id,
 				property: mockChannelProperty.id,
@@ -255,7 +255,7 @@ describe('PagesCardsDataSourceController', () => {
 				updateDto: UpdateDeviceChannelDataSourceDto,
 			});
 
-			const result = await controller.create(mockCardsPage.id, mockCard.id, createDto);
+			const result = await controller.create(mockCardsPage.id, mockCard.id, { data: createDto });
 
 			expect(result).toEqual(mockDeviceChannelDataSource);
 			expect(dataSourceService.create).toHaveBeenCalledWith(createDto, { cardId: mockCard.id });
@@ -263,6 +263,7 @@ describe('PagesCardsDataSourceController', () => {
 
 		it('should update a data source', async () => {
 			const updateDto: UpdateDeviceChannelDataSourceDto = {
+				type: 'device-channel',
 				property: mockChannelProperty.id,
 			};
 
@@ -273,7 +274,9 @@ describe('PagesCardsDataSourceController', () => {
 				updateDto: UpdateDeviceChannelDataSourceDto,
 			});
 
-			const result = await controller.update(mockCardsPage.id, mockCard.id, mockDeviceChannelDataSource.id, updateDto);
+			const result = await controller.update(mockCardsPage.id, mockCard.id, mockDeviceChannelDataSource.id, {
+				data: updateDto,
+			});
 
 			expect(result).toEqual(mockDeviceChannelDataSource);
 			expect(dataSourceService.update).toHaveBeenCalledWith(mockDeviceChannelDataSource.id, updateDto);

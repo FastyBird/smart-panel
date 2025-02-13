@@ -168,7 +168,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/users-module/users/{id}': {
+	[path: `/users-module/users/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -226,7 +226,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/devices/{id}': {
+	[path: `/devices-module/devices/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -260,7 +260,7 @@ export interface paths {
 		patch: operations['update-devices-module-device'];
 		trace?: never;
 	};
-	'/devices-module/devices/{deviceId}/controls': {
+	[path: `/devices-module/devices/${string}/controls`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -290,7 +290,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/devices/{deviceId}/controls/{id}': {
+	[path: `/devices-module/devices/${string}/controls/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -325,7 +325,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/devices/{deviceId}/channels': {
+	[path: `/devices-module/devices/${string}/channels`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -355,7 +355,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/devices/{deviceId}/channels/{id}': {
+	[path: `/devices-module/devices/${string}/channels/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -394,7 +394,7 @@ export interface paths {
 		patch: operations['update-devices-module-device-channel'];
 		trace?: never;
 	};
-	'/devices-module/devices/{deviceId}/channels/{channelId}/controls': {
+	[path: `/devices-module/devices/${string}/channels/${string}/controls`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -429,7 +429,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/devices/{deviceId}/channels/{channelId}/controls/{id}': {
+	[path: `/devices-module/devices/${string}/channels/${string}/controls/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -469,7 +469,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/devices/{deviceId}/channels/{channelId}/properties': {
+	[path: `/devices-module/devices/${string}/channels/${string}/properties`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -504,7 +504,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/devices/{deviceId}/channels/{channelId}/properties/{id}': {
+	[path: `/devices-module/devices/${string}/channels/${string}/properties/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -572,7 +572,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/channels/{id}': {
+	[path: `/devices-module/channels/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -606,7 +606,7 @@ export interface paths {
 		patch: operations['update-devices-module-channel'];
 		trace?: never;
 	};
-	'/devices-module/channels/{channelId}/controls': {
+	[path: `/devices-module/channels/${string}/controls`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -636,7 +636,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/channels/{channelId}/controls/{id}': {
+	[path: `/devices-module/channels/${string}/controls/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -671,7 +671,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/channels/{channelId}/properties': {
+	[path: `/devices-module/channels/${string}/properties`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -701,7 +701,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/devices-module/channels/{channelId}/properties/{id}': {
+	[path: `/devices-module/channels/${string}/properties/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -764,7 +764,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/dashboard-module/pages/{id}': {
+	[path: `/dashboard-module/pages/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -795,10 +795,10 @@ export interface paths {
 		 * Update an existing page
 		 * @description Partially updates the attributes of an existing page identified by its unique ID. The update can modify metadata, such as the page’s title, without requiring the full object.
 		 */
-		patch: operations['patch-dashboard-module-page'];
+		patch: operations['update-dashboard-module-page'];
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/data-source': {
+	[path: `/dashboard-module/pages/${string}/data-source`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -828,7 +828,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/data-source/{id}': {
+	[path: `/dashboard-module/pages/${string}/data-source/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -867,7 +867,7 @@ export interface paths {
 		patch: operations['update-dashboard-module-page-data-source'];
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/tiles': {
+	[path: `/dashboard-module/pages/${string}/tiles`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -897,7 +897,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/tiles/{id}': {
+	[path: `/dashboard-module/pages/${string}/tiles/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -936,7 +936,7 @@ export interface paths {
 		patch: operations['update-dashboard-module-page-tile'];
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/tiles/{tileId}/data-source': {
+	[path: `/dashboard-module/pages/${string}/tiles/${string}/data-source`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -971,7 +971,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/tiles/{tileId}/data-source/{id}': {
+	[path: `/dashboard-module/pages/${string}/tiles/${string}/data-source/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1015,7 +1015,7 @@ export interface paths {
 		patch: operations['update-dashboard-module-page-tile-data-source'];
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/cards': {
+	[path: `/dashboard-module/pages/${string}/cards`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1045,7 +1045,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/cards/{id}': {
+	[path: `/dashboard-module/pages/${string}/cards/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1084,7 +1084,7 @@ export interface paths {
 		patch: operations['update-dashboard-module-page-card'];
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/cards/{cardId}/tiles': {
+	[path: `/dashboard-module/pages/${string}/cards/${string}/tiles`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1119,7 +1119,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{id}': {
+	[path: `/dashboard-module/pages/${string}/cards/${string}/tiles/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1163,7 +1163,7 @@ export interface paths {
 		patch: operations['update-dashboard-module-page-card-tile'];
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source': {
+	[path: `/dashboard-module/pages/${string}/cards/${string}/tiles/${string}/data-source`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1203,7 +1203,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source/{id}': {
+	[path: `/dashboard-module/pages/${string}/cards/${string}/tiles/${string}/data-source/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1252,7 +1252,7 @@ export interface paths {
 		patch: operations['update-dashboard-module-page-card-tile-data-source'];
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/cards/{cardId}/data-source': {
+	[path: `/dashboard-module/pages/${string}/cards/${string}/data-source`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1287,7 +1287,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/dashboard-module/pages/{pageId}/cards/{cardId}/data-source/{id}': {
+	[path: `/dashboard-module/pages/${string}/cards/${string}/data-source/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1351,7 +1351,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	'/config-module/config/{section}': {
+	[path: `/config-module/config/${string}`]: {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1505,6 +1505,988 @@ export type webhooks = Record<string, never>;
 export interface components {
 	schemas: {
 		/**
+		 * Register
+		 * @description Schema for user registration.
+		 */
+		AuthRegister: {
+			/**
+			 * @description Unique identifier for the user.
+			 * @example johndoe
+			 */
+			username: string;
+			/**
+			 * Format: password
+			 * @description User's password. Must be at least 6 characters long.
+			 * @example superstrongpassword
+			 */
+			password: string;
+			/**
+			 * Format: email
+			 * @description Optional user's email address.
+			 * @example john@doe.com
+			 */
+			email?: string;
+			/**
+			 * @description Optional user's first name.
+			 * @example John
+			 */
+			first_name?: string;
+			/**
+			 * @description Optional user's last name.
+			 * @example Doe
+			 */
+			last_name?: string;
+		};
+		/**
+		 * Check Username
+		 * @description Schema for checking username availability.
+		 */
+		AuthCheckUsername: {
+			/**
+			 * @description The username to check for availability.
+			 * @example johndoe
+			 */
+			username: string;
+		};
+		/**
+		 * Check Email
+		 * @description Schema for checking email availability.
+		 */
+		AuthCheckEmail: {
+			/**
+			 * Format: email
+			 * @description The email address to check for availability.
+			 * @example john@doe.com
+			 */
+			email: string;
+		};
+		/**
+		 * Login
+		 * @description Schema for user authentication.
+		 */
+		AuthLogin: {
+			/**
+			 * @description The username of the user.
+			 * @example johndoe
+			 */
+			username: string;
+			/**
+			 * Format: password
+			 * @description The user's password.
+			 * @example superstrongpassword
+			 */
+			password: string;
+		};
+		/**
+		 * Refresh Access Token
+		 * @description Schema for refreshing user access token.
+		 */
+		AuthRefreshToken: {
+			/**
+			 * @description JWT refresh access token
+			 * @example eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDMyfQ.ysGR_iIUp1O2wrUaKzIlr0eKufYUhdNFV156bA_FoFw
+			 */
+			token: string;
+		};
+		/**
+		 * Token Pair
+		 * @description Schema for access and refresh tokens for an authenticated session.
+		 */
+		AuthTokenPair: {
+			/**
+			 * @description The JWT access token for authenticated sessions.
+			 * @example eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+			 */
+			access_token: string;
+			/**
+			 * @description The JWT refresh token for authenticated sessions.
+			 * @example eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDMyfQ.ysGR_iIUp1O2wrUaKzIlr0eKufYUhdNFV156bA_FoFw
+			 */
+			refresh_token: string;
+			/**
+			 * @description Token type
+			 * @default Bearer
+			 * @example Bearer
+			 */
+			type: string;
+			/**
+			 * Format: date-time
+			 * @description The JWT access token expiration date.
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			expiration: string;
+		};
+		/**
+		 * Validation
+		 * @description Schema for validation result.
+		 */
+		AuthValidation: {
+			/**
+			 * @description Indicates whether the provided validation field is valid.
+			 * @example true
+			 */
+			valid: boolean;
+		};
+		/**
+		 * Display Secret
+		 * @description Schema for display registration result.
+		 */
+		AuthDisplaySecret: {
+			/**
+			 * @description Display account secret
+			 * @example IwMj3jfHdRVIxCck6DBgcQi3zXDNAHUu
+			 */
+			secret: string;
+		};
+		/**
+		 * Register Request
+		 * @description Request schema for user registration.
+		 */
+		AuthReqRegister: {
+			data: components['schemas']['AuthRegister'];
+		};
+		/**
+		 * Check Username Request
+		 * @description Request schema for username validation.
+		 */
+		AuthReqCheckUsername: {
+			data: components['schemas']['AuthCheckUsername'];
+		};
+		/**
+		 * Check Email Request
+		 * @description Request schema for email validation.
+		 */
+		AuthReqCheckEmail: {
+			data: components['schemas']['AuthCheckEmail'];
+		};
+		/**
+		 * Login Request
+		 * @description Request schema for user authentication.
+		 */
+		AuthReqLogin: {
+			data: components['schemas']['AuthLogin'];
+		};
+		/**
+		 * Refresh Access Token Request
+		 * @description Request schema for user access token refresh.
+		 */
+		AuthReqRefreshToken: {
+			data: components['schemas']['AuthRefreshToken'];
+		};
+		/**
+		 * Validation Response
+		 * @description Response schema indicating the result of a username validation request.
+		 */
+		AuthResCheckUsername: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/auth-module/auth/check/username
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example POST
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['AuthValidation'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Validation Response
+		 * @description Response schema indicating the result of a email validation request.
+		 */
+		AuthResCheckEmail: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/auth-module/auth/check/email
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example POST
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['AuthValidation'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Login Response
+		 * @description Response schema returned after successful user authentication.
+		 */
+		AuthResLogin: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/auth-module/auth/login
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example POST
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['AuthTokenPair'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Refresh Access Token Response
+		 * @description Response schema returned after successful user access token refresh.
+		 */
+		AuthResRefresh: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/auth-module/auth/refresh
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example POST
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['AuthTokenPair'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Register Display Response
+		 * @description Response returned after successfully registering a display.
+		 */
+		AuthResRegisterDisplay: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/auth-module/auth/register-display
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example POST
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['AuthDisplaySecret'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Profile Response
+		 * @description Response schema containing details about the authenticated user's profile.
+		 */
+		AuthResProfile: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/auth-module/auth/profile
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['UsersUser'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * User
+		 * @description Schema for a registered user within the system.
+		 */
+		UsersUser: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier for the user.
+			 * @example f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6
+			 */
+			id: string;
+			/**
+			 * @description Unique username of the user.
+			 * @example johndoe
+			 */
+			username: string;
+			/**
+			 * @description First name of the user.
+			 * @example John
+			 */
+			first_name: string | null;
+			/**
+			 * @description Last name of the user.
+			 * @example Doe
+			 */
+			last_name: string | null;
+			/**
+			 * Format: email
+			 * @description Email address of the user.
+			 * @example john@doe.com
+			 */
+			email: string | null;
+			/**
+			 * @description Indicates whether the user is hidden from general visibility.
+			 * @default false
+			 */
+			is_hidden: boolean;
+			/**
+			 * @description User role: 'owner' has full access, 'admin' can manage users, 'user' has limited access, 'display' is read-only.
+			 * @default user
+			 * @enum {string}
+			 */
+			role: 'owner' | 'admin' | 'user' | 'display';
+			/**
+			 * Format: date-time
+			 * @description The timestamp when the user was created.
+			 * @example 2025-01-25T12:00:00Z
+			 */
+			created_at: string;
+			/**
+			 * Format: date-time
+			 * @description The timestamp when the user was updated.
+			 * @example 2025-01-25T12:00:00Z
+			 */
+			updated_at: string | null;
+		};
+		/**
+		 * Create User
+		 * @description Schema for creating a new user account.
+		 */
+		UsersCreateUser: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier for the user.
+			 * @example f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6
+			 */
+			id?: string;
+			/**
+			 * @description Unique username for the new user.
+			 * @example johndoe
+			 */
+			username: string;
+			/**
+			 * Format: password
+			 * @description Password for the new user. Must be at least 6 characters long.
+			 * @example superstrongpassword
+			 */
+			password: string;
+			/**
+			 * Format: email
+			 * @description Optional email address for the user.
+			 * @example john@doe.com
+			 */
+			email?: string | null;
+			/**
+			 * @description Optional first name of the user.
+			 * @example John
+			 */
+			first_name?: string | null;
+			/**
+			 * @description Optional last name of the user.
+			 * @example Doe
+			 */
+			last_name?: string | null;
+			/**
+			 * @description Role of the user. Defaults to 'user' if not provided.
+			 * @default user
+			 * @example user
+			 * @enum {string}
+			 */
+			role?: 'owner' | 'admin' | 'user' | 'display';
+		};
+		/**
+		 * Update User
+		 * @description Schema for modifying an existing user account.
+		 */
+		UsersUpdateUser: {
+			/**
+			 * Format: password
+			 * @description New password for the user.
+			 * @example superstrongpassword
+			 */
+			password?: string;
+			/**
+			 * Format: email
+			 * @description Updated email address of the user.
+			 * @example john@doe.com
+			 */
+			email?: string | null;
+			/**
+			 * @description Updated first name of the user.
+			 * @example John
+			 */
+			first_name?: string | null;
+			/**
+			 * @description Updated last name of the user.
+			 * @example Doe
+			 */
+			last_name?: string | null;
+			/**
+			 * @description Updated role of the user.
+			 * @example user
+			 * @enum {string}
+			 */
+			role?: 'owner' | 'admin' | 'user' | 'display';
+		};
+		/**
+		 * Create User Request
+		 * @description Request schema for creating new user.
+		 */
+		UsersReqCreateUser: {
+			data: components['schemas']['UsersCreateUser'];
+		};
+		/**
+		 * Update User Request
+		 * @description Request schema for updating an existing user.
+		 */
+		UsersReqUpdateUser: {
+			data: components['schemas']['UsersUpdateUser'];
+		};
+		/**
+		 * User Response
+		 * @description Response schema containing a single user.
+		 */
+		UsersResUser: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/users-module/users/f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['UsersUser'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * User Response
+		 * @description Response schema containing a list of users.
+		 */
+		UsersResUsers: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/users-module/users
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['UsersUser'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Audio
+		 * @description Schema for audio configuration, including speaker and microphone controls.
+		 */
+		ConfigAudio: {
+			/**
+			 * @description Configuration section type (enum property replaced by openapi-typescript)
+			 * @enum {string}
+			 */
+			type: 'audio';
+			/**
+			 * @description Indicates whether the speaker is enabled.
+			 * @default false
+			 */
+			speaker: boolean;
+			/**
+			 * Format: int32
+			 * @description The volume level of the speaker, ranging from 0 to 100.
+			 * @default 0
+			 * @example 50
+			 */
+			speaker_volume: number;
+			/**
+			 * @description Indicates whether the microphone is enabled.
+			 * @default false
+			 */
+			microphone: boolean;
+			/**
+			 * Format: int32
+			 * @description The volume level of the microphone, ranging from 0 to 100.
+			 * @default 0
+			 * @example 50
+			 */
+			microphone_volume: number;
+		};
+		/**
+		 * Display
+		 * @description Schema for display configuration, including brightness, dark mode, and screen lock behavior.
+		 */
+		ConfigDisplay: {
+			/**
+			 * @description Configuration section type (enum property replaced by openapi-typescript)
+			 * @enum {string}
+			 */
+			type: 'display';
+			/**
+			 * @description Enables dark mode for the display.
+			 * @default false
+			 */
+			dark_mode: boolean;
+			/**
+			 * Format: int32
+			 * @description Sets the brightness level of the display (0-100).
+			 * @default 0
+			 * @example 50
+			 */
+			brightness: number;
+			/**
+			 * Format: int32
+			 * @description Time in seconds before the screen automatically locks.
+			 * @default 30
+			 * @example 30
+			 */
+			screen_lock_duration: number;
+			/**
+			 * @description Enables the screen saver when the device is idle. Value is in seconds.
+			 * @default true
+			 */
+			screen_saver: boolean;
+		};
+		/**
+		 * Language
+		 * @description Schema for language configuration, time zone, and time format on the smart panel.
+		 */
+		ConfigLanguage: {
+			/**
+			 * @description Configuration section type (enum property replaced by openapi-typescript)
+			 * @enum {string}
+			 */
+			type: 'language';
+			/**
+			 * @description Defines the language and region format. Uses standard locale codes (ISO 639-1).
+			 * @default en_US
+			 * @enum {string}
+			 */
+			language: 'en_US' | 'cs_CZ';
+			/**
+			 * @description Sets the time format for displaying time on the panel.
+			 * @default Europe/Prague
+			 * @example Europe/Prague
+			 */
+			timezone: string;
+			/**
+			 * @description Defines the time zone of the smart panel. Uses the IANA time zone format.
+			 * @default 24h
+			 * @enum {string}
+			 */
+			time_format: '12h' | '24h';
+		};
+		/**
+		 * Weather
+		 * @description Schema for weather configuration, including location, temperature unit, and API integration.
+		 */
+		ConfigWeather: {
+			/**
+			 * @description Configuration section type (enum property replaced by openapi-typescript)
+			 * @enum {string}
+			 */
+			type: 'weather';
+			/**
+			 * @description The location for weather updates, specified as a city name or coordinates (latitude, longitude).
+			 * @example Prague
+			 */
+			location: string | null;
+			/**
+			 * @description Specifies the method used to determine the location for weather updates.
+			 * @default city_name
+			 * @example city_name
+			 * @enum {string}
+			 */
+			location_type: 'lat_lon' | 'city_name' | 'city_id' | 'zip_code';
+			/**
+			 * @description Defines the temperature unit for weather data.
+			 * @default celsius
+			 * @example celsius
+			 * @enum {string}
+			 */
+			unit: 'celsius' | 'fahrenheit';
+			/** @description API key for OpenWeatherMap. Required only if using OpenWeatherMap as a data source. */
+			open_weather_api_key: string | null;
+		};
+		/**
+		 * Configuration
+		 * @description Schema for the complete configuration settings for the smart panel, including audio, display, language, and weather settings.
+		 */
+		ConfigApp: {
+			/** @description Audio configuration settings, including speaker and microphone options. */
+			audio: components['schemas']['ConfigAudio'];
+			/** @description Display settings, including brightness, dark mode, and screen lock duration. */
+			display: components['schemas']['ConfigDisplay'];
+			/** @description Language and localization settings, including time zone and time format. */
+			language: components['schemas']['ConfigLanguage'];
+			/** @description Weather settings, including location, unit preferences, and API integration. */
+			weather: components['schemas']['ConfigWeather'];
+		};
+		/**
+		 * Update Audio
+		 * @description Schema for partial update settings for audio configuration, allowing changes to speaker and microphone settings.
+		 */
+		ConfigUpdateAudio: {
+			/**
+			 * @description Configuration section type (enum property replaced by openapi-typescript)
+			 * @enum {string}
+			 */
+			type: 'audio';
+			/**
+			 * @description Enables or disables the speaker.
+			 * @example true
+			 */
+			speaker?: boolean;
+			/**
+			 * Format: int32
+			 * @description Sets the speaker volume (0-100).
+			 * @example 34
+			 */
+			speaker_volume?: number;
+			/**
+			 * @description Enables or disables the microphone.
+			 * @example true
+			 */
+			microphone?: boolean;
+			/**
+			 * Format: int32
+			 * @description Sets the microphone volume (0-100).
+			 * @example 55
+			 */
+			microphone_volume?: number;
+		};
+		/**
+		 * Update Display
+		 * @description Schema for partial update settings for display configuration, allowing changes to brightness, dark mode, and screen lock duration.
+		 */
+		ConfigUpdateDisplay: {
+			/**
+			 * @description Configuration section type (enum property replaced by openapi-typescript)
+			 * @enum {string}
+			 */
+			type: 'display';
+			/**
+			 * @description Enables or disables dark mode.
+			 * @example false
+			 */
+			dark_mode?: boolean;
+			/**
+			 * Format: int32
+			 * @description Sets the brightness level (0-100).
+			 * @example 55
+			 */
+			brightness?: number;
+			/**
+			 * Format: int32
+			 * @description Time in seconds before the screen automatically locks.
+			 * @example 120
+			 */
+			screen_lock_duration?: number;
+			/**
+			 * @description Enables or disables the screen saver.
+			 * @example true
+			 */
+			screen_saver?: boolean;
+		};
+		/**
+		 * Update Language
+		 * @description Schema for partial update settings for language and localization configuration.
+		 */
+		ConfigUpdateLanguage: {
+			/**
+			 * @description Configuration section type (enum property replaced by openapi-typescript)
+			 * @enum {string}
+			 */
+			type: 'language';
+			/**
+			 * @description Defines the language and region format.
+			 * @example en_US
+			 * @enum {string}
+			 */
+			language?: 'en_US' | 'cs_CZ';
+			/**
+			 * @description Defines the time zone using the IANA time zone format.
+			 * @example Europe/Prague
+			 */
+			timezone?: string;
+			/**
+			 * @description Sets the time format (12-hour or 24-hour).
+			 * @example 24h
+			 * @enum {string}
+			 */
+			time_format?: '12h' | '24h';
+		};
+		/**
+		 * Update Weather
+		 * @description Schema for partial update settings for weather configuration, allowing changes to location, temperature unit, and API key.
+		 */
+		ConfigUpdateWeather: {
+			/**
+			 * @description Configuration section type (enum property replaced by openapi-typescript)
+			 * @enum {string}
+			 */
+			type: 'weather';
+			/**
+			 * @description The location for weather updates, specified as a city name or coordinates (latitude, longitude).
+			 * @example Prague
+			 */
+			location?: string | null;
+			/**
+			 * @description Specifies the method used to determine the location for weather updates.
+			 * @example city_name
+			 * @enum {string}
+			 */
+			location_type?: 'lat_lon' | 'city_name' | 'city_id' | 'zip_code';
+			/**
+			 * @description Defines the temperature unit for weather data.
+			 * @example celsius
+			 * @enum {string}
+			 */
+			unit?: 'celsius' | 'fahrenheit';
+			/** @description API key for OpenWeatherMap. Required only if using OpenWeatherMap as a data source. */
+			open_weather_api_key?: string | null;
+		};
+		/**
+		 * Update Section
+		 * @description Request schema for partial updating a configuration section.
+		 */
+		ConfigReqUpdateSection: {
+			data:
+				| components['schemas']['ConfigUpdateAudio']
+				| components['schemas']['ConfigUpdateDisplay']
+				| components['schemas']['ConfigUpdateLanguage']
+				| components['schemas']['ConfigUpdateWeather'];
+		};
+		/**
+		 * Configuration Response
+		 * @description Response schema containing complete configuration settings for the smart panel, including audio, display, language, and weather settings.
+		 */
+		ConfigResApp: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/config-module/config
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The configuration data for the smart panel, containing various settings. */
+			data: components['schemas']['ConfigApp'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Configuration Section Response
+		 * @description Response containing a specific section of the smart panel configuration, such as audio, display, language, or weather settings.
+		 */
+		ConfigResSection: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/config-module/config/audio
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			data:
+				| components['schemas']['ConfigAudio']
+				| components['schemas']['ConfigDisplay']
+				| components['schemas']['ConfigLanguage']
+				| components['schemas']['ConfigWeather'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
 		 * Device
 		 * @description Represents the core attributes of a device, including its unique identifier, name, and category. This model forms the foundation for more detailed device representations, such as those including related entities (e.g., channels, properties, or controls).
 		 */
@@ -1528,6 +2510,10 @@ export interface components {
 			 * @example Living room thermostat
 			 */
 			description: string | null;
+			/** @description A list of controls associated with the device. Controls represent actions or commands that can be executed on the device. */
+			controls: components['schemas']['DevicesDeviceControl'][];
+			/** @description A list of channels associated with the device. Each channel represents a functional unit of the device, such as a sensor, actuator, or logical grouping of properties. */
+			channels: components['schemas']['DevicesChannel'][];
 			/**
 			 * Format: date-time
 			 * @description Timestamp indicating when the device was created.
@@ -1548,6 +2534,7 @@ export interface components {
 		 */
 		DevicesThirdPartyDevice: components['schemas']['DevicesDeviceBase'] & {
 			/**
+			 * @description Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.
 			 * @default third-party
 			 * @example third-party
 			 * @constant
@@ -1558,272 +2545,12 @@ export interface components {
 			 * @example http://192.168.1.100/webhook
 			 */
 			service_address: string;
-		};
-		/**
-		 * Create Device
-		 * @description Schema for creating a new device. This includes essential attributes like type, category, and name, along with optional details such as a description.
-		 */
-		DevicesCreateDeviceBase: {
+		} & {
 			/**
-			 * Format: uuid
-			 * @description Unique identifier for the device. Optional during creation and system-generated if not provided.
-			 * @example 332dda32-b7de-4557-956a-b6ed6c6799a4
-			 */
-			id?: string;
-			/**
-			 * @description The type of the device. Indicates its nature, such as a third-party device or a specific module type.
-			 * @example third-party
-			 */
-			type: string;
-			/** @description Type of the device, defining its purpose or category (e.g., thermostat, lighting). */
-			category: components['schemas']['DevicesDeviceCategory'];
-			/**
-			 * @description Human-readable name of the device.
-			 * @example Thermostat
-			 */
-			name: string;
-			/**
-			 * @description Optional detailed description of the device.
-			 * @example Living room thermostat
-			 */
-			description?: string | null;
-		};
-		/**
-		 * Create Third-Party Device
-		 * @description Schema for creating a third-party device, including its type, category, and a third-party service address.
-		 */
-		DevicesCreateThirdPartyDevice: components['schemas']['DevicesCreateDeviceBase'] & {
-			/**
-			 * @default third-party
-			 * @example third-party
-			 * @constant
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
 			 */
 			type: 'third-party';
-			/**
-			 * @description The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.
-			 * @example http://192.168.1.100/webhook
-			 */
-			service_address: string;
-		};
-		/**
-		 * Create Device Control
-		 * @description Schema for creating a new device control, which represents an action the device can perform.
-		 */
-		DevicesCreateDeviceControl: {
-			/**
-			 * Format: uuid
-			 * @description Unique identifier for the control. Optional during creation and system-generated if not provided.
-			 * @example 227349b1-a2a7-439a-b296-59f002faa8ce
-			 */
-			id?: string;
-			/**
-			 * @description The name of the control, representing the action it performs.
-			 * @example reboot
-			 */
-			name: string;
-		};
-		/**
-		 * Create Channel
-		 * @description Schema for creating a new channel, representing a functional category of a device such as temperature, light, or motion.
-		 */
-		DevicesCreateChannel: {
-			/**
-			 * Format: uuid
-			 * @description Unique identifier for the channel. Optional during creation and system-generated if not provided.
-			 * @example 568e43e9-c9da-4a4e-ac7c-9904b42730c6
-			 */
-			id?: string;
-			/** @description Type of the channel, indicating its functional category (e.g., temperature, light). */
-			category: components['schemas']['DevicesChannelCategory'];
-			/**
-			 * @description Human-readable name of the channel.
-			 * @example Temperature Sensor
-			 */
-			name: string;
-			/**
-			 * @description Optional description of the channel’s purpose or functionality.
-			 * @example Living room temperature sensor
-			 */
-			description?: string | null;
-		};
-		/**
-		 * Create Channel Control
-		 * @description Schema for creating a new control within a channel, representing a specific action or command that can be performed.
-		 */
-		DevicesCreateChannelControl: {
-			/**
-			 * Format: uuid
-			 * @description Unique identifier for the control. Optional during creation and system-generated if not provided.
-			 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-			 */
-			id?: string;
-			/**
-			 * @description The name of the control, representing the action it performs.
-			 * @example reset
-			 */
-			name: string;
-		};
-		/**
-		 * Create Channel Property
-		 * @description Schema for creating a new property within a channel, representing a specific characteristic or functional value.
-		 */
-		DevicesCreateChannelProperty: {
-			/**
-			 * Format: uuid
-			 * @description Unique identifier for the property. Optional during creation and system-generated if not provided.
-			 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-			 */
-			id?: string;
-			/** @description Defines the category of the property, representing its functionality or characteristic. */
-			category: components['schemas']['DevicesChannelPropertyCategory'];
-			/**
-			 * @description Optional name of the property for easier identification.
-			 * @example Thermostat mode
-			 */
-			name?: string | null;
-			/** @description Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev). */
-			permission: ('ro' | 'rw' | 'wo' | 'ev')[];
-			/**
-			 * @description Data type of the property’s value, e.g., string, integer, or boolean.
-			 * @enum {unknown}
-			 */
-			data_type:
-				| 'char'
-				| 'uchar'
-				| 'short'
-				| 'ushort'
-				| 'int'
-				| 'uint'
-				| 'float'
-				| 'bool'
-				| 'string'
-				| 'enum'
-				| 'unknown';
-			/**
-			 * @description Measurement unit associated with the property’s value, if applicable.
-			 * @example °C
-			 */
-			unit?: string | null;
-			/**
-			 * @description List of valid values or states for the property, where applicable.
-			 * @example [
-			 *       "heat",
-			 *       "auto"
-			 *     ]
-			 */
-			format?: (string | number)[] | null;
-			/**
-			 * @description Value to represent an invalid state for the property.
-			 * @example -999
-			 */
-			invalid?: ((number | null) | (string | null) | (boolean | null) | null) | null;
-			/**
-			 * @description Step value indicating the smallest increment for the property.
-			 * @example 0.5
-			 */
-			step?: number | null;
-			/**
-			 * @description Current value of the property.
-			 * @example 22.1
-			 */
-			value?: ((number | null) | (string | null) | (boolean | null) | null) | null;
-		};
-		/**
-		 * Update Device
-		 * @description Schema for updating basic details of a device, including its name and description.
-		 */
-		DevicesUpdateDeviceBase: {
-			/**
-			 * @description Human-readable name of the device.
-			 * @example Thermostat
-			 */
-			name?: string;
-			/**
-			 * @description Optional detailed description of the device.
-			 * @example Living room thermostat
-			 */
-			description?: string | null;
-		};
-		/**
-		 * Update Third-Party Device
-		 * @description Schema for updating a third-party device, including its basic details and the service address it connects to.
-		 */
-		DevicesUpdateThirdPartyDevice: components['schemas']['DevicesUpdateDeviceBase'] & {
-			/**
-			 * @description The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.
-			 * @example http://192.168.1.100/webhook
-			 */
-			service_address?: string;
-		};
-		/**
-		 * Update Channel
-		 * @description Schema for updating a channel, including optional updates to its name and description.
-		 */
-		DevicesUpdateChannel: {
-			/**
-			 * @description Human-readable name of the channel.
-			 * @example Temperature Sensor
-			 */
-			name?: string;
-			/**
-			 * @description Optional description of the channel’s purpose or functionality.
-			 * @example Living room temperature sensor
-			 */
-			description?: string | null;
-		};
-		/**
-		 * Update Channel Property
-		 * @description Schema for updating a channel property, allowing updates to its name, unit, format, invalid state, step, and value.
-		 */
-		DevicesUpdateChannelProperty: {
-			/**
-			 * @description Optional name of the property for easier identification.
-			 * @example Thermostat mode
-			 */
-			name?: string | null;
-			/**
-			 * @description Measurement unit associated with the property’s value, if applicable.
-			 * @example °C
-			 */
-			unit?: string | null;
-			/**
-			 * @description List of valid values or states for the property, where applicable.
-			 * @example [
-			 *       "heat",
-			 *       "auto"
-			 *     ]
-			 */
-			format?: (string | number)[] | null;
-			/**
-			 * @description Value to represent an invalid state for the property.
-			 * @example -999
-			 */
-			invalid?: ((number | null) | (string | null) | (boolean | null) | null) | null;
-			/**
-			 * @description Step value indicating the smallest increment for the property.
-			 * @example 0.5
-			 */
-			step?: number | null;
-			/**
-			 * @description Current value of the property.
-			 * @example 22.1
-			 */
-			value?: ((number | null) | (string | null) | (boolean | null) | null) | null;
-		};
-		/**
-		 * Device
-		 * @description Represents a physical or third-party device that can be controlled or monitored. Devices have associated channels and controls, defining their capabilities and properties.
-		 */
-		DevicesDevice: components['schemas']['DevicesThirdPartyDevice'] & {
-			/**
-			 * @description Type of the device, such as 'third-party', ’shelly', or 'matter'.
-			 * @default third-party
-			 * @example third-party
-			 * @constant
-			 */
-			readonly type: 'third-party';
-			controls: components['schemas']['DevicesDeviceControl'][];
-			channels: components['schemas']['DevicesChannel'][];
 		};
 		/**
 		 * Device Control
@@ -1891,6 +2618,10 @@ export interface components {
 			 * @example 332dda32-b7de-4557-956a-b6ed6c6799a4
 			 */
 			readonly device: string;
+			/** @description A list of controls associated with the device channel. Controls represent actions or commands that can be executed on the channel. */
+			controls: components['schemas']['DevicesChannelControl'][];
+			/** @description A list of properties associated with the device channel. Properties represent the state or attributes of the channel. */
+			properties: components['schemas']['DevicesChannelProperty'][];
 			/**
 			 * Format: date-time
 			 * @description Timestamp when the channel was created.
@@ -1904,8 +2635,6 @@ export interface components {
 			 * @example 2024-12-11T12:00:00Z
 			 */
 			readonly updated_at: string | null;
-			controls: components['schemas']['DevicesChannelControl'][];
-			properties: components['schemas']['DevicesChannelProperty'][];
 		};
 		/**
 		 * Channel Control
@@ -1971,7 +2700,9 @@ export interface components {
 			readonly permission: ('ro' | 'rw' | 'wo' | 'ev')[];
 			/**
 			 * @description Data type of the property’s value, e.g., string, integer, or boolean.
-			 * @enum {unknown}
+			 * @default unknown
+			 * @example string
+			 * @enum {string}
 			 */
 			data_type:
 				| 'char'
@@ -2039,9 +2770,820 @@ export interface components {
 			readonly updated_at: string | null;
 		};
 		/**
+		 * Create Device
+		 * @description Schema for creating a new device. This includes essential attributes like type, category, and name, along with optional details such as a description.
+		 */
+		DevicesCreateDeviceBase: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier for the device. Optional during creation and system-generated if not provided.
+			 * @example 332dda32-b7de-4557-956a-b6ed6c6799a4
+			 */
+			id?: string;
+			/** @description Type of the device, defining its purpose or category (e.g., thermostat, lighting). */
+			category: components['schemas']['DevicesDeviceCategory'];
+			/**
+			 * @description Human-readable name of the device.
+			 * @example Thermostat
+			 */
+			name: string;
+			/**
+			 * @description Optional detailed description of the device.
+			 * @example Living room thermostat
+			 */
+			description?: string | null;
+			/** @description A list of controls associated with the device. Controls represent actions or commands that can be executed on the device. */
+			controls?: components['schemas']['DevicesCreateDeviceControl'][];
+			/** @description A list of channels associated with the device. Each channel represents a functional unit of the device, such as a sensor, actuator, or logical grouping of properties. */
+			channels?: components['schemas']['DevicesCreateDeviceChannel'][];
+		};
+		/**
+		 * Create Third-Party Device
+		 * @description Schema for creating a third-party device, including its type, category, and a third-party service address.
+		 */
+		DevicesCreateThirdPartyDevice: components['schemas']['DevicesCreateDeviceBase'] & {
+			/**
+			 * @description Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.
+			 * @default third-party
+			 * @example third-party
+			 * @constant
+			 */
+			type: 'third-party';
+			/**
+			 * @description The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.
+			 * @example http://192.168.1.100/webhook
+			 */
+			service_address: string;
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'third-party';
+		};
+		/**
+		 * Create Device Control
+		 * @description Schema for creating a new device control, which represents an action the device can perform.
+		 */
+		DevicesCreateDeviceControl: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier for the control. Optional during creation and system-generated if not provided.
+			 * @example 227349b1-a2a7-439a-b296-59f002faa8ce
+			 */
+			id?: string;
+			/**
+			 * @description The name of the control, representing the action it performs.
+			 * @example reboot
+			 */
+			name: string;
+		};
+		/**
+		 * Create Channel
+		 * @description Schema for creating a new channel, representing a functional category of a device such as temperature, light, or motion.
+		 */
+		DevicesCreateDeviceChannel: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier for the channel. Optional during creation and system-generated if not provided.
+			 * @example 568e43e9-c9da-4a4e-ac7c-9904b42730c6
+			 */
+			id?: string;
+			/** @description Type of the channel, indicating its functional category (e.g., temperature, light). */
+			category: components['schemas']['DevicesChannelCategory'];
+			/**
+			 * @description Human-readable name of the channel.
+			 * @example Temperature Sensor
+			 */
+			name: string;
+			/**
+			 * @description Optional description of the channel’s purpose or functionality.
+			 * @example Living room temperature sensor
+			 */
+			description?: string | null;
+			/** @description A list of controls associated with the device channel. Controls represent actions or commands that can be executed on the channel. */
+			controls?: components['schemas']['DevicesCreateChannelControl'][];
+			/** @description A list of properties associated with the device channel. Properties represent the state or attributes of the channel. */
+			properties?: components['schemas']['DevicesCreateChannelProperty'][];
+		};
+		/**
+		 * Create Device Channel
+		 * @description Schema representing a request to create a new channel for a device.
+		 */
+		DevicesCreateChannel: components['schemas']['DevicesCreateDeviceChannel'] & {
+			/**
+			 * Format: uuid
+			 * @description The parent device to which this channel belongs.
+			 * @example 332dda32-b7de-4557-956a-b6ed6c6799a4
+			 */
+			device: string;
+		};
+		/**
+		 * Create Channel Control
+		 * @description Schema for creating a new control within a channel, representing a specific action or command that can be performed.
+		 */
+		DevicesCreateChannelControl: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier for the control. Optional during creation and system-generated if not provided.
+			 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+			 */
+			id?: string;
+			/**
+			 * @description The name of the control, representing the action it performs.
+			 * @example reset
+			 */
+			name: string;
+		};
+		/**
+		 * Create Channel Property
+		 * @description Schema for creating a new property within a channel, representing a specific characteristic or functional value.
+		 */
+		DevicesCreateChannelProperty: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier for the property. Optional during creation and system-generated if not provided.
+			 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+			 */
+			id?: string;
+			/** @description Defines the category of the property, representing its functionality or characteristic. */
+			category: components['schemas']['DevicesChannelPropertyCategory'];
+			/**
+			 * @description Optional name of the property for easier identification.
+			 * @example Thermostat mode
+			 */
+			name?: string | null;
+			/**
+			 * @description Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
+			 * @example [
+			 *       "ro"
+			 *     ]
+			 */
+			permission: ('ro' | 'rw' | 'wo' | 'ev')[];
+			/**
+			 * @description Data type of the property’s value, e.g., string, integer, or boolean.
+			 * @example string
+			 * @enum {string}
+			 */
+			data_type:
+				| 'char'
+				| 'uchar'
+				| 'short'
+				| 'ushort'
+				| 'int'
+				| 'uint'
+				| 'float'
+				| 'bool'
+				| 'string'
+				| 'enum'
+				| 'unknown';
+			/**
+			 * @description Measurement unit associated with the property’s value, if applicable.
+			 * @example °C
+			 */
+			unit?: string | null;
+			/**
+			 * @description List of valid values or states for the property, where applicable.
+			 * @example [
+			 *       "heat",
+			 *       "auto"
+			 *     ]
+			 */
+			format?: (string | number)[] | null;
+			/**
+			 * @description Value to represent an invalid state for the property.
+			 * @example -999
+			 */
+			invalid?: ((number | null) | (string | null) | (boolean | null) | null) | null;
+			/**
+			 * @description Step value indicating the smallest increment for the property.
+			 * @example 0.5
+			 */
+			step?: number | null;
+			/**
+			 * @description Current value of the property.
+			 * @example 22.1
+			 */
+			value?: ((number | null) | (string | null) | (boolean | null) | null) | null;
+		};
+		/**
+		 * Update Device
+		 * @description Schema for updating basic details of a device, including its name and description.
+		 */
+		DevicesUpdateDeviceBase: {
+			/**
+			 * @description Human-readable name of the device.
+			 * @example Thermostat
+			 */
+			name?: string;
+			/**
+			 * @description Optional detailed description of the device.
+			 * @example Living room thermostat
+			 */
+			description?: string | null;
+		};
+		/**
+		 * Update Third-Party Device
+		 * @description Schema for updating a third-party device, including its basic details and the service address it connects to.
+		 */
+		DevicesUpdateThirdPartyDevice: components['schemas']['DevicesUpdateDeviceBase'] & {
+			/**
+			 * @description Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.
+			 * @default third-party
+			 * @example third-party
+			 * @constant
+			 */
+			type: 'third-party';
+			/**
+			 * @description The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.
+			 * @example http://192.168.1.100/webhook
+			 */
+			service_address?: string;
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'third-party';
+		};
+		/**
+		 * Update Channel
+		 * @description Schema for updating a channel, including optional updates to its name and description.
+		 */
+		DevicesUpdateChannel: {
+			/**
+			 * @description Human-readable name of the channel.
+			 * @example Temperature Sensor
+			 */
+			name?: string;
+			/**
+			 * @description Optional description of the channel’s purpose or functionality.
+			 * @example Living room temperature sensor
+			 */
+			description?: string | null;
+		};
+		/**
+		 * Update Channel Property
+		 * @description Schema for updating a channel property, allowing updates to its name, unit, format, invalid state, step, and value.
+		 */
+		DevicesUpdateChannelProperty: {
+			/**
+			 * @description Optional name of the property for easier identification.
+			 * @example Thermostat mode
+			 */
+			name?: string | null;
+			/**
+			 * @description Measurement unit associated with the property’s value, if applicable.
+			 * @example °C
+			 */
+			unit?: string | null;
+			/**
+			 * @description List of valid values or states for the property, where applicable.
+			 * @example [
+			 *       "heat",
+			 *       "auto"
+			 *     ]
+			 */
+			format?: (string | number)[] | null;
+			/**
+			 * @description Value to represent an invalid state for the property.
+			 * @example -999
+			 */
+			invalid?: ((number | null) | (string | null) | (boolean | null) | null) | null;
+			/**
+			 * @description Step value indicating the smallest increment for the property.
+			 * @example 0.5
+			 */
+			step?: number | null;
+			/**
+			 * @description Current value of the property.
+			 * @example 22.1
+			 */
+			value?: ((number | null) | (string | null) | (boolean | null) | null) | null;
+		};
+		/**
+		 * Create Device Request
+		 * @description Request schema for creating new device.
+		 */
+		DevicesReqCreateDevice: {
+			data: components['schemas']['DevicesCreateThirdPartyDevice'];
+		};
+		/**
+		 * Create Device Control Request
+		 * @description Request schema for creating new device control.
+		 */
+		DevicesReqCreateDeviceControl: {
+			data: components['schemas']['DevicesCreateDeviceControl'];
+		};
+		/**
+		 * Create Device Channel Request
+		 * @description Request schema for creating new device channel.
+		 */
+		DevicesReqCreateDeviceChannel: {
+			data: components['schemas']['DevicesCreateDeviceChannel'];
+		};
+		/**
+		 * Create Channel Request
+		 * @description Request schema for creating new channel.
+		 */
+		DevicesReqCreateChannel: {
+			data: components['schemas']['DevicesCreateChannel'];
+		};
+		/**
+		 * Create Channel Control Request
+		 * @description Request schema for creating new channel control.
+		 */
+		DevicesReqCreateChannelControl: {
+			data: components['schemas']['DevicesCreateChannelControl'];
+		};
+		/**
+		 * Create Channel Property Request
+		 * @description Request schema for creating new channel property.
+		 */
+		DevicesReqCreateChannelProperty: {
+			data: components['schemas']['DevicesCreateChannelProperty'];
+		};
+		/**
+		 * Update Device Request
+		 * @description Request schema for updating an existing device.
+		 */
+		DevicesReqUpdateDevice: {
+			data: components['schemas']['DevicesUpdateThirdPartyDevice'];
+		};
+		/**
+		 * Update Channel Request
+		 * @description Request schema for updating an existing channel.
+		 */
+		DevicesReqUpdateChannel: {
+			data: components['schemas']['DevicesUpdateChannel'];
+		};
+		/**
+		 * Update Channel Property Request
+		 * @description Request schema for updating an existing channel property.
+		 */
+		DevicesReqUpdateChannelProperty: {
+			data: components['schemas']['DevicesUpdateChannelProperty'];
+		};
+		/**
+		 * Device Response
+		 * @description Response schema containing a single device.
+		 */
+		DevicesResDevice: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesThirdPartyDevice'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Response
+		 * @description Response schema containing a list of devices.
+		 */
+		DevicesResDevices: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/devices
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesThirdPartyDevice'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Control Response
+		 * @description Response schema containing a single device control.
+		 */
+		DevicesResDeviceControl: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/controls/227349b1-a2a7-439a-b296-59f002faa8ce
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesDeviceControl'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Controls Response
+		 * @description Response schema containing a list of device controls.
+		 */
+		DevicesResDeviceControls: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/controls
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesDeviceControl'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Channel Response
+		 * @description Response schema containing a single device channel.
+		 */
+		DevicesResDeviceChannel: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesChannel'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Channels Response
+		 * @description Response schema containing a list of device channels.
+		 */
+		DevicesResDeviceChannels: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/channels
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesChannel'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Channel Response
+		 * @description Response schema containing a single channel.
+		 */
+		DevicesResChannel: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesChannel'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Channels Response
+		 * @description Response schema containing a list of channels.
+		 */
+		DevicesResChannels: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/channels
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesChannel'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Channel Control Response
+		 * @description Response schema containing a single channel control.
+		 */
+		DevicesResChannelControl: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/controls/4b76637f-a8a6-45ba-965b-4819f4b57df2
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesChannelControl'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Channel Controls Response
+		 * @description Response schema containing a list of channel controls.
+		 */
+		DevicesResChannelControls: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/controls
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesChannelControl'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Channel Property Response
+		 * @description Response schema containing a single channel property.
+		 */
+		DevicesResChannelProperty: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesChannelProperty'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Device Channel Properties Response
+		 * @description Response schema containing a list of channel properties.
+		 */
+		DevicesResChannelProperties: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DevicesChannelProperty'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
 		 * Device Category
 		 * @description Defines the type of device, categorizing it by its primary function.
-		 * @enum {unknown}
+		 * @enum {string}
 		 */
 		DevicesDeviceCategory:
 			| 'generic'
@@ -2072,7 +3614,7 @@ export interface components {
 		/**
 		 * Channel Category
 		 * @description Represents a functional channel inside a device, responsible for a specific type of data or control.
-		 * @enum {unknown}
+		 * @enum {string}
 		 */
 		DevicesChannelCategory:
 			| 'generic'
@@ -2120,7 +3662,7 @@ export interface components {
 		/**
 		 * Channel Property Category
 		 * @description Defines specific properties of a device channel that can be measured, controlled, or reported.
-		 * @enum {unknown}
+		 * @enum {string}
 		 */
 		DevicesChannelPropertyCategory:
 			| 'generic'
@@ -2185,67 +3727,77 @@ export interface components {
 			| 'volume'
 			| 'zoom';
 		/**
-		 * Third-Party Device Property Update Request
-		 * @description Represents a request to update properties on a third-party device.
+		 * Third-Party Device Property Update
+		 * @description Represents a request to update a specific property on a third-party device.
 		 */
 		DevicesThirdPartyDevicePropertyUpdateRequest: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier of the target device.
+			 * @example 234e5678-a89b-22d3-c456-426614174133
+			 */
+			device: string;
+			/**
+			 * Format: uuid
+			 * @description Unique identifier of the target device channel.
+			 * @example 456e7890-c89d-42d5-e678-626816194355
+			 */
+			channel: string;
+			/**
+			 * Format: uuid
+			 * @description Unique identifier of the property being updated.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			property: string;
+			/** @description New value to be applied to the property. */
+			value: string | number | boolean;
+		};
+		/**
+		 * Third-Party Device Property Update Request
+		 * @description Represents a request to update one or more properties on a third-party device.
+		 */
+		DevicesThirdPartyDevicePropertiesUpdateRequest: {
 			/** @description Represents a single property update operation for a third-party device. */
-			properties: {
-				/**
-				 * Format: uuid
-				 * @description Unique identifier of the target device.
-				 * @example 234e5678-a89b-22d3-c456-426614174133
-				 */
-				device: string;
-				/**
-				 * Format: uuid
-				 * @description Unique identifier of the target device channel.
-				 * @example 456e7890-c89d-42d5-e678-626816194355
-				 */
-				channel: string;
-				/**
-				 * Format: uuid
-				 * @description Unique identifier of the property being updated.
-				 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-				 */
-				property: string;
-				/** @description New value to be applied to the property. */
-				value: string | number | boolean;
-			}[];
+			properties?: components['schemas']['DevicesThirdPartyDevicePropertyUpdateRequest'][];
 		};
 		/**
 		 * Third-Party Device Property Update Result
-		 * @description Response from the third-party device after processing the update request.
+		 * @description Represents the result of an update operation for a specific property on a third-party device.
 		 */
 		DevicesThirdPartyDevicePropertyUpdateResult: {
+			/**
+			 * Format: uuid
+			 * @description Unique identifier of the device for which the update was requested.
+			 * @example 234e5678-a89b-22d3-c456-426614174133
+			 */
+			readonly device: string;
+			/**
+			 * Format: uuid
+			 * @description Unique identifier of the channel that was updated.
+			 * @example 456e7890-c89d-42d5-e678-626816194355
+			 */
+			readonly channel: string;
+			/**
+			 * Format: uuid
+			 * @description Unique identifier of the property that was updated.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			property: string;
+			/** @description Status code indicating the outcome of the update request. A value of 0 indicates success, while negative values indicate errors. */
+			status: components['schemas']['DevicesThirdPartyErrorCode'];
+		};
+		/**
+		 * Third-Party Device Property Update Result
+		 * @description Represents the overall response from a third-party device after processing an update request.
+		 */
+		DevicesThirdPartyDevicePropertiesUpdateResult: {
 			/** @description List of processed properties and their update results. */
-			readonly properties: {
-				/**
-				 * Format: uuid
-				 * @description Unique identifier of the device for which the update was requested.
-				 * @example 234e5678-a89b-22d3-c456-426614174133
-				 */
-				readonly device: string;
-				/**
-				 * Format: uuid
-				 * @description Unique identifier of the channel that was updated.
-				 * @example 456e7890-c89d-42d5-e678-626816194355
-				 */
-				readonly channel: string;
-				/**
-				 * Format: uuid
-				 * @description Unique identifier of the property that was updated.
-				 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-				 */
-				property: string;
-				/** @description Status code indicating the outcome of the update request. A value of 0 indicates success, while negative values indicate errors. */
-				status: components['schemas']['DevicesThirdPartyErrorCode'];
-			}[];
+			readonly properties: components['schemas']['DevicesThirdPartyDevicePropertyUpdateResult'][];
 		};
 		/**
 		 * Third-Party Error Code
 		 * @description Error codes returned by third-party devices when processing requests.
-		 * @enum {unknown}
+		 * @enum {number}
 		 */
 		DevicesThirdPartyErrorCode:
 			| 0
@@ -2268,14 +3820,9 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description A unique identifier for the dashboard page.
-			 * @example 123e4567-e89b-12d3-a456-426614174000
+			 * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
 			 */
 			readonly id: string;
-			/**
-			 * @description The type of the dashboard page, which determines its behavior and specific properties.
-			 * @example cards
-			 */
-			type: string;
 			/**
 			 * @description The title of the dashboard page, displayed in the UI.
 			 * @example Cards Dashboard
@@ -2316,10 +3863,11 @@ export interface components {
 			 * @example cards
 			 * @constant
 			 */
-			type: 'cards';
-			/** @description A list of card UUIDs associated with the cards page. */
-			cards: string[];
-			data_source: string[];
+			readonly type: 'cards';
+			/** @description A list of cards associated with the page. */
+			cards: components['schemas']['DashboardCard'][];
+			/** @description A list of data sources associated with the page. */
+			data_source: components['schemas']['DashboardDeviceChannelDataSource'][];
 		} & {
 			/**
 			 * @description discriminator enum property added by openapi-typescript
@@ -2338,10 +3886,16 @@ export interface components {
 			 * @example tiles
 			 * @constant
 			 */
-			type: 'tiles';
-			/** @description A list of tile UUIDs associated with the tiles page. */
-			tiles: string[];
-			data_source: string[];
+			readonly type: 'tiles';
+			/** @description A list of tiles associated with the tiles page. */
+			tiles: (
+				| components['schemas']['DashboardDeviceTile']
+				| components['schemas']['DashboardTimeTile']
+				| components['schemas']['DashboardDayWeatherTile']
+				| components['schemas']['DashboardForecastWeatherTile']
+			)[];
+			/** @description A list of data sources associated with the tiles page. */
+			data_source: components['schemas']['DashboardDeviceChannelDataSource'][];
 		} & {
 			/**
 			 * @description discriminator enum property added by openapi-typescript
@@ -2360,11 +3914,11 @@ export interface components {
 			 * @example device
 			 * @constant
 			 */
-			type: 'device';
+			readonly type: 'device';
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated device.
-			 * @example 987e6543-a89b-22d3-c456-426614174111
+			 * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
 			 */
 			device: string;
 		} & {
@@ -2375,6 +3929,57 @@ export interface components {
 			type: 'device';
 		};
 		/**
+		 * Card
+		 * @description Represents a card in the dashboard page, with its associated tiles and data sources.
+		 */
+		DashboardCard: {
+			/**
+			 * Format: uuid
+			 * @description A unique identifier for the dashboard card.
+			 * @example 7943c740-52b6-4e18-a136-cf39061ac869
+			 */
+			readonly id: string;
+			/**
+			 * @description The title displayed on the dashboard card.
+			 * @example Mood lights
+			 */
+			title: string;
+			/**
+			 * @description The icon representing the dashboard card.
+			 * @default null
+			 * @example icon-name
+			 */
+			icon: string | null;
+			/**
+			 * Format: int32
+			 * @description Defines the position of the card relative to others on the dashboard page.
+			 * @example 1
+			 */
+			order: number;
+			/**
+			 * Format: uuid
+			 * @description The unique identifier of the page this card belongs to.
+			 * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
+			 */
+			page: string;
+			/** @description A list of tiles associated with the dashboard card, representing widgets or functional components. */
+			tiles: unknown[];
+			/** @description A list of data sources used by the card, typically for real-time updates. */
+			data_source: components['schemas']['DashboardDeviceChannelDataSource'][];
+			/**
+			 * Format: date-time
+			 * @description The timestamp when the dashboard card was created.
+			 * @example 2025-01-25T12:00:00Z
+			 */
+			readonly created_at: string;
+			/**
+			 * Format: date-time
+			 * @description The timestamp when the dashboard card was last updated.
+			 * @example 2025-01-25T13:00:00Z
+			 */
+			readonly updated_at: string | null;
+		};
+		/**
 		 * Tile
 		 * @description The base schema for all dashboard tiles, containing common properties such as position, dimensions, and associated page and data sources.
 		 */
@@ -2382,27 +3987,9 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description A unique identifier for the dashboard tile.
-			 * @example 123e4567-e89b-12d3-a456-426614174000
+			 * @example 9f807d44-bd0f-4f5e-b409-3d048efa03d8
 			 */
 			readonly id: string;
-			/**
-			 * @description The type of the dashboard tile.
-			 * @example device
-			 */
-			type: string;
-			/**
-			 * Format: uuid
-			 * @description The unique identifier of the page to which this tile belongs.
-			 * @example 987e6543-a89b-22d3-c456-426614174111
-			 */
-			page?: string;
-			/**
-			 * Format: uuid
-			 * @description The unique identifier of the card to which this tile belongs.
-			 */
-			card?: string;
-			/** @description A list of data sources associated with this tile. */
-			data_source: string[];
 			/**
 			 * Format: int32
 			 * @description The row position of the tile in the grid.
@@ -2429,19 +4016,39 @@ export interface components {
 			 * @example 2
 			 */
 			col_span: number;
-			/**
-			 * Format: date-time
-			 * @description The timestamp when the dashboard tile was created.
-			 * @example 2025-01-25T12:00:00Z
-			 */
-			readonly created_at: string;
-			/**
-			 * Format: date-time
-			 * @description The timestamp when the dashboard tile was last updated.
-			 * @example 2025-01-25T13:00:00Z
-			 */
-			readonly updated_at: string | null;
-		};
+		} & (
+			| {
+					/**
+					 * Format: uuid
+					 * @description The unique identifier of the page to which this tile belongs.
+					 * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
+					 */
+					page: string;
+			  }
+			| {
+					/**
+					 * Format: uuid
+					 * @description The unique identifier of the card to which this tile belongs.
+					 * @example 7943c740-52b6-4e18-a136-cf39061ac869
+					 */
+					card: string;
+			  }
+		) & {
+				/** @description A list of data sources used by the tile, typically for real-time updates. */
+				data_source: components['schemas']['DashboardDeviceChannelDataSource'][];
+				/**
+				 * Format: date-time
+				 * @description The timestamp when the dashboard tile was created.
+				 * @example 2025-01-25T12:00:00Z
+				 */
+				readonly created_at: string;
+				/**
+				 * Format: date-time
+				 * @description The timestamp when the dashboard tile was last updated.
+				 * @example 2025-01-25T13:00:00Z
+				 */
+				readonly updated_at: string | null;
+			};
 		/**
 		 * Device Tile
 		 * @description A dashboard tile associated with a specific device.
@@ -2449,14 +4056,15 @@ export interface components {
 		DashboardDeviceTile: components['schemas']['DashboardTileBase'] & {
 			/**
 			 * @description Indicates that this is a device-specific tile.
+			 * @default device
 			 * @example device
 			 * @constant
 			 */
-			type: 'device';
+			readonly type: 'device';
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated device.
-			 * @example 234e5678-a89b-22d3-c456-426614174133
+			 * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
 			 */
 			device: string;
 			/**
@@ -2478,8 +4086,15 @@ export interface components {
 		DashboardTimeTile: components['schemas']['DashboardTileBase'] & {
 			/**
 			 * @description Indicates that this is a clock tile.
+			 * @default clock
 			 * @example clock
 			 * @constant
+			 */
+			readonly type: 'clock';
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
 			 */
 			type: 'clock';
 		};
@@ -2490,10 +4105,17 @@ export interface components {
 		DashboardDayWeatherTile: components['schemas']['DashboardTileBase'] & {
 			/**
 			 * @description Indicates that this is a day weather tile.
-			 * @example weather_day
+			 * @default weather-day
+			 * @example weather-day
 			 * @constant
 			 */
-			type: 'weather_day';
+			readonly type: 'weather-day';
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'weather-day';
 		};
 		/**
 		 * Forecast Weather Tile
@@ -2502,10 +4124,17 @@ export interface components {
 		DashboardForecastWeatherTile: components['schemas']['DashboardTileBase'] & {
 			/**
 			 * @description Indicates that this is a weather forecast tile.
-			 * @example weather_forecast
+			 * @default weather-forecast
+			 * @example weather-forecast
 			 * @constant
 			 */
-			type: 'weather_forecast';
+			readonly type: 'weather-forecast';
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'weather-forecast';
 		};
 		/**
 		 * Data Source
@@ -2515,43 +4144,48 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description A unique identifier for the data source.
-			 * @example 123e4567-e89b-12d3-a456-426614174000
+			 * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
 			 */
 			readonly id: string;
-			/**
-			 * @description The type of data source.
-			 * @enum {unknown}
-			 */
-			readonly type: 'device_channel';
-			/**
-			 * Format: uuid
-			 * @description The unique identifier of the associated page.
-			 */
-			page?: string;
-			/**
-			 * Format: uuid
-			 * @description The unique identifier of the associated card.
-			 */
-			card?: string;
-			/**
-			 * Format: uuid
-			 * @description The unique identifier of the associated tile.
-			 * @example 456e7890-a89b-22d3-c456-426614174111
-			 */
-			tile?: string;
-			/**
-			 * Format: date-time
-			 * @description The timestamp when the data source was created.
-			 * @example 2025-01-25T12:00:00Z
-			 */
-			readonly created_at: string;
-			/**
-			 * Format: date-time
-			 * @description The timestamp when the data source was last updated.
-			 * @example 2025-01-25T13:00:00Z
-			 */
-			readonly updated_at: string | null;
-		};
+		} & (
+			| {
+					/**
+					 * Format: uuid
+					 * @description The unique identifier of the page to which this data source belongs.
+					 * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
+					 */
+					page: string;
+			  }
+			| {
+					/**
+					 * Format: uuid
+					 * @description The unique identifier of the card to which this data source belongs.
+					 * @example 7943c740-52b6-4e18-a136-cf39061ac869
+					 */
+					card: string;
+			  }
+			| {
+					/**
+					 * Format: uuid
+					 * @description The unique identifier of the tile to which this data source belongs.
+					 * @example 9f807d44-bd0f-4f5e-b409-3d048efa03d8
+					 */
+					tile: string;
+			  }
+		) & {
+				/**
+				 * Format: date-time
+				 * @description The timestamp when the data source was created.
+				 * @example 2025-01-25T12:00:00Z
+				 */
+				readonly created_at: string;
+				/**
+				 * Format: date-time
+				 * @description The timestamp when the data source was last updated.
+				 * @example 2025-01-25T13:00:00Z
+				 */
+				readonly updated_at: string | null;
+			};
 		/**
 		 * Device Channel Data Source
 		 * @description A data source linked to a specific device channel and property.
@@ -2559,9 +4193,11 @@ export interface components {
 		DashboardDeviceChannelDataSource: components['schemas']['DashboardDataSourceBase'] & {
 			/**
 			 * @description Indicates that this data source is linked to a device channel.
+			 * @default device-channel
+			 * @example device-channel
 			 * @constant
 			 */
-			readonly type: 'device_channel';
+			readonly type: 'device-channel';
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated device.
@@ -2591,7 +4227,7 @@ export interface components {
 			 * @description discriminator enum property added by openapi-typescript
 			 * @enum {string}
 			 */
-			type: 'device_channel';
+			type: 'device-channel';
 		};
 		/**
 		 * Create Page
@@ -2601,14 +4237,9 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description The unique identifier for the dashboard page (optional during creation).
-			 * @example 123e4567-e89b-12d3-a456-426614174000
+			 * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
 			 */
 			id?: string;
-			/**
-			 * @description The type of dashboard page to be created.
-			 * @example cards
-			 */
-			type: string;
 			/**
 			 * @description The title of the dashboard page.
 			 * @example My Dashboard
@@ -2632,10 +4263,20 @@ export interface components {
 		 */
 		DashboardCreateCardsPage: components['schemas']['DashboardCreatePageBase'] & {
 			/**
-			 * @description Specifies the type of page as a cards page.
+			 * @description Indicates that this is a cards dashboard page.
 			 * @default cards
 			 * @example cards
 			 * @constant
+			 */
+			type: 'cards';
+			/** @description A list of cards associated with the page. */
+			cards?: components['schemas']['DashboardCreateCard'][];
+			/** @description A list of data sources associated with the page. */
+			data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
 			 */
 			type: 'cards';
 		};
@@ -2645,10 +4286,25 @@ export interface components {
 		 */
 		DashboardCreateTilesPage: components['schemas']['DashboardCreatePageBase'] & {
 			/**
-			 * @description Specifies the type of page as a tiles page.
+			 * @description Indicates that this is a tiles dashboard page.
 			 * @default tiles
 			 * @example tiles
 			 * @constant
+			 */
+			type: 'tiles';
+			/** @description A list of tiles associated with the tiles page. */
+			tiles?: (
+				| components['schemas']['DashboardCreateDeviceTile']
+				| components['schemas']['DashboardCreateTimeTile']
+				| components['schemas']['DashboardCreateDayWeatherTile']
+				| components['schemas']['DashboardCreateForecastWeatherTile']
+			)[];
+			/** @description A list of data sources associated with the tiles page. */
+			data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
 			 */
 			type: 'tiles';
 		};
@@ -2658,7 +4314,7 @@ export interface components {
 		 */
 		DashboardCreateDevicePage: components['schemas']['DashboardCreatePageBase'] & {
 			/**
-			 * @description Specifies the type of page as a device page.
+			 * @description Indicates that this is a device-specific dashboard page.
 			 * @default device
 			 * @example device
 			 * @constant
@@ -2667,9 +4323,15 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated device.
-			 * @example 234e5678-a89b-22d3-c456-426614174133
+			 * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
 			 */
 			device: string;
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'device';
 		};
 		/**
 		 * Create Card
@@ -2678,21 +4340,31 @@ export interface components {
 		DashboardCreateCard: {
 			/**
 			 * Format: uuid
-			 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
+			 * @description The unique identifier for the dashboard card (optional during creation).
+			 * @example 7943c740-52b6-4e18-a136-cf39061ac869
 			 */
 			id?: string;
-			/** @example Mood lights */
+			/**
+			 * @description The title displayed on the dashboard card.
+			 * @example Mood lights
+			 */
 			title: string;
 			/**
 			 * @description The icon representing the dashboard card.
+			 * @default null
 			 * @example icon-name
 			 */
 			icon?: string | null;
 			/**
 			 * Format: int32
-			 * @example 0
+			 * @description Defines the position of the card relative to others on the dashboard page.
+			 * @example 1
 			 */
 			order?: number;
+			/** @description A list of tiles associated with the dashboard card, representing widgets or functional components. */
+			tiles?: unknown[];
+			/** @description A list of data sources used by the card, typically for real-time updates. */
+			data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
 		};
 		/**
 		 * Create Tile
@@ -2702,14 +4374,9 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description Unique identifier for the dashboard tile (optional during creation).
-			 * @example 123e4567-e89b-12d3-a456-426614174000
+			 * @example 9f807d44-bd0f-4f5e-b409-3d048efa03d8
 			 */
 			id?: string;
-			/**
-			 * @description The type of tile to be created.
-			 * @example device
-			 */
-			type: string;
 			/**
 			 * Format: int32
 			 * @description The row position of the tile in the grid.
@@ -2734,6 +4401,8 @@ export interface components {
 			 * @example 2
 			 */
 			col_span?: number;
+			/** @description A list of data sources used by the tile, typically for real-time updates. */
+			data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
 		};
 		/**
 		 * Create Device Tile
@@ -2741,7 +4410,7 @@ export interface components {
 		 */
 		DashboardCreateDeviceTile: components['schemas']['DashboardCreateTileBase'] & {
 			/**
-			 * @description Specifies the type of tile as a device tile.
+			 * @description Specifies the type of tile as a device-specific tile.
 			 * @default device
 			 * @example device
 			 * @constant
@@ -2750,11 +4419,20 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated device.
-			 * @example 123e4567-e89b-12d3-a456-426614174001
+			 * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
 			 */
 			device: string;
-			/** @description The icon representing the data source. */
+			/**
+			 * @description The icon representing the tile.
+			 * @example icon-name
+			 */
 			icon?: string | null;
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'device';
 		};
 		/**
 		 * Create Time Tile
@@ -2776,11 +4454,11 @@ export interface components {
 		DashboardCreateDayWeatherTile: components['schemas']['DashboardCreateTileBase'] & {
 			/**
 			 * @description Specifies the type of tile as a day weather tile.
-			 * @default weather_day
-			 * @example weather_day
+			 * @default weather-day
+			 * @example weather-day
 			 * @constant
 			 */
-			type: 'weather_day';
+			type: 'weather-day';
 		};
 		/**
 		 * Create Forecast Weather Tile
@@ -2789,11 +4467,11 @@ export interface components {
 		DashboardCreateForecastWeatherTile: components['schemas']['DashboardCreateTileBase'] & {
 			/**
 			 * @description Specifies the type of tile as a weather forecast tile.
-			 * @default weather_forecast
-			 * @example weather_forecast
+			 * @default weather-forecast
+			 * @example weather-forecast
 			 * @constant
 			 */
-			type: 'weather_forecast';
+			type: 'weather-forecast';
 		};
 		/**
 		 * Create Data Source
@@ -2803,14 +4481,9 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description Unique identifier for the data source (optional during creation).
-			 * @example 123e4567-e89b-12d3-a456-426614174000
+			 * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
 			 */
 			id?: string;
-			/**
-			 * @description Specifies the type of data source.
-			 * @example device_channel
-			 */
-			type: string;
 		};
 		/**
 		 * Create Device Channel Data Source
@@ -2819,27 +4492,27 @@ export interface components {
 		DashboardCreateDeviceChannelDataSource: components['schemas']['DashboardCreateDataSourceBase'] & {
 			/**
 			 * @description Specifies the type of data source as linked to a device channel.
-			 * @default device_channel
-			 * @example device_channel
+			 * @default device-channel
+			 * @example device-channel
 			 * @constant
 			 */
-			type: 'device_channel';
+			type: 'device-channel';
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated device.
-			 * @example 123e4567-e89b-12d3-a456-426614174001
+			 * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
 			 */
 			device: string;
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated channel within the device.
-			 * @example 123e4567-e89b-12d3-a456-426614174002
+			 * @example e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7
 			 */
 			channel: string;
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated property within the channel.
-			 * @example 123e4567-e89b-12d3-a456-426614174003
+			 * @example 3d988def-559f-498c-a804-5111aba2df66
 			 */
 			property: string;
 			/**
@@ -2847,6 +4520,12 @@ export interface components {
 			 * @example icon-name
 			 */
 			icon?: string | null;
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'device-channel';
 		};
 		/**
 		 * Update Page
@@ -2874,37 +4553,72 @@ export interface components {
 		 * Update Cards Page
 		 * @description Schema for updating a cards page in the dashboard.
 		 */
-		DashboardUpdateCardsPage: components['schemas']['DashboardUpdatePageBase'];
+		DashboardUpdateCardsPage: components['schemas']['DashboardUpdatePageBase'] & {
+			/**
+			 * @description Indicates that this is a cards dashboard page.
+			 * @default cards
+			 * @example cards
+			 * @constant
+			 */
+			type: 'cards';
+		};
 		/**
 		 * Update Tiles Page
 		 * @description Schema for updating a tiles page in the dashboard.
 		 */
-		DashboardUpdateTilesPage: components['schemas']['DashboardUpdatePageBase'];
+		DashboardUpdateTilesPage: components['schemas']['DashboardUpdatePageBase'] & {
+			/**
+			 * @description Indicates that this is a tiles dashboard page.
+			 * @default tiles
+			 * @example tiles
+			 * @constant
+			 */
+			type: 'tiles';
+		};
 		/**
 		 * Update Device Page
 		 * @description Schema for updating a device page in the dashboard.
 		 */
 		DashboardUpdateDevicePage: components['schemas']['DashboardUpdatePageBase'] & {
 			/**
+			 * @description Indicates that this is a tiles dashboard page.
+			 * @default device
+			 * @example device
+			 * @constant
+			 */
+			type: 'device';
+			/**
 			 * Format: uuid
-			 * @example b12345c6-7890-4d12-345e-6f7890abcd12
+			 * @description The unique identifier of the associated device.
+			 * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
 			 */
 			device?: string;
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'device';
 		};
 		/**
 		 * Update Card
 		 * @description Schema for updating a card in the dashboard.
 		 */
 		DashboardUpdateCard: {
-			/** @example Room lights */
+			/**
+			 * @description The title displayed on the dashboard card.
+			 * @example Mood lights
+			 */
 			title?: string;
 			/**
 			 * @description The icon representing the dashboard card.
+			 * @default null
 			 * @example icon-name
 			 */
 			icon?: string | null;
 			/**
 			 * Format: int32
+			 * @description Defines the position of the card relative to others on the dashboard page.
 			 * @example 1
 			 */
 			order?: number;
@@ -2916,34 +4630,28 @@ export interface components {
 		DashboardUpdateTileBase: {
 			/**
 			 * Format: int32
-			 * @description The row position of the tile on the dashboard grid.
+			 * @description The row position of the tile in the grid.
 			 * @example 1
 			 */
 			row?: number;
 			/**
 			 * Format: int32
-			 * @description The column position of the tile on the dashboard grid.
-			 * @example 1
+			 * @description The column position of the tile in the grid.
+			 * @example 2
 			 */
 			col?: number;
 			/**
 			 * Format: int32
-			 * @description The number of rows the tile spans on the dashboard grid.
-			 * @example 2
+			 * @description The number of rows the tile spans in the grid.
+			 * @example 1
 			 */
 			row_span?: number;
 			/**
 			 * Format: int32
-			 * @description The number of columns the tile spans on the dashboard grid.
+			 * @description The number of columns the tile spans in the grid.
 			 * @example 2
 			 */
 			col_span?: number;
-			/**
-			 * Format: uuid
-			 * @description The unique identifier of the page to which this tile belongs.
-			 * @example 987e6543-a89b-22d3-c456-426614174111
-			 */
-			page?: string;
 		};
 		/**
 		 * Update Device Tile
@@ -2951,29 +4659,69 @@ export interface components {
 		 */
 		DashboardUpdateDeviceTile: components['schemas']['DashboardUpdateTileBase'] & {
 			/**
+			 * @description Indicates that this is a device-specific dashboard tile.
+			 * @default device
+			 * @example device
+			 * @constant
+			 */
+			type: 'device';
+			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated device.
-			 * @example b12345c6-7890-4d12-345e-6f7890abcd12
+			 * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
 			 */
 			device?: string;
-			/** @description The icon representing the data source. */
+			/**
+			 * @description The icon representing the tile.
+			 * @example icon-name
+			 */
 			icon?: string | null;
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'device';
 		};
 		/**
 		 * Update Time Tile
 		 * @description Schema for updating a time tile (clock) in the dashboard.
 		 */
-		DashboardUpdateTimeTile: components['schemas']['DashboardUpdateTileBase'];
+		DashboardUpdateTimeTile: components['schemas']['DashboardUpdateTileBase'] & {
+			/**
+			 * @description Specifies the type of tile as a clock.
+			 * @default clock
+			 * @example clock
+			 * @constant
+			 */
+			type: 'clock';
+		};
 		/**
 		 * Update Day Weather Tile
 		 * @description Schema for updating a day weather tile in the dashboard.
 		 */
-		DashboardUpdateDayWeatherTile: components['schemas']['DashboardUpdateTileBase'];
+		DashboardUpdateDayWeatherTile: components['schemas']['DashboardUpdateTileBase'] & {
+			/**
+			 * @description Specifies the type of tile as a day weather tile.
+			 * @default weather-day
+			 * @example weather-day
+			 * @constant
+			 */
+			type: 'weather-day';
+		};
 		/**
 		 * Update Forecast Weather Tile
 		 * @description Schema for updating a forecast weather tile in the dashboard.
 		 */
-		DashboardUpdateForecastWeatherTile: components['schemas']['DashboardUpdateTileBase'];
+		DashboardUpdateForecastWeatherTile: components['schemas']['DashboardUpdateTileBase'] & {
+			/**
+			 * @description Specifies the type of tile as a weather forecast tile.
+			 * @default weather-forecast
+			 * @example weather-forecast
+			 * @constant
+			 */
+			type: 'weather-forecast';
+		};
 		/**
 		 * Update Data Source Base
 		 * @description Base schema for updating a data source in the dashboard.
@@ -2982,7 +4730,7 @@ export interface components {
 			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated tile.
-			 * @example 456e7890-a89b-22d3-c456-426614174111
+			 * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
 			 */
 			tile?: string;
 		};
@@ -2992,21 +4740,28 @@ export interface components {
 		 */
 		DashboardUpdateDeviceChannelDataSource: components['schemas']['DashboardUpdateDataSourceBase'] & {
 			/**
+			 * @description Specifies the type of data source as linked to a device channel.
+			 * @default device-channel
+			 * @example device-channel
+			 * @constant
+			 */
+			type: 'device-channel';
+			/**
 			 * Format: uuid
 			 * @description The unique identifier of the associated device.
-			 * @example b12345c6-7890-4d12-345e-6f7890abcd12
+			 * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
 			 */
 			device?: string;
 			/**
 			 * Format: uuid
-			 * @description The unique identifier of the associated channel.
-			 * @example cd09772a-6981-4dd7-be1c-f2edd6978ee1
+			 * @description The unique identifier of the associated channel within the device.
+			 * @example e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7
 			 */
 			channel?: string;
 			/**
 			 * Format: uuid
-			 * @description The unique identifier of the associated channel property.
-			 * @example cd09772a-6981-4dd7-be1c-f2edd6978ee1
+			 * @description The unique identifier of the associated property within the channel.
+			 * @example 3d988def-559f-498c-a804-5111aba2df66
 			 */
 			property?: string;
 			/**
@@ -3014,310 +4769,744 @@ export interface components {
 			 * @example icon-name
 			 */
 			icon?: string | null;
+		} & {
+			/**
+			 * @description discriminator enum property added by openapi-typescript
+			 * @enum {string}
+			 */
+			type: 'device-channel';
 		};
 		/**
-		 * Page
-		 * @description Represents a page in the dashboard, such as Cards, Tiles, or Device pages, with its associated tiles and data sources.
+		 * Create Page Request
+		 * @description Request schema for creating new page.
 		 */
-		DashboardPage:
-			| ({
-					type: 'DashboardPage';
-			  } & (components['schemas']['DashboardCardsPage'] & {
-					/** @description A list of tiles displayed on the page. */
-					cards?: components['schemas']['DashboardCard'][];
-					data_source?: components['schemas']['DashboardDeviceChannelDataSource'][];
-			  }))
-			| ({
-					type: 'DashboardPage';
-			  } & (components['schemas']['DashboardTilesPage'] & {
-					/** @description A list of tiles displayed on the page. */
-					tiles?: (
-						| (components['schemas']['DashboardDeviceTile'] & {
-								/** @description The data sources associated with this tile. */
-								data_source?: components['schemas']['DashboardDeviceChannelDataSource'][];
-						  })
-						| (components['schemas']['DashboardTimeTile'] & {
-								/** @description The data sources associated with this tile. */
-								data_source?: components['schemas']['DashboardDeviceChannelDataSource'][];
-						  })
-						| (components['schemas']['DashboardDayWeatherTile'] & {
-								/** @description The data sources associated with this tile. */
-								data_source?: components['schemas']['DashboardDeviceChannelDataSource'][];
-						  })
-						| (components['schemas']['DashboardForecastWeatherTile'] & {
-								/** @description The data sources associated with this tile. */
-								data_source?: components['schemas']['DashboardDeviceChannelDataSource'][];
-						  })
-					)[];
-					data_source?: components['schemas']['DashboardDeviceChannelDataSource'][];
-			  }))
-			| components['schemas']['DashboardDevicePage'];
+		DashboardReqCreatePage: {
+			data:
+				| components['schemas']['DashboardCreateCardsPage']
+				| components['schemas']['DashboardCreateTilesPage']
+				| components['schemas']['DashboardCreateDevicePage'];
+		};
 		/**
-		 * Card
-		 * @description Represents a card in the dashboard page, with its associated tiles and data sources.
+		 * Create Page Card Request
+		 * @description Request schema for creating new page card.
 		 */
-		DashboardCard: {
+		DashboardReqCreatePageCard: {
+			data: components['schemas']['DashboardCreateCard'];
+		};
+		/**
+		 * Create Page Tile Request
+		 * @description Request schema for creating new page tile.
+		 */
+		DashboardReqCreatePageTile: {
+			data:
+				| components['schemas']['DashboardCreateDeviceTile']
+				| components['schemas']['DashboardCreateTimeTile']
+				| components['schemas']['DashboardCreateDayWeatherTile']
+				| components['schemas']['DashboardCreateForecastWeatherTile'];
+		};
+		/**
+		 * Create Card Tile Request
+		 * @description Request schema for creating new card tile.
+		 */
+		DashboardReqCreateCardTile: {
+			data:
+				| components['schemas']['DashboardCreateDeviceTile']
+				| components['schemas']['DashboardCreateTimeTile']
+				| components['schemas']['DashboardCreateDayWeatherTile']
+				| components['schemas']['DashboardCreateForecastWeatherTile'];
+		};
+		/**
+		 * Create Page Data Source Request
+		 * @description Request schema for creating new page data source.
+		 */
+		DashboardReqCreatePageDataSource: {
+			data: components['schemas']['DashboardCreateDeviceChannelDataSource'];
+		};
+		/**
+		 * Create Card Data Source Request
+		 * @description Request schema for creating new card data source.
+		 */
+		DashboardReqCreateCardDataSource: {
+			data: components['schemas']['DashboardCreateDeviceChannelDataSource'];
+		};
+		/**
+		 * Create Tile Data Source Request
+		 * @description Request schema for creating new tile data source.
+		 */
+		DashboardReqCreateTileDataSource: {
+			data: components['schemas']['DashboardCreateDeviceChannelDataSource'];
+		};
+		/**
+		 * Update Page Request
+		 * @description Request schema for updating an existing page.
+		 */
+		DashboardReqUpdatePage: {
+			data:
+				| components['schemas']['DashboardUpdateCardsPage']
+				| components['schemas']['DashboardUpdateTilesPage']
+				| components['schemas']['DashboardUpdateDevicePage'];
+		};
+		/**
+		 * Update Card Request
+		 * @description Request schema for updating an existing card.
+		 */
+		DashboardReqUpdateCard: {
+			data: components['schemas']['DashboardUpdateCard'];
+		};
+		/**
+		 * Update Tile Request
+		 * @description Request schema for updating an existing tile.
+		 */
+		DashboardReqUpdateTile: {
+			data:
+				| components['schemas']['DashboardUpdateDeviceTile']
+				| components['schemas']['DashboardUpdateTimeTile']
+				| components['schemas']['DashboardUpdateDayWeatherTile']
+				| components['schemas']['DashboardUpdateForecastWeatherTile'];
+		};
+		/**
+		 * Update Data Source Request
+		 * @description Request schema for updating an existing data source.
+		 */
+		DashboardReqUpdateDataSource: {
+			data: components['schemas']['DashboardUpdateDeviceChannelDataSource'];
+		};
+		/**
+		 * Page Response
+		 * @description Response schema containing a single page.
+		 */
+		DashboardResPage: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
 			/**
 			 * Format: uuid
-			 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
 			 */
-			id: string;
-			/** @example Mood lights */
-			title: string;
+			readonly request_id: string;
 			/**
-			 * @description The icon representing the dashboard card.
-			 * @default null
-			 * @example icon-name
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
 			 */
-			icon: string | null;
+			readonly path: string;
 			/**
-			 * Format: int32
-			 * @example 1
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
 			 */
-			order: number;
-			page: components['schemas']['DashboardCardsPage'];
-			tiles: components['schemas']['DashboardTile'][];
-			data_source: components['schemas']['DashboardDataSource'][];
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data:
+				| components['schemas']['DashboardCardsPage']
+				| components['schemas']['DashboardTilesPage']
+				| components['schemas']['DashboardDevicePage'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Pages Response
+		 * @description Response schema containing a list of pages.
+		 */
+		DashboardResPages: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
 			/**
 			 * Format: date-time
-			 * @example 2025-01-25T12:00:00Z
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
 			 */
-			created_at: string;
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: (
+				| components['schemas']['DashboardCardsPage']
+				| components['schemas']['DashboardTilesPage']
+				| components['schemas']['DashboardDevicePage']
+			)[];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Page Card Response
+		 * @description Response schema containing a single page card.
+		 */
+		DashboardResPageCard: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
 			/**
 			 * Format: date-time
-			 * @example 2025-01-25T12:00:00Z
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
 			 */
-			updated_at: string | null;
-		};
-		/**
-		 * Tile
-		 * @description Represents a tile in a dashboard, such as a device tile, time tile, weather tile, or forecast tile.
-		 */
-		DashboardTile:
-			| ({
-					type: 'DashboardTile';
-			  } & (components['schemas']['DashboardDeviceTile'] & {
-					data_source: components['schemas']['DashboardDeviceChannelDataSource'][];
-			  }))
-			| ({
-					type: 'DashboardTile';
-			  } & (components['schemas']['DashboardTimeTile'] & {
-					data_source: components['schemas']['DashboardDeviceChannelDataSource'][];
-			  }))
-			| ({
-					type: 'DashboardTile';
-			  } & (components['schemas']['DashboardDayWeatherTile'] & {
-					data_source: components['schemas']['DashboardDeviceChannelDataSource'][];
-			  }))
-			| ({
-					type: 'DashboardTile';
-			  } & (components['schemas']['DashboardForecastWeatherTile'] & {
-					data_source: components['schemas']['DashboardDeviceChannelDataSource'][];
-			  }));
-		/**
-		 * Data Source
-		 * @description Represents a data source that feeds data to a dashboard tile.
-		 */
-		DashboardDataSource: components['schemas']['DashboardDeviceChannelDataSource'];
-		/**
-		 * Audio
-		 * @description Configuration settings for audio, including speaker and microphone controls.
-		 */
-		ConfigAudio: {
+			readonly timestamp: string;
 			/**
-			 * @description Indicates whether the speaker is enabled.
-			 * @default false
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
 			 */
-			speaker: boolean;
+			readonly request_id: string;
 			/**
-			 * Format: int32
-			 * @description The volume level of the speaker, ranging from 0 to 100.
-			 * @default 0
-			 * @example 50
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869
 			 */
-			speaker_volume: number;
+			readonly path: string;
 			/**
-			 * @description Indicates whether the microphone is enabled.
-			 * @default false
-			 */
-			microphone: boolean;
-			/**
-			 * Format: int32
-			 * @description The volume level of the microphone, ranging from 0 to 100.
-			 * @default 0
-			 * @example 50
-			 */
-			microphone_volume: number;
-		};
-		/**
-		 * Display
-		 * @description Configuration settings for the display, including brightness, dark mode, and screen lock behavior.
-		 */
-		ConfigDisplay: {
-			/**
-			 * @description Enables dark mode for the display.
-			 * @default false
-			 */
-			dark_mode: boolean;
-			/**
-			 * Format: int32
-			 * @description Sets the brightness level of the display (0-100).
-			 * @default 0
-			 * @example 50
-			 */
-			brightness: number;
-			/**
-			 * Format: int32
-			 * @description Time in seconds before the screen automatically locks.
-			 * @default 30
-			 * @example 30
-			 */
-			screen_lock_duration: number;
-			/**
-			 * @description Enables the screen saver when the device is idle. Value is in seconds.
-			 * @default true
-			 */
-			screen_saver: boolean;
-		};
-		/**
-		 * Language
-		 * @description Configuration settings for language, time zone, and time format on the smart panel.
-		 */
-		ConfigLanguage: {
-			/**
-			 * @description Defines the language and region format. Uses standard locale codes (ISO 639-1).
-			 * @default en_US
-			 * @enum {unknown}
-			 */
-			language: 'en_US' | 'cs_CZ';
-			/**
-			 * @description Sets the time format for displaying time on the panel.
-			 * @default Europe/Prague
-			 * @example Europe/Prague
-			 */
-			timezone: string;
-			/**
-			 * @description Defines the time zone of the smart panel. Uses the IANA time zone format.
-			 * @default 24h
-			 * @enum {unknown}
-			 */
-			time_format: '12h' | '24h';
-		};
-		/**
-		 * Weather
-		 * @description Configuration settings for weather data, including location, temperature unit, and API integration.
-		 */
-		ConfigWeather: {
-			/** @description The location for weather updates, specified as a city name or coordinates (latitude, longitude). */
-			location: string | null;
-			/**
-			 * @default city_name
-			 * @example city_name
-			 * @enum {unknown}
-			 */
-			location_type: 'lat_lon' | 'city_name' | 'city_id' | 'zip_code';
-			/**
-			 * @description Defines the temperature unit for weather data.
-			 * @default celsius
-			 * @enum {unknown}
-			 */
-			unit: 'celsius' | 'fahrenheit';
-			/** @description API key for OpenWeatherMap. Required only if using OpenWeatherMap as a data source. */
-			open_weather_api_key: string | null;
-		};
-		/**
-		 * App
-		 * @description Configuration settings for the smart panel, including audio, display, language, and weather settings.
-		 */
-		ConfigApp: {
-			/** @description Audio configuration settings, including speaker and microphone options. */
-			audio: components['schemas']['ConfigAudio'];
-			/** @description Display settings, including brightness, dark mode, and screen lock duration. */
-			display: components['schemas']['ConfigDisplay'];
-			/** @description Language and localization settings, including time zone and time format. */
-			language: components['schemas']['ConfigLanguage'];
-			/** @description Weather settings, including location, unit preferences, and API integration. */
-			weather: components['schemas']['ConfigWeather'];
-		};
-		/**
-		 * Update Audio
-		 * @description Partial update settings for audio configuration, allowing changes to speaker and microphone settings.
-		 */
-		ConfigUpdateAudio: {
-			/** @description Enables or disables the speaker. */
-			speaker?: boolean;
-			/**
-			 * Format: int32
-			 * @description Sets the speaker volume (0-100).
-			 */
-			speaker_volume?: number;
-			/** @description Enables or disables the microphone. */
-			microphone?: boolean;
-			/**
-			 * Format: int32
-			 * @description Sets the microphone volume (0-100).
-			 */
-			microphone_volume?: number;
-		};
-		/**
-		 * Update Display
-		 * @description Partial update settings for display configuration, allowing changes to brightness, dark mode, and screen lock duration.
-		 */
-		ConfigUpdateDisplay: {
-			/** @description Enables or disables dark mode. */
-			dark_mode?: boolean;
-			/**
-			 * Format: int32
-			 * @description Sets the brightness level (0-100).
-			 */
-			brightness?: number;
-			/**
-			 * Format: int32
-			 * @description Time in seconds before the screen automatically locks.
-			 */
-			screen_lock_duration?: number;
-			/** @description Enables or disables the screen saver. */
-			screen_saver?: boolean;
-		};
-		/**
-		 * Update Language
-		 * @description Partial update settings for language and localization configuration.
-		 */
-		ConfigUpdateLanguage: {
-			/**
-			 * @description Defines the language and region format.
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
 			 * @enum {string}
 			 */
-			language?: 'en_US' | 'cs_CZ';
-			/**
-			 * @description Defines the time zone using the IANA time zone format.
-			 * @example Europe/Prague
-			 */
-			timezone?: string;
-			/**
-			 * @description Sets the time format (12-hour or 24-hour).
-			 * @enum {string}
-			 */
-			time_format?: '12h' | '24h';
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardCard'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
 		};
 		/**
-		 * Update Weather
-		 * @description Partial update settings for weather configuration, allowing changes to location, temperature unit, and API key.
+		 * Page Cards Response
+		 * @description Response schema containing a list of page cards.
 		 */
-		ConfigUpdateWeather: {
-			/** @description The location for weather updates, specified as a city name or coordinates (latitude, longitude). */
-			location?: string | null;
+		DashboardResPageCards: {
 			/**
-			 * @description Defines the temperature unit for weather data.
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
 			 * @enum {string}
 			 */
-			unit?: 'celsius' | 'fahrenheit';
-			/** @description API key for OpenWeatherMap. Required only if using OpenWeatherMap as a data source. */
-			open_weather_api_key?: string | null;
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardCard'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Card Tile Response
+		 * @description Response schema containing a single card tile.
+		 */
+		DashboardResPageCardTile: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data:
+				| components['schemas']['DashboardDeviceTile']
+				| components['schemas']['DashboardTimeTile']
+				| components['schemas']['DashboardDayWeatherTile']
+				| components['schemas']['DashboardForecastWeatherTile'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Card Tiles Response
+		 * @description Response schema containing a list of card tiles.
+		 */
+		DashboardResPageCardTiles: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: (
+				| components['schemas']['DashboardDeviceTile']
+				| components['schemas']['DashboardTimeTile']
+				| components['schemas']['DashboardDayWeatherTile']
+				| components['schemas']['DashboardForecastWeatherTile']
+			)[];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Card Tile Data Source Response
+		 * @description Response schema containing a single tile data source.
+		 */
+		DashboardResPageCardTileDataSource: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardDeviceChannelDataSource'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Card Tile Data Sources Response
+		 * @description Response schema containing a list of tile data sources.
+		 */
+		DashboardResPageCardTileDataSources: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardDeviceChannelDataSource'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Card Data Source Response
+		 * @description Response schema containing a single card data source.
+		 */
+		DashboardResPageCardDataSource: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardDeviceChannelDataSource'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Card Data Sources Response
+		 * @description Response schema containing a list of card data sources.
+		 */
+		DashboardResPageCardDataSources: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardDeviceChannelDataSource'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Page Tile Response
+		 * @description Response schema containing a single page tile.
+		 */
+		DashboardResPageTile: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data:
+				| components['schemas']['DashboardDeviceTile']
+				| components['schemas']['DashboardTimeTile']
+				| components['schemas']['DashboardDayWeatherTile']
+				| components['schemas']['DashboardForecastWeatherTile'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Page Tiles Response
+		 * @description Response schema containing a list of page tiles.
+		 */
+		DashboardResPageTiles: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: (
+				| components['schemas']['DashboardDeviceTile']
+				| components['schemas']['DashboardTimeTile']
+				| components['schemas']['DashboardDayWeatherTile']
+				| components['schemas']['DashboardForecastWeatherTile']
+			)[];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Page Tile Data Source Response
+		 * @description Response schema containing a single tile data source.
+		 */
+		DashboardResPageTileDataSource: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardDeviceChannelDataSource'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Page Tile Data Sources Response
+		 * @description Response schema containing a list of tile data sources.
+		 */
+		DashboardResPageTileDataSources: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardDeviceChannelDataSource'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Page Data Source Response
+		 * @description Response schema containing a single page data source.
+		 */
+		DashboardResPageDataSource: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardDeviceChannelDataSource'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Page Data Sources Response
+		 * @description Response schema containing a list of page data sources.
+		 */
+		DashboardResPageDataSources: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['DashboardDeviceChannelDataSource'][];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
 		};
 		/**
 		 * Memory Info
-		 * @description Provides details about total, used, and free memory on the system.
+		 * @description Schema for a details about total, used, and free memory on the system.
 		 */
 		SystemMemoryInfo: {
 			/**
@@ -3338,7 +5527,7 @@ export interface components {
 		};
 		/**
 		 * Storage Info
-		 * @description Provides details about system storage, including file system, usage, and available space.
+		 * @description Schema for a details about system storage, including file system, usage, and available space.
 		 */
 		SystemStorageInfo: {
 			/**
@@ -3364,23 +5553,23 @@ export interface components {
 		};
 		/**
 		 * Temperature Info
-		 * @description Provides the current temperature of system components like CPU and GPU.
+		 * @description Schema for the current temperature of system components like CPU and GPU.
 		 */
 		SystemTemperatureInfo: {
 			/**
 			 * @description CPU temperature in Celsius.
 			 * @example 55
 			 */
-			readonly cpu?: number;
+			readonly cpu?: number | null;
 			/**
 			 * @description GPU temperature in Celsius.
 			 * @example 60
 			 */
-			readonly gpu?: number;
+			readonly gpu?: number | null;
 		};
 		/**
 		 * Operating System Info
-		 * @description Provides information about the operating system, including distribution, version, and uptime.
+		 * @description Schema for a information about the operating system, including distribution, version, and uptime.
 		 */
 		SystemOperatingSystemInfo: {
 			/**
@@ -3406,7 +5595,7 @@ export interface components {
 		};
 		/**
 		 * Display Info
-		 * @description Provides information about the display resolution and current screen resolution.
+		 * @description Schema for a information about the display resolution and current screen resolution.
 		 */
 		SystemDisplayInfo: {
 			/**
@@ -3432,7 +5621,7 @@ export interface components {
 		};
 		/**
 		 * Network Stats
-		 * @description Provides network statistics, including interface, received/transmitted bytes, and speed.
+		 * @description Schema for a network statistics, including interface, received/transmitted bytes, and speed.
 		 */
 		SystemNetworkStats: {
 			/**
@@ -3453,7 +5642,7 @@ export interface components {
 		};
 		/**
 		 * System Info
-		 * @description Provides detailed information about the system, including CPU load, memory, storage, temperature, operating system, network, and display.
+		 * @description Schema for a detailed information about the system, including CPU load, memory, storage, temperature, operating system, network, and display.
 		 */
 		SystemSystemInfo: {
 			/**
@@ -3474,7 +5663,7 @@ export interface components {
 		};
 		/**
 		 * Throttle Status
-		 * @description Indicates whether the system has experienced any throttling, frequency capping, or undervoltage conditions.
+		 * @description Schema that indicates whether the system has encountered throttling, frequency capping, or undervoltage conditions.
 		 */
 		SystemThrottleStatus: {
 			/**
@@ -3487,7 +5676,10 @@ export interface components {
 			 * @default false
 			 */
 			readonly frequency_capping: boolean;
-			/** @description Indicates if the system has experienced CPU throttling due to high temperatures. */
+			/**
+			 * @description Indicates if the system has experienced CPU throttling due to high temperatures.
+			 * @default false
+			 */
 			readonly throttling: boolean;
 			/**
 			 * @description Indicates if the system has reached the soft temperature limit and is reducing performance.
@@ -3496,418 +5688,234 @@ export interface components {
 			readonly soft_temp_limit: boolean;
 		};
 		/**
-		 * User
-		 * @description Represents a user in the system.
+		 * System Info Response
+		 * @description Response containing detailed system information, including CPU load, memory usage, storage, temperature, OS, network, and display details.
 		 */
-		UsersUser: {
+		SystemResSystemInfo: {
 			/**
-			 * Format: uuid
-			 * @description Unique identifier for the user.
-			 * @example f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
 			 */
-			id: string;
-			/**
-			 * @description Unique username of the user.
-			 * @example johndoe
-			 */
-			username: string;
-			/**
-			 * @description First name of the user.
-			 * @example John
-			 */
-			first_name: string | null;
-			/**
-			 * @description Last name of the user.
-			 * @example Doe
-			 */
-			last_name: string | null;
-			/**
-			 * Format: email
-			 * @description Email address of the user.
-			 * @example john@doe.com
-			 */
-			email: string | null;
-			/**
-			 * @description Indicates whether the user is hidden from general visibility.
-			 * @default false
-			 */
-			is_hidden: boolean;
-			/**
-			 * @description User role: 'owner' has full access, 'admin' can manage users, 'user' has limited access, 'display' is read-only.
-			 * @default user
-			 * @enum {unknown}
-			 */
-			role: 'owner' | 'admin' | 'user' | 'display';
+			readonly status: string;
 			/**
 			 * Format: date-time
-			 * @description The timestamp when the user was created.
-			 * @example 2025-01-25T12:00:00Z
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/system-module/system/info
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['SystemSystemInfo'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Throttle Status Response
+		 * @description Response indicating whether the system has experienced any throttling, frequency capping, or undervoltage conditions.
+		 */
+		SystemResThrottleStatus: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/system-module/system/throtle
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['SystemThrottleStatus'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Weather Condition
+		 * @description Schema for the current weather condition, including description and icon.
+		 */
+		WeatherWeather: {
+			/**
+			 * @description Weather condition code.
+			 * @example 800
+			 */
+			code: number;
+			/**
+			 * @description Weather condition (e.g., Rain, Snow, Clear).
+			 * @example Clear
+			 */
+			main: string;
+			/**
+			 * @description Detailed description of the weather condition.
+			 * @example clear sky
+			 */
+			description: string;
+			/**
+			 * @description Icon code representing the current weather condition.
+			 * @example 01d
+			 */
+			icon: string;
+		};
+		/**
+		 * Wind Conditions
+		 * @description Schema for describing the wind conditions at the specified location.
+		 */
+		WeatherWind: {
+			/**
+			 * @description Wind speed in meters per second.
+			 * @example 3.5
+			 */
+			speed: number;
+			/**
+			 * @description Wind direction in degrees (0° - 360°).
+			 * @example 180
+			 */
+			deg: number;
+			/**
+			 * @description Wind gust speed in meters per second.
+			 * @example 5.8
+			 */
+			gust: number | null;
+		};
+		/**
+		 * Location Details
+		 * @description Schema for the geographical location of the weather data.
+		 */
+		WeatherLocation: {
+			/**
+			 * @description Name of the city or region.
+			 * @example Prague
+			 */
+			name: string;
+			/**
+			 * @description Country code (ISO 3166-1 alpha-2) or full country name.
+			 * @example CZ
+			 */
+			country: string;
+		};
+		/**
+		 * Daily Weather Report
+		 * @description Schema for a specific day, including temperature, wind, and precipitation.
+		 */
+		WeatherDay: {
+			/**
+			 * @description Current temperature in degrees Celsius.
+			 * @example 22.5
+			 */
+			temperature: number;
+			/**
+			 * @description Minimum recorded temperature for the day in degrees Celsius.
+			 * @example 18.2
+			 */
+			temperature_min: number;
+			/**
+			 * @description Maximum recorded temperature for the day in degrees Celsius.
+			 * @example 25.8
+			 */
+			temperature_max: number;
+			/**
+			 * @description Perceived temperature based on wind and humidity.
+			 * @example 21.9
+			 */
+			feels_like: number;
+			/**
+			 * @description Atmospheric pressure in hPa.
+			 * @example 1013
+			 */
+			pressure: number;
+			/**
+			 * @description Humidity level as a percentage.
+			 * @example 55
+			 */
+			humidity: number;
+			/** @description Detailed weather status. */
+			weather: components['schemas']['WeatherWeather'];
+			/** @description Wind conditions at the location. */
+			wind: components['schemas']['WeatherWind'];
+			/**
+			 * @description Cloudiness percentage.
+			 * @example 10
+			 */
+			clouds: number;
+			/**
+			 * @description Rain volume in the last hour (mm).
+			 * @example 10
+			 */
+			rain: number | null;
+			/**
+			 * @description Snow volume in the last hour (mm).
+			 * @example 10
+			 */
+			snow: number | null;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the weather data was last updated.
+			 * @example 2025-02-06T12:00:00Z
 			 */
 			created_at: string;
-			/**
-			 * Format: date-time
-			 * @description The timestamp when the user was updated.
-			 * @example 2025-01-25T12:00:00Z
-			 */
-			updated_at: string | null;
-		};
-		/**
-		 * Create User
-		 * @description Schema for creating a new user.
-		 */
-		UsersCreateUser: {
-			/**
-			 * Format: uuid
-			 * @description Unique identifier for the user.
-			 * @example f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6
-			 */
-			id?: string;
-			/**
-			 * @description Unique username for the new user.
-			 * @example johndoe
-			 */
-			username: string;
-			/**
-			 * Format: password
-			 * @description Password for the new user. Must be at least 6 characters long.
-			 * @example superstrongpassword
-			 */
-			password: string;
-			/**
-			 * Format: email
-			 * @description Optional email address for the user.
-			 * @example john@doe.com
-			 */
-			email?: string | null;
-			/**
-			 * @description Optional first name of the user.
-			 * @example John
-			 */
-			first_name?: string | null;
-			/**
-			 * @description Optional last name of the user.
-			 * @example Doe
-			 */
-			last_name?: string | null;
-			/**
-			 * @description Role of the user. Defaults to 'user' if not provided.
-			 * @enum {unknown}
-			 */
-			role?: 'owner' | 'admin' | 'user' | 'display';
-		};
-		/**
-		 * Update User
-		 * @description Schema for updating an existing user.
-		 */
-		UsersUpdateUser: {
-			/**
-			 * Format: password
-			 * @description New password for the user.
-			 * @example superstrongpassword
-			 */
-			password?: string;
-			/**
-			 * Format: email
-			 * @description Updated email address of the user.
-			 * @example john@doe.com
-			 */
-			email?: string | null;
-			/**
-			 * @description Updated first name of the user.
-			 * @example John
-			 */
-			first_name?: string | null;
-			/**
-			 * @description Updated last name of the user.
-			 * @example Doe
-			 */
-			last_name?: string | null;
-			/**
-			 * @description Updated role of the user.
-			 * @enum {unknown}
-			 */
-			role?: 'owner' | 'admin' | 'user' | 'display';
-		};
-		/**
-		 * Register
-		 * @description Schema for user registration.
-		 */
-		AuthRegister: {
-			/**
-			 * @description Unique identifier for the user.
-			 * @example johndoe
-			 */
-			username: string;
-			/**
-			 * Format: password
-			 * @description User's password. Must be at least 6 characters long.
-			 * @example superstrongpassword
-			 */
-			password: string;
-			/**
-			 * Format: email
-			 * @description Optional user's email address.
-			 * @example john@doe.com
-			 */
-			email?: string;
-			/**
-			 * @description Optional user's first name.
-			 * @example John
-			 */
-			first_name?: string;
-			/**
-			 * @description Optional user's last name.
-			 * @example Doe
-			 */
-			last_name?: string;
-		};
-		/**
-		 * Login
-		 * @description Schema for user authentication.
-		 */
-		AuthLogin: {
-			/**
-			 * @description The username of the user.
-			 * @example johndoe
-			 */
-			username: string;
-			/**
-			 * Format: password
-			 * @description The user's password.
-			 * @example superstrongpassword
-			 */
-			password: string;
-		};
-		/**
-		 * Check Email
-		 * @description Checks whether an email address is already in use.
-		 */
-		AuthCheckEmail: {
-			/**
-			 * Format: email
-			 * @description The email address to check for availability.
-			 * @example john@doe.com
-			 */
-			email: string;
-		};
-		/**
-		 * Check Username
-		 * @description Checks whether a username is already in use.
-		 */
-		AuthCheckUsername: {
-			/**
-			 * @description The username to check for availability.
-			 * @example johndoe
-			 */
-			username: string;
 		};
 		/**
 		 * Location Weather
-		 * @description Provides current weather conditions and forecast details for a specific location.
+		 * @description Schema form current weather conditions and forecast details for a specific location.
 		 */
 		WeatherLocationWeather: {
 			/** @description Current weather conditions at the specified location. */
-			weather: {
-				/**
-				 * @description Current temperature in degrees Celsius.
-				 * @example 22.5
-				 */
-				temperature: number;
-				/**
-				 * @description Minimum recorded temperature for the day in degrees Celsius.
-				 * @example 18.2
-				 */
-				temperature_min: number;
-				/**
-				 * @description Maximum recorded temperature for the day in degrees Celsius.
-				 * @example 25.8
-				 */
-				temperature_max: number;
-				/**
-				 * @description Perceived temperature based on wind and humidity.
-				 * @example 21.9
-				 */
-				feels_like: number;
-				/**
-				 * @description Atmospheric pressure in hPa.
-				 * @example 1013
-				 */
-				pressure: number;
-				/**
-				 * @description Humidity level as a percentage.
-				 * @example 55
-				 */
-				humidity: number;
-				/** @description Detailed weather status. */
-				weather: {
-					/**
-					 * @description Weather condition code.
-					 * @example 800
-					 */
-					code: number;
-					/**
-					 * @description Weather condition (e.g., Rain, Snow, Clear).
-					 * @example Clear
-					 */
-					main: string;
-					/**
-					 * @description Detailed description of the weather condition.
-					 * @example clear sky
-					 */
-					description: string;
-					/**
-					 * @description Icon code representing the current weather condition.
-					 * @example 01d
-					 */
-					icon: string;
-				};
-				/**
-				 * Format: date-time
-				 * @description Timestamp for sunrise in ISO 8601 format.
-				 * @example 2025-02-06T06:45:00Z
-				 */
-				sunrise: string;
-				/**
-				 * Format: date-time
-				 * @description Timestamp for sunset in ISO 8601 format.
-				 * @example 2025-02-06T17:30:00Z
-				 */
-				sunset: string;
-				/** @description Details of the location where the weather data is recorded. */
-				location: {
-					/**
-					 * @description Name of the city or region.
-					 * @example Prague
-					 */
-					name: string;
-					/**
-					 * @description Country code (ISO 3166-1 alpha-2) or full country name.
-					 * @example CZ
-					 */
-					country: string;
-				};
-				/** @description Wind conditions at the location. */
-				wind: {
-					/**
-					 * @description Wind speed in meters per second.
-					 * @example 3.5
-					 */
-					speed: number;
-					/**
-					 * @description Wind direction in degrees (0° - 360°).
-					 * @example 180
-					 */
-					deg: number;
-					/**
-					 * @description Wind gust speed in meters per second.
-					 * @example 5.8
-					 */
-					gust: number | null;
-				};
-				/**
-				 * @description Cloudiness percentage.
-				 * @example 10
-				 */
-				clouds: number;
-				/**
-				 * @description Rain volume in the last hour (mm).
-				 * @example 0
-				 */
-				rain: number | null;
-				/**
-				 * @description Snow volume in the last hour (mm).
-				 * @example null
-				 */
-				snow: number | null;
-				/**
-				 * Format: date-time
-				 * @description Timestamp when the weather data was last updated.
-				 * @example 2025-02-06T12:00:00Z
-				 */
-				created_at: string;
-			};
-			/** @description Weather forecast for upcoming days at the specified location. */
-			forecast: {
-				/** @description Location details for the forecast. */
-				location: {
-					/**
-					 * @description Name of the city or region.
-					 * @example Prague
-					 */
-					name: string;
-					/**
-					 * @description Country code (ISO 3166-1 alpha-2) or full country name.
-					 * @example CZ
-					 */
-					country: string;
-				};
-				/**
-				 * Format: date-time
-				 * @description Timestamp for sunrise in ISO 8601 format.
-				 * @example 2025-02-07T06:47:00Z
-				 */
-				sunrise: string;
-				/**
-				 * Format: date-time
-				 * @description Timestamp for sunset in ISO 8601 format.
-				 * @example 2025-02-07T17:32:00Z
-				 */
-				sunset: string;
-				/** @description List of daily weather forecasts. */
-				forecast: {
-					/**
-					 * @description Predicted temperature in degrees Celsius.
-					 * @example 20.5
-					 */
-					temperature: number;
-					/**
-					 * @description Predicted minimum temperature in degrees Celsius.
-					 * @example 16
-					 */
-					temperature_min: number;
-					/**
-					 * @description Predicted maximum temperature in degrees Celsius.
-					 * @example 24
-					 */
-					temperature_max: number;
-					/**
-					 * @description Predicted perceived temperature based on wind and humidity.
-					 * @example 19.8
-					 */
-					feels_like: number;
-					/**
-					 * @description Predicted atmospheric pressure in hPa.
-					 * @example 1015
-					 */
-					pressure: number;
-					/**
-					 * @description Predicted humidity level as a percentage.
-					 * @example 60
-					 */
-					humidity: number;
-					/**
-					 * @description Predicted cloudiness percentage.
-					 * @example 30
-					 */
-					clouds: number;
-					/**
-					 * @description Predicted rain volume in the last 3 hours (mm).
-					 * @example 0.5
-					 */
-					rain: number | null;
-					/**
-					 * @description Predicted snow volume in the last 3 hours (mm).
-					 * @example null
-					 */
-					snow: number | null;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the forecast data was last updated.
-					 * @example 2025-02-06T18:00:00Z
-					 */
-					created_at: string;
-				}[];
-			};
+			current: components['schemas']['WeatherDay'];
+			/** @description List of daily weather forecasts. */
+			forecast: components['schemas']['WeatherDay'][];
+			/** @description Details of the location where the weather data is recorded. */
+			location: components['schemas']['WeatherLocation'];
+			/**
+			 * Format: date-time
+			 * @description Timestamp for sunrise in ISO 8601 format.
+			 * @example 2025-02-06T06:45:00Z
+			 */
+			sunrise: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp for sunset in ISO 8601 format.
+			 * @example 2025-02-06T17:30:00Z
+			 */
+			sunset: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the weather data was last updated.
+			 * @example 2025-02-06T12:00:00Z
+			 */
+			created_at: string;
 		};
 		/**
 		 * Geolocation
@@ -3918,31 +5926,169 @@ export interface components {
 			 * @description Name of the city or location.
 			 * @example Prague
 			 */
-			name?: string;
+			name: string;
 			/** @description Alternative names for the location in different languages. */
-			local_names?: {
+			local_names: {
 				[key: string]: string;
 			};
 			/**
 			 * @description Latitude coordinate of the location.
 			 * @example 50.0755
 			 */
-			lat?: string;
+			lat: string;
 			/**
 			 * @description Longitude coordinate of the location.
 			 * @example 14.4378
 			 */
-			lon?: string;
+			lon: string;
 			/**
 			 * @description Country code (ISO 3166-1 alpha-2) or full country name.
 			 * @example CZ
 			 */
-			country?: string;
+			country: string;
 			/**
 			 * @description State or province where the location is situated, if applicable.
 			 * @example Prague Region
 			 */
 			state?: string;
+		};
+		/**
+		 * Location Weather Response
+		 * @description Response containing detailed weather conditions and forecast for a specified location.
+		 */
+		WeatherResLocationWeather: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/weather-module/weather
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['WeatherLocationWeather'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * City to Coordinates Geolocation Response
+		 * @description Response providing latitude and longitude coordinates for a given city name.
+		 */
+		WeatherResGeolocationCityToCoordinates: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/weather-module/geolocation/city-to-coordinates
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['WeatherGeolocation'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * Coordinates to City Geolocation Response
+		 * @description Response providing city details for a given latitude and longitude.
+		 */
+		WeatherResGeolocationCoordinatesToCity: {
+			/**
+			 * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+			 * @example success
+			 */
+			readonly status: string;
+			/**
+			 * Format: date-time
+			 * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly timestamp: string;
+			/**
+			 * Format: uuid
+			 * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+			 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+			 */
+			readonly request_id: string;
+			/**
+			 * @description The API endpoint that was requested, including any dynamic parameters.
+			 * @example /api/v1/weather-module/geolocation/coordinates-to-city
+			 */
+			readonly path: string;
+			/**
+			 * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+			 * @example GET
+			 * @enum {string}
+			 */
+			readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+			/** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+			data: components['schemas']['WeatherGeolocation'];
+			/** @description Additional metadata about the request and server performance metrics. */
+			metadata: components['schemas']['CommonResMetadata'];
+		};
+		/**
+		 * CommonResMetadata
+		 * @description Additional metadata about the request and server performance metrics.
+		 */
+		CommonResMetadata: {
+			/**
+			 * Format: float
+			 * @description The total time taken to process the request, in milliseconds.
+			 * @example 57
+			 */
+			readonly request_duration_ms: number;
+			/**
+			 * Format: date-time
+			 * @description The server's current timestamp when the response was generated, in ISO 8601 format.
+			 * @example 2025-01-18T12:00:00Z
+			 */
+			readonly server_time: string;
+			/**
+			 * Format: float
+			 * @description The CPU usage percentage at the time of processing the request. This can be useful for performance monitoring.
+			 * @example 25.28
+			 */
+			readonly cpu_usage: number;
 		};
 	};
 	responses: {
@@ -3972,7 +6118,10 @@ export interface components {
 					 * @example /api/v1/devices-module
 					 */
 					readonly path: string;
-					/** @enum {unknown} */
+					/**
+					 * @example GET
+					 * @enum {string}
+					 */
 					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
 					error: {
 						/**
@@ -4044,7 +6193,10 @@ export interface components {
 					 * @example /api/v1/devices-module
 					 */
 					readonly path: string;
-					/** @enum {unknown} */
+					/**
+					 * @example GET
+					 * @enum {string}
+					 */
 					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
 					error: {
 						/**
@@ -4111,7 +6263,10 @@ export interface components {
 					 * @example /api/v1/devices-module
 					 */
 					readonly path: string;
-					/** @enum {unknown} */
+					/**
+					 * @example GET
+					 * @enum {string}
+					 */
 					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
 					error: {
 						/**
@@ -4154,2483 +6309,6 @@ export interface components {
 				};
 			};
 		};
-		/** @description The device was successfully retrieved. The response contains detailed information about the device, including its metadata, channels, controls, and properties. */
-		DevicesOneDevice: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesDevice'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description A list of devices successfully retrieved. Each device includes its metadata (ID, name, category), associated channels, controls, and properties. */
-		DevicesMultipleDevices: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/**
-					 * @default success
-					 * @example success
-					 */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/devices
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesDevice'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The details of the control were successfully retrieved. The response contains information such as the control’s name, ID, associated device, and timestamps. */
-		DevicesOneDeviceControl: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/controls/227349b1-a2a7-439a-b296-59f002faa8ce
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesDeviceControl'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The list of controls was successfully retrieved. Each control includes metadata such as its ID, name, and timestamps. */
-		DevicesMultipleDeviceControls: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/controls
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesDeviceControl'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The channel details were successfully retrieved. The response contains detailed information about the channel, including its metadata, associated device, controls, and properties. */
-		DevicesOneChannel: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannel'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The list of channels was successfully retrieved. The response includes metadata for each channel, including its ID, name, category, associated device, controls, and properties. */
-		DevicesMultipleChannels: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/**
-					 * @default success
-					 * @example success
-					 */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannel'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The request was successful. The response contains the details of the requested control, including its ID, name, associated channel, and metadata. */
-		DevicesOneChannelControl: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/controls/4b76637f-a8a6-45ba-965b-4819f4b57df2
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannelControl'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The request was successful. The response contains an array of controls, each including details such as the control’s ID, name, associated channel, and metadata. */
-		DevicesMultipleChannelControls: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/**
-					 * @default success
-					 * @example success
-					 */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/controls
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannelControl'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The request was successful. The response contains the full representation of the requested property, including its unique identifier, metadata, current value, and the associated channel. */
-		DevicesOneChannelProperty: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannelProperty'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The request was successful. The response contains an array of properties associated with the specified channel. Each property includes detailed metadata such as its unique identifier, category, permissions, data type, unit, and current value, along with timestamps for creation and updates. */
-		DevicesMultipleChannelProperties: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/**
-					 * @default success
-					 * @example success
-					 */
-					status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties
-					 */
-					path: string;
-					/** @enum {unknown} */
-					method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannelProperty'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The device was successfully created. The response body contains the complete representation of the device, including its unique ID, category, name, channels, controls, and properties. A Location header is also returned, containing the URI of the created device resource for future operations. */
-		DevicesCreatedDevice: {
-			headers: {
-				/** @description The URI of the newly created device resource, which can be used to retrieve, update, or delete the device. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/devices
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesDevice'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The device was successfully updated. The response contains the updated device object, including its metadata, associated channels, controls, and properties. */
-		DevicesUpdateDevice: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesDevice'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The control was successfully created. The response contains the details of the newly created control. */
-		DevicesCreatedDeviceControl: {
-			headers: {
-				/** @description The URI of the newly created device control resource, which can be used to retrieve, update, or delete the control. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/controls
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesDeviceControl'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The channel was successfully created. The response contains the details of the newly created channel, including its metadata, associated controls, and properties. */
-		DevicesCreatedChannel: {
-			headers: {
-				/** @description The URI of the newly created channel resource, which can be used to retrieve, update, or delete the channel. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannel'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The channel was successfully updated. The response contains the updated channel object, including its metadata, associated controls, and properties. */
-		DevicesUpdatedChannel: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannel'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated channel, and timestamps. */
-		DevicesCreatedChannelControl: {
-			headers: {
-				/** @description The URI of the newly created channel control resource, which can be used to retrieve, update, or delete the control. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/controls
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannelControl'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The property was successfully created. The response body contains the complete representation of the created property, including its unique ID, associated channel, category, and metadata. The Location header provides the URI of the newly created property resource. */
-		DevicesCreatedChannelProperty: {
-			headers: {
-				/** @description The URI of the newly created channel property resource, which can be used to retrieve, update, or delete the property. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannelProperty'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The property was successfully updated. The response contains the updated representation of the property, including its unique identifier, metadata, and current value. */
-		DevicesUpdatedChannelProperty: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DevicesChannelProperty'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The page was successfully retrieved. The response contains detailed information about the page, including its metadata, tiles and data sources. */
-		DashboardOnePage: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardPage'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description A list of pages successfully retrieved. Each page includes its metadata (ID and title), associated tiles and data sources. */
-		DashboardMultiplePages: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					readonly data: components['schemas']['DashboardPage'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The details of the tile were successfully retrieved. The response contains information such as the tile’s position, size, associated page, and timestamps. */
-		DashboardOneTile: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardTile'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The list of tiles was successfully retrieved. Each tile includes metadata such as its ID, size, and position. */
-		DashboardMultipleTiles: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					readonly data: components['schemas']['DashboardTile'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The details of the data soure were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated tile. */
-		DashboardOneDataSource: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source/123e4567-e89b-12d3-a456-426614174000
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardDataSource'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
-		DashboardMultipleDataSources: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					readonly data: components['schemas']['DashboardDataSource'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The page was successfully created. The response body contains the complete representation of the page, including its unique ID, title, tiles and data sources. A Location header is also returned, containing the URI of the created page resource for future operations. */
-		DashboardCreatedPage: {
-			headers: {
-				/** @description The URI of the newly created page resource, which can be used to retrieve, update, or delete the page. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardPage'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The tile was successfully created. The response contains the details of the newly created tile. */
-		DashboardCreatedTile: {
-			headers: {
-				/** @description The URI of the newly created page tile resource, which can be used to retrieve, update, or delete the tile. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardTile'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
-		DashboardCreatedDataSource: {
-			headers: {
-				/** @description The URI of the newly created tile data source resource, which can be used to retrieve, update, or delete the data source. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardDataSource'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The page was successfully updated. The response contains the updated page object, including its metadata, associated tiles and data sources. */
-		DashboardUpdatedPage: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardPage'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Partially updates the attributes of a specific tile associated with a page using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object. */
-		DashboardUpdatedTile: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardTile'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata. */
-		DashboardUpdatedDataSource: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source/123e4567-e89b-12d3-a456-426614174000
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardDataSource'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response containing the full smart panel configuration, including audio, display, language, and weather settings. */
-		ConfigApp: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['ConfigApp'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response containing the current audio configuration, including speaker and microphone settings. */
-		ConfigSection: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data:
-						| components['schemas']['ConfigAudio']
-						| components['schemas']['ConfigDisplay']
-						| components['schemas']['ConfigLanguage']
-						| components['schemas']['ConfigWeather'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Provides a detailed overview of the system’s current status, including CPU load, memory usage, storage details, temperature readings, operating system information, network statistics, and display settings. */
-		SystemSystemInfo: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['SystemSystemInfo'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Provides the system’s throttling status, indicating whether any CPU or power-related limitations have been triggered. */
-		SystemSystemThrottling: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['SystemThrottleStatus'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Represents the result of an individual property update request. */
-		DevicesThirdPartyDevicePropertyUpdateResult: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': components['schemas']['DevicesThirdPartyDevicePropertyUpdateResult'];
-			};
-		};
-		/** @description The card was successfully created. The response contains the details of the newly created card. */
-		DashboardCreatedCard: {
-			headers: {
-				/** @description The URI of the newly created card resource, which can be used to retrieve, update, or delete the card. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardCard'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Partially updates the attributes of a specific card associated with a page using its unique ID. The update can modify metadata, such as the card’s title or icon, without requiring the full object. */
-		DashboardUpdatedCard: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardCard'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The list of cards was successfully retrieved. Each card includes metadata such as its ID, title, and icon. */
-		DashboardMultipleCards: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					readonly data: components['schemas']['DashboardCard'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The details of the card were successfully retrieved. The response contains information such as the card’s associated tiles, data sources and card details. */
-		DashboardOneCard: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source/123e4567-e89b-12d3-a456-426614174000
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['DashboardCard'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response returned after successfully creating a user. */
-		UsersCreatedUser: {
-			headers: {
-				/** @description The URI of the newly created user resource, which can be used to retrieve, update, or delete the user. */
-				Location?: string;
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['UsersUser'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response returned after successfully updating a user. */
-		UsersUpdatedUser: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['UsersUser'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description A list of users successfully retrieved. Each user includes its metadata (ID, username, role). */
-		UsersMultipleUsers: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['UsersUser'][];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description The user details were successfully retrieved. The response contains detailed information about the user. */
-		UsersOneUser: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['UsersUser'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response returned after successful user login. */
-		AuthLoggedIn: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: {
-						/** @description The JWT access token for authenticated sessions. */
-						access_token: string;
-						/** @description The JWT refresh token for authenticated sessions. */
-						refresh_token: string;
-						/** @description Token type */
-						type: string;
-						/**
-						 * Format: date-time
-						 * @description The JWT access token expiration date.
-						 */
-						expiration: string;
-					};
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response returned when checking the validity of a user's authentication token. */
-		AuthCheck: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: {
-						/** @description Indicates whether the provided validation field is valid. */
-						valid: boolean;
-					};
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response returned after successfully registering a display-only user. */
-		AuthRegisteredDisplay: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: {
-						/** @description A unique secret key assigned to the display-only user. */
-						secret: string;
-					};
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response containing the authenticated user's profile details. */
-		AuthProfile: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					/** @description User profile data for the authenticated user. */
-					data: components['schemas']['UsersUser'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response containing current weather conditions and forecast details for a specified location. */
-		WeatherLocationWeather: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['WeatherLocationWeather'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response containing geographical information related to a specified location. */
-		WeatherGeolocation: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: components['schemas']['WeatherGeolocation'];
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
-		/** @description Response returned after successful user access token refresh. */
-		AuthRefresh: {
-			headers: {
-				[name: string]: unknown;
-			};
-			content: {
-				'application/json': {
-					/** @example success */
-					readonly status: string;
-					/**
-					 * Format: date-time
-					 * @description Timestamp when the error occurred in ISO 8601 format.
-					 * @example 2025-01-18T12:00:00Z
-					 */
-					readonly timestamp: string;
-					/**
-					 * Format: uuid
-					 * @description Unique identifier for this specific API request.
-					 * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-					 */
-					readonly request_id: string;
-					/**
-					 * @description The requested API endpoint.
-					 * @example /api/v1/dashboard-module/pages/123e4567-e89b-12d3-a456-426614174000/tiles/456e7890-a89b-22d3-c456-426614174111/data-source
-					 */
-					readonly path: string;
-					/** @enum {unknown} */
-					readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-					data: {
-						/** @description The JWT access token for authenticated sessions. */
-						access_token: string;
-						/** @description The JWT refresh token for authenticated sessions. */
-						refresh_token: string;
-						/** @description Token type */
-						type: string;
-						/**
-						 * Format: date-time
-						 * @description The JWT access token expiration date.
-						 */
-						expiration: string;
-					};
-					metadata: {
-						/**
-						 * Format: float
-						 * @example 57
-						 */
-						readonly request_duration_ms: number;
-						/**
-						 * Format: date-time
-						 * @example 2025-01-18T12:00:00Z
-						 */
-						readonly server_time: string;
-						/**
-						 * Format: float
-						 * @example 25.28
-						 */
-						readonly cpu_usage: number;
-					};
-				};
-			};
-		};
 	};
 	parameters: {
 		/**
@@ -6664,339 +6342,58 @@ export interface components {
 		 */
 		tileId: string;
 	};
-	requestBodies: {
-		/** @description The data required to create a new device */
-		DevicesCreateDevice: {
-			content: {
-				'application/json': components['schemas']['DevicesCreateThirdPartyDevice'] & {
-					controls?: components['schemas']['DevicesCreateDeviceControl'][];
-					channels?: (components['schemas']['DevicesCreateChannel'] & {
-						controls?: components['schemas']['DevicesCreateChannelControl'][];
-						properties?: components['schemas']['DevicesCreateChannelProperty'][];
-					})[];
-				};
-			};
-		};
-		/** @description The data required to create a new device control */
-		DevicesCreateDeviceControl: {
-			content: {
-				'application/json': components['schemas']['DevicesCreateDeviceControl'];
-			};
-		};
-		/** @description The data required to create a new channel */
-		DevicesCreateChannel: {
-			content: {
-				'application/json': components['schemas']['DevicesCreateChannel'] & {
-					/**
-					 * Format: uuid
-					 * @description The parent device to which this channel belongs.
-					 * @example 332dda32-b7de-4557-956a-b6ed6c6799a4
-					 */
-					device: string;
-					controls?: components['schemas']['DevicesCreateChannelControl'];
-					properties?: components['schemas']['DevicesCreateChannelProperty'][];
-				};
-			};
-		};
-		/** @description The data required to create a new channel control */
-		DevicesCreateChannelControl: {
-			content: {
-				'application/json': components['schemas']['DevicesCreateChannelControl'];
-			};
-		};
-		/** @description The data required to create a new channel property */
-		DevicesCreateChannelProperty: {
-			content: {
-				'application/json': components['schemas']['DevicesCreateChannelProperty'];
-			};
-		};
-		/** @description The data required to update a existing device */
-		DevicesUpdateDevice: {
-			content: {
-				'application/json': components['schemas']['DevicesUpdateThirdPartyDevice'];
-			};
-		};
-		/** @description The data required to update a existing channel */
-		DevicesUpdateChannel: {
-			content: {
-				'application/json': components['schemas']['DevicesUpdateChannel'];
-			};
-		};
-		/** @description The data required to update a existing channel property */
-		DevicesUpdateChannelProperty: {
-			content: {
-				'application/json': components['schemas']['DevicesUpdateChannelProperty'];
-			};
-		};
-		/** @description The data required to create a new device channel */
-		DevicesCreateDeviceChannel: {
-			content: {
-				'application/json': components['schemas']['DevicesCreateChannel'] & {
-					controls?: components['schemas']['DevicesCreateChannelControl'][];
-					properties?: components['schemas']['DevicesCreateChannelProperty'][];
-				};
-			};
-		};
-		/** @description The payload schema used for creating a new dashboard page. */
-		DashboardCreatePage: {
-			content: {
-				'application/json':
-					| (components['schemas']['DashboardCreateCardsPage'] & {
-							/** @description A list of tiles to include on the cards page. */
-							cards?: (components['schemas']['DashboardCreateCard'] & {
-								tiles?: (
-									| (components['schemas']['DashboardCreateDeviceTile'] & {
-											data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-									  })
-									| (components['schemas']['DashboardCreateTimeTile'] & {
-											data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-									  })
-									| (components['schemas']['DashboardCreateDayWeatherTile'] & {
-											data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-									  })
-									| (components['schemas']['DashboardCreateForecastWeatherTile'] & {
-											data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-									  })
-								)[];
-								data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-							})[];
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  })
-					| (components['schemas']['DashboardCreateTilesPage'] & {
-							/** @description A list of tiles to include on the cards page. */
-							tiles?: (
-								| (components['schemas']['DashboardCreateDeviceTile'] & {
-										/** @description A list of data sources associated with the device tile. */
-										data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-								  })
-								| (components['schemas']['DashboardCreateTimeTile'] & {
-										/** @description A list of data sources associated with the device tile. */
-										data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-								  })
-								| (components['schemas']['DashboardCreateDayWeatherTile'] & {
-										/** @description A list of data sources associated with the device tile. */
-										data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-								  })
-								| (components['schemas']['DashboardCreateForecastWeatherTile'] & {
-										/** @description A list of data sources associated with the device tile. */
-										data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-								  })
-							)[];
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  })
-					| components['schemas']['DashboardCreateDevicePage'];
-			};
-		};
-		/** @description The payload schema used for creating a new page tile. */
-		DashboardCreatePageTile: {
-			content: {
-				'application/json':
-					| (components['schemas']['DashboardCreateDeviceTile'] & {
-							/** @description A list of data sources associated with the device tile. */
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  })
-					| (components['schemas']['DashboardCreateTimeTile'] & {
-							/** @description A list of data sources associated with the device tile. */
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  })
-					| (components['schemas']['DashboardCreateDayWeatherTile'] & {
-							/** @description A list of data sources associated with the device tile. */
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  })
-					| (components['schemas']['DashboardCreateForecastWeatherTile'] & {
-							/** @description A list of data sources associated with the device tile. */
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  });
-			};
-		};
-		/** @description The payload schema used for creating a new tile data source. */
-		DashboardCreatePageTileDataSource: {
-			content: {
-				'application/json': components['schemas']['DashboardCreateDeviceChannelDataSource'];
-			};
-		};
-		/** @description The payload schema used for updatin a existing dashboard page. */
-		DashboardUpdatePage: {
-			content: {
-				'application/json':
-					| components['schemas']['DashboardUpdateCardsPage']
-					| components['schemas']['DashboardUpdateDevicePage'];
-			};
-		};
-		/** @description The payload schema used for updating a existing page tile. */
-		DashboardUpdatePageTile: {
-			content: {
-				'application/json':
-					| components['schemas']['DashboardUpdateDeviceTile']
-					| components['schemas']['DashboardUpdateTimeTile'];
-			};
-		};
-		/** @description The payload schema used for updating a existing tile data source. */
-		DashboardUpdatePageTileDataSource: {
-			content: {
-				'application/json': components['schemas']['DashboardUpdateDeviceChannelDataSource'];
-			};
-		};
-		/** @description Request body for updating audio configuration, allowing modifications to speaker and microphone settings. */
-		ConfigUpdate: {
-			content: {
-				'application/json':
-					| components['schemas']['ConfigUpdateAudio']
-					| components['schemas']['ConfigUpdateDisplay']
-					| components['schemas']['ConfigUpdateLanguage']
-					| components['schemas']['ConfigUpdateWeather'];
-			};
-		};
-		/** @description Represents property update operation for a third-party device. */
-		DevicesThirdPartyDevicePropertyUpdateRequest: {
-			content: {
-				'application/json': components['schemas']['DevicesThirdPartyDevicePropertyUpdateRequest'];
-			};
-		};
-		/** @description The payload schema used for creating a new page card. */
-		DashboardCreatePageCard: {
-			content: {
-				'application/json': components['schemas']['DashboardCreateCard'] & {
-					tiles?: (
-						| (components['schemas']['DashboardCreateDeviceTile'] & {
-								data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-						  })
-						| (components['schemas']['DashboardCreateTimeTile'] & {
-								data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-						  })
-						| (components['schemas']['DashboardCreateDayWeatherTile'] & {
-								data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-						  })
-						| (components['schemas']['DashboardCreateForecastWeatherTile'] & {
-								data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-						  })
-					)[];
-					data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-				};
-			};
-		};
-		/** @description The payload schema used for creating a new page data source. */
-		DashboardCreatePageDataSource: {
-			content: {
-				'application/json': components['schemas']['DashboardCreateDeviceChannelDataSource'];
-			};
-		};
-		/** @description The payload schema used for creating a new card data source. */
-		DashboardCreatePageCardDataSource: {
-			content: {
-				'application/json': components['schemas']['DashboardCreateDeviceChannelDataSource'];
-			};
-		};
-		/** @description The payload schema used for creating a new card tile. */
-		DashboardCreatePageCardTile: {
-			content: {
-				'application/json':
-					| (components['schemas']['DashboardCreateDeviceTile'] & {
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  })
-					| (components['schemas']['DashboardCreateTimeTile'] & {
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  })
-					| (components['schemas']['DashboardCreateDayWeatherTile'] & {
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  })
-					| (components['schemas']['DashboardCreateForecastWeatherTile'] & {
-							data_source?: components['schemas']['DashboardCreateDeviceChannelDataSource'][];
-					  });
-			};
-		};
-		/** @description The payload schema used for updatin a existing page card. */
-		DashboardUpdatePageCard: {
-			content: {
-				'application/json': components['schemas']['DashboardUpdateCard'];
-			};
-		};
-		/** @description The payload schema used for updatin a existing card data source. */
-		DashboardUpdatePageCardDataSource: {
-			content: {
-				'application/json': components['schemas']['DashboardUpdateDeviceChannelDataSource'];
-			};
-		};
-		/** @description The payload schema used for updatin a existing card tile. */
-		DashboardUpdatePageCardTile: {
-			content: {
-				'application/json':
-					| components['schemas']['DashboardUpdateDeviceTile']
-					| components['schemas']['DashboardUpdateTimeTile'];
-			};
-		};
-		/** @description The payload schema used for updatin a existing tile data source. */
-		DashboardUpdatePageCardTileDataSource: {
-			content: {
-				'application/json': components['schemas']['DashboardUpdateDeviceChannelDataSource'];
-			};
-		};
-		/** @description The payload schema used for creating a new tile data source. */
-		DashboardCreatePageCardTileDataSource: {
-			content: {
-				'application/json': components['schemas']['DashboardCreateDeviceChannelDataSource'];
-			};
-		};
-		/** @description The payload schema used for updatin a existing page data source. */
-		DashboardUpdatePageDataSource: {
-			content: {
-				'application/json': components['schemas']['DashboardUpdateDeviceChannelDataSource'];
-			};
-		};
-		/** @description Schema for creating a new user. */
-		UsersCreateUser: {
-			content: {
-				'application/json': components['schemas']['UsersCreateUser'];
-			};
-		};
-		/** @description Schema for updating an existing user. Supports partial updates. */
-		UsersUpdateUser: {
-			content: {
-				'application/json': components['schemas']['UsersUpdateUser'];
-			};
-		};
-		/** @description Schema for user registration. */
-		AuthRegister: {
-			content: {
-				'application/json': components['schemas']['AuthRegister'];
-			};
-		};
-		/** @description Schema for user authentication. */
-		AuthLogin: {
-			content: {
-				'application/json': components['schemas']['AuthLogin'];
-			};
-		};
-		/** @description Checks whether an email address is already in use. */
-		AuthCheckEmail: {
-			content: {
-				'application/json': components['schemas']['AuthCheckEmail'];
-			};
-		};
-		/** @description Checks whether a username is already in use. */
-		AuthCheckUsername: {
-			content: {
-				'application/json': components['schemas']['AuthCheckUsername'];
-			};
-		};
-		/** @description Schema for user access token refresh. */
-		AuthRefresh: {
-			content: {
-				'application/json': {
-					/** @description JWT refresh access token */
-					token: string;
-				};
-			};
-		};
-	};
+	requestBodies: never;
 	headers: never;
 	pathItems: never;
 }
+export type SchemaAuthRegister = components['schemas']['AuthRegister'];
+export type SchemaAuthCheckUsername = components['schemas']['AuthCheckUsername'];
+export type SchemaAuthCheckEmail = components['schemas']['AuthCheckEmail'];
+export type SchemaAuthLogin = components['schemas']['AuthLogin'];
+export type SchemaAuthRefreshToken = components['schemas']['AuthRefreshToken'];
+export type SchemaAuthTokenPair = components['schemas']['AuthTokenPair'];
+export type SchemaAuthValidation = components['schemas']['AuthValidation'];
+export type SchemaAuthDisplaySecret = components['schemas']['AuthDisplaySecret'];
+export type SchemaAuthReqRegister = components['schemas']['AuthReqRegister'];
+export type SchemaAuthReqCheckUsername = components['schemas']['AuthReqCheckUsername'];
+export type SchemaAuthReqCheckEmail = components['schemas']['AuthReqCheckEmail'];
+export type SchemaAuthReqLogin = components['schemas']['AuthReqLogin'];
+export type SchemaAuthReqRefreshToken = components['schemas']['AuthReqRefreshToken'];
+export type SchemaAuthResCheckUsername = components['schemas']['AuthResCheckUsername'];
+export type SchemaAuthResCheckEmail = components['schemas']['AuthResCheckEmail'];
+export type SchemaAuthResLogin = components['schemas']['AuthResLogin'];
+export type SchemaAuthResRefresh = components['schemas']['AuthResRefresh'];
+export type SchemaAuthResRegisterDisplay = components['schemas']['AuthResRegisterDisplay'];
+export type SchemaAuthResProfile = components['schemas']['AuthResProfile'];
+export type SchemaUsersUser = components['schemas']['UsersUser'];
+export type SchemaUsersCreateUser = components['schemas']['UsersCreateUser'];
+export type SchemaUsersUpdateUser = components['schemas']['UsersUpdateUser'];
+export type SchemaUsersReqCreateUser = components['schemas']['UsersReqCreateUser'];
+export type SchemaUsersReqUpdateUser = components['schemas']['UsersReqUpdateUser'];
+export type SchemaUsersResUser = components['schemas']['UsersResUser'];
+export type SchemaUsersResUsers = components['schemas']['UsersResUsers'];
+export type SchemaConfigAudio = components['schemas']['ConfigAudio'];
+export type SchemaConfigDisplay = components['schemas']['ConfigDisplay'];
+export type SchemaConfigLanguage = components['schemas']['ConfigLanguage'];
+export type SchemaConfigWeather = components['schemas']['ConfigWeather'];
+export type SchemaConfigApp = components['schemas']['ConfigApp'];
+export type SchemaConfigUpdateAudio = components['schemas']['ConfigUpdateAudio'];
+export type SchemaConfigUpdateDisplay = components['schemas']['ConfigUpdateDisplay'];
+export type SchemaConfigUpdateLanguage = components['schemas']['ConfigUpdateLanguage'];
+export type SchemaConfigUpdateWeather = components['schemas']['ConfigUpdateWeather'];
+export type SchemaConfigReqUpdateSection = components['schemas']['ConfigReqUpdateSection'];
+export type SchemaConfigResApp = components['schemas']['ConfigResApp'];
+export type SchemaConfigResSection = components['schemas']['ConfigResSection'];
 export type SchemaDevicesDeviceBase = components['schemas']['DevicesDeviceBase'];
 export type SchemaDevicesThirdPartyDevice = components['schemas']['DevicesThirdPartyDevice'];
+export type SchemaDevicesDeviceControl = components['schemas']['DevicesDeviceControl'];
+export type SchemaDevicesChannel = components['schemas']['DevicesChannel'];
+export type SchemaDevicesChannelControl = components['schemas']['DevicesChannelControl'];
+export type SchemaDevicesChannelProperty = components['schemas']['DevicesChannelProperty'];
 export type SchemaDevicesCreateDeviceBase = components['schemas']['DevicesCreateDeviceBase'];
 export type SchemaDevicesCreateThirdPartyDevice = components['schemas']['DevicesCreateThirdPartyDevice'];
 export type SchemaDevicesCreateDeviceControl = components['schemas']['DevicesCreateDeviceControl'];
+export type SchemaDevicesCreateDeviceChannel = components['schemas']['DevicesCreateDeviceChannel'];
 export type SchemaDevicesCreateChannel = components['schemas']['DevicesCreateChannel'];
 export type SchemaDevicesCreateChannelControl = components['schemas']['DevicesCreateChannelControl'];
 export type SchemaDevicesCreateChannelProperty = components['schemas']['DevicesCreateChannelProperty'];
@@ -7004,23 +6401,44 @@ export type SchemaDevicesUpdateDeviceBase = components['schemas']['DevicesUpdate
 export type SchemaDevicesUpdateThirdPartyDevice = components['schemas']['DevicesUpdateThirdPartyDevice'];
 export type SchemaDevicesUpdateChannel = components['schemas']['DevicesUpdateChannel'];
 export type SchemaDevicesUpdateChannelProperty = components['schemas']['DevicesUpdateChannelProperty'];
-export type SchemaDevicesDevice = components['schemas']['DevicesDevice'];
-export type SchemaDevicesDeviceControl = components['schemas']['DevicesDeviceControl'];
-export type SchemaDevicesChannel = components['schemas']['DevicesChannel'];
-export type SchemaDevicesChannelControl = components['schemas']['DevicesChannelControl'];
-export type SchemaDevicesChannelProperty = components['schemas']['DevicesChannelProperty'];
+export type SchemaDevicesReqCreateDevice = components['schemas']['DevicesReqCreateDevice'];
+export type SchemaDevicesReqCreateDeviceControl = components['schemas']['DevicesReqCreateDeviceControl'];
+export type SchemaDevicesReqCreateDeviceChannel = components['schemas']['DevicesReqCreateDeviceChannel'];
+export type SchemaDevicesReqCreateChannel = components['schemas']['DevicesReqCreateChannel'];
+export type SchemaDevicesReqCreateChannelControl = components['schemas']['DevicesReqCreateChannelControl'];
+export type SchemaDevicesReqCreateChannelProperty = components['schemas']['DevicesReqCreateChannelProperty'];
+export type SchemaDevicesReqUpdateDevice = components['schemas']['DevicesReqUpdateDevice'];
+export type SchemaDevicesReqUpdateChannel = components['schemas']['DevicesReqUpdateChannel'];
+export type SchemaDevicesReqUpdateChannelProperty = components['schemas']['DevicesReqUpdateChannelProperty'];
+export type SchemaDevicesResDevice = components['schemas']['DevicesResDevice'];
+export type SchemaDevicesResDevices = components['schemas']['DevicesResDevices'];
+export type SchemaDevicesResDeviceControl = components['schemas']['DevicesResDeviceControl'];
+export type SchemaDevicesResDeviceControls = components['schemas']['DevicesResDeviceControls'];
+export type SchemaDevicesResDeviceChannel = components['schemas']['DevicesResDeviceChannel'];
+export type SchemaDevicesResDeviceChannels = components['schemas']['DevicesResDeviceChannels'];
+export type SchemaDevicesResChannel = components['schemas']['DevicesResChannel'];
+export type SchemaDevicesResChannels = components['schemas']['DevicesResChannels'];
+export type SchemaDevicesResChannelControl = components['schemas']['DevicesResChannelControl'];
+export type SchemaDevicesResChannelControls = components['schemas']['DevicesResChannelControls'];
+export type SchemaDevicesResChannelProperty = components['schemas']['DevicesResChannelProperty'];
+export type SchemaDevicesResChannelProperties = components['schemas']['DevicesResChannelProperties'];
 export type SchemaDevicesDeviceCategory = components['schemas']['DevicesDeviceCategory'];
 export type SchemaDevicesChannelCategory = components['schemas']['DevicesChannelCategory'];
 export type SchemaDevicesChannelPropertyCategory = components['schemas']['DevicesChannelPropertyCategory'];
 export type SchemaDevicesThirdPartyDevicePropertyUpdateRequest =
 	components['schemas']['DevicesThirdPartyDevicePropertyUpdateRequest'];
+export type SchemaDevicesThirdPartyDevicePropertiesUpdateRequest =
+	components['schemas']['DevicesThirdPartyDevicePropertiesUpdateRequest'];
 export type SchemaDevicesThirdPartyDevicePropertyUpdateResult =
 	components['schemas']['DevicesThirdPartyDevicePropertyUpdateResult'];
+export type SchemaDevicesThirdPartyDevicePropertiesUpdateResult =
+	components['schemas']['DevicesThirdPartyDevicePropertiesUpdateResult'];
 export type SchemaDevicesThirdPartyErrorCode = components['schemas']['DevicesThirdPartyErrorCode'];
 export type SchemaDashboardPageBase = components['schemas']['DashboardPageBase'];
 export type SchemaDashboardCardsPage = components['schemas']['DashboardCardsPage'];
 export type SchemaDashboardTilesPage = components['schemas']['DashboardTilesPage'];
 export type SchemaDashboardDevicePage = components['schemas']['DashboardDevicePage'];
+export type SchemaDashboardCard = components['schemas']['DashboardCard'];
 export type SchemaDashboardTileBase = components['schemas']['DashboardTileBase'];
 export type SchemaDashboardDeviceTile = components['schemas']['DashboardDeviceTile'];
 export type SchemaDashboardTimeTile = components['schemas']['DashboardTimeTile'];
@@ -7054,19 +6472,33 @@ export type SchemaDashboardUpdateForecastWeatherTile = components['schemas']['Da
 export type SchemaDashboardUpdateDataSourceBase = components['schemas']['DashboardUpdateDataSourceBase'];
 export type SchemaDashboardUpdateDeviceChannelDataSource =
 	components['schemas']['DashboardUpdateDeviceChannelDataSource'];
-export type SchemaDashboardPage = components['schemas']['DashboardPage'];
-export type SchemaDashboardCard = components['schemas']['DashboardCard'];
-export type SchemaDashboardTile = components['schemas']['DashboardTile'];
-export type SchemaDashboardDataSource = components['schemas']['DashboardDataSource'];
-export type SchemaConfigAudio = components['schemas']['ConfigAudio'];
-export type SchemaConfigDisplay = components['schemas']['ConfigDisplay'];
-export type SchemaConfigLanguage = components['schemas']['ConfigLanguage'];
-export type SchemaConfigWeather = components['schemas']['ConfigWeather'];
-export type SchemaConfigApp = components['schemas']['ConfigApp'];
-export type SchemaConfigUpdateAudio = components['schemas']['ConfigUpdateAudio'];
-export type SchemaConfigUpdateDisplay = components['schemas']['ConfigUpdateDisplay'];
-export type SchemaConfigUpdateLanguage = components['schemas']['ConfigUpdateLanguage'];
-export type SchemaConfigUpdateWeather = components['schemas']['ConfigUpdateWeather'];
+export type SchemaDashboardReqCreatePage = components['schemas']['DashboardReqCreatePage'];
+export type SchemaDashboardReqCreatePageCard = components['schemas']['DashboardReqCreatePageCard'];
+export type SchemaDashboardReqCreatePageTile = components['schemas']['DashboardReqCreatePageTile'];
+export type SchemaDashboardReqCreateCardTile = components['schemas']['DashboardReqCreateCardTile'];
+export type SchemaDashboardReqCreatePageDataSource = components['schemas']['DashboardReqCreatePageDataSource'];
+export type SchemaDashboardReqCreateCardDataSource = components['schemas']['DashboardReqCreateCardDataSource'];
+export type SchemaDashboardReqCreateTileDataSource = components['schemas']['DashboardReqCreateTileDataSource'];
+export type SchemaDashboardReqUpdatePage = components['schemas']['DashboardReqUpdatePage'];
+export type SchemaDashboardReqUpdateCard = components['schemas']['DashboardReqUpdateCard'];
+export type SchemaDashboardReqUpdateTile = components['schemas']['DashboardReqUpdateTile'];
+export type SchemaDashboardReqUpdateDataSource = components['schemas']['DashboardReqUpdateDataSource'];
+export type SchemaDashboardResPage = components['schemas']['DashboardResPage'];
+export type SchemaDashboardResPages = components['schemas']['DashboardResPages'];
+export type SchemaDashboardResPageCard = components['schemas']['DashboardResPageCard'];
+export type SchemaDashboardResPageCards = components['schemas']['DashboardResPageCards'];
+export type SchemaDashboardResPageCardTile = components['schemas']['DashboardResPageCardTile'];
+export type SchemaDashboardResPageCardTiles = components['schemas']['DashboardResPageCardTiles'];
+export type SchemaDashboardResPageCardTileDataSource = components['schemas']['DashboardResPageCardTileDataSource'];
+export type SchemaDashboardResPageCardTileDataSources = components['schemas']['DashboardResPageCardTileDataSources'];
+export type SchemaDashboardResPageCardDataSource = components['schemas']['DashboardResPageCardDataSource'];
+export type SchemaDashboardResPageCardDataSources = components['schemas']['DashboardResPageCardDataSources'];
+export type SchemaDashboardResPageTile = components['schemas']['DashboardResPageTile'];
+export type SchemaDashboardResPageTiles = components['schemas']['DashboardResPageTiles'];
+export type SchemaDashboardResPageTileDataSource = components['schemas']['DashboardResPageTileDataSource'];
+export type SchemaDashboardResPageTileDataSources = components['schemas']['DashboardResPageTileDataSources'];
+export type SchemaDashboardResPageDataSource = components['schemas']['DashboardResPageDataSource'];
+export type SchemaDashboardResPageDataSources = components['schemas']['DashboardResPageDataSources'];
 export type SchemaSystemMemoryInfo = components['schemas']['SystemMemoryInfo'];
 export type SchemaSystemStorageInfo = components['schemas']['SystemStorageInfo'];
 export type SchemaSystemTemperatureInfo = components['schemas']['SystemTemperatureInfo'];
@@ -7075,116 +6507,29 @@ export type SchemaSystemDisplayInfo = components['schemas']['SystemDisplayInfo']
 export type SchemaSystemNetworkStats = components['schemas']['SystemNetworkStats'];
 export type SchemaSystemSystemInfo = components['schemas']['SystemSystemInfo'];
 export type SchemaSystemThrottleStatus = components['schemas']['SystemThrottleStatus'];
-export type SchemaUsersUser = components['schemas']['UsersUser'];
-export type SchemaUsersCreateUser = components['schemas']['UsersCreateUser'];
-export type SchemaUsersUpdateUser = components['schemas']['UsersUpdateUser'];
-export type SchemaAuthRegister = components['schemas']['AuthRegister'];
-export type SchemaAuthLogin = components['schemas']['AuthLogin'];
-export type SchemaAuthCheckEmail = components['schemas']['AuthCheckEmail'];
-export type SchemaAuthCheckUsername = components['schemas']['AuthCheckUsername'];
+export type SchemaSystemResSystemInfo = components['schemas']['SystemResSystemInfo'];
+export type SchemaSystemResThrottleStatus = components['schemas']['SystemResThrottleStatus'];
+export type SchemaWeatherWeather = components['schemas']['WeatherWeather'];
+export type SchemaWeatherWind = components['schemas']['WeatherWind'];
+export type SchemaWeatherLocation = components['schemas']['WeatherLocation'];
+export type SchemaWeatherDay = components['schemas']['WeatherDay'];
 export type SchemaWeatherLocationWeather = components['schemas']['WeatherLocationWeather'];
 export type SchemaWeatherGeolocation = components['schemas']['WeatherGeolocation'];
+export type SchemaWeatherResLocationWeather = components['schemas']['WeatherResLocationWeather'];
+export type SchemaWeatherResGeolocationCityToCoordinates =
+	components['schemas']['WeatherResGeolocationCityToCoordinates'];
+export type SchemaWeatherResGeolocationCoordinatesToCity =
+	components['schemas']['WeatherResGeolocationCoordinatesToCity'];
+export type SchemaCommonResMetadata = components['schemas']['CommonResMetadata'];
 export type ResponseInternalServerError = components['responses']['InternalServerError'];
 export type ResponseNotFoundError = components['responses']['NotFoundError'];
 export type ResponseBadRequestError = components['responses']['BadRequestError'];
-export type ResponseDevicesOneDevice = components['responses']['DevicesOneDevice'];
-export type ResponseDevicesMultipleDevices = components['responses']['DevicesMultipleDevices'];
-export type ResponseDevicesOneDeviceControl = components['responses']['DevicesOneDeviceControl'];
-export type ResponseDevicesMultipleDeviceControls = components['responses']['DevicesMultipleDeviceControls'];
-export type ResponseDevicesOneChannel = components['responses']['DevicesOneChannel'];
-export type ResponseDevicesMultipleChannels = components['responses']['DevicesMultipleChannels'];
-export type ResponseDevicesOneChannelControl = components['responses']['DevicesOneChannelControl'];
-export type ResponseDevicesMultipleChannelControls = components['responses']['DevicesMultipleChannelControls'];
-export type ResponseDevicesOneChannelProperty = components['responses']['DevicesOneChannelProperty'];
-export type ResponseDevicesMultipleChannelProperties = components['responses']['DevicesMultipleChannelProperties'];
-export type ResponseDevicesCreatedDevice = components['responses']['DevicesCreatedDevice'];
-export type ResponseDevicesUpdateDevice = components['responses']['DevicesUpdateDevice'];
-export type ResponseDevicesCreatedDeviceControl = components['responses']['DevicesCreatedDeviceControl'];
-export type ResponseDevicesCreatedChannel = components['responses']['DevicesCreatedChannel'];
-export type ResponseDevicesUpdatedChannel = components['responses']['DevicesUpdatedChannel'];
-export type ResponseDevicesCreatedChannelControl = components['responses']['DevicesCreatedChannelControl'];
-export type ResponseDevicesCreatedChannelProperty = components['responses']['DevicesCreatedChannelProperty'];
-export type ResponseDevicesUpdatedChannelProperty = components['responses']['DevicesUpdatedChannelProperty'];
-export type ResponseDashboardOnePage = components['responses']['DashboardOnePage'];
-export type ResponseDashboardMultiplePages = components['responses']['DashboardMultiplePages'];
-export type ResponseDashboardOneTile = components['responses']['DashboardOneTile'];
-export type ResponseDashboardMultipleTiles = components['responses']['DashboardMultipleTiles'];
-export type ResponseDashboardOneDataSource = components['responses']['DashboardOneDataSource'];
-export type ResponseDashboardMultipleDataSources = components['responses']['DashboardMultipleDataSources'];
-export type ResponseDashboardCreatedPage = components['responses']['DashboardCreatedPage'];
-export type ResponseDashboardCreatedTile = components['responses']['DashboardCreatedTile'];
-export type ResponseDashboardCreatedDataSource = components['responses']['DashboardCreatedDataSource'];
-export type ResponseDashboardUpdatedPage = components['responses']['DashboardUpdatedPage'];
-export type ResponseDashboardUpdatedTile = components['responses']['DashboardUpdatedTile'];
-export type ResponseDashboardUpdatedDataSource = components['responses']['DashboardUpdatedDataSource'];
-export type ResponseConfigApp = components['responses']['ConfigApp'];
-export type ResponseConfigSection = components['responses']['ConfigSection'];
-export type ResponseSystemSystemInfo = components['responses']['SystemSystemInfo'];
-export type ResponseSystemSystemThrottling = components['responses']['SystemSystemThrottling'];
-export type ResponseDevicesThirdPartyDevicePropertyUpdateResult =
-	components['responses']['DevicesThirdPartyDevicePropertyUpdateResult'];
-export type ResponseDashboardCreatedCard = components['responses']['DashboardCreatedCard'];
-export type ResponseDashboardUpdatedCard = components['responses']['DashboardUpdatedCard'];
-export type ResponseDashboardMultipleCards = components['responses']['DashboardMultipleCards'];
-export type ResponseDashboardOneCard = components['responses']['DashboardOneCard'];
-export type ResponseUsersCreatedUser = components['responses']['UsersCreatedUser'];
-export type ResponseUsersUpdatedUser = components['responses']['UsersUpdatedUser'];
-export type ResponseUsersMultipleUsers = components['responses']['UsersMultipleUsers'];
-export type ResponseUsersOneUser = components['responses']['UsersOneUser'];
-export type ResponseAuthLoggedIn = components['responses']['AuthLoggedIn'];
-export type ResponseAuthCheck = components['responses']['AuthCheck'];
-export type ResponseAuthRegisteredDisplay = components['responses']['AuthRegisteredDisplay'];
-export type ResponseAuthProfile = components['responses']['AuthProfile'];
-export type ResponseWeatherLocationWeather = components['responses']['WeatherLocationWeather'];
-export type ResponseWeatherGeolocation = components['responses']['WeatherGeolocation'];
-export type ResponseAuthRefresh = components['responses']['AuthRefresh'];
 export type ParameterId = components['parameters']['id'];
 export type ParameterDeviceId = components['parameters']['deviceId'];
 export type ParameterChannelId = components['parameters']['channelId'];
 export type ParameterPageId = components['parameters']['pageId'];
 export type ParameterCardId = components['parameters']['cardId'];
 export type ParameterTileId = components['parameters']['tileId'];
-export type RequestBodyDevicesCreateDevice = components['requestBodies']['DevicesCreateDevice'];
-export type RequestBodyDevicesCreateDeviceControl = components['requestBodies']['DevicesCreateDeviceControl'];
-export type RequestBodyDevicesCreateChannel = components['requestBodies']['DevicesCreateChannel'];
-export type RequestBodyDevicesCreateChannelControl = components['requestBodies']['DevicesCreateChannelControl'];
-export type RequestBodyDevicesCreateChannelProperty = components['requestBodies']['DevicesCreateChannelProperty'];
-export type RequestBodyDevicesUpdateDevice = components['requestBodies']['DevicesUpdateDevice'];
-export type RequestBodyDevicesUpdateChannel = components['requestBodies']['DevicesUpdateChannel'];
-export type RequestBodyDevicesUpdateChannelProperty = components['requestBodies']['DevicesUpdateChannelProperty'];
-export type RequestBodyDevicesCreateDeviceChannel = components['requestBodies']['DevicesCreateDeviceChannel'];
-export type RequestBodyDashboardCreatePage = components['requestBodies']['DashboardCreatePage'];
-export type RequestBodyDashboardCreatePageTile = components['requestBodies']['DashboardCreatePageTile'];
-export type RequestBodyDashboardCreatePageTileDataSource =
-	components['requestBodies']['DashboardCreatePageTileDataSource'];
-export type RequestBodyDashboardUpdatePage = components['requestBodies']['DashboardUpdatePage'];
-export type RequestBodyDashboardUpdatePageTile = components['requestBodies']['DashboardUpdatePageTile'];
-export type RequestBodyDashboardUpdatePageTileDataSource =
-	components['requestBodies']['DashboardUpdatePageTileDataSource'];
-export type RequestBodyConfigUpdate = components['requestBodies']['ConfigUpdate'];
-export type RequestBodyDevicesThirdPartyDevicePropertyUpdateRequest =
-	components['requestBodies']['DevicesThirdPartyDevicePropertyUpdateRequest'];
-export type RequestBodyDashboardCreatePageCard = components['requestBodies']['DashboardCreatePageCard'];
-export type RequestBodyDashboardCreatePageDataSource = components['requestBodies']['DashboardCreatePageDataSource'];
-export type RequestBodyDashboardCreatePageCardDataSource =
-	components['requestBodies']['DashboardCreatePageCardDataSource'];
-export type RequestBodyDashboardCreatePageCardTile = components['requestBodies']['DashboardCreatePageCardTile'];
-export type RequestBodyDashboardUpdatePageCard = components['requestBodies']['DashboardUpdatePageCard'];
-export type RequestBodyDashboardUpdatePageCardDataSource =
-	components['requestBodies']['DashboardUpdatePageCardDataSource'];
-export type RequestBodyDashboardUpdatePageCardTile = components['requestBodies']['DashboardUpdatePageCardTile'];
-export type RequestBodyDashboardUpdatePageCardTileDataSource =
-	components['requestBodies']['DashboardUpdatePageCardTileDataSource'];
-export type RequestBodyDashboardCreatePageCardTileDataSource =
-	components['requestBodies']['DashboardCreatePageCardTileDataSource'];
-export type RequestBodyDashboardUpdatePageDataSource = components['requestBodies']['DashboardUpdatePageDataSource'];
-export type RequestBodyUsersCreateUser = components['requestBodies']['UsersCreateUser'];
-export type RequestBodyUsersUpdateUser = components['requestBodies']['UsersUpdateUser'];
-export type RequestBodyAuthRegister = components['requestBodies']['AuthRegister'];
-export type RequestBodyAuthLogin = components['requestBodies']['AuthLogin'];
-export type RequestBodyAuthCheckEmail = components['requestBodies']['AuthCheckEmail'];
-export type RequestBodyAuthCheckUsername = components['requestBodies']['AuthCheckUsername'];
-export type RequestBodyAuthRefresh = components['requestBodies']['AuthRefresh'];
 export type $defs = Record<string, never>;
 export interface operations {
 	'create-auth-module-register': {
@@ -7194,7 +6539,12 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['AuthRegister'];
+		/** @description Schema for user registration. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['AuthReqRegister'];
+			};
+		};
 		responses: {
 			/** @description User registered successfully. No content returned. */
 			204: {
@@ -7219,7 +6569,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			201: components['responses']['AuthRegisteredDisplay'];
+			/** @description Response returned after successfully registering a display-only user. */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthResRegisterDisplay'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7231,9 +6589,22 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['AuthLogin'];
+		/** @description Schema for user authentication. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['AuthReqLogin'];
+			};
+		};
 		responses: {
-			200: components['responses']['AuthLoggedIn'];
+			/** @description Response returned after successful user login. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthResLogin'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7245,9 +6616,22 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['AuthCheckUsername'];
+		/** @description Checks whether a username is already in use. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['AuthReqCheckUsername'];
+			};
+		};
 		responses: {
-			200: components['responses']['AuthCheck'];
+			/** @description Response returned when checking the username if is taken. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthResCheckUsername'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7259,9 +6643,22 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['AuthCheckEmail'];
+		/** @description Checks whether an email address is already in use. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['AuthReqCheckEmail'];
+			};
+		};
 		responses: {
-			200: components['responses']['AuthCheck'];
+			/** @description Response returned when checking the e-mail address if is taken. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthResCheckEmail'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7275,7 +6672,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['AuthProfile'];
+			/** @description Response containing the authenticated user's profile details. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthResProfile'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7287,9 +6692,22 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['AuthRefresh'];
+		/** @description Schema for user access token refresh. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['AuthReqRefreshToken'];
+			};
+		};
 		responses: {
-			201: components['responses']['AuthRefresh'];
+			/** @description Response returned after successful user access token refresh. */
+			201: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['AuthResRefresh'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7304,7 +6722,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['UsersMultipleUsers'];
+			/** @description A list of users successfully retrieved. Each user includes its metadata (ID, username, role). */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UsersResUsers'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7316,9 +6742,24 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['UsersCreateUser'];
+		/** @description The data required to create a new user */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['UsersReqCreateUser'];
+			};
+		};
 		responses: {
-			201: components['responses']['UsersCreatedUser'];
+			/** @description Response returned after successfully creating a user. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created user resource, which can be used to retrieve, update, or delete the user. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UsersResUser'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7338,7 +6779,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['UsersOneUser'];
+			/** @description The user details were successfully retrieved. The response contains detailed information about the user. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UsersResUser'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7384,9 +6833,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['UsersUpdateUser'];
+		/** @description The data required to update a existing user */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['UsersReqUpdateUser'];
+			};
+		};
 		responses: {
-			200: components['responses']['UsersUpdatedUser'];
+			/** @description Response returned after successfully updating a user. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['UsersResUser'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7401,7 +6863,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesMultipleDevices'];
+			/** @description A list of devices successfully retrieved. Each device includes its metadata (ID, name, category), associated channels, controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDevices'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7413,9 +6883,24 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesCreateDevice'];
+		/** @description The data required to create a new device */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqCreateDevice'];
+			};
+		};
 		responses: {
-			201: components['responses']['DevicesCreatedDevice'];
+			/** @description The device was successfully created. The response body contains the complete representation of the device, including its unique ID, category, name, channels, controls, and properties. A Location header is also returned, containing the URI of the created device resource for future operations. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created device resource, which can be used to retrieve, update, or delete the device. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDevice'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -7435,7 +6920,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesOneDevice'];
+			/** @description The device was successfully retrieved. The response contains detailed information about the device, including its metadata, channels, controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDevice'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7481,9 +6974,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesUpdateDevice'];
+		/** @description The data required to update a existing device */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqUpdateDevice'];
+			};
+		};
 		responses: {
-			200: components['responses']['DevicesUpdateDevice'];
+			/** @description The device was successfully updated. The response contains the updated device object, including its metadata, associated channels, controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDevice'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7504,7 +7010,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesMultipleDeviceControls'];
+			/** @description The list of controls was successfully retrieved. Each control includes metadata such as its ID, name, and timestamps. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDeviceControls'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7523,9 +7037,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesCreateDeviceControl'];
+		/** @description The data required to create a new device control */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqCreateDeviceControl'];
+			};
+		};
 		responses: {
-			201: components['responses']['DevicesCreatedDeviceControl'];
+			/** @description The control was successfully created. The response contains the details of the newly created control. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created device control resource, which can be used to retrieve, update, or delete the control. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDeviceControl'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7551,7 +7080,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesOneDeviceControl'];
+			/** @description The details of the control were successfully retrieved. The response contains information such as the control’s name, ID, associated device, and timestamps. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDeviceControl'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7604,7 +7141,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesMultipleChannels'];
+			/** @description The list of channels was successfully retrieved. The response includes metadata for each channel, including its ID, name, category, associated device, controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDeviceChannels'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7623,9 +7168,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesCreateDeviceChannel'];
+		/** @description The data required to create a new device channel */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqCreateDeviceChannel'];
+			};
+		};
 		responses: {
-			201: components['responses']['DevicesCreatedChannel'];
+			/** @description The channel was successfully created. The response contains the details of the newly created channel, including its metadata, associated controls, and properties. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created channel resource, which can be used to retrieve, update, or delete the channel. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDeviceChannel'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7651,7 +7211,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesOneChannel'];
+			/** @description The channel details were successfully retrieved. The response contains detailed information about the channel, including its metadata, associated device, controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDeviceChannel'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7707,9 +7275,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesUpdateChannel'];
+		/** @description The data required to update a existing channel */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqUpdateChannel'];
+			};
+		};
 		responses: {
-			200: components['responses']['DevicesUpdatedChannel'];
+			/** @description The channel was successfully updated. The response contains the updated channel object, including its metadata, associated controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResDeviceChannel'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7735,7 +7316,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesMultipleChannelControls'];
+			/** @description The request was successful. The response contains an array of controls, each including details such as the control’s ID, name, associated channel, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelControls'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7759,9 +7348,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesCreateChannelControl'];
+		/** @description The data required to create a new channel control */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqCreateChannelControl'];
+			};
+		};
 		responses: {
-			201: components['responses']['DevicesCreatedChannelControl'];
+			/** @description The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated channel, and timestamps. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created channel control resource, which can be used to retrieve, update, or delete the control. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelControl'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7792,7 +7396,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesOneChannelControl'];
+			/** @description The request was successful. The response contains the details of the requested control, including its ID, name, associated channel, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelControl'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7855,7 +7467,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesMultipleChannelProperties'];
+			/** @description The request was successful. The response contains an array of properties associated with the specified channel. Each property includes detailed metadata such as its unique identifier, category, permissions, data type, unit, and current value, along with timestamps for creation and updates. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelProperties'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7879,9 +7499,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesCreateChannelProperty'];
+		/** @description The data required to create a new channel property */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqCreateChannelProperty'];
+			};
+		};
 		responses: {
-			201: components['responses']['DevicesCreatedChannelProperty'];
+			/** @description The property was successfully created. The response body contains the complete representation of the created property, including its unique ID, associated channel, category, and metadata. The Location header provides the URI of the newly created property resource. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created channel property resource, which can be used to retrieve, update, or delete the property. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelProperty'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7912,7 +7547,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesOneChannelProperty'];
+			/** @description The request was successful. The response contains the full representation of the requested property, including its unique identifier, metadata, current value, and the associated channel. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelProperty'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7978,9 +7621,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesUpdateChannelProperty'];
+		/** @description The data required to update a existing channel property */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqUpdateChannelProperty'];
+			};
+		};
 		responses: {
-			200: components['responses']['DevicesUpdatedChannelProperty'];
+			/** @description The property was successfully updated. The response contains the updated representation of the property, including its unique identifier, metadata, and current value. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelProperty'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -7995,7 +7651,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesMultipleChannels'];
+			/** @description The list of channels was successfully retrieved. The response includes metadata for each channel, including its ID, name, category, associated device, controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannels'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -8007,9 +7671,24 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesCreateChannel'];
+		/** @description The data required to create a new device channel */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqCreateChannel'];
+			};
+		};
 		responses: {
-			201: components['responses']['DevicesCreatedChannel'];
+			/** @description The channel was successfully created. The response contains the details of the newly created channel, including its metadata, associated controls, and properties. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created channel resource, which can be used to retrieve, update, or delete the channel. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannel'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -8029,7 +7708,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesOneChannel'];
+			/** @description The channel details were successfully retrieved. The response contains detailed information about the channel, including its metadata, associated device, controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannel'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8075,9 +7762,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesUpdateChannel'];
+		/** @description The data required to update a existing channel */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesReqUpdateChannel'];
+			};
+		};
 		responses: {
-			200: components['responses']['DevicesUpdatedChannel'];
+			/** @description The channel was successfully updated. The response contains the updated channel object, including its metadata, associated controls, and properties. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannel'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8098,7 +7798,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesMultipleChannelControls'];
+			/** @description The request was successful. The response contains an array of controls, each including details such as the control’s ID, name, associated channel, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelControls'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8117,9 +7825,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesCreateChannelControl'];
+		/** @description The data required to create a new channel control */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesCreateChannelControl'];
+			};
+		};
 		responses: {
-			201: components['responses']['DevicesCreatedChannelControl'];
+			/** @description The control was successfully created. The response includes the complete details of the newly created control, such as its unique identifier, name, associated channel, and timestamps. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created channel control resource, which can be used to retrieve, update, or delete the control. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelControl'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8145,7 +7868,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesOneChannelControl'];
+			/** @description The request was successful. The response contains the details of the requested control, including its ID, name, associated channel, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelControl'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8198,7 +7929,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesMultipleChannelProperties'];
+			/** @description The request was successful. The response contains an array of properties associated with the specified channel. Each property includes detailed metadata such as its unique identifier, category, permissions, data type, unit, and current value, along with timestamps for creation and updates. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelProperties'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8217,9 +7956,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesCreateChannelProperty'];
+		/** @description The data required to create a new channel property */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesCreateChannelProperty'];
+			};
+		};
 		responses: {
-			201: components['responses']['DevicesCreatedChannelProperty'];
+			/** @description The property was successfully created. The response body contains the complete representation of the created property, including its unique ID, associated channel, category, and metadata. The Location header provides the URI of the newly created property resource. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created channel property resource, which can be used to retrieve, update, or delete the property. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelProperty'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8245,7 +7999,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DevicesOneChannelProperty'];
+			/** @description The request was successful. The response contains the full representation of the requested property, including its unique identifier, metadata, current value, and the associated channel. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelProperty'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8301,9 +8063,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DevicesUpdateChannelProperty'];
+		/** @description The data required to update a existing channel property */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesUpdateChannelProperty'];
+			};
+		};
 		responses: {
-			200: components['responses']['DevicesUpdatedChannelProperty'];
+			/** @description The property was successfully updated. The response contains the updated representation of the property, including its unique identifier, metadata, and current value. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesResChannelProperty'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8318,7 +8093,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardMultiplePages'];
+			/** @description A list of pages successfully retrieved. Each page includes its metadata (ID and title), associated tiles and data sources. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPages'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -8330,9 +8113,24 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardCreatePage'];
+		/** @description The payload schema used for creating a new dashboard page. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqCreatePage'];
+			};
+		};
 		responses: {
-			201: components['responses']['DashboardCreatedPage'];
+			/** @description The page was successfully created. The response body contains the complete representation of the page, including its unique ID, title, tiles and data sources. A Location header is also returned, containing the URI of the created page resource for future operations. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created page resource, which can be used to retrieve, update, or delete the page. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPage'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -8352,7 +8150,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardOnePage'];
+			/** @description The page was successfully retrieved. The response contains detailed information about the page, including its metadata, tiles and data sources. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPage'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8385,7 +8191,7 @@ export interface operations {
 			500: components['responses']['InternalServerError'];
 		};
 	};
-	'patch-dashboard-module-page': {
+	'update-dashboard-module-page': {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -8398,9 +8204,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardUpdatePage'];
+		/** @description The payload schema used for updating a existing dashboard page. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqUpdatePage'];
+			};
+		};
 		responses: {
-			200: components['responses']['DashboardUpdatedPage'];
+			/** @description The page was successfully updated. The response contains the updated page object, including its metadata, associated tiles and data sources. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPage'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8421,7 +8240,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardMultipleDataSources'];
+			/** @description The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageDataSources'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8440,9 +8267,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardCreatePageDataSource'];
+		/** @description The payload schema used for creating a new page data source. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqCreatePageDataSource'];
+			};
+		};
 		responses: {
-			201: components['responses']['DashboardCreatedDataSource'];
+			/** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created page data source resource, which can be used to retrieve, update, or delete the data source. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8468,7 +8310,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardOneDataSource'];
+			/** @description The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated page. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8524,9 +8374,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardUpdatePageDataSource'];
+		/** @description The payload schema used for updating a existing page data source. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqUpdateDataSource'];
+			};
+		};
 		responses: {
-			200: components['responses']['DashboardUpdatedDataSource'];
+			/** @description The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8547,7 +8410,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardMultipleTiles'];
+			/** @description The list of tiles was successfully retrieved. Each tile includes metadata such as its ID, size, and position. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageTiles'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8566,9 +8437,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardCreatePageTile'];
+		/** @description The payload schema used for creating a new page tile. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqCreatePageTile'];
+			};
+		};
 		responses: {
-			201: components['responses']['DashboardCreatedTile'];
+			/** @description The tile was successfully created. The response contains the details of the newly created tile. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created page tile resource, which can be used to retrieve, update, or delete the tile. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageTile'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8594,7 +8480,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardOneTile'];
+			/** @description The details of the tile were successfully retrieved. The response contains information such as the tile’s position, size, associated page, and timestamps. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageTile'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8650,9 +8544,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardUpdatePageTile'];
+		/** @description The payload schema used for updating a existing page tile. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqUpdateTile'];
+			};
+		};
 		responses: {
-			200: components['responses']['DashboardUpdatedTile'];
+			/** @description Partially updates the attributes of a specific tile associated with a page using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageTile'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8678,7 +8585,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardMultipleDataSources'];
+			/** @description The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageTileDataSources'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8702,9 +8617,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardCreatePageTileDataSource'];
+		/** @description The payload schema used for creating a new tile data source. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqCreateTileDataSource'];
+			};
+		};
 		responses: {
-			201: components['responses']['DashboardCreatedDataSource'];
+			/** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created data tile data source resource, which can be used to retrieve, update, or delete the data source. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageTileDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8735,7 +8665,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardOneDataSource'];
+			/** @description The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated tile. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageTileDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['BadRequestError'];
@@ -8801,9 +8739,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardUpdatePageTileDataSource'];
+		/** @description The payload schema used for updating a existing tile data source. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqUpdateDataSource'];
+			};
+		};
 		responses: {
-			200: components['responses']['DashboardUpdatedDataSource'];
+			/** @description The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageTileDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8824,7 +8775,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardMultipleCards'];
+			/** @description The list of cards was successfully retrieved. Each card includes metadata such as its ID, title, and icon. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCards'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8843,9 +8802,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardCreatePageCard'];
+		/** @description The payload schema used for creating a new page card. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqCreatePageCard'];
+			};
+		};
 		responses: {
-			201: components['responses']['DashboardCreatedCard'];
+			/** @description The card was successfully created. The response contains the details of the newly created card. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created page card resource, which can be used to retrieve, update, or delete the card. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCard'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
@@ -8871,7 +8845,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardOneCard'];
+			/** @description The details of the card were successfully retrieved. The response contains information such as the card’s associated tiles, data sources and card details. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCard'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8927,9 +8909,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardUpdatePageCard'];
+		/** @description The payload schema used for updating a existing page card. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqUpdateCard'];
+			};
+		};
 		responses: {
-			200: components['responses']['DashboardUpdatedCard'];
+			/** @description Partially updates the attributes of a specific card associated with a page using its unique ID. The update can modify metadata, such as the card’s title or icon, without requiring the full object. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCard'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8955,7 +8950,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardMultipleTiles'];
+			/** @description The details of the tile were successfully retrieved. The response contains information such as the tile’s position, size, associated card, and timestamps. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardTiles'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -8979,9 +8982,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardCreatePageCardTile'];
+		/** @description The payload schema used for updating a existing card tile. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqCreateCardTile'];
+			};
+		};
 		responses: {
-			201: components['responses']['DashboardCreatedTile'];
+			/** @description Partially updates the attributes of a specific tile associated with a card using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created card tile resource, which can be used to retrieve, update, or delete the tile. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardTile'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9012,7 +9030,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardOneTile'];
+			/** @description The details of the tile were successfully retrieved. The response contains information such as the tile’s position, size, associated card, and timestamps. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardTile'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9078,9 +9104,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardUpdatePageCardTile'];
+		/** @description The payload schema used for updating a existing card tile. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqUpdateTile'];
+			};
+		};
 		responses: {
-			200: components['responses']['DashboardUpdatedTile'];
+			/** @description Partially updates the attributes of a specific tile associated with a card using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardTile'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9111,7 +9150,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardMultipleDataSources'];
+			/** @description The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardTileDataSources'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9140,9 +9187,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardCreatePageCardTileDataSource'];
+		/** @description The payload schema used for creating a new card data source. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqCreateTileDataSource'];
+			};
+		};
 		responses: {
-			201: components['responses']['DashboardCreatedDataSource'];
+			/** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created tile data source resource, which can be used to retrieve, update, or delete the data source. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardTileDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9178,7 +9240,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardOneDataSource'];
+			/** @description The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated tile. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardTileDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9254,9 +9324,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardUpdatePageCardTileDataSource'];
+		/** @description The payload schema used for updating a existing card data source. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqUpdateDataSource'];
+			};
+		};
 		responses: {
-			200: components['responses']['DashboardUpdatedDataSource'];
+			/** @description The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardTileDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9282,7 +9365,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardMultipleDataSources'];
+			/** @description The list of data sources associated with the card was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardDataSources'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9306,9 +9397,24 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardCreatePageCardDataSource'];
+		/** @description The payload schema used for creating a new card data source. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqCreateCardDataSource'];
+			};
+		};
 		responses: {
-			201: components['responses']['DashboardCreatedDataSource'];
+			/** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
+			201: {
+				headers: {
+					/** @description The URI of the newly created card data source resource, which can be used to retrieve, update, or delete the data source. */
+					Location?: string;
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9339,7 +9445,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['DashboardOneDataSource'];
+			/** @description The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated card. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9405,9 +9519,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['DashboardUpdatePageCardDataSource'];
+		/** @description The payload schema used for updating a existing card data source. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DashboardReqUpdateDataSource'];
+			};
+		};
 		responses: {
-			200: components['responses']['DashboardUpdatedDataSource'];
+			/** @description The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DashboardResPageCardDataSource'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9422,7 +9549,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['ConfigApp'];
+			/** @description Response containing the full smart panel configuration, including audio, display, language, and weather settings. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['ConfigResApp'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -9439,7 +9574,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['ConfigSection'];
+			/** @description Response containing the current configuration section. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['ConfigResSection'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9455,9 +9598,22 @@ export interface operations {
 			};
 			cookie?: never;
 		};
-		requestBody?: components['requestBodies']['ConfigUpdate'];
+		/** @description Request body for updating audio configuration, allowing modifications to speaker and microphone settings. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['ConfigReqUpdateSection'];
+			};
+		};
 		responses: {
-			200: components['responses']['ConfigSection'];
+			/** @description Response containing the current configuration section. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['ConfigResSection'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			404: components['responses']['NotFoundError'];
 			500: components['responses']['InternalServerError'];
@@ -9472,7 +9628,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['SystemSystemInfo'];
+			/** @description Provides a detailed overview of the system’s current status, including CPU load, memory usage, storage details, temperature readings, operating system information, network statistics, and display settings. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['SystemResSystemInfo'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -9486,7 +9650,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['SystemSystemThrottling'];
+			/** @description Provides the system’s throttling status, indicating whether any CPU or power-related limitations have been triggered. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['SystemResThrottleStatus'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -9500,7 +9672,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['WeatherLocationWeather'];
+			/** @description Response containing current weather conditions and forecast details for a specified location. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WeatherResLocationWeather'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -9517,7 +9697,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['WeatherGeolocation'];
+			/** @description Response containing geographical information related to a specified location. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WeatherResGeolocationCityToCoordinates'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -9536,7 +9724,15 @@ export interface operations {
 		};
 		requestBody?: never;
 		responses: {
-			200: components['responses']['WeatherGeolocation'];
+			/** @description Response containing geographical information related to a specified location. */
+			200: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['WeatherResGeolocationCoordinatesToCity'];
+				};
+			};
 			400: components['responses']['BadRequestError'];
 			500: components['responses']['InternalServerError'];
 		};
@@ -9548,8 +9744,12 @@ export interface operations {
 			path?: never;
 			cookie?: never;
 		};
-		/** @description Payload containing a list of properties to be updated on the third-party device. */
-		requestBody?: components['requestBodies']['DevicesThirdPartyDevicePropertyUpdateRequest'];
+		/** @description Represents a request to update properties on a third-party device. */
+		requestBody?: {
+			content: {
+				'application/json': components['schemas']['DevicesThirdPartyDevicePropertiesUpdateRequest'];
+			};
+		};
 		responses: {
 			/** @description No Content. Indicates that the request was successfully processed and no further response is required. */
 			204: {
@@ -9558,8 +9758,15 @@ export interface operations {
 				};
 				content?: never;
 			};
-			/** @description Multi-Status. Indicates that some or all property updates failed. The response body will include detailed status information for each property. */
-			207: components['responses']['DevicesThirdPartyDevicePropertyUpdateResult'];
+			/** @description Response from the third-party device after processing the update request. */
+			207: {
+				headers: {
+					[name: string]: unknown;
+				};
+				content: {
+					'application/json': components['schemas']['DevicesThirdPartyDevicePropertiesUpdateResult'];
+				};
+			};
 			/** @description Bad Request. Indicates that the request was invalid, possibly due to missing or malformed data. */
 			400: {
 				headers: {

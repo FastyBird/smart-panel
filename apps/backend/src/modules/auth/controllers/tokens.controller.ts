@@ -1,6 +1,5 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import get from 'lodash.get';
 
 import {
 	BadRequestException,
@@ -22,8 +21,8 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { AuthModulePrefix, AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
-import { CreateTokenDto } from '../dto/create-token.dto';
-import { UpdateTokenDto } from '../dto/update-token.dto';
+import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
+import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
@@ -61,10 +60,10 @@ export class TokensController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${AuthModulePrefix}/auth/:id`)
-	async create(@Body() createDto: any): Promise<TokenEntity> {
+	async create(@Body() createDto: ReqCreateTokenDto): Promise<TokenEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new token');
 
-		const type: string | undefined = get(createDto, 'type', undefined) as string | undefined;
+		const type: string | undefined = createDto.data.type;
 
 		if (!type) {
 			this.logger.error('[VALIDATION] Missing required field: type');
@@ -88,7 +87,7 @@ export class TokensController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, createDto, {
+		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -104,7 +103,7 @@ export class TokensController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
-		const token = await this.tokensService.create(createDto as CreateTokenDto);
+		const token = await this.tokensService.create(createDto.data);
 
 		this.logger.debug(`[CREATE] Successfully created token id=${token.id}`);
 
@@ -114,7 +113,7 @@ export class TokensController {
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: any,
+		@Body() updateDto: ReqUpdateTokenDto,
 	): Promise<TokenEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for token id=${id}`);
 
@@ -141,7 +140,7 @@ export class TokensController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.updateDto, updateDto, {
+		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -157,7 +156,7 @@ export class TokensController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
-		const updatedToken = await this.tokensService.update(token.id, updateDto as UpdateTokenDto);
+		const updatedToken = await this.tokensService.update(token.id, updateDto.data);
 
 		this.logger.debug(`[UPDATE] Successfully updated token id=${updatedToken.id}`);
 

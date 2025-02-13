@@ -13,7 +13,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
-import { DataTypeEnum } from '../devices.constants';
+import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
 import { PropertyValueService } from './property-value.service';
@@ -62,7 +62,7 @@ describe('PropertyValueService', () => {
 		it('should write a string value to InfluxDB and cache', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
-				dataType: DataTypeEnum.STRING,
+				dataType: DataTypeType.STRING,
 			} as ChannelPropertyEntity;
 
 			await service.write(property, 'test-value');
@@ -83,7 +83,7 @@ describe('PropertyValueService', () => {
 			const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
-				dataType: 'unsupported_type' as DataTypeEnum,
+				dataType: 'unsupported_type' as DataTypeType,
 			} as ChannelPropertyEntity;
 
 			await service.write(property, 'value');
@@ -96,7 +96,7 @@ describe('PropertyValueService', () => {
 		it('should return cached value if available', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
-				dataType: DataTypeEnum.INT,
+				dataType: DataTypeType.INT,
 			} as ChannelPropertyEntity;
 
 			cacheManager.get.mockResolvedValue(42);
@@ -111,7 +111,7 @@ describe('PropertyValueService', () => {
 		it('should query InfluxDB if cached value is missing', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
-				dataType: DataTypeEnum.INT,
+				dataType: DataTypeType.INT,
 			} as ChannelPropertyEntity;
 
 			cacheManager.get.mockResolvedValue(null);
@@ -128,7 +128,7 @@ describe('PropertyValueService', () => {
 		it('should return null if no value is found in InfluxDB', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
-				dataType: DataTypeEnum.STRING,
+				dataType: DataTypeType.STRING,
 			} as ChannelPropertyEntity;
 
 			cacheManager.get.mockResolvedValue(null);

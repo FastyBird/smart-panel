@@ -21,7 +21,7 @@ import { CheckUsernameDto } from '../dto/check-username.dto';
 import { CreateAccessTokenDto, CreateRefreshTokenDto } from '../dto/create-token.dto';
 import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
 import { LoginDto } from '../dto/login.dto';
-import { RefreshResponseDto } from '../dto/refresh-response.dto';
+import { RefreshTokenResponseDto } from '../dto/refresh-token-response.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { UpdateRefreshTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
@@ -165,7 +165,7 @@ export class AuthService {
 		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);
 	}
 
-	async refreshAccessToken(token: string): Promise<RefreshResponseDto> {
+	async refreshAccessToken(token: string): Promise<RefreshTokenResponseDto> {
 		let payload: { sub?: string; role: string } | null = null;
 
 		try {
@@ -207,6 +207,7 @@ export class AuthService {
 
 		try {
 			await this.tokensService.update<RefreshTokenEntity, UpdateRefreshTokenDto>(existingRefreshToken.id, {
+				type: TokenType.REFRESH,
 				revoked: true,
 			});
 		} catch (error) {
@@ -234,7 +235,7 @@ export class AuthService {
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
 		return plainToInstance(
-			RefreshResponseDto,
+			RefreshTokenResponseDto,
 			{ ...tokens, type: AccessTokenType, expiration: accessTokenExpiresAt },
 			{ excludeExtraneousValues: true },
 		);

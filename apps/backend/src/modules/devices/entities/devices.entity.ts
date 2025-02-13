@@ -16,25 +16,19 @@ import { ChildEntity, Column, Entity, ManyToOne, OneToMany, TableInheritance, Un
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
-import {
-	ChannelCategoryEnum,
-	DataTypeEnum,
-	DeviceCategoryEnum,
-	PermissionEnum,
-	PropertyCategoryEnum,
-} from '../devices.constants';
+import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 
 @Entity('devices_module_devices')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class DeviceEntity extends BaseEntity {
 	@Expose()
-	@IsEnum(DeviceCategoryEnum)
+	@IsEnum(DeviceCategory)
 	@Column({
 		type: 'text',
-		enum: DeviceCategoryEnum,
-		default: DeviceCategoryEnum.GENERIC,
+		enum: DeviceCategory,
+		default: DeviceCategory.GENERIC,
 	})
-	category: DeviceCategoryEnum;
+	category: DeviceCategory;
 
 	@Expose()
 	@IsString()
@@ -109,13 +103,13 @@ export class DeviceControlEntity extends BaseEntity {
 @Entity('devices_module_channels')
 export class ChannelEntity extends BaseEntity {
 	@Expose()
-	@IsEnum(ChannelCategoryEnum)
+	@IsEnum(ChannelCategory)
 	@Column({
 		type: 'text',
-		enum: ChannelCategoryEnum,
-		default: ChannelCategoryEnum.GENERIC,
+		enum: ChannelCategory,
+		default: ChannelCategory.GENERIC,
 	})
-	category: ChannelCategoryEnum;
+	category: ChannelCategory;
 
 	@Expose()
 	@IsString()
@@ -175,13 +169,13 @@ export class ChannelControlEntity extends BaseEntity {
 @Entity('devices_module_channels_properties')
 export class ChannelPropertyEntity extends BaseEntity {
 	@Expose()
-	@IsEnum(PropertyCategoryEnum)
+	@IsEnum(PropertyCategory)
 	@Column({
 		type: 'text',
-		enum: PropertyCategoryEnum,
-		default: PropertyCategoryEnum.GENERIC,
+		enum: PropertyCategory,
+		default: PropertyCategory.GENERIC,
 	})
-	category: PropertyCategoryEnum;
+	category: PropertyCategory;
 
 	@Expose()
 	@IsOptional()
@@ -190,26 +184,26 @@ export class ChannelPropertyEntity extends BaseEntity {
 	name: string | null = null;
 
 	@Expose()
-	@IsEnum(PermissionEnum, { each: true })
+	@IsEnum(PermissionType, { each: true })
 	@ArrayNotEmpty()
 	@Column({
 		type: 'simple-array',
-		default: `${PermissionEnum.READ_ONLY}`,
+		default: `${PermissionType.READ_ONLY}`,
 	})
-	permission: PermissionEnum[];
+	permission: PermissionType[];
 
 	@Expose({ name: 'data_type' })
-	@IsEnum(DataTypeEnum)
+	@IsEnum(DataTypeType)
 	@Transform(
-		({ obj }: { obj: { data_type?: DataTypeEnum; dataType?: DataTypeEnum } }) => obj.data_type || obj.dataType,
+		({ obj }: { obj: { data_type?: DataTypeType; dataType?: DataTypeType } }) => obj.data_type || obj.dataType,
 		{ toClassOnly: true },
 	)
 	@Column({
 		type: 'text',
-		enum: DataTypeEnum,
-		default: DataTypeEnum.UNKNOWN,
+		enum: DataTypeType,
+		default: DataTypeType.UNKNOWN,
 	})
-	dataType: DataTypeEnum;
+	dataType: DataTypeType;
 
 	@Expose()
 	@IsOptional()

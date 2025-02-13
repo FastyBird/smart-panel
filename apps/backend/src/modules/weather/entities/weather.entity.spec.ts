@@ -31,7 +31,7 @@ describe('Weather module entity and OpenAPI Model Synchronization', () => {
 
 	test('LocationWeatherEntity matches LocationWeather', () => {
 		const openApiModel: LocationWeather = {
-			weather: {
+			current: {
 				temperature: 23.3,
 				temperature_min: 23.3,
 				temperature_max: 23.3,
@@ -44,12 +44,6 @@ describe('Weather module entity and OpenAPI Model Synchronization', () => {
 					description: 'Weather cloudy',
 					icon: '01d',
 				},
-				sunrise: new Date().toISOString(),
-				sunset: new Date().toISOString(),
-				location: {
-					name: 'Prague',
-					country: 'CZE',
-				},
 				wind: {
 					speed: 3.5,
 					deg: 180,
@@ -60,28 +54,38 @@ describe('Weather module entity and OpenAPI Model Synchronization', () => {
 				snow: null,
 				created_at: new Date().toISOString(),
 			},
-			forecast: {
-				location: {
-					name: 'Prague',
-					country: 'CZE',
-				},
-				sunrise: new Date().toISOString(),
-				sunset: new Date().toISOString(),
-				forecast: [
-					{
-						temperature: 23.3,
-						temperature_min: 23.3,
-						temperature_max: 23.3,
-						feels_like: 23.3,
-						pressure: 1003,
-						humidity: 42,
-						clouds: 10,
-						rain: null,
-						snow: null,
-						created_at: new Date().toISOString(),
+			forecast: [
+				{
+					temperature: 23.3,
+					temperature_min: 23.3,
+					temperature_max: 23.3,
+					feels_like: 23.3,
+					pressure: 1003,
+					humidity: 42,
+					weather: {
+						code: 800,
+						main: 'Cloudy',
+						description: 'Weather cloudy',
+						icon: '01d',
 					},
-				],
+					wind: {
+						speed: 3.5,
+						deg: 180,
+						gust: 5.8,
+					},
+					clouds: 10,
+					rain: null,
+					snow: null,
+					created_at: new Date().toISOString(),
+				},
+			],
+			location: {
+				name: 'Prague',
+				country: 'CZE',
 			},
+			sunrise: new Date().toISOString(),
+			sunset: new Date().toISOString(),
+			created_at: new Date().toISOString(),
 		};
 
 		const entityInstance = plainToInstance(LocationWeatherEntity, openApiModel, {
@@ -95,6 +99,7 @@ describe('Weather module entity and OpenAPI Model Synchronization', () => {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
+
 		expect(errors).toHaveLength(0);
 	});
 });

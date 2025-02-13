@@ -15,7 +15,7 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DevicesModulePrefix } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceChannelControlDto } from '../dto/create-device-channel-control.dto';
+import { ReqCreateDeviceChannelControlDto } from '../dto/create-device-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 import { ChannelsControlsService } from '../services/channels.controls.service';
 import { ChannelsService } from '../services/channels.service';
@@ -73,7 +73,7 @@ export class DevicesChannelsControlsController {
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-		@Body() createControlDto: CreateDeviceChannelControlDto,
+		@Body() createDto: ReqCreateDeviceChannelControlDto,
 	): Promise<ChannelControlEntity> {
 		this.logger.debug(
 			`[CREATE] Incoming request to create a new data source for deviceId=${deviceId} channelId=${channelId}`,
@@ -82,7 +82,7 @@ export class DevicesChannelsControlsController {
 		const device = await this.getDeviceOrThrow(deviceId);
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 
-		const existingControl = await this.channelsControlsService.findOneByName(createControlDto.name, channel.id);
+		const existingControl = await this.channelsControlsService.findOneByName(createDto.data.name, channel.id);
 
 		if (existingControl === null) {
 			throw ValidationExceptionFactory.createException([
@@ -101,7 +101,7 @@ export class DevicesChannelsControlsController {
 		}
 
 		try {
-			const dataSource = await this.channelsControlsService.create(channel.id, createControlDto);
+			const dataSource = await this.channelsControlsService.create(channel.id, createDto.data);
 
 			this.logger.debug(
 				`[CREATE] Successfully created data source id=${dataSource.id} for deviceId=${device.id} channelId=${channel.id}`,

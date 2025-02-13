@@ -9,13 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import {
-	ChannelCategoryEnum,
-	DataTypeEnum,
-	DeviceCategoryEnum,
-	PermissionEnum,
-	PropertyCategoryEnum,
-} from '../devices.constants';
+import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
@@ -32,7 +26,7 @@ describe('ChannelsPropertiesController', () => {
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -43,7 +37,7 @@ describe('ChannelsPropertiesController', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),
@@ -56,9 +50,9 @@ describe('ChannelsPropertiesController', () => {
 	const mockChannelProperty: ChannelPropertyEntity = {
 		id: uuid().toString(),
 		name: 'Test Property',
-		category: PropertyCategoryEnum.GENERIC,
-		permission: [PermissionEnum.READ_ONLY],
-		dataType: DataTypeEnum.STRING,
+		category: PropertyCategory.GENERIC,
+		permission: [PermissionType.READ_ONLY],
+		dataType: DataTypeType.STRING,
 		unit: '°C',
 		format: null,
 		invalid: null,
@@ -124,13 +118,13 @@ describe('ChannelsPropertiesController', () => {
 
 		it('should create a new property', async () => {
 			const createDto: CreateChannelPropertyDto = {
-				category: PropertyCategoryEnum.GENERIC,
+				category: PropertyCategory.GENERIC,
 				name: 'New Property',
-				permission: [PermissionEnum.READ_ONLY],
-				data_type: DataTypeEnum.UNKNOWN,
+				permission: [PermissionType.READ_ONLY],
+				data_type: DataTypeType.UNKNOWN,
 			};
 
-			const result = await controller.create(mockChannel.id, createDto);
+			const result = await controller.create(mockChannel.id, { data: createDto });
 
 			expect(result).toEqual(mockChannelProperty);
 			expect(channelsPropertiesService.create).toHaveBeenCalledWith(mockChannel.id, createDto);
@@ -139,7 +133,7 @@ describe('ChannelsPropertiesController', () => {
 		it('should update a property', async () => {
 			const updateDto: UpdateChannelPropertyDto = { name: 'Updated Property' };
 
-			const result = await controller.update(mockChannel.id, mockChannelProperty.id, updateDto);
+			const result = await controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto });
 
 			expect(result).toEqual(mockChannelProperty);
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto);

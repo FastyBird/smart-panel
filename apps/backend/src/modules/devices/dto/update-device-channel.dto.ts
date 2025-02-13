@@ -1,8 +1,9 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
+type ReqUpdateDeviceChannel = components['schemas']['DevicesReqUpdateChannel'];
 type UpdateChannel = components['schemas']['DevicesUpdateChannel'];
 
 export class UpdateDeviceChannelDto implements UpdateChannel {
@@ -18,4 +19,11 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 	@IsString({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	description?: string | null;
+}
+
+export class ReqUpdateDeviceChannelDto implements ReqUpdateDeviceChannel {
+	@Expose()
+	@ValidateNested()
+	@Type(() => UpdateDeviceChannelDto)
+	data: UpdateDeviceChannelDto;
 }

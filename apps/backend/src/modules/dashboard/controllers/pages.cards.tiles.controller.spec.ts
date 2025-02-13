@@ -158,7 +158,7 @@ describe('PagesCardsTilesController', () => {
 				updateDto: UpdateTimeTileDto,
 			});
 
-			const result = await controller.create(mockCardsPage.id, mockCard.id, createDto);
+			const result = await controller.create(mockCardsPage.id, mockCard.id, { data: createDto });
 
 			expect(result).toEqual(mockTimeTile);
 			expect(tilesService.create).toHaveBeenCalledWith(createDto, { cardId: mockCard.id });
@@ -166,6 +166,7 @@ describe('PagesCardsTilesController', () => {
 
 		it('should update a tile', async () => {
 			const updateDto: UpdateTimeTileDto = {
+				type: 'clock',
 				row: 0,
 				col: 0,
 			};
@@ -177,7 +178,7 @@ describe('PagesCardsTilesController', () => {
 				updateDto: UpdateTimeTileDto,
 			});
 
-			const result = await controller.update(mockCardsPage.id, mockCard.id, mockTimeTile.id, updateDto);
+			const result = await controller.update(mockCardsPage.id, mockCard.id, mockTimeTile.id, { data: updateDto });
 
 			expect(result).toEqual(mockTimeTile);
 			expect(tilesService.update).toHaveBeenCalledWith(mockTimeTile.id, updateDto);

@@ -2,15 +2,16 @@ import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ChannelCategoryEnum } from '../devices.constants';
+import { ChannelCategory } from '../devices.constants';
 import { UniqueControlNames } from '../validators/unique-control-names-constraint.validator';
 
 import { CreateDeviceChannelControlDto } from './create-device-channel-control.dto';
 import { CreateDeviceChannelPropertyDto } from './create-device-channel-property.dto';
 
-type CreateChannel = components['schemas']['DevicesCreateChannel'];
+type ReqCreateDeviceChannel = components['schemas']['DevicesReqCreateDeviceChannel'];
+type CreateDeviceChannel = components['schemas']['DevicesCreateDeviceChannel'];
 
-export class CreateDeviceChannelDto implements CreateChannel {
+export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
@@ -20,10 +21,10 @@ export class CreateDeviceChannelDto implements CreateChannel {
 	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid channel category."}]',
 	})
-	@IsEnum(ChannelCategoryEnum, {
+	@IsEnum(ChannelCategory, {
 		message: '[{"field":"category","reason":"Category must be a valid channel category."}]',
 	})
-	category: ChannelCategoryEnum;
+	category: ChannelCategory;
 
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
@@ -53,4 +54,11 @@ export class CreateDeviceChannelDto implements CreateChannel {
 	@ValidateNested({ each: true })
 	@Type(() => CreateDeviceChannelPropertyDto)
 	properties?: CreateDeviceChannelPropertyDto[];
+}
+
+export class ReqCreateDeviceChannelDto implements ReqCreateDeviceChannel {
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateDeviceChannelDto)
+	data: CreateDeviceChannelDto;
 }

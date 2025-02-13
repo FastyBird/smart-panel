@@ -11,4 +11,4 @@ RUN yarn install
 
 EXPOSE 3000
 
-CMD ["yarn", "start:dev"]
+CMD ["yarn", "workspace", "@fastybird/smart-panel-backend", "start:dev"]

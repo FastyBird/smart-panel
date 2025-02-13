@@ -52,11 +52,17 @@ jobs:
         shell: "bash"
         run: "yarn install"
 
+      - name: "Run Code Linting"
+        run: "yarn workspace @fastybird/smart-panel-backend lint:js"
+
+      - name: "Run Code Linting"
+        run: "yarn workspace @fastybird/smart-panel-backend lint:openapi"
+
       - name: "Run Unit Tests"
-        run: "make server-unit-tests"
+        run: "yarn workspace @fastybird/smart-panel-backend test:unit"
 
       - name: "Run E2E Tests"
-        run: "make server-e2e-tests"
+        run: "yarn workspace @fastybird/smart-panel-backend test:e2e"
 
       - name: "Generate Coverage Report"
-        run: "make server-cov-tests"
+        run: "yarn workspace @fastybird/smart-panel-backend test:cov"

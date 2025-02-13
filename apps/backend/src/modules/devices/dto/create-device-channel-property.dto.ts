@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
 	ArrayNotEmpty,
 	IsArray,
@@ -10,11 +10,13 @@ import {
 	IsString,
 	IsUUID,
 	ValidateIf,
+	ValidateNested,
 } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { DataTypeEnum, PermissionEnum, PropertyCategoryEnum } from '../devices.constants';
+import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
 
+type ReqCreateChannelProperty = components['schemas']['DevicesReqCreateChannelProperty'];
 type CreateChannelProperty = components['schemas']['DevicesCreateChannelProperty'];
 
 export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
@@ -27,10 +29,10 @@ export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid property category."}]',
 	})
-	@IsEnum(PropertyCategoryEnum, {
+	@IsEnum(PropertyCategory, {
 		message: '[{"field":"category","reason":"Category must be a valid property category."}]',
 	})
-	category: PropertyCategoryEnum;
+	category: PropertyCategory;
 
 	@Expose()
 	@IsOptional()
@@ -41,21 +43,21 @@ export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 
 	@Expose()
 	@IsArray()
-	@IsEnum(PermissionEnum, {
+	@IsEnum(PermissionType, {
 		each: true,
 		message: '[{"field":"permission","reason":"Each permission must be a valid permission type."}]',
 	})
 	@ArrayNotEmpty({ message: '[{"field":"permission","reason":"Permission array cannot be empty."}]' })
-	permission: PermissionEnum[];
+	permission: PermissionType[];
 
 	@Expose()
 	@IsNotEmpty({
 		message: '[{"field":"data_type","reason":"Data type must be a valid data type."}]',
 	})
-	@IsEnum(DataTypeEnum, {
+	@IsEnum(DataTypeType, {
 		message: '[{"field":"data_type","reason":"Data type must be a valid data type."}]',
 	})
-	data_type: DataTypeEnum;
+	data_type: DataTypeType;
 
 	@Expose()
 	@IsOptional()
@@ -100,4 +102,11 @@ export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 	@IsBoolean({ message: '[{"field":"value","reason":"Value must be a boolean."}]' })
 	@ValidateIf((_, value) => value !== null)
 	value?: string | number | boolean | null;
+}
+
+export class ReqCreateDeviceChannelPropertyDto implements ReqCreateChannelProperty {
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateDeviceChannelPropertyDto)
+	data: CreateDeviceChannelPropertyDto;
 }

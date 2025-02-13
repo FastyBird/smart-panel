@@ -14,7 +14,7 @@ import type { components } from '../../../openapi';
 import { ValidatePageTiles } from '../validators/page-tile-type-constraint.validator';
 import { ValidateTileDataSources } from '../validators/tile-data-source-type-constraint.validator';
 
-import { CreateDataSourceDto } from './create-data-source.dto';
+import { CreateCardDeviceChannelDataSourceDto } from './create-card-data-source.dto';
 import { CreateTileDto } from './create-tile.dto';
 
 type CreateCard = components['schemas']['DashboardCreateCard'];
@@ -56,5 +56,5 @@ export class CreateCardDto implements CreateCard {
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
 	@ValidateNested({ each: true })
 	@ValidateTileDataSources()
-	data_source?: CreateDataSourceDto[] = [];
+	data_source?: CreateCardDeviceChannelDataSourceDto[] = [];
 }

@@ -15,8 +15,8 @@ import {
 
 import { DashboardModulePrefix } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateCardDto } from '../dto/create-card.dto';
-import { UpdateCardDto } from '../dto/update-card.dto';
+import { ReqCreatePageCardDto } from '../dto/create-page-card.dto';
+import { ReqUpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity, PageEntity } from '../entities/dashboard.entity';
 import { CardsService } from '../services/cards.service';
 import { PagesService } from '../services/pages.service';
@@ -63,14 +63,14 @@ export class PagesCardsController {
 	@Header('Location', `:baseUrl/${DashboardModulePrefix}/pages/:page/cards/:id`)
 	async create(
 		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
-		@Body() createCardDto: CreateCardDto,
+		@Body() createDto: ReqCreatePageCardDto,
 	): Promise<CardEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new page card for pageId=${pageId}`);
 
 		const page = await this.getPageOrThrow(pageId);
 
 		try {
-			const card = await this.cardsService.create(page.id, createCardDto);
+			const card = await this.cardsService.create(page.id, createDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created page card id=${card.id} for pageId=${page.id}`);
 
@@ -88,7 +88,7 @@ export class PagesCardsController {
 	async update(
 		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateCardDto: UpdateCardDto,
+		@Body() updateDto: ReqUpdateCardDto,
 	): Promise<CardEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for page card id=${id} for pageId=${pageId}`);
 
@@ -96,7 +96,7 @@ export class PagesCardsController {
 		const card = await this.getOneOrThrow(id, page.id);
 
 		try {
-			const updatedCard = await this.cardsService.update(card.id, page.id, updateCardDto);
+			const updatedCard = await this.cardsService.update(card.id, page.id, updateDto.data);
 
 			this.logger.debug(`[UPDATE] Successfully updated page card id=${updatedCard.id} for pageId=${page.id}`);
 

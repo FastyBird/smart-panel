@@ -15,7 +15,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
-import { ChannelCategoryEnum, EventType } from '../devices.constants';
+import { ChannelCategory, EventType } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity';
@@ -31,7 +31,7 @@ describe('ChannelsControlsService', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),

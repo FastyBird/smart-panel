@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsNotEmpty,
@@ -14,12 +14,42 @@ import type { components } from '../../../openapi';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 import { ValidatePageTiles } from '../validators/page-tile-type-constraint.validator';
 
+import {
+	CreatePageDayWeatherTileDto,
+	CreatePageDeviceTileDto,
+	CreatePageForecastWeatherTileDto,
+	CreatePageTimeTileDto,
+} from './create-page-tile.dto';
 import { CreateTileDto } from './create-tile.dto';
 
+type ReqCreatePage = components['schemas']['DashboardReqCreatePage'];
 type CreatePageBase = components['schemas']['DashboardCreatePageBase'];
 type CreateCardsPage = components['schemas']['DashboardCreateCardsPage'];
 type CreateTilesPage = components['schemas']['DashboardCreateTilesPage'];
 type CreateDevicePage = components['schemas']['DashboardCreateDevicePage'];
+
+const determinePageDto = (obj: unknown): new () => object => {
+	if (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'data' in obj &&
+		typeof obj.data === 'object' &&
+		obj.data !== null &&
+		'type' in obj.data
+	) {
+		switch ((obj.data as { type: string }).type) {
+			case 'cards':
+				return CreateCardsPageDto;
+			case 'tiles':
+				return CreateTilesPageDto;
+			case 'device':
+				return CreateDevicePageDto;
+			default:
+				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
+		}
+	}
+	throw new Error('Invalid object format for determining page DTO');
+};
 
 export abstract class CreatePageDto implements CreatePageBase {
 	@Expose()
@@ -28,9 +58,9 @@ export abstract class CreatePageDto implements CreatePageBase {
 	readonly id?: string;
 
 	@Expose()
-	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported values."}]' })
-	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported values."}]' })
-	type: string;
+	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported page type."}]' })
+	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported page type."}]' })
+	readonly type: string;
 
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
@@ -71,7 +101,12 @@ export class CreateTilesPageDto extends CreatePageDto implements CreateTilesPage
 	@IsArray({ message: '[{"field":"tiles","reason":"Tiles must be a valid array."}]' })
 	@ValidateNested({ each: true })
 	@ValidatePageTiles()
-	tiles?: CreateTileDto[];
+	tiles?: (
+		| CreatePageDeviceTileDto
+		| CreatePageTimeTileDto
+		| CreatePageDayWeatherTileDto
+		| CreatePageForecastWeatherTileDto
+	)[];
 }
 
 export class CreateDevicePageDto extends CreatePageDto implements CreateDevicePage {
@@ -81,4 +116,11 @@ export class CreateDevicePageDto extends CreatePageDto implements CreateDevicePa
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
 	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
 	device: string;
+}
+
+export class ReqCreatePageDto implements ReqCreatePage {
+	@Expose()
+	@ValidateNested()
+	@Type((options) => determinePageDto(options?.object ?? {}))
+	data: CreateCardsPageDto | CreateTilesPageDto | CreateDevicePageDto;
 }

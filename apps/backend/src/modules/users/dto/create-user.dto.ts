@@ -1,9 +1,10 @@
-import { Expose } from 'class-transformer';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
+type ReqCreateUser = components['schemas']['UsersReqCreateUser'];
 type CreateUser = components['schemas']['UsersCreateUser'];
 
 export class CreateUserDto implements CreateUser {
@@ -50,4 +51,11 @@ export class CreateUserDto implements CreateUser {
 	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
 	@ValidateIf((_, value) => value !== null)
 	role?: UserRole;
+}
+
+export class ReqCreateUserDto implements ReqCreateUser {
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateUserDto)
+	data: CreateUserDto;
 }

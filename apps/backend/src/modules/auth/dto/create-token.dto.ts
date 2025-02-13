@@ -1,5 +1,36 @@
-import { Expose, Transform } from 'class-transformer';
-import { IsDate, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { Expose, Transform, Type } from 'class-transformer';
+import { IsDate, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
+
+import { TokenType } from '../auth.constants';
+
+const determineTokenDto = (obj: unknown): new () => object => {
+	if (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'data' in obj &&
+		typeof obj.data === 'object' &&
+		obj.data !== null &&
+		'type' in obj.data
+	) {
+		const type = (obj.data as { type: string }).type as TokenType;
+
+		if (!Object.values(TokenType).includes(type)) {
+			throw new Error(`Unknown type ${type}`);
+		}
+
+		switch (type) {
+			case TokenType.ACCESS:
+				return CreateAccessTokenDto;
+			case TokenType.REFRESH:
+				return CreateRefreshTokenDto;
+			case TokenType.LONG_LIVE:
+				return CreateLongLiveTokenDto;
+			default:
+				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
+		}
+	}
+	throw new Error('Invalid object format for determining config DTO');
+};
 
 export abstract class CreateTokenDto {
 	@Expose()
@@ -13,10 +44,8 @@ export abstract class CreateTokenDto {
 	token: string;
 
 	@Expose()
-	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the valid types."}]' })
 	@IsString({ message: '[{"field":"type","reason":"Type must be one of the valid types."}]' })
-	@ValidateIf((_, value) => value !== null)
 	type: string;
 
 	@Expose({ name: 'expires_at' })
@@ -32,6 +61,8 @@ export abstract class CreateTokenDto {
 }
 
 export class CreateAccessTokenDto extends CreateTokenDto {
+	type: TokenType.ACCESS;
+
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"owner","reason":"Token owner must be a valid UUID (version 4)."}]' })
@@ -39,6 +70,8 @@ export class CreateAccessTokenDto extends CreateTokenDto {
 }
 
 export class CreateRefreshTokenDto extends CreateTokenDto {
+	type: TokenType.REFRESH;
+
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"owner","reason":"Token owner must be a valid UUID (version 4)."}]' })
@@ -51,6 +84,8 @@ export class CreateRefreshTokenDto extends CreateTokenDto {
 }
 
 export class CreateLongLiveTokenDto extends CreateTokenDto {
+	type: TokenType.LONG_LIVE;
+
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"owner","reason":"Token owner must be a valid UUID (version 4)."}]' })
@@ -67,4 +102,11 @@ export class CreateLongLiveTokenDto extends CreateTokenDto {
 	@IsString({ message: '[{"field":"description","reason":"Description must be a non-empty string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	description: string | null;
+}
+
+export class ReqCreateTokenDto {
+	@Expose()
+	@ValidateNested()
+	@Type((options) => determineTokenDto(options?.object ?? {}))
+	data: CreateAccessTokenDto | CreateRefreshTokenDto | CreateLongLiveTokenDto;
 }

@@ -3,7 +3,13 @@ import { validateSync } from 'class-validator';
 import 'reflect-metadata';
 
 import { components } from '../../../openapi';
-import { LanguageEnum, TemperatureUnitEnum, TimeFormatEnum, WeatherLocationTypeEnum } from '../config.constants';
+import {
+	LanguageType,
+	SectionType,
+	TemperatureUnitType,
+	TimeFormatType,
+	WeatherLocationTypeType,
+} from '../config.constants';
 
 import {
 	AppConfigEntity,
@@ -42,6 +48,7 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 
 	test('AudioConfigEntity matches ConfigAudio', () => {
 		const openApiModel: Audio = {
+			type: SectionType.AUDIO,
 			speaker: true,
 			speaker_volume: 50,
 			microphone: false,
@@ -64,6 +71,7 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 
 	test('DisplayConfigEntity matches ConfigDisplay', () => {
 		const openApiModel: Display = {
+			type: SectionType.DISPLAY,
 			dark_mode: false,
 			brightness: 55,
 			screen_lock_duration: 30,
@@ -86,9 +94,10 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 
 	test('LanguageConfigEntity matches ConfigLanguage', () => {
 		const openApiModel: Language = {
-			language: LanguageEnum.ENGLISH,
+			type: SectionType.LANGUAGE,
+			language: LanguageType.ENGLISH,
 			timezone: 'Europe\\Prague',
-			time_format: TimeFormatEnum.HOUR_24,
+			time_format: TimeFormatType.HOUR_24,
 		};
 
 		const entityInstance = plainToInstance(LanguageConfigEntity, openApiModel, {
@@ -107,9 +116,10 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 
 	test('WeatherConfigEntity matches ConfigWeather', () => {
 		const openApiModel: Weather = {
+			type: SectionType.WEATHER,
 			location: null,
-			location_type: WeatherLocationTypeEnum.CITY_NAME,
-			unit: TemperatureUnitEnum.CELSIUS,
+			location_type: WeatherLocationTypeType.CITY_NAME,
+			unit: TemperatureUnitType.CELSIUS,
 			open_weather_api_key: null,
 		};
 
@@ -130,26 +140,30 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 	test('AppConfigEntity matches ConfigApp', () => {
 		const openApiModel: App = {
 			audio: {
+				type: SectionType.AUDIO,
 				speaker: true,
 				speaker_volume: 50,
 				microphone: false,
 				microphone_volume: 30,
 			},
 			display: {
+				type: SectionType.DISPLAY,
 				dark_mode: false,
 				brightness: 55,
 				screen_lock_duration: 30,
 				screen_saver: false,
 			},
 			language: {
-				language: LanguageEnum.ENGLISH,
+				type: SectionType.LANGUAGE,
+				language: LanguageType.ENGLISH,
 				timezone: 'Europe\\Prague',
-				time_format: TimeFormatEnum.HOUR_24,
+				time_format: TimeFormatType.HOUR_24,
 			},
 			weather: {
+				type: SectionType.WEATHER,
 				location: null,
-				location_type: WeatherLocationTypeEnum.CITY_NAME,
-				unit: TemperatureUnitEnum.CELSIUS,
+				location_type: WeatherLocationTypeType.CITY_NAME,
+				unit: TemperatureUnitType.CELSIUS,
 				open_weather_api_key: null,
 			},
 		};

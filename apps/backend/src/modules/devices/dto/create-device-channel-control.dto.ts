@@ -1,8 +1,9 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
+type ReqCreateChannelControl = components['schemas']['DevicesReqCreateChannelControl'];
 type CreateChannelControl = components['schemas']['DevicesCreateChannelControl'];
 
 export class CreateDeviceChannelControlDto implements CreateChannelControl {
@@ -15,4 +16,11 @@ export class CreateDeviceChannelControlDto implements CreateChannelControl {
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;
+}
+
+export class ReqCreateDeviceChannelControlDto implements ReqCreateChannelControl {
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateDeviceChannelControlDto)
+	data: CreateDeviceChannelControlDto;
 }

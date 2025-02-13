@@ -19,11 +19,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import {
-	ChannelCategoryEnum,
-	DataTypeEnum,
-	DeviceCategoryEnum,
-	PermissionEnum,
-	PropertyCategoryEnum,
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
 } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
@@ -79,7 +79,7 @@ describe('DataSourceService', () => {
 	const mockDevice: MockDevice = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -91,7 +91,7 @@ describe('DataSourceService', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),
@@ -104,9 +104,9 @@ describe('DataSourceService', () => {
 	const mockChannelProperty: ChannelPropertyEntity = {
 		id: uuid().toString(),
 		name: 'Test Property',
-		category: PropertyCategoryEnum.GENERIC,
-		permission: [PermissionEnum.READ_ONLY],
-		dataType: DataTypeEnum.STRING,
+		category: PropertyCategory.GENERIC,
+		permission: [PermissionType.READ_ONLY],
+		dataType: DataTypeType.STRING,
 		unit: '°C',
 		format: null,
 		invalid: null,
@@ -374,7 +374,7 @@ describe('DataSourceService', () => {
 	describe('create', () => {
 		it('should create and return a new data source', async () => {
 			const createDto: CreateDeviceChannelDataSourceDto = {
-				type: 'device_channel',
+				type: 'device-channel',
 				device: mockDevice.id,
 				channel: mockChannel.id,
 				property: mockChannelProperty.id,
@@ -462,6 +462,7 @@ describe('DataSourceService', () => {
 	describe('update', () => {
 		it('should update a data source', async () => {
 			const updateDto: UpdateDeviceChannelDataSourceDto = {
+				type: 'device-channel',
 				property: mockChannelProperty.id,
 			};
 			const mockUpdateDataSource: DeviceChannelDataSourceEntity = {

@@ -1,8 +1,9 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
+type ReqUpdateCard = components['schemas']['DashboardReqUpdateCard'];
 type UpdateCard = components['schemas']['DashboardUpdateCard'];
 
 export class UpdateCardDto implements UpdateCard {
@@ -26,4 +27,11 @@ export class UpdateCardDto implements UpdateCard {
 		{ each: false, message: '[{"field":"order","reason":"Order must be a positive number."}]' },
 	)
 	order?: number;
+}
+
+export class ReqUpdateCardDto implements ReqUpdateCard {
+	@Expose()
+	@ValidateNested()
+	@Type(() => UpdateCardDto)
+	data: UpdateCardDto;
 }

@@ -125,7 +125,7 @@ describe('PagesController', () => {
 				updateDto: UpdateTilesPageDto,
 			});
 
-			const result = await controller.create(createDto);
+			const result = await controller.create({ data: createDto });
 
 			expect(result).toEqual(mockTilesPage);
 			expect(service.create).toHaveBeenCalledWith(createDto);
@@ -133,6 +133,7 @@ describe('PagesController', () => {
 
 		it('should update a page', async () => {
 			const updateDto: UpdateTilesPageDto = {
+				type: 'tiles',
 				title: 'Updated Page',
 			};
 
@@ -143,7 +144,7 @@ describe('PagesController', () => {
 				updateDto: UpdateTilesPageDto,
 			});
 
-			const result = await controller.update(mockTilesPage.id, updateDto);
+			const result = await controller.update(mockTilesPage.id, { data: updateDto });
 
 			expect(result).toEqual(mockTilesPage);
 			expect(service.update).toHaveBeenCalledWith(mockTilesPage.id, updateDto);

@@ -8,7 +8,6 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import bcrypt from 'bcrypt';
-import { Expose } from 'class-transformer';
 import { plainToInstance } from 'class-transformer';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
@@ -17,10 +16,11 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { TokenType } from '../auth.constants';
 import { AuthException, AuthNotFoundException } from '../auth.exceptions';
-import { CreateTokenDto } from '../dto/create-token.dto';
-import { UpdateTokenDto } from '../dto/update-token.dto';
-import { TokenEntity } from '../entities/auth.entity';
+import { CreateLongLiveTokenDto, CreateTokenDto } from '../dto/create-token.dto';
+import { UpdateLongLiveTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
+import { LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
 
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
 import { TokensService } from './tokens.service';
@@ -34,29 +34,21 @@ jest.mock('bcrypt', () => ({
 	compare: jest.fn(),
 }));
 
-class MockToken extends TokenEntity {
-	@Expose()
-	get type(): string {
-		return 'mock';
-	}
-}
-
-class CreateMockTokenDto extends CreateTokenDto {}
-
-class UpdateMockTokenDto extends UpdateTokenDto {}
-
 describe('TokensService', () => {
 	let service: TokensService;
 	let repository: Repository<TokenEntity>;
 	let mapper: TokensTypeMapperService;
 	let dataSource: DataSource;
 
-	const mockToken: MockToken = {
+	const mockToken: LongLiveTokenEntity = {
 		id: uuid().toString(),
-		type: 'mock',
+		type: TokenType.LONG_LIVE,
+		name: 'Token name',
+		description: 'Token description',
 		hashedToken: 'hashed-test-token',
 		expiresAt: new Date(),
 		createdAt: new Date(),
+		owner: null,
 		revoked: false,
 		updateToken: async (): Promise<void> => {},
 	};
@@ -88,9 +80,9 @@ describe('TokensService', () => {
 						registerMapping: jest.fn(() => {}),
 						getMapping: jest.fn(() => ({
 							type: 'mock',
-							class: MockToken,
-							createDto: CreateMockTokenDto,
-							updateDto: UpdateMockTokenDto,
+							class: LongLiveTokenEntity,
+							createDto: CreateLongLiveTokenDto,
+							updateDto: UpdateLongLiveTokenDto,
 						})),
 					},
 				},
@@ -124,7 +116,7 @@ describe('TokensService', () => {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockToken, mockToken)),
+				getOne: jest.fn().mockResolvedValue(plainToInstance(LongLiveTokenEntity, mockToken)),
 			};
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
@@ -133,7 +125,7 @@ describe('TokensService', () => {
 
 			const result = await service.getOneOrThrow(mockToken.id);
 
-			expect(result).toEqual(plainToInstance(MockToken, mockToken));
+			expect(result).toEqual(plainToInstance(LongLiveTokenEntity, mockToken));
 		});
 
 		it('should throw an error if token not found', async () => {
@@ -145,24 +137,33 @@ describe('TokensService', () => {
 
 	describe('create', () => {
 		it('should create and return a new token', async () => {
-			const createDto: CreateMockTokenDto = {
-				type: 'mock',
+			const createDto: CreateLongLiveTokenDto = {
+				type: TokenType.LONG_LIVE,
 				token: 'test-token',
+				name: 'Token name',
+				description: 'Token description',
+				owner: null,
 				expiresAt: new Date(),
 			};
-			const mockCreateToken: Partial<MockToken> = {
+			const mockCreateToken: Partial<LongLiveTokenEntity> = {
 				type: createDto.type,
 				token: createDto.token,
+				name: createDto.name,
+				description: createDto.description,
 				expiresAt: createDto.expiresAt,
+				owner: null,
 			};
-			const mockCreatedToken: MockToken = {
+			const mockCreatedToken: LongLiveTokenEntity = {
 				id: uuid().toString(),
 				type: mockCreateToken.type,
+				name: mockCreateToken.name,
+				description: mockCreateToken.description,
 				token: mockCreateToken.token,
 				hashedToken: mockCreateToken.token,
 				expiresAt: mockCreateToken.expiresAt,
 				revoked: false,
 				createdAt: new Date(),
+				owner: null,
 				updateToken: async (): Promise<void> => {},
 			};
 
@@ -170,7 +171,7 @@ describe('TokensService', () => {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockToken, mockCreatedToken)),
+				getOne: jest.fn().mockResolvedValue(plainToInstance(LongLiveTokenEntity, mockCreatedToken)),
 			};
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
@@ -183,9 +184,9 @@ describe('TokensService', () => {
 
 			const result = await service.create(createDto);
 
-			expect(result).toEqual(plainToInstance(MockToken, mockCreatedToken));
+			expect(result).toEqual(plainToInstance(LongLiveTokenEntity, mockCreatedToken));
 			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(MockToken, mockCreateToken, {
+				plainToInstance(LongLiveTokenEntity, mockCreateToken, {
 					enableImplicitConversion: true,
 					excludeExtraneousValues: true,
 					exposeUnsetFields: false,
@@ -214,26 +215,33 @@ describe('TokensService', () => {
 
 	describe('update', () => {
 		it('should update and return the token', async () => {
-			const updateDto: UpdateMockTokenDto = {
+			const updateDto: UpdateLongLiveTokenDto = {
+				type: TokenType.LONG_LIVE,
 				revoked: true,
 			};
-			const mockUpdateToken: MockToken = {
+			const mockUpdateToken: LongLiveTokenEntity = {
 				id: mockToken.id,
 				type: mockToken.type,
+				name: 'Token name',
+				description: 'Token description',
 				hashedToken: mockToken.hashedToken,
 				expiresAt: mockToken.expiresAt,
 				revoked: updateDto.revoked,
 				createdAt: mockToken.createdAt,
+				owner: null,
 				updateToken: async (): Promise<void> => {},
 			};
-			const mockUpdatedToken: MockToken = {
+			const mockUpdatedToken: LongLiveTokenEntity = {
 				id: mockUpdateToken.id,
 				type: mockUpdateToken.type,
+				name: mockUpdateToken.name,
+				description: mockUpdateToken.description,
 				hashedToken: mockUpdateToken.hashedToken,
 				expiresAt: mockUpdateToken.expiresAt,
 				revoked: mockUpdateToken.revoked,
 				createdAt: mockUpdateToken.createdAt,
 				updatedAt: new Date(),
+				owner: null,
 				updateToken: async (): Promise<void> => {},
 			};
 
@@ -243,8 +251,8 @@ describe('TokensService', () => {
 				where: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
-					.mockResolvedValueOnce(plainToInstance(MockToken, mockToken))
-					.mockResolvedValueOnce(plainToInstance(MockToken, mockUpdatedToken)),
+					.mockResolvedValueOnce(plainToInstance(LongLiveTokenEntity, mockToken))
+					.mockResolvedValueOnce(plainToInstance(LongLiveTokenEntity, mockUpdatedToken)),
 			};
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
@@ -254,8 +262,8 @@ describe('TokensService', () => {
 
 			const result = await service.update(mockToken.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(MockToken, mockUpdatedToken));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockToken, mockUpdateToken));
+			expect(result).toEqual(plainToInstance(LongLiveTokenEntity, mockUpdatedToken));
+			expect(repository.save).toHaveBeenCalledWith(plainToInstance(LongLiveTokenEntity, mockUpdateToken));
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('token');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('token.owner', 'owner');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('token.id = :fieldValue', { fieldValue: mockToken.id });

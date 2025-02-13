@@ -1,6 +1,5 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import get from 'lodash.get';
 
 import {
 	BadRequestException,
@@ -21,8 +20,8 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DashboardModulePrefix } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreatePageDto } from '../dto/create-page.dto';
-import { UpdatePageDto } from '../dto/update-page.dto';
+import { CreatePageDto, ReqCreatePageDto } from '../dto/create-page.dto';
+import { ReqUpdatePageDto, UpdatePageDto } from '../dto/update-page.dto';
 import { PageEntity } from '../entities/dashboard.entity';
 import { PageTypeMapping, PagesTypeMapperService } from '../services/pages-type-mapper.service';
 import { PagesService } from '../services/pages.service';
@@ -61,10 +60,10 @@ export class PagesController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${DashboardModulePrefix}/pages/:id`)
-	async create(@Body() createDto: any): Promise<PageEntity> {
+	async create(@Body() createDto: ReqCreatePageDto): Promise<PageEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new page');
 
-		const type: string | undefined = get(createDto, 'type', undefined) as string | undefined;
+		const type: string | undefined = createDto.data.type;
 
 		if (!type) {
 			this.logger.error('[VALIDATION] Missing required field: type');
@@ -88,7 +87,7 @@ export class PagesController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, createDto, {
+		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -106,7 +105,7 @@ export class PagesController {
 		}
 
 		try {
-			const page = await this.pagesService.create(createDto as CreatePageDto);
+			const page = await this.pagesService.create(createDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created page id=${page.id}`);
 
@@ -123,7 +122,7 @@ export class PagesController {
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: any,
+		@Body() updateDto: ReqUpdatePageDto,
 	): Promise<PageEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for page id=${id}`);
 
@@ -150,7 +149,7 @@ export class PagesController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.updateDto, updateDto, {
+		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -167,7 +166,7 @@ export class PagesController {
 		}
 
 		try {
-			const updatedPage = await this.pagesService.update(page.id, updateDto as UpdatePageDto);
+			const updatedPage = await this.pagesService.update(page.id, updateDto.data);
 
 			this.logger.debug(`[UPDATE] Successfully updated page id=${updatedPage.id}`);
 

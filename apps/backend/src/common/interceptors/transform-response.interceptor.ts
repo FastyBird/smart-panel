@@ -12,7 +12,7 @@ export class TransformResponseInterceptor implements NestInterceptor {
 				// Helper function to check and transform a single item
 				const transformItem = (item: unknown) =>
 					item?.constructor?.name && typeof item === 'object' && item.constructor.name !== 'Object'
-						? instanceToPlain(item, { exposeUnsetFields: false, ignoreDecorators: false })
+						? instanceToPlain(item, { exposeUnsetFields: false, ignoreDecorators: false, groups: ['api'] })
 						: item;
 
 				// Handle arrays by mapping each item through the transformation logic

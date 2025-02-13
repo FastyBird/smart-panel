@@ -1,8 +1,9 @@
-import { Expose } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
+type ReqRegister = components['schemas']['AuthReqRegister'];
 type Register = components['schemas']['AuthRegister'];
 
 export class RegisterDto implements Register {
@@ -38,4 +39,11 @@ export class RegisterDto implements Register {
 	@IsString({ message: '[{"field":"last_name","reason":"Last name must be a non-empty string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	last_name?: string | null;
+}
+
+export class ReqRegisterDto implements ReqRegister {
+	@Expose()
+	@ValidateNested()
+	@Type(() => RegisterDto)
+	data: RegisterDto;
 }

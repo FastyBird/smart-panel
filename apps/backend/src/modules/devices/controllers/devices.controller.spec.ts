@@ -5,54 +5,31 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Expose, Transform } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { DeviceCategoryEnum } from '../devices.constants';
-import { CreateDeviceDto } from '../dto/create-device.dto';
-import { UpdateDeviceDto } from '../dto/update-device.dto';
-import { DeviceEntity } from '../entities/devices.entity';
+import { DeviceCategory } from '../devices.constants';
+import { CreateThirdPartyDeviceDto } from '../dto/create-device.dto';
+import { UpdateThirdPartyDeviceDto } from '../dto/update-device.dto';
+import { ThirdPartyDeviceEntity } from '../entities/devices.entity';
 import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
 import { DevicesController } from './devices.controller';
-
-class MockDevice extends DeviceEntity {
-	@IsString()
-	@Expose({ name: 'mock_value' })
-	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
-		toClassOnly: true,
-	})
-	mockValue: string;
-}
-
-class CreateMockDeviceDto extends CreateDeviceDto {
-	@Expose({ name: 'mock_value' })
-	@IsString()
-	mockValue: string;
-}
-
-class UpdateMockDeviceDto extends UpdateDeviceDto {
-	@Expose({ name: 'mock_value' })
-	@IsOptional()
-	@IsString()
-	mockValue?: string;
-}
 
 describe('DevicesController', () => {
 	let controller: DevicesController;
 	let service: DevicesService;
 	let mapper: DevicesTypeMapperService;
 
-	const mockDevice: DeviceEntity = {
+	const mockDevice: ThirdPartyDeviceEntity = {
 		id: uuid().toString(),
-		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		type: 'third-party',
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
+		serviceAddress: 'http://127.0.0.1',
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		controls: [],
@@ -110,39 +87,40 @@ describe('DevicesController', () => {
 		});
 
 		it('should create a new device', async () => {
-			const createDto: CreateMockDeviceDto = {
-				type: 'mock',
-				category: DeviceCategoryEnum.GENERIC,
+			const createDto: CreateThirdPartyDeviceDto = {
+				type: 'third-party',
+				category: DeviceCategory.GENERIC,
 				name: 'New Device',
-				mockValue: 'Some value',
+				service_address: 'http://127.0.0.1',
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'mock',
-				class: MockDevice,
-				createDto: CreateMockDeviceDto,
-				updateDto: UpdateMockDeviceDto,
+				type: 'third-party',
+				class: ThirdPartyDeviceEntity,
+				createDto: CreateThirdPartyDeviceDto,
+				updateDto: UpdateThirdPartyDeviceDto,
 			});
 
-			const result = await controller.create(createDto);
+			const result = await controller.create({ data: createDto });
 
 			expect(result).toEqual(mockDevice);
 			expect(service.create).toHaveBeenCalledWith(createDto);
 		});
 
 		it('should update a device', async () => {
-			const updateDto: UpdateMockDeviceDto = {
+			const updateDto: UpdateThirdPartyDeviceDto = {
+				type: 'third-party',
 				name: 'Updated Device',
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'mock',
-				class: MockDevice,
-				createDto: CreateMockDeviceDto,
-				updateDto: UpdateMockDeviceDto,
+				type: 'third-party',
+				class: ThirdPartyDeviceEntity,
+				createDto: CreateThirdPartyDeviceDto,
+				updateDto: UpdateThirdPartyDeviceDto,
 			});
 
-			const result = await controller.update(mockDevice.id, updateDto);
+			const result = await controller.update(mockDevice.id, { data: updateDto });
 
 			expect(result).toEqual(mockDevice);
 			expect(service.update).toHaveBeenCalledWith(mockDevice.id, updateDto);

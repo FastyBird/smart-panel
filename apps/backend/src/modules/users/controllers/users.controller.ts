@@ -15,8 +15,8 @@ import {
 } from '@nestjs/common';
 
 import { AuthenticatedRequest } from '../../auth/auth.constants';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
+import { ReqCreateUserDto } from '../dto/create-user.dto';
+import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
 import { UsersService } from '../services/users.service';
 import { DISPLAY_USERNAME, UsersModulePrefix } from '../users.constants';
@@ -51,16 +51,16 @@ export class UsersController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${UsersModulePrefix}/users/:id`)
-	async create(@Body() createDto: CreateUserDto): Promise<UserEntity> {
+	async create(@Body() createDto: ReqCreateUserDto): Promise<UserEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new user');
 
-		if (createDto.username === DISPLAY_USERNAME) {
+		if (createDto.data.username === DISPLAY_USERNAME) {
 			this.logger.warn('[REGISTER] User is trying to use reserved username');
 
 			throw new ForbiddenException('Trying to create user with reserved username');
 		}
 
-		const user = await this.usersService.create(createDto);
+		const user = await this.usersService.create(createDto.data);
 
 		this.logger.debug(`[CREATE] Successfully created user id=${user.id}`);
 
@@ -70,13 +70,13 @@ export class UsersController {
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: UpdateUserDto,
+		@Body() updateDto: ReqUpdateUserDto,
 	): Promise<UserEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for user id=${id}`);
 
 		const user = await this.getOneOrThrow(id);
 
-		const updatedUser = await this.usersService.update(user.id, updateDto);
+		const updatedUser = await this.usersService.update(user.id, updateDto.data);
 
 		this.logger.debug(`[UPDATE] Successfully updated user id=${updatedUser.id}`);
 

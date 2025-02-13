@@ -15,8 +15,8 @@ import {
 
 import { DevicesModulePrefix } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateChannelDto } from '../dto/create-channel.dto';
-import { UpdateChannelDto } from '../dto/update-channel.dto';
+import { ReqCreateChannelDto } from '../dto/create-channel.dto';
+import { ReqUpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity } from '../entities/devices.entity';
 import { ChannelsService } from '../services/channels.service';
 
@@ -51,11 +51,11 @@ export class ChannelsController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${DevicesModulePrefix}/channels/:id`)
-	async create(@Body() createDto: CreateChannelDto): Promise<ChannelEntity> {
+	async create(@Body() createDto: ReqCreateChannelDto): Promise<ChannelEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new channel');
 
 		try {
-			const channel = await this.channelsService.create(createDto);
+			const channel = await this.channelsService.create(createDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created channel id=${channel.id}`);
 
@@ -72,14 +72,14 @@ export class ChannelsController {
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: UpdateChannelDto,
+		@Body() updateDto: ReqUpdateChannelDto,
 	): Promise<ChannelEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for channel id=${id}`);
 
 		const channel = await this.getOneOrThrow(id);
 
 		try {
-			const updatedChannel = await this.channelsService.update(channel.id, updateDto);
+			const updatedChannel = await this.channelsService.update(channel.id, updateDto.data);
 
 			this.logger.debug(`[UPDATE] Successfully updated channel id=${updatedChannel.id}`);
 

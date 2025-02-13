@@ -7,7 +7,7 @@ import eslint from '@eslint/js';
 
 export default tseslint.config(
 	{
-		ignores: ['eslint.config.mjs'],
+		ignores: ['eslint.config.mjs', 'src/openapi.d.ts'],
 	},
 	eslint.configs.recommended,
 	...tseslint.configs.recommendedTypeChecked,
@@ -33,5 +33,5 @@ export default tseslint.config(
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'comma-dangle': ['error', 'always-multiline'],
 		},
-	}
+	},
 );

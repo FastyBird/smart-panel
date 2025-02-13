@@ -15,13 +15,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
-import {
-	ChannelCategoryEnum,
-	DataTypeEnum,
-	EventType,
-	PermissionEnum,
-	PropertyCategoryEnum,
-} from '../devices.constants';
+import { ChannelCategory, DataTypeType, EventType, PermissionType, PropertyCategory } from '../devices.constants';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
@@ -38,7 +32,7 @@ describe('ChannelsPropertiesService', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),
@@ -51,9 +45,9 @@ describe('ChannelsPropertiesService', () => {
 	const mockChannelProperty: ChannelPropertyEntity = {
 		id: uuid().toString(),
 		name: 'Test Property',
-		category: PropertyCategoryEnum.GENERIC,
-		permission: [PermissionEnum.READ_ONLY],
-		dataType: DataTypeEnum.STRING,
+		category: PropertyCategory.GENERIC,
+		permission: [PermissionType.READ_ONLY],
+		dataType: DataTypeType.STRING,
 		unit: '°C',
 		format: null,
 		invalid: null,
@@ -199,9 +193,9 @@ describe('ChannelsPropertiesService', () => {
 	describe('create', () => {
 		it('should create and return a new channel property', async () => {
 			const createDto: CreateChannelPropertyDto = {
-				category: PropertyCategoryEnum.GENERIC,
-				permission: [PermissionEnum.READ_ONLY],
-				data_type: DataTypeEnum.UNKNOWN,
+				category: PropertyCategory.GENERIC,
+				permission: [PermissionType.READ_ONLY],
+				data_type: DataTypeType.UNKNOWN,
 			};
 			const mockCreateProperty: Partial<ChannelPropertyEntity> = {
 				category: createDto.category,
