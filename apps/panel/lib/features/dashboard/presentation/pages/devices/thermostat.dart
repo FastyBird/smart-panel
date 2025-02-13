@@ -142,8 +142,6 @@ class _ThermostatDeviceDetailPageState
                       icon: Icon(Icons.touch_app),
                       label: localizations.thermostat_mode_manual,
                     );
-                  default:
-                    return null;
                 }
               })
               .whereType<BottomNavigationBarItem>()

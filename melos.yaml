@@ -1,4 +1,5 @@
 name: fastybird_smart_app
+repository: https://github.com/FastyBird/smart-panel
 
 packages:
   - apps/*
