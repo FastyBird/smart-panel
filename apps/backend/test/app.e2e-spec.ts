@@ -45,9 +45,11 @@ describe('FastyBird Smart Panel (e2e)', () => {
 		await request(app.getHttpServer())
 			.post('/auth-module/auth/register')
 			.send({
-				username: 'testuser',
-				password: 'securePassword123!',
-				email: 'test@example.com',
+				data: {
+					username: 'testuser',
+					password: 'securePassword123!',
+					email: 'test@example.com',
+				},
 			})
 			.expect(204);
 	});
@@ -57,8 +59,10 @@ describe('FastyBird Smart Panel (e2e)', () => {
 		const response = await request(app.getHttpServer())
 			.post('/auth-module/auth/login')
 			.send({
-				username: 'testuser',
-				password: 'securePassword123!',
+				data: {
+					username: 'testuser',
+					password: 'securePassword123!',
+				},
 			})
 			.expect(201);
 
