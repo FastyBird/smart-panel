@@ -76,7 +76,6 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	test('PageEntity matches DashboardPage', () => {
 		const openApiModel: Page = {
 			id: uuid().toString(),
-			type: 'cards',
 			title: 'Cards Dashboard',
 			icon: 'cards-icon',
 			order: 1,
@@ -181,7 +180,6 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	test('TileEntity matches DashboardTile', () => {
 		const openApiModel: Tile = {
 			id: uuid().toString(),
-			type: 'device',
 			page: uuid().toString(),
 			card: uuid().toString(),
 			row: 1,
@@ -270,7 +268,7 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	test('DayWeatherTileEntity matches DashboardDayWeatherTile', () => {
 		const openApiModel: DayWeatherTile = {
 			id: uuid().toString(),
-			type: 'weather_day',
+			type: 'weather-day',
 			page: uuid().toString(),
 			card: uuid().toString(),
 			row: 1,
@@ -299,7 +297,7 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	test('ForecastWeatherTileEntity matches DashboardForecastWeatherTile', () => {
 		const openApiModel: ForecastWeatherTile = {
 			id: uuid().toString(),
-			type: 'weather_forecast',
+			type: 'weather-forecast',
 			page: uuid().toString(),
 			card: uuid().toString(),
 			row: 1,
@@ -328,7 +326,6 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	test('DataSourceEntity matches DashboardDataSource', () => {
 		const openApiModel: DataSource = {
 			id: uuid().toString(),
-			type: 'device_channel',
 			page: uuid().toString(),
 			tile: uuid().toString(),
 			card: uuid().toString(),
@@ -353,7 +350,7 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	test('DeviceChannelDataSourceEntity matches DashboardDeviceChannelDataSource', () => {
 		const openApiModel: DeviceChannelDataSource = {
 			id: uuid().toString(),
-			type: 'device_channel',
+			type: 'device-channel',
 			page: uuid().toString(),
 			tile: uuid().toString(),
 			card: uuid().toString(),
@@ -385,9 +382,7 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			title: 'Card title',
 			icon: 'Card icon',
 			order: 0,
-			page: {
-				id: uuid().toString(),
-			} as CardsPage,
+			page: uuid().toString(),
 			tiles: [],
 			data_source: [],
 			created_at: new Date().toISOString(),

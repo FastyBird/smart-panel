@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ChannelCategoryEnum, DeviceCategoryEnum } from '../devices.constants';
+import { ChannelCategory, DeviceCategory } from '../devices.constants';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 import { ChannelsControlsService } from '../services/channels.controls.service';
@@ -25,7 +25,7 @@ describe('ChannelsControlsController', () => {
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -36,7 +36,7 @@ describe('ChannelsControlsController', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
-		category: ChannelCategoryEnum.GENERIC,
+		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),
@@ -110,7 +110,7 @@ describe('ChannelsControlsController', () => {
 		it('should create a new control', async () => {
 			const createDto: CreateChannelControlDto = { name: 'New Control' };
 
-			const result = await controller.create(mockChannel.id, createDto);
+			const result = await controller.create(mockChannel.id, { data: createDto });
 
 			expect(result).toEqual(mockChannelControl);
 			expect(channelsControlsService.create).toHaveBeenCalledWith(mockChannel.id, createDto);

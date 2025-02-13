@@ -1,17 +1,56 @@
-import { Expose } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { LanguageEnum, TemperatureUnitEnum, TimeFormatEnum, WeatherLocationTypeEnum } from '../config.constants';
+import {
+	LanguageType,
+	SectionType,
+	TemperatureUnitType,
+	TimeFormatType,
+	WeatherLocationTypeType,
+} from '../config.constants';
 
-export class BaseConfigDto {}
-
+type ReqUpdateSection = components['schemas']['ConfigReqUpdateSection'];
 type UpdateAudio = components['schemas']['ConfigUpdateAudio'];
 type UpdateDisplay = components['schemas']['ConfigUpdateDisplay'];
 type UpdateLanguage = components['schemas']['ConfigUpdateLanguage'];
 type UpdateWeather = components['schemas']['ConfigUpdateWeather'];
 
+const determineConfigDto = (obj: unknown): new () => object => {
+	if (typeof obj === 'object' && obj !== null && 'type' in obj) {
+		const type = (obj as { type: string }).type as SectionType;
+
+		if (!Object.values(SectionType).includes(type)) {
+			throw new Error(`Unknown type ${type}`);
+		}
+
+		switch (type) {
+			case SectionType.AUDIO:
+				return UpdateAudioConfigDto;
+			case SectionType.DISPLAY:
+				return UpdateDisplayConfigDto;
+			case SectionType.LANGUAGE:
+				return UpdateLanguageConfigDto;
+			case SectionType.WEATHER:
+				return UpdateWeatherConfigDto;
+			default:
+				throw new Error(`Unknown type ${(obj as { type: string }).type}`);
+		}
+	}
+	throw new Error('Invalid object format for determining config DTO');
+};
+
+export class BaseConfigDto {
+	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a valid section string."}]' })
+	type: SectionType.AUDIO | SectionType.DISPLAY | SectionType.LANGUAGE | SectionType.WEATHER;
+}
+
 export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
+	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a audio string."}]' })
+	type: SectionType.AUDIO;
+
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"speaker","reason":"Speaker must be a boolean value."}]' })
@@ -44,6 +83,10 @@ export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
 }
 
 export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDisplay {
+	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a display string."}]' })
+	type: SectionType.DISPLAY;
+
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"dark_mode","reason":"Dark mode must be a boolean value."}]' })
@@ -82,9 +125,13 @@ export class UpdateDisplayConfigDto extends BaseConfigDto implements UpdateDispl
 
 export class UpdateLanguageConfigDto extends BaseConfigDto implements UpdateLanguage {
 	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a language string."}]' })
+	type: SectionType.LANGUAGE;
+
+	@Expose()
 	@IsOptional()
-	@IsEnum(LanguageEnum, { message: '[{"field":"language","reason":"Language must be a valid string."}]' })
-	language?: LanguageEnum;
+	@IsEnum(LanguageType, { message: '[{"field":"language","reason":"Language must be a valid string."}]' })
+	language?: LanguageType;
 
 	@Expose()
 	@IsOptional()
@@ -93,11 +140,15 @@ export class UpdateLanguageConfigDto extends BaseConfigDto implements UpdateLang
 
 	@Expose()
 	@IsOptional()
-	@IsEnum(TimeFormatEnum, { message: '[{"field":"time_format","reason":"Time format must be a valid string."}]' })
-	time_format?: TimeFormatEnum;
+	@IsEnum(TimeFormatType, { message: '[{"field":"time_format","reason":"Time format must be a valid string."}]' })
+	time_format?: TimeFormatType;
 }
 
 export class UpdateWeatherConfigDto extends BaseConfigDto implements UpdateWeather {
+	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a weather string."}]' })
+	type: SectionType.WEATHER;
+
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"location","reason":"Location must be a valid string."}]' })
@@ -105,10 +156,10 @@ export class UpdateWeatherConfigDto extends BaseConfigDto implements UpdateWeath
 
 	@Expose()
 	@IsOptional()
-	@IsEnum(WeatherLocationTypeEnum, {
+	@IsEnum(WeatherLocationTypeType, {
 		message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]',
 	})
-	location_type?: WeatherLocationTypeEnum;
+	location_type?: WeatherLocationTypeType;
 
 	@Expose()
 	@IsOptional()
@@ -119,11 +170,18 @@ export class UpdateWeatherConfigDto extends BaseConfigDto implements UpdateWeath
 	location_lon?: string;
 
 	@Expose()
-	@IsEnum(TemperatureUnitEnum, { message: '[{"field":"unit","reason":"Unit must be a valid string."}]' })
-	unit?: TemperatureUnitEnum;
+	@IsEnum(TemperatureUnitType, { message: '[{"field":"unit","reason":"Unit must be a valid string."}]' })
+	unit?: TemperatureUnitType;
 
 	@Expose()
 	@IsOptional()
 	@IsString({ message: '[{"field":"open_weather_api_key","reason":"OpenWeather API key must be a valid string."}]' })
 	open_weather_api_key?: string;
+}
+
+export class ReqUpdateSectionDto implements ReqUpdateSection {
+	@Expose()
+	@ValidateNested()
+	@Type((options) => determineConfigDto(options?.object ?? {}))
+	data: UpdateAudioConfigDto | UpdateDisplayConfigDto | UpdateLanguageConfigDto | UpdateWeatherConfigDto;
 }

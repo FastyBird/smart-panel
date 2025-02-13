@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { DeviceCategoryEnum } from '../devices.constants';
+import { DeviceCategory } from '../devices.constants';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
@@ -27,7 +27,7 @@ describe('DevicesControlsController', () => {
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategoryEnum.GENERIC,
+		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
 		createdAt: new Date(),
@@ -109,7 +109,7 @@ describe('DevicesControlsController', () => {
 		it('should create a new device control', async () => {
 			const createDto: CreateDeviceControlDto = { name: 'New Control' };
 
-			const result = await controller.create(mockDevice.id, createDto);
+			const result = await controller.create(mockDevice.id, { data: createDto });
 
 			expect(result).toEqual(mockDeviceControl);
 			expect(devicesControlsService.create).toHaveBeenCalledWith(mockDevice.id, createDto);

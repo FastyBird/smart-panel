@@ -11,7 +11,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
-import { EventType } from '../config.constants';
+import { EventType, SectionType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { BaseConfigDto } from '../dto/config.dto';
 import { AppConfigEntity, BaseConfigEntity } from '../entities/config.entity';
@@ -160,7 +160,7 @@ export class ConfigService {
 		this.logger.log(`[LOAD] Reloading configuration after update to section=${key}`);
 		this.loadConfig();
 
-		if (key === 'audio') {
+		if (key === SectionType.AUDIO) {
 			this.logger.log('[AUDIO] Applying updated audio configuration');
 
 			try {

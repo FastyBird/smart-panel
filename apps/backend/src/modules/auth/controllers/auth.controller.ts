@@ -18,14 +18,14 @@ import { UsersService } from '../../users/services/users.service';
 import { DISPLAY_USERNAME } from '../../users/users.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
-import { CheckEmailDto } from '../dto/check-email.dto';
+import { ReqCheckEmailDto } from '../dto/check-email.dto';
 import { CheckResponseDto } from '../dto/check-response.dto';
-import { CheckUsernameDto } from '../dto/check-username.dto';
+import { ReqCheckUsernameDto } from '../dto/check-username.dto';
 import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
-import { LoginDto } from '../dto/login.dto';
-import { RefreshResponseDto } from '../dto/refresh-response.dto';
-import { RefreshDto } from '../dto/refresh.dto';
-import { RegisterDto } from '../dto/register.dto';
+import { ReqLoginDto } from '../dto/login.dto';
+import { RefreshTokenResponseDto } from '../dto/refresh-token-response.dto';
+import { ReqRefreshDto } from '../dto/refresh-token.dto';
+import { ReqRegisterDto } from '../dto/register.dto';
 import { RegisteredDisplayResponseDto } from '../dto/registered-display-response.dto';
 import { Public } from '../guards/auth.guard';
 import { AuthService } from '../services/auth.service';
@@ -43,13 +43,13 @@ export class AuthController {
 
 	@Public()
 	@Post('login')
-	async login(@Body() body: LoginDto): Promise<LoggedInResponseDto> {
+	async login(@Body() body: ReqLoginDto): Promise<LoggedInResponseDto> {
 		try {
-			this.logger.debug(`[LOGIN] Attempting login for username=${body.username}`);
+			this.logger.debug(`[LOGIN] Attempting login for username=${body.data.username}`);
 
-			const response = await this.authService.login(body);
+			const response = await this.authService.login(body.data);
 
-			this.logger.debug(`[LOGIN] Successful login for username=${body.username}`);
+			this.logger.debug(`[LOGIN] Successful login for username=${body.data.username}`);
 
 			return response;
 		} catch (error) {
@@ -64,7 +64,7 @@ export class AuthController {
 	@Public()
 	@HttpCode(204)
 	@Post('register')
-	async register(@Body() body: RegisterDto): Promise<void> {
+	async register(@Body() body: ReqRegisterDto): Promise<void> {
 		const owner = await this.userService.findOwner();
 
 		if (owner) {
@@ -73,24 +73,24 @@ export class AuthController {
 			throw new ForbiddenException('Application owner already exists');
 		}
 
-		if (body.username === DISPLAY_USERNAME) {
+		if (body.data.username === DISPLAY_USERNAME) {
 			this.logger.warn('[REGISTER] User is trying to use reserved username');
 
 			throw new ForbiddenException('Trying to register with reserved username');
 		}
 
-		this.logger.debug(`[REGISTER] Registering new user username=${body.username}, email=${body.email}`);
+		this.logger.debug(`[REGISTER] Registering new user username=${body.data.username}, email=${body.data.email}`);
 
-		await this.authService.register(body);
+		await this.authService.register(body.data);
 
-		this.logger.debug(`[REGISTER] Successfully registered user username=${body.username}`);
+		this.logger.debug(`[REGISTER] Successfully registered user username=${body.data.username}`);
 	}
 
 	@Public()
 	@Post('refresh')
-	async refreshAccessToken(@Body() body: RefreshDto): Promise<RefreshResponseDto> {
+	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshTokenResponseDto> {
 		try {
-			const response = await this.authService.refreshAccessToken(body.token);
+			const response = await this.authService.refreshAccessToken(body.data.token);
 
 			this.logger.debug('[REFRESH] Successfully refreshed user access token');
 
@@ -148,24 +148,24 @@ export class AuthController {
 
 	@Public()
 	@Post('check/username')
-	async checkUsername(@Body() body: CheckUsernameDto): Promise<CheckResponseDto> {
-		this.logger.debug(`[CHECK] Checking availability for username=${body.username}`);
+	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckResponseDto> {
+		this.logger.debug(`[CHECK] Checking availability for username=${body.data.username}`);
 
-		const response = await this.authService.checkUsername(body);
+		const response = await this.authService.checkUsername(body.data);
 
-		this.logger.debug(`[CHECK] Username=${body.username} available=${response.valid}`);
+		this.logger.debug(`[CHECK] Username=${body.data.username} available=${response.valid}`);
 
 		return response;
 	}
 
 	@Public()
 	@Post('check/email')
-	async checkEmail(@Body() body: CheckEmailDto): Promise<CheckResponseDto> {
-		this.logger.debug(`[CHECK] Checking availability for email=${body.email}`);
+	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckResponseDto> {
+		this.logger.debug(`[CHECK] Checking availability for email=${body.data.email}`);
 
-		const response = await this.authService.checkEmail(body);
+		const response = await this.authService.checkEmail(body.data);
 
-		this.logger.debug(`[CHECK] Email=${body.email} available=${response.valid}`);
+		this.logger.debug(`[CHECK] Email=${body.data.email} available=${response.valid}`);
 
 		return response;
 	}

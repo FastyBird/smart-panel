@@ -15,8 +15,8 @@ import {
 
 import { DevicesModulePrefix } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceChannelDto } from '../dto/create-device-channel.dto';
-import { UpdateDeviceChannelDto } from '../dto/update-device-channel.dto';
+import { ReqCreateDeviceChannelDto } from '../dto/create-device-channel.dto';
+import { ReqUpdateDeviceChannelDto } from '../dto/update-device-channel.dto';
 import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
@@ -63,14 +63,14 @@ export class DevicesChannelsController {
 	@Header('Location', `:baseUrl/${DevicesModulePrefix}/devices/:device/channels/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
-		@Body() createDto: CreateDeviceChannelDto,
+		@Body() createDto: ReqCreateDeviceChannelDto,
 	): Promise<ChannelEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new channel for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 
 		try {
-			const channel = await this.channelsService.create({ ...createDto, device: device.id });
+			const channel = await this.channelsService.create({ ...createDto.data, device: device.id });
 
 			this.logger.debug(`[CREATE] Successfully created channel id=${channel.id} for deviceId=${device.id}`);
 
@@ -88,7 +88,7 @@ export class DevicesChannelsController {
 	async update(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: UpdateDeviceChannelDto,
+		@Body() updateDto: ReqUpdateDeviceChannelDto,
 	): Promise<ChannelEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for channel id=${id} for deviceId=${deviceId}`);
 
@@ -96,7 +96,7 @@ export class DevicesChannelsController {
 		const channel = await this.getOneOrThrow(id, device.id);
 
 		try {
-			const updatedChannel = await this.channelsService.update(channel.id, updateDto);
+			const updatedChannel = await this.channelsService.update(channel.id, updateDto.data);
 
 			this.logger.debug(`[UPDATE] Successfully updated channel id=${updatedChannel.id} for deviceId=${device.id}`);
 

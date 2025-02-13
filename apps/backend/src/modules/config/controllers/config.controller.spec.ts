@@ -8,7 +8,13 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { BadRequestException, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { LanguageEnum, TemperatureUnitEnum, TimeFormatEnum, WeatherLocationTypeEnum } from '../config.constants';
+import {
+	LanguageType,
+	SectionType,
+	TemperatureUnitType,
+	TimeFormatType,
+	WeatherLocationTypeType,
+} from '../config.constants';
 import {
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
@@ -32,26 +38,30 @@ describe('ConfigController', () => {
 
 	const mockConfig: AppConfigEntity = {
 		audio: {
+			type: SectionType.AUDIO,
 			speaker: true,
 			speakerVolume: 50,
 			microphone: false,
 			microphoneVolume: 30,
 		},
 		display: {
+			type: SectionType.DISPLAY,
 			darkMode: true,
 			brightness: 80,
 			screenLockDuration: 5,
 			screenSaver: true,
 		},
 		language: {
-			language: LanguageEnum.ENGLISH,
+			type: SectionType.LANGUAGE,
+			language: LanguageType.ENGLISH,
 			timezone: 'America/New_York',
-			timeFormat: TimeFormatEnum.HOUR_12,
+			timeFormat: TimeFormatType.HOUR_12,
 		},
 		weather: {
+			type: SectionType.WEATHER,
 			location: 'New York',
-			locationType: WeatherLocationTypeEnum.CITY_NAME,
-			unit: TemperatureUnitEnum.CELSIUS,
+			locationType: WeatherLocationTypeType.CITY_NAME,
+			unit: TemperatureUnitType.CELSIUS,
 			openWeatherApiKey: 'dummy-api-key',
 		},
 	};
@@ -95,15 +105,15 @@ describe('ConfigController', () => {
 
 	describe('getConfigSection', () => {
 		it('should return the audio configuration section', () => {
-			const result = controller.getConfigSection('audio');
+			const result = controller.getConfigSection(SectionType.AUDIO);
 			expect(result).toEqual(mockConfig.audio);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('audio', AudioConfigEntity);
+			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.AUDIO, AudioConfigEntity);
 		});
 
 		it('should return the display configuration section', () => {
-			const result = controller.getConfigSection('display');
+			const result = controller.getConfigSection(SectionType.DISPLAY);
 			expect(result).toEqual(mockConfig.display);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('display', DisplayConfigEntity);
+			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.DISPLAY, DisplayConfigEntity);
 		});
 
 		it('should throw BadRequestException for an invalid section', () => {
@@ -113,12 +123,12 @@ describe('ConfigController', () => {
 
 	describe('updateAudioConfig', () => {
 		it('should update and return the audio configuration', async () => {
-			const updateDto: UpdateAudioConfigDto = { speaker: false, speaker_volume: 20 };
+			const updateDto: UpdateAudioConfigDto = { type: SectionType.AUDIO, speaker: false, speaker_volume: 20 };
 			const updatedConfig = { ...mockConfig.audio, ...updateDto };
 
 			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
 
-			const result = await controller.updateAudioConfig(updateDto);
+			const result = await controller.updateAudioConfig({ data: updateDto });
 
 			expect(result).toEqual(updatedConfig);
 			expect(configService.setConfigSection).toHaveBeenCalledWith('audio', updateDto, UpdateAudioConfigDto);
@@ -128,12 +138,12 @@ describe('ConfigController', () => {
 
 	describe('updateDisplayConfig', () => {
 		it('should update and return the display configuration', async () => {
-			const updateDto: UpdateDisplayConfigDto = { brightness: 60, dark_mode: false };
+			const updateDto: UpdateDisplayConfigDto = { type: SectionType.DISPLAY, brightness: 60, dark_mode: false };
 			const updatedConfig = { ...mockConfig.display, ...updateDto };
 
 			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
 
-			const result = await controller.updateDisplayConfig(updateDto);
+			const result = await controller.updateDisplayConfig({ data: updateDto });
 
 			expect(result).toEqual(updatedConfig);
 			expect(configService.setConfigSection).toHaveBeenCalledWith('display', updateDto, UpdateDisplayConfigDto);
@@ -143,12 +153,16 @@ describe('ConfigController', () => {
 
 	describe('updateLanguageConfig', () => {
 		it('should update and return the language configuration', async () => {
-			const updateDto: UpdateLanguageConfigDto = { language: LanguageEnum.CZECH, timezone: 'Europe/Prague' };
+			const updateDto: UpdateLanguageConfigDto = {
+				type: SectionType.LANGUAGE,
+				language: LanguageType.CZECH,
+				timezone: 'Europe/Prague',
+			};
 			const updatedConfig = { ...mockConfig.language, ...updateDto };
 
 			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
 
-			const result = await controller.updateLanguageConfig(updateDto);
+			const result = await controller.updateLanguageConfig({ data: updateDto });
 
 			expect(result).toEqual(updatedConfig);
 			expect(configService.setConfigSection).toHaveBeenCalledWith('language', updateDto, UpdateLanguageConfigDto);
@@ -158,12 +172,16 @@ describe('ConfigController', () => {
 
 	describe('updateWeatherConfig', () => {
 		it('should update and return the weather configuration', async () => {
-			const updateDto: UpdateWeatherConfigDto = { location: 'Paris', unit: TemperatureUnitEnum.FAHRENHEIT };
+			const updateDto: UpdateWeatherConfigDto = {
+				type: SectionType.WEATHER,
+				location: 'Paris',
+				unit: TemperatureUnitType.FAHRENHEIT,
+			};
 			const updatedConfig = { ...mockConfig.weather, ...updateDto };
 
 			jest.spyOn(configService, 'getConfigSection').mockReturnValue(updatedConfig);
 
-			const result = await controller.updateWeatherConfig(updateDto);
+			const result = await controller.updateWeatherConfig({ data: updateDto });
 
 			expect(result).toEqual(updatedConfig);
 			expect(configService.setConfigSection).toHaveBeenCalledWith('weather', updateDto, UpdateWeatherConfigDto);

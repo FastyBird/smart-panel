@@ -11,15 +11,17 @@ import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
 import {
 	EventType as ConfigModuleEventType,
-	LanguageEnum,
-	WeatherLocationTypeEnum,
+	LanguageType,
+	SectionType,
+	WeatherLocationTypeType,
 } from '../../config/config.constants';
 import { LanguageConfigEntity, WeatherConfigEntity } from '../../config/entities/config.entity';
 import { ConfigService } from '../../config/services/config.service';
+import { DayWeatherTileEntity } from '../../dashboard/entities/dashboard.entity';
 import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { ForecastDto } from '../dto/forecast.dto';
 import { WeatherDto } from '../dto/weather.dto';
-import { ForecastEntity, LocationWeatherEntity, WeatherEntity } from '../entities/weather.entity';
+import { LocationEntity, LocationWeatherEntity } from '../entities/weather.entity';
 import { EventType } from '../weather.constants';
 import { WeatherException, WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
@@ -31,7 +33,7 @@ export class WeatherService {
 
 	private apiKey: string | null;
 	private location: string;
-	private locationType: WeatherLocationTypeEnum;
+	private locationType: WeatherLocationTypeType;
 	private language: string = 'en';
 
 	private readonly BASE_URL = 'https://api.openweathermap.org/data/2.5';
@@ -80,14 +82,18 @@ export class WeatherService {
 		try {
 			this.logger.debug(`[WEATHER] Fetching weather data for location='${this.location}'`);
 
-			const [weather, forecast] = await Promise.all([this.fetchCurrentWeather(), this.fetchWeatherForecast()]);
+			const [current, forecast] = await Promise.all([this.fetchCurrentWeather(), this.fetchWeatherForecast()]);
 
-			if (weather && forecast) {
+			if (current && forecast) {
 				const weatherData = plainToInstance(
 					LocationWeatherEntity,
 					{
-						weather,
+						current: current.current,
 						forecast,
+						sunrise: current.sunrise,
+						sunset: current.sunset,
+						location: current.location,
+						createdAt: current.createdAt,
 					},
 					{
 						excludeExtraneousValues: true,
@@ -143,25 +149,32 @@ export class WeatherService {
 	}
 
 	private loadConfiguration() {
-		this.apiKey = this.configService.getConfigSection('weather', WeatherConfigEntity).openWeatherApiKey;
+		this.apiKey = this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigEntity).openWeatherApiKey;
 
-		this.location = this.configService.getConfigSection('weather', WeatherConfigEntity).location || 'Prague,CZ';
+		this.location =
+			this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigEntity).location || 'Prague,CZ';
 
 		this.locationType =
-			this.configService.getConfigSection('weather', WeatherConfigEntity).locationType ||
-			WeatherLocationTypeEnum.CITY_NAME;
+			this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigEntity).locationType ||
+			WeatherLocationTypeType.CITY_NAME;
 
-		switch (this.configService.getConfigSection('language', LanguageConfigEntity).language) {
-			case LanguageEnum.ENGLISH:
+		switch (this.configService.getConfigSection(SectionType.LANGUAGE, LanguageConfigEntity).language) {
+			case LanguageType.ENGLISH:
 				this.language = 'en';
 				break;
-			case LanguageEnum.CZECH:
+			case LanguageType.CZECH:
 				this.language = 'cz';
 				break;
 		}
 	}
 
-	private async fetchCurrentWeather(): Promise<WeatherEntity | null> {
+	private async fetchCurrentWeather(): Promise<{
+		current: DayWeatherTileEntity;
+		sunrise: Date;
+		sunset: Date;
+		location: LocationEntity;
+		createdAt: Date;
+	} | null> {
 		const queryParams = this.buildQueryParams();
 
 		const url = `${this.BASE_URL}/weather?${queryParams}&appid=${this.apiKey}&units=${this.units}&lang=${this.language}`;
@@ -187,7 +200,29 @@ export class WeatherService {
 				return null;
 			}
 
-			return this.transformWeatherDto(weather);
+			const current = this.transformWeatherDto(weather);
+
+			const sunrise = new Date(weather.sys.sunrise * 1000);
+			const sunset = new Date(weather.sys.sunset * 1000);
+			const location = plainToInstance(
+				LocationEntity,
+				{
+					name: weather.name,
+					country: weather.sys.country,
+				},
+				{
+					excludeExtraneousValues: true,
+				},
+			);
+			const createdAt = new Date(weather.dt * 1000);
+
+			return {
+				current,
+				sunrise,
+				sunset,
+				location,
+				createdAt,
+			};
 		} catch (error) {
 			const err = error as Error;
 
@@ -197,7 +232,7 @@ export class WeatherService {
 		}
 	}
 
-	private async fetchWeatherForecast(daysCnt = 7): Promise<ForecastEntity | null> {
+	private async fetchWeatherForecast(daysCnt = 7): Promise<DayWeatherTileEntity[]> {
 		const queryParams = this.buildQueryParams();
 
 		const url = `${this.BASE_URL}/forecast?${queryParams}&cnt=${daysCnt}&appid=${this.apiKey}&units=${this.units}&lang=${this.language}`;
@@ -235,7 +270,7 @@ export class WeatherService {
 
 	private buildQueryParams(): string {
 		switch (this.locationType) {
-			case WeatherLocationTypeEnum.LAT_LON: {
+			case WeatherLocationTypeType.LAT_LON: {
 				const [lat, lon] = this.location.split(' ');
 
 				if (!lat || !lon) {
@@ -244,13 +279,13 @@ export class WeatherService {
 
 				return `lat=${lat}&lon=${lon}`;
 			}
-			case WeatherLocationTypeEnum.CITY_NAME: {
+			case WeatherLocationTypeType.CITY_NAME: {
 				return `q=${encodeURIComponent(this.location)}`;
 			}
-			case WeatherLocationTypeEnum.CITY_ID: {
+			case WeatherLocationTypeType.CITY_ID: {
 				return `id=${this.location}`;
 			}
-			case WeatherLocationTypeEnum.ZIP_CODE: {
+			case WeatherLocationTypeType.ZIP_CODE: {
 				return `zip=${this.location}`;
 			}
 			default: {
@@ -259,9 +294,9 @@ export class WeatherService {
 		}
 	}
 
-	private transformWeatherDto(dto: WeatherDto): WeatherEntity {
+	private transformWeatherDto(dto: WeatherDto): DayWeatherTileEntity {
 		return plainToInstance(
-			WeatherEntity,
+			DayWeatherTileEntity,
 			{
 				temperature: dto.main.temp,
 				temperatureMin: dto.main.temp_min,
@@ -274,12 +309,6 @@ export class WeatherService {
 					main: dto.weather[0].main,
 					description: dto.weather[0].description,
 					icon: dto.weather[0].icon,
-				},
-				sunrise: new Date(dto.sys.sunrise * 1000),
-				sunset: new Date(dto.sys.sunset * 1000),
-				location: {
-					name: dto.name,
-					country: dto.sys.country,
 				},
 				wind: {
 					speed: dto.wind.speed,
@@ -297,43 +326,31 @@ export class WeatherService {
 		);
 	}
 
-	private transformForecastDto(dto: ForecastDto): ForecastEntity {
-		return plainToInstance(
-			ForecastEntity,
-			{
-				location: {
-					name: dto.city.name,
-					country: dto.city.country,
+	private transformForecastDto(dto: ForecastDto): DayWeatherTileEntity[] {
+		return dto.list.map((forecast) =>
+			plainToInstance(DayWeatherTileEntity, {
+				temperature: forecast.main.temp,
+				temperatureMin: forecast.main.temp_min,
+				temperatureMax: forecast.main.temp_max,
+				feelsLike: forecast.main.feels_like,
+				pressure: forecast.main.pressure,
+				humidity: forecast.main.humidity,
+				weather: {
+					code: forecast.weather[0].id,
+					main: forecast.weather[0].main,
+					description: forecast.weather[0].description,
+					icon: forecast.weather[0].icon,
 				},
-				sunrise: new Date(dto.city.sunrise * 1000),
-				sunset: new Date(dto.city.sunset * 1000),
-				forecast: dto.list.map((forecast) => ({
-					temperature: forecast.main.temp,
-					temperatureMin: forecast.main.temp_min,
-					temperatureMax: forecast.main.temp_max,
-					feelsLike: forecast.main.feels_like,
-					pressure: forecast.main.pressure,
-					humidity: forecast.main.humidity,
-					weather: {
-						code: forecast.weather[0].id,
-						main: forecast.weather[0].main,
-						description: forecast.weather[0].description,
-						icon: forecast.weather[0].icon,
-					},
-					wind: {
-						speed: forecast.wind.speed,
-						deg: forecast.wind.deg,
-						gust: forecast.wind.gust,
-					},
-					clouds: forecast.clouds,
-					rain: forecast.rain && '3h' in forecast.rain ? forecast.rain['3h'] : undefined,
-					snow: forecast.snow && '3h' in forecast.snow ? forecast.snow['3h'] : undefined,
-					createdAt: new Date(forecast.dt * 1000),
-				})),
-			},
-			{
-				excludeExtraneousValues: true,
-			},
+				wind: {
+					speed: forecast.wind.speed,
+					deg: forecast.wind.deg,
+					gust: forecast.wind.gust,
+				},
+				clouds: forecast.clouds,
+				rain: forecast.rain && '3h' in forecast.rain ? forecast.rain['3h'] : undefined,
+				snow: forecast.snow && '3h' in forecast.snow ? forecast.snow['3h'] : undefined,
+				createdAt: new Date(forecast.dt * 1000),
+			}),
 		);
 	}
 }

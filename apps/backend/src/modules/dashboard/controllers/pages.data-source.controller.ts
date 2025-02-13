@@ -1,6 +1,5 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import get from 'lodash.get';
 
 import {
 	BadRequestException,
@@ -22,7 +21,8 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import { DashboardModulePrefix } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
-import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
+import { ReqCreatePageDataSourceDto } from '../dto/create-page-data-source.dto';
+import { ReqUpdateDataSourceDto, UpdateDataSourceDto } from '../dto/update-data-source.dto';
 import { DataSourceEntity, PageEntity } from '../entities/dashboard.entity';
 import { DataSourceTypeMapping, DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
 import { DataSourceService } from '../services/data-source.service';
@@ -71,13 +71,13 @@ export class PagesDataSourceController {
 	@Header('Location', `:baseUrl/${DashboardModulePrefix}/pages/:page/data-source/:id`)
 	async create(
 		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
-		@Body() createDataSourceDto: any,
+		@Body() createDto: ReqCreatePageDataSourceDto,
 	): Promise<DataSourceEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new page data source for pageId=${pageId}`);
 
 		const page = await this.getPageOrThrow(pageId);
 
-		const type: string | undefined = get(createDataSourceDto, 'type', undefined) as string | undefined;
+		const type: string | undefined = createDto.data.type;
 
 		if (!type) {
 			this.logger.error('[VALIDATION] Missing required field: type');
@@ -110,7 +110,7 @@ export class PagesDataSourceController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, createDataSourceDto, {
+		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -129,7 +129,7 @@ export class PagesDataSourceController {
 		}
 
 		try {
-			const dataSource = await this.dataSourceService.create(createDataSourceDto as CreateDataSourceDto, {
+			const dataSource = await this.dataSourceService.create(createDto.data, {
 				pageId: page.id,
 			});
 
@@ -149,7 +149,7 @@ export class PagesDataSourceController {
 	async update(
 		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDataSourceDto: any,
+		@Body() updateDto: ReqUpdateDataSourceDto,
 	): Promise<DataSourceEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for page data source id=${id} for pageId=${pageId}`);
 
@@ -179,7 +179,7 @@ export class PagesDataSourceController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.updateDto, updateDataSourceDto, {
+		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -198,10 +198,7 @@ export class PagesDataSourceController {
 		}
 
 		try {
-			const updatedDataSource = await this.dataSourceService.update(
-				dataSource.id,
-				updateDataSourceDto as UpdateDataSourceDto,
-			);
+			const updatedDataSource = await this.dataSourceService.update(dataSource.id, updateDto.data);
 
 			this.logger.debug(
 				`[UPDATE] Successfully updated page data source id=${updatedDataSource.id} for pageId=${page.id}`,

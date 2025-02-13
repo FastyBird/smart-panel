@@ -79,7 +79,7 @@ describe('AuthController', () => {
 
 			jest.spyOn(authService, 'login').mockResolvedValue(expectedResponse);
 
-			await expect(controller.login(loginDto)).resolves.toEqual(expectedResponse);
+			await expect(controller.login({ data: loginDto })).resolves.toEqual(expectedResponse);
 			expect(authService.login).toHaveBeenCalledWith(loginDto);
 		});
 	});
@@ -90,7 +90,7 @@ describe('AuthController', () => {
 
 			jest.spyOn(authService, 'register');
 
-			await expect(controller.register(registerDto)).resolves.toBeUndefined();
+			await expect(controller.register({ data: registerDto })).resolves.toBeUndefined();
 			expect(authService.register).toHaveBeenCalledWith(registerDto);
 		});
 	});
@@ -125,7 +125,7 @@ describe('AuthController', () => {
 
 			jest.spyOn(authService, 'checkUsername').mockResolvedValue(expectedResponse);
 
-			await expect(controller.checkUsername(username)).resolves.toEqual(expectedResponse);
+			await expect(controller.checkUsername({ data: username })).resolves.toEqual(expectedResponse);
 			expect(authService.checkUsername).toHaveBeenCalledWith(username);
 		});
 	});
@@ -137,7 +137,7 @@ describe('AuthController', () => {
 
 			jest.spyOn(authService, 'checkEmail').mockResolvedValue(expectedResponse);
 
-			await expect(controller.checkEmail(email)).resolves.toEqual(expectedResponse);
+			await expect(controller.checkEmail({ data: email })).resolves.toEqual(expectedResponse);
 			expect(authService.checkEmail).toHaveBeenCalledWith(email);
 		});
 	});

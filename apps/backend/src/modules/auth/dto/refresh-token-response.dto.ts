@@ -1,7 +1,7 @@
 import { Expose, Transform } from 'class-transformer';
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class RefreshResponseDto {
+export class RefreshTokenResponseDto {
 	@Expose({ name: 'access_token' })
 	@IsNotEmpty()
 	@IsString()

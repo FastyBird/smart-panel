@@ -15,7 +15,7 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DevicesModulePrefix } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
+import { ReqCreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 import { DevicesControlsService } from '../services/devices.controls.service';
 import { DevicesService } from '../services/devices.service';
@@ -64,13 +64,13 @@ export class DevicesControlsController {
 	@Header('Location', `:baseUrl/${DevicesModulePrefix}/devices/:device/controls/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
-		@Body() createControlDto: CreateDeviceControlDto,
+		@Body() createDto: ReqCreateDeviceControlDto,
 	): Promise<DeviceControlEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new control for deviceId=${deviceId}`);
 
 		const device = await this.getDeviceOrThrow(deviceId);
 
-		const existingControl = await this.devicesControlsService.findOneByName(createControlDto.name, device.id);
+		const existingControl = await this.devicesControlsService.findOneByName(createDto.data.name, device.id);
 
 		if (existingControl === null) {
 			throw ValidationExceptionFactory.createException([
@@ -89,7 +89,7 @@ export class DevicesControlsController {
 		}
 
 		try {
-			const control = await this.devicesControlsService.create(device.id, createControlDto);
+			const control = await this.devicesControlsService.create(device.id, createDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created control id=${control.id} for deviceId=${device.id}`);
 

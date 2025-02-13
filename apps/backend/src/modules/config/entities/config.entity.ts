@@ -1,11 +1,21 @@
 import { Expose, Type } from 'class-transformer';
 import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
-import { LanguageEnum, TemperatureUnitEnum, TimeFormatEnum, WeatherLocationTypeEnum } from '../config.constants';
+import {
+	LanguageType,
+	SectionType,
+	TemperatureUnitType,
+	TimeFormatType,
+	WeatherLocationTypeType,
+} from '../config.constants';
 
 export abstract class BaseConfigEntity {}
 
 export class AudioConfigEntity extends BaseConfigEntity {
+	@Expose()
+	@IsOptional()
+	type = SectionType.AUDIO;
+
 	@Expose()
 	@IsBoolean()
 	speaker: boolean = false;
@@ -28,6 +38,10 @@ export class AudioConfigEntity extends BaseConfigEntity {
 }
 
 export class DisplayConfigEntity extends BaseConfigEntity {
+	@Expose()
+	@IsOptional()
+	type = SectionType.DISPLAY;
+
 	@Expose({ name: 'dark_mode' })
 	@IsBoolean()
 	darkMode: boolean = false;
@@ -51,19 +65,27 @@ export class DisplayConfigEntity extends BaseConfigEntity {
 
 export class LanguageConfigEntity extends BaseConfigEntity {
 	@Expose()
-	@IsEnum(LanguageEnum)
-	language: LanguageEnum = LanguageEnum.ENGLISH;
+	@IsOptional()
+	type = SectionType.LANGUAGE;
+
+	@Expose()
+	@IsEnum(LanguageType)
+	language: LanguageType = LanguageType.ENGLISH;
 
 	@Expose()
 	@IsString()
 	timezone: string = 'Europe/Prague';
 
 	@Expose({ name: 'time_format' })
-	@IsEnum(TimeFormatEnum)
-	timeFormat: TimeFormatEnum = TimeFormatEnum.HOUR_24;
+	@IsEnum(TimeFormatType)
+	timeFormat: TimeFormatType = TimeFormatType.HOUR_24;
 }
 
 export class WeatherConfigEntity extends BaseConfigEntity {
+	@Expose()
+	@IsOptional()
+	type = SectionType.WEATHER;
+
 	@Expose()
 	@IsOptional()
 	@IsString()
@@ -71,12 +93,12 @@ export class WeatherConfigEntity extends BaseConfigEntity {
 
 	@Expose({ name: 'location_type' })
 	@IsOptional()
-	@IsEnum(WeatherLocationTypeEnum)
-	locationType: WeatherLocationTypeEnum = WeatherLocationTypeEnum.CITY_NAME;
+	@IsEnum(WeatherLocationTypeType)
+	locationType: WeatherLocationTypeType = WeatherLocationTypeType.CITY_NAME;
 
 	@Expose()
-	@IsEnum(TemperatureUnitEnum)
-	unit: TemperatureUnitEnum = TemperatureUnitEnum.CELSIUS;
+	@IsEnum(TemperatureUnitType)
+	unit: TemperatureUnitType = TemperatureUnitType.CELSIUS;
 
 	@Expose({ name: 'open_weather_api_key' })
 	@IsOptional()

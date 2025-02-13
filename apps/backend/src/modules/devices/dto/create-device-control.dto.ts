@@ -1,8 +1,9 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
+type ReqCreateDeviceControl = components['schemas']['DevicesReqCreateDeviceControl'];
 type CreateDeviceControl = components['schemas']['DevicesCreateDeviceControl'];
 
 export class CreateDeviceControlDto implements CreateDeviceControl {
@@ -15,4 +16,11 @@ export class CreateDeviceControlDto implements CreateDeviceControl {
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	readonly name: string;
+}
+
+export class ReqCreateDeviceControlDto implements ReqCreateDeviceControl {
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateDeviceControlDto)
+	data: CreateDeviceControlDto;
 }

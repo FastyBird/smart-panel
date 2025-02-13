@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 
-import { ThirdPartyPropertiesUpdateStatusEnum } from '../devices.constants';
+import { ThirdPartyPropertiesUpdateStatus } from '../devices.constants';
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
 import { PropertiesUpdateResponseDto } from '../dto/third-party-property-update-response.dto';
 import { ChannelEntity, ChannelPropertyEntity, ThirdPartyDeviceEntity } from '../entities/devices.entity';
@@ -74,7 +74,7 @@ describe('ThirdPartyDevicePlatform', () => {
 					device: mockDevice.id,
 					channel: mockChannel.id,
 					property: mockChannelProperty.id,
-					status: ThirdPartyPropertiesUpdateStatusEnum.SUCCESS,
+					status: ThirdPartyPropertiesUpdateStatus.SUCCESS,
 				},
 			],
 		};
@@ -103,7 +103,7 @@ describe('ThirdPartyDevicePlatform', () => {
 					device: mockDevice.id,
 					channel: mockChannel.id,
 					property: mockChannelProperty.id,
-					status: ThirdPartyPropertiesUpdateStatusEnum.INVALID_VALUE,
+					status: ThirdPartyPropertiesUpdateStatus.INVALID_VALUE,
 				},
 			],
 		};

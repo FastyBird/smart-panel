@@ -14,7 +14,7 @@ import type { components } from '../../../openapi';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 import { ValidateTileDataSources } from '../validators/tile-data-source-type-constraint.validator';
 
-import { CreateDataSourceDto } from './create-data-source.dto';
+import { CreateDeviceChannelDataSourceDto } from './create-data-source.dto';
 
 type CreateTileBase = components['schemas']['DashboardCreateTileBase'];
 type CreateDeviceTile = components['schemas']['DashboardCreateDeviceTile'];
@@ -29,12 +29,8 @@ export abstract class CreateTileDto implements CreateTileBase {
 	readonly id?: string;
 
 	@Expose()
-	@IsNotEmpty({
-		message: '[{"field":"type","reason":"Type must be a valid string representing a supported tile type."}]',
-	})
-	@IsString({
-		message: '[{"field":"type","reason":"Type must be a valid string representing a supported tile type."}]',
-	})
+	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported tile type."}]' })
+	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported tile type."}]' })
 	readonly type: string;
 
 	@Expose()
@@ -42,7 +38,7 @@ export abstract class CreateTileDto implements CreateTileBase {
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
 	@ValidateNested({ each: true })
 	@ValidateTileDataSources()
-	data_source?: CreateDataSourceDto[] = [];
+	data_source?: CreateDeviceChannelDataSourceDto[] = [];
 
 	@Expose()
 	@IsNumber(
@@ -98,9 +94,9 @@ export class CreateTimeTileDto extends CreateTileDto implements CreateTimeTile {
 }
 
 export class CreateDayWeatherTileDto extends CreateTileDto implements CreateDayWeatherTile {
-	readonly type: 'weather_day';
+	readonly type: 'weather-day';
 }
 
 export class CreateForecastWeatherTileDto extends CreateTileDto implements CreateForecastWeatherTile {
-	readonly type: 'weather_forecast';
+	readonly type: 'weather-forecast';
 }

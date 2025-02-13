@@ -102,7 +102,7 @@ describe('UsersController', () => {
 				email: 'new@example.com',
 			};
 
-			const result = await controller.create(createDto);
+			const result = await controller.create({ data: createDto });
 
 			expect(result).toEqual(mockUser);
 			expect(service.create).toHaveBeenCalledWith(createDto);
@@ -113,7 +113,7 @@ describe('UsersController', () => {
 		it('should update and return the user', async () => {
 			const updateDto: UpdateUserDto = { first_name: 'UpdatedName' };
 
-			const updatedUser = await controller.update(mockUser.id, updateDto);
+			const updatedUser = await controller.update(mockUser.id, { data: updateDto });
 
 			expect(updatedUser.firstName).toBe('UpdatedName');
 			expect(service.update).toHaveBeenCalledWith(mockUser.id, updateDto);
@@ -122,7 +122,9 @@ describe('UsersController', () => {
 		it('should throw NotFoundException if user does not exist', async () => {
 			mockUserService.findOne.mockResolvedValueOnce(null);
 
-			await expect(controller.update('invalid-id', { first_name: 'UpdatedName' })).rejects.toThrow(NotFoundException);
+			await expect(controller.update('invalid-id', { data: { first_name: 'UpdatedName' } })).rejects.toThrow(
+				NotFoundException,
+			);
 		});
 	});
 

@@ -3,13 +3,7 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import type { components } from '../../../openapi';
-import {
-	ChannelCategoryEnum,
-	DataTypeEnum,
-	DeviceCategoryEnum,
-	PermissionEnum,
-	PropertyCategoryEnum,
-} from '../devices.constants';
+import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 
 import {
 	ChannelControlEntity,
@@ -19,7 +13,7 @@ import {
 	ThirdPartyDeviceEntity,
 } from './devices.entity';
 
-type Device = components['schemas']['DevicesDevice'];
+type ThirdPartyDevice = components['schemas']['DevicesThirdPartyDevice'];
 type DeviceControl = components['schemas']['DevicesDeviceControl'];
 type Channel = components['schemas']['DevicesChannel'];
 type ChannelControl = components['schemas']['DevicesChannelControl'];
@@ -47,10 +41,10 @@ describe('Devices module entity and OpenAPI Model Synchronization', () => {
 	};
 
 	test('DeviceEntity matches DevicesDevice', () => {
-		const openApiModel: Device = {
+		const openApiModel: ThirdPartyDevice = {
 			id: uuid().toString(),
 			type: 'third-party',
-			category: DeviceCategoryEnum.GENERIC,
+			category: DeviceCategory.GENERIC,
 			name: 'Thermostat',
 			description: 'Living room thermostat',
 			service_address: 'http://192.168.1.100/webhook',
@@ -100,7 +94,7 @@ describe('Devices module entity and OpenAPI Model Synchronization', () => {
 	test('ChannelEntity matches DevicesChannel', () => {
 		const openApiModel: Channel = {
 			id: uuid().toString(),
-			category: ChannelCategoryEnum.GENERIC,
+			category: ChannelCategory.GENERIC,
 			name: 'Temperature Sensor',
 			description: 'Living room temperature sensor',
 			device: uuid().toString(),
@@ -150,10 +144,10 @@ describe('Devices module entity and OpenAPI Model Synchronization', () => {
 	test('ChannelPropertyEntity matches DevicesChannelProperty', () => {
 		const openApiModel: ChannelProperty = {
 			id: uuid().toString(),
-			category: PropertyCategoryEnum.GENERIC,
+			category: PropertyCategory.GENERIC,
 			name: 'Thermostat Mode',
-			permission: [PermissionEnum.READ_ONLY],
-			data_type: DataTypeEnum.STRING,
+			permission: [PermissionType.READ_ONLY],
+			data_type: DataTypeType.STRING,
 			unit: '°C',
 			format: ['heat', 'auto'],
 			invalid: -999,

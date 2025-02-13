@@ -35,7 +35,7 @@ export enum EventType {
 	CHANNEL_PROPERTY_SET = 'DevicesModule.ChannelProperty.Set',
 }
 
-export enum DeviceCategoryEnum {
+export enum DeviceCategory {
 	GENERIC = 'generic',
 	AIR_CONDITIONER = 'air_conditioner',
 	AIR_DEHUMIDIFIER = 'air_dehumidifier',
@@ -63,7 +63,7 @@ export enum DeviceCategoryEnum {
 	WINDOW_COVERING = 'window_covering',
 }
 
-export enum ChannelCategoryEnum {
+export enum ChannelCategory {
 	GENERIC = 'generic',
 	AIR_PARTICULATE = 'air_particulate',
 	ALARM = 'alarm',
@@ -108,7 +108,7 @@ export enum ChannelCategoryEnum {
 	WINDOW_COVERING = 'window_covering',
 }
 
-export enum PropertyCategoryEnum {
+export enum PropertyCategory {
 	GENERIC = 'generic',
 	ACTIVE = 'active',
 	ANGLE = 'angle',
@@ -172,14 +172,14 @@ export enum PropertyCategoryEnum {
 	ZOOM = 'zoom',
 }
 
-export enum PermissionEnum {
+export enum PermissionType {
 	READ_ONLY = 'ro',
 	READ_WRITE = 'rw',
 	WRITE_ONLY = 'wo',
 	EVENT_ONLY = 'ev',
 }
 
-export enum DataTypeEnum {
+export enum DataTypeType {
 	CHAR = 'char',
 	UCHAR = 'uchar',
 	SHORT = 'short',
@@ -199,7 +199,7 @@ export const PropertyInfluxDbSchema: ISchemaOptions = {
 	tags: ['propertyId'],
 };
 
-export enum ThirdPartyPropertiesUpdateStatusEnum {
+export enum ThirdPartyPropertiesUpdateStatus {
 	SUCCESS = 0, // The request was processed successfully.
 	INSUFFICIENT_PRIVILEGES = -80001, // Request denied due to insufficient privileges.
 	OPERATION_NOT_SUPPORTED = -80002, // Unable to perform operation with the requested service or property (e.g., device powered off).

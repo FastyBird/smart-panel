@@ -15,8 +15,8 @@ import {
 
 import { DevicesModulePrefix } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
-import { UpdateDeviceChannelPropertyDto } from '../dto/update-device-channel-property.dto';
+import { ReqCreateDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
+import { ReqUpdateDeviceChannelPropertyDto } from '../dto/update-device-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
@@ -74,7 +74,7 @@ export class DevicesChannelsPropertiesController {
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-		@Body() createPropertyDto: CreateDeviceChannelPropertyDto,
+		@Body() createDto: ReqCreateDeviceChannelPropertyDto,
 	): Promise<ChannelPropertyEntity> {
 		this.logger.debug(
 			`[CREATE] Incoming request to create a new data source for deviceId=${deviceId} channelId=${channelId}`,
@@ -84,7 +84,7 @@ export class DevicesChannelsPropertiesController {
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 
 		try {
-			const property = await this.channelsPropertiesService.create(channel.id, createPropertyDto);
+			const property = await this.channelsPropertiesService.create(channel.id, createDto.data);
 
 			this.logger.debug(
 				`[CREATE] Successfully created data source id=${property.id} for deviceId=${device.id} channelId=${channel.id}`,
@@ -105,7 +105,7 @@ export class DevicesChannelsPropertiesController {
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updatePropertyDto: UpdateDeviceChannelPropertyDto,
+		@Body() updateDto: ReqUpdateDeviceChannelPropertyDto,
 	): Promise<ChannelPropertyEntity> {
 		this.logger.debug(
 			`[UPDATE] Incoming update request for data source id=${id} for deviceId=${deviceId} channelId=${channelId}`,
@@ -115,7 +115,7 @@ export class DevicesChannelsPropertiesController {
 		const channel = await this.getChannelOrThrow(device.id, channelId);
 
 		try {
-			const updatedProperty = await this.channelsPropertiesService.update(id, updatePropertyDto);
+			const updatedProperty = await this.channelsPropertiesService.update(id, updateDto.data);
 
 			this.logger.debug(
 				`[UPDATE] Successfully updated channel id=${updatedProperty.id} for deviceId=${device.id} channelId=${channel.id}`,

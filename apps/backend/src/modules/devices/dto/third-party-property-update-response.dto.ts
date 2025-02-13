@@ -2,11 +2,12 @@ import { Expose, Type } from 'class-transformer';
 import { IsArray, IsEnum, IsUUID, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ThirdPartyPropertiesUpdateStatusEnum } from '../devices.constants';
+import { ThirdPartyPropertiesUpdateStatus } from '../devices.constants';
 
 type ThirdPartyDevicePropertyUpdateResult = components['schemas']['DevicesThirdPartyDevicePropertyUpdateResult'];
+type ThirdPartyDevicePropertiesUpdateResult = components['schemas']['DevicesThirdPartyDevicePropertiesUpdateResult'];
 
-export class PropertyUpdateResultDto {
+export class PropertyUpdateResultDto implements ThirdPartyDevicePropertyUpdateResult {
 	@Expose()
 	@IsUUID()
 	device: string;
@@ -20,11 +21,11 @@ export class PropertyUpdateResultDto {
 	property: string;
 
 	@Expose()
-	@IsEnum(ThirdPartyPropertiesUpdateStatusEnum)
-	status: ThirdPartyPropertiesUpdateStatusEnum;
+	@IsEnum(ThirdPartyPropertiesUpdateStatus)
+	status: ThirdPartyPropertiesUpdateStatus;
 }
 
-export class PropertiesUpdateResponseDto implements ThirdPartyDevicePropertyUpdateResult {
+export class PropertiesUpdateResponseDto implements ThirdPartyDevicePropertiesUpdateResult {
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })

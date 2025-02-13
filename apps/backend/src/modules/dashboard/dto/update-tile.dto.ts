@@ -1,16 +1,40 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 
+type ReqUpdateTile = components['schemas']['DashboardReqUpdateTile'];
 type UpdateTileBase = components['schemas']['DashboardUpdateTileBase'];
 type UpdateDeviceTile = components['schemas']['DashboardUpdateDeviceTile'];
 type UpdateTimeTile = components['schemas']['DashboardUpdateTimeTile'];
 type UpdateDayWeatherTile = components['schemas']['DashboardUpdateDayWeatherTile'];
 type UpdateForecastWeatherTile = components['schemas']['DashboardUpdateForecastWeatherTile'];
 
+const determineTileDto = (obj: unknown): new () => object => {
+	if (typeof obj === 'object' && obj !== null && 'type' in obj) {
+		switch ((obj as { type: string }).type) {
+			case 'device':
+				return UpdateDeviceTileDto;
+			case 'clock':
+				return UpdateTimeTileDto;
+			case 'weather-day':
+				return UpdateDayWeatherTileDto;
+			case 'weather-forecast':
+				return UpdateForecastWeatherTileDto;
+			default:
+				throw new Error(`Unknown type ${(obj as { type: string }).type}`);
+		}
+	}
+	throw new Error('Invalid object format for determining tile DTO');
+};
+
 export abstract class UpdateTileDto implements UpdateTileBase {
+	@Expose()
+	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported tile type."}]' })
+	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported tile type."}]' })
+	readonly type: string;
+
 	@Expose()
 	@IsOptional()
 	@IsNumber(
@@ -50,6 +74,8 @@ export abstract class UpdateTileDto implements UpdateTileBase {
 }
 
 export class UpdateDeviceTileDto extends UpdateTileDto implements UpdateDeviceTile {
+	readonly type: 'device';
+
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
@@ -64,8 +90,21 @@ export class UpdateDeviceTileDto extends UpdateTileDto implements UpdateDeviceTi
 	icon?: string | null;
 }
 
-export class UpdateTimeTileDto extends UpdateTileDto implements UpdateTimeTile {}
+export class UpdateTimeTileDto extends UpdateTileDto implements UpdateTimeTile {
+	readonly type: 'clock';
+}
 
-export class UpdateDayWeatherTileDto extends UpdateTileDto implements UpdateDayWeatherTile {}
+export class UpdateDayWeatherTileDto extends UpdateTileDto implements UpdateDayWeatherTile {
+	readonly type: 'weather-day';
+}
 
-export class UpdateForecastWeatherTileDto extends UpdateTileDto implements UpdateForecastWeatherTile {}
+export class UpdateForecastWeatherTileDto extends UpdateTileDto implements UpdateForecastWeatherTile {
+	readonly type: 'weather-forecast';
+}
+
+export class ReqUpdateTileDto implements ReqUpdateTile {
+	@Expose()
+	@ValidateNested()
+	@Type((options) => determineTileDto(options?.object ?? {}))
+	data: UpdateDeviceTileDto | UpdateTimeTileDto | UpdateDayWeatherTileDto | UpdateForecastWeatherTileDto;
+}

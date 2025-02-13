@@ -132,7 +132,7 @@ describe('PagesTilesController', () => {
 				updateDto: UpdateTimeTileDto,
 			});
 
-			const result = await controller.create(mockTilesPage.id, createDto);
+			const result = await controller.create(mockTilesPage.id, { data: createDto });
 
 			expect(result).toEqual(mockTimeTile);
 			expect(tilesService.create).toHaveBeenCalledWith(createDto, { pageId: mockTilesPage.id });
@@ -140,6 +140,7 @@ describe('PagesTilesController', () => {
 
 		it('should update a tile', async () => {
 			const updateDto: UpdateTimeTileDto = {
+				type: 'clock',
 				row: 0,
 				col: 0,
 			};
@@ -151,7 +152,7 @@ describe('PagesTilesController', () => {
 				updateDto: UpdateTimeTileDto,
 			});
 
-			const result = await controller.update(mockTilesPage.id, mockTimeTile.id, updateDto);
+			const result = await controller.update(mockTilesPage.id, mockTimeTile.id, { data: updateDto });
 
 			expect(result).toEqual(mockTimeTile);
 			expect(tilesService.update).toHaveBeenCalledWith(mockTimeTile.id, updateDto);

@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { CreateCardDto } from '../dto/create-card.dto';
+import { CreatePageCardDto } from '../dto/create-page-card.dto';
 import { UpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity, CardsPageEntity } from '../entities/dashboard.entity';
 import { CardsService } from '../services/cards.service';
@@ -105,12 +105,12 @@ describe('PagesCardsController', () => {
 		});
 
 		it('should create a new card', async () => {
-			const createDto: CreateCardDto = {
+			const createDto: CreatePageCardDto = {
 				title: 'Card title',
 				order: 0,
 			};
 
-			const result = await controller.create(mockCardsPage.id, createDto);
+			const result = await controller.create(mockCardsPage.id, { data: createDto });
 
 			expect(result).toEqual(mockCard);
 			expect(cardsService.create).toHaveBeenCalledWith(mockCardsPage.id, createDto);
@@ -121,7 +121,7 @@ describe('PagesCardsController', () => {
 				title: 'Updated title',
 			};
 
-			const result = await controller.update(mockCardsPage.id, mockCard.id, updateDto);
+			const result = await controller.update(mockCardsPage.id, mockCard.id, { data: updateDto });
 
 			expect(result).toEqual(mockCard);
 			expect(cardsService.update).toHaveBeenCalledWith(mockCard.id, mockCardsPage.id, updateDto);

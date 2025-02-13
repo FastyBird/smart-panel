@@ -4,22 +4,29 @@ export enum EventType {
 	CONFIG_UPDATED = 'ConfigModule.Configuration.Changed',
 }
 
-export enum TemperatureUnitEnum {
+export enum SectionType {
+	AUDIO = 'audio',
+	DISPLAY = 'display',
+	LANGUAGE = 'language',
+	WEATHER = 'weather',
+}
+
+export enum TemperatureUnitType {
 	CELSIUS = 'celsius',
 	FAHRENHEIT = 'fahrenheit',
 }
 
-export enum TimeFormatEnum {
+export enum TimeFormatType {
 	HOUR_12 = '12h',
 	HOUR_24 = '24h',
 }
 
-export enum LanguageEnum {
+export enum LanguageType {
 	ENGLISH = 'en_US',
 	CZECH = 'cs_CZ',
 }
 
-export enum WeatherLocationTypeEnum {
+export enum WeatherLocationTypeType {
 	LAT_LON = 'lat_lon',
 	CITY_NAME = 'city_name',
 	CITY_ID = 'city_id',

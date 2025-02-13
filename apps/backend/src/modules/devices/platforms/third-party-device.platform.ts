@@ -3,7 +3,7 @@ import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ThirdPartyPropertiesUpdateStatusEnum } from '../devices.constants';
+import { ThirdPartyPropertiesUpdateStatus } from '../devices.constants';
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
 import { PropertiesUpdateResponseDto, PropertyUpdateResultDto } from '../dto/third-party-property-update-response.dto';
 import { ThirdPartyDeviceEntity } from '../entities/devices.entity';
@@ -67,7 +67,7 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 				});
 
 				const failedProperties = responseDto.properties.filter(
-					(p: PropertyUpdateResultDto) => p.status != ThirdPartyPropertiesUpdateStatusEnum.SUCCESS,
+					(p: PropertyUpdateResultDto) => p.status != ThirdPartyPropertiesUpdateStatus.SUCCESS,
 				);
 
 				if (failedProperties.length > 0) {

@@ -13,8 +13,9 @@ import {
 import type { components } from '../../../openapi';
 
 type ThirdPartyDevicePropertyUpdateRequest = components['schemas']['DevicesThirdPartyDevicePropertyUpdateRequest'];
+type ThirdPartyDevicePropertiesUpdateRequest = components['schemas']['DevicesThirdPartyDevicePropertiesUpdateRequest'];
 
-export class PropertyUpdateRequestDto {
+export class PropertyUpdateRequestDto implements ThirdPartyDevicePropertyUpdateRequest {
 	@Expose()
 	@IsUUID()
 	device: string;
@@ -38,7 +39,7 @@ export class PropertyUpdateRequestDto {
 	value: string | boolean | number;
 }
 
-export class PropertiesUpdateRequestDto implements ThirdPartyDevicePropertyUpdateRequest {
+export class PropertiesUpdateRequestDto implements ThirdPartyDevicePropertiesUpdateRequest {
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })

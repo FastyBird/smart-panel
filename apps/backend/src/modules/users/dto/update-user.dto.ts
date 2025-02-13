@@ -1,9 +1,10 @@
-import { Expose } from 'class-transformer';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
+type ReqUpdateUser = components['schemas']['UsersReqUpdateUser'];
 type UpdateUser = components['schemas']['UsersUpdateUser'];
 
 export class UpdateUserDto implements UpdateUser {
@@ -41,4 +42,11 @@ export class UpdateUserDto implements UpdateUser {
 	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
 	@ValidateIf((_, value) => value !== null)
 	role?: UserRole;
+}
+
+export class ReqUpdateUserDto implements ReqUpdateUser {
+	@Expose()
+	@ValidateNested()
+	@Type(() => UpdateUserDto)
+	data: UpdateUserDto;
 }

@@ -1,8 +1,18 @@
-import { Expose } from 'class-transformer';
-import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import {
+	IsArray,
+	IsBoolean,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
 
 import type { components } from '../../../openapi';
 
+type ReqUpdateDeviceChannelProperty = components['schemas']['DevicesReqUpdateChannelProperty'];
 type UpdateChannelProperty = components['schemas']['DevicesUpdateChannelProperty'];
 
 export class UpdateDeviceChannelPropertyDto implements UpdateChannelProperty {
@@ -57,4 +67,11 @@ export class UpdateDeviceChannelPropertyDto implements UpdateChannelProperty {
 	@IsBoolean({ message: '[{"field":"value","reason":"Value must be a boolean."}]' })
 	@ValidateIf((_, value) => value !== null)
 	value?: string | number | boolean | null;
+}
+
+export class ReqUpdateDeviceChannelPropertyDto implements ReqUpdateDeviceChannelProperty {
+	@Expose()
+	@ValidateNested()
+	@Type(() => UpdateDeviceChannelPropertyDto)
+	data: UpdateDeviceChannelPropertyDto;
 }

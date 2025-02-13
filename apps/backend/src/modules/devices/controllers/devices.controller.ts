@@ -1,6 +1,5 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import get from 'lodash.get';
 
 import {
 	BadRequestException,
@@ -21,8 +20,8 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DevicesModulePrefix } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceDto } from '../dto/create-device.dto';
-import { UpdateDeviceDto } from '../dto/update-device.dto';
+import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
+import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
@@ -60,10 +59,10 @@ export class DevicesController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${DevicesModulePrefix}/devices/:id`)
-	async create(@Body() createDto: any): Promise<DeviceEntity> {
+	async create(@Body() createDto: ReqCreateDeviceDto): Promise<DeviceEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new device');
 
-		const type: string | undefined = get(createDto, 'type', undefined) as string | undefined;
+		const type: string | undefined = createDto.data.type;
 
 		if (!type) {
 			this.logger.error('[VALIDATION] Missing required field: type');
@@ -87,7 +86,7 @@ export class DevicesController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, createDto, {
+		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -104,7 +103,7 @@ export class DevicesController {
 		}
 
 		try {
-			const device = await this.devicesService.create(createDto as CreateDeviceDto);
+			const device = await this.devicesService.create(createDto.data);
 
 			this.logger.debug(`[CREATE] Successfully created device id=${device.id}`);
 
@@ -121,7 +120,7 @@ export class DevicesController {
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: any,
+		@Body() updateDto: ReqUpdateDeviceDto,
 	): Promise<DeviceEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for device id=${id}`);
 
@@ -148,7 +147,7 @@ export class DevicesController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.updateDto, updateDto, {
+		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
@@ -167,7 +166,7 @@ export class DevicesController {
 		}
 
 		try {
-			const updatedDevice = await this.devicesService.update(device.id, updateDto as UpdateDeviceDto);
+			const updatedDevice = await this.devicesService.update(device.id, updateDto.data);
 
 			this.logger.debug(`[UPDATE] Successfully updated device id=${updatedDevice.id}`);
 
