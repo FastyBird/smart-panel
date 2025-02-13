@@ -255,8 +255,6 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
                   icon: Icon(Icons.widgets),
                   label: localizations.light_mode_swatches,
                 );
-              default:
-                null;
             }
           })
           .whereType<BottomNavigationBarItem>()

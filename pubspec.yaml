@@ -1,6 +1,8 @@
 name: fastybird_smart_app
 
 environment:
-  sdk: '>=2.18.0 <3.0.0'
+  sdk: ^3.6.0
+  flutter: ^3.27.0
+
 dev_dependencies:
   melos: ^3.0.1
