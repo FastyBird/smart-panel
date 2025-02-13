@@ -130,7 +130,7 @@ describe('ConfigService', () => {
 		expect(gateway).toBeDefined();
 		expect(platform).toBeDefined();
 	});
-	/*
+
 	describe('loadConfig', () => {
 		it('should load and validate config from a YAML file', () => {
 			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
@@ -236,9 +236,8 @@ describe('ConfigService', () => {
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 	});
-*/
+
 	describe('setConfigSection', () => {
-		/*
 		it('should update a configuration section and save it to YAML', async () => {
 			const updatedAudioConfig: UpdateAudioConfigDto & { speaker_volume?: number } = {
 				type: SectionType.AUDIO,
@@ -246,7 +245,6 @@ describe('ConfigService', () => {
 				speaker_volume: 20,
 			};
 			const mergedConfig = { ...mockConfig.audio, ...{ speaker: false, speakerVolume: 20 } };
-			delete mergedConfig['type'];
 
 			const updatedRawConfig = {
 				...mockRawConfig,
@@ -280,7 +278,7 @@ describe('ConfigService', () => {
 			expect(mockFsWriteFileSync).toHaveBeenCalled();
 			expect(gateway.sendMessage).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, service['config']);
 		});
-*/
+
 		it('should throw validation errors for an invalid update', async () => {
 			const invalidUpdateDto: UpdateAudioConfigDto & { invalidField: string } = {
 				type: SectionType.AUDIO,

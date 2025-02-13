@@ -29,8 +29,15 @@ type CreateTilesPage = components['schemas']['DashboardCreateTilesPage'];
 type CreateDevicePage = components['schemas']['DashboardCreateDevicePage'];
 
 const determinePageDto = (obj: unknown): new () => object => {
-	if (typeof obj === 'object' && obj !== null && 'type' in obj) {
-		switch (obj?.type) {
+	if (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'data' in obj &&
+		typeof obj.data === 'object' &&
+		obj.data !== null &&
+		'type' in obj.data
+	) {
+		switch ((obj.data as { type: string }).type) {
 			case 'cards':
 				return CreateCardsPageDto;
 			case 'tiles':
@@ -38,7 +45,7 @@ const determinePageDto = (obj: unknown): new () => object => {
 			case 'device':
 				return CreateDevicePageDto;
 			default:
-				throw new Error(`Unknown type ${(obj as { type: string }).type}`);
+				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
 		}
 	}
 	throw new Error('Invalid object format for determining page DTO');

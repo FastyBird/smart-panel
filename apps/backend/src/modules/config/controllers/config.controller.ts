@@ -75,6 +75,7 @@ export class ConfigController {
 
 	@Patch(SectionType.AUDIO)
 	async updateAudioConfig(@Body() audioConfig: ReqUpdateSectionDto): Promise<AudioConfigEntity> {
+		console.log('PATCH');
 		this.logger.debug(`[UPDATE] Incoming update request for page section=${SectionType.AUDIO}`);
 
 		await this.service.setConfigSection(SectionType.AUDIO, audioConfig.data, UpdateAudioConfigDto);

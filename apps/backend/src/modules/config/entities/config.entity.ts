@@ -9,10 +9,13 @@ import {
 	WeatherLocationTypeType,
 } from '../config.constants';
 
-export abstract class BaseConfigEntity {}
+export abstract class BaseConfigEntity {
+	@Expose({ groups: ['api'] })
+	type?: SectionType;
+}
 
 export class AudioConfigEntity extends BaseConfigEntity {
-	@Expose()
+	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.AUDIO;
 
@@ -38,7 +41,7 @@ export class AudioConfigEntity extends BaseConfigEntity {
 }
 
 export class DisplayConfigEntity extends BaseConfigEntity {
-	@Expose()
+	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.DISPLAY;
 
@@ -64,7 +67,7 @@ export class DisplayConfigEntity extends BaseConfigEntity {
 }
 
 export class LanguageConfigEntity extends BaseConfigEntity {
-	@Expose()
+	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.LANGUAGE;
 
@@ -82,7 +85,7 @@ export class LanguageConfigEntity extends BaseConfigEntity {
 }
 
 export class WeatherConfigEntity extends BaseConfigEntity {
-	@Expose()
+	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.WEATHER;
 

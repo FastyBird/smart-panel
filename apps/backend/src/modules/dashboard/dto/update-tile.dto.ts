@@ -12,8 +12,15 @@ type UpdateDayWeatherTile = components['schemas']['DashboardUpdateDayWeatherTile
 type UpdateForecastWeatherTile = components['schemas']['DashboardUpdateForecastWeatherTile'];
 
 const determineTileDto = (obj: unknown): new () => object => {
-	if (typeof obj === 'object' && obj !== null && 'type' in obj) {
-		switch ((obj as { type: string }).type) {
+	if (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'data' in obj &&
+		typeof obj.data === 'object' &&
+		obj.data !== null &&
+		'type' in obj.data
+	) {
+		switch ((obj.data as { type: string }).type) {
 			case 'device':
 				return UpdateDeviceTileDto;
 			case 'clock':
@@ -23,7 +30,7 @@ const determineTileDto = (obj: unknown): new () => object => {
 			case 'weather-forecast':
 				return UpdateForecastWeatherTileDto;
 			default:
-				throw new Error(`Unknown type ${(obj as { type: string }).type}`);
+				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
 		}
 	}
 	throw new Error('Invalid object format for determining tile DTO');

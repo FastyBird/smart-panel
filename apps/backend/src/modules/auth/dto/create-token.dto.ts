@@ -4,8 +4,15 @@ import { IsDate, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateN
 import { TokenType } from '../auth.constants';
 
 const determineTokenDto = (obj: unknown): new () => object => {
-	if (typeof obj === 'object' && obj !== null && 'type' in obj) {
-		const type = (obj as { type: string }).type as TokenType;
+	if (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'data' in obj &&
+		typeof obj.data === 'object' &&
+		obj.data !== null &&
+		'type' in obj.data
+	) {
+		const type = (obj.data as { type: string }).type as TokenType;
 
 		if (!Object.values(TokenType).includes(type)) {
 			throw new Error(`Unknown type ${type}`);
@@ -19,7 +26,7 @@ const determineTokenDto = (obj: unknown): new () => object => {
 			case TokenType.LONG_LIVE:
 				return CreateLongLiveTokenDto;
 			default:
-				throw new Error(`Unknown type ${(obj as { type: string }).type}`);
+				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
 		}
 	}
 	throw new Error('Invalid object format for determining config DTO');

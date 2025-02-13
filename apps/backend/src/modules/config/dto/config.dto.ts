@@ -17,8 +17,15 @@ type UpdateLanguage = components['schemas']['ConfigUpdateLanguage'];
 type UpdateWeather = components['schemas']['ConfigUpdateWeather'];
 
 const determineConfigDto = (obj: unknown): new () => object => {
-	if (typeof obj === 'object' && obj !== null && 'type' in obj) {
-		const type = (obj as { type: string }).type as SectionType;
+	if (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'data' in obj &&
+		typeof obj.data === 'object' &&
+		obj.data !== null &&
+		'type' in obj.data
+	) {
+		const type = (obj.data as { type: string }).type as SectionType;
 
 		if (!Object.values(SectionType).includes(type)) {
 			throw new Error(`Unknown type ${type}`);
@@ -34,7 +41,7 @@ const determineConfigDto = (obj: unknown): new () => object => {
 			case SectionType.WEATHER:
 				return UpdateWeatherConfigDto;
 			default:
-				throw new Error(`Unknown type ${(obj as { type: string }).type}`);
+				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
 		}
 	}
 	throw new Error('Invalid object format for determining config DTO');
