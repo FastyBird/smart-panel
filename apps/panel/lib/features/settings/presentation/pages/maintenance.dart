@@ -1,15 +1,15 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/overlay/power_off.dart';
 import 'package:fastybird_smart_panel/features/overlay/reboot.dart';
 import 'package:fastybird_smart_panel/features/overlay/reset.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class MaintenancePage extends StatelessWidget {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   MaintenancePage({super.key});
 
@@ -38,7 +38,7 @@ class MaintenancePage extends StatelessWidget {
                     color: Theme.of(context).brightness == Brightness.light
                         ? AppBorderColorLight.base
                         : AppBorderColorDark.base,
-                    width: _scaler.scale(1),
+                    width: _screenService.scale(1),
                   ),
                 ),
                 textColor: Theme.of(context).brightness == Brightness.light
@@ -58,7 +58,7 @@ class MaintenancePage extends StatelessWidget {
                 subtitle: Text(
                   localizations.settings_maintenance_restart_description,
                   style: TextStyle(
-                    fontSize: _scaler.scale(8),
+                    fontSize: _screenService.scale(8),
                   ),
                 ),
                 trailing: Theme(
@@ -107,7 +107,7 @@ class MaintenancePage extends StatelessWidget {
                     color: Theme.of(context).brightness == Brightness.light
                         ? AppBorderColorLight.base
                         : AppBorderColorDark.base,
-                    width: _scaler.scale(1),
+                    width: _screenService.scale(1),
                   ),
                 ),
                 textColor: Theme.of(context).brightness == Brightness.light
@@ -127,7 +127,7 @@ class MaintenancePage extends StatelessWidget {
                 subtitle: Text(
                   localizations.settings_maintenance_power_off_description,
                   style: TextStyle(
-                    fontSize: _scaler.scale(8),
+                    fontSize: _screenService.scale(8),
                   ),
                 ),
                 trailing: Theme(
@@ -176,7 +176,7 @@ class MaintenancePage extends StatelessWidget {
                     color: Theme.of(context).brightness == Brightness.light
                         ? AppBorderColorLight.base
                         : AppBorderColorDark.base,
-                    width: _scaler.scale(1),
+                    width: _screenService.scale(1),
                   ),
                 ),
                 textColor: Theme.of(context).brightness == Brightness.light
@@ -196,7 +196,7 @@ class MaintenancePage extends StatelessWidget {
                 subtitle: Text(
                   localizations.settings_maintenance_factory_reset_description,
                   style: TextStyle(
-                    fontSize: _scaler.scale(8),
+                    fontSize: _screenService.scale(8),
                   ),
                 ),
                 trailing: Theme(

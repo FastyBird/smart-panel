@@ -4,7 +4,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'weather_day.dart';
+import 'weather_current_day.dart';
+import 'weather_forecast_day.dart';
 import 'weather_location.dart';
 
 part 'weather_location_weather.freezed.dart';
@@ -15,23 +16,13 @@ part 'weather_location_weather.g.dart';
 class WeatherLocationWeather with _$WeatherLocationWeather {
   const factory WeatherLocationWeather({
     /// Current weather conditions at the specified location.
-    required WeatherDay current,
+    required WeatherCurrentDay current,
 
     /// List of daily weather forecasts.
-    required List<WeatherDay> forecast,
+    required List<WeatherForecastDay> forecast,
 
     /// Details of the location where the weather data is recorded.
     required WeatherLocation location,
-
-    /// Timestamp for sunrise in ISO 8601 format.
-    required DateTime sunrise,
-
-    /// Timestamp for sunset in ISO 8601 format.
-    required DateTime sunset,
-
-    /// Timestamp when the weather data was last updated.
-    @JsonKey(name: 'created_at')
-    required DateTime createdAt,
   }) = _WeatherLocationWeather;
   
   factory WeatherLocationWeather.fromJson(Map<String, Object?> json) => _$WeatherLocationWeatherFromJson(json);

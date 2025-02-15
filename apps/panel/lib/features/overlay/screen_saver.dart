@@ -1,12 +1,12 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/flip_clock.dart';
 import 'package:flutter/material.dart';
 
 class ScreenSaverScreen extends StatelessWidget {
-  final ScreenScalerService scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   ScreenSaverScreen({super.key});
 
@@ -41,12 +41,12 @@ class ScreenSaverScreen extends StatelessWidget {
                           Theme.of(context).brightness == Brightness.light
                               ? AppBorderColorLight.darker
                               : AppBorderColorDark.extraLight,
-                      digitSize: scaler.scale(44.0),
-                      spacing: scaler.scale(1),
+                      digitSize: _screenService.scale(44.0),
+                      spacing: _screenService.scale(1),
                       borderRadius: BorderRadius.all(
-                        Radius.circular(scaler.scale(4.0)),
+                        Radius.circular(_screenService.scale(4.0)),
                       ),
-                      separator: SizedBox(width: scaler.scale(4)),
+                      separator: SizedBox(width: _screenService.scale(4)),
                     ),
                     AppSpacings.spacingMdVertical,
                     Text(

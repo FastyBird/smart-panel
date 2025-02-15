@@ -1,14 +1,14 @@
 class AudioConfigurationModel {
   final bool _speaker;
-  final double _speakerVolume;
+  final int _speakerVolume;
   final bool _microphone;
-  final double _microphoneVolume;
+  final int _microphoneVolume;
 
   AudioConfigurationModel({
     required bool speaker,
-    required double speakerVolume,
+    required int speakerVolume,
     required bool microphone,
-    required double microphoneVolume,
+    required int microphoneVolume,
   })  : _speaker = speaker,
         _speakerVolume = speakerVolume,
         _microphone = microphone,
@@ -16,17 +16,17 @@ class AudioConfigurationModel {
 
   bool get hasSpeakerEnabled => _speaker;
 
-  double get speakerVolume => _speakerVolume;
+  int get speakerVolume => _speakerVolume;
 
   bool get hasMicrophoneEnabled => _microphone;
 
-  double get microphoneVolume => _microphoneVolume;
+  int get microphoneVolume => _microphoneVolume;
 
   AudioConfigurationModel copyWith({
     bool? speaker,
-    double? speakerVolume,
+    int? speakerVolume,
     bool? microphone,
-    double? microphoneVolume,
+    int? microphoneVolume,
   }) {
     return AudioConfigurationModel(
       speaker: speaker ?? _speaker,

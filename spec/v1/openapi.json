@@ -383,6 +383,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -517,6 +520,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -609,6 +615,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -677,6 +686,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -760,6 +772,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -787,6 +802,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -899,6 +917,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -1080,6 +1101,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -1198,6 +1222,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -1331,6 +1358,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -1358,6 +1388,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -1424,6 +1457,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -1510,6 +1546,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -1577,6 +1616,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -1604,6 +1646,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -1703,6 +1748,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -1849,6 +1897,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -1949,6 +2000,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -2059,6 +2113,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -2086,6 +2143,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -2155,6 +2215,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -2241,6 +2304,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -2311,6 +2377,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -2338,6 +2407,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -2420,6 +2492,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -2532,6 +2607,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -2615,6 +2693,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -2712,6 +2793,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -2739,6 +2823,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -2830,6 +2917,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -2974,6 +3064,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -3071,6 +3164,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -3181,6 +3277,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -3208,6 +3307,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -3274,6 +3376,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -3358,6 +3463,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -3425,6 +3533,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -3452,6 +3563,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -3531,6 +3645,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -3641,6 +3758,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -3721,6 +3841,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -3816,6 +3939,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -3843,6 +3969,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -3970,6 +4099,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -4177,6 +4309,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -4310,6 +4445,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -4458,6 +4596,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -4485,6 +4626,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -4555,6 +4699,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -4648,6 +4795,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -4719,6 +4869,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -4804,6 +4957,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -4831,6 +4987,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -4916,6 +5075,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -5037,6 +5199,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -5123,6 +5288,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -5224,6 +5392,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -5251,6 +5422,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -5324,6 +5498,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -5418,6 +5595,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -5492,6 +5672,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -5577,6 +5760,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -5604,6 +5790,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -5715,6 +5904,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -5882,6 +6074,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -5994,6 +6189,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -6117,6 +6315,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -6144,6 +6345,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -6232,6 +6436,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -6353,6 +6560,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -6442,6 +6652,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -6543,6 +6756,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -6570,6 +6786,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -6646,6 +6865,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -6739,6 +6961,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -6816,6 +7041,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -6901,6 +7129,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -6928,6 +7159,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7001,6 +7235,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -7094,6 +7331,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7168,6 +7408,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -7253,6 +7496,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -7280,6 +7526,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7358,6 +7607,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7435,6 +7687,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       },
@@ -7515,6 +7770,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7603,6 +7861,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7658,6 +7919,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7700,10 +7964,6 @@
                             "description": "clear sky",
                             "icon": "01d"
                           },
-                          "location": {
-                            "name": "Prague",
-                            "country": "CZ"
-                          },
                           "wind": {
                             "speed": 3.5,
                             "deg": 180,
@@ -7712,14 +7972,26 @@
                           "clouds": 10,
                           "rain": 10,
                           "snow": 10,
-                          "created_at": "2025-02-06T12:00:00Z"
+                          "sunrise": "2025-02-06T06:45:00Z",
+                          "sunset": "2025-02-06T17:30:00Z",
+                          "day_time": "2019-08-24T14:15:22Z"
                         },
                         "forecast": [
                           {
-                            "temperature": 22.5,
-                            "temperature_min": 18.2,
-                            "temperature_max": 25.8,
-                            "feels_like": 21.9,
+                            "temperature": {
+                              "morn": 22.5,
+                              "day": 24.5,
+                              "eve": 22.5,
+                              "night": 20.5,
+                              "min": 20.5,
+                              "max": 24.5
+                            },
+                            "feels_like": {
+                              "morn": 22.5,
+                              "day": 24.5,
+                              "eve": 22.5,
+                              "night": 20.5
+                            },
                             "pressure": 1013,
                             "humidity": 55,
                             "weather": {
@@ -7727,10 +7999,6 @@
                               "main": "Clear",
                               "description": "clear sky",
                               "icon": "01d"
-                            },
-                            "location": {
-                              "name": "Prague",
-                              "country": "CZ"
                             },
                             "wind": {
                               "speed": 3.5,
@@ -7740,16 +8008,17 @@
                             "clouds": 10,
                             "rain": 10,
                             "snow": 10,
-                            "created_at": "2025-02-06T12:00:00Z"
+                            "sunrise": "2025-02-06T06:45:00Z",
+                            "sunset": "2025-02-06T17:30:00Z",
+                            "moonrise": "2025-02-06T17:30:00Z",
+                            "moonset": "2025-02-06T17:30:00Z",
+                            "day_time": "2019-08-24T14:15:22Z"
                           }
                         ],
                         "location": {
                           "name": "Prague",
                           "country": "CZ"
-                        },
-                        "sunrise": "2025-02-06T06:45:00Z",
-                        "sunset": "2025-02-06T17:30:00Z",
-                        "created_at": "2025-02-06T12:00:00Z"
+                        }
                       },
                       "metadata": {
                         "request_duration_ms": 57,
@@ -7772,6 +8041,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7843,6 +8115,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -7925,6 +8200,9 @@
         "security": [
           {
             "authentication": []
+          },
+          {
+            "x-display-secret": []
           }
         ]
       }
@@ -10493,17 +10771,17 @@
           },
           "controls": {
             "type": "array",
+            "description": "A list of controls associated with the device. Controls represent actions or commands that can be executed on the device.",
             "items": {
               "$ref": "#/components/schemas/DevicesCreateDeviceControl"
-            },
-            "description": "A list of controls associated with the device. Controls represent actions or commands that can be executed on the device."
+            }
           },
           "channels": {
             "type": "array",
+            "description": "A list of channels associated with the device. Each channel represents a functional unit of the device, such as a sensor, actuator, or logical grouping of properties.",
             "items": {
               "$ref": "#/components/schemas/DevicesCreateDeviceChannel"
-            },
-            "description": "A list of channels associated with the device. Each channel represents a functional unit of the device, such as a sensor, actuator, or logical grouping of properties."
+            }
           }
         }
       },
@@ -15843,14 +16121,12 @@
           }
         ]
       },
-      "WeatherDay": {
+      "WeatherCurrentDay": {
         "description": "Schema for a specific day, including temperature, wind, and precipitation.",
         "type": "object",
         "title": "Daily Weather Report",
         "required": [
           "temperature",
-          "temperature_min",
-          "temperature_max",
           "feels_like",
           "pressure",
           "humidity",
@@ -15859,7 +16135,9 @@
           "clouds",
           "rain",
           "snow",
-          "created_at"
+          "sunrise",
+          "sunset",
+          "day_time"
         ],
         "properties": {
           "temperature": {
@@ -15869,12 +16147,16 @@
           },
           "temperature_min": {
             "type": "number",
+            "nullable": true,
             "description": "Minimum recorded temperature for the day in degrees Celsius.",
+            "default": null,
             "example": 18.2
           },
           "temperature_max": {
             "type": "number",
+            "nullable": true,
             "description": "Maximum recorded temperature for the day in degrees Celsius.",
+            "default": null,
             "example": 25.8
           },
           "feels_like": {
@@ -15917,11 +16199,22 @@
             "description": "Snow volume in the last hour (mm).",
             "example": 10
           },
-          "created_at": {
+          "sunrise": {
             "type": "string",
             "format": "date-time",
-            "description": "Timestamp when the weather data was last updated.",
-            "example": "2025-02-06T12:00:00Z"
+            "description": "Timestamp for sunrise in ISO 8601 format.",
+            "example": "2025-02-06T06:45:00Z"
+          },
+          "sunset": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp for sunset in ISO 8601 format.",
+            "example": "2025-02-06T17:30:00Z"
+          },
+          "day_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time of data calculation"
           }
         },
         "examples": [
@@ -15946,7 +16239,221 @@
             "clouds": 10,
             "rain": 10,
             "snow": 10,
-            "created_at": "2025-02-06T12:00:00Z"
+            "sunrise": "2025-02-06T06:45:00Z",
+            "sunset": "2025-02-06T17:30:00Z",
+            "day_time": "2019-08-24T14:15:22Z"
+          }
+        ]
+      },
+      "WeatherForecastDay": {
+        "description": "Schema for a forecasted day, including temperature, wind, and precipitation.",
+        "type": "object",
+        "title": "Forecast Weather Report",
+        "required": [
+          "temperature",
+          "feels_like",
+          "pressure",
+          "humidity",
+          "weather",
+          "wind",
+          "clouds",
+          "rain",
+          "snow",
+          "day_time"
+        ],
+        "properties": {
+          "temperature": {
+            "type": "object",
+            "description": "Current temperatures during the day in degrees Celsius.",
+            "properties": {
+              "morn": {
+                "type": "number",
+                "nullable": true,
+                "description": "Morning temperature.",
+                "default": null,
+                "example": 22.5
+              },
+              "day": {
+                "type": "number",
+                "nullable": true,
+                "description": "Day temperature.",
+                "default": null,
+                "example": 24.5
+              },
+              "eve": {
+                "type": "number",
+                "nullable": true,
+                "description": "Evening temperature.",
+                "default": null,
+                "example": 22.5
+              },
+              "night": {
+                "type": "number",
+                "nullable": true,
+                "description": "Night temperature.",
+                "default": null,
+                "example": 20.5
+              },
+              "min": {
+                "type": "number",
+                "nullable": true,
+                "description": "Min daily temperature.",
+                "default": null,
+                "example": 20.5
+              },
+              "max": {
+                "type": "number",
+                "nullable": true,
+                "description": "Max daily temperature.",
+                "default": null,
+                "example": 24.5
+              }
+            }
+          },
+          "feels_like": {
+            "type": "object",
+            "description": "Perceived temperatures during the day based on wind and humidity.",
+            "properties": {
+              "morn": {
+                "type": "number",
+                "nullable": true,
+                "description": "Morning temperature.",
+                "default": null,
+                "example": 22.5
+              },
+              "day": {
+                "type": "number",
+                "nullable": true,
+                "description": "Day temperature.",
+                "default": null,
+                "example": 24.5
+              },
+              "eve": {
+                "type": "number",
+                "nullable": true,
+                "description": "Evening temperature.",
+                "default": null,
+                "example": 22.5
+              },
+              "night": {
+                "type": "number",
+                "nullable": true,
+                "description": "Night temperature.",
+                "default": null,
+                "example": 20.5
+              }
+            }
+          },
+          "pressure": {
+            "type": "number",
+            "description": "Atmospheric pressure in hPa.",
+            "example": 1013
+          },
+          "humidity": {
+            "type": "number",
+            "description": "Humidity level as a percentage.",
+            "example": 55
+          },
+          "weather": {
+            "$ref": "#/components/schemas/WeatherWeather",
+            "description": "Detailed weather status."
+          },
+          "wind": {
+            "$ref": "#/components/schemas/WeatherWind",
+            "description": "Wind conditions at the location."
+          },
+          "clouds": {
+            "type": "number",
+            "description": "Cloudiness percentage.",
+            "example": 10
+          },
+          "rain": {
+            "type": "number",
+            "nullable": true,
+            "description": "Rain volume in the last hour (mm).",
+            "example": 10
+          },
+          "snow": {
+            "type": "number",
+            "nullable": true,
+            "description": "Snow volume in the last hour (mm).",
+            "example": 10
+          },
+          "sunrise": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "Timestamp for sunrise in ISO 8601 format.",
+            "default": null,
+            "example": "2025-02-06T06:45:00Z"
+          },
+          "sunset": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "Timestamp for sunset in ISO 8601 format.",
+            "default": null,
+            "example": "2025-02-06T17:30:00Z"
+          },
+          "moonrise": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "Timestamp for moonrise in ISO 8601 format.",
+            "default": null,
+            "example": "2025-02-06T17:30:00Z"
+          },
+          "moonset": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "Timestamp for moonset in ISO 8601 format.",
+            "default": null,
+            "example": "2025-02-06T17:30:00Z"
+          },
+          "day_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time of data calculation"
+          }
+        },
+        "examples": [
+          {
+            "temperature": {
+              "morn": 22.5,
+              "day": 24.5,
+              "eve": 22.5,
+              "night": 20.5,
+              "min": 20.5,
+              "max": 24.5
+            },
+            "feels_like": {
+              "morn": 22.5,
+              "day": 24.5,
+              "eve": 22.5,
+              "night": 20.5
+            },
+            "pressure": 1013,
+            "humidity": 55,
+            "weather": {
+              "code": 800,
+              "main": "Clear",
+              "description": "clear sky",
+              "icon": "01d"
+            },
+            "wind": {
+              "speed": 3.5,
+              "deg": 180,
+              "gust": 5.8
+            },
+            "clouds": 10,
+            "rain": 10,
+            "snow": 10,
+            "sunrise": "2025-02-06T06:45:00Z",
+            "sunset": "2025-02-06T17:30:00Z",
+            "moonrise": "2025-02-06T17:30:00Z",
+            "moonset": "2025-02-06T17:30:00Z",
+            "day_time": "2019-08-24T14:15:22Z"
           }
         ]
       },
@@ -15957,44 +16464,23 @@
         "required": [
           "current",
           "forecast",
-          "location",
-          "sunrise",
-          "sunset",
-          "created_at"
+          "location"
         ],
         "properties": {
           "current": {
-            "$ref": "#/components/schemas/WeatherDay",
+            "$ref": "#/components/schemas/WeatherCurrentDay",
             "description": "Current weather conditions at the specified location."
           },
           "forecast": {
             "type": "array",
             "description": "List of daily weather forecasts.",
             "items": {
-              "$ref": "#/components/schemas/WeatherDay"
+              "$ref": "#/components/schemas/WeatherForecastDay"
             }
           },
           "location": {
             "$ref": "#/components/schemas/WeatherLocation",
             "description": "Details of the location where the weather data is recorded."
-          },
-          "sunrise": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp for sunrise in ISO 8601 format.",
-            "example": "2025-02-06T06:45:00Z"
-          },
-          "sunset": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp for sunset in ISO 8601 format.",
-            "example": "2025-02-06T17:30:00Z"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the weather data was last updated.",
-            "example": "2025-02-06T12:00:00Z"
           }
         },
         "examples": [
@@ -16020,14 +16506,26 @@
               "clouds": 10,
               "rain": 10,
               "snow": 10,
-              "created_at": "2025-02-06T12:00:00Z"
+              "sunrise": "2025-02-06T06:45:00Z",
+              "sunset": "2025-02-06T17:30:00Z",
+              "day_time": "2019-08-24T14:15:22Z"
             },
             "forecast": [
               {
-                "temperature": 22.5,
-                "temperature_min": 18.2,
-                "temperature_max": 25.8,
-                "feels_like": 21.9,
+                "temperature": {
+                  "morn": 22.5,
+                  "day": 24.5,
+                  "eve": 22.5,
+                  "night": 20.5,
+                  "min": 20.5,
+                  "max": 24.5
+                },
+                "feels_like": {
+                  "morn": 22.5,
+                  "day": 24.5,
+                  "eve": 22.5,
+                  "night": 20.5
+                },
                 "pressure": 1013,
                 "humidity": 55,
                 "weather": {
@@ -16044,16 +16542,17 @@
                 "clouds": 10,
                 "rain": 10,
                 "snow": 10,
-                "created_at": "2025-02-06T12:00:00Z"
+                "sunrise": "2025-02-06T06:45:00Z",
+                "sunset": "2025-02-06T17:30:00Z",
+                "moonrise": "2025-02-06T17:30:00Z",
+                "moonset": "2025-02-06T17:30:00Z",
+                "day_time": "2019-08-24T14:15:22Z"
               }
             ],
             "location": {
               "name": "Prague",
               "country": "CZ"
-            },
-            "sunrise": "2025-02-06T06:45:00Z",
-            "sunset": "2025-02-06T17:30:00Z",
-            "created_at": "2025-02-06T12:00:00Z"
+            }
           }
         ]
       },
@@ -16208,14 +16707,26 @@
                 "clouds": 10,
                 "rain": 10,
                 "snow": 10,
-                "created_at": "2025-02-06T12:00:00Z"
+                "sunrise": "2025-02-06T06:45:00Z",
+                "sunset": "2025-02-06T17:30:00Z",
+                "day_time": "2019-08-24T14:15:22Z"
               },
               "forecast": [
                 {
-                  "temperature": 22.5,
-                  "temperature_min": 18.2,
-                  "temperature_max": 25.8,
-                  "feels_like": 21.9,
+                  "temperature": {
+                    "morn": 22.5,
+                    "day": 24.5,
+                    "eve": 22.5,
+                    "night": 20.5,
+                    "min": 20.5,
+                    "max": 24.5
+                  },
+                  "feels_like": {
+                    "morn": 22.5,
+                    "day": 24.5,
+                    "eve": 22.5,
+                    "night": 20.5
+                  },
                   "pressure": 1013,
                   "humidity": 55,
                   "weather": {
@@ -16232,16 +16743,17 @@
                   "clouds": 10,
                   "rain": 10,
                   "snow": 10,
-                  "created_at": "2025-02-06T12:00:00Z"
+                  "sunrise": "2025-02-06T06:45:00Z",
+                  "sunset": "2025-02-06T17:30:00Z",
+                  "moonrise": "2025-02-06T17:30:00Z",
+                  "moonset": "2025-02-06T17:30:00Z",
+                  "day_time": "2019-08-24T14:15:22Z"
                 }
               ],
               "location": {
                 "name": "Prague",
                 "country": "CZ"
-              },
-              "sunrise": "2025-02-06T06:45:00Z",
-              "sunset": "2025-02-06T17:30:00Z",
-              "created_at": "2025-02-06T12:00:00Z"
+              }
             },
             "metadata": {
               "request_duration_ms": 57,
@@ -16472,6 +16984,12 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Authentication scheme using a Bearer token. The client must send a valid JWT token in the `Authorization` header with the format `Bearer <token>`."
+      },
+      "x-display-secret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Display-Secret",
+        "description": "API Key authentication for display clients. Clients must send the secret key in the `X-Display-Secret` header."
       }
     },
     "responses": {

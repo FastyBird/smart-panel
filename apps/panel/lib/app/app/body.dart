@@ -9,7 +9,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/features/overlay/lock.dart';
 import 'package:fastybird_smart_panel/features/overlay/screen_saver.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';

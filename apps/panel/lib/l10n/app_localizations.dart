@@ -18,7 +18,7 @@ import 'app_localizations_en.dart';
 /// `supportedLocales` list. For example:
 ///
 /// ```dart
-/// import 'generated_l10n/app_localizations.dart';
+/// import 'l10n/app_localizations.dart';
 ///
 /// return MaterialApp(
 ///   localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -998,7 +998,7 @@ abstract class AppLocalizations {
   ///
   ///
   /// In en, this message translates to:
-  /// **'7 day forecast'**
+  /// **'Weather forecast'**
   String get weather_forecast_title;
 
   ///
@@ -1012,6 +1012,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Humidity:'**
   String get weather_forecast_humidity;
+
+  /// A thunderstorm accompanied by light rain.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm with light rain'**
+  String get weather_condition_thunderstorm_with_light_rain;
+
+  /// A thunderstorm with moderate rainfall.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm with rain'**
+  String get weather_condition_thunderstorm_with_rain;
+
+  /// A thunderstorm with intense rainfall.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm with heavy rain'**
+  String get weather_condition_thunderstorm_with_heavy_rain;
+
+  /// A weak thunderstorm with little or no precipitation.
+  ///
+  /// In en, this message translates to:
+  /// **'Light thunderstorm'**
+  String get weather_condition_light_thunderstorm;
+
+  /// A storm with thunder, lightning, and rain.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm'**
+  String get weather_condition_thunderstorm;
+
+  /// A strong thunderstorm with intense lightning and rain.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy thunderstorm'**
+  String get weather_condition_heavy_thunderstorm;
+
+  /// A thunderstorm with irregular cloud formations.
+  ///
+  /// In en, this message translates to:
+  /// **'Ragged thunderstorm'**
+  String get weather_condition_ragged_thunderstorm;
+
+  /// A thunderstorm with very light drizzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm with light drizzle'**
+  String get weather_condition_thunderstorm_with_light_drizzle;
+
+  /// A thunderstorm with light rain showers.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm with drizzle'**
+  String get weather_condition_thunderstorm_with_drizzle;
+
+  /// A thunderstorm with steady, misty rain.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm with heavy drizzle'**
+  String get weather_condition_thunderstorm_with_heavy_drizzle;
+
+  /// A light and misty drizzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Light intensity drizzle'**
+  String get weather_condition_light_intensity_drizzle;
+
+  /// A light rain shower with fine drops.
+  ///
+  /// In en, this message translates to:
+  /// **'Drizzle'**
+  String get weather_condition_drizzle;
+
+  /// A heavy drizzle with continuous light rain.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy intensity drizzle'**
+  String get weather_condition_heavy_intensity_drizzle;
+
+  /// Light drizzle transitioning to rain.
+  ///
+  /// In en, this message translates to:
+  /// **'Light intensity drizzle rain'**
+  String get weather_condition_light_intensity_drizzle_rain;
+
+  /// Drizzle mixed with light rain.
+  ///
+  /// In en, this message translates to:
+  /// **'Drizzle rain'**
+  String get weather_condition_drizzle_rain;
+
+  /// Heavy drizzle transitioning to steady rain.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy intensity drizzle rain'**
+  String get weather_condition_heavy_intensity_drizzle_rain;
+
+  /// Intermittent rain showers mixed with drizzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shower rain and drizzle'**
+  String get weather_condition_shower_rain_and_drizzle;
+
+  /// Heavy rain showers mixed with drizzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy shower rain and drizzle'**
+  String get weather_condition_heavy_shower_rain_and_drizzle;
+
+  /// Intermittent drizzle showers.
+  ///
+  /// In en, this message translates to:
+  /// **'Shower drizzle'**
+  String get weather_condition_shower_drizzle;
+
+  /// A light rainfall.
+  ///
+  /// In en, this message translates to:
+  /// **'Light rain'**
+  String get weather_condition_light_rain;
+
+  /// A steady rainfall of moderate intensity.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate rain'**
+  String get weather_condition_moderate_rain;
+
+  /// A strong and continuous rain shower.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy intensity rain'**
+  String get weather_condition_heavy_intensity_rain;
+
+  /// Intense, heavy rain with possible flooding.
+  ///
+  /// In en, this message translates to:
+  /// **'Very heavy rain'**
+  String get weather_condition_very_heavy_rain;
+
+  /// Exceptionally heavy rainfall.
+  ///
+  /// In en, this message translates to:
+  /// **'Extreme rain'**
+  String get weather_condition_extreme_rain;
+
+  /// Rain that freezes upon impact.
+  ///
+  /// In en, this message translates to:
+  /// **'Freezing rain'**
+  String get weather_condition_freezing_rain;
+
+  /// Intermittent light rain showers.
+  ///
+  /// In en, this message translates to:
+  /// **'Light intensity shower rain'**
+  String get weather_condition_light_intensity_shower_rain;
+
+  /// A rain shower that comes and goes.
+  ///
+  /// In en, this message translates to:
+  /// **'Shower rain'**
+  String get weather_condition_shower_rain;
+
+  /// Heavy and intermittent rain showers.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy intensity shower rain'**
+  String get weather_condition_heavy_intensity_shower_rain;
+
+  /// Irregular and scattered rain showers.
+  ///
+  /// In en, this message translates to:
+  /// **'Ragged shower rain'**
+  String get weather_condition_ragged_shower_rain;
+
+  /// A light snowfall.
+  ///
+  /// In en, this message translates to:
+  /// **'Light snow'**
+  String get weather_condition_light_snow;
+
+  /// A steady snowfall.
+  ///
+  /// In en, this message translates to:
+  /// **'Snow'**
+  String get weather_condition_snow;
+
+  /// A heavy snowfall with accumulation.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy snow'**
+  String get weather_condition_heavy_snow;
+
+  /// Frozen raindrops mixed with snow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleet'**
+  String get weather_condition_sleet;
+
+  /// Light sleet in intermittent showers.
+  ///
+  /// In en, this message translates to:
+  /// **'Light shower sleet'**
+  String get weather_condition_light_shower_sleet;
+
+  /// Sleet in intermittent showers.
+  ///
+  /// In en, this message translates to:
+  /// **'Shower sleet'**
+  String get weather_condition_shower_sleet;
+
+  /// A mix of light rain and snow.
+  ///
+  /// In en, this message translates to:
+  /// **'Light rain and snow'**
+  String get weather_condition_light_rain_and_snow;
+
+  /// Rain mixed with snow, typically seen in transition seasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Rain and snow'**
+  String get weather_condition_rain_and_snow;
+
+  /// Light snow showers occurring intermittently.
+  ///
+  /// In en, this message translates to:
+  /// **'Light shower snow'**
+  String get weather_condition_light_shower_snow;
+
+  /// Intermittent snow showers.
+  ///
+  /// In en, this message translates to:
+  /// **'Shower snow'**
+  String get weather_condition_shower_snow;
+
+  /// Heavy snow showers occurring in bursts.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy shower snow'**
+  String get weather_condition_heavy_shower_snow;
+
+  /// A thin fog reducing visibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Mist'**
+  String get weather_condition_mist;
+
+  /// Smoke in the air reducing visibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Smoke'**
+  String get weather_condition_smoke;
+
+  /// Light atmospheric dust or pollution.
+  ///
+  /// In en, this message translates to:
+  /// **'Haze'**
+  String get weather_condition_haze;
+
+  /// Thick mist reducing visibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Fog'**
+  String get weather_condition_fog;
+
+  /// Dust or sand in the air reducing visibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Sand'**
+  String get weather_condition_sand;
+
+  /// Fine dust particles in the air.
+  ///
+  /// In en, this message translates to:
+  /// **'Dust'**
+  String get weather_condition_dust;
+
+  /// Fine particles of volcanic ash in the air.
+  ///
+  /// In en, this message translates to:
+  /// **'Volcanic ash'**
+  String get weather_condition_volcanic_ash;
+
+  /// Sudden, strong gusts of wind with rain or snow.
+  ///
+  /// In en, this message translates to:
+  /// **'Squalls'**
+  String get weather_condition_squalls;
+
+  /// A powerful rotating storm.
+  ///
+  /// In en, this message translates to:
+  /// **'Tornado'**
+  String get weather_condition_tornado;
+
+  /// No clouds in the sky.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear sky'**
+  String get weather_condition_clear_sky;
+
+  /// A few scattered clouds.
+  ///
+  /// In en, this message translates to:
+  /// **'Few clouds'**
+  String get weather_condition_few_clouds;
+
+  /// Clouds scattered throughout the sky.
+  ///
+  /// In en, this message translates to:
+  /// **'Scattered clouds'**
+  String get weather_condition_scattered_clouds;
+
+  /// Mostly cloudy with some breaks of sun.
+  ///
+  /// In en, this message translates to:
+  /// **'Broken clouds'**
+  String get weather_condition_broken_clouds;
+
+  /// Completely covered sky with clouds.
+  ///
+  /// In en, this message translates to:
+  /// **'Overcast clouds'**
+  String get weather_condition_overcast_clouds;
+
+  ///
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get weather_condition_unknown;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

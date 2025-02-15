@@ -1,18 +1,18 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/layout/grid_item.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_grid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/pages/tiles.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/tiles.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class TilesPage extends StatelessWidget {
-  final ScreenScalerService scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   final TilesPageModel page;
 
@@ -38,7 +38,7 @@ class TilesPage extends StatelessWidget {
                   Icon(
                     Icons.grid_view_sharp,
                     color: Theme.of(context).warning,
-                    size: scaler.scale(64),
+                    size: _screenService.scale(64),
                   ),
                   AppSpacings.spacingMdVertical,
                   Text(

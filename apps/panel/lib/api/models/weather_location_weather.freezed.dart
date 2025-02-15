@@ -22,23 +22,13 @@ WeatherLocationWeather _$WeatherLocationWeatherFromJson(
 /// @nodoc
 mixin _$WeatherLocationWeather {
   /// Current weather conditions at the specified location.
-  WeatherDay get current => throw _privateConstructorUsedError;
+  WeatherCurrentDay get current => throw _privateConstructorUsedError;
 
   /// List of daily weather forecasts.
-  List<WeatherDay> get forecast => throw _privateConstructorUsedError;
+  List<WeatherForecastDay> get forecast => throw _privateConstructorUsedError;
 
   /// Details of the location where the weather data is recorded.
   WeatherLocation get location => throw _privateConstructorUsedError;
-
-  /// Timestamp for sunrise in ISO 8601 format.
-  DateTime get sunrise => throw _privateConstructorUsedError;
-
-  /// Timestamp for sunset in ISO 8601 format.
-  DateTime get sunset => throw _privateConstructorUsedError;
-
-  /// Timestamp when the weather data was last updated.
-  @JsonKey(name: 'created_at')
-  DateTime get createdAt => throw _privateConstructorUsedError;
 
   /// Serializes this WeatherLocationWeather to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -57,14 +47,11 @@ abstract class $WeatherLocationWeatherCopyWith<$Res> {
       _$WeatherLocationWeatherCopyWithImpl<$Res, WeatherLocationWeather>;
   @useResult
   $Res call(
-      {WeatherDay current,
-      List<WeatherDay> forecast,
-      WeatherLocation location,
-      DateTime sunrise,
-      DateTime sunset,
-      @JsonKey(name: 'created_at') DateTime createdAt});
+      {WeatherCurrentDay current,
+      List<WeatherForecastDay> forecast,
+      WeatherLocation location});
 
-  $WeatherDayCopyWith<$Res> get current;
+  $WeatherCurrentDayCopyWith<$Res> get current;
   $WeatherLocationCopyWith<$Res> get location;
 }
 
@@ -87,35 +74,20 @@ class _$WeatherLocationWeatherCopyWithImpl<$Res,
     Object? current = null,
     Object? forecast = null,
     Object? location = null,
-    Object? sunrise = null,
-    Object? sunset = null,
-    Object? createdAt = null,
   }) {
     return _then(_value.copyWith(
       current: null == current
           ? _value.current
           : current // ignore: cast_nullable_to_non_nullable
-              as WeatherDay,
+              as WeatherCurrentDay,
       forecast: null == forecast
           ? _value.forecast
           : forecast // ignore: cast_nullable_to_non_nullable
-              as List<WeatherDay>,
+              as List<WeatherForecastDay>,
       location: null == location
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
               as WeatherLocation,
-      sunrise: null == sunrise
-          ? _value.sunrise
-          : sunrise // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      sunset: null == sunset
-          ? _value.sunset
-          : sunset // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      createdAt: null == createdAt
-          ? _value.createdAt
-          : createdAt // ignore: cast_nullable_to_non_nullable
-              as DateTime,
     ) as $Val);
   }
 
@@ -123,8 +95,8 @@ class _$WeatherLocationWeatherCopyWithImpl<$Res,
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $WeatherDayCopyWith<$Res> get current {
-    return $WeatherDayCopyWith<$Res>(_value.current, (value) {
+  $WeatherCurrentDayCopyWith<$Res> get current {
+    return $WeatherCurrentDayCopyWith<$Res>(_value.current, (value) {
       return _then(_value.copyWith(current: value) as $Val);
     });
   }
@@ -150,15 +122,12 @@ abstract class _$$WeatherLocationWeatherImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {WeatherDay current,
-      List<WeatherDay> forecast,
-      WeatherLocation location,
-      DateTime sunrise,
-      DateTime sunset,
-      @JsonKey(name: 'created_at') DateTime createdAt});
+      {WeatherCurrentDay current,
+      List<WeatherForecastDay> forecast,
+      WeatherLocation location});
 
   @override
-  $WeatherDayCopyWith<$Res> get current;
+  $WeatherCurrentDayCopyWith<$Res> get current;
   @override
   $WeatherLocationCopyWith<$Res> get location;
 }
@@ -181,35 +150,20 @@ class __$$WeatherLocationWeatherImplCopyWithImpl<$Res>
     Object? current = null,
     Object? forecast = null,
     Object? location = null,
-    Object? sunrise = null,
-    Object? sunset = null,
-    Object? createdAt = null,
   }) {
     return _then(_$WeatherLocationWeatherImpl(
       current: null == current
           ? _value.current
           : current // ignore: cast_nullable_to_non_nullable
-              as WeatherDay,
+              as WeatherCurrentDay,
       forecast: null == forecast
           ? _value._forecast
           : forecast // ignore: cast_nullable_to_non_nullable
-              as List<WeatherDay>,
+              as List<WeatherForecastDay>,
       location: null == location
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
               as WeatherLocation,
-      sunrise: null == sunrise
-          ? _value.sunrise
-          : sunrise // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      sunset: null == sunset
-          ? _value.sunset
-          : sunset // ignore: cast_nullable_to_non_nullable
-              as DateTime,
-      createdAt: null == createdAt
-          ? _value.createdAt
-          : createdAt // ignore: cast_nullable_to_non_nullable
-              as DateTime,
     ));
   }
 }
@@ -219,11 +173,8 @@ class __$$WeatherLocationWeatherImplCopyWithImpl<$Res>
 class _$WeatherLocationWeatherImpl implements _WeatherLocationWeather {
   const _$WeatherLocationWeatherImpl(
       {required this.current,
-      required final List<WeatherDay> forecast,
-      required this.location,
-      required this.sunrise,
-      required this.sunset,
-      @JsonKey(name: 'created_at') required this.createdAt})
+      required final List<WeatherForecastDay> forecast,
+      required this.location})
       : _forecast = forecast;
 
   factory _$WeatherLocationWeatherImpl.fromJson(Map<String, dynamic> json) =>
@@ -231,14 +182,14 @@ class _$WeatherLocationWeatherImpl implements _WeatherLocationWeather {
 
   /// Current weather conditions at the specified location.
   @override
-  final WeatherDay current;
+  final WeatherCurrentDay current;
 
   /// List of daily weather forecasts.
-  final List<WeatherDay> _forecast;
+  final List<WeatherForecastDay> _forecast;
 
   /// List of daily weather forecasts.
   @override
-  List<WeatherDay> get forecast {
+  List<WeatherForecastDay> get forecast {
     if (_forecast is EqualUnmodifiableListView) return _forecast;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_forecast);
@@ -248,22 +199,9 @@ class _$WeatherLocationWeatherImpl implements _WeatherLocationWeather {
   @override
   final WeatherLocation location;
 
-  /// Timestamp for sunrise in ISO 8601 format.
-  @override
-  final DateTime sunrise;
-
-  /// Timestamp for sunset in ISO 8601 format.
-  @override
-  final DateTime sunset;
-
-  /// Timestamp when the weather data was last updated.
-  @override
-  @JsonKey(name: 'created_at')
-  final DateTime createdAt;
-
   @override
   String toString() {
-    return 'WeatherLocationWeather(current: $current, forecast: $forecast, location: $location, sunrise: $sunrise, sunset: $sunset, createdAt: $createdAt)';
+    return 'WeatherLocationWeather(current: $current, forecast: $forecast, location: $location)';
   }
 
   @override
@@ -274,23 +212,13 @@ class _$WeatherLocationWeatherImpl implements _WeatherLocationWeather {
             (identical(other.current, current) || other.current == current) &&
             const DeepCollectionEquality().equals(other._forecast, _forecast) &&
             (identical(other.location, location) ||
-                other.location == location) &&
-            (identical(other.sunrise, sunrise) || other.sunrise == sunrise) &&
-            (identical(other.sunset, sunset) || other.sunset == sunset) &&
-            (identical(other.createdAt, createdAt) ||
-                other.createdAt == createdAt));
+                other.location == location));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      current,
-      const DeepCollectionEquality().hash(_forecast),
-      location,
-      sunrise,
-      sunset,
-      createdAt);
+  int get hashCode => Object.hash(runtimeType, current,
+      const DeepCollectionEquality().hash(_forecast), location);
 
   /// Create a copy of WeatherLocationWeather
   /// with the given fields replaced by the non-null parameter values.
@@ -311,41 +239,24 @@ class _$WeatherLocationWeatherImpl implements _WeatherLocationWeather {
 
 abstract class _WeatherLocationWeather implements WeatherLocationWeather {
   const factory _WeatherLocationWeather(
-          {required final WeatherDay current,
-          required final List<WeatherDay> forecast,
-          required final WeatherLocation location,
-          required final DateTime sunrise,
-          required final DateTime sunset,
-          @JsonKey(name: 'created_at') required final DateTime createdAt}) =
-      _$WeatherLocationWeatherImpl;
+      {required final WeatherCurrentDay current,
+      required final List<WeatherForecastDay> forecast,
+      required final WeatherLocation location}) = _$WeatherLocationWeatherImpl;
 
   factory _WeatherLocationWeather.fromJson(Map<String, dynamic> json) =
       _$WeatherLocationWeatherImpl.fromJson;
 
   /// Current weather conditions at the specified location.
   @override
-  WeatherDay get current;
+  WeatherCurrentDay get current;
 
   /// List of daily weather forecasts.
   @override
-  List<WeatherDay> get forecast;
+  List<WeatherForecastDay> get forecast;
 
   /// Details of the location where the weather data is recorded.
   @override
   WeatherLocation get location;
-
-  /// Timestamp for sunrise in ISO 8601 format.
-  @override
-  DateTime get sunrise;
-
-  /// Timestamp for sunset in ISO 8601 format.
-  @override
-  DateTime get sunset;
-
-  /// Timestamp when the weather data was last updated.
-  @override
-  @JsonKey(name: 'created_at')
-  DateTime get createdAt;
 
   /// Create a copy of WeatherLocationWeather
   /// with the given fields replaced by the non-null parameter values.

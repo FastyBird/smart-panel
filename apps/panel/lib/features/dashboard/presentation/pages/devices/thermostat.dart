@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/configuration.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/enum.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
@@ -14,7 +13,7 @@ import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/pro
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/payloads.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -199,7 +198,7 @@ class ThermostatBar extends StatefulWidget {
 }
 
 class _ThermostatBarState extends State<ThermostatBar> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
   @override
@@ -303,7 +302,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
-                  fontSize: _scaler.scale(60),
+                  fontSize: _screenService.scale(60),
                   fontFamily: 'DIN1451',
                   fontWeight: FontWeight.w100,
                   height: 1.0,
@@ -320,7 +319,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
-                  fontSize: _scaler.scale(25),
+                  fontSize: _screenService.scale(25),
                   fontFamily: 'DIN1451',
                   fontWeight: FontWeight.w100,
                   height: 1.0,
@@ -361,7 +360,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.secondary
                     : AppTextColorDark.secondary,
-                size: _scaler.scale(20),
+                size: _screenService.scale(20),
               ),
               AppSpacings.spacingXsHorizontal,
               Row(
@@ -376,7 +375,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                         color: Theme.of(context).brightness == Brightness.light
                             ? AppTextColorLight.secondary
                             : AppTextColorDark.secondary,
-                        fontSize: _scaler.scale(25),
+                        fontSize: _screenService.scale(25),
                         fontFamily: 'DIN1451',
                         fontWeight: FontWeight.w100,
                         height: 1.0,
@@ -393,7 +392,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                         color: Theme.of(context).brightness == Brightness.light
                             ? AppTextColorLight.secondary
                             : AppTextColorDark.secondary,
-                        fontSize: _scaler.scale(15),
+                        fontSize: _screenService.scale(15),
                         fontFamily: 'DIN1451',
                         fontWeight: FontWeight.w100,
                         height: 1.0,
@@ -445,7 +444,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.secondary
                     : AppTextColorDark.secondary,
-                size: _scaler.scale(20),
+                size: _screenService.scale(20),
               ),
               AppSpacings.spacingXsHorizontal,
               Row(
@@ -460,7 +459,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                         color: Theme.of(context).brightness == Brightness.light
                             ? AppTextColorLight.secondary
                             : AppTextColorDark.secondary,
-                        fontSize: _scaler.scale(25),
+                        fontSize: _screenService.scale(25),
                         fontFamily: 'DIN1451',
                         fontWeight: FontWeight.w100,
                         height: 1.0,
@@ -475,7 +474,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                         color: Theme.of(context).brightness == Brightness.light
                             ? AppTextColorLight.secondary
                             : AppTextColorDark.secondary,
-                        fontSize: _scaler.scale(15),
+                        fontSize: _screenService.scale(15),
                         fontFamily: 'DIN1451',
                         fontWeight: FontWeight.w100,
                         height: 1.0,
@@ -524,14 +523,14 @@ class _ThermostatBarState extends State<ThermostatBar> {
       },
       inner: [
         Positioned(
-          left: _scaler.scale(20),
+          left: _screenService.scale(20),
           child: Row(
             children: [
               RotatedBox(
                 quarterTurns: 1,
                 child: Icon(
                   Icons.thermostat,
-                  size: _scaler.scale(40),
+                  size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.placeholder
                       : AppTextColorDark.regular,
@@ -567,14 +566,14 @@ class _ThermostatBarState extends State<ThermostatBar> {
       },
       inner: [
         Positioned(
-          left: _scaler.scale(20),
+          left: _screenService.scale(20),
           child: Row(
             children: [
               RotatedBox(
                 quarterTurns: 1,
                 child: Icon(
                   Icons.thermostat,
-                  size: _scaler.scale(40),
+                  size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.placeholder
                       : AppTextColorDark.regular,
@@ -601,8 +600,8 @@ class ThermostatDial extends StatefulWidget {
 }
 
 class _ThermostatDialState extends State<ThermostatDial> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
-  final ConfigurationService _configuration = locator<ConfigurationService>();
+  final ScreenService _screenService = locator<ScreenService>();
+  final ScreenService _screen = locator<ScreenService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
   late bool _isLocked;
@@ -621,8 +620,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
     final HeaterChannelDataModel? heaterChannel = widget._device.heaterChannel;
     final CoolerChannelDataModel? coolerChannel = widget._device.coolerChannel;
 
-    final bool isSmall =
-        _configuration.screenWidth == _configuration.screenHeight;
+    final bool isSmall = _screen.screenWidth == _screen.screenHeight;
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -668,7 +666,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                       Icon(
                         Icons.error,
                         color: Theme.of(context).error,
-                        size: _scaler.scale(64),
+                        size: _screenService.scale(64),
                       ),
                       AppSpacings.spacingMdVertical,
                       Text(
@@ -862,7 +860,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
             ),
 
             SizedBox(
-              width: _scaler.scale(120),
+              width: _screenService.scale(120),
               // Constrain the width of the content
               child: _renderConfiguredTemperature(context),
             ),
@@ -885,7 +883,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                   widget._device.hasContact
                       ? Icon(
                           Icons.window,
-                          size: _scaler.scale(26),
+                          size: _screenService.scale(26),
                           color: widget._device.isContactDetected == true
                               ? (Theme.of(context).brightness ==
                                       Brightness.light
@@ -900,7 +898,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                   widget._device.hasHeater
                       ? Icon(
                           Icons.whatshot,
-                          size: _scaler.scale(26),
+                          size: _screenService.scale(26),
                           color: widget._device.isOn &&
                                   widget._device.isHeaterHeating == true
                               ? (Theme.of(context).brightness ==
@@ -916,7 +914,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                   widget._device.hasCooler
                       ? Icon(
                           Icons.ac_unit,
-                          size: _scaler.scale(26),
+                          size: _screenService.scale(26),
                           color: widget._device.isOn &&
                                   widget._device.isCoolerCooling == true
                               ? (Theme.of(context).brightness ==
@@ -973,12 +971,12 @@ class _ThermostatDialState extends State<ThermostatDial> {
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.primary
                 : AppTextColorDark.primary,
-            fontSize: _scaler.scale(80),
+            fontSize: _screenService.scale(80),
           ),
         ),
 
         SizedBox(
-          height: _scaler.scale(80 - 8),
+          height: _screenService.scale(80 - 8),
           // Match the height of the main temperature text
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -991,7 +989,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.primary
                       : AppTextColorDark.primary,
-                  fontSize: _scaler.scale(16),
+                  fontSize: _screenService.scale(16),
                 ),
               ),
               Text(
@@ -1005,7 +1003,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.primary
                       : AppTextColorDark.primary,
-                  fontSize: _scaler.scale(26),
+                  fontSize: _screenService.scale(26),
                 ),
               ),
             ],
@@ -1118,7 +1116,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
       child: IconButton(
         icon: Icon(
           icon,
-          size: _scaler.scale(14),
+          size: _screenService.scale(14),
         ),
         style: ButtonStyle(
           padding: WidgetStateProperty.all(AppSpacings.paddingMd),
@@ -1142,7 +1140,7 @@ class ThermostatTiles extends StatefulWidget {
 }
 
 class _ThermostatTilesState extends State<ThermostatTiles> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
   late bool _isLocked;
@@ -1203,7 +1201,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
             color: Theme.of(context).brightness == Brightness.light
                 ? AppBorderColorLight.base
                 : AppBorderColorDark.base,
-            width: _scaler.scale(1),
+            width: _screenService.scale(1),
           ),
         ),
         textColor: Theme.of(context).brightness == Brightness.light
@@ -1225,7 +1223,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
               ? localizations.thermostat_lock_locked
               : localizations.thermostat_lock_unlocked,
           style: TextStyle(
-            fontSize: _scaler.scale(8),
+            fontSize: _screenService.scale(8),
           ),
         ),
         trailing: Switch(
@@ -1308,7 +1306,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
             color: Theme.of(context).brightness == Brightness.light
                 ? AppBorderColorLight.base
                 : AppBorderColorDark.base,
-            width: _scaler.scale(1),
+            width: _screenService.scale(1),
           ),
         ),
         textColor: Theme.of(context).brightness == Brightness.light
@@ -1329,7 +1327,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
         subtitle: Text(
           subtitle,
           style: TextStyle(
-            fontSize: _scaler.scale(8),
+            fontSize: _screenService.scale(8),
           ),
         ),
       ),

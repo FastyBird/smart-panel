@@ -1,16 +1,15 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'weather_day.dart';
+part of 'weather_current_day.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$WeatherDayImpl _$$WeatherDayImplFromJson(Map<String, dynamic> json) =>
-    _$WeatherDayImpl(
+_$WeatherCurrentDayImpl _$$WeatherCurrentDayImplFromJson(
+        Map<String, dynamic> json) =>
+    _$WeatherCurrentDayImpl(
       temperature: json['temperature'] as num,
-      temperatureMin: json['temperature_min'] as num,
-      temperatureMax: json['temperature_max'] as num,
       feelsLike: json['feels_like'] as num,
       pressure: json['pressure'] as num,
       humidity: json['humidity'] as num,
@@ -19,14 +18,17 @@ _$WeatherDayImpl _$$WeatherDayImplFromJson(Map<String, dynamic> json) =>
       clouds: json['clouds'] as num,
       rain: json['rain'] as num?,
       snow: json['snow'] as num?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      sunrise: DateTime.parse(json['sunrise'] as String),
+      sunset: DateTime.parse(json['sunset'] as String),
+      dayTime: DateTime.parse(json['day_time'] as String),
+      temperatureMin: json['temperature_min'] as num?,
+      temperatureMax: json['temperature_max'] as num?,
     );
 
-Map<String, dynamic> _$$WeatherDayImplToJson(_$WeatherDayImpl instance) =>
+Map<String, dynamic> _$$WeatherCurrentDayImplToJson(
+        _$WeatherCurrentDayImpl instance) =>
     <String, dynamic>{
       'temperature': instance.temperature,
-      'temperature_min': instance.temperatureMin,
-      'temperature_max': instance.temperatureMax,
       'feels_like': instance.feelsLike,
       'pressure': instance.pressure,
       'humidity': instance.humidity,
@@ -35,5 +37,9 @@ Map<String, dynamic> _$$WeatherDayImplToJson(_$WeatherDayImpl instance) =>
       'clouds': instance.clouds,
       'rain': instance.rain,
       'snow': instance.snow,
-      'created_at': instance.createdAt.toIso8601String(),
+      'sunrise': instance.sunrise.toIso8601String(),
+      'sunset': instance.sunset.toIso8601String(),
+      'day_time': instance.dayTime.toIso8601String(),
+      'temperature_min': instance.temperatureMin,
+      'temperature_max': instance.temperatureMax,
     };

@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -17,7 +17,7 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   String _appVersion = 'Loading...';
   String _ipAddress = 'Loading...';
@@ -141,7 +141,7 @@ class _AboutPageState extends State<AboutPage> {
                   children: [
                     Icon(
                       Icons.settings,
-                      size: _scaler.scale(72),
+                      size: _screenService.scale(72),
                     ),
                     AppSpacings.spacingLgVertical,
                     Text(
@@ -342,7 +342,7 @@ class _AboutPageState extends State<AboutPage> {
               color: Theme.of(context).brightness == Brightness.light
                   ? AppBorderColorLight.base
                   : AppBorderColorDark.base,
-              width: _scaler.scale(1),
+              width: _screenService.scale(1),
             ),
           ),
           textColor: Theme.of(context).brightness == Brightness.light
@@ -362,7 +362,7 @@ class _AboutPageState extends State<AboutPage> {
           subtitle: Text(
             value,
             style: TextStyle(
-              fontSize: _scaler.scale(8),
+              fontSize: _screenService.scale(8),
             ),
           ),
         ),

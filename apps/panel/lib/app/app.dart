@@ -1,7 +1,6 @@
 import 'package:fastybird_smart_panel/app/app/body.dart';
 import 'package:fastybird_smart_panel/app/app/error.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
 import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
 import 'package:fastybird_smart_panel/core/repositories/weather.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
@@ -11,7 +10,7 @@ import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devic
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/scenes/scenes.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/pages.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/tiles.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -24,15 +23,14 @@ class MyApp extends StatelessWidget {
     WidgetsFlutterBinding.ensureInitialized();
 
     final mediaQuery = MediaQueryData.fromView(
-        WidgetsBinding.instance.platformDispatcher.views.first);
-
-    final deviceInfo = ConfigurationModel(
-      screenWidth: mediaQuery.size.width * mediaQuery.devicePixelRatio,
-      screenHeight: mediaQuery.size.height * mediaQuery.devicePixelRatio,
-      devicePixelRatio: mediaQuery.devicePixelRatio,
+      WidgetsBinding.instance.platformDispatcher.views.first,
     );
 
-    final startupService = StartupManagerService(configuration: deviceInfo);
+    final startupService = StartupManagerService(
+      screenHeight: mediaQuery.size.height * mediaQuery.devicePixelRatio,
+      screenWidth: mediaQuery.size.width * mediaQuery.devicePixelRatio,
+      pixelRatio: mediaQuery.devicePixelRatio,
+    );
 
     final ThemeMode themeMode = ThemeMode.system;
 

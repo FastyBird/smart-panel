@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsInt, IsNumber, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-class CityCoordinatesDto {
+export class CityCoordinatesDto {
 	@Expose()
 	@IsNumber()
 	lat: number;
@@ -11,7 +11,7 @@ class CityCoordinatesDto {
 	lon: number;
 }
 
-class ForecastMainDto {
+export class ForecastMainDto {
 	@Expose()
 	@IsNumber()
 	temp: number;
@@ -49,7 +49,7 @@ class ForecastMainDto {
 	temp_kf: number;
 }
 
-class ForecastConditionDto {
+export class ForecastConditionDto {
 	@Expose()
 	@IsInt()
 	id: number;
@@ -67,13 +67,13 @@ class ForecastConditionDto {
 	icon: string;
 }
 
-class ForecastCloudsDto {
+export class ForecastCloudsDto {
 	@Expose()
 	@IsInt()
 	all: number;
 }
 
-class ForecastWindDto {
+export class ForecastWindDto {
 	@Expose()
 	@IsNumber()
 	speed: number;
@@ -87,25 +87,25 @@ class ForecastWindDto {
 	gust: number;
 }
 
-class ForecastRainDto {
+export class ForecastRainDto {
 	@Expose()
 	@IsNumber()
 	'3h': number;
 }
 
-class ForecastSnowDto {
+export class ForecastSnowDto {
 	@Expose()
 	@IsNumber()
 	'3h': number;
 }
 
-class ForecastSysDto {
+export class ForecastSysDto {
 	@Expose()
 	@IsString()
 	pod: string;
 }
 
-class ForecastListItemDto {
+export class ForecastListItemDto {
 	@Expose()
 	@IsInt()
 	dt: number;
@@ -161,7 +161,7 @@ class ForecastListItemDto {
 	dt_txt: string;
 }
 
-class ForecastCityDto {
+export class ForecastCityDto {
 	@Expose()
 	@IsInt()
 	id: number;

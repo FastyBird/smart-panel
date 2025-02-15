@@ -7,8 +7,13 @@ packages:
 scripts:
   analyze:
     exec: dart analyze .
+
   generate-run-config:
     run: bash ./bin/generate_app_run_config.sh
+
+  rebuild-api:
+    run: cd ./apps/panel/ && rm -rf lib/api && dart run swagger_parser && dart run build_runner build
+    description: Cleans the API directory, regenerates interfaces, and runs build_runner.
 
 command:
   bootstrap:

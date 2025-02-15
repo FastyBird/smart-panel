@@ -12,7 +12,7 @@
   {
     "_debug": "weather_tile",
     "id": "82dc2341-af7d-43f1-8af1-e94244dfba61",
-    "type": "weather_day",
+    "type": "weather-day",
     "page": "f800f29b-899b-4978-a1f4-e425a01d01df",
     "row": 3,
     "col": 1,
@@ -22,7 +22,7 @@
   {
     "_debug": "forecast_tile",
     "id": "8a044651-90d1-4bd6-a807-a2b9c2503cec",
-    "type": "weather_forecast",
+    "type": "weather-forecast",
     "page": "f800f29b-899b-4978-a1f4-e425a01d01df",
     "row": 5,
     "col": 1,

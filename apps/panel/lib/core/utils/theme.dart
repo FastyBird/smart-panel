@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:flutter/material.dart';
 
 extension AppExtendedColors on ThemeData {
@@ -67,7 +67,7 @@ class AppTheme {
   }
 
   static ThemeData get lightTheme {
-    final ScreenScalerService scaler = locator<ScreenScalerService>();
+    final ScreenService screen = locator<ScreenService>();
 
     return ThemeData(
       fontFamily: 'Roboto',
@@ -85,7 +85,7 @@ class AppTheme {
         shape: Border(
           bottom: BorderSide(
             color: AppBorderColorLight.base,
-            width: scaler.scale(1),
+            width: screen.scale(1),
           ),
         ),
         toolbarHeight: AppTopBar.size,
@@ -100,16 +100,16 @@ class AppTheme {
         unselectedItemColor: AppTextColorLight.regular,
         backgroundColor: AppBgColorLight.base,
         selectedIconTheme: IconThemeData(
-          size: scaler.scale(20.0),
+          size: screen.scale(20.0),
         ),
         unselectedIconTheme: IconThemeData(
-          size: scaler.scale(20.0),
+          size: screen.scale(20.0),
         ),
         selectedLabelStyle: TextStyle(
-          fontSize: scaler.scale(10.0),
+          fontSize: screen.scale(10.0),
         ),
         unselectedLabelStyle: TextStyle(
-          fontSize: scaler.scale(8.0),
+          fontSize: screen.scale(8.0),
         ),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
@@ -135,7 +135,7 @@ class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    final ScreenScalerService scaler = locator<ScreenScalerService>();
+    final ScreenService screen = locator<ScreenService>();
 
     return ThemeData(
       fontFamily: 'Roboto',
@@ -153,7 +153,7 @@ class AppTheme {
         shape: Border(
           bottom: BorderSide(
             color: AppBorderColorDark.base,
-            width: scaler.scale(1),
+            width: screen.scale(1),
           ),
         ),
         toolbarHeight: AppTopBar.size,
@@ -171,16 +171,16 @@ class AppTheme {
         unselectedItemColor: AppTextColorDark.regular,
         backgroundColor: AppBgColorDark.overlay,
         selectedIconTheme: IconThemeData(
-          size: scaler.scale(20.0),
+          size: screen.scale(20.0),
         ),
         unselectedIconTheme: IconThemeData(
-          size: scaler.scale(20.0),
+          size: screen.scale(20.0),
         ),
         selectedLabelStyle: TextStyle(
-          fontSize: scaler.scale(10.0),
+          fontSize: screen.scale(10.0),
         ),
         unselectedLabelStyle: TextStyle(
-          fontSize: scaler.scale(8.0),
+          fontSize: screen.scale(8.0),
         ),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
@@ -438,7 +438,7 @@ class AppMaskColorDark {
 }
 
 class AppBorderRadius {
-  static final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  static final ScreenService _scaler = locator<ScreenService>();
 
   static double get medium => _scaler.scale(12.0);
 
@@ -450,34 +450,34 @@ class AppBorderRadius {
 }
 
 class AppTopBar {
-  static final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  static final ScreenService _screen = locator<ScreenService>();
 
-  static double get size => _scaler.scale(40.0);
+  static double get size => _screen.scale(40.0);
 }
 
 class AppFontSize {
-  static final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  static final ScreenService _screen = locator<ScreenService>();
 
-  static double get large => _scaler.scale(16.0);
+  static double get large => _screen.scale(16.0);
 
-  static double get base => _scaler.scale(14.0);
+  static double get base => _screen.scale(14.0);
 
-  static double get small => _scaler.scale(12.0);
+  static double get small => _screen.scale(12.0);
 
-  static double get extraSmall => _scaler.scale(10.0);
+  static double get extraSmall => _screen.scale(10.0);
 }
 
 // Centralized spacing
 class AppSpacings {
-  static final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  static final ScreenService _screen = locator<ScreenService>();
 
-  static double get pXs => _scaler.scale(2.0);
+  static double get pXs => _screen.scale(2.0);
 
-  static double get pSm => _scaler.scale(4.0);
+  static double get pSm => _screen.scale(4.0);
 
-  static double get pMd => _scaler.scale(8.0);
+  static double get pMd => _screen.scale(8.0);
 
-  static double get pLg => _scaler.scale(16.0);
+  static double get pLg => _screen.scale(16.0);
 
   static EdgeInsets get paddingXs => EdgeInsets.all(pXs);
 
@@ -1231,35 +1231,35 @@ class AppIconButtonsDarkThemes {
 }
 
 class AppTextThemes {
-  static final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  static final ScreenService _screen = locator<ScreenService>();
 
   static TextTheme getBaseTextTheme(Color textColor) {
     return TextTheme(
       headlineLarge: TextStyle(
-        fontSize: _scaler.scale(20.0),
+        fontSize: _screen.scale(20.0),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       headlineMedium: TextStyle(
-        fontSize: _scaler.scale(18.0),
+        fontSize: _screen.scale(18.0),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       headlineSmall: TextStyle(
-        fontSize: _scaler.scale(16.0),
+        fontSize: _screen.scale(16.0),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       bodyLarge: TextStyle(
-        fontSize: _scaler.scale(16.0),
+        fontSize: _screen.scale(16.0),
         color: textColor,
       ),
       bodyMedium: TextStyle(
-        fontSize: _scaler.scale(14.0),
+        fontSize: _screen.scale(14.0),
         color: textColor,
       ),
       bodySmall: TextStyle(
-        fontSize: _scaler.scale(12.0),
+        fontSize: _screen.scale(12.0),
         color: textColor,
       ),
     );
@@ -1284,7 +1284,7 @@ ButtonStyle createButtonTheme({
   required Color hoveredBorderColor,
   required Color disabledBorderColor,
 }) {
-  final scaler = locator<ScreenScalerService>();
+  final screen = locator<ScreenService>();
 
   return ButtonStyle(
     foregroundColor: WidgetStateProperty.resolveWith<Color>(
@@ -1316,34 +1316,34 @@ ButtonStyle createButtonTheme({
         if (states.contains(WidgetState.pressed)) {
           return BorderSide(
             color: pressedBorderColor,
-            width: scaler.scale(1),
+            width: screen.scale(1),
           );
         } else if (states.contains(WidgetState.hovered)) {
           return BorderSide(
             color: hoveredBorderColor,
-            width: scaler.scale(1),
+            width: screen.scale(1),
           );
         } else if (states.contains(WidgetState.disabled)) {
           return BorderSide(
             color: disabledBorderColor,
-            width: scaler.scale(1),
+            width: screen.scale(1),
           );
         }
         return BorderSide(
           color: borderColor,
-          width: scaler.scale(1),
+          width: screen.scale(1),
         );
       },
     ),
     padding: WidgetStateProperty.all(
       EdgeInsets.symmetric(
-        horizontal: scaler.scale(49),
-        vertical: scaler.scale(8),
+        horizontal: screen.scale(49),
+        vertical: screen.scale(8),
       ),
     ),
     textStyle: WidgetStateProperty.all(
       TextStyle(
-        fontSize: scaler.scale(14),
+        fontSize: screen.scale(14),
         fontWeight: FontWeight.w500,
       ),
     ),
@@ -1369,7 +1369,7 @@ ButtonStyle createIconButtonTheme({
   required Color hoveredBorderColor,
   required Color disabledBorderColor,
 }) {
-  final scaler = locator<ScreenScalerService>();
+  final screen = locator<ScreenService>();
 
   final baseStyle = createButtonTheme(
     color: color,
@@ -1389,8 +1389,8 @@ ButtonStyle createIconButtonTheme({
   return baseStyle.copyWith(
     padding: WidgetStateProperty.all(
       EdgeInsets.symmetric(
-        horizontal: scaler.scale(8),
-        vertical: scaler.scale(8),
+        horizontal: screen.scale(8),
+        vertical: screen.scale(8),
       ),
     ),
     shape: WidgetStateProperty.all(

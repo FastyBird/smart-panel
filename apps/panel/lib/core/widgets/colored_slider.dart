@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -55,7 +55,7 @@ class ColoredSlider extends StatefulWidget {
 }
 
 class _ColoredSliderState extends State<ColoredSlider> {
-  final scaler = locator<ScreenScalerService>();
+  final ScreenService screenService = locator<ScreenService>();
 
   late final double trackHeight;
   late final double? trackWidth;
@@ -70,13 +70,16 @@ class _ColoredSliderState extends State<ColoredSlider> {
 
     actualValue = widget.value;
 
-    trackHeight =
-        widget.trackHeight != null ? widget.trackHeight! : scaler.scale(75);
+    trackHeight = widget.trackHeight != null
+        ? widget.trackHeight!
+        : screenService.scale(75);
     trackWidth = widget.trackWidth;
-    thumbHeight =
-        widget.thumbHeight != null ? widget.thumbHeight! : scaler.scale(60);
-    thumbWidth =
-        widget.thumbWidth != null ? widget.thumbWidth! : scaler.scale(30);
+    thumbHeight = widget.thumbHeight != null
+        ? widget.thumbHeight!
+        : screenService.scale(60);
+    thumbWidth = widget.thumbWidth != null
+        ? widget.thumbWidth!
+        : screenService.scale(30);
   }
 
   @override
@@ -249,7 +252,7 @@ class RoundedRectThumbShape extends SliderComponentShape {
 }
 
 class RoundedRectTrackShape extends SliderTrackShape {
-  final scaler = locator<ScreenScalerService>();
+  final ScreenService screenService = locator<ScreenService>();
 
   final double borderRadius;
 
@@ -314,10 +317,10 @@ class RoundedRectTrackShape extends SliderTrackShape {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTRB(
-          trackRect.left + scaler.scale(3),
-          trackRect.top + scaler.scale(3),
+          trackRect.left + screenService.scale(3),
+          trackRect.top + screenService.scale(3),
           thumbCenter.dx,
-          trackRect.bottom - scaler.scale(3),
+          trackRect.bottom - screenService.scale(3),
         ),
         Radius.circular(borderRadius),
       ),

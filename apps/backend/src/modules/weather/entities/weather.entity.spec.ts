@@ -52,14 +52,26 @@ describe('Weather module entity and OpenAPI Model Synchronization', () => {
 				clouds: 10,
 				rain: null,
 				snow: null,
-				created_at: new Date().toISOString(),
+				sunrise: new Date().toISOString(),
+				sunset: new Date().toISOString(),
+				day_time: new Date().toISOString(),
 			},
 			forecast: [
 				{
-					temperature: 23.3,
-					temperature_min: 23.3,
-					temperature_max: 23.3,
-					feels_like: 23.3,
+					temperature: {
+						morn: 23.3,
+						day: 23.3,
+						eve: 23.3,
+						night: 23.3,
+						min: 23.3,
+						max: 23.3,
+					},
+					feels_like: {
+						morn: 23.3,
+						day: 23.3,
+						eve: 23.3,
+						night: 23.3,
+					},
 					pressure: 1003,
 					humidity: 42,
 					weather: {
@@ -76,16 +88,17 @@ describe('Weather module entity and OpenAPI Model Synchronization', () => {
 					clouds: 10,
 					rain: null,
 					snow: null,
-					created_at: new Date().toISOString(),
+					sunrise: new Date().toISOString(),
+					sunset: new Date().toISOString(),
+					moonrise: new Date().toISOString(),
+					moonset: new Date().toISOString(),
+					day_time: new Date().toISOString(),
 				},
 			],
 			location: {
 				name: 'Prague',
 				country: 'CZE',
 			},
-			sunrise: new Date().toISOString(),
-			sunset: new Date().toISOString(),
-			created_at: new Date().toISOString(),
 		};
 
 		const entityInstance = plainToInstance(LocationWeatherEntity, openApiModel, {
