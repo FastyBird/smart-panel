@@ -114,8 +114,11 @@ jobs:
         with:
           sdk: "stable"
 
-      - name: "Install Dependencies"
-        run: "dart pub get"
+      - name: "Install Melos"
+        run: "dart pub global activate melos"
+
+      - name: "Bootstrap Dependencies"
+        run: "melos bootstrap"
 
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
