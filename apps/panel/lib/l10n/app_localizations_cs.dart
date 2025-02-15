@@ -457,11 +457,176 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_about_memory_usage_title => 'Využití paměti';
 
   @override
-  String get weather_forecast_title => '7 day forecast';
+  String get weather_forecast_title => 'Weather forecast';
 
   @override
   String get weather_forecast_feels_like => 'Feels like:';
 
   @override
   String get weather_forecast_humidity => 'Humidity:';
+
+  @override
+  String get weather_condition_thunderstorm_with_light_rain => 'Thunderstorm with light rain';
+
+  @override
+  String get weather_condition_thunderstorm_with_rain => 'Thunderstorm with rain';
+
+  @override
+  String get weather_condition_thunderstorm_with_heavy_rain => 'Thunderstorm with heavy rain';
+
+  @override
+  String get weather_condition_light_thunderstorm => 'Light thunderstorm';
+
+  @override
+  String get weather_condition_thunderstorm => 'Thunderstorm';
+
+  @override
+  String get weather_condition_heavy_thunderstorm => 'Heavy thunderstorm';
+
+  @override
+  String get weather_condition_ragged_thunderstorm => 'Ragged thunderstorm';
+
+  @override
+  String get weather_condition_thunderstorm_with_light_drizzle => 'Thunderstorm with light drizzle';
+
+  @override
+  String get weather_condition_thunderstorm_with_drizzle => 'Thunderstorm with drizzle';
+
+  @override
+  String get weather_condition_thunderstorm_with_heavy_drizzle => 'Thunderstorm with heavy drizzle';
+
+  @override
+  String get weather_condition_light_intensity_drizzle => 'Light intensity drizzle';
+
+  @override
+  String get weather_condition_drizzle => 'Drizzle';
+
+  @override
+  String get weather_condition_heavy_intensity_drizzle => 'Heavy intensity drizzle';
+
+  @override
+  String get weather_condition_light_intensity_drizzle_rain => 'Light intensity drizzle rain';
+
+  @override
+  String get weather_condition_drizzle_rain => 'Drizzle rain';
+
+  @override
+  String get weather_condition_heavy_intensity_drizzle_rain => 'Heavy intensity drizzle rain';
+
+  @override
+  String get weather_condition_shower_rain_and_drizzle => 'Shower rain and drizzle';
+
+  @override
+  String get weather_condition_heavy_shower_rain_and_drizzle => 'Heavy shower rain and drizzle';
+
+  @override
+  String get weather_condition_shower_drizzle => 'Shower drizzle';
+
+  @override
+  String get weather_condition_light_rain => 'Light rain';
+
+  @override
+  String get weather_condition_moderate_rain => 'Moderate rain';
+
+  @override
+  String get weather_condition_heavy_intensity_rain => 'Heavy intensity rain';
+
+  @override
+  String get weather_condition_very_heavy_rain => 'Very heavy rain';
+
+  @override
+  String get weather_condition_extreme_rain => 'Extreme rain';
+
+  @override
+  String get weather_condition_freezing_rain => 'Freezing rain';
+
+  @override
+  String get weather_condition_light_intensity_shower_rain => 'Light intensity shower rain';
+
+  @override
+  String get weather_condition_shower_rain => 'Shower rain';
+
+  @override
+  String get weather_condition_heavy_intensity_shower_rain => 'Heavy intensity shower rain';
+
+  @override
+  String get weather_condition_ragged_shower_rain => 'Ragged shower rain';
+
+  @override
+  String get weather_condition_light_snow => 'Light snow';
+
+  @override
+  String get weather_condition_snow => 'Snow';
+
+  @override
+  String get weather_condition_heavy_snow => 'Heavy snow';
+
+  @override
+  String get weather_condition_sleet => 'Sleet';
+
+  @override
+  String get weather_condition_light_shower_sleet => 'Light shower sleet';
+
+  @override
+  String get weather_condition_shower_sleet => 'Shower sleet';
+
+  @override
+  String get weather_condition_light_rain_and_snow => 'Light rain and snow';
+
+  @override
+  String get weather_condition_rain_and_snow => 'Rain and snow';
+
+  @override
+  String get weather_condition_light_shower_snow => 'Light shower snow';
+
+  @override
+  String get weather_condition_shower_snow => 'Shower snow';
+
+  @override
+  String get weather_condition_heavy_shower_snow => 'Heavy shower snow';
+
+  @override
+  String get weather_condition_mist => 'Mist';
+
+  @override
+  String get weather_condition_smoke => 'Smoke';
+
+  @override
+  String get weather_condition_haze => 'Haze';
+
+  @override
+  String get weather_condition_fog => 'Fog';
+
+  @override
+  String get weather_condition_sand => 'Sand';
+
+  @override
+  String get weather_condition_dust => 'Dust';
+
+  @override
+  String get weather_condition_volcanic_ash => 'Volcanic ash';
+
+  @override
+  String get weather_condition_squalls => 'Squalls';
+
+  @override
+  String get weather_condition_tornado => 'Tornado';
+
+  @override
+  String get weather_condition_clear_sky => 'Clear sky';
+
+  @override
+  String get weather_condition_few_clouds => 'Few clouds';
+
+  @override
+  String get weather_condition_scattered_clouds => 'Scattered clouds';
+
+  @override
+  String get weather_condition_broken_clouds => 'Broken clouds';
+
+  @override
+  String get weather_condition_overcast_clouds => 'Overcast clouds';
+
+  @override
+  String get weather_condition_unknown => 'Unknown';
 }

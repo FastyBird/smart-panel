@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -44,7 +44,7 @@ class RoundedSlider extends StatefulWidget {
 }
 
 class _RoundedSliderState extends State<RoundedSlider> {
-  final ScreenScalerService scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   double knobAngle = 0;
 
@@ -119,7 +119,7 @@ class _RoundedSliderState extends State<RoundedSlider> {
     setState(() {
       trackOffset = Offset(
         0,
-        calculatedTrackOffset + scaler.scale(barWidth),
+        calculatedTrackOffset + _screenService.scale(barWidth),
       );
       trackRadius = calculatedTrackRadius + calculatedTrackOffset;
     });
@@ -145,19 +145,19 @@ class _RoundedSliderState extends State<RoundedSlider> {
                   : (widget.enabled
                       ? AppColorsDark.primary
                       : AppTextColorDark.placeholder),
-              barWidth: scaler.scale(barWidth),
+              barWidth: _screenService.scale(barWidth),
               trackColor: Theme.of(context).brightness == Brightness.light
                   ? AppBorderColorLight.light
                   : AppBorderColorDark.light,
               knobColor: AppColors.white,
               knobAngle: knobAngle,
-              knobSize: scaler.scale(knobSize),
-              knobBorder: scaler.scale(knobBorder),
+              knobSize: _screenService.scale(knobSize),
+              knobBorder: _screenService.scale(knobBorder),
               startAngle: startAngle,
               endAngle: endAngle,
               trackRadius: trackRadius,
               trackOffset: trackOffset,
-              trackWidth: scaler.scale(trackWidth),
+              trackWidth: _screenService.scale(trackWidth),
               isLightTheme: Theme.of(context).brightness == Brightness.light,
               upperLabel: widget.upperLabel,
               lowerLabel: widget.lowerLabel,

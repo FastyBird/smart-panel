@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
@@ -12,14 +12,14 @@ import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/features/dashboard/widgets/tiles/button.dart';
 import 'package:fastybird_smart_panel/features/dashboard/widgets/tiles/tile.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class DeviceTileWidget
     extends TileWidget<DeviceTileModel, List<TileDataSourceModel>> {
-  final ScreenScalerService scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   DeviceTileWidget(super.tile, super.dataSource, {super.key});
 
@@ -106,7 +106,7 @@ class DeviceTileWidget
           color: Theme.of(context).brightness == Brightness.light
               ? AppColorsLight.infoLight5
               : AppColorsDark.infoLight5,
-          width: scaler.scale(1),
+          width: _screenService.scale(1),
         ),
       ),
       child: Column(

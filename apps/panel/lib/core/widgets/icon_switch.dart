@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -48,7 +48,7 @@ class _IconSwitchState extends State<IconSwitch>
 
   @override
   Widget build(BuildContext context) {
-    final scaler = locator<ScreenScalerService>();
+    final ScreenService screenService = locator<ScreenService>();
 
     return GestureDetector(
       onTap: () {
@@ -59,8 +59,8 @@ class _IconSwitchState extends State<IconSwitch>
         widget.onChanged(switchState);
       },
       child: SizedBox(
-        width: scaler.scale(55),
-        height: scaler.scale(26),
+        width: screenService.scale(55),
+        height: screenService.scale(26),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -68,7 +68,7 @@ class _IconSwitchState extends State<IconSwitch>
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(scaler.scale(20)),
+                borderRadius: BorderRadius.circular(screenService.scale(20)),
                 border: Border.all(
                   color: widget.toggleMode
                       ? (Theme.of(context).brightness == Brightness.light
@@ -81,7 +81,7 @@ class _IconSwitchState extends State<IconSwitch>
                           : (Theme.of(context).brightness == Brightness.light
                               ? AppBorderColorLight.base
                               : AppBorderColorDark.base)),
-                  width: scaler.scale(1),
+                  width: screenService.scale(1),
                 ),
                 color: widget.toggleMode
                     ? (Theme.of(context).brightness == Brightness.light
@@ -95,8 +95,8 @@ class _IconSwitchState extends State<IconSwitch>
                             ? AppBorderColorLight.base
                             : AppBorderColorDark.base)),
               ),
-              width: scaler.scale(55),
-              height: scaler.scale(26),
+              width: screenService.scale(55),
+              height: screenService.scale(26),
             ),
             // Thumb with Icon
             AnimatedAlign(
@@ -104,8 +104,8 @@ class _IconSwitchState extends State<IconSwitch>
               alignment:
                   switchState ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
-                width: scaler.scale(26),
-                height: scaler.scale(26),
+                width: screenService.scale(26),
+                height: screenService.scale(26),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.transparent,
@@ -121,7 +121,7 @@ class _IconSwitchState extends State<IconSwitch>
                             : (Theme.of(context).brightness == Brightness.light
                                 ? AppBorderColorLight.base
                                 : AppBorderColorDark.base)),
-                    width: scaler.scale(1),
+                    width: screenService.scale(1),
                   ),
                 ),
                 child: Container(
@@ -146,7 +146,7 @@ class _IconSwitchState extends State<IconSwitch>
                             : (Theme.of(context).brightness == Brightness.light
                                 ? AppBorderColorLight.base
                                 : AppBorderColorDark.base)),
-                    size: scaler.scale(18),
+                    size: screenService.scale(18),
                   ),
                 ),
               ),

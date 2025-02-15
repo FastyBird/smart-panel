@@ -182,7 +182,9 @@ export class AuthGuard implements CanActivate {
 			userSecret = displayUser.password;
 		}
 
-		if (providedSecret !== userSecret) {
+		const match = await bcrypt.compare(providedSecret, userSecret);
+
+		if (!match) {
 			this.logger.warn(`[AUTH] Invalid ${DisplaySecretHeader} provided`);
 
 			throw new UnauthorizedException('Invalid display authentication');

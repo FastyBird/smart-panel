@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/enum.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
@@ -14,7 +14,7 @@ import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devic
 import 'package:fastybird_smart_panel/features/dashboard/types/formats.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -264,7 +264,7 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
 }
 
 class LightSimpleDetail extends StatelessWidget {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
   final LightingDeviceDataModel _device;
@@ -286,7 +286,8 @@ class LightSimpleDetail extends StatelessWidget {
       double elementMaxSize = constraints.maxHeight * 0.8 - 2 * AppSpacings.pLg;
 
       if (_withBrightness) {
-        elementMaxSize = elementMaxSize - _scaler.scale(45) - AppSpacings.pSm;
+        elementMaxSize =
+            elementMaxSize - _screenService.scale(45) - AppSpacings.pSm;
       }
 
       final List<Widget> controlElements = _channels
@@ -629,7 +630,7 @@ class BrightnessChannel extends StatefulWidget {
 }
 
 class _BrightnessChannelState extends State<BrightnessChannel> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   late ChannelPropertyDataModel? _property;
 
@@ -684,7 +685,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
       inner: [
         widget.showValue
             ? Positioned(
-                right: _scaler.scale(5),
+                right: _screenService.scale(5),
                 child: RotatedBox(
                   quarterTurns: widget.vertical ? 1 : 0,
                   child: Row(
@@ -702,7 +703,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
                                 Theme.of(context).brightness == Brightness.light
                                     ? AppTextColorLight.placeholder
                                     : AppTextColorDark.regular,
-                            fontSize: _scaler.scale(50),
+                            fontSize: _screenService.scale(50),
                             fontFamily: 'DIN1451',
                             fontWeight: FontWeight.w100,
                             height: 1.0,
@@ -718,7 +719,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
                                 Theme.of(context).brightness == Brightness.light
                                     ? AppTextColorLight.placeholder
                                     : AppTextColorDark.regular,
-                            fontSize: _scaler.scale(25),
+                            fontSize: _screenService.scale(25),
                             fontFamily: 'DIN1451',
                             fontWeight: FontWeight.w100,
                             height: 1.0,
@@ -732,14 +733,14 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
               )
             : null,
         Positioned(
-          left: _scaler.scale(20),
+          left: _screenService.scale(20),
           child: Row(
             children: [
               RotatedBox(
                 quarterTurns: widget.vertical ? 1 : 0,
                 child: Icon(
                   Icons.light_mode,
-                  size: _scaler.scale(40),
+                  size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.placeholder
                       : AppTextColorDark.regular,
@@ -856,7 +857,7 @@ class TemperatureChannel extends StatefulWidget {
 }
 
 class _TemperatureChannelState extends State<TemperatureChannel> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   late ChannelPropertyDataModel? _property;
 
@@ -916,14 +917,14 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
       thumbDividerColor: AppBorderColorDark.base,
       inner: [
         Positioned(
-          left: _scaler.scale(5),
+          left: _screenService.scale(5),
           child: Row(
             children: [
               RotatedBox(
                 quarterTurns: widget.vertical ? 1 : 0,
                 child: Icon(
                   Icons.thermostat,
-                  size: _scaler.scale(40),
+                  size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
@@ -959,7 +960,7 @@ class WhiteChannel extends StatefulWidget {
 }
 
 class _WhiteChannelState extends State<WhiteChannel> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   late ChannelPropertyDataModel? _property;
 
@@ -1012,14 +1013,14 @@ class _WhiteChannelState extends State<WhiteChannel> {
       activeTrackColor: AppColors.white,
       inner: [
         Positioned(
-          left: _scaler.scale(20),
+          left: _screenService.scale(20),
           child: Row(
             children: [
               RotatedBox(
                 quarterTurns: widget.vertical ? 1 : 0,
                 child: Icon(
                   Icons.lightbulb,
-                  size: _scaler.scale(40),
+                  size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
@@ -1053,7 +1054,7 @@ class ChannelSwitch extends StatefulWidget {
 }
 
 class _ChannelSwitchState extends State<ChannelSwitch> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   late bool _isOn;
 
@@ -1067,8 +1068,8 @@ class _ChannelSwitchState extends State<ChannelSwitch> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _scaler.scale(widget.vertical ? 45 : 75),
-      height: _scaler.scale(widget.vertical ? 75 : 45),
+      width: _screenService.scale(widget.vertical ? 45 : 75),
+      height: _screenService.scale(widget.vertical ? 75 : 45),
       child: Theme(
         data: ThemeData(
           filledButtonTheme: Theme.of(context).brightness == Brightness.light
@@ -1099,7 +1100,7 @@ class _ChannelSwitchState extends State<ChannelSwitch> {
             // Explicitly centers the icon
             child: Icon(
               Icons.power_settings_new,
-              size: _scaler.scale(35),
+              size: _screenService.scale(35),
             ),
           ),
         ),
@@ -1109,7 +1110,7 @@ class _ChannelSwitchState extends State<ChannelSwitch> {
 }
 
 class ChannelActualBrightness extends StatelessWidget {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   final LightingDeviceDataModel device;
   final LightChannelDataModel channel;
@@ -1130,7 +1131,7 @@ class ChannelActualBrightness extends StatelessWidget {
 
     return ConstrainedBox(
       constraints: BoxConstraints(
-        minWidth: _scaler.scale(100),
+        minWidth: _screenService.scale(100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1151,7 +1152,7 @@ class ChannelActualBrightness extends StatelessWidget {
                     color: Theme.of(context).brightness == Brightness.light
                         ? AppTextColorLight.regular
                         : AppTextColorDark.regular,
-                    fontSize: _scaler.scale(60),
+                    fontSize: _screenService.scale(60),
                     fontFamily: 'DIN1451',
                     fontWeight: FontWeight.w100,
                     height: 1.0,
@@ -1168,7 +1169,7 @@ class ChannelActualBrightness extends StatelessWidget {
                               Theme.of(context).brightness == Brightness.light
                                   ? AppTextColorLight.regular
                                   : AppTextColorDark.regular,
-                          fontSize: _scaler.scale(25),
+                          fontSize: _screenService.scale(25),
                           fontFamily: 'DIN1451',
                           fontWeight: FontWeight.w100,
                           height: 1.0,
@@ -1199,7 +1200,7 @@ class ChannelActualBrightness extends StatelessWidget {
 }
 
 class ChannelActualColor extends StatelessWidget {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   final LightingDeviceDataModel device;
   final LightChannelDataModel channel;
@@ -1213,8 +1214,8 @@ class ChannelActualColor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _scaler.scale(75),
-      height: _scaler.scale(75),
+      width: _screenService.scale(75),
+      height: _screenService.scale(75),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(
@@ -1224,15 +1225,15 @@ class ChannelActualColor extends StatelessWidget {
             color: Theme.of(context).brightness == Brightness.light
                 ? AppBorderColorLight.base
                 : AppBorderColorDark.base,
-            width: _scaler.scale(1),
+            width: _screenService.scale(1),
           ),
         ),
         child: Padding(
-          padding: EdgeInsets.all(_scaler.scale(1)),
+          padding: EdgeInsets.all(_screenService.scale(1)),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(
-                AppBorderRadius.base - 2 * _scaler.scale(1),
+                AppBorderRadius.base - 2 * _screenService.scale(1),
               ),
               color: channel.color,
             ),
@@ -1244,7 +1245,7 @@ class ChannelActualColor extends StatelessWidget {
 }
 
 class ChannelActualTemperature extends StatelessWidget {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   final LightingDeviceDataModel device;
   final LightChannelDataModel channel;
@@ -1258,8 +1259,8 @@ class ChannelActualTemperature extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _scaler.scale(75),
-      height: _scaler.scale(75),
+      width: _screenService.scale(75),
+      height: _screenService.scale(75),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(
@@ -1269,15 +1270,15 @@ class ChannelActualTemperature extends StatelessWidget {
             color: Theme.of(context).brightness == Brightness.light
                 ? AppBorderColorLight.base
                 : AppBorderColorDark.base,
-            width: _scaler.scale(1),
+            width: _screenService.scale(1),
           ),
         ),
         child: Padding(
-          padding: EdgeInsets.all(_scaler.scale(1)),
+          padding: EdgeInsets.all(_screenService.scale(1)),
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(
-                AppBorderRadius.base - 2 * _scaler.scale(1),
+                AppBorderRadius.base - 2 * _screenService.scale(1),
               ),
               color: channel.temperature,
             ),
@@ -1289,7 +1290,7 @@ class ChannelActualTemperature extends StatelessWidget {
 }
 
 class LightTiles extends StatelessWidget {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   final LightingDeviceDataModel _device;
 
@@ -1428,7 +1429,7 @@ class LightTiles extends StatelessWidget {
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppBorderColorLight.base
                       : AppBorderColorDark.base,
-                  width: _scaler.scale(1),
+                  width: _screenService.scale(1),
                 ),
               ),
               textColor: Theme.of(context).brightness == Brightness.light
@@ -1455,7 +1456,7 @@ class LightTiles extends StatelessWidget {
                   : null,
               trailing: item.trailingText != null
                   ? SizedBox(
-                      width: _scaler.scale(50),
+                      width: _screenService.scale(50),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.baseline,

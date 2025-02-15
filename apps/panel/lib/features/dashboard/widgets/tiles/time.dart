@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/data_source.dart';
@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 
 class TimeTileWidget
     extends TileWidget<TimeTileModel, List<TileDataSourceModel>> {
-  final ScreenScalerService scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   TimeTileWidget(super.tile, super.dataSource, {super.key});
 
@@ -33,7 +33,7 @@ class TimeTileWidget
                       Text(
                         DatetimeUtils.getFormattedTime(now),
                         style: TextStyle(
-                          fontSize: scaler.scale(90),
+                          fontSize: _screenService.scale(90),
                           color:
                               Theme.of(context).brightness == Brightness.light
                                   ? AppTextColorLight.primary
@@ -45,7 +45,7 @@ class TimeTileWidget
                       Text(
                         DatetimeUtils.getFormattedDate(now),
                         style: TextStyle(
-                          fontSize: scaler.scale(25),
+                          fontSize: _screenService.scale(25),
                           color:
                               Theme.of(context).brightness == Brightness.light
                                   ? AppTextColorLight.secondary

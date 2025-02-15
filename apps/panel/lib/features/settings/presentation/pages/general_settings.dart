@@ -1,12 +1,12 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class GeneralSettingsPage extends StatelessWidget {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   GeneralSettingsPage({super.key});
 
@@ -71,7 +71,7 @@ class GeneralSettingsPage extends StatelessWidget {
                 ),
                 icon: Icon(
                   Icons.close,
-                  size: _scaler.scale(14),
+                  size: _screenService.scale(14),
                 ),
               ),
             ),
@@ -104,7 +104,7 @@ class GeneralSettingsPage extends StatelessWidget {
                 children: [
                   Icon(
                     buttons[index].icon,
-                    size: _scaler.scale(28),
+                    size: _screenService.scale(28),
                   ),
                   AppSpacings.spacingMdVertical,
                   SizedBox(
@@ -118,7 +118,7 @@ class GeneralSettingsPage extends StatelessWidget {
                         buttons[index].label,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: AppFontSize.small,
+                          fontSize: AppFontSize.extraSmall,
                         ),
                       ),
                     ),

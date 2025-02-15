@@ -1,10 +1,10 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
 class DataLoadingLoader extends StatelessWidget {
-  final ScreenScalerService scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   final String _heading;
 
@@ -27,8 +27,8 @@ class DataLoadingLoader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(
-              width: scaler.scale(50),
-              height: scaler.scale(50),
+              width: _screenService.scale(50),
+              height: _screenService.scale(50),
               child: const CircularProgressIndicator(),
             ),
             AppSpacings.spacingMdVertical,

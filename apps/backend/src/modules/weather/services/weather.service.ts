@@ -17,11 +17,10 @@ import {
 } from '../../config/config.constants';
 import { LanguageConfigEntity, WeatherConfigEntity } from '../../config/entities/config.entity';
 import { ConfigService } from '../../config/services/config.service';
-import { DayWeatherTileEntity } from '../../dashboard/entities/dashboard.entity';
 import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
-import { ForecastDto } from '../dto/forecast.dto';
+import { ForecastDto, ForecastListItemDto } from '../dto/forecast.dto';
 import { WeatherDto } from '../dto/weather.dto';
-import { LocationEntity, LocationWeatherEntity } from '../entities/weather.entity';
+import { CurrentDayEntity, ForecastDayEntity, LocationEntity, LocationWeatherEntity } from '../entities/weather.entity';
 import { EventType } from '../weather.constants';
 import { WeatherException, WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
@@ -50,7 +49,7 @@ export class WeatherService {
 
 		this.loadConfiguration();
 
-		this.refreshJob = new CronJob(CronExpression.EVERY_HOUR, async () => {
+		this.refreshJob = new CronJob(CronExpression.EVERY_DAY_AT_MIDNIGHT, async () => {
 			await this.refreshWeather();
 		});
 
@@ -70,19 +69,13 @@ export class WeatherService {
 			throw new WeatherValidationException('Api key is required');
 		}
 
-		const cacheKey = `weather-forecast:${this.location}`;
-		const cachedData = await this.cacheManager.get<LocationWeatherEntity>(cacheKey);
-
-		if (cachedData && !force) {
-			this.logger.debug(`[WEATHER] Returning cached weather data for location=${this.location}`);
-
-			return cachedData;
-		}
-
 		try {
 			this.logger.debug(`[WEATHER] Fetching weather data for location='${this.location}'`);
 
-			const [current, forecast] = await Promise.all([this.fetchCurrentWeather(), this.fetchWeatherForecast()]);
+			const [current, forecast] = await Promise.all([
+				this.fetchCurrentWeather(force),
+				this.fetchWeatherForecast(force),
+			]);
 
 			if (current && forecast) {
 				const weatherData = plainToInstance(
@@ -90,17 +83,12 @@ export class WeatherService {
 					{
 						current: current.current,
 						forecast,
-						sunrise: current.sunrise,
-						sunset: current.sunset,
 						location: current.location,
-						createdAt: current.createdAt,
 					},
 					{
 						excludeExtraneousValues: true,
 					},
 				);
-
-				await this.cacheManager.set(cacheKey, weatherData, this.CACHE_TTL);
 
 				return weatherData;
 			}
@@ -168,13 +156,35 @@ export class WeatherService {
 		}
 	}
 
-	private async fetchCurrentWeather(): Promise<{
-		current: DayWeatherTileEntity;
-		sunrise: Date;
-		sunset: Date;
+	private async fetchCurrentWeather(force: boolean = false): Promise<{
+		current: CurrentDayEntity;
 		location: LocationEntity;
-		createdAt: Date;
 	} | null> {
+		const cacheKey = `weather-current:${this.location}`;
+		const cachedData = await this.cacheManager.get<WeatherDto>(cacheKey);
+
+		if (cachedData && !force) {
+			this.logger.debug(`[WEATHER] Returning cached current weather data for location=${this.location}`);
+
+			const current = this.transformWeatherDto(cachedData);
+
+			const location = plainToInstance(
+				LocationEntity,
+				{
+					name: cachedData.name,
+					country: cachedData.sys.country,
+				},
+				{
+					excludeExtraneousValues: true,
+				},
+			);
+
+			return {
+				current,
+				location,
+			};
+		}
+
 		const queryParams = this.buildQueryParams();
 
 		const url = `${this.BASE_URL}/weather?${queryParams}&appid=${this.apiKey}&units=${this.units}&lang=${this.language}`;
@@ -200,10 +210,10 @@ export class WeatherService {
 				return null;
 			}
 
+			await this.cacheManager.set(cacheKey, weather, this.CACHE_TTL);
+
 			const current = this.transformWeatherDto(weather);
 
-			const sunrise = new Date(weather.sys.sunrise * 1000);
-			const sunset = new Date(weather.sys.sunset * 1000);
 			const location = plainToInstance(
 				LocationEntity,
 				{
@@ -214,14 +224,10 @@ export class WeatherService {
 					excludeExtraneousValues: true,
 				},
 			);
-			const createdAt = new Date(weather.dt * 1000);
 
 			return {
 				current,
-				sunrise,
-				sunset,
 				location,
-				createdAt,
 			};
 		} catch (error) {
 			const err = error as Error;
@@ -232,10 +238,29 @@ export class WeatherService {
 		}
 	}
 
-	private async fetchWeatherForecast(daysCnt = 7): Promise<DayWeatherTileEntity[]> {
+	private async fetchWeatherForecast(force: boolean = false): Promise<ForecastDayEntity[]> {
+		const cacheKey = `weather-forecast:${this.location}`;
+		const cachedData = await this.cacheManager.get<WeatherDto>(cacheKey);
+
+		if (cachedData && !force) {
+			this.logger.debug(`[WEATHER] Returning cached forecast weather data for location=${this.location}`);
+
+			const forecast = plainToInstance(ForecastDto, cachedData, { excludeExtraneousValues: true });
+
+			const errors = await validate(forecast);
+
+			if (errors.length) {
+				this.logger.error(`[VALIDATION] Cached forecast response validation failed error=${JSON.stringify(errors)}`);
+
+				return null;
+			} else {
+				return this.transformForecastDto(forecast);
+			}
+		}
+
 		const queryParams = this.buildQueryParams();
 
-		const url = `${this.BASE_URL}/forecast?${queryParams}&cnt=${daysCnt}&appid=${this.apiKey}&units=${this.units}&lang=${this.language}`;
+		const url = `${this.BASE_URL}/forecast?${queryParams}&appid=${this.apiKey}&units=${this.units}&lang=${this.language}`;
 
 		try {
 			const response = await fetch(url);
@@ -257,6 +282,8 @@ export class WeatherService {
 
 				return null;
 			}
+
+			await this.cacheManager.set(cacheKey, forecast, this.CACHE_TTL);
 
 			return this.transformForecastDto(forecast);
 		} catch (error) {
@@ -294,9 +321,9 @@ export class WeatherService {
 		}
 	}
 
-	private transformWeatherDto(dto: WeatherDto): DayWeatherTileEntity {
+	private transformWeatherDto(dto: WeatherDto): CurrentDayEntity {
 		return plainToInstance(
-			DayWeatherTileEntity,
+			CurrentDayEntity,
 			{
 				temperature: dto.main.temp,
 				temperatureMin: dto.main.temp_min,
@@ -315,10 +342,12 @@ export class WeatherService {
 					deg: dto.wind.deg,
 					gust: dto.wind.gust,
 				},
-				clouds: dto.clouds,
+				clouds: dto.clouds.all,
 				rain: dto.rain && '1h' in dto.rain ? dto.rain['1h'] : undefined,
 				snow: dto.snow && '1h' in dto.snow ? dto.snow['1h'] : undefined,
-				createdAt: new Date(dto.dt * 1000),
+				sunrise: new Date(dto.sys.sunrise * 1000),
+				sunset: new Date(dto.sys.sunset * 1000),
+				dayTime: new Date(dto.dt * 1000),
 			},
 			{
 				excludeExtraneousValues: true,
@@ -326,31 +355,103 @@ export class WeatherService {
 		);
 	}
 
-	private transformForecastDto(dto: ForecastDto): DayWeatherTileEntity[] {
-		return dto.list.map((forecast) =>
-			plainToInstance(DayWeatherTileEntity, {
-				temperature: forecast.main.temp,
-				temperatureMin: forecast.main.temp_min,
-				temperatureMax: forecast.main.temp_max,
-				feelsLike: forecast.main.feels_like,
-				pressure: forecast.main.pressure,
-				humidity: forecast.main.humidity,
+	private transformForecastDto(dto: ForecastDto): ForecastDayEntity[] {
+		const dailyData: Record<
+			string,
+			{
+				temps: number[];
+				feels_like: number[];
+				segments: {
+					morn: number[];
+					day: number[];
+					eve: number[];
+					night: number[];
+				};
+				item: ForecastListItemDto;
+			}
+		> = {};
+
+		dto.list.forEach((entry) => {
+			const dt = new Date(entry.dt * 1000);
+			const dayStr = dt.toISOString().split('T')[0];
+
+			if (!dailyData[dayStr]) {
+				dailyData[dayStr] = {
+					temps: [],
+					feels_like: [],
+					segments: {
+						morn: [],
+						day: [],
+						eve: [],
+						night: [],
+					},
+					item: entry,
+				};
+			}
+
+			const hour = dt.getUTCHours();
+
+			let partOfDay: keyof (typeof dailyData)[string]['segments'];
+
+			if (hour >= 6 && hour < 12) {
+				partOfDay = 'morn';
+			} else if (hour >= 12 && hour < 18) {
+				partOfDay = 'day';
+			} else if (hour >= 18 && hour < 20) {
+				partOfDay = 'eve';
+			} else {
+				partOfDay = 'night';
+			}
+
+			// Store values
+			dailyData[dayStr].temps.push(entry.main.temp);
+			dailyData[dayStr].feels_like.push(entry.main.feels_like);
+			dailyData[dayStr].segments[partOfDay].push(entry.main.temp);
+		});
+
+		return Object.entries(dailyData).map(([date, data]) =>
+			//return dto.list.map((forecast) =>
+			plainToInstance(ForecastDayEntity, {
+				temperature: {
+					day: this.average(data.segments.day),
+					min: Math.min(...data.temps),
+					max: Math.max(...data.temps),
+					night: this.average(data.segments.night),
+					eve: this.average(data.segments.eve),
+					morn: this.average(data.segments.morn),
+				},
+				feelsLike: {
+					day: this.average(data.segments.day),
+					night: this.average(data.segments.night),
+					eve: this.average(data.segments.eve),
+					morn: this.average(data.segments.morn),
+				},
+				pressure: data.item.main.pressure,
+				humidity: data.item.main.humidity,
 				weather: {
-					code: forecast.weather[0].id,
-					main: forecast.weather[0].main,
-					description: forecast.weather[0].description,
-					icon: forecast.weather[0].icon,
+					code: data.item.weather[0].id,
+					main: data.item.weather[0].main,
+					description: data.item.weather[0].description,
+					icon: data.item.weather[0].icon,
 				},
 				wind: {
-					speed: forecast.wind.speed,
-					deg: forecast.wind.deg,
-					gust: forecast.wind.gust,
+					speed: data.item.wind.speed,
+					deg: data.item.wind.deg,
+					gust: data.item.wind.gust,
 				},
-				clouds: forecast.clouds,
-				rain: forecast.rain && '3h' in forecast.rain ? forecast.rain['3h'] : undefined,
-				snow: forecast.snow && '3h' in forecast.snow ? forecast.snow['3h'] : undefined,
-				createdAt: new Date(forecast.dt * 1000),
+				clouds: data.item.clouds.all,
+				rain: data.item.rain && '3h' in data.item.rain ? data.item.rain['3h'] : undefined,
+				snow: data.item.snow && '3h' in data.item.snow ? data.item.snow['3h'] : undefined,
+				sunrise: undefined,
+				sunset: undefined,
+				moonrise: undefined,
+				moonset: undefined,
+				dayTime: new Date(date),
 			}),
 		);
+	}
+
+	private average(values: number[]): number | undefined {
+		return values.length > 0 ? values.reduce((sum, v) => sum + v, 0) / values.length : undefined;
 	}
 }

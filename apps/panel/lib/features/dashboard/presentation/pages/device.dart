@@ -1,15 +1,15 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/pages/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class DevicePage extends StatelessWidget {
-  final ScreenScalerService scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
 
   final DevicePageModel page;
 
@@ -26,8 +26,8 @@ class DevicePage extends StatelessWidget {
         return Scaffold(
           body: Center(
             child: SizedBox(
-              width: scaler.scale(50),
-              height: scaler.scale(50),
+              width: _screenService.scale(50),
+              height: _screenService.scale(50),
               child: const CircularProgressIndicator(),
             ),
           ),
@@ -49,7 +49,7 @@ class DevicePage extends StatelessWidget {
                   Icon(
                     Icons.warning,
                     color: Theme.of(context).warning,
-                    size: scaler.scale(64),
+                    size: _screenService.scale(64),
                   ),
                   AppSpacings.spacingMdVertical,
                   Text(

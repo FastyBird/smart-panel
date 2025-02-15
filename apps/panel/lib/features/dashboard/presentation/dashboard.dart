@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/pages.dart';
@@ -14,7 +14,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final ScreenScalerService _scaler = locator<ScreenScalerService>();
+  final ScreenService _screenService = locator<ScreenService>();
   final PageController _pageController = PageController(initialPage: 0);
 
   int _currentPage = 0;
@@ -30,8 +30,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return Scaffold(
           body: Center(
             child: SizedBox(
-              width: _scaler.scale(50),
-              height: _scaler.scale(50),
+              width: _screenService.scale(50),
+              height: _screenService.scale(50),
               child: const CircularProgressIndicator(),
             ),
           ),
@@ -49,7 +49,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Icon(
                     Icons.warning,
                     color: Theme.of(context).warning,
-                    size: _scaler.scale(64),
+                    size: _screenService.scale(64),
                   ),
                   AppSpacings.spacingMdVertical,
                   const Text(
@@ -96,7 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             // Dots Indicator
             Positioned(
-              bottom: _scaler.scale(4.0),
+              bottom: _screenService.scale(4.0),
               left: 0,
               right: 0,
               child: Row(
@@ -107,12 +107,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   (index) => AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     margin: EdgeInsets.symmetric(
-                      horizontal: _scaler.scale(4.0),
+                      horizontal: _screenService.scale(4.0),
                     ),
-                    height: _scaler.scale(6.0),
+                    height: _screenService.scale(6.0),
                     width: _currentPage == index % pages.length
-                        ? _scaler.scale(16.0)
-                        : _scaler.scale(6.0),
+                        ? _screenService.scale(16.0)
+                        : _screenService.scale(6.0),
                     decoration: BoxDecoration(
                       color: _currentPage == index
                           ? Theme.of(context).brightness == Brightness.light
@@ -121,7 +121,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           : Theme.of(context).brightness == Brightness.light
                               ? AppTextColorLight.disabled
                               : AppTextColorDark.disabled,
-                      borderRadius: BorderRadius.circular(_scaler.scale(4.0)),
+                      borderRadius:
+                          BorderRadius.circular(_screenService.scale(4.0)),
                     ),
                   ),
                 ),

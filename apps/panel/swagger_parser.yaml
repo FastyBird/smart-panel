@@ -10,7 +10,7 @@ swagger_parser:
   dio_options_parameter_by_default: false
   root_client: true
   root_client_name: ApiClient
-  export_file: true
+  export_file: false
   put_in_folder: true
   put_clients_in_folder: false
   merge_clients: false

@@ -600,7 +600,7 @@
   "@settings_about_memory_usage_title": {
     "description": "Label for displaying the device's memory usage."
   },
-  "weather_forecast_title": "7 day forecast",
+  "weather_forecast_title": "Weather forecast",
   "@weather_forecast_title": {
     "description": ""
   },
@@ -610,6 +610,226 @@
   },
   "weather_forecast_humidity": "Humidity:",
   "@weather_forecast_humidity": {
+    "description": ""
+  },
+  "weather_condition_thunderstorm_with_light_rain": "Thunderstorm with light rain",
+  "@weather_condition_thunderstorm_with_light_rain": {
+    "description": "A thunderstorm accompanied by light rain."
+  },
+  "weather_condition_thunderstorm_with_rain": "Thunderstorm with rain",
+  "@weather_condition_thunderstorm_with_rain": {
+    "description": "A thunderstorm with moderate rainfall."
+  },
+  "weather_condition_thunderstorm_with_heavy_rain": "Thunderstorm with heavy rain",
+  "@weather_condition_thunderstorm_with_heavy_rain": {
+    "description": "A thunderstorm with intense rainfall."
+  },
+  "weather_condition_light_thunderstorm": "Light thunderstorm",
+  "@weather_condition_light_thunderstorm": {
+    "description": "A weak thunderstorm with little or no precipitation."
+  },
+  "weather_condition_thunderstorm": "Thunderstorm",
+  "@weather_condition_thunderstorm": {
+    "description": "A storm with thunder, lightning, and rain."
+  },
+  "weather_condition_heavy_thunderstorm": "Heavy thunderstorm",
+  "@weather_condition_heavy_thunderstorm": {
+    "description": "A strong thunderstorm with intense lightning and rain."
+  },
+  "weather_condition_ragged_thunderstorm": "Ragged thunderstorm",
+  "@weather_condition_ragged_thunderstorm": {
+    "description": "A thunderstorm with irregular cloud formations."
+  },
+  "weather_condition_thunderstorm_with_light_drizzle": "Thunderstorm with light drizzle",
+  "@weather_condition_thunderstorm_with_light_drizzle": {
+    "description": "A thunderstorm with very light drizzle."
+  },
+  "weather_condition_thunderstorm_with_drizzle": "Thunderstorm with drizzle",
+  "@weather_condition_thunderstorm_with_drizzle": {
+    "description": "A thunderstorm with light rain showers."
+  },
+  "weather_condition_thunderstorm_with_heavy_drizzle": "Thunderstorm with heavy drizzle",
+  "@weather_condition_thunderstorm_with_heavy_drizzle": {
+    "description": "A thunderstorm with steady, misty rain."
+  },
+  "weather_condition_light_intensity_drizzle": "Light intensity drizzle",
+  "@weather_condition_light_intensity_drizzle": {
+    "description": "A light and misty drizzle."
+  },
+  "weather_condition_drizzle": "Drizzle",
+  "@weather_condition_drizzle": {
+    "description": "A light rain shower with fine drops."
+  },
+  "weather_condition_heavy_intensity_drizzle": "Heavy intensity drizzle",
+  "@weather_condition_heavy_intensity_drizzle": {
+    "description": "A heavy drizzle with continuous light rain."
+  },
+  "weather_condition_light_intensity_drizzle_rain": "Light intensity drizzle rain",
+  "@weather_condition_light_intensity_drizzle_rain": {
+    "description": "Light drizzle transitioning to rain."
+  },
+  "weather_condition_drizzle_rain": "Drizzle rain",
+  "@weather_condition_drizzle_rain": {
+    "description": "Drizzle mixed with light rain."
+  },
+  "weather_condition_heavy_intensity_drizzle_rain": "Heavy intensity drizzle rain",
+  "@weather_condition_heavy_intensity_drizzle_rain": {
+    "description": "Heavy drizzle transitioning to steady rain."
+  },
+  "weather_condition_shower_rain_and_drizzle": "Shower rain and drizzle",
+  "@weather_condition_shower_rain_and_drizzle": {
+    "description": "Intermittent rain showers mixed with drizzle."
+  },
+  "weather_condition_heavy_shower_rain_and_drizzle": "Heavy shower rain and drizzle",
+  "@weather_condition_heavy_shower_rain_and_drizzle": {
+    "description": "Heavy rain showers mixed with drizzle."
+  },
+  "weather_condition_shower_drizzle": "Shower drizzle",
+  "@weather_condition_shower_drizzle": {
+    "description": "Intermittent drizzle showers."
+  },
+  "weather_condition_light_rain": "Light rain",
+  "@weather_condition_light_rain": {
+    "description": "A light rainfall."
+  },
+  "weather_condition_moderate_rain": "Moderate rain",
+  "@weather_condition_moderate_rain": {
+    "description": "A steady rainfall of moderate intensity."
+  },
+  "weather_condition_heavy_intensity_rain": "Heavy intensity rain",
+  "@weather_condition_heavy_intensity_rain": {
+    "description": "A strong and continuous rain shower."
+  },
+  "weather_condition_very_heavy_rain": "Very heavy rain",
+  "@weather_condition_very_heavy_rain": {
+    "description": "Intense, heavy rain with possible flooding."
+  },
+  "weather_condition_extreme_rain": "Extreme rain",
+  "@weather_condition_extreme_rain": {
+    "description": "Exceptionally heavy rainfall."
+  },
+  "weather_condition_freezing_rain": "Freezing rain",
+  "@weather_condition_freezing_rain": {
+    "description": "Rain that freezes upon impact."
+  },
+  "weather_condition_light_intensity_shower_rain": "Light intensity shower rain",
+  "@weather_condition_light_intensity_shower_rain": {
+    "description": "Intermittent light rain showers."
+  },
+  "weather_condition_shower_rain": "Shower rain",
+  "@weather_condition_shower_rain": {
+    "description": "A rain shower that comes and goes."
+  },
+  "weather_condition_heavy_intensity_shower_rain": "Heavy intensity shower rain",
+  "@weather_condition_heavy_intensity_shower_rain": {
+    "description": "Heavy and intermittent rain showers."
+  },
+  "weather_condition_ragged_shower_rain": "Ragged shower rain",
+  "@weather_condition_ragged_shower_rain": {
+    "description": "Irregular and scattered rain showers."
+  },
+  "weather_condition_light_snow": "Light snow",
+  "@weather_condition_light_snow": {
+    "description": "A light snowfall."
+  },
+  "weather_condition_snow": "Snow",
+  "@weather_condition_snow": {
+    "description": "A steady snowfall."
+  },
+  "weather_condition_heavy_snow": "Heavy snow",
+  "@weather_condition_heavy_snow": {
+    "description": "A heavy snowfall with accumulation."
+  },
+  "weather_condition_sleet": "Sleet",
+  "@weather_condition_sleet": {
+    "description": "Frozen raindrops mixed with snow."
+  },
+  "weather_condition_light_shower_sleet": "Light shower sleet",
+  "@weather_condition_light_shower_sleet": {
+    "description": "Light sleet in intermittent showers."
+  },
+  "weather_condition_shower_sleet": "Shower sleet",
+  "@weather_condition_shower_sleet": {
+    "description": "Sleet in intermittent showers."
+  },
+  "weather_condition_light_rain_and_snow": "Light rain and snow",
+  "@weather_condition_light_rain_and_snow": {
+    "description": "A mix of light rain and snow."
+  },
+  "weather_condition_rain_and_snow": "Rain and snow",
+  "@weather_condition_rain_and_snow": {
+    "description": "Rain mixed with snow, typically seen in transition seasons."
+  },
+  "weather_condition_light_shower_snow": "Light shower snow",
+  "@weather_condition_light_shower_snow": {
+    "description": "Light snow showers occurring intermittently."
+  },
+  "weather_condition_shower_snow": "Shower snow",
+  "@weather_condition_shower_snow": {
+    "description": "Intermittent snow showers."
+  },
+  "weather_condition_heavy_shower_snow": "Heavy shower snow",
+  "@weather_condition_heavy_shower_snow": {
+    "description": "Heavy snow showers occurring in bursts."
+  },
+  "weather_condition_mist": "Mist",
+  "@weather_condition_mist": {
+    "description": "A thin fog reducing visibility."
+  },
+  "weather_condition_smoke": "Smoke",
+  "@weather_condition_smoke": {
+    "description": "Smoke in the air reducing visibility."
+  },
+  "weather_condition_haze": "Haze",
+  "@weather_condition_haze": {
+    "description": "Light atmospheric dust or pollution."
+  },
+  "weather_condition_fog": "Fog",
+  "@weather_condition_fog": {
+    "description": "Thick mist reducing visibility."
+  },
+  "weather_condition_sand": "Sand",
+  "@weather_condition_sand": {
+    "description": "Dust or sand in the air reducing visibility."
+  },
+  "weather_condition_dust": "Dust",
+  "@weather_condition_dust": {
+    "description": "Fine dust particles in the air."
+  },
+  "weather_condition_volcanic_ash": "Volcanic ash",
+  "@weather_condition_volcanic_ash": {
+    "description": "Fine particles of volcanic ash in the air."
+  },
+  "weather_condition_squalls": "Squalls",
+  "@weather_condition_squalls": {
+    "description": "Sudden, strong gusts of wind with rain or snow."
+  },
+  "weather_condition_tornado": "Tornado",
+  "@weather_condition_tornado": {
+    "description": "A powerful rotating storm."
+  },
+  "weather_condition_clear_sky": "Clear sky",
+  "@weather_condition_clear_sky": {
+    "description": "No clouds in the sky."
+  },
+  "weather_condition_few_clouds": "Few clouds",
+  "@weather_condition_few_clouds": {
+    "description": "A few scattered clouds."
+  },
+  "weather_condition_scattered_clouds": "Scattered clouds",
+  "@weather_condition_scattered_clouds": {
+    "description": "Clouds scattered throughout the sky."
+  },
+  "weather_condition_broken_clouds": "Broken clouds",
+  "@weather_condition_broken_clouds": {
+    "description": "Mostly cloudy with some breaks of sun."
+  },
+  "weather_condition_overcast_clouds": "Overcast clouds",
+  "@weather_condition_overcast_clouds": {
+    "description": "Completely covered sky with clouds."
+  },
+  "weather_condition_unknown": "Unknown",
+  "@weather_condition_unknown": {
     "description": ""
   }
 }

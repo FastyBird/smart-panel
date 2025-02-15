@@ -2,7 +2,7 @@
   {
     "_debug": "living-room-tv-led-strip_light_on",
     "id": "fbf3cea1-a52e-4e83-b6d7-1c09344d6d5b",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "eee59eb8-b756-4cc5-bc56-5700a0bfe0f8",
     "device": "02b4b0a1-a213-453b-8fc6-47fc7d6765d3",
     "channel": "2538383c-8b27-4bba-bf4e-0fba34d7cd28",
@@ -11,7 +11,7 @@
   {
     "_debug": "living-room-couch-led-strip_light_on",
     "id": "a9e90df9-a20c-495f-98dc-6567d0ad0b94",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "a5f78c87-5c62-4349-97db-6bf5305e8c8b",
     "device": "40b363ca-e6a3-4568-b285-e74ed50c4caa",
     "channel": "de7e3dcd-2cc3-4f0f-b93b-0720b7d25886",
@@ -20,7 +20,7 @@
   {
     "_debug": "living-room-tv-spot-light_light_on",
     "id": "1dcf5188-0ace-4811-9e61-e81991d62846",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "6c0e04a0-d077-41e9-9352-7ed62f98ba21",
     "device": "be49951d-21da-49d2-904f-98756d9b9521",
     "channel": "1b343aee-39a0-45cd-9080-9cd40b0f1b46",
@@ -29,7 +29,7 @@
   {
     "_debug": "living-room-tv-spot-light_light_brightness",
     "id": "56f863a8-1fe8-4f1b-8683-407c64d4449c",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "6c0e04a0-d077-41e9-9352-7ed62f98ba21",
     "device": "be49951d-21da-49d2-904f-98756d9b9521",
     "channel": "1b343aee-39a0-45cd-9080-9cd40b0f1b46",
@@ -38,7 +38,7 @@
   {
     "_debug": "living-room-couch-spot-light_light_on",
     "id": "02041cdc-2df7-4199-8902-05756e2e105f",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "d81fa00c-d764-4d6e-abd6-1b58d8951a00",
     "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
     "channel": "a12367a9-9676-4f9a-8276-f54ce9811e83",
@@ -47,7 +47,7 @@
   {
     "_debug": "living-room-couch-spot-light_light_brightness",
     "id": "efbf16fb-05c3-442c-a49d-6ceaad0666a3",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "d81fa00c-d764-4d6e-abd6-1b58d8951a00",
     "device": "6e3b24f0-2408-45cc-97d1-a7a824499b89",
     "channel": "a12367a9-9676-4f9a-8276-f54ce9811e83",
@@ -56,7 +56,7 @@
   {
     "_debug": "living-room-entry-light_light_on",
     "id": "0a203dc7-7d97-4d5c-8a0f-a4434c78fb52",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "26fc7cda-b5e0-460a-82be-0207b932435f",
     "device": "20c27c06-053b-439a-8cb4-615ae05ce254",
     "channel": "ac6d42a9-be6c-405a-89b0-f9d3d273395d",
@@ -65,7 +65,7 @@
   {
     "_debug": "living-room-entry-light_light_on",
     "id": "3b72d5a0-994a-42c8-a81b-6e66d0b13a21",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "034d8c31-5282-4a4d-9da6-0986b492b6c1",
     "device": "3f3e73d9-4faa-4b38-9859-0a915ae9e85d",
     "channel": "f8efca2a-cc6b-4c03-912b-ad5733df575d",
@@ -74,7 +74,7 @@
   {
     "_debug": "living-room-main-light_light_on",
     "id": "864d88f3-ebff-488d-99fd-3dbd92b80023",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "90089256-d1a7-4742-ace5-13d9f59c52e7",
     "device": "d69ba3eb-5c9e-4c08-b437-5be8c8f41bae",
     "channel": "8b99607a-6e25-4661-871e-bd004a92d1e8",
@@ -83,7 +83,7 @@
   {
     "_debug": "living-room-tv_television_on",
     "id": "6cce1994-0b87-4bc1-a35e-e3050a2ffce0",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "ce2e33c1-e249-4625-895b-dd6cdf125f64",
     "device": "f539c311-4e21-4bbc-9669-a61f742fb562",
     "channel": "0b85ff3e-7c21-4c2d-bce6-99059b096d75",
@@ -92,7 +92,7 @@
   {
     "_debug": "living-room-vacuum-cleaner_X_X",
     "id": "0fd22c2e-7297-4a07-9d1c-455ad424a57a",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "f612c995-b4ff-45b1-b936-cabfe604ee77",
     "device": "ce2ff119-ceac-4867-bf36-7103b078de11",
     "channel": "dcbe8a15-1f89-4f5c-b449-dc4bab153246",
@@ -101,7 +101,7 @@
   {
     "_debug": "living-room-terrace-blind_window-covering_X",
     "id": "012a5b00-ed55-492b-9c96-e2135ba30a86",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "46a1a985-cc2f-4759-938c-696cb281a414",
     "device": "dd6b3a51-a035-43ca-b021-fbcdab07ea72",
     "channel": "b00f6ca8-a1fd-44c0-bb99-f07e8bc4a563",
@@ -110,7 +110,7 @@
   {
     "_debug": "living-room-window-blind_window-covering_X",
     "id": "5821f640-fb8c-4ba4-a53e-797b58eb3550",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "7153efde-571d-4096-907d-88ab1d2da950",
     "device": "9931b235-fae0-4977-b0e5-16caf193e5ce",
     "channel": "4efa9481-4a9f-4632-982d-968195701ae5",
@@ -119,7 +119,7 @@
   {
     "_debug": "living-room-thermostat_thermostat_X",
     "id": "5b4dd586-6499-49d8-8166-47291e3f9b36",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "a2ad3a63-0118-4192-a47d-a9b049f0f096",
     "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
     "channel": "3b1f13c9-cdd1-4f8d-93a3-5232df6f7d6c",
@@ -128,7 +128,7 @@
   {
     "_debug": "living-room-thermostat_thermostat_X",
     "id": "ab6d2530-0750-46c7-adf3-7a549fcad2f1",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "a2ad3a63-0118-4192-a47d-a9b049f0f096",
     "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
     "channel": "858c6ee2-56fc-4bbe-96dc-e4899579589c",
@@ -137,7 +137,7 @@
   {
     "_debug": "living-room-thermostat_thermostat_X",
     "id": "dbbe5515-1b2e-4480-a935-40b2bf8c0dfd",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "a2ad3a63-0118-4192-a47d-a9b049f0f096",
     "device": "b211e597-d5fb-4573-8cc5-8027db15f61e",
     "channel": "d4933c20-e283-437b-9b71-31b3b4ea8c87",
@@ -146,7 +146,7 @@
   {
     "_debug": "kitchen-main-light_light_X",
     "id": "073e7d92-fc66-48c6-85e0-78149055148c",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "fae5587e-f75b-4aff-8557-e96cca6ac91a",
     "device": "ee22b7e2-2992-4d75-9ea4-5358fd7512f8",
     "channel": "55accac5-513b-4d16-9e07-94534f363b2e",
@@ -155,7 +155,7 @@
   {
     "_debug": "kitchen-spot-light_light_X",
     "id": "c389bbb1-e54b-4360-af76-51b92f3ed398",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "de0c9b70-9202-4a27-a66e-afdd76bc6a05",
     "device": "9b2710ae-008a-4366-891a-586a570a451d",
     "channel": "3aa8a478-75d3-40f7-a3a1-0871fe928feb",
@@ -164,7 +164,7 @@
   {
     "_debug": "kitchen-high-cabinet-light_light_X",
     "id": "731c04be-a667-4932-af44-6aace52cd6b4",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "d2df8287-188d-49cb-b94e-69ca1108aa17",
     "device": "f6dd4fb2-5c1b-4fc5-ba78-d9165d8fb8f3",
     "channel": "96b0c798-d489-4166-b578-11b746e5af96",
@@ -173,7 +173,7 @@
   {
     "_debug": "kitchen-under-cabinet-light_light_X",
     "id": "11239ca8-8184-4e08-a3d2-5ef8f3ec925d",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "89c8fde1-6355-4fee-b1f4-75e1fae9bb16",
     "device": "ab9fc01f-92f1-476c-8246-bacd1a3e0da7",
     "channel": "2d7d7327-e521-480f-b7be-e7308f9b1b6c",
@@ -182,7 +182,7 @@
   {
     "_debug": "kitchen-bar-light_light_X",
     "id": "7bb3bb11-b3a4-498c-8217-490581c2be57",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "85f1e3e6-2c2d-4d14-b015-51a1585ac312",
     "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
     "channel": "3c37ab7b-857b-4755-9456-933af336eacd",
@@ -191,7 +191,7 @@
   {
     "_debug": "kitchen-bar-light_light_X",
     "id": "ce8503dc-8f68-440f-b837-502605d74a7d",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "85f1e3e6-2c2d-4d14-b015-51a1585ac312",
     "device": "cd2e7c6c-a154-4024-a2d4-523ce91a1fc1",
     "channel": "7246c342-44ef-49b8-8629-70fa26f5ce7f",
@@ -200,7 +200,7 @@
   {
     "_debug": "kitchen-thermostat_thermostat_X",
     "id": "5729e32a-c526-4015-8509-20992ee58258",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "04d9cb75-bc45-472a-a672-fac811d34d23",
     "device": "48287140-de58-446b-97a0-9437957fa7c6",
     "channel": "db8c9433-3351-4d56-be3c-97653f035059",
@@ -209,7 +209,7 @@
   {
     "_debug": "kitchen-thermostat_thermostat_X",
     "id": "036f6d76-8a0f-4183-af72-6668784fbc46",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "04d9cb75-bc45-472a-a672-fac811d34d23",
     "device": "48287140-de58-446b-97a0-9437957fa7c6",
     "channel": "184c3194-d7de-4df8-b094-35ca08842e5d",
@@ -218,7 +218,7 @@
   {
     "_debug": "kitchen-thermostat_thermostat_X",
     "id": "6f612f96-a578-4567-9f21-89cfa12150d6",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "04d9cb75-bc45-472a-a672-fac811d34d23",
     "device": "48287140-de58-446b-97a0-9437957fa7c6",
     "channel": "63012a29-67db-4f4b-bc19-bbad35a1c636",
@@ -227,7 +227,7 @@
   {
     "_debug": "kitchen-window-blind_window-covering_X",
     "id": "987bfb11-55f6-473b-8a44-7b96c6ab4292",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "18b6e149-a91a-44a2-a45b-26e686c293b9",
     "device": "78e04133-02ba-4b5f-a7a1-85300eb04d64",
     "channel": "77d59dcf-a5d2-4dcc-b80f-6dc0bddfd00b",
@@ -236,7 +236,7 @@
   {
     "_debug": "kitchen-fan_fan_X",
     "id": "31d9335c-e2dd-4b20-8620-01b2e7e957ce",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "a48d7298-c658-4482-b56a-63795ab8278b",
     "device": "8a6260a2-4763-490a-aeaa-191c7d5805a5",
     "channel": "808322f2-cea3-40d5-a6f0-a727b1d6d4ea",
@@ -245,7 +245,7 @@
   {
     "_debug": "living-room-entrance-motion-detection_motion_X",
     "id": "9823bb3f-3d26-46c9-b799-fe9d74a41314",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "085dc2da-2c92-47ce-bcac-5b174e360d7b",
     "device": "33540346-df58-4826-a9b3-d49ababb3040",
     "channel": "5aa6392e-f9ad-4f4d-9684-d00be56e10d4",
@@ -254,7 +254,7 @@
   {
     "_debug": "living-room-terrace-motion-detection_motion_X",
     "id": "21fbbd12-a326-4749-96b4-4e78582f4a9b",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "3fc64920-52a6-4f08-8d45-4b3a57e7883d",
     "device": "4cdb3f26-21e3-4944-8488-7d64f66202ce",
     "channel": "4f170064-916d-4ab7-903a-c7f6588d533d",
@@ -263,7 +263,7 @@
   {
     "_debug": "living-room-terrace-door-sensor_contact_X",
     "id": "d9c80d4b-7f57-415d-a65c-e0ca91d67996",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "f3c1bbfe-c647-4b7a-9294-67f49dc65b57",
     "device": "2ff80d54-4036-4554-8332-470d5182f259",
     "channel": "661c5ced-86f6-48c9-919c-d8a2ab473d89",
@@ -272,7 +272,7 @@
   {
     "_debug": "kitchen-window-sensor_contact_X",
     "id": "442f7d19-c176-4576-8a4a-a14db5235c14",
-    "type": "device_channel",
+    "type": "device-channel",
     "tile": "0818325e-df3e-4e37-be0e-d79b398b7f81",
     "device": "0fd22c2e-7297-4a07-9d1c-455ad424a57a",
     "channel": "6fb50391-5674-4c5b-bc0e-9ddc0d2ed331",

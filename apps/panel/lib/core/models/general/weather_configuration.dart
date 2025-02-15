@@ -2,24 +2,31 @@ import 'package:fastybird_smart_panel/core/types/weather.dart';
 
 class WeatherConfigurationModel {
   final String? _location;
-  final UnitType _unit;
+  final WeatherLocationTypeType _locationType;
+  final WeatherUnitType _unit;
 
   WeatherConfigurationModel({
     String? location,
-    UnitType unit = UnitType.celsius,
+    WeatherLocationTypeType locationType = WeatherLocationTypeType.cityName,
+    WeatherUnitType unit = WeatherUnitType.celsius,
   })  : _location = location,
+        _locationType = locationType,
         _unit = unit;
 
   String? get location => _location;
 
-  UnitType get unit => _unit;
+  WeatherLocationTypeType get locationType => _locationType;
+
+  WeatherUnitType get unit => _unit;
 
   WeatherConfigurationModel copyWith({
     String? location,
-    UnitType? unit,
+    WeatherLocationTypeType? locationType,
+    WeatherUnitType? unit,
   }) {
     return WeatherConfigurationModel(
       location: location ?? _location,
+      locationType: locationType ?? _locationType,
       unit: unit ?? _unit,
     );
   }

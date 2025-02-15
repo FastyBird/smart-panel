@@ -162,10 +162,6 @@ Contributions are welcome! Please fork this repository and submit a pull request
 4. Push to the branch (git push origin feature/AmazingFeature)
 5. Open a pull request
 
-📄 License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
-
 ## 📜 License
 
 This project is licensed under the **Apache License 2.0**. See the [LICENSE](https://github.com/FastyBird/smart-panel/blob/main/LICENSE.md) file for details.

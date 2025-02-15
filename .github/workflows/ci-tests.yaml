@@ -14,8 +14,43 @@ on:
     - cron: "0 8 * * 1" # At 08:00 on Monday
 
 jobs:
+  backend-analyze:
+    name: "Backend code analysis"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "20"
+
+      - name: "Cache JS dependencies"
+        uses: "actions/cache@v3"
+        with:
+          path: "${{ steps.yarn-cache-dir-path.outputs.dir }}"
+          key: "${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}"
+          restore-keys: "${{ runner.os }}-node-modules-"
+
+      - name: "Install NPM dependencies"
+        shell: "bash"
+        run: "yarn install"
+
+      - name: "Run Code Linting"
+        run: "yarn workspace @fastybird/smart-panel-backend lint:js"
+
+      - name: "Run Code Linting"
+        run: "yarn workspace @fastybird/smart-panel-backend lint:openapi"
+
   backend-tests:
-    name: "Backend Tests"
+    name: "Backend code tests"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -52,12 +87,6 @@ jobs:
         shell: "bash"
         run: "yarn install"
 
-      - name: "Run Code Linting"
-        run: "yarn workspace @fastybird/smart-panel-backend lint:js"
-
-      - name: "Run Code Linting"
-        run: "yarn workspace @fastybird/smart-panel-backend lint:openapi"
-
       - name: "Run Unit Tests"
         run: "yarn workspace @fastybird/smart-panel-backend test:unit"
 
@@ -66,3 +95,31 @@ jobs:
 
       - name: "Generate Coverage Report"
         run: "yarn workspace @fastybird/smart-panel-backend test:cov"
+
+  panel-analyze:
+    name: "Panel code analysis"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Install Flutter SDK"
+        uses: "subosito/flutter-action@v2"
+        with:
+          channel: stable
+          flutter-version: 3.27.0
+
+      - name: "Install Melos"
+        run: "dart pub global activate melos"
+
+      - name: "Bootstrap Dependencies"
+        run: "melos bootstrap"
+
+      - name: "Run Dart Analyzer"
+        run: "melos run analyze"

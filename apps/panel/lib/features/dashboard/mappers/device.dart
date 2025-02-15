@@ -25,14 +25,14 @@ import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/dev
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/valve.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/window_covering.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/Door.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/Doorbell.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/air_humidifier.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/air_purifier.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/alarm.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/camera.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/door.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/doorbell.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/fan.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/generic.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/devices/heater.dart';

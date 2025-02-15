@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen_scaler.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/generated_l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class PowerOffScreen extends StatelessWidget {
@@ -9,7 +9,7 @@ class PowerOffScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ScreenScalerService scaler = locator<ScreenScalerService>();
+    final ScreenService screenService = locator<ScreenService>();
     final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -23,8 +23,8 @@ class PowerOffScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                width: scaler.scale(50),
-                height: scaler.scale(50),
+                width: screenService.scale(50),
+                height: screenService.scale(50),
                 child: const CircularProgressIndicator(),
               ),
               AppSpacings.spacingLgVertical,

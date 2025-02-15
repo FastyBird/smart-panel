@@ -7,23 +7,15 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'weather_weather.dart';
 import 'weather_wind.dart';
 
-part 'weather_day.freezed.dart';
-part 'weather_day.g.dart';
+part 'weather_current_day.freezed.dart';
+part 'weather_current_day.g.dart';
 
 /// Schema for a specific day, including temperature, wind, and precipitation.
 @Freezed()
-class WeatherDay with _$WeatherDay {
-  const factory WeatherDay({
+class WeatherCurrentDay with _$WeatherCurrentDay {
+  const factory WeatherCurrentDay({
     /// Current temperature in degrees Celsius.
     required num temperature,
-
-    /// Minimum recorded temperature for the day in degrees Celsius.
-    @JsonKey(name: 'temperature_min')
-    required num temperatureMin,
-
-    /// Maximum recorded temperature for the day in degrees Celsius.
-    @JsonKey(name: 'temperature_max')
-    required num temperatureMax,
 
     /// Perceived temperature based on wind and humidity.
     @JsonKey(name: 'feels_like')
@@ -50,10 +42,24 @@ class WeatherDay with _$WeatherDay {
     /// Snow volume in the last hour (mm).
     required num? snow,
 
-    /// Timestamp when the weather data was last updated.
-    @JsonKey(name: 'created_at')
-    required DateTime createdAt,
-  }) = _WeatherDay;
+    /// Timestamp for sunrise in ISO 8601 format.
+    required DateTime sunrise,
+
+    /// Timestamp for sunset in ISO 8601 format.
+    required DateTime sunset,
+
+    /// Time of data calculation
+    @JsonKey(name: 'day_time')
+    required DateTime dayTime,
+
+    /// Minimum recorded temperature for the day in degrees Celsius.
+    @JsonKey(name: 'temperature_min')
+    num? temperatureMin,
+
+    /// Maximum recorded temperature for the day in degrees Celsius.
+    @JsonKey(name: 'temperature_max')
+    num? temperatureMax,
+  }) = _WeatherCurrentDay;
   
-  factory WeatherDay.fromJson(Map<String, Object?> json) => _$WeatherDayFromJson(json);
+  factory WeatherCurrentDay.fromJson(Map<String, Object?> json) => _$WeatherCurrentDayFromJson(json);
 }

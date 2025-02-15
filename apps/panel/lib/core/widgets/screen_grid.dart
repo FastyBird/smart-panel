@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/layout/grid_item.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:flutter/material.dart';
 
 class ScreenGrid extends StatelessWidget {
@@ -16,7 +16,7 @@ class ScreenGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final configurationRepository = locator<ConfigurationRepository>();
+    final screen = locator<ScreenService>();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -24,7 +24,7 @@ class ScreenGrid extends StatelessWidget {
         final boxHeight = constraints.maxHeight;
 
         // Optimal tile width from configuration
-        final optimalTileWidth = configurationRepository.screenGrid.tileSize;
+        final optimalTileWidth = screen.tileSize;
 
         // Calculate number of columns and rows
         int columns = (boxWidth / optimalTileWidth).floor();
