@@ -23,4 +23,19 @@ class DatetimeUtils {
     final formattedDate = dateFormat.format(dateTime);
     return formattedDate.replaceAll(RegExp(r'\s?\d{4}'), '').trim();
   }
+
+  // Get formatted short day name like mon, tue, wed
+  static String getShortDayName(DateTime dateTime) {
+    return DateFormat.E(Intl.getCurrentLocale()).format(dateTime);
+  }
+
+  // Get formatted day name like monday, tuesday, wednesday
+  static String getDayName(DateTime dateTime) {
+    return DateFormat.EEEE(Intl.getCurrentLocale()).format(dateTime);
+  }
+
+  // Get formatted month and day name like Feb 15, Mar 10
+  static String getShortMonthDay(DateTime dateTime) {
+    return DateFormat.MMMd(Intl.getCurrentLocale()).format(dateTime);
+  }
 }

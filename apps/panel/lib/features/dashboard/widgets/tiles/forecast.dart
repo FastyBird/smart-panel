@@ -3,7 +3,8 @@ import 'package:fastybird_smart_panel/core/models/general/weather.dart';
 import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
 import 'package:fastybird_smart_panel/core/repositories/weather.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/weather.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/data_source.dart';
@@ -39,7 +40,7 @@ class _ForecastTileWidgetInnerState extends State<ForecastTileWidgetInner> {
   final ConfigurationRepository _configurationRepository =
       locator<ConfigurationRepository>();
 
-  late WeatherUnitType _weatherUnit;
+  late WeatherUnit _weatherUnit;
   late List<ForecastDayModel> _weatherForecast;
 
   @override
@@ -125,7 +126,7 @@ class _ForecastTileWidgetInnerState extends State<ForecastTileWidgetInner> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            forecast.localizedShortDayName,
+            DatetimeUtils.getShortDayName(forecast.dayTime),
             style: TextStyle(
               fontSize: AppFontSize.base,
               color: Theme.of(context).brightness == Brightness.light
@@ -198,6 +199,6 @@ class _ForecastTileWidgetInnerState extends State<ForecastTileWidgetInner> {
   }
 
   String _getUnit() {
-    return _weatherUnit == WeatherUnitType.fahrenheit ? '°F' : '°C';
+    return _weatherUnit == WeatherUnit.fahrenheit ? '°F' : '°C';
   }
 }

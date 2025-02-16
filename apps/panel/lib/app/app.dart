@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
 import 'package:fastybird_smart_panel/core/repositories/weather.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
-import 'package:fastybird_smart_panel/core/types/localization.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/scenes/scenes.dart';
@@ -49,13 +49,13 @@ class MyApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            supportedLocales: LanguageType.values.map(
+            supportedLocales: Language.values.map(
               (item) =>
                   Locale(item.value.split('_')[0], item.value.split('_')[1]),
             ),
             locale: Locale(
-              LanguageType.english.value.split('_')[0],
-              LanguageType.english.value.split('_')[1],
+              Language.english.value.split('_')[0],
+              Language.english.value.split('_')[1],
             ),
             home: Scaffold(
               body: Center(

@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/core/models/general/weather.dart';
 import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
 import 'package:fastybird_smart_panel/core/repositories/weather.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/weather.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/data_source.dart';
@@ -43,7 +43,7 @@ class _WeatherTileWidgetInnerState extends State<WeatherTileWidgetInner> {
   final ConfigurationRepository _configurationRepository =
       locator<ConfigurationRepository>();
 
-  late WeatherUnitType _weatherUnit;
+  late WeatherUnit _weatherUnit;
   late CurrentDayModel? _currentWeather;
 
   @override
@@ -158,7 +158,7 @@ class _WeatherTileWidgetInnerState extends State<WeatherTileWidgetInner> {
   }
 
   String _getUnit() {
-    return _weatherUnit == WeatherUnitType.fahrenheit ? '°F' : '°C';
+    return _weatherUnit == WeatherUnit.fahrenheit ? '°F' : '°C';
   }
 
   bool _isNightTime(DateTime sunrise, DateTime sunset) {

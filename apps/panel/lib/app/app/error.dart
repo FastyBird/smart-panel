@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/localization.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +24,7 @@ class AppError extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: LanguageType.values.map(
+      supportedLocales: Language.values.map(
         (item) => Locale(item.value.split('_')[0], item.value.split('_')[1]),
       ),
       locale: Locale('en', 'US'),

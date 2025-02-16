@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/weather.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -20,8 +20,8 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   final ConfigurationRepository _configurationRepository =
       locator<ConfigurationRepository>();
 
-  late WeatherUnitType _unit;
-  late WeatherUnitType? _unitBackup;
+  late WeatherUnit _unit;
+  late WeatherUnit? _unitBackup;
   late bool _savingUnit = false;
   late String? _location;
 
@@ -96,9 +96,8 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                 child: DropdownButton<String>(
                   value: _unit.value,
                   items: {
-                    WeatherUnitType.celsius.value: localizations.unit_celsius,
-                    WeatherUnitType.fahrenheit.value:
-                        localizations.unit_fahrenheit,
+                    WeatherUnit.celsius.value: localizations.unit_celsius,
+                    WeatherUnit.fahrenheit.value: localizations.unit_fahrenheit,
                   }.entries.map((entry) {
                     return DropdownMenuItem<String>(
                       value: entry.key,
@@ -113,7 +112,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                   onChanged: (String? value) async {
                     if (value == null) return;
 
-                    final unit = WeatherUnitType.fromValue(value);
+                    final unit = WeatherUnit.fromValue(value);
 
                     if (unit == null) return;
 
@@ -155,8 +154,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                     });
 
                     _configurationRepository.setWeatherUnit(
-                      WeatherUnitType.fromValue(value) ??
-                          WeatherUnitType.celsius,
+                      WeatherUnit.fromValue(value) ?? WeatherUnit.celsius,
                     );
                   },
                   style: TextStyle(
