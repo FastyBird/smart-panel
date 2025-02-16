@@ -10,13 +10,13 @@ Built on **NestJS**, **TypeORM**, and modern technologies, it delivers a **scala
 
 ## ✨ Features
 
-✔ **Device Management** – Control devices, channels, properties, and automation.
-✔ **Real-time Updates** – Instant state changes via WebSockets.
-✔ **Dashboard & UI** – Organize information with **pages, cards, and tiles**.
-✔ **Weather & System Info** – Display **current weather, forecasts, and device stats**.
-✔ **Robust Validation & Error Handling** – Ensures reliability and security.
-✔ **Database Integration** – Supports SQL databases via TypeORM.
-✔ **Modular Architecture** – Scalable and maintainable design.
+- ✔ **Device Management** – Control devices, channels, properties, and automation.
+- ✔ **Real-time Updates** – Instant state changes via WebSockets.
+- ✔ **Dashboard & UI** – Organize information with **pages, cards, and tiles**.
+- ✔ **Weather & System Info** – Display **current weather, forecasts, and device stats**.
+- ✔ **Robust Validation & Error Handling** – Ensures reliability and security.
+- ✔ **Database Integration** – Supports SQL databases via TypeORM.
+- ✔ **Modular Architecture** – Scalable and maintainable design.
 
 ## 📂 Project Structure
 
@@ -98,40 +98,31 @@ Before starting, make sure you have the following installed:
 
 ## 🚀 Getting Started
 
-### 1. Clone the Repository
+### 1️⃣ Clone the Repository
 
 ```shell
 git clone https://github.com/fastybird/smart-panel.git
 cd apps/backend
 ```
-### 2. Install Dependencies
+### 2️⃣ Install Dependencies
 
 ```shell
 yarn install
 ```
 
-### 3. Set Up Environment Variables
-
-Create a .env file in the root directory and configure the following variables:
-
-```shell
-DATABASE_URL=your-database-url
-NODE_ENV=development
-```
-
-### 4. Run Migrations
+### 3️⃣ Run Migrations
 
 ```shell
 yarn typeorm:migration:run
 ```
 
-### 5. Start the Server
+### 4️⃣ Start the Server
 
 ```shell
 yarn start:dev
 ```
 
-### 6. Access the API
+### 5️⃣ Access the API
 
 The server runs on http://localhost:3000 by default. Test endpoints using a tool like Postman or cURL.
 

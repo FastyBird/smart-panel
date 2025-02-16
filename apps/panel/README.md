@@ -2,26 +2,23 @@
   <img src="https://github.com/fastybird/.github/blob/main/assets/repo_title.png?raw=true" alt="FastyBird"/>
 </p>
 
-# 📱 Smart Panel
+# 📱 Smart Panel Display
 
-**FastyBird Smart Panel** is a **modern** and **customizable** display app for managing your **smart home devices**.
-Built with **Flutter**, it delivers a **seamless**, **intuitive**, and **real-time** experience on dedicated touchscreens.
+The **Smart Panel Display App** is the **interactive interface** of the **FastyBird Smart Panel**, providing seamless
+control and monitoring of smart home devices.
 
-🚀 **Powered by the FastyBird ecosystem**  
-🌍 **Cross-platform with Flutter**  
-⚡ **Real-time WebSocket updates**  
-🔧 **Customizable dashboard with widgets**
+Built with **Flutter**, it offers a **modern**, **customizable**, and **real-time** experience on dedicated touchscreens.
 
 ---
 
 ## ✨ Features
 
-✔ **Beautiful UI** – Clean, intuitive, and optimized for **touchscreens**  
-✔ **Device Control** – Toggle lights, adjust temperatures, and monitor sensors  
-✔ **Real-time Updates** – WebSocket integration for instant feedback  
-✔ **Weather Forecast** – OpenWeather API integration for daily forecasts  
-✔ **Multi-Screen Support** – Manage multiple dashboards efficiently  
-✔ **Customizable Widgets** – Resize, rearrange, and personalize widgets  
+- ✔ **Beautiful UI** – Clean, intuitive, and optimized for **touchscreens**
+- ✔ **Device Control** – Toggle lights, adjust temperatures, and monitor sensors
+- ✔ **Real-time Updates** – WebSocket integration for instant feedback
+- ✔ **Weather Forecast** – OpenWeather API integration for daily forecasts
+- ✔ **Multi-Screen Support** – Manage multiple dashboards efficiently
+- ✔ **Customizable Widgets** – Resize, rearrange, and personalize widgets  
 
 ---
 
@@ -89,21 +86,35 @@ Then run on the Pi:
 flutter-pi --release /path/to/flutter_assets
 ```
 
+### 🧪 Running Tests
+
+Run unit tests:
+
+```shell
+flutter test
+```
+
+Analyze code quality:
+
+```shell
+dart analyze .
+```
+
 ## 📡 Raspberry Pi Deployment
 
-1.	Build the app
+### 1️⃣ Build the app
 
 ```shell
 flutter build bundle
 ```
 
-2. Transfer the app to your Pi
+### 2️⃣ Transfer the app to your Pi
 
 ```shell
 scp -r build/flutter_assets pi@raspberrypi:/home/pi/
 ```
 
-3. Run on Raspberry Pi
+### 3️⃣ Run on Raspberry Pi
 
 ```shell
 flutter-pi /home/pi/flutter_assets
