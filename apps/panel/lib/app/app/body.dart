@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
-import 'package:fastybird_smart_panel/core/types/localization.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/features/overlay/lock.dart';
@@ -26,7 +26,7 @@ class _AppBodyState extends State<AppBody> {
       locator<ConfigurationRepository>();
 
   bool _hasDarkMode = false;
-  LanguageType _language = LanguageType.english;
+  Language _language = Language.english;
   int _screenLockDuration = 30;
 
   Timer? _inactivityTimer;
@@ -171,7 +171,7 @@ class _AppBodyState extends State<AppBody> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: LanguageType.values.map(
+      supportedLocales: Language.values.map(
         (item) => Locale(item.value.split('_')[0], item.value.split('_')[1]),
       ),
       locale: Locale(

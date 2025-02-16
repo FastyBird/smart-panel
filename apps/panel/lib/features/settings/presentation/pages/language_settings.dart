@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/localization.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
@@ -26,11 +26,11 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   late String _timezone;
   late String? _timezoneBackup;
   late bool _savingTimezone = false;
-  late LanguageType _language;
-  late LanguageType? _languageBackup;
+  late Language _language;
+  late Language? _languageBackup;
   late bool _savingLanguage = false;
-  late TimeFormatType _timeFormat;
-  late TimeFormatType? _timeFormatBackup;
+  late TimeFormat _timeFormat;
+  late TimeFormat? _timeFormatBackup;
   late bool _savingTimeFormat = false;
 
   @override
@@ -122,8 +122,8 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                   child: DropdownButton<String>(
                     value: _language.value,
                     items: {
-                      LanguageType.english.value: 'English',
-                      LanguageType.czech.value: 'Česky',
+                      Language.english.value: 'English',
+                      Language.czech.value: 'Česky',
                     }.entries.map((entry) {
                       return DropdownMenuItem<String>(
                         value: entry.key,
@@ -138,7 +138,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                     onChanged: (String? value) async {
                       if (value == null) return;
 
-                      final language = LanguageType.fromValue(value);
+                      final language = Language.fromValue(value);
 
                       if (language == null) return;
 
@@ -332,7 +332,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                     value: _timeFormat.value,
                     items: [
                       DropdownMenuItem(
-                        value: TimeFormatType.twelveHour.value,
+                        value: TimeFormat.twelveHour.value,
                         child: Text(
                           localizations.time_format_12h,
                           style: TextStyle(
@@ -341,7 +341,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         ),
                       ),
                       DropdownMenuItem(
-                        value: TimeFormatType.twentyFourHour.value,
+                        value: TimeFormat.twentyFourHour.value,
                         child: Text(
                           localizations.time_format_24h,
                           style: TextStyle(
@@ -353,7 +353,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                     onChanged: (String? value) async {
                       if (value == null) return;
 
-                      final timeFormat = TimeFormatType.fromValue(value);
+                      final timeFormat = TimeFormat.fromValue(value);
 
                       if (timeFormat == null) return;
 

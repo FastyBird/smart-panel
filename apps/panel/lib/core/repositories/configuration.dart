@@ -17,21 +17,17 @@ import 'package:fastybird_smart_panel/api/models/config_update_weather_unit.dart
 import 'package:fastybird_smart_panel/api/models/config_weather_location_type.dart';
 import 'package:fastybird_smart_panel/api/models/config_weather_unit.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
-import 'package:fastybird_smart_panel/core/models/general/audio_configuration.dart';
-import 'package:fastybird_smart_panel/core/models/general/display_configuration.dart';
-import 'package:fastybird_smart_panel/core/models/general/language_configuration.dart';
-import 'package:fastybird_smart_panel/core/models/general/weather_configuration.dart';
-import 'package:fastybird_smart_panel/core/types/localization.dart';
-import 'package:fastybird_smart_panel/core/types/weather.dart';
+import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:flutter/material.dart';
 
 class ConfigurationRepository extends ChangeNotifier {
   final ConfigurationModuleClient _apiClient;
 
-  late DisplayConfigurationModel _displayConfiguration;
-  late AudioConfigurationModel _audioConfiguration;
-  late LanguageConfigurationModel _languageConfiguration;
-  late WeatherConfigurationModel _weatherConfiguration;
+  late ConfigDisplayModel _displayConfiguration;
+  late ConfigAudioModel _audioConfiguration;
+  late ConfigLanguageModel _languageConfiguration;
+  late ConfigWeatherModel _weatherConfiguration;
 
   bool _isLoading = true;
 
@@ -51,14 +47,13 @@ class ConfigurationRepository extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
 
-  DisplayConfigurationModel get displayConfiguration => _displayConfiguration;
+  ConfigDisplayModel get displayConfiguration => _displayConfiguration;
 
-  AudioConfigurationModel get audioConfiguration => _audioConfiguration;
+  ConfigAudioModel get audioConfiguration => _audioConfiguration;
 
-  LanguageConfigurationModel get languageConfiguration =>
-      _languageConfiguration;
+  ConfigLanguageModel get languageConfiguration => _languageConfiguration;
 
-  WeatherConfigurationModel get weatherConfiguration => _weatherConfiguration;
+  ConfigWeatherModel get weatherConfiguration => _weatherConfiguration;
 
   Future<bool> refresh() async {
     try {
@@ -166,7 +161,7 @@ class ConfigurationRepository extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> setLanguage(LanguageType language) async {
+  Future<bool> setLanguage(Language language) async {
     try {
       await _storeLanguageSection(language: language);
     } catch (e) {
@@ -190,7 +185,7 @@ class ConfigurationRepository extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> setTimeFormat(TimeFormatType format) async {
+  Future<bool> setTimeFormat(TimeFormat format) async {
     try {
       await _storeLanguageSection(timeFormat: format);
     } catch (e) {
@@ -202,7 +197,7 @@ class ConfigurationRepository extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> setWeatherUnit(WeatherUnitType unit) async {
+  Future<bool> setWeatherUnit(WeatherUnit unit) async {
     try {
       await _storeWeatherSection(unit: unit);
     } catch (e) {
@@ -275,9 +270,9 @@ class ConfigurationRepository extends ChangeNotifier {
   }
 
   Future<void> _storeLanguageSection({
-    LanguageType? language,
+    Language? language,
     String? timezone,
-    TimeFormatType? timeFormat,
+    TimeFormat? timeFormat,
   }) async {
     final updated = await _updateConfiguration(
       section: Section.language,
@@ -305,8 +300,8 @@ class ConfigurationRepository extends ChangeNotifier {
   }
 
   Future<void> _storeWeatherSection({
-    WeatherLocationTypeType? locationType,
-    WeatherUnitType? unit,
+    WeatherLocationType? locationType,
+    WeatherUnit? unit,
   }) async {
     final updated = await _updateConfiguration(
       section: Section.weather,
@@ -332,24 +327,24 @@ class ConfigurationRepository extends ChangeNotifier {
   Future<void> _loadConfiguration() async {
     var resConfig = await _fetchConfiguration();
 
-    _displayConfiguration = DisplayConfigurationModel(
+    _displayConfiguration = ConfigDisplayModel(
       darkMode: resConfig.display.darkMode,
       brightness: resConfig.display.brightness,
       screenLockDuration: resConfig.display.screenLockDuration,
       screenSaver: resConfig.display.screenSaver,
     );
-    _audioConfiguration = AudioConfigurationModel(
+    _audioConfiguration = ConfigAudioModel(
       speaker: resConfig.audio.speaker,
       speakerVolume: resConfig.audio.speakerVolume,
       microphone: resConfig.audio.microphone,
       microphoneVolume: resConfig.audio.microphoneVolume,
     );
-    _languageConfiguration = LanguageConfigurationModel(
+    _languageConfiguration = ConfigLanguageModel(
       language: _convertLanguageFromApi(resConfig.language.language),
       timezone: resConfig.language.timezone,
       timeFormat: _convertTimeFormatFromApi(resConfig.language.timeFormat),
     );
-    _weatherConfiguration = WeatherConfigurationModel(
+    _weatherConfiguration = ConfigWeatherModel(
       location: resConfig.weather.location,
       locationType: _convertWeatherLocationTypeFromApi(
         resConfig.weather.locationType,
@@ -405,84 +400,84 @@ class ConfigurationRepository extends ChangeNotifier {
     }
   }
 
-  LanguageType _convertLanguageFromApi(ConfigLanguageLanguage language) {
+  Language _convertLanguageFromApi(ConfigLanguageLanguage language) {
     switch (language) {
       case ConfigLanguageLanguage.csCZ:
-        return LanguageType.czech;
+        return Language.czech;
       default:
-        return LanguageType.english;
+        return Language.english;
     }
   }
 
-  ConfigUpdateLanguageLanguage _convertLanguageToApi(LanguageType language) {
+  ConfigUpdateLanguageLanguage _convertLanguageToApi(Language language) {
     switch (language) {
-      case LanguageType.czech:
+      case Language.czech:
         return ConfigUpdateLanguageLanguage.csCZ;
       default:
         return ConfigUpdateLanguageLanguage.enUS;
     }
   }
 
-  TimeFormatType _convertTimeFormatFromApi(ConfigLanguageTimeFormat language) {
+  TimeFormat _convertTimeFormatFromApi(ConfigLanguageTimeFormat language) {
     switch (language) {
       case ConfigLanguageTimeFormat.value12h:
-        return TimeFormatType.twelveHour;
+        return TimeFormat.twelveHour;
       default:
-        return TimeFormatType.twentyFourHour;
+        return TimeFormat.twentyFourHour;
     }
   }
 
   ConfigUpdateLanguageTimeFormat _convertTimeFormatToApi(
-      TimeFormatType timeFormat) {
+      TimeFormat timeFormat) {
     switch (timeFormat) {
-      case TimeFormatType.twelveHour:
+      case TimeFormat.twelveHour:
         return ConfigUpdateLanguageTimeFormat.value12h;
       default:
         return ConfigUpdateLanguageTimeFormat.value24h;
     }
   }
 
-  WeatherLocationTypeType _convertWeatherLocationTypeFromApi(
+  WeatherLocationType _convertWeatherLocationTypeFromApi(
       ConfigWeatherLocationType language) {
     switch (language) {
       case ConfigWeatherLocationType.latLon:
-        return WeatherLocationTypeType.latLon;
+        return WeatherLocationType.latLon;
       case ConfigWeatherLocationType.cityId:
-        return WeatherLocationTypeType.cityId;
+        return WeatherLocationType.cityId;
       case ConfigWeatherLocationType.zipCode:
-        return WeatherLocationTypeType.zipCode;
+        return WeatherLocationType.zipCode;
       default:
-        return WeatherLocationTypeType.cityName;
+        return WeatherLocationType.cityName;
     }
   }
 
   ConfigUpdateWeatherLocationType _convertWeatherLocationTypeToApi(
-    WeatherLocationTypeType timeFormat,
+    WeatherLocationType timeFormat,
   ) {
     switch (timeFormat) {
-      case WeatherLocationTypeType.latLon:
+      case WeatherLocationType.latLon:
         return ConfigUpdateWeatherLocationType.latLon;
-      case WeatherLocationTypeType.cityId:
+      case WeatherLocationType.cityId:
         return ConfigUpdateWeatherLocationType.cityId;
-      case WeatherLocationTypeType.zipCode:
+      case WeatherLocationType.zipCode:
         return ConfigUpdateWeatherLocationType.zipCode;
       default:
         return ConfigUpdateWeatherLocationType.cityName;
     }
   }
 
-  WeatherUnitType _convertWeatherUnitFromApi(ConfigWeatherUnit language) {
+  WeatherUnit _convertWeatherUnitFromApi(ConfigWeatherUnit language) {
     switch (language) {
       case ConfigWeatherUnit.fahrenheit:
-        return WeatherUnitType.fahrenheit;
+        return WeatherUnit.fahrenheit;
       default:
-        return WeatherUnitType.celsius;
+        return WeatherUnit.celsius;
     }
   }
 
-  ConfigUpdateWeatherUnit _convertWeatherUnitToApi(WeatherUnitType timeFormat) {
+  ConfigUpdateWeatherUnit _convertWeatherUnitToApi(WeatherUnit timeFormat) {
     switch (timeFormat) {
-      case WeatherUnitType.fahrenheit:
+      case WeatherUnit.fahrenheit:
         return ConfigUpdateWeatherUnit.fahrenheit;
       default:
         return ConfigUpdateWeatherUnit.celsius;

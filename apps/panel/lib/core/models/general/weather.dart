@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart';
-
 class WeatherInfoModel {
   final int _code;
   final String _main;
@@ -345,18 +343,6 @@ class ForecastDayModel {
   DateTime? get moonset => _moonset;
 
   DateTime get dayTime => _dayTime;
-
-  String get localizedDayName {
-    return DateFormat.EEEE(Intl.getCurrentLocale()).format(_dayTime);
-  }
-
-  String get localizedShortMonthDay {
-    return DateFormat.MMMd(Intl.getCurrentLocale()).format(_dayTime);
-  }
-
-  String get localizedShortDayName {
-    return DateFormat.E(Intl.getCurrentLocale()).format(_dayTime);
-  }
 
   ForecastDayModel copyWith({
     ForecastTemperatureModel? temperature,

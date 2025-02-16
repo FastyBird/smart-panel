@@ -3,7 +3,8 @@ import 'package:fastybird_smart_panel/core/models/general/weather.dart';
 import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
 import 'package:fastybird_smart_panel/core/repositories/weather.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/weather.dart';
+import 'package:fastybird_smart_panel/core/types/configuration.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
@@ -26,7 +27,7 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
   final ConfigurationRepository _configurationRepository =
       locator<ConfigurationRepository>();
 
-  late WeatherUnitType _weatherUnit;
+  late WeatherUnit _weatherUnit;
   late CurrentDayModel? _currentWeather;
   late List<ForecastDayModel> _weatherForecast;
 
@@ -106,6 +107,13 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
           )
         : '-';
 
+    String feelsLikeTemperature = currentWeather != null
+        ? NumberUtils.formatNumber(
+            currentWeather.feelsLike,
+            1,
+          )
+        : '-';
+
     IconData weatherIcon = currentWeather != null
         ? WeatherConditionMapper.getIcon(
             currentWeather.weather.code,
@@ -121,12 +129,12 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
     return Column(
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Icon(
               weatherIcon,
-              size: _screenService.scale(80),
+              size: _screenService.scale(60),
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.primary
                   : AppTextColorDark.primary,
@@ -149,6 +157,7 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
                             : AppTextColorDark.primary,
                       ),
                     ),
+                    AppSpacings.spacingSmHorizontal,
                     Text(
                       _getUnit(),
                       style: TextStyle(
@@ -169,23 +178,24 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
                     Text(
                       localizations.weather_forecast_feels_like,
                       style: TextStyle(
-                        fontSize: AppFontSize.small,
+                        fontSize: AppFontSize.extraSmall,
                         color: Theme.of(context).brightness == Brightness.light
                             ? AppTextColorLight.secondary
                             : AppTextColorDark.secondary,
                       ),
                     ),
-                    AppSpacings.spacingXsHorizontal,
+                    AppSpacings.spacingSmHorizontal,
                     Text(
-                      currentTemperature,
+                      feelsLikeTemperature,
                       style: TextStyle(
                         fontSize: AppFontSize.base,
                       ),
                     ),
+                    AppSpacings.spacingXsHorizontal,
                     Text(
                       _getUnit(),
                       style: TextStyle(
-                        fontSize: AppFontSize.base,
+                        fontSize: AppFontSize.extraSmall,
                       ),
                     ),
                   ],
@@ -341,7 +351,7 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(
-                forecast.localizedDayName,
+                DatetimeUtils.getDayName(forecast.dayTime),
                 style: TextStyle(
                   fontSize: AppFontSize.extraSmall,
                   fontWeight: FontWeight.w600,
@@ -349,7 +359,7 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
               ),
               AppSpacings.spacingSmHorizontal,
               Text(
-                forecast.localizedShortMonthDay,
+                DatetimeUtils.getShortMonthDay(forecast.dayTime),
                 style: TextStyle(
                   fontSize: _screenService.scale(8),
                 ),
@@ -428,9 +438,16 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
                       ),
                       AppSpacings.spacingXsHorizontal,
                       Text(
-                        '${forecast.humidity}%',
+                        forecast.humidity.toString(),
                         style: TextStyle(
                           fontSize: AppFontSize.extraSmall,
+                        ),
+                      ),
+                      AppSpacings.spacingXsHorizontal,
+                      Text(
+                        '%',
+                        style: TextStyle(
+                          fontSize: _screenService.scale(7),
                         ),
                       ),
                     ],
@@ -445,7 +462,7 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
   }
 
   String _getUnit() {
-    return _weatherUnit == WeatherUnitType.fahrenheit ? '°F' : '°C';
+    return _weatherUnit == WeatherUnit.fahrenheit ? '°F' : '°C';
   }
 
   bool _isNightTime(DateTime sunrise, DateTime sunset) {
