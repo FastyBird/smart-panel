@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
+import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -17,8 +17,8 @@ class WeatherSettingsPage extends StatefulWidget {
 
 class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigurationRepository _configurationRepository =
-      locator<ConfigurationRepository>();
+  final ConfigModuleRepository _configModuleRepository =
+      locator<ConfigModuleRepository>();
 
   late WeatherUnit _unit;
   late WeatherUnit? _unitBackup;
@@ -31,19 +31,19 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 
     _syncStateWithRepository();
 
-    _configurationRepository.addListener(_syncStateWithRepository);
+    _configModuleRepository.addListener(_syncStateWithRepository);
   }
 
   @override
   void dispose() {
-    _configurationRepository.removeListener(_syncStateWithRepository);
+    _configModuleRepository.removeListener(_syncStateWithRepository);
     super.dispose();
   }
 
   void _syncStateWithRepository() {
     setState(() {
-      _unit = _configurationRepository.weatherConfiguration.unit;
-      _location = _configurationRepository.weatherConfiguration.location;
+      _unit = _configModuleRepository.weatherConfiguration.unit;
+      _location = _configModuleRepository.weatherConfiguration.location;
     });
   }
 
@@ -125,7 +125,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                     });
 
                     final success =
-                        await _configurationRepository.setWeatherUnit(_unit);
+                        await _configModuleRepository.setWeatherUnit(_unit);
 
                     Future.microtask(() async {
                       await Future.delayed(
@@ -153,7 +153,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                       }
                     });
 
-                    _configurationRepository.setWeatherUnit(
+                    _configModuleRepository.setWeatherUnit(
                       WeatherUnit.fromValue(value) ?? WeatherUnit.celsius,
                     );
                   },

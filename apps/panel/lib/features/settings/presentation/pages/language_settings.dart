@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
+import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -20,8 +20,8 @@ class LanguageSettingsPage extends StatefulWidget {
 
 class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigurationRepository _configurationRepository =
-      locator<ConfigurationRepository>();
+  final ConfigModuleRepository _configModuleRepository =
+      locator<ConfigModuleRepository>();
 
   late String _timezone;
   late String? _timezoneBackup;
@@ -39,20 +39,20 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
     _syncStateWithRepository();
 
-    _configurationRepository.addListener(_syncStateWithRepository);
+    _configModuleRepository.addListener(_syncStateWithRepository);
   }
 
   @override
   void dispose() {
-    _configurationRepository.removeListener(_syncStateWithRepository);
+    _configModuleRepository.removeListener(_syncStateWithRepository);
     super.dispose();
   }
 
   void _syncStateWithRepository() {
     setState(() {
-      _timezone = _configurationRepository.languageConfiguration.timezone;
-      _language = _configurationRepository.languageConfiguration.language;
-      _timeFormat = _configurationRepository.languageConfiguration.timeFormat;
+      _timezone = _configModuleRepository.languageConfiguration.timezone;
+      _language = _configModuleRepository.languageConfiguration.language;
+      _timeFormat = _configModuleRepository.languageConfiguration.timeFormat;
     });
   }
 
@@ -152,7 +152,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                       });
 
                       final success =
-                          await _configurationRepository.setLanguage(_language);
+                          await _configModuleRepository.setLanguage(_language);
 
                       Future.microtask(() async {
                         await Future.delayed(
@@ -260,7 +260,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                       });
 
                       final success =
-                          await _configurationRepository.setTimezone(_timezone);
+                          await _configModuleRepository.setTimezone(_timezone);
 
                       Future.microtask(() async {
                         await Future.delayed(
@@ -366,7 +366,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         _timeFormat = timeFormat;
                       });
 
-                      final success = await _configurationRepository
+                      final success = await _configModuleRepository
                           .setTimeFormat(_timeFormat);
 
                       Future.microtask(() async {

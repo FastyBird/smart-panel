@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
+import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -22,8 +22,8 @@ class AppBody extends StatefulWidget {
 }
 
 class _AppBodyState extends State<AppBody> {
-  final ConfigurationRepository _configurationRepository =
-      locator<ConfigurationRepository>();
+  final ConfigModuleRepository _configModuleRepository =
+      locator<ConfigModuleRepository>();
 
   bool _hasDarkMode = false;
   Language _language = Language.english;
@@ -38,12 +38,12 @@ class _AppBodyState extends State<AppBody> {
   void initState() {
     super.initState();
 
-    _hasDarkMode = _configurationRepository.displayConfiguration.hasDarkMode;
-    _language = _configurationRepository.languageConfiguration.language;
+    _hasDarkMode = _configModuleRepository.displayConfiguration.hasDarkMode;
+    _language = _configModuleRepository.languageConfiguration.language;
     _screenLockDuration =
-        _configurationRepository.displayConfiguration.screenLockDuration;
+        _configModuleRepository.displayConfiguration.screenLockDuration;
 
-    _configurationRepository.addListener(_onConfigurationChanged);
+    _configModuleRepository.addListener(_onConfigurationChanged);
 
     _resetInactivityTimer();
   }
@@ -52,17 +52,17 @@ class _AppBodyState extends State<AppBody> {
   void dispose() {
     _inactivityTimer?.cancel();
 
-    _configurationRepository.removeListener(_onConfigurationChanged);
+    _configModuleRepository.removeListener(_onConfigurationChanged);
 
     super.dispose();
   }
 
   void _onConfigurationChanged() {
     setState(() {
-      _hasDarkMode = _configurationRepository.displayConfiguration.hasDarkMode;
-      _language = _configurationRepository.languageConfiguration.language;
+      _hasDarkMode = _configModuleRepository.displayConfiguration.hasDarkMode;
+      _language = _configModuleRepository.languageConfiguration.language;
       _screenLockDuration =
-          _configurationRepository.displayConfiguration.screenLockDuration;
+          _configModuleRepository.displayConfiguration.screenLockDuration;
     });
   }
 
@@ -75,8 +75,7 @@ class _AppBodyState extends State<AppBody> {
         locator<NavigationService>().navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) {
-              if (_configurationRepository
-                  .displayConfiguration.hasScreenSaver) {
+              if (_configModuleRepository.displayConfiguration.hasScreenSaver) {
                 return ScreenSaverScreen();
               }
 

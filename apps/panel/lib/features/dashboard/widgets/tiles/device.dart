@@ -6,7 +6,7 @@ import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/pro
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/data_source.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/device.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/categories.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
@@ -25,12 +25,12 @@ class DeviceTileWidget
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DevicesDataRepository>(builder: (
+    return Consumer<DevicesModuleRepository>(builder: (
       context,
-      devicesRepository,
+      devicesModuleRepository,
       _,
     ) {
-      final device = devicesRepository.getDevice(tile.device);
+      final device = devicesModuleRepository.getDevice(tile.device);
 
       if (device == null) {
         return _renderLoader(context);
@@ -39,7 +39,7 @@ class DeviceTileWidget
       final List<DeviceTileDataSourceModel> dataSources =
           dataSource.whereType<DeviceTileDataSourceModel>().toList();
 
-      final properties = devicesRepository.getChannelsProperties(
+      final properties = devicesModuleRepository.getChannelsProperties(
         dataSources
             .map(
               (dataSource) => dataSource.property,
@@ -65,7 +65,7 @@ class DeviceTileWidget
                   );
                 }
 
-                devicesRepository.toggleDeviceOnState(device.id);
+                devicesModuleRepository.toggleDeviceOnState(device.id);
               },
         title: device.name,
         subTitle: LayoutBuilder(builder: (context, constraints) {

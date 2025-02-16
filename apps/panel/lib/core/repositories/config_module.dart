@@ -19,9 +19,9 @@ import 'package:fastybird_smart_panel/api/models/config_weather_unit.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
-class ConfigurationRepository extends ChangeNotifier {
+class ConfigModuleRepository extends ChangeNotifier {
   final ConfigurationModuleClient _apiClient;
 
   late ConfigDisplayModel _displayConfiguration;
@@ -31,14 +31,14 @@ class ConfigurationRepository extends ChangeNotifier {
 
   bool _isLoading = true;
 
-  ConfigurationRepository({
+  ConfigModuleRepository({
     required ConfigurationModuleClient apiClient,
   }) : _apiClient = apiClient;
 
   Future<void> initialize() async {
     _isLoading = true;
 
-    _loadConfiguration();
+    await _loadConfiguration();
 
     _isLoading = false;
 
@@ -235,7 +235,7 @@ class ConfigurationRepository extends ChangeNotifier {
         screenSaver: updated.screenSaver,
       );
     } else {
-      throw Exception('Invalid config section received');
+      throw Exception('Received data from backend are not valid');
     }
   }
 
@@ -265,7 +265,7 @@ class ConfigurationRepository extends ChangeNotifier {
         microphoneVolume: updated.microphoneVolume,
       );
     } else {
-      throw Exception('Invalid config section received');
+      throw Exception('Received data from backend are not valid');
     }
   }
 
@@ -295,7 +295,7 @@ class ConfigurationRepository extends ChangeNotifier {
         timeFormat: _convertTimeFormatFromApi(updated.timeFormat),
       );
     } else {
-      throw Exception('Invalid config section received');
+      throw Exception('Received data from backend are not valid');
     }
   }
 
@@ -320,7 +320,7 @@ class ConfigurationRepository extends ChangeNotifier {
         location: updated.location,
       );
     } else {
-      throw Exception('Invalid config section received');
+      throw Exception('Received data from backend are not valid');
     }
   }
 
@@ -388,15 +388,21 @@ class ConfigurationRepository extends ChangeNotifier {
     try {
       return await apiCall();
     } on DioException catch (e) {
-      debugPrint(
-        'API Error ($operation): ${e.response?.statusCode} - ${e.message}',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '[${operation.toUpperCase()}] API error: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
 
-      throw Exception('Failed to $operation: ${e.response?.statusCode}');
+      throw Exception('Failed to call backend service');
     } catch (e) {
-      debugPrint('Unexpected Error ($operation): ${e.toString()}');
+      if (kDebugMode) {
+        debugPrint(
+          '[${operation.toUpperCase()}] Unexpected error: ${e.toString()}',
+        );
+      }
 
-      throw Exception('Unexpected error occurred while trying to $operation');
+      throw Exception('Unexpected error when calling backend service');
     }
   }
 

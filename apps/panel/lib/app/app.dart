@@ -1,12 +1,12 @@
 import 'package:fastybird_smart_panel/app/app/body.dart';
 import 'package:fastybird_smart_panel/app/app/error.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
-import 'package:fastybird_smart_panel/core/repositories/weather.dart';
+import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
+import 'package:fastybird_smart_panel/core/repositories/weather_module.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/scenes/scenes.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/pages.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/tiles.dart';
@@ -78,10 +78,10 @@ class MyApp extends StatelessWidget {
         return MultiProvider(
           providers: [
             ChangeNotifierProvider(
-              create: (_) => locator<ConfigurationRepository>(),
+              create: (_) => locator<ConfigModuleRepository>(),
             ),
             ChangeNotifierProvider(
-              create: (_) => locator<WeatherRepository>(),
+              create: (_) => locator<WeatherModuleRepository>(),
             ),
             ChangeNotifierProvider(
               create: (_) => locator<PagesRepository>(),
@@ -96,10 +96,10 @@ class MyApp extends StatelessWidget {
               create: (_) => locator<ScenesDataRepository>(),
             ),
             ChangeNotifierProvider(
-              create: (_) => locator<DevicesDataRepository>(),
+              create: (_) => locator<DevicesModuleRepository>(),
             ),
           ],
-          child: Consumer<ConfigurationRepository>(builder: (
+          child: Consumer<ConfigModuleRepository>(builder: (
             context,
             configurationRepository,
             _,

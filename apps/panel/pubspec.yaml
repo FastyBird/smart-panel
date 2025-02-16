@@ -89,11 +89,6 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
-    - assets/dummy/channel_properties.json
-    - assets/dummy/channels.json
-    - assets/dummy/channels_controls.json
-    - assets/dummy/devices.json
-    - assets/dummy/devices_controls.json
     - assets/dummy/pages.json
     - assets/dummy/tiles.json
     - assets/dummy/tiles_data_source.json
@@ -132,3 +127,28 @@ flutter:
     - family: DIN1451
       fonts:
         - asset: assets/fonts/DIN-1451.ttf
+
+# The following section is specific to Swagger OpenApi parser package
+swagger_parser:
+  schema_path: ../../spec/v1/openapi.json
+  schema_url: http://localhost:3000/api/v1
+  output_directory: lib/api
+  name: "SmartPanelAPI"
+  language: dart
+  json_serializer: freezed
+  default_content_type: "application/json"
+  extras_parameter_by_default: false
+  dio_options_parameter_by_default: false
+  root_client: true
+  root_client_name: ApiClient
+  export_file: false
+  put_in_folder: true
+  put_clients_in_folder: false
+  merge_clients: false
+  client_postfix: Client
+  path_method_name: false
+  enums_to_json: false
+  enums_parent_prefix: true
+  unknown_enum_value: true
+  mark_files_as_generated: true
+  original_http_response: true
