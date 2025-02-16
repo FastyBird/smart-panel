@@ -3,15 +3,15 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
-import 'package:fastybird_smart_panel/core/repositories/weather.dart';
+import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
+import 'package:fastybird_smart_panel/core/repositories/weather_module.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/scenes/scenes.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/pages.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/tiles.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class StartupManagerService {
@@ -20,6 +20,12 @@ class StartupManagerService {
   final double screenWidth;
   final double screenHeight;
   final double pixelRatio;
+
+  late String? _apiSecret;
+  late ApiClient _apiClient;
+  late Dio _apiIoService;
+
+  late FlutterSecureStorage _securedStorage;
 
   StartupManagerService({
     required this.screenWidth,
@@ -30,38 +36,41 @@ class StartupManagerService {
   Future<void> initialize() async {
     await locator.reset();
 
-    var securedStorage = const FlutterSecureStorage();
+    _securedStorage = const FlutterSecureStorage();
 
-    // securedStorage.delete(key: _apiSecretKey);
-    var apiSecret = await securedStorage.read(key: _apiSecretKey);
+    _apiSecret = await _securedStorage.read(key: _apiSecretKey);
 
-    var apiIoService = Dio(
+    _apiIoService = Dio(
       BaseOptions(
         baseUrl:
             '${Platform.environment['APP_HOST'] ?? 'http://10.0.2.2'}:${Platform.environment['BACKEND_PORT'] ?? '3000'}/api/v1',
         headers: {
-          'X-Display-Secret': apiSecret,
+          'X-Display-Secret': _apiSecret,
         },
         contentType: 'application/json',
       ),
     );
 
-    var apiClient = ApiClient(apiIoService);
+    _apiClient = ApiClient(_apiIoService);
 
-    var configurationRepository = ConfigurationRepository(
-      apiClient: apiClient.configurationModule,
+    var configModuleRepository = ConfigModuleRepository(
+      apiClient: _apiClient.configurationModule,
     );
-    var weatherRepository = WeatherRepository(
-      apiClient: apiClient.weatherModule,
+    var weatherModuleRepository = WeatherModuleRepository(
+      apiClient: _apiClient.weatherModule,
     );
-    var screensRepository = PagesRepository();
+    var devicesModuleRepository = DevicesModuleRepository(
+      apiClient: _apiClient.devicesModule,
+    );
+    var scenesRepository = ScenesDataRepository();
+    var pagesRepository = PagesRepository();
     var tilesRepository = TilesRepository();
     var tilesDataRepository = TilesDataRepository();
-    var scenesRepository = ScenesDataRepository();
-    var devicesRepository = DevicesDataRepository();
 
     // Register services
-    locator.registerLazySingleton(() => NavigationService());
+    locator.registerLazySingleton(
+      () => NavigationService(),
+    );
     locator.registerLazySingleton(
       () => ScreenService(
         screenWidth: screenWidth,
@@ -70,80 +79,133 @@ class StartupManagerService {
       ),
     );
 
-    locator.registerSingleton(securedStorage);
+    locator.registerSingleton(_securedStorage);
 
     // Register repositories
-    locator.registerSingleton(configurationRepository);
-    locator.registerSingleton(weatherRepository);
-    locator.registerSingleton(screensRepository);
+    locator.registerSingleton(configModuleRepository);
+    locator.registerSingleton(weatherModuleRepository);
+    locator.registerSingleton(pagesRepository);
     locator.registerSingleton(tilesRepository);
     locator.registerSingleton(tilesDataRepository);
     locator.registerSingleton(scenesRepository);
-    locator.registerSingleton(devicesRepository);
+    locator.registerSingleton(devicesModuleRepository);
 
     // Api client
-    locator.registerSingleton(apiIoService);
-    locator.registerSingleton(apiClient);
+    locator.registerSingleton(_apiIoService);
+    locator.registerSingleton(_apiClient);
 
-    if (apiSecret == null) {
-      try {
-        var registerResponse = await apiClient.authModule
-            .createAuthModuleRegisterDisplay(userAgent: 'FlutterApp');
-
-        await securedStorage.write(
-          key: _apiSecretKey,
-          value: registerResponse.data.data.secret,
-        );
-
-        // Update secret key
-        apiIoService.options.headers['X-Display-Secret'] =
-            registerResponse.data.data.secret;
-
-        debugPrint(registerResponse.data.data.secret);
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 403) {
-          throw Exception('Application have to be reset');
-        } else {
-          throw Exception('Backend initialization failed');
-        }
-      } catch (e) {
-        debugPrint(e.toString());
-
-        throw Exception('Backend initialization failed');
+    try {
+      await _initialize();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[BACKEND INIT] Backend initialization failed: $e');
       }
-    } else {
-      try {
-        // Try to fetch the display profile
-        await apiClient.authModule.getAuthModuleProfile();
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 403) {
-          debugPrint('Stored secret key is not valid');
 
-          securedStorage.delete(key: _apiSecretKey);
-        } else {
-          throw Exception('Backend initialization failed');
-        }
-      } catch (e) {
-        debugPrint(e.toString());
-
-        throw Exception('Backend initialization failed');
-      }
+      throw StateError(
+        'Backend initialization failed. Ensure the server is running.',
+      );
     }
 
     try {
       await Future.wait([
-        configurationRepository.initialize(),
-        weatherRepository.initialize(),
-        screensRepository.initialize(),
+        configModuleRepository.initialize(),
+        weatherModuleRepository.initialize(),
+        devicesModuleRepository.initialize(),
+        scenesRepository.initialize(),
+        pagesRepository.initialize(),
         tilesRepository.initialize(),
         tilesDataRepository.initialize(),
-        scenesRepository.initialize(),
-        devicesRepository.initialize(),
       ]);
     } catch (e) {
-      debugPrint('Failed to initialize: $e');
+      if (kDebugMode) {
+        debugPrint('[REPOS INIT] Data storage initialization failed: $e');
+      }
 
-      throw Exception('Services initialization failed');
+      throw ArgumentError(
+        'Data storage initialization failed. Ensure the server is running.',
+      );
+    }
+  }
+
+  Future<void> _initialize() async {
+    if (_apiSecret == null) {
+      await _obtainApiSecret();
+    } else {
+      await _checkApiConnection();
+    }
+  }
+
+  Future<void> _obtainApiSecret() async {
+    try {
+      var registerResponse = await _apiClient.authModule
+          .createAuthModuleRegisterDisplay(userAgent: 'FlutterApp');
+
+      String apiSecret = registerResponse.data.data.secret;
+
+      // Store API secret key
+      await _securedStorage.write(
+        key: _apiSecretKey,
+        value: apiSecret,
+      );
+
+      // Update API secret key in the API client
+      _apiIoService.options.headers['X-Display-Secret'] = apiSecret;
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[OBTAIN SECRET] API error: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+
+      if (e.response?.statusCode == 403) {
+        throw StateError(
+          'Application reset is required. Please reset the app.',
+        );
+      }
+
+      throw Exception(
+        'Backend initialization failed. Ensure the server is running.',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[OBTAIN SECRET] Unexpected error: ${e.toString()}');
+      }
+
+      throw StateError('Unexpected backend error.');
+    }
+  }
+
+  Future<void> _checkApiConnection() async {
+    try {
+      // Try to fetch the display profile
+      await _apiClient.authModule.getAuthModuleProfile();
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[CHECK SECRET] API Error: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        if (kDebugMode) {
+          debugPrint('[CHECK SECRET] Stored secret key is not valid');
+        }
+
+        _securedStorage.delete(key: _apiSecretKey);
+        _apiSecret = null;
+
+        await _initialize();
+      } else {
+        throw Exception(
+          'Backend connection check failed. Ensure the server is running.',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[CHECK SECRET] Unexpected error: ${e.toString()}');
+      }
+
+      throw StateError('Unexpected backend error.');
     }
   }
 }

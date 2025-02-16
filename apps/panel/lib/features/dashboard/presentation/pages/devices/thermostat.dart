@@ -10,7 +10,7 @@ import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/cha
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/heater.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/payloads.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -1379,7 +1379,8 @@ ThermostatModeValue? getValueFromMode(ThermostatModeType type) {
 }
 
 class PropertyValueHelper {
-  final DevicesDataRepository _repository = locator<DevicesDataRepository>();
+  final DevicesModuleRepository _repository =
+      locator<DevicesModuleRepository>();
 
   void setPropertyValue(
     BuildContext context,

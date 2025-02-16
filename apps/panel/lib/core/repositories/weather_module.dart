@@ -2,9 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/models/weather_location_weather.dart';
 import 'package:fastybird_smart_panel/api/weather_module/weather_module_client.dart';
 import 'package:fastybird_smart_panel/core/models/general/weather.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
-class WeatherRepository extends ChangeNotifier {
+class WeatherModuleRepository extends ChangeNotifier {
   final WeatherModuleClient _apiClient;
 
   late CurrentDayModel? _currentWeather;
@@ -12,7 +12,7 @@ class WeatherRepository extends ChangeNotifier {
 
   bool _isLoading = true;
 
-  WeatherRepository({
+  WeatherModuleRepository({
     required WeatherModuleClient apiClient,
   }) : _apiClient = apiClient;
 
@@ -136,15 +136,21 @@ class WeatherRepository extends ChangeNotifier {
     try {
       return await apiCall();
     } on DioException catch (e) {
-      debugPrint(
-        'API Error ($operation): ${e.response?.statusCode} - ${e.message}',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '[${operation.toUpperCase()}] API error: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
 
-      throw Exception('Failed to $operation: ${e.response?.statusCode}');
+      throw Exception('Failed to call backend service');
     } catch (e) {
-      debugPrint('Unexpected Error ($operation): ${e.toString()}');
+      if (kDebugMode) {
+        debugPrint(
+          '[${operation.toUpperCase()}] Unexpected error: ${e.toString()}',
+        );
+      }
 
-      throw Exception('Unexpected error occurred while trying to $operation');
+      throw Exception('Unexpected error when calling backend service');
     }
   }
 }

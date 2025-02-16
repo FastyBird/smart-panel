@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/pages/device.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -17,12 +17,12 @@ class DevicePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DevicesDataRepository>(builder: (
+    return Consumer<DevicesModuleRepository>(builder: (
       context,
-      devicesRepository,
+      devicesModuleRepository,
       _,
     ) {
-      if (devicesRepository.isLoading) {
+      if (devicesModuleRepository.isLoading) {
         return Scaffold(
           body: Center(
             child: SizedBox(
@@ -34,7 +34,7 @@ class DevicePage extends StatelessWidget {
         );
       }
 
-      var device = devicesRepository.getDevice(page.device);
+      var device = devicesModuleRepository.getDevice(page.device);
 
       if (device == null) {
         final localizations = AppLocalizations.of(context)!;

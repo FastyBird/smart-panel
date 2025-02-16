@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/general/weather.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
-import 'package:fastybird_smart_panel/core/repositories/weather.dart';
+import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
+import 'package:fastybird_smart_panel/core/repositories/weather_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
@@ -23,9 +23,10 @@ class WeatherDetailPage extends StatefulWidget {
 class _WeatherDetailPageState extends State<WeatherDetailPage> {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final WeatherRepository _weatherRepository = locator<WeatherRepository>();
-  final ConfigurationRepository _configurationRepository =
-      locator<ConfigurationRepository>();
+  final WeatherModuleRepository _weatherModuleRepository =
+      locator<WeatherModuleRepository>();
+  final ConfigModuleRepository _configModuleRepository =
+      locator<ConfigModuleRepository>();
 
   late WeatherUnit _weatherUnit;
   late CurrentDayModel? _currentWeather;
@@ -37,23 +38,23 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
 
     _syncStateWithRepository();
 
-    _configurationRepository.addListener(_syncStateWithRepository);
-    _weatherRepository.addListener(_syncStateWithRepository);
+    _configModuleRepository.addListener(_syncStateWithRepository);
+    _weatherModuleRepository.addListener(_syncStateWithRepository);
   }
 
   @override
   void dispose() {
-    _configurationRepository.removeListener(_syncStateWithRepository);
-    _weatherRepository.removeListener(_syncStateWithRepository);
+    _configModuleRepository.removeListener(_syncStateWithRepository);
+    _weatherModuleRepository.removeListener(_syncStateWithRepository);
 
     super.dispose();
   }
 
   void _syncStateWithRepository() {
     setState(() {
-      _weatherUnit = _configurationRepository.weatherConfiguration.unit;
-      _currentWeather = _weatherRepository.currentWeather;
-      _weatherForecast = _weatherRepository.forecast;
+      _weatherUnit = _configModuleRepository.weatherConfiguration.unit;
+      _currentWeather = _weatherModuleRepository.currentWeather;
+      _weatherForecast = _weatherModuleRepository.forecast;
     });
   }
 

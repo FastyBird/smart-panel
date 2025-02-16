@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
+import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
@@ -20,8 +20,8 @@ class AudioSettingsPage extends StatefulWidget {
 
 class _AudioSettingsPageState extends State<AudioSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigurationRepository _configurationRepository =
-      locator<ConfigurationRepository>();
+  final ConfigModuleRepository _configModuleRepository =
+      locator<ConfigModuleRepository>();
 
   late bool _speakerEnabled;
   late int _speakerVolume;
@@ -40,25 +40,24 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 
     _syncStateWithRepository();
 
-    _configurationRepository.addListener(_syncStateWithRepository);
+    _configModuleRepository.addListener(_syncStateWithRepository);
   }
 
   @override
   void dispose() {
-    _configurationRepository.removeListener(_syncStateWithRepository);
+    _configModuleRepository.removeListener(_syncStateWithRepository);
     super.dispose();
   }
 
   void _syncStateWithRepository() {
     setState(() {
       _speakerEnabled =
-          _configurationRepository.audioConfiguration.hasSpeakerEnabled;
-      _speakerVolume =
-          _configurationRepository.audioConfiguration.speakerVolume;
+          _configModuleRepository.audioConfiguration.hasSpeakerEnabled;
+      _speakerVolume = _configModuleRepository.audioConfiguration.speakerVolume;
       _microphoneEnabled =
-          _configurationRepository.audioConfiguration.hasMicrophoneEnabled;
+          _configModuleRepository.audioConfiguration.hasMicrophoneEnabled;
       _microphoneVolume =
-          _configurationRepository.audioConfiguration.microphoneVolume;
+          _configModuleRepository.audioConfiguration.microphoneVolume;
     });
   }
 
@@ -121,7 +120,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                       _speakerEnabled = !_speakerEnabled;
                     });
 
-                    final success = await _configurationRepository
+                    final success = await _configModuleRepository
                         .setSpeakerState(_speakerEnabled);
 
                     Future.microtask(() async {
@@ -205,7 +204,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                                 _debounce =
                                     Timer(const Duration(milliseconds: 500),
                                         () async {
-                                  final success = await _configurationRepository
+                                  final success = await _configModuleRepository
                                       .setSpeakerVolume(_speakerVolume);
 
                                   Future.microtask(() async {
@@ -292,7 +291,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                       _microphoneEnabled = !_microphoneEnabled;
                     });
 
-                    final success = await _configurationRepository
+                    final success = await _configModuleRepository
                         .setMicrophoneState(_microphoneEnabled);
 
                     Future.microtask(() async {
@@ -377,7 +376,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                                 _debounce =
                                     Timer(const Duration(milliseconds: 500),
                                         () async {
-                                  final success = await _configurationRepository
+                                  final success = await _configModuleRepository
                                       .setMicrophoneVolume(_microphoneVolume);
 
                                   Future.microtask(() async {

@@ -10,7 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/light.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/lighting.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/formats.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
@@ -1515,7 +1515,8 @@ enum LightChannelModeType {
 }
 
 class PropertyValueHelper {
-  final DevicesDataRepository _repository = locator<DevicesDataRepository>();
+  final DevicesModuleRepository _repository =
+      locator<DevicesModuleRepository>();
 
   void setPropertyValue(
     BuildContext context,

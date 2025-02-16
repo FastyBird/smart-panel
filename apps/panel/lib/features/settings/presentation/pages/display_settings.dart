@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/repositories/configuration.dart';
+import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
@@ -20,8 +20,8 @@ class DisplaySettingsPage extends StatefulWidget {
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigurationRepository _configurationRepository =
-      locator<ConfigurationRepository>();
+  final ConfigModuleRepository _configModuleRepository =
+      locator<ConfigModuleRepository>();
 
   late bool _isDarkMode;
   late int _brightness;
@@ -38,23 +38,23 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
     _syncStateWithRepository();
 
-    _configurationRepository.addListener(_syncStateWithRepository);
+    _configModuleRepository.addListener(_syncStateWithRepository);
   }
 
   @override
   void dispose() {
-    _configurationRepository.removeListener(_syncStateWithRepository);
+    _configModuleRepository.removeListener(_syncStateWithRepository);
     super.dispose();
   }
 
   void _syncStateWithRepository() {
     setState(() {
-      _isDarkMode = _configurationRepository.displayConfiguration.hasDarkMode;
-      _brightness = _configurationRepository.displayConfiguration.brightness;
+      _isDarkMode = _configModuleRepository.displayConfiguration.hasDarkMode;
+      _brightness = _configModuleRepository.displayConfiguration.brightness;
       _screenLockDuration =
-          _configurationRepository.displayConfiguration.screenLockDuration;
+          _configModuleRepository.displayConfiguration.screenLockDuration;
       _hasScreenSaver =
-          _configurationRepository.displayConfiguration.hasScreenSaver;
+          _configModuleRepository.displayConfiguration.hasScreenSaver;
     });
   }
 
@@ -123,7 +123,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                         _isDarkMode = !_isDarkMode;
                       });
 
-                      final success = await _configurationRepository
+                      final success = await _configModuleRepository
                           .setDisplayDarkMode(_isDarkMode);
 
                       Future.microtask(() async {
@@ -204,7 +204,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                             _debounce = Timer(
                               const Duration(milliseconds: 500),
                               () async {
-                                final success = await _configurationRepository
+                                final success = await _configModuleRepository
                                     .setDisplayBrightness(_brightness);
 
                                 Future.microtask(() async {
@@ -315,7 +315,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                           _screenLockDuration = value;
                         });
 
-                        final success = await _configurationRepository
+                        final success = await _configModuleRepository
                             .setDisplayScreenLockDuration(_screenLockDuration);
 
                         Future.microtask(() async {
@@ -394,7 +394,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                         _hasScreenSaver = !_hasScreenSaver;
                       });
 
-                      final success = await _configurationRepository
+                      final success = await _configModuleRepository
                           .setDisplayScreenSaver(_hasScreenSaver);
 
                       Future.microtask(() async {
