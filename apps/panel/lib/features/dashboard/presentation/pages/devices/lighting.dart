@@ -539,10 +539,7 @@ class LightSingleChannelDetail extends StatelessWidget {
       }
 
       return Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacings.pMd,
-          horizontal: AppSpacings.pLg,
-        ),
+        padding: AppSpacings.paddingMd,
         child: Row(
           children: [
             Expanded(

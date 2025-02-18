@@ -104,7 +104,7 @@ class TilesPage extends StatelessWidget {
         ),
         body: SafeArea(
           child: Padding(
-            padding: AppSpacings.paddingMd,
+            padding: AppSpacings.paddingSm,
             child: ScreenGrid(
               children: tiles.map((tile) {
                 return GridItemModel(
@@ -115,7 +115,7 @@ class TilesPage extends StatelessWidget {
                   child: Container(
                     alignment: Alignment.center,
                     child: Padding(
-                      padding: AppSpacings.paddingMd,
+                      padding: AppSpacings.paddingSm,
                       child: buildTileWidget(
                         tile,
                         dashboardRepository.getDataSourceByIds(tile.dataSource),
