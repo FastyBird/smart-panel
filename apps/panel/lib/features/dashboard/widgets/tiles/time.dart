@@ -2,13 +2,12 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/data_source.dart';
+import 'package:fastybird_smart_panel/features/dashboard/models/ui/data_source/data_source.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/time.dart';
 import 'package:fastybird_smart_panel/features/dashboard/widgets/tiles/tile.dart';
 import 'package:flutter/material.dart';
 
-class TimeTileWidget
-    extends TileWidget<TimeTileModel, List<TileDataSourceModel>> {
+class TimeTileWidget extends TileWidget<TimeTileModel, List<DataSourceModel>> {
   final ScreenService _screenService = locator<ScreenService>();
 
   TimeTileWidget(super.tile, super.dataSource, {super.key});

@@ -2,8 +2,8 @@ import 'package:fastybird_smart_panel/core/utils/enum.dart';
 
 enum TileType {
   clock('clock'),
-  weatherDay('weather_day'),
-  weatherForecast('weather_forecast'),
+  weatherDay('weather-day'),
+  weatherForecast('weather-forecast'),
   scene('scene'),
   device('device');
 
@@ -21,26 +21,26 @@ enum TileType {
   static bool contains(String value) => utils.contains(value);
 }
 
-enum TileDataSourceType {
-  deviceChannel('device_channel');
+enum DataSourceType {
+  deviceChannel('device-channel');
 
   final String value;
 
-  const TileDataSourceType(this.value);
+  const DataSourceType(this.value);
 
   static final utils = StringEnumUtils(
-    TileDataSourceType.values,
-    (TileDataSourceType payload) => payload.value,
+    DataSourceType.values,
+    (DataSourceType payload) => payload.value,
   );
 
-  static TileDataSourceType? fromValue(String value) => utils.fromValue(value);
+  static DataSourceType? fromValue(String value) => utils.fromValue(value);
 
   static bool contains(String value) => utils.contains(value);
 }
 
 enum PageType {
-  home('home'),
   tiles('tiles'),
+  cards('cards'),
   device('device');
 
   final String value;

@@ -4,10 +4,12 @@ import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/enum.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/light.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/channels/light.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/lighting.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/lighting.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
@@ -15,17 +17,19 @@ import 'package:fastybird_smart_panel/features/dashboard/types/formats.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class LightingDeviceDetailPage extends StatefulWidget {
   final LightingDeviceDataModel _device;
+  final LightingDeviceCapability _capability;
   final bool _supportSwatches = false;
 
   const LightingDeviceDetailPage({
     super.key,
     required LightingDeviceDataModel device,
-  }) : _device = device;
+    required LightingDeviceCapability capability,
+  })  : _device = device,
+        _capability = capability;
 
   @override
   State<LightingDeviceDetailPage> createState() =>
@@ -40,28 +44,28 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
   late int _currentModeIndex;
   late int _selectedChannel;
 
-  late List<LightChannelDataModel> _channels;
+  late List<LightChannelCapability> _channelCapabilities;
 
   @override
   void initState() {
     super.initState();
 
-    _selectedChannel = 0;
+    _initializeWidget();
 
-    _channels = widget._device.lightChannels;
+    _selectedChannel = 0;
 
     _lightModes.add(LightChannelModeType.off);
 
-    if (widget._device.hasBrightness) {
+    if (widget._capability.hasBrightness) {
       _lightModes.add(LightChannelModeType.brightness);
     }
-    if (widget._device.hasColor) {
+    if (widget._capability.hasColor) {
       _lightModes.add(LightChannelModeType.color);
     }
-    if (widget._device.hasTemperature) {
+    if (widget._capability.hasTemperature) {
       _lightModes.add(LightChannelModeType.temperature);
     }
-    if (widget._device.hasWhite) {
+    if (widget._capability.hasWhite) {
       _lightModes.add(LightChannelModeType.white);
     }
     if (widget._supportSwatches) {
@@ -72,29 +76,41 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
       _colorMode = _lightModes[1];
     }
 
-    if (_channels.isNotEmpty) {
-      _currentModeIndex = _channels[_selectedChannel].on ? 1 : 0;
+    if (_channelCapabilities.isNotEmpty) {
+      _currentModeIndex = _channelCapabilities[_selectedChannel].on ? 1 : 0;
     } else {
       _currentModeIndex = 0;
     }
   }
 
   @override
+  void didUpdateWidget(covariant LightingDeviceDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _initializeWidget();
+  }
+
+  void _initializeWidget() {
+    _channelCapabilities = widget._capability.lightCapabilities;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (!widget._device.isSimpleLight &&
-        !widget._device.isSingleBrightness &&
-        _channels.length > 1) {
+    if (!widget._capability.isSimpleLight &&
+        !widget._capability.isSingleBrightness &&
+        _channelCapabilities.length > 1) {
       return DefaultTabController(
         initialIndex: 0,
-        length: _channels.length,
+        length: _channelCapabilities.length,
         child: Scaffold(
           appBar: ScreenAppBar(
             title: widget._device.name,
             bottom: TabBar(
-              tabs: _channels
+              tabs: _channelCapabilities
                   .map(
-                    (channel) => Tab(
-                      text: channel.name ?? channel.category.value,
+                    (capability) => Tab(
+                      text: capability.channel.name ??
+                          capability.channel.category.value,
                     ),
                   )
                   .toList(),
@@ -114,11 +130,11 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
               });
 
               return TabBarView(
-                children: _channels
+                children: _channelCapabilities
                     .map(
-                      (channel) => LightSingleChannelDetail(
-                        device: widget._device,
-                        channel: channel,
+                      (capability) => LightSingleChannelDetail(
+                        deviceCapability: widget._capability,
+                        channelCapability: capability,
                         mode: _colorMode,
                       ),
                     )
@@ -128,7 +144,7 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
           ),
           bottomNavigationBar: _renderBottomNavigation(
             context,
-            _channels,
+            _channelCapabilities,
           ),
         ),
       );
@@ -142,39 +158,40 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
         BuildContext context,
         BoxConstraints constraints,
       ) {
-        if (widget._device.isSimpleLight ||
-            (widget._device.isSingleBrightness && _channels.length >= 2)) {
+        if (widget._capability.isSimpleLight ||
+            (widget._capability.isSingleBrightness &&
+                _channelCapabilities.length >= 2)) {
           return LightSimpleDetail(
-            device: widget._device,
-            channels: _channels,
-            withBrightness:
-                widget._device.isSingleBrightness && _channels.length >= 2,
+            capability: widget._capability,
+            withBrightness: widget._capability.isSingleBrightness &&
+                _channelCapabilities.length >= 2,
           );
         }
 
-        final channel = _channels.first;
+        final channelCapability = _channelCapabilities.first;
 
         return LightSingleChannelDetail(
-          device: widget._device,
-          channel: channel,
+          deviceCapability: widget._capability,
+          channelCapability: channelCapability,
           mode: _colorMode,
         );
       }),
       bottomNavigationBar: _renderBottomNavigation(
         context,
-        _channels,
+        _channelCapabilities,
       ),
     );
   }
 
   Widget? _renderBottomNavigation(
     BuildContext context,
-    List<LightChannelDataModel> channels,
+    List<LightChannelCapability> channelCapabilities,
   ) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (widget._device.isSimpleLight ||
-        (widget._device.isSingleBrightness && channels.length >= 2)) {
+    if (widget._capability.isSimpleLight ||
+        (widget._capability.isSingleBrightness &&
+            channelCapabilities.length >= 2)) {
       return null;
     }
 
@@ -187,7 +204,7 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
       currentIndex: _currentModeIndex,
       onTap: (int index) {
         if (_lightModes[index] == LightChannelModeType.off) {
-          if (_channels[_selectedChannel].on) {
+          if (_channelCapabilities[_selectedChannel].on) {
             setState(() {
               _currentModeIndex = 0;
               _colorMode = _lightModes[1];
@@ -201,9 +218,8 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
 
           _valueHelper.setPropertyValue(
             context,
-            widget._device,
-            _channels[_selectedChannel].onProp,
-            _channels[_selectedChannel].on ? false : true,
+            _channelCapabilities[_selectedChannel].onProp,
+            _channelCapabilities[_selectedChannel].on ? false : true,
           );
         } else {
           setState(() {
@@ -211,11 +227,10 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
             _colorMode = _lightModes[index];
           });
 
-          if (_channels[_selectedChannel].on == false) {
+          if (_channelCapabilities[_selectedChannel].on == false) {
             _valueHelper.setPropertyValue(
               context,
-              widget._device,
-              _channels[_selectedChannel].onProp,
+              _channelCapabilities[_selectedChannel].onProp,
               true,
             );
           }
@@ -267,17 +282,14 @@ class LightSimpleDetail extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
-  final LightingDeviceDataModel _device;
-  final List<LightChannelDataModel> _channels;
+  final LightingDeviceCapability _capability;
   final bool _withBrightness;
 
   LightSimpleDetail({
     super.key,
-    required LightingDeviceDataModel device,
-    required List<LightChannelDataModel> channels,
+    required LightingDeviceCapability capability,
     bool withBrightness = false,
-  })  : _device = device,
-        _channels = channels,
+  })  : _capability = capability,
         _withBrightness = withBrightness;
 
   @override
@@ -290,21 +302,21 @@ class LightSimpleDetail extends StatelessWidget {
             elementMaxSize - _screenService.scale(45) - AppSpacings.pSm;
       }
 
-      final List<Widget> controlElements = _channels
+      final List<Widget> controlElements = _capability.lightCapabilities
           .map(
-            (channel) => _withBrightness
+            (lightCapability) => _withBrightness
                 ? Column(
                     children: [
                       Column(
                         children: [
                           BrightnessChannel(
-                            device: _device,
-                            channel: channel,
+                            capability: lightCapability,
                             elementMaxSize: elementMaxSize,
                             vertical: true,
                             showValue: true,
                             onValueChanged: (double value) {
-                              final brightnessProp = channel.brightnessProp;
+                              final brightnessProp =
+                                  lightCapability.brightnessProp;
 
                               if (brightnessProp == null) {
                                 return;
@@ -312,7 +324,6 @@ class LightSimpleDetail extends StatelessWidget {
 
                               _valueHelper.setPropertyValue(
                                 context,
-                                _device,
                                 brightnessProp,
                                 value,
                               );
@@ -320,22 +331,20 @@ class LightSimpleDetail extends StatelessWidget {
                           ),
                           AppSpacings.spacingSmVertical,
                           ChannelSwitch(
-                            device: _device,
-                            channel: channel,
+                            capability: lightCapability,
                             onStateChanged: (bool state) {
                               _valueHelper.setPropertyValue(
                                 context,
-                                _device,
-                                channel.onProp,
+                                lightCapability.onProp,
                                 state,
                               );
                             },
                           ),
                         ],
                       ),
-                      _channels.length > 1
+                      _capability.lightCapabilities.length > 1
                           ? Text(
-                              channel.name ?? channel.category.value,
+                              lightCapability.name,
                               style: TextStyle(
                                 fontSize: AppFontSize.base,
                               ),
@@ -346,7 +355,7 @@ class LightSimpleDetail extends StatelessWidget {
                 : Column(
                     children: [
                       ColoredSwitch(
-                        switchState: channel.on,
+                        switchState: lightCapability.on,
                         iconOn: Icons.power_settings_new,
                         iconOff: Icons.power_settings_new,
                         trackWidth: elementMaxSize,
@@ -354,15 +363,14 @@ class LightSimpleDetail extends StatelessWidget {
                         onChanged: (bool state) {
                           _valueHelper.setPropertyValue(
                             context,
-                            _device,
-                            channel.onProp,
+                            lightCapability.onProp,
                             state,
                           );
                         },
                       ),
-                      _channels.length > 1
+                      _capability.lightCapabilities.length > 1
                           ? Text(
-                              channel.name ?? channel.category.value,
+                              lightCapability.name,
                               style: TextStyle(
                                 fontSize: AppFontSize.base,
                               ),
@@ -404,17 +412,17 @@ class LightSimpleDetail extends StatelessWidget {
 class LightSingleChannelDetail extends StatelessWidget {
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
-  final LightingDeviceDataModel _device;
-  final LightChannelDataModel _channel;
+  final LightingDeviceCapability _deviceCapability;
+  final LightChannelCapability _channelCapability;
   final LightChannelModeType _mode;
 
   LightSingleChannelDetail({
     super.key,
-    required LightingDeviceDataModel device,
-    required LightChannelDataModel channel,
+    required LightingDeviceCapability deviceCapability,
+    required LightChannelCapability channelCapability,
     required LightChannelModeType mode,
-  })  : _device = device,
-        _channel = channel,
+  })  : _deviceCapability = deviceCapability,
+        _channelCapability = channelCapability,
         _mode = mode;
 
   @override
@@ -424,18 +432,17 @@ class LightSingleChannelDetail extends StatelessWidget {
 
       late Widget controlElement;
 
-      final ChannelPropertyDataModel? brightnessProp = _channel.brightnessProp;
+      final ChannelPropertyDataModel? brightnessProp =
+          _channelCapability.brightnessProp;
 
       if (_mode == LightChannelModeType.brightness && brightnessProp != null) {
         controlElement = BrightnessChannel(
-          device: _device,
-          channel: _channel,
+          capability: _channelCapability,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) {
             _valueHelper.setPropertyValue(
               context,
-              _device,
               brightnessProp,
               value,
             );
@@ -443,57 +450,51 @@ class LightSingleChannelDetail extends StatelessWidget {
         );
       }
 
-      if (_mode == LightChannelModeType.color && _channel.hasColor) {
+      if (_mode == LightChannelModeType.color && _channelCapability.hasColor) {
         controlElement = ColorChannel(
-          device: _device,
-          channel: _channel,
+          capability: _channelCapability,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (Color value) {
             final rgbValue = ColorUtils.toRGB(value);
             final hsvValue = ColorUtils.toHSV(value);
 
-            if (_channel.colorRedProp != null) {
+            if (_channelCapability.colorRedProp != null) {
               _valueHelper.setPropertyValue(
                 context,
-                _device,
-                _channel.colorRedProp!,
+                _channelCapability.colorRedProp!,
                 rgbValue.red,
               );
             }
 
-            if (_channel.colorGreenProp != null) {
+            if (_channelCapability.colorGreenProp != null) {
               _valueHelper.setPropertyValue(
                 context,
-                _device,
-                _channel.colorGreenProp!,
+                _channelCapability.colorGreenProp!,
                 rgbValue.green,
               );
             }
 
-            if (_channel.colorBlueProp != null) {
+            if (_channelCapability.colorBlueProp != null) {
               _valueHelper.setPropertyValue(
                 context,
-                _device,
-                _channel.colorBlueProp!,
+                _channelCapability.colorBlueProp!,
                 rgbValue.blue,
               );
             }
 
-            if (_channel.hueProp != null) {
+            if (_channelCapability.hueProp != null) {
               _valueHelper.setPropertyValue(
                 context,
-                _device,
-                _channel.hueProp!,
+                _channelCapability.hueProp!,
                 hsvValue.hue,
               );
             }
 
-            if (_channel.saturationProp != null) {
+            if (_channelCapability.saturationProp != null) {
               _valueHelper.setPropertyValue(
                 context,
-                _device,
-                _channel.saturationProp!,
+                _channelCapability.saturationProp!,
                 hsvValue.saturation,
               );
             }
@@ -501,18 +502,17 @@ class LightSingleChannelDetail extends StatelessWidget {
         );
       }
 
-      final ChannelPropertyDataModel? tempProp = _channel.temperatureProp;
+      final ChannelPropertyDataModel? tempProp =
+          _channelCapability.temperatureProp;
 
       if (_mode == LightChannelModeType.temperature && tempProp != null) {
         controlElement = TemperatureChannel(
-          device: _device,
-          channel: _channel,
+          capability: _channelCapability,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) {
             _valueHelper.setPropertyValue(
               context,
-              _device,
               tempProp,
               value,
             );
@@ -520,18 +520,17 @@ class LightSingleChannelDetail extends StatelessWidget {
         );
       }
 
-      final ChannelPropertyDataModel? colorWhiteProp = _channel.colorWhiteProp;
+      final ChannelPropertyDataModel? colorWhiteProp =
+          _channelCapability.colorWhiteProp;
 
       if (_mode == LightChannelModeType.white && colorWhiteProp != null) {
         controlElement = WhiteChannel(
-          device: _device,
-          channel: _channel,
+          capability: _channelCapability,
           vertical: true,
           elementMaxSize: elementMaxSize,
           onValueChanged: (double value) {
             _valueHelper.setPropertyValue(
               context,
-              _device,
               colorWhiteProp,
               value,
             );
@@ -560,25 +559,22 @@ class LightSingleChannelDetail extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_channel.hasBrightness)
+                          if (_channelCapability.hasBrightness)
                             ChannelActualBrightness(
-                              device: _device,
-                              channel: _channel,
+                              capability: _channelCapability,
                             ),
                           AppSpacings.spacingMdVertical,
                           Wrap(
                             spacing: AppSpacings.pMd,
                             runSpacing: AppSpacings.pMd,
                             children: [
-                              if (_channel.hasColor)
+                              if (_channelCapability.hasColor)
                                 ChannelActualColor(
-                                  device: _device,
-                                  channel: _channel,
+                                  capability: _channelCapability,
                                 ),
-                              if (_channel.hasTemperature)
+                              if (_channelCapability.hasTemperature)
                                 ChannelActualTemperature(
-                                  device: _device,
-                                  channel: _channel,
+                                  capability: _channelCapability,
                                 ),
                             ],
                           ),
@@ -590,7 +586,7 @@ class LightSingleChannelDetail extends StatelessWidget {
                       flex: 1,
                       child: SingleChildScrollView(
                         child: LightTiles(
-                          device: _device,
+                          capability: _deviceCapability,
                         ),
                       ),
                     ),
@@ -607,23 +603,25 @@ class LightSingleChannelDetail extends StatelessWidget {
 }
 
 class BrightnessChannel extends StatefulWidget {
-  final LightingDeviceDataModel device;
-  final LightChannelDataModel channel;
-  final double? elementMaxSize;
-  final bool vertical;
-  final bool showValue;
+  final LightChannelCapability _capability;
+  final double? _elementMaxSize;
+  final bool _vertical;
+  final bool _showValue;
 
-  final ValueChanged<double>? onValueChanged;
+  final ValueChanged<double>? _onValueChanged;
 
   const BrightnessChannel({
     super.key,
-    required this.device,
-    required this.channel,
-    this.elementMaxSize,
-    this.vertical = false,
-    this.showValue = false,
-    this.onValueChanged,
-  });
+    required LightChannelCapability capability,
+    double? elementMaxSize,
+    bool vertical = false,
+    bool showValue = false,
+    ValueChanged<double>? onValueChanged,
+  })  : _capability = capability,
+        _elementMaxSize = elementMaxSize,
+        _vertical = vertical,
+        _showValue = showValue,
+        _onValueChanged = onValueChanged;
 
   @override
   State<BrightnessChannel> createState() => _BrightnessChannelState();
@@ -640,7 +638,18 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
   void initState() {
     super.initState();
 
-    _property = widget.channel.brightnessProp;
+    _initializeWidget();
+  }
+
+  @override
+  void didUpdateWidget(covariant BrightnessChannel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _initializeWidget();
+  }
+
+  void _initializeWidget() {
+    _property = widget._capability.brightnessProp;
 
     final property = _property;
 
@@ -671,23 +680,23 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
       value: _brightness ?? min,
       min: min,
       max: max,
-      enabled: widget.channel.on,
-      vertical: widget.vertical,
-      trackWidth: widget.elementMaxSize,
+      enabled: widget._capability.on,
+      vertical: widget._vertical,
+      trackWidth: widget._elementMaxSize,
       showThumb: false,
       onValueChanged: (double value) {
         setState(() {
           _brightness = value;
         });
 
-        widget.onValueChanged?.call(value);
+        widget._onValueChanged?.call(value);
       },
       inner: [
-        widget.showValue
+        widget._showValue
             ? Positioned(
                 right: _screenService.scale(5),
                 child: RotatedBox(
-                  quarterTurns: widget.vertical ? 1 : 0,
+                  quarterTurns: widget._vertical ? 1 : 0,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
@@ -737,7 +746,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
           child: Row(
             children: [
               RotatedBox(
-                quarterTurns: widget.vertical ? 1 : 0,
+                quarterTurns: widget._vertical ? 1 : 0,
                 child: Icon(
                   Icons.light_mode,
                   size: _screenService.scale(40),
@@ -755,21 +764,22 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
 }
 
 class ColorChannel extends StatefulWidget {
-  final LightingDeviceDataModel device;
-  final LightChannelDataModel channel;
-  final double? elementMaxSize;
-  final bool vertical;
+  final LightChannelCapability _capability;
+  final double? _elementMaxSize;
+  final bool _vertical;
 
-  final ValueChanged<Color>? onValueChanged;
+  final ValueChanged<Color>? _onValueChanged;
 
   const ColorChannel({
     super.key,
-    required this.device,
-    required this.channel,
-    this.elementMaxSize,
-    this.vertical = false,
-    this.onValueChanged,
-  });
+    required LightChannelCapability capability,
+    double? elementMaxSize,
+    bool vertical = false,
+    ValueChanged<Color>? onValueChanged,
+  })  : _capability = capability,
+        _elementMaxSize = elementMaxSize,
+        _vertical = vertical,
+        _onValueChanged = onValueChanged;
 
   @override
   State<ColorChannel> createState() => _ColorChannelState();
@@ -782,7 +792,18 @@ class _ColorChannelState extends State<ColorChannel> {
   void initState() {
     super.initState();
 
-    _color = _getValueFromColor(widget.channel.color);
+    _initializeWidget();
+  }
+
+  @override
+  void didUpdateWidget(covariant ColorChannel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _initializeWidget();
+  }
+
+  void _initializeWidget() {
+    _color = _getValueFromColor(widget._capability.color);
   }
 
   @override
@@ -791,15 +812,15 @@ class _ColorChannelState extends State<ColorChannel> {
       value: _color,
       min: 0.0,
       max: 1.0,
-      enabled: widget.channel.on,
-      vertical: widget.vertical,
-      trackWidth: widget.elementMaxSize,
+      enabled: widget._capability.on,
+      vertical: widget._vertical,
+      trackWidth: widget._elementMaxSize,
       onValueChanged: (double value) {
         setState(() {
           _color = value;
         });
 
-        widget.onValueChanged?.call(_getColorFromValue(value));
+        widget._onValueChanged?.call(_getColorFromValue(value));
       },
       background: BoxDecoration(
         gradient: const LinearGradient(
@@ -836,21 +857,22 @@ class _ColorChannelState extends State<ColorChannel> {
 }
 
 class TemperatureChannel extends StatefulWidget {
-  final LightingDeviceDataModel device;
-  final LightChannelDataModel channel;
-  final double? elementMaxSize;
-  final bool vertical;
+  final LightChannelCapability _capability;
+  final double? _elementMaxSize;
+  final bool _vertical;
 
-  final ValueChanged<double>? onValueChanged;
+  final ValueChanged<double>? _onValueChanged;
 
   const TemperatureChannel({
     super.key,
-    required this.device,
-    required this.channel,
-    this.elementMaxSize,
-    this.vertical = false,
-    this.onValueChanged,
-  });
+    required LightChannelCapability capability,
+    double? elementMaxSize,
+    bool vertical = false,
+    ValueChanged<double>? onValueChanged,
+  })  : _capability = capability,
+        _elementMaxSize = elementMaxSize,
+        _vertical = vertical,
+        _onValueChanged = onValueChanged;
 
   @override
   State<TemperatureChannel> createState() => _TemperatureChannelState();
@@ -867,7 +889,18 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
   void initState() {
     super.initState();
 
-    _property = widget.channel.temperatureProp;
+    _initializeWidget();
+  }
+
+  @override
+  void didUpdateWidget(covariant TemperatureChannel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _initializeWidget();
+  }
+
+  void _initializeWidget() {
+    _property = widget._capability.temperatureProp;
 
     final property = _property;
 
@@ -896,15 +929,15 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
       value: _temperature ?? min,
       min: min,
       max: max,
-      enabled: widget.channel.on,
-      vertical: widget.vertical,
-      trackWidth: widget.elementMaxSize,
+      enabled: widget._capability.on,
+      vertical: widget._vertical,
+      trackWidth: widget._elementMaxSize,
       onValueChanged: (double value) {
         setState(() {
           _temperature = value;
         });
 
-        widget.onValueChanged?.call(value);
+        widget._onValueChanged?.call(value);
       },
       background: BoxDecoration(
         gradient: const LinearGradient(
@@ -921,7 +954,7 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
           child: Row(
             children: [
               RotatedBox(
-                quarterTurns: widget.vertical ? 1 : 0,
+                quarterTurns: widget._vertical ? 1 : 0,
                 child: Icon(
                   Icons.thermostat,
                   size: _screenService.scale(40),
@@ -939,21 +972,22 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
 }
 
 class WhiteChannel extends StatefulWidget {
-  final LightingDeviceDataModel device;
-  final LightChannelDataModel channel;
-  final double? elementMaxSize;
-  final bool vertical;
+  final LightChannelCapability _capability;
+  final double? _elementMaxSize;
+  final bool _vertical;
 
-  final ValueChanged<double>? onValueChanged;
+  final ValueChanged<double>? _onValueChanged;
 
   const WhiteChannel({
     super.key,
-    required this.device,
-    required this.channel,
-    this.elementMaxSize,
-    this.vertical = false,
-    this.onValueChanged,
-  });
+    required LightChannelCapability capability,
+    double? elementMaxSize,
+    bool vertical = false,
+    ValueChanged<double>? onValueChanged,
+  })  : _capability = capability,
+        _elementMaxSize = elementMaxSize,
+        _vertical = vertical,
+        _onValueChanged = onValueChanged;
 
   @override
   State<WhiteChannel> createState() => _WhiteChannelState();
@@ -970,7 +1004,18 @@ class _WhiteChannelState extends State<WhiteChannel> {
   void initState() {
     super.initState();
 
-    _property = widget.channel.colorWhiteProp;
+    _initializeWidget();
+  }
+
+  @override
+  void didUpdateWidget(covariant WhiteChannel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _initializeWidget();
+  }
+
+  void _initializeWidget() {
+    _property = widget._capability.colorWhiteProp;
 
     final property = _property;
 
@@ -999,16 +1044,16 @@ class _WhiteChannelState extends State<WhiteChannel> {
       value: _white ?? min,
       min: min,
       max: max,
-      enabled: widget.channel.on,
-      vertical: widget.vertical,
-      trackWidth: widget.elementMaxSize,
+      enabled: widget._capability.on,
+      vertical: widget._vertical,
+      trackWidth: widget._elementMaxSize,
       showThumb: false,
       onValueChanged: (double value) {
         setState(() {
           _white = value;
         });
 
-        widget.onValueChanged?.call(value);
+        widget._onValueChanged?.call(value);
       },
       activeTrackColor: AppColors.white,
       inner: [
@@ -1017,7 +1062,7 @@ class _WhiteChannelState extends State<WhiteChannel> {
           child: Row(
             children: [
               RotatedBox(
-                quarterTurns: widget.vertical ? 1 : 0,
+                quarterTurns: widget._vertical ? 1 : 0,
                 child: Icon(
                   Icons.lightbulb,
                   size: _screenService.scale(40),
@@ -1035,19 +1080,19 @@ class _WhiteChannelState extends State<WhiteChannel> {
 }
 
 class ChannelSwitch extends StatefulWidget {
-  final LightingDeviceDataModel device;
-  final LightChannelDataModel channel;
-  final bool vertical;
+  final LightChannelCapability _capability;
+  final bool _vertical;
 
-  final ValueChanged<bool>? onStateChanged;
+  final ValueChanged<bool>? _onStateChanged;
 
   const ChannelSwitch({
     super.key,
-    required this.device,
-    required this.channel,
-    this.vertical = false,
-    this.onStateChanged,
-  });
+    required LightChannelCapability capability,
+    bool vertical = false,
+    ValueChanged<bool>? onStateChanged,
+  })  : _capability = capability,
+        _vertical = vertical,
+        _onStateChanged = onStateChanged;
 
   @override
   State<ChannelSwitch> createState() => _ChannelSwitchState();
@@ -1062,21 +1107,32 @@ class _ChannelSwitchState extends State<ChannelSwitch> {
   void initState() {
     super.initState();
 
-    _isOn = widget.channel.on;
+    _initializeWidget();
+  }
+
+  @override
+  void didUpdateWidget(covariant ChannelSwitch oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _initializeWidget();
+  }
+
+  void _initializeWidget() {
+    _isOn = widget._capability.on;
   }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _screenService.scale(widget.vertical ? 45 : 75),
-      height: _screenService.scale(widget.vertical ? 75 : 45),
+      width: _screenService.scale(widget._vertical ? 45 : 75),
+      height: _screenService.scale(widget._vertical ? 75 : 45),
       child: Theme(
         data: ThemeData(
           filledButtonTheme: Theme.of(context).brightness == Brightness.light
-              ? (widget.channel.on
+              ? (widget._capability.on
                   ? AppFilledButtonsLightThemes.primary
                   : AppFilledButtonsLightThemes.info)
-              : (widget.channel.on
+              : (widget._capability.on
                   ? AppFilledButtonsDarkThemes.primary
                   : AppFilledButtonsDarkThemes.info),
         ),
@@ -1086,7 +1142,7 @@ class _ChannelSwitchState extends State<ChannelSwitch> {
               _isOn = !_isOn;
             });
 
-            widget.onStateChanged?.call(_isOn);
+            widget._onStateChanged?.call(_isOn);
           },
           style: ButtonStyle(
             padding: WidgetStateProperty.all(EdgeInsets.zero),
@@ -1112,22 +1168,21 @@ class _ChannelSwitchState extends State<ChannelSwitch> {
 class ChannelActualBrightness extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final LightingDeviceDataModel device;
-  final LightChannelDataModel channel;
-  final bool showName;
+  final LightChannelCapability _capability;
+  final bool _showName;
 
   ChannelActualBrightness({
     super.key,
-    required this.device,
-    required this.channel,
-    this.showName = false,
-  });
+    required LightChannelCapability capability,
+    showName = false,
+  })  : _capability = capability,
+        _showName = showName;
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final ChannelPropertyDataModel? property = channel.brightnessProp;
+    final ChannelPropertyDataModel? property = _capability.brightnessProp;
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -1142,7 +1197,7 @@ class ChannelActualBrightness extends StatelessWidget {
             children: [
               RichText(
                 text: TextSpan(
-                  text: channel.on
+                  text: _capability.on
                       ? (property != null
                               ? ValueUtils.formatValue(property)
                               : null) ??
@@ -1160,7 +1215,7 @@ class ChannelActualBrightness extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              channel.on
+              _capability.on
                   ? RichText(
                       text: TextSpan(
                         text: '%',
@@ -1181,9 +1236,9 @@ class ChannelActualBrightness extends StatelessWidget {
             ].whereType<Widget>().toList(),
           ),
           Text(
-            showName
-                ? (channel.name ?? channel.category.value)
-                : channel.on
+            _showName
+                ? _capability.name
+                : _capability.on
                     ? localizations.light_state_brightness_description
                     : localizations.light_state_off_description,
             style: TextStyle(
@@ -1202,14 +1257,12 @@ class ChannelActualBrightness extends StatelessWidget {
 class ChannelActualColor extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final LightingDeviceDataModel device;
-  final LightChannelDataModel channel;
+  final LightChannelCapability _capability;
 
   ChannelActualColor({
     super.key,
-    required this.device,
-    required this.channel,
-  });
+    required LightChannelCapability capability,
+  }) : _capability = capability;
 
   @override
   Widget build(BuildContext context) {
@@ -1235,7 +1288,7 @@ class ChannelActualColor extends StatelessWidget {
               borderRadius: BorderRadius.circular(
                 AppBorderRadius.base - 2 * _screenService.scale(1),
               ),
-              color: channel.color,
+              color: _capability.color,
             ),
           ),
         ),
@@ -1247,14 +1300,12 @@ class ChannelActualColor extends StatelessWidget {
 class ChannelActualTemperature extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final LightingDeviceDataModel device;
-  final LightChannelDataModel channel;
+  final LightChannelCapability _capability;
 
   ChannelActualTemperature({
     super.key,
-    required this.device,
-    required this.channel,
-  });
+    required LightChannelCapability capability,
+  }) : _capability = capability;
 
   @override
   Widget build(BuildContext context) {
@@ -1280,7 +1331,7 @@ class ChannelActualTemperature extends StatelessWidget {
               borderRadius: BorderRadius.circular(
                 AppBorderRadius.base - 2 * _screenService.scale(1),
               ),
-              color: channel.temperature,
+              color: _capability.temperature,
             ),
           ),
         ),
@@ -1292,12 +1343,12 @@ class ChannelActualTemperature extends StatelessWidget {
 class LightTiles extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final LightingDeviceDataModel _device;
+  final LightingDeviceCapability _capability;
 
   LightTiles({
     super.key,
-    required LightingDeviceDataModel device,
-  }) : _device = device;
+    required LightingDeviceCapability capability,
+  }) : _capability = capability;
 
   @override
   Widget build(BuildContext context) {
@@ -1313,7 +1364,7 @@ class LightTiles extends StatelessWidget {
   List<Widget> _renderLightingElectricalEnergy(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (!_device.hasElectricalEnergy) {
+    if (!_capability.hasElectricalEnergy) {
       return [];
     }
 
@@ -1323,7 +1374,7 @@ class LightTiles extends StatelessWidget {
         title: localizations.electrical_energy_consumption_title,
         subtitle: localizations.electrical_energy_consumption_description,
         trailingText: NumberUtils.formatNumber(
-          _device.electricalEnergyConsumption,
+          _capability.electricalEnergyConsumption,
           2,
         ),
         unit: 'kWh',
@@ -1333,7 +1384,7 @@ class LightTiles extends StatelessWidget {
         title: localizations.electrical_energy_rate_title,
         subtitle: localizations.electrical_energy_rate_description,
         trailingText: NumberUtils.formatNumber(
-          _device.electricalEnergyRate,
+          _capability.electricalEnergyRate,
           2,
         ),
         unit: 'kW',
@@ -1346,7 +1397,7 @@ class LightTiles extends StatelessWidget {
   List<Widget> _renderLightingElectricalPower(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (!_device.hasElectricalPower) {
+    if (!_capability.hasElectricalPower) {
       return [];
     }
 
@@ -1356,7 +1407,7 @@ class LightTiles extends StatelessWidget {
         title: localizations.electrical_power_current_title,
         subtitle: localizations.electrical_power_current_description,
         trailingText: NumberUtils.formatNumber(
-          _device.electricalPowerCurrent,
+          _capability.electricalPowerCurrent,
           2,
         ),
         unit: 'A',
@@ -1366,7 +1417,7 @@ class LightTiles extends StatelessWidget {
         title: localizations.electrical_power_voltage_title,
         subtitle: localizations.electrical_power_over_voltage_description,
         trailingText: NumberUtils.formatNumber(
-          _device.electricalPowerVoltage,
+          _capability.electricalPowerVoltage,
           2,
         ),
         unit: 'V',
@@ -1376,7 +1427,7 @@ class LightTiles extends StatelessWidget {
         title: localizations.electrical_power_power_title,
         subtitle: localizations.electrical_power_power_description,
         trailingText: NumberUtils.formatNumber(
-          _device.electricalPowerPower,
+          _capability.electricalPowerPower,
           2,
         ),
         unit: 'W',
@@ -1386,12 +1437,12 @@ class LightTiles extends StatelessWidget {
         title: localizations.electrical_power_frequency_title,
         subtitle: localizations.electrical_power_frequency_description,
         trailingText: NumberUtils.formatNumber(
-          _device.electricalPowerFrequency,
+          _capability.electricalPowerFrequency,
           1,
         ),
         unit: 'Hz',
       ),
-      _device.isElectricalPowerOverCurrent
+      _capability.isElectricalPowerOverCurrent
           ? LightTileItem(
               icon: Icons.electrical_services,
               title: localizations.electrical_power_over_current_title,
@@ -1399,7 +1450,7 @@ class LightTiles extends StatelessWidget {
               trailingIcon: Icons.warning,
             )
           : null,
-      _device.isElectricalPowerOverVoltage
+      _capability.isElectricalPowerOverVoltage
           ? LightTileItem(
               icon: Icons.battery_charging_full,
               title: localizations.electrical_power_over_voltage_title,
@@ -1518,72 +1569,33 @@ class PropertyValueHelper {
   final DevicesModuleRepository _repository =
       locator<DevicesModuleRepository>();
 
-  void setPropertyValue(
+  Future<void> setPropertyValue(
     BuildContext context,
-    LightingDeviceDataModel device,
     ChannelPropertyDataModel property,
     dynamic value,
-  ) {
-    if (kDebugMode) {
-      print(
-        'Set Lighting: ${device.name} ${property.category} property to: $value',
-      );
-    }
-
-    bool res = _repository.setPropertyValue(
-      property.id,
-      value,
-    );
-
-    if (!res) {
-      _showProcessError(context);
-
-      return;
-    }
-  }
-
-  void _showProcessError(BuildContext context) {
+  ) async {
     final localizations = AppLocalizations.of(context)!;
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.error,
-              size: AppFontSize.large,
-            ),
-            AppSpacings.spacingSmHorizontal,
-            Text(
-              localizations.error,
-              style: TextStyle(
-                fontSize: AppFontSize.base,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          localizations.action_failed,
-        ),
-        actions: [
-          Theme(
-            data: ThemeData(
-              filledButtonTheme:
-                  Theme.of(context).brightness == Brightness.light
-                      ? AppFilledButtonsLightThemes.primary
-                      : AppFilledButtonsDarkThemes.primary,
-            ),
-            child: FilledButton(
-              onPressed: () {
-                Navigator.pop(context, 'OK');
-              },
-              child: Text(localizations.button_ok),
-            ),
-          ),
-        ],
-      ),
-    );
+    try {
+      bool res = await _repository.setPropertyValue(
+        property.id,
+        value,
+      );
+
+      if (!res && context.mounted) {
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+
+      AlertBar.showError(
+        context,
+        message: localizations.action_failed,
+      );
+    }
   }
 }
 

@@ -1,6 +1,4 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/controls.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/categories.dart';
 
 abstract class ChannelDataModel {
@@ -13,11 +11,13 @@ abstract class ChannelDataModel {
 
   final String _device;
 
-  final List<ChannelPropertyDataModel> _properties;
-  final List<ChannelControlDataModel> _controls;
+  final List<String> _properties;
+  final List<String> _controls;
 
   final DateTime? _createdAt;
   final DateTime? _updatedAt;
+
+  late bool invalid;
 
   ChannelDataModel({
     required String id,
@@ -25,10 +25,11 @@ abstract class ChannelDataModel {
     String? name,
     String? description,
     required String device,
-    required List<ChannelPropertyDataModel> properties,
-    required List<ChannelControlDataModel> controls,
+    required List<String> properties,
+    required List<String> controls,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.invalid = false,
   })  : _id = UuidUtils.validateUuid(id),
         _category = category,
         _name = name,
@@ -49,23 +50,11 @@ abstract class ChannelDataModel {
 
   String get device => _device;
 
-  List<ChannelPropertyDataModel> get properties => _properties;
+  List<String> get properties => _properties;
 
-  List<ChannelControlDataModel> get controls => _controls;
+  List<String> get controls => _controls;
 
   DateTime? get createdAt => _createdAt;
 
   DateTime? get updatedAt => _updatedAt;
-
-  set property(ChannelPropertyDataModel property) {
-    final int index = _properties.indexWhere(
-      (item) => item.id == property.id,
-    );
-
-    if (index == -1) {
-      return;
-    }
-
-    _properties[index] = property;
-  }
 }

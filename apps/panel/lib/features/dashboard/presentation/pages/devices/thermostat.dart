@@ -1,29 +1,34 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/enum.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/rounded_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/cooler.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/heater.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/channels/cooler.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/channels/heater.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/payloads.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ThermostatDeviceDetailPage extends StatefulWidget {
   final ThermostatDeviceDataModel _device;
+  final ThermostatDeviceCapability _capability;
 
   const ThermostatDeviceDetailPage({
     super.key,
     required ThermostatDeviceDataModel device,
-  }) : _device = device;
+    required ThermostatDeviceCapability capability,
+  })  : _device = device,
+        _capability = capability;
 
   @override
   State<ThermostatDeviceDetailPage> createState() =>
@@ -43,34 +48,34 @@ class _ThermostatDeviceDetailPageState
 
     _thermostatModes.add(ThermostatModeType.off);
 
-    if (widget._device.thermostatAvailableModes
+    if (widget._capability.thermostatAvailableModes
         .contains(getValueFromMode(ThermostatModeType.heat))) {
       _thermostatModes.add(ThermostatModeType.heat);
     }
 
-    if (widget._device.thermostatAvailableModes
+    if (widget._capability.thermostatAvailableModes
         .contains(getValueFromMode(ThermostatModeType.cool))) {
       _thermostatModes.add(ThermostatModeType.cool);
     }
 
-    if (widget._device.thermostatAvailableModes
+    if (widget._capability.thermostatAvailableModes
         .contains(getValueFromMode(ThermostatModeType.auto))) {
       _thermostatModes.add(ThermostatModeType.auto);
     }
 
-    if (widget._device.thermostatAvailableModes
+    if (widget._capability.thermostatAvailableModes
         .contains(getValueFromMode(ThermostatModeType.manual))) {
       _thermostatModes.add(ThermostatModeType.manual);
     }
 
-    if (widget._device.isOn == false) {
+    if (widget._capability.isOn == false) {
       _currentModeIndex = 0;
     } else {
       _currentModeIndex = _thermostatModes.indexWhere(
         (mode) =>
             mode ==
             getModeFromValue(
-              widget._device.thermostatMode,
+              widget._capability.thermostatMode,
             ),
       );
     }
@@ -89,25 +94,25 @@ class _ThermostatDeviceDetailPageState
           BuildContext context,
           BoxConstraints constraints,
         ) {
-          if (widget._device.hasCooler && widget._device.hasHeater) {
+          if (widget._capability.hasCooler && widget._capability.hasHeater) {
             return ThermostatDial(
-              device: widget._device,
+              capability: widget._capability,
             );
           }
 
           return ThermostatBar(
-            device: widget._device,
+            capability: widget._capability,
           );
         }),
       ),
       bottomNavigationBar: IgnorePointer(
-        ignoring: widget._device.isThermostatLocked,
+        ignoring: widget._capability.isThermostatLocked,
         child: BottomNavigationBar(
           selectedItemColor: Theme.of(context).brightness == Brightness.light
-              ? (widget._device.isThermostatLocked
+              ? (widget._capability.isThermostatLocked
                   ? AppColorsLight.primaryLight3
                   : AppColorsLight.primary)
-              : (widget._device.isThermostatLocked
+              : (widget._capability.isThermostatLocked
                   ? AppColorsDark.primaryLight3
                   : AppColorsDark.primary),
           currentIndex: _currentModeIndex,
@@ -159,24 +164,21 @@ class _ThermostatDeviceDetailPageState
       case ThermostatModeType.off:
         _valueHelper.setPropertyValue(
           context,
-          widget._device,
-          widget._device.thermostatChannel.activeProp,
+          widget._capability.thermostatCapability.activeProp,
           false,
         );
         break;
       default:
         _valueHelper.setPropertyValue(
           context,
-          widget._device,
-          widget._device.thermostatChannel.modeProp,
+          widget._capability.thermostatCapability.modeProp,
           getValueFromMode(_thermostatModes[index])?.value,
         );
 
-        if (widget._device.isOn == false) {
+        if (widget._capability.isOn == false) {
           _valueHelper.setPropertyValue(
             context,
-            widget._device,
-            widget._device.thermostatChannel.activeProp,
+            widget._capability.thermostatCapability.activeProp,
             true,
           );
         }
@@ -186,12 +188,12 @@ class _ThermostatDeviceDetailPageState
 }
 
 class ThermostatBar extends StatefulWidget {
-  final ThermostatDeviceDataModel _device;
+  final ThermostatDeviceCapability _capability;
 
   const ThermostatBar({
     super.key,
-    required ThermostatDeviceDataModel device,
-  }) : _device = device;
+    required ThermostatDeviceCapability capability,
+  }) : _capability = capability;
 
   @override
   State<ThermostatBar> createState() => _ThermostatBarState();
@@ -206,10 +208,10 @@ class _ThermostatBarState extends State<ThermostatBar> {
     return LayoutBuilder(builder: (context, constraints) {
       final double elementMaxSize = constraints.maxHeight - 2 * AppSpacings.pMd;
 
-      final HeaterChannelDataModel? heaterChannel =
-          widget._device.heaterChannel;
-      final CoolerChannelDataModel? coolerChannel =
-          widget._device.coolerChannel;
+      final HeaterChannelCapability? heaterCapability =
+          widget._capability.heaterCapability;
+      final CoolerChannelCapability? coolerCapability =
+          widget._capability.coolerCapability;
 
       return Padding(
         padding: EdgeInsets.symmetric(
@@ -250,25 +252,25 @@ class _ThermostatBarState extends State<ThermostatBar> {
                     Flexible(
                       flex: 1,
                       child: SingleChildScrollView(
-                        child: ThermostatTiles(device: widget._device),
+                        child: ThermostatTiles(capability: widget._capability),
                       ),
                     ),
                   ].whereType<Widget>().toList(),
                 ),
               ),
             ),
-            heaterChannel != null
+            heaterCapability != null
                 ? _renderHeaterControl(
                     context,
                     elementMaxSize,
-                    heaterChannel,
+                    heaterCapability,
                   )
                 : null,
-            coolerChannel != null
+            coolerCapability != null
                 ? _renderCoolerControl(
                     context,
                     elementMaxSize,
-                    coolerChannel,
+                    coolerCapability,
                   )
                 : null,
           ].whereType<Widget>().toList(),
@@ -281,7 +283,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
     final localizations = AppLocalizations.of(context)!;
 
     final ChannelPropertyDataModel? prop =
-        widget._device.heaterChannel?.temperatureProp;
+        widget._capability.heaterCapability?.temperatureProp;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,12 +294,12 @@ class _ThermostatBarState extends State<ThermostatBar> {
           children: [
             RichText(
               text: TextSpan(
-                text: widget._device.isOn
+                text: widget._capability.isOn
                     ? ((prop != null
                             ? ValueUtils.formatValue(prop, 1)
                             : null) ??
                         localizations.value_not_available)
-                    : '--.-',
+                    : NumberUtils.formatUnavailableNumber(),
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
@@ -312,7 +314,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
             ),
             RichText(
               text: TextSpan(
-                text: widget._device.thermostatChannel.showInFahrenheit
+                text: widget._capability.thermostatCapability.showInFahrenheit
                     ? '°F'
                     : '°C',
                 style: TextStyle(
@@ -346,7 +348,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
     final localizations = AppLocalizations.of(context)!;
 
     final ChannelPropertyDataModel prop =
-        widget._device.temperatureChannel.temperatureProp;
+        widget._capability.temperatureCapability.temperatureProp;
 
     return IntrinsicWidth(
       child: Column(
@@ -385,7 +387,8 @@ class _ThermostatBarState extends State<ThermostatBar> {
                   ),
                   RichText(
                     text: TextSpan(
-                      text: widget._device.thermostatChannel.showInFahrenheit
+                      text: widget
+                              ._capability.thermostatCapability.showInFahrenheit
                           ? '°F'
                           : '°C',
                       style: TextStyle(
@@ -421,12 +424,12 @@ class _ThermostatBarState extends State<ThermostatBar> {
   Widget? _renderCurrentHumidity(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (!widget._device.hasHumidity) {
+    if (!widget._capability.hasHumidity) {
       return null;
     }
 
     final ChannelPropertyDataModel? prop =
-        widget._device.humidityChannel?.humidityProp;
+        widget._capability.humidityCapability?.humidityProp;
 
     if (prop == null) {
       return null;
@@ -503,21 +506,21 @@ class _ThermostatBarState extends State<ThermostatBar> {
   Widget _renderHeaterControl(
     BuildContext context,
     double elementMaxSize,
-    HeaterChannelDataModel channel,
+    HeaterChannelCapability capability,
   ) {
     return ColoredSlider(
-      value: channel.temperature,
-      min: channel.minTemperature,
-      max: channel.maxTemperature,
-      enabled: !widget._device.isThermostatLocked && widget._device.isOn,
+      value: capability.temperature,
+      min: capability.minTemperature,
+      max: capability.maxTemperature,
+      enabled:
+          !widget._capability.isThermostatLocked && widget._capability.isOn,
       vertical: true,
       trackWidth: elementMaxSize,
       showThumb: false,
       onValueChanged: (double value) {
         _valueHelper.setPropertyValue(
           context,
-          widget._device,
-          channel.temperatureProp,
+          capability.temperatureProp,
           value,
         );
       },
@@ -546,21 +549,20 @@ class _ThermostatBarState extends State<ThermostatBar> {
   Widget _renderCoolerControl(
     BuildContext context,
     double elementMaxSize,
-    CoolerChannelDataModel channel,
+    CoolerChannelCapability capability,
   ) {
     return ColoredSlider(
-      value: channel.temperature,
-      min: channel.minTemperature,
-      max: channel.maxTemperature,
-      enabled: !widget._device.isThermostatLocked,
+      value: capability.temperature,
+      min: capability.minTemperature,
+      max: capability.maxTemperature,
+      enabled: !widget._capability.isThermostatLocked,
       vertical: true,
       trackWidth: elementMaxSize,
       showThumb: false,
       onValueChanged: (double value) {
         _valueHelper.setPropertyValue(
           context,
-          widget._device,
-          channel.temperatureProp,
+          capability.temperatureProp,
           value,
         );
       },
@@ -588,12 +590,12 @@ class _ThermostatBarState extends State<ThermostatBar> {
 }
 
 class ThermostatDial extends StatefulWidget {
-  final ThermostatDeviceDataModel _device;
+  final ThermostatDeviceCapability _capability;
 
   const ThermostatDial({
     super.key,
-    required ThermostatDeviceDataModel device,
-  }) : _device = device;
+    required ThermostatDeviceCapability capability,
+  }) : _capability = capability;
 
   @override
   State<ThermostatDial> createState() => _ThermostatDialState();
@@ -601,7 +603,6 @@ class ThermostatDial extends StatefulWidget {
 
 class _ThermostatDialState extends State<ThermostatDial> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ScreenService _screen = locator<ScreenService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
   late bool _isLocked;
@@ -610,17 +611,31 @@ class _ThermostatDialState extends State<ThermostatDial> {
   void initState() {
     super.initState();
 
-    _isLocked = widget._device.isThermostatLocked;
+    _initializeWidget();
+  }
+
+  @override
+  void didUpdateWidget(covariant ThermostatDial oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _initializeWidget();
+  }
+
+  void _initializeWidget() {
+    _isLocked = widget._capability.isThermostatLocked;
   }
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final HeaterChannelDataModel? heaterChannel = widget._device.heaterChannel;
-    final CoolerChannelDataModel? coolerChannel = widget._device.coolerChannel;
+    final HeaterChannelCapability? heaterCapability =
+        widget._capability.heaterCapability;
+    final CoolerChannelCapability? coolerCapability =
+        widget._capability.coolerCapability;
 
-    final bool isSmall = _screen.screenWidth == _screen.screenHeight;
+    final bool isSmall =
+        _screenService.screenWidth == _screenService.screenHeight;
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -637,22 +652,22 @@ class _ThermostatDialState extends State<ThermostatDial> {
               final availableWidth = constraints.maxWidth;
               final availableHeight = constraints.maxHeight;
 
-              if (heaterChannel != null) {
+              if (heaterCapability != null) {
                 return _renderHeaterControl(
                   context,
                   availableWidth,
                   availableHeight,
-                  heaterChannel,
+                  heaterCapability,
                   isSmall,
                 );
               }
 
-              if (coolerChannel != null) {
+              if (coolerCapability != null) {
                 return _renderCoolerControl(
                   context,
                   availableWidth,
                   availableHeight,
-                  coolerChannel,
+                  coolerCapability,
                   isSmall,
                 );
               }
@@ -684,7 +699,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
               );
             }),
           ),
-          !isSmall ? ThermostatTiles(device: widget._device) : null,
+          !isSmall ? ThermostatTiles(capability: widget._capability) : null,
         ].whereType<Widget>().toList(),
       ),
     );
@@ -694,23 +709,23 @@ class _ThermostatDialState extends State<ThermostatDial> {
     BuildContext context,
     double availableWidth,
     double availableHeight,
-    HeaterChannelDataModel channel,
+    HeaterChannelCapability capability,
     bool showStatus,
   ) {
     final localizations = AppLocalizations.of(context)!;
 
     return RoundedSlider(
-      value: channel.temperature,
-      min: channel.minTemperature,
-      max: channel.maxTemperature,
-      enabled: !widget._device.isThermostatLocked && widget._device.isOn,
+      value: capability.temperature,
+      min: capability.minTemperature,
+      max: capability.maxTemperature,
+      enabled:
+          !widget._capability.isThermostatLocked && widget._capability.isOn,
       availableWidth: availableWidth,
       availableHeight: availableHeight,
       onValueChanged: (num value) {
         _valueHelper.setPropertyValue(
           context,
-          widget._device,
-          channel.temperatureProp,
+          capability.temperatureProp,
           value,
         );
       },
@@ -740,17 +755,15 @@ class _ThermostatDialState extends State<ThermostatDial> {
         () {
           _valueHelper.setPropertyValue(
             context,
-            widget._device,
-            channel.temperatureProp,
-            channel.temperature + 0.1,
+            capability.temperatureProp,
+            capability.temperature + 0.1,
           );
         },
         () {
           _valueHelper.setPropertyValue(
             context,
-            widget._device,
-            channel.temperatureProp,
-            channel.temperature - 0.1,
+            capability.temperatureProp,
+            capability.temperature - 0.1,
           );
         },
       ),
@@ -761,23 +774,22 @@ class _ThermostatDialState extends State<ThermostatDial> {
     BuildContext context,
     double availableWidth,
     double availableHeight,
-    CoolerChannelDataModel channel,
+    CoolerChannelCapability capability,
     bool showStatus,
   ) {
     final localizations = AppLocalizations.of(context)!;
 
     return RoundedSlider(
-      value: channel.temperature,
-      min: channel.minTemperature,
-      max: channel.maxTemperature,
-      enabled: !widget._device.isThermostatLocked,
+      value: capability.temperature,
+      min: capability.minTemperature,
+      max: capability.maxTemperature,
+      enabled: !widget._capability.isThermostatLocked,
       availableWidth: availableWidth,
       availableHeight: availableHeight,
       onValueChanged: (num value) {
         _valueHelper.setPropertyValue(
           context,
-          widget._device,
-          channel.temperatureProp,
+          capability.temperatureProp,
           value,
         );
       },
@@ -807,17 +819,15 @@ class _ThermostatDialState extends State<ThermostatDial> {
         () {
           _valueHelper.setPropertyValue(
             context,
-            widget._device,
-            channel.temperatureProp,
-            channel.temperature + 0.1,
+            capability.temperatureProp,
+            capability.temperature + 0.1,
           );
         },
         () {
           _valueHelper.setPropertyValue(
             context,
-            widget._device,
-            channel.temperatureProp,
-            channel.temperature - 0.1,
+            capability.temperatureProp,
+            capability.temperature - 0.1,
           );
         },
       ),
@@ -880,11 +890,11 @@ class _ThermostatDialState extends State<ThermostatDial> {
                 spacing: AppSpacings.pMd,
                 runSpacing: AppSpacings.pMd,
                 children: [
-                  widget._device.hasContact
+                  widget._capability.hasContact
                       ? Icon(
                           Icons.window,
                           size: _screenService.scale(26),
-                          color: widget._device.isContactDetected == true
+                          color: widget._capability.isContactDetected == true
                               ? (Theme.of(context).brightness ==
                                       Brightness.light
                                   ? AppColorsLight.primary
@@ -895,12 +905,12 @@ class _ThermostatDialState extends State<ThermostatDial> {
                                   : AppTextColorDark.placeholder),
                         )
                       : null,
-                  widget._device.hasHeater
+                  widget._capability.hasHeater
                       ? Icon(
                           Icons.whatshot,
                           size: _screenService.scale(26),
-                          color: widget._device.isOn &&
-                                  widget._device.isHeaterHeating == true
+                          color: widget._capability.isOn &&
+                                  widget._capability.isHeaterHeating == true
                               ? (Theme.of(context).brightness ==
                                       Brightness.light
                                   ? AppColorsLight.primary
@@ -911,12 +921,12 @@ class _ThermostatDialState extends State<ThermostatDial> {
                                   : AppTextColorDark.placeholder),
                         )
                       : null,
-                  widget._device.hasCooler
+                  widget._capability.hasCooler
                       ? Icon(
                           Icons.ac_unit,
                           size: _screenService.scale(26),
-                          color: widget._device.isOn &&
-                                  widget._device.isCoolerCooling == true
+                          color: widget._capability.isOn &&
+                                  widget._capability.isCoolerCooling == true
                               ? (Theme.of(context).brightness ==
                                       Brightness.light
                                   ? AppColorsLight.primary
@@ -927,7 +937,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                                   : AppTextColorDark.placeholder),
                         )
                       : null,
-                  widget._device.hasThermostatLock
+                  widget._capability.hasThermostatLock
                       ? IconSwitch(
                           switchState: !_isLocked,
                           iconOn: Icons.lock_open,
@@ -950,7 +960,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
     final localizations = AppLocalizations.of(context)!;
 
     final ChannelPropertyDataModel? prop =
-        widget._device.heaterChannel?.temperatureProp;
+        widget._capability.heaterCapability?.temperatureProp;
 
     final String? temperature =
         prop != null ? ValueUtils.formatValue(prop, 1) : null;
@@ -961,7 +971,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
       children: [
         // Main Temperature
         Text(
-          widget._device.isOn
+          widget._capability.isOn
               ? temperature != null
                   ? temperature.split('.')[0]
                   : localizations.value_not_available
@@ -983,7 +993,9 @@ class _ThermostatDialState extends State<ThermostatDial> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                widget._device.thermostatChannel.showInFahrenheit ? '°F' : '°C',
+                widget._capability.thermostatCapability.showInFahrenheit
+                    ? '°F'
+                    : '°C',
                 style: TextStyle(
                   fontFamily: 'DIN1451',
                   color: Theme.of(context).brightness == Brightness.light
@@ -993,7 +1005,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                 ),
               ),
               Text(
-                widget._device.isOn
+                widget._capability.isOn
                     ? temperature != null
                         ? temperature.split('.')[1]
                         : ''
@@ -1017,7 +1029,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
     final localizations = AppLocalizations.of(context)!;
 
     final ChannelPropertyDataModel prop =
-        widget._device.temperatureChannel.temperatureProp;
+        widget._capability.temperatureCapability.temperatureProp;
 
     return Row(
       children: [
@@ -1040,7 +1052,9 @@ class _ThermostatDialState extends State<ThermostatDial> {
           ),
         ),
         Text(
-          widget._device.thermostatChannel.showInFahrenheit ? '°F' : '°C',
+          widget._capability.thermostatCapability.showInFahrenheit
+              ? '°F'
+              : '°C',
           style: TextStyle(
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.secondary
@@ -1056,11 +1070,11 @@ class _ThermostatDialState extends State<ThermostatDial> {
   Widget? _renderCurrentHumidity(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (!widget._device.hasHumidity) {
+    if (!widget._capability.hasHumidity) {
       return null;
     }
     final ChannelPropertyDataModel? prop =
-        widget._device.humidityChannel?.humidityProp;
+        widget._capability.humidityCapability?.humidityProp;
 
     if (prop == null) {
       return null;
@@ -1128,12 +1142,12 @@ class _ThermostatDialState extends State<ThermostatDial> {
 }
 
 class ThermostatTiles extends StatefulWidget {
-  final ThermostatDeviceDataModel _device;
+  final ThermostatDeviceCapability _capability;
 
   const ThermostatTiles({
     super.key,
-    required ThermostatDeviceDataModel device,
-  }) : _device = device;
+    required ThermostatDeviceCapability capability,
+  }) : _capability = capability;
 
   @override
   State<ThermostatTiles> createState() => _ThermostatTilesState();
@@ -1149,7 +1163,18 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
   void initState() {
     super.initState();
 
-    _isLocked = widget._device.isThermostatLocked;
+    _initializeWidget();
+  }
+
+  @override
+  void didUpdateWidget(covariant ThermostatTiles oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _initializeWidget();
+  }
+
+  void _initializeWidget() {
+    _isLocked = widget._capability.isThermostatLocked;
   }
 
   @override
@@ -1166,7 +1191,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
   Widget? _renderLock(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (!widget._device.hasThermostatLock) {
+    if (!widget._capability.hasThermostatLock) {
       return null;
     }
 
@@ -1184,12 +1209,11 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
           });
 
           final ChannelPropertyDataModel? property =
-              widget._device.thermostatChannel.lockedProp;
+              widget._capability.thermostatCapability.lockedProp;
 
           if (property != null) {
             _valueHelper.setPropertyValue(
               context,
-              widget._device,
               property,
               _isLocked,
             );
@@ -1234,12 +1258,11 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
             });
 
             final ChannelPropertyDataModel? property =
-                widget._device.thermostatChannel.lockedProp;
+                widget._capability.thermostatCapability.lockedProp;
 
             if (property != null) {
               _valueHelper.setPropertyValue(
                 context,
-                widget._device,
                 property,
                 _isLocked,
               );
@@ -1258,28 +1281,28 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
     String? title;
     String? subtitle;
 
-    if (widget._device.isOn == false) {
+    if (widget._capability.isOn == false) {
       icon = Icons.power_settings_new;
       iconColor = Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.info
           : AppColorsDark.info;
       title = localizations.thermostat_state_title;
       subtitle = localizations.thermostat_state_off;
-    } else if (widget._device.isContactDetected == true) {
+    } else if (widget._capability.isContactDetected == true) {
       icon = Icons.window;
       iconColor = Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.primary
           : AppColorsDark.primary;
       title = localizations.thermostat_openings_state_title;
       subtitle = localizations.thermostat_openings_state_description;
-    } else if (widget._device.isHeaterHeating == true) {
+    } else if (widget._capability.isHeaterHeating == true) {
       icon = Icons.whatshot;
       iconColor = Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.primary
           : AppColorsDark.primary;
       title = localizations.thermostat_state_title;
       subtitle = localizations.thermostat_state_heating;
-    } else if (widget._device.isCoolerCooling == true) {
+    } else if (widget._capability.isCoolerCooling == true) {
       icon = Icons.ac_unit;
       iconColor = Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.flutter
@@ -1382,71 +1405,32 @@ class PropertyValueHelper {
   final DevicesModuleRepository _repository =
       locator<DevicesModuleRepository>();
 
-  void setPropertyValue(
+  Future<void> setPropertyValue(
     BuildContext context,
-    ThermostatDeviceDataModel device,
     ChannelPropertyDataModel property,
     dynamic value,
-  ) {
-    if (kDebugMode) {
-      print(
-        'Set Thermostat: ${device.name} ${property.category} property to: $value',
-      );
-    }
-
-    bool res = _repository.setPropertyValue(
-      property.id,
-      value,
-    );
-
-    if (!res) {
-      _showProcessError(context);
-
-      return;
-    }
-  }
-
-  void _showProcessError(BuildContext context) {
+  ) async {
     final localizations = AppLocalizations.of(context)!;
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.error,
-              size: AppFontSize.large,
-            ),
-            AppSpacings.spacingSmHorizontal,
-            Text(
-              localizations.error,
-              style: TextStyle(
-                fontSize: AppFontSize.base,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          localizations.action_failed,
-        ),
-        actions: [
-          Theme(
-            data: ThemeData(
-              filledButtonTheme:
-                  Theme.of(context).brightness == Brightness.light
-                      ? AppFilledButtonsLightThemes.primary
-                      : AppFilledButtonsDarkThemes.primary,
-            ),
-            child: FilledButton(
-              onPressed: () {
-                Navigator.pop(context, 'OK');
-              },
-              child: Text(localizations.button_ok),
-            ),
-          ),
-        ],
-      ),
-    );
+    try {
+      bool res = await _repository.setPropertyValue(
+        property.id,
+        value,
+      );
+
+      if (!res && context.mounted) {
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+
+      AlertBar.showError(
+        context,
+        message: localizations.action_failed,
+      );
+    }
   }
 }

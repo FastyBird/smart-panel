@@ -1,10 +1,12 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/capability.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/data/channel.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/data/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/data_source.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/device.dart';
+import 'package:fastybird_smart_panel/features/dashboard/models/ui/data_source/data_source.dart';
+import 'package:fastybird_smart_panel/features/dashboard/models/ui/data_source/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/categories.dart';
@@ -18,7 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class DeviceTileWidget
-    extends TileWidget<DeviceTileModel, List<TileDataSourceModel>> {
+    extends TileWidget<DeviceTileModel, List<DataSourceModel>> {
   final ScreenService _screenService = locator<ScreenService>();
 
   DeviceTileWidget(super.tile, super.dataSource, {super.key});
@@ -31,13 +33,30 @@ class DeviceTileWidget
       _,
     ) {
       final device = devicesModuleRepository.getDevice(tile.device);
+      DeviceCapability? capability;
 
-      if (device == null) {
+      if (device != null) {
+        capability = buildDeviceCapability(
+          device,
+          devicesModuleRepository
+              .getChannels(device.channels)
+              .map(
+                (channel) => buildChannelCapability(
+                  channel,
+                  devicesModuleRepository
+                      .getChannelsProperties(channel.properties),
+                ),
+              )
+              .toList(),
+        );
+      }
+
+      if (device == null || capability == null) {
         return _renderLoader(context);
       }
 
-      final List<DeviceTileDataSourceModel> dataSources =
-          dataSource.whereType<DeviceTileDataSourceModel>().toList();
+      final List<DeviceChannelDataSourceModel> dataSources =
+          dataSource.whereType<DeviceChannelDataSourceModel>().toList();
 
       final properties = devicesModuleRepository.getChannelsProperties(
         dataSources
@@ -51,16 +70,16 @@ class DeviceTileWidget
         tile: tile,
         onTap: () {
           if (kDebugMode) {
-            print('Open detail for device: ${device.name}');
+            debugPrint('Open detail for device: ${device.name}');
           }
 
           Navigator.pushNamed(context, '/device/${device.id}');
         },
-        onIconTap: device.isOn == null
+        onIconTap: capability.isOn == null
             ? null
             : () {
                 if (kDebugMode) {
-                  print(
+                  debugPrint(
                     'Toggle state for device: ${device.name}',
                   );
                 }
@@ -89,7 +108,7 @@ class DeviceTileWidget
           );
         }),
         icon: buildDeviceIcon(device),
-        isOn: device.isOn ?? false,
+        isOn: capability.isOn ?? false,
       );
     });
   }

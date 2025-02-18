@@ -51,6 +51,9 @@ export class TilesService {
 				.innerJoinAndSelect('tile.page', 'page')
 				.leftJoinAndSelect('tile.dataSource', 'dataSource')
 				.leftJoinAndSelect('tile.device', 'device')
+				.leftJoinAndSelect('dataSource.device', 'device')
+				.leftJoinAndSelect('dataSource.channel', 'channel')
+				.leftJoinAndSelect('dataSource.property', 'property')
 				.where('page.id = :pageId', { pageId: page.id })
 				.getMany();
 
@@ -69,6 +72,9 @@ export class TilesService {
 				.innerJoinAndSelect('tile.card', 'card')
 				.leftJoinAndSelect('tile.dataSource', 'dataSource')
 				.leftJoinAndSelect('tile.device', 'device')
+				.leftJoinAndSelect('dataSource.device', 'device')
+				.leftJoinAndSelect('dataSource.channel', 'channel')
+				.leftJoinAndSelect('dataSource.property', 'property')
 				.where('card.id = :cardId', { cardId: card.id })
 				.getMany();
 

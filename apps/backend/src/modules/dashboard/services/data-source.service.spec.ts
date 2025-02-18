@@ -146,7 +146,7 @@ describe('DataSourceService', () => {
 
 	const mockDeviceChannelDataSource: DeviceChannelDataSourceEntity = {
 		id: uuid().toString(),
-		type: 'device_channel',
+		type: 'device-channel',
 		tile: mockDeviceTile.id,
 		card: null,
 		page: null,
@@ -409,7 +409,7 @@ describe('DataSourceService', () => {
 				.mockResolvedValue(plainToInstance(ChannelPropertyEntity, mockChannelProperty));
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'device_channel',
+				type: 'device-channel',
 				class: DeviceChannelDataSourceEntity,
 				createDto: CreateDeviceChannelDataSourceDto,
 				updateDto: UpdateDeviceChannelDataSourceDto,
@@ -501,7 +501,7 @@ describe('DataSourceService', () => {
 				.mockResolvedValue(plainToInstance(ChannelPropertyEntity, mockChannelProperty));
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'device_channel',
+				type: 'device-channel',
 				class: DeviceChannelDataSourceEntity,
 				createDto: CreateDeviceChannelDataSourceDto,
 				updateDto: UpdateDeviceChannelDataSourceDto,

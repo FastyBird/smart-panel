@@ -124,10 +124,12 @@ class ChannelPropertyDataModel {
           ? ValueType.fromJson(json['default_value'])
           : null,
       value: json['value'] != null ? ValueType.fromJson(json['value']) : null,
-      createdAt:
-          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt:
-          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 

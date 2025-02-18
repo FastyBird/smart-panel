@@ -382,7 +382,7 @@ export class TimeTileEntity extends TileEntity {
 export class DayWeatherTileEntity extends TileEntity {
 	@Expose()
 	get type(): string {
-		return 'weather_day';
+		return 'weather-day';
 	}
 }
 
@@ -390,7 +390,7 @@ export class DayWeatherTileEntity extends TileEntity {
 export class ForecastWeatherTileEntity extends TileEntity {
 	@Expose()
 	get type(): string {
-		return 'weather_forecast';
+		return 'weather-forecast';
 	}
 }
 
@@ -513,6 +513,6 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 
 	@Expose()
 	get type(): string {
-		return 'device_channel';
+		return 'device-channel';
 	}
 }

@@ -6,7 +6,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/data_source.dart';
+import 'package:fastybird_smart_panel/features/dashboard/models/ui/data_source/data_source.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/weather.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/openweather.dart';
 import 'package:fastybird_smart_panel/features/dashboard/widgets/tiles/tile.dart';
@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:weather_icons/weather_icons.dart';
 
 class WeatherTileWidget
-    extends TileWidget<WeatherTileModel, List<TileDataSourceModel>> {
+    extends TileWidget<WeatherTileModel, List<DataSourceModel>> {
   const WeatherTileWidget(super.tile, super.dataSource, {super.key});
 
   @override
@@ -81,7 +81,7 @@ class _WeatherTileWidgetInnerState extends State<WeatherTileWidgetInner> {
             currentWeather.temperature,
             1,
           )
-        : '-';
+        : NumberUtils.formatUnavailableNumber();
 
     IconData weatherIcon = currentWeather != null
         ? WeatherConditionMapper.getIcon(

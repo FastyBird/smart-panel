@@ -11,7 +11,7 @@ class ButtonTileWidget extends StatelessWidget {
   final GestureTapCallback? onIconTap;
   final String title;
   final Widget? subTitle;
-  final IconData icon;
+  final IconData? icon;
   final bool isOn;
   final bool isLoading;
   final bool isDisabled;
@@ -23,7 +23,7 @@ class ButtonTileWidget extends StatelessWidget {
     required this.onIconTap,
     required this.title,
     required this.subTitle,
-    required this.icon,
+    this.icon,
     required this.isOn,
     this.isLoading = false,
     this.isDisabled = false,
@@ -269,7 +269,6 @@ class ButtonTileSubTitle extends StatelessWidget {
                     : AppColorsDark.infoLight3)),
         overflow: TextOverflow.ellipsis,
         fontSize: AppFontSize.extraSmall,
-        height: 0.9,
       ),
       child: Theme(
         data: ThemeData(
@@ -297,7 +296,7 @@ class ButtonTileSubTitle extends StatelessWidget {
 class ButtonTileIcon extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final IconData icon;
+  final IconData? icon;
   final GestureTapCallback? onTap;
   final bool isOn;
   final bool isLoading;
@@ -305,7 +304,7 @@ class ButtonTileIcon extends StatelessWidget {
 
   ButtonTileIcon({
     super.key,
-    required this.icon,
+    this.icon,
     required this.onTap,
     required this.isOn,
     this.isLoading = false,

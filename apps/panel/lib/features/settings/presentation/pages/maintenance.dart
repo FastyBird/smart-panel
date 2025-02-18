@@ -258,6 +258,7 @@ class MaintenancePage extends StatelessWidget {
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
             ),
+            textAlign: TextAlign.justify,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -265,8 +266,14 @@ class MaintenancePage extends StatelessWidget {
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(localizations.button_cancel),
+              child: Text(
+                localizations.button_cancel.toUpperCase(),
+                style: TextStyle(
+                  fontSize: AppFontSize.extraSmall,
+                ),
+              ),
             ),
+            AppSpacings.spacingSmHorizontal,
             Theme(
               data: ThemeData(
                 filledButtonTheme:
@@ -285,7 +292,12 @@ class MaintenancePage extends StatelessWidget {
                     horizontal: AppSpacings.pMd,
                   ),
                 ),
-                child: Text(localizations.button_confirm.toUpperCase()),
+                child: Text(
+                  localizations.button_confirm.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: AppFontSize.extraSmall,
+                  ),
+                ),
               ),
             ),
           ],

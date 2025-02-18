@@ -8,9 +8,7 @@ import 'package:fastybird_smart_panel/core/repositories/weather_module.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/scenes/scenes.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/pages.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/tiles.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -62,10 +60,9 @@ class StartupManagerService {
     var devicesModuleRepository = DevicesModuleRepository(
       apiClient: _apiClient.devicesModule,
     );
-    var scenesRepository = ScenesDataRepository();
-    var pagesRepository = PagesRepository();
-    var tilesRepository = TilesRepository();
-    var tilesDataRepository = TilesDataRepository();
+    var dashboardModuleRepository = DashboardModuleRepository(
+      apiClient: _apiClient.dashboardModule,
+    );
 
     // Register services
     locator.registerLazySingleton(
@@ -84,10 +81,7 @@ class StartupManagerService {
     // Register repositories
     locator.registerSingleton(configModuleRepository);
     locator.registerSingleton(weatherModuleRepository);
-    locator.registerSingleton(pagesRepository);
-    locator.registerSingleton(tilesRepository);
-    locator.registerSingleton(tilesDataRepository);
-    locator.registerSingleton(scenesRepository);
+    locator.registerSingleton(dashboardModuleRepository);
     locator.registerSingleton(devicesModuleRepository);
 
     // Api client
@@ -111,10 +105,7 @@ class StartupManagerService {
         configModuleRepository.initialize(),
         weatherModuleRepository.initialize(),
         devicesModuleRepository.initialize(),
-        scenesRepository.initialize(),
-        pagesRepository.initialize(),
-        tilesRepository.initialize(),
-        tilesDataRepository.initialize(),
+        dashboardModuleRepository.initialize(),
       ]);
     } catch (e) {
       if (kDebugMode) {

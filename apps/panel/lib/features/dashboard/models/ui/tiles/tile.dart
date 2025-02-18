@@ -5,6 +5,8 @@ abstract class TileModel {
   final String _id;
   final TileType _type;
 
+  final String _parent;
+
   final List<String> _dataSource;
 
   final int _row;
@@ -18,6 +20,7 @@ abstract class TileModel {
   TileModel({
     required String id,
     required TileType type,
+    required String parent,
     List<String> dataSource = const [],
     required int row,
     required int col,
@@ -27,7 +30,8 @@ abstract class TileModel {
     DateTime? updatedAt,
   })  : _id = UuidUtils.validateUuid(id),
         _type = type,
-        _dataSource = dataSource,
+        _parent = UuidUtils.validateUuid(parent),
+        _dataSource = UuidUtils.validateUuidList(dataSource),
         _row = row,
         _col = col,
         _rowSpan = rowSpan ?? 1,
@@ -38,6 +42,8 @@ abstract class TileModel {
   String get id => _id;
 
   TileType get type => _type;
+
+  String get parent => _parent;
 
   List<String> get dataSource => _dataSource;
 
