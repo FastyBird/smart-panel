@@ -450,34 +450,34 @@ class AppBorderRadius {
 }
 
 class AppTopBar {
-  static final ScreenService _screen = locator<ScreenService>();
+  static final ScreenService _screenService = locator<ScreenService>();
 
-  static double get size => _screen.scale(40.0);
+  static double get size => _screenService.scale(40.0);
 }
 
 class AppFontSize {
-  static final ScreenService _screen = locator<ScreenService>();
+  static final ScreenService _screenService = locator<ScreenService>();
 
-  static double get large => _screen.scale(16.0);
+  static double get large => _screenService.scale(16.0);
 
-  static double get base => _screen.scale(14.0);
+  static double get base => _screenService.scale(14.0);
 
-  static double get small => _screen.scale(12.0);
+  static double get small => _screenService.scale(12.0);
 
-  static double get extraSmall => _screen.scale(10.0);
+  static double get extraSmall => _screenService.scale(10.0);
 }
 
 // Centralized spacing
 class AppSpacings {
-  static final ScreenService _screen = locator<ScreenService>();
+  static final ScreenService _screenService = locator<ScreenService>();
 
-  static double get pXs => _screen.scale(2.0);
+  static double get pXs => _screenService.scale(2.0);
 
-  static double get pSm => _screen.scale(4.0);
+  static double get pSm => _screenService.scale(4.0);
 
-  static double get pMd => _screen.scale(8.0);
+  static double get pMd => _screenService.scale(8.0);
 
-  static double get pLg => _screen.scale(16.0);
+  static double get pLg => _screenService.scale(16.0);
 
   static EdgeInsets get paddingXs => EdgeInsets.all(pXs);
 
@@ -1231,35 +1231,35 @@ class AppIconButtonsDarkThemes {
 }
 
 class AppTextThemes {
-  static final ScreenService _screen = locator<ScreenService>();
+  static final ScreenService _screenService = locator<ScreenService>();
 
   static TextTheme getBaseTextTheme(Color textColor) {
     return TextTheme(
       headlineLarge: TextStyle(
-        fontSize: _screen.scale(20.0),
+        fontSize: _screenService.scale(20.0),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       headlineMedium: TextStyle(
-        fontSize: _screen.scale(18.0),
+        fontSize: _screenService.scale(18.0),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       headlineSmall: TextStyle(
-        fontSize: _screen.scale(16.0),
+        fontSize: _screenService.scale(16.0),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       bodyLarge: TextStyle(
-        fontSize: _screen.scale(16.0),
+        fontSize: _screenService.scale(16.0),
         color: textColor,
       ),
       bodyMedium: TextStyle(
-        fontSize: _screen.scale(14.0),
+        fontSize: _screenService.scale(14.0),
         color: textColor,
       ),
       bodySmall: TextStyle(
-        fontSize: _screen.scale(12.0),
+        fontSize: _screenService.scale(12.0),
         color: textColor,
       ),
     );

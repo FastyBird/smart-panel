@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/speaker.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/speaker.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -10,10 +11,12 @@ class SpeakerDeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
   final SpeakerDeviceDataModel device;
+  final SpeakerDeviceCapability capability;
 
   SpeakerDeviceDetailPage({
     super.key,
     required this.device,
+    required this.capability,
   });
 
   @override

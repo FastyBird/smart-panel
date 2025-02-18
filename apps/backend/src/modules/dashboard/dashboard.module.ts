@@ -156,7 +156,7 @@ export class DashboardModule {
 			updateDto: UpdateTimeTileDto,
 		});
 		this.tileMapper.registerMapping<DayWeatherTileEntity, CreateDayWeatherTileDto, UpdateDayWeatherTileDto>({
-			type: 'weather_day',
+			type: 'weather-day',
 			class: DayWeatherTileEntity,
 			createDto: CreateDayWeatherTileDto,
 			updateDto: UpdateDayWeatherTileDto,
@@ -166,7 +166,7 @@ export class DashboardModule {
 			CreateForecastWeatherTileDto,
 			UpdateForecastWeatherTileDto
 		>({
-			type: 'weather_forecast',
+			type: 'weather-forecast',
 			class: ForecastWeatherTileEntity,
 			createDto: CreateForecastWeatherTileDto,
 			updateDto: UpdateForecastWeatherTileDto,
@@ -178,7 +178,7 @@ export class DashboardModule {
 			CreateDeviceChannelDataSourceDto,
 			UpdateDeviceChannelDataSourceDto
 		>({
-			type: 'device_channel',
+			type: 'device-channel',
 			class: DeviceChannelDataSourceEntity,
 			createDto: CreateDeviceChannelDataSourceDto,
 			updateDto: UpdateDeviceChannelDataSourceDto,

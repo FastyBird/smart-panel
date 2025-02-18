@@ -106,14 +106,14 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
             currentWeather.temperature,
             1,
           )
-        : '-';
+        : NumberUtils.formatUnavailableNumber();
 
     String feelsLikeTemperature = currentWeather != null
         ? NumberUtils.formatNumber(
             currentWeather.feelsLike,
             1,
           )
-        : '-';
+        : NumberUtils.formatUnavailableNumber();
 
     IconData weatherIcon = currentWeather != null
         ? WeatherConditionMapper.getIcon(
@@ -306,14 +306,14 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
             averageDayTemp,
             1,
           )
-        : '-';
+        : NumberUtils.formatUnavailableNumber();
 
     String wholeNightTemp = averageNightTemp != null
         ? NumberUtils.formatNumber(
             averageNightTemp,
             1,
           )
-        : '-';
+        : NumberUtils.formatUnavailableNumber();
 
     return SizedBox(
       height: _screenService.scale(45),

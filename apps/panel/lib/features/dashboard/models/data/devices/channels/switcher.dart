@@ -1,10 +1,8 @@
+import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channel.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/mixins.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/controls.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/categories.dart';
 
-class SwitcherChannelDataModel extends ChannelDataModel with ChannelOnMixin {
+class SwitcherChannelDataModel extends ChannelDataModel {
   SwitcherChannelDataModel({
     required super.id,
     super.name,
@@ -14,31 +12,29 @@ class SwitcherChannelDataModel extends ChannelDataModel with ChannelOnMixin {
     required super.controls,
     super.createdAt,
     super.updatedAt,
+    super.invalid,
   }) : super(
           category: ChannelCategoryType.switcher,
         );
 
-  @override
-  ChannelPropertyDataModel get onProp => properties.firstWhere(
-        (property) => property.category == PropertyCategoryType.on,
-      );
-
-  factory SwitcherChannelDataModel.fromJson(
-    Map<String, dynamic> json,
-    List<ChannelPropertyDataModel> properties,
-    List<ChannelControlDataModel> controls,
-  ) {
+  factory SwitcherChannelDataModel.fromJson(Map<String, dynamic> json) {
     return SwitcherChannelDataModel(
       id: json['id'],
       name: json['name'],
       description: json['description'],
       device: json['device'],
-      properties: properties,
-      controls: controls,
-      createdAt:
-          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt:
-          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      controls: UuidUtils.validateUuidList(
+        List<String>.from(json['controls'] ?? []),
+      ),
+      properties: UuidUtils.validateUuidList(
+        List<String>.from(json['properties'] ?? []),
+      ),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 }

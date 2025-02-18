@@ -1,20 +1,9 @@
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channel.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/device_information.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/electrical_energy.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/electrical_power.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/fan.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/controls.dart';
+import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/device.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/mixins.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/categories.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
-class FanDeviceDataModel extends DeviceDataModel
-    with
-        DeviceDeviceInformationMixin,
-        DeviceFanMixin,
-        DeviceElectricalEnergyMixin,
-        DeviceElectricalPowerMixin {
+class FanDeviceDataModel extends DeviceDataModel {
   FanDeviceDataModel({
     required super.id,
     required super.name,
@@ -24,47 +13,31 @@ class FanDeviceDataModel extends DeviceDataModel
     super.channels,
     super.createdAt,
     super.updatedAt,
+    super.invalid,
   }) : super(
           category: DeviceCategoryType.fan,
         );
 
-  @override
-  DeviceInformationChannelDataModel get deviceInformationChannel =>
-      channels.whereType<DeviceInformationChannelDataModel>().first;
-
-  @override
-  FanChannelDataModel get fanChannel =>
-      channels.whereType<FanChannelDataModel>().first;
-
-  @override
-  ElectricalEnergyChannelDataModel? get electricalEnergyChannel =>
-      channels.whereType<ElectricalEnergyChannelDataModel>().firstOrNull;
-
-  @override
-  ElectricalPowerChannelDataModel? get electricalPowerChannel =>
-      channels.whereType<ElectricalPowerChannelDataModel>().firstOrNull;
-
-  @override
-  bool get isOn => fanChannel.on;
-
-  factory FanDeviceDataModel.fromJson(
-    Map<String, dynamic> json,
-    List<DeviceControlDataModel> controls,
-    List<ChannelDataModel> channels,
-  ) {
+  factory FanDeviceDataModel.fromJson(Map<String, dynamic> json) {
     return FanDeviceDataModel(
       id: json['id'],
       name: json['name'],
       description: json['description'],
-      icon: json['icon'] != null
+      icon: json['icon'] != null && json['icon'] is int
           ? IconData(json['icon'], fontFamily: 'MaterialIcons')
           : null,
-      controls: controls,
-      channels: channels,
-      createdAt:
-          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt:
-          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      controls: UuidUtils.validateUuidList(
+        List<String>.from(json['controls'] ?? []),
+      ),
+      channels: UuidUtils.validateUuidList(
+        List<String>.from(json['channels'] ?? []),
+      ),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 }

@@ -159,7 +159,7 @@ export class AuthService {
 		const user = await this.usersService.create({
 			...dtoInstance,
 			password: hashedPassword,
-			role: ownerExists ? UserRole.USER : UserRole.OWNER,
+			role: ownerExists || username === DISPLAY_USERNAME ? UserRole.USER : UserRole.OWNER,
 		});
 
 		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);

@@ -1,7 +1,9 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/capability.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/data/channel.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/data/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -34,8 +36,25 @@ class DeviceDetailPage extends StatelessWidget {
       }
 
       var device = devicesModuleRepository.getDevice(id);
+      DeviceCapability? capability;
 
-      if (device == null) {
+      if (device != null) {
+        capability = buildDeviceCapability(
+          device,
+          devicesModuleRepository
+              .getChannels(device.channels)
+              .map(
+                (channel) => buildChannelCapability(
+                  channel,
+                  devicesModuleRepository
+                      .getChannelsProperties(channel.properties),
+                ),
+              )
+              .toList(),
+        );
+      }
+
+      if (device == null || capability == null) {
         final localizations = AppLocalizations.of(context)!;
 
         return Scaffold(
@@ -67,7 +86,7 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
-      return buildDeviceDetail(device);
+      return buildDeviceDetail(device, capability);
     });
   }
 }

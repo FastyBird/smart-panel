@@ -10,7 +10,7 @@ export interface DataSourceTypeMapping<
 	TCreateDTO extends CreateDataSourceDto,
 	TUpdateDTO extends UpdateDataSourceDto,
 > {
-	type: string; // e.g., 'device_channel', 'time'
+	type: string; // e.g., 'device-channel', 'time'
 	class: new (...args: any[]) => TDataSource; // Constructor for the dataSource class
 	createDto: new (...args: any[]) => TCreateDTO; // Constructor for the Create DTO
 	updateDto: new (...args: any[]) => TUpdateDTO; // Constructor for the Update DTO

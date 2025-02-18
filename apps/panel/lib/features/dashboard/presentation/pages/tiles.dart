@@ -4,9 +4,9 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_grid.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/tile.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/ui/tile.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/pages/tiles.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/tiles.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -20,10 +20,9 @@ class TilesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TilesRepository>(builder: (context, tilesRepository, _) {
-      final tiles = tilesRepository.getByIds(page.tiles);
-
-      final dataRepository = locator<TilesDataRepository>();
+    return Consumer<DashboardModuleRepository>(
+        builder: (context, dashboardRepository, _) {
+      final tiles = dashboardRepository.getTilesByIds(page.tiles);
 
       if (tiles.isEmpty) {
         final localizations = AppLocalizations.of(context)!;
@@ -105,7 +104,7 @@ class TilesPage extends StatelessWidget {
         ),
         body: SafeArea(
           child: Padding(
-            padding: AppSpacings.paddingMd,
+            padding: AppSpacings.paddingSm,
             child: ScreenGrid(
               children: tiles.map((tile) {
                 return GridItemModel(
@@ -116,10 +115,10 @@ class TilesPage extends StatelessWidget {
                   child: Container(
                     alignment: Alignment.center,
                     child: Padding(
-                      padding: AppSpacings.paddingMd,
+                      padding: AppSpacings.paddingSm,
                       child: buildTileWidget(
                         tile,
-                        dataRepository.getAllForTile(tile.id),
+                        dashboardRepository.getDataSourceByIds(tile.dataSource),
                       ),
                     ),
                   ),

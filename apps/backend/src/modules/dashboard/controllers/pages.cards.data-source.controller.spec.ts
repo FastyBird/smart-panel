@@ -124,7 +124,7 @@ describe('PagesCardsDataSourceController', () => {
 
 	const mockDeviceChannelDataSource: DeviceChannelDataSourceEntity = {
 		id: uuid().toString(),
-		type: 'device_channel',
+		type: 'device-channel',
 		tile: mockCard.id,
 		card: null,
 		page: null,

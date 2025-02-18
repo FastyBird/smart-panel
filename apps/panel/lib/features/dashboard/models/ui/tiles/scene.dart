@@ -3,20 +3,21 @@ import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/tile.da
 import 'package:fastybird_smart_panel/features/dashboard/types/ui.dart';
 import 'package:flutter/material.dart';
 
-class SceneTileModel extends TileModel {
+abstract class SceneTileModel extends TileModel {
   final String _scene;
-  final IconData _icon;
+  final IconData? _icon;
   final String _label;
   final String _status;
   final bool _isOn;
 
   SceneTileModel({
     required String scene,
-    required IconData icon,
+    IconData? icon,
     required String label,
     required String status,
     required bool isOn,
     required super.id,
+    required super.parent,
     super.dataSource,
     required super.row,
     required super.col,
@@ -35,30 +36,103 @@ class SceneTileModel extends TileModel {
 
   String get scene => _scene;
 
-  IconData get icon => _icon;
+  IconData? get icon => _icon;
 
   String get label => _label;
 
   String get status => _status;
 
   bool get isOn => _isOn;
+}
 
-  factory SceneTileModel.fromJson(Map<String, dynamic> json) {
-    return SceneTileModel(
-      scene: UuidUtils.validateUuid(json['scene']),
-      label: json['label'],
-      dataSource: UuidUtils.validateUuidList(
-          List<String>.from(json['data_source'] ?? [])),
-      icon: IconData(json['icon'], fontFamily: 'MaterialIcons'),
-      status: json['status'],
-      isOn: json['is_on'],
+class PageSceneTileModel extends SceneTileModel {
+  PageSceneTileModel({
+    required super.scene,
+    required super.icon,
+    required super.label,
+    required super.status,
+    required super.isOn,
+    required super.id,
+    required super.parent,
+    super.dataSource,
+    required super.row,
+    required super.col,
+    super.rowSpan,
+    super.colSpan,
+    super.createdAt,
+    super.updatedAt,
+  });
+
+  factory PageSceneTileModel.fromJson(Map<String, dynamic> json) {
+    return PageSceneTileModel(
       id: UuidUtils.validateUuid(json['id']),
+      parent: UuidUtils.validateUuid(json['parent']),
+      dataSource: UuidUtils.validateUuidList(
+        List<String>.from(json['data_source'] ?? []),
+      ),
       row: json['row'],
       col: json['col'],
       rowSpan: json['row_span'],
+      scene: UuidUtils.validateUuid(json['scene']),
+      label: json['label'],
+      icon: json['icon'] != null && json['icon'] is int
+          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+          : null,
+      status: json['status'],
+      isOn: json['is_on'],
       colSpan: json['col_span'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
+    );
+  }
+}
+
+class CardSceneTileModel extends SceneTileModel {
+  CardSceneTileModel({
+    required super.scene,
+    required super.icon,
+    required super.label,
+    required super.status,
+    required super.isOn,
+    required super.id,
+    required super.parent,
+    super.dataSource,
+    required super.row,
+    required super.col,
+    super.rowSpan,
+    super.colSpan,
+    super.createdAt,
+    super.updatedAt,
+  });
+
+  factory CardSceneTileModel.fromJson(Map<String, dynamic> json) {
+    return CardSceneTileModel(
+      id: UuidUtils.validateUuid(json['id']),
+      parent: UuidUtils.validateUuid(json['parent']),
+      dataSource: UuidUtils.validateUuidList(
+        List<String>.from(json['data_source'] ?? []),
+      ),
+      row: json['row'],
+      col: json['col'],
+      rowSpan: json['row_span'],
+      scene: UuidUtils.validateUuid(json['scene']),
+      label: json['label'],
+      icon: json['icon'] != null && json['icon'] is int
+          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+          : null,
+      status: json['status'],
+      isOn: json['is_on'],
+      colSpan: json['col_span'],
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 }

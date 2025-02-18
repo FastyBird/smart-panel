@@ -1,8 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channel.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/controls.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/categories.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 abstract class DeviceDataModel {
   final String _id;
@@ -13,11 +11,13 @@ abstract class DeviceDataModel {
   final String? _description;
   final IconData? _icon;
 
-  final List<DeviceControlDataModel> _controls;
-  final List<ChannelDataModel> _channels;
+  final List<String> _controls;
+  final List<String> _channels;
 
   final DateTime? _createdAt;
   final DateTime? _updatedAt;
+
+  late bool invalid;
 
   DeviceDataModel({
     required String id,
@@ -25,10 +25,11 @@ abstract class DeviceDataModel {
     required String name,
     String? description,
     IconData? icon,
-    List<DeviceControlDataModel> controls = const [],
-    List<ChannelDataModel> channels = const [],
+    List<String> controls = const [],
+    List<String> channels = const [],
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.invalid = false,
   })  : _id = UuidUtils.validateUuid(id),
         _category = category,
         _name = name,
@@ -49,25 +50,11 @@ abstract class DeviceDataModel {
 
   IconData? get icon => _icon;
 
-  List<DeviceControlDataModel> get controls => _controls;
+  List<String> get controls => _controls;
 
-  List<ChannelDataModel> get channels => _channels;
+  List<String> get channels => _channels;
 
   DateTime? get createdAt => _createdAt;
 
   DateTime? get updatedAt => _updatedAt;
-
-  bool? get isOn => null;
-
-  set channel(ChannelDataModel channel) {
-    final int index = _channels.indexWhere(
-      (item) => item.id == channel.id,
-    );
-
-    if (index == -1) {
-      return;
-    }
-
-    _channels[index] = channel;
-  }
 }

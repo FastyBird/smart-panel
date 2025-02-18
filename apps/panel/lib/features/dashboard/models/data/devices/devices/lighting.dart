@@ -1,23 +1,9 @@
-import 'package:collection/collection.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channel.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/device_information.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/electrical_energy.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/electrical_power.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/illuminance.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channels/light.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/controls.dart';
+import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/device.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/mixins.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/categories.dart';
-import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
-class LightingDeviceDataModel extends DeviceDataModel
-    with
-        DeviceDeviceInformationMixin,
-        DeviceElectricalEnergyMixin,
-        DeviceElectricalPowerMixin,
-        DeviceIlluminanceMixin {
+class LightingDeviceDataModel extends DeviceDataModel {
   LightingDeviceDataModel({
     required super.id,
     required super.name,
@@ -27,79 +13,31 @@ class LightingDeviceDataModel extends DeviceDataModel
     super.channels,
     super.createdAt,
     super.updatedAt,
+    super.invalid,
   }) : super(
           category: DeviceCategoryType.lighting,
         );
 
-  @override
-  DeviceInformationChannelDataModel get deviceInformationChannel =>
-      channels.whereType<DeviceInformationChannelDataModel>().first;
-
-  @override
-  ElectricalEnergyChannelDataModel? get electricalEnergyChannel =>
-      channels.whereType<ElectricalEnergyChannelDataModel>().firstOrNull;
-
-  @override
-  ElectricalPowerChannelDataModel? get electricalPowerChannel =>
-      channels.whereType<ElectricalPowerChannelDataModel>().firstOrNull;
-
-  @override
-  IlluminanceChannelDataModel? get illuminanceChannel =>
-      channels.whereType<IlluminanceChannelDataModel>().firstOrNull;
-
-  List<LightChannelDataModel> get lightChannels =>
-      channels.whereType<LightChannelDataModel>().toList();
-
-  @override
-  bool get isOn {
-    final properties = lightChannels
-        .expand((channel) => channel.properties)
-        .where((property) => property.category == PropertyCategoryType.on)
-        .toList();
-
-    return properties.every(
-      (prop) {
-        final value = prop.value;
-
-        return value is BooleanValueType ? value.value : false;
-      },
-    );
-  }
-
-  bool get hasColor => lightChannels.any((channel) => channel.hasColor);
-
-  bool get hasWhite => lightChannels.any((channel) => channel.hasColorWhite);
-
-  bool get hasTemperature =>
-      lightChannels.any((channel) => channel.hasTemperature);
-
-  bool get hasBrightness =>
-      lightChannels.any((channel) => channel.hasBrightness);
-
-  bool get isSimpleLight =>
-      !hasColor && !hasWhite && !hasTemperature && !hasBrightness;
-
-  bool get isSingleBrightness =>
-      !hasColor && !hasWhite && !hasTemperature && hasBrightness;
-
-  factory LightingDeviceDataModel.fromJson(
-    Map<String, dynamic> json,
-    List<DeviceControlDataModel> controls,
-    List<ChannelDataModel> channels,
-  ) {
+  factory LightingDeviceDataModel.fromJson(Map<String, dynamic> json) {
     return LightingDeviceDataModel(
       id: json['id'],
       name: json['name'],
       description: json['description'],
-      icon: json['icon'] != null
+      icon: json['icon'] != null && json['icon'] is int
           ? IconData(json['icon'], fontFamily: 'MaterialIcons')
           : null,
-      controls: controls,
-      channels: channels,
-      createdAt:
-          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt:
-          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      controls: UuidUtils.validateUuidList(
+        List<String>.from(json['controls'] ?? []),
+      ),
+      channels: UuidUtils.validateUuidList(
+        List<String>.from(json['channels'] ?? []),
+      ),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 }

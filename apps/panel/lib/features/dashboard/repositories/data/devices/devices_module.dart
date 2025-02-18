@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
 import 'package:fastybird_smart_panel/api/models/devices_channel.dart';
@@ -5,8 +6,8 @@ import 'package:fastybird_smart_panel/api/models/devices_channel_control.dart';
 import 'package:fastybird_smart_panel/api/models/devices_channel_property.dart';
 import 'package:fastybird_smart_panel/api/models/devices_device_control.dart';
 import 'package:fastybird_smart_panel/api/models/devices_res_devices_data_union.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/channel.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/data/channel.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/data/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/channel.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/controls.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/device.dart';
@@ -44,35 +45,30 @@ class DevicesModuleRepository extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   List<DeviceDataModel> getDevices(List<String> ids) {
-    return _devices.where((device) => ids.contains(device.id)).toList();
+    return _devices
+        .where((device) => ids.contains(device.id) && !device.invalid)
+        .toList();
   }
 
   DeviceDataModel? getDevice(String id) {
-    try {
-      return _devices.firstWhere((device) => device.id == id);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  ChannelDataModel? getChannel(String id) {
-    try {
-      return _channels.firstWhere((channel) => channel.id == id);
-    } catch (e) {
-      return null;
-    }
+    return _devices
+        .firstWhereOrNull((device) => device.id == id && !device.invalid);
   }
 
   List<ChannelDataModel> getChannels(List<String> ids) {
-    return _channels.where((channel) => ids.contains(channel.id)).toList();
+    return _channels
+        .where((channel) => ids.contains(channel.id) && !channel.invalid)
+        .toList();
+  }
+
+  ChannelDataModel? getChannel(String id) {
+    return _channels
+        .firstWhereOrNull((channel) => channel.id == id && !channel.invalid);
   }
 
   ChannelPropertyDataModel? getChannelProperty(String id) {
-    try {
-      return _channelsProperties.firstWhere((property) => property.id == id);
-    } catch (e) {
-      return null;
-    }
+    return _channelsProperties
+        .firstWhereOrNull((property) => property.id == id);
   }
 
   List<ChannelPropertyDataModel> getChannelsProperties(List<String> ids) {
@@ -81,20 +77,20 @@ class DevicesModuleRepository extends ChangeNotifier {
         .toList();
   }
 
-  bool toggleDeviceOnState(String id) {
+  Future<bool> toggleDeviceOnState(String id) async {
     final DeviceDataModel? device = getDevice(id);
 
     if (device == null) {
       return false;
     }
 
-    final properties = device.channels
-        .expand((channel) => channel.properties)
+    final properties = getChannels(device.channels)
+        .expand((channel) => getChannelsProperties(channel.properties))
         .where((property) => property.category == PropertyCategoryType.on)
         .toList();
 
     for (var property in properties) {
-      if (togglePropertyValue(property.id) == false) {
+      if (await togglePropertyValue(property.id) == false) {
         return false;
       }
     }
@@ -102,21 +98,32 @@ class DevicesModuleRepository extends ChangeNotifier {
     return true;
   }
 
-  bool togglePropertyValue(String id) {
+  Future<bool> togglePropertyValue(String id) async {
     final ChannelPropertyDataModel? property = getChannelProperty(id);
 
     if (property == null) {
       return false;
     }
 
-    if (property.value is! BooleanValueType) {
+    if (property.dataType != DataTypeType.boolean) {
       debugPrint('Only boolean values could be toggled');
     }
 
-    return setPropertyValue(id, !(property.value as BooleanValueType).value);
+    bool setValue = false;
+
+    if (property.value == null) {
+      setValue = true;
+    } else {
+      setValue = !(property.value as BooleanValueType).value;
+    }
+
+    return await setPropertyValue(
+      id,
+      setValue,
+    );
   }
 
-  bool setPropertyValue(String id, dynamic value) {
+  Future<bool> setPropertyValue(String id, dynamic value) async {
     ChannelPropertyDataModel? property = getChannelProperty(id);
 
     if (property == null) {
@@ -178,8 +185,6 @@ class DevicesModuleRepository extends ChangeNotifier {
       return false;
     }
 
-    channel.property = property;
-
     _channels[channelIndex] = channel;
 
     DeviceDataModel? device = getDevice(channel.device);
@@ -195,8 +200,6 @@ class DevicesModuleRepository extends ChangeNotifier {
     if (deviceIndex == -1) {
       return false;
     }
-
-    device.channel = channel;
 
     _devices[deviceIndex] = device;
 
@@ -238,7 +241,7 @@ class DevicesModuleRepository extends ChangeNotifier {
   }
 
   Future<void> _loadDevices() async {
-    var resConfig = await _fetchDevices();
+    var resDevices = await _fetchDevices();
 
     _devices.clear();
     _devicesControls.clear();
@@ -246,241 +249,260 @@ class DevicesModuleRepository extends ChangeNotifier {
     _channelsControls.clear();
     _channelsProperties.clear();
 
-    _devices.addAll(
-      resConfig
-          .map(
-            (apiDevice) {
-              final DeviceCategoryType? category = DeviceCategoryType.fromValue(
-                apiDevice.category.json ?? DeviceCategoryType.generic.value,
-              );
-
-              if (category == null || apiDevice.category.json == null) {
-                if (kDebugMode) {
-                  print(
-                    'Unknown device category: "${apiDevice.category.json}" for device: "${apiDevice.id}"',
-                  );
-                }
-
-                return null;
-              }
-
-              final List<DeviceControlDataModel> controls =
-                  _parseDeviceControls(apiDevice.controls);
-
-              final List<ChannelDataModel> channels = _parseChannels(
-                apiDevice.channels,
-              );
-
-              final DeviceChannelsSpecification channelsSpec =
-                  buildDeviceChannelsSpecification(category);
-
-              final missingChannels = channelsSpec.required
-                  .where(
-                    (requiredChannel) => !channels.any(
-                      (channel) => channel.category == requiredChannel,
-                    ),
-                  )
-                  .toList();
-
-              if (missingChannels.isNotEmpty) {
-                if (kDebugMode) {
-                  print(
-                    'Missing required channels: "${missingChannels.map((channel) => channel.value).join(", ")}" for device category: "$category" - "${apiDevice.id}".',
-                  );
-                }
-
-                return null;
-              }
-
-              try {
-                final device = buildDeviceModel(
-                  {
-                    "id": apiDevice.id,
-                    "category": apiDevice.category.json,
-                    "name": apiDevice.name,
-                    "description": apiDevice.description,
-                    "created_at": apiDevice.createdAt.toIso8601String(),
-                    "updated_at": apiDevice.updatedAt?.toIso8601String(),
-                  },
-                  controls,
-                  channels
-                      .where(
-                        (channel) => channelsSpec.all.contains(
-                          channel.category,
-                        ),
-                      )
-                      .toList(),
-                );
-
-                _devicesControls.addAll(controls);
-
-                _channels.addAll(
-                  channels
-                      .where(
-                        (channel) => channelsSpec.all.contains(
-                          channel.category,
-                        ),
-                      )
-                      .toList(),
-                );
-
-                return device;
-              } catch (e) {
-                return null;
-              }
-            },
-          )
-          .whereType<DeviceDataModel>()
-          .toList(),
-    );
+    _parseDevices(resDevices);
   }
 
-  List<DeviceControlDataModel> _parseDeviceControls(
-    List<DevicesDeviceControl> controls,
-  ) {
-    return controls.map(
-      (apiData) {
-        return DeviceControlDataModel.fromJson({
-          "id": apiData.id,
-          "device": apiData.device,
-          "name": apiData.name,
-          "created_at": apiData.createdAt.toIso8601String(),
-          "updated_at": apiData.updatedAt?.toIso8601String(),
-        });
-      },
-    ).toList();
-  }
+  /// ///////
+  /// DEVICES
+  /// ///////
 
-  List<ChannelDataModel> _parseChannels(
-    List<DevicesChannel> channels,
+  void _parseDevices(
+    List<DevicesResDevicesDataUnion> apiDevices,
   ) {
-    return channels
-        .map((apiChannel) {
-          final ChannelCategoryType? category = ChannelCategoryType.fromValue(
-            apiChannel.category.json ?? ChannelCategoryType.generic.value,
+    for (var apiDevice in apiDevices) {
+      final DeviceCategoryType? category = DeviceCategoryType.fromValue(
+        apiDevice.category.json ?? DeviceCategoryType.generic.value,
+      );
+
+      if (category == null || apiDevice.category.json == null) {
+        if (kDebugMode) {
+          debugPrint(
+            'Unknown device category: "${apiDevice.category.json}" for device: "${apiDevice.id}"',
           );
+        }
 
-          if (category == null || apiChannel.category.json == null) {
-            if (kDebugMode) {
-              print(
-                'Unknown channel category: "${apiChannel.category.json}" for channel: "${apiChannel.id}"',
-              );
-            }
+        continue;
+      }
 
-            return null;
-          }
+      try {
+        _devices.add(
+          buildDeviceModel(category, {
+            "id": apiDevice.id,
+            "category": apiDevice.category.json,
+            "name": apiDevice.name,
+            "description": apiDevice.description,
+            "created_at": apiDevice.createdAt.toIso8601String(),
+            "updated_at": apiDevice.updatedAt?.toIso8601String(),
+            "controls": apiDevice.controls
+                .map(
+                  (control) => control.id,
+                )
+                .toList(),
+            "channels": apiDevice.channels
+                .map(
+                  (channel) => channel.id,
+                )
+                .toList(),
+          }),
+        );
+      } catch (e) {
+        continue;
+      }
 
-          final List<ChannelControlDataModel> controls =
-              _parseChannelControls(apiChannel.controls);
+      _parseDeviceControls(apiDevice, apiDevice.controls);
+      _parseChannels(apiDevice, apiDevice.channels);
 
-          final List<ChannelPropertyDataModel> properties =
-              _parseChannelProperties(apiChannel.properties);
+      final DeviceChannelsSpecification channelsSpec =
+          buildDeviceChannelsSpecification(category);
 
-          final ChannelPropertiesSpecification propertiesSpec =
-              buildChannelPropertiesSpecification(category);
+      List<ChannelDataModel> channels = getChannels(apiDevice.channels
+          .map(
+            (channel) => channel.id,
+          )
+          .toList());
 
-          final missingProperties = propertiesSpec.required
-              .where(
-                (requiredProp) => !properties.any(
-                  (property) => property.category == requiredProp,
-                ),
+      final missingChannels = channelsSpec.required
+          .where(
+            (requiredChannel) => !channels.any(
+              (channel) => channel.category == requiredChannel,
+            ),
+          )
+          .toList();
+
+      if (missingChannels.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint(
+            'Missing required channels: "${missingChannels.map((channel) => channel.value).join(", ")}" for device category: "$category" - "${apiDevice.id}".',
+          );
+        }
+
+        final int deviceIndex = _devices.indexWhere(
+          (item) => item.id == apiDevice.id,
+        );
+
+        if (deviceIndex != -1) {
+          DeviceDataModel device = _devices[deviceIndex];
+
+          /// Device is marked as invalid due to missing required channels
+          device.invalid = true;
+
+          _devices[deviceIndex] = device;
+        }
+      }
+    }
+  }
+
+  void _parseDeviceControls(
+    DevicesResDevicesDataUnion apiDevice,
+    List<DevicesDeviceControl> apiControls,
+  ) {
+    for (var apiControl in apiControls) {
+      _devicesControls.add(
+        DeviceControlDataModel.fromJson({
+          "id": apiControl.id,
+          "device": apiDevice.id,
+          "name": apiControl.name,
+          "created_at": apiControl.createdAt.toIso8601String(),
+          "updated_at": apiControl.updatedAt?.toIso8601String(),
+        }),
+      );
+    }
+  }
+
+  /// ////////
+  /// CHANNELS
+  /// ////////
+
+  void _parseChannels(
+    DevicesResDevicesDataUnion apiDevice,
+    List<DevicesChannel> apiChannels,
+  ) {
+    for (var apiChannel in apiChannels) {
+      final ChannelCategoryType? category = ChannelCategoryType.fromValue(
+        apiChannel.category.json ?? ChannelCategoryType.generic.value,
+      );
+
+      if (category == null || apiChannel.category.json == null) {
+        if (kDebugMode) {
+          debugPrint(
+            'Unknown channel category: "${apiChannel.category.json}" for channel: "${apiChannel.id}"',
+          );
+        }
+
+        continue;
+      }
+
+      try {
+        _channels.add(
+          buildChannelModel(
+            category,
+            {
+              "id": apiChannel.id,
+              "device": apiDevice.id,
+              "category": apiChannel.category.json,
+              "name": apiChannel.name,
+              "description": apiChannel.description,
+              "created_at": apiChannel.createdAt.toIso8601String(),
+              "updated_at": apiChannel.updatedAt?.toIso8601String(),
+              "controls": apiChannel.controls
+                  .map(
+                    (control) => control.id,
+                  )
+                  .toList(),
+              "properties": apiChannel.properties
+                  .map(
+                    (property) => property.id,
+                  )
+                  .toList(),
+            },
+          ),
+        );
+      } catch (e) {
+        return null;
+      }
+
+      _parseChannelControls(apiChannel, apiChannel.controls);
+      _parseChannelProperties(apiChannel, apiChannel.properties);
+
+      final ChannelPropertiesSpecification propertiesSpec =
+          buildChannelPropertiesSpecification(category);
+
+      List<ChannelPropertyDataModel> properties =
+          getChannelsProperties(apiChannel.properties
+              .map(
+                (property) => property.id,
               )
-              .toList();
+              .toList());
 
-          if (missingProperties.isNotEmpty) {
-            if (kDebugMode) {
-              print(
-                'Missing required properties: "${missingProperties.map((prop) => prop.value).join(", ")}" for channel category: "$category" - "${apiChannel.id}".',
-              );
-            }
+      final missingProperties = propertiesSpec.required
+          .where(
+            (requiredProp) => !properties.any(
+              (property) => property.category == requiredProp,
+            ),
+          )
+          .toList();
 
-            return null;
-          }
+      if (missingProperties.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint(
+            'Missing required properties: "${missingProperties.map((prop) => prop.value).join(", ")}" for channel category: "$category" - "${apiChannel.id}".',
+          );
+        }
 
-          try {
-            final ChannelDataModel channel = buildChannelModel(
-              {
-                "id": apiChannel.id,
-                "device": apiChannel.device,
-                "category": apiChannel.category.json,
-                "name": apiChannel.name,
-                "description": apiChannel.description,
-                "created_at": apiChannel.createdAt.toIso8601String(),
-                "updated_at": apiChannel.updatedAt?.toIso8601String(),
-              },
-              properties
-                  .where(
-                    (property) => propertiesSpec.all.contains(
-                      property.category,
-                    ),
-                  )
-                  .toList(),
-              controls,
-            );
+        final int channelIndex = _channels.indexWhere(
+          (item) => item.id == apiChannel.id,
+        );
 
-            _channelsControls.addAll(controls);
+        if (channelIndex != -1) {
+          ChannelDataModel channel = _channels[channelIndex];
 
-            _channelsProperties.addAll(
-              properties
-                  .where(
-                    (property) => propertiesSpec.all.contains(
-                      property.category,
-                    ),
-                  )
-                  .toList(),
-            );
+          /// Channel is marked as invalid due to missing required properties
+          channel.invalid = true;
 
-            return channel;
-          } catch (e) {
-            return null;
-          }
-        })
-        .whereType<ChannelDataModel>()
-        .toList();
+          _channels[channelIndex] = channel;
+        }
+      }
+    }
   }
 
-  List<ChannelControlDataModel> _parseChannelControls(
-    List<DevicesChannelControl> controls,
+  void _parseChannelControls(
+    DevicesChannel apiChannel,
+    List<DevicesChannelControl> apiControls,
   ) {
-    return controls.map(
-      (apiData) {
-        return ChannelControlDataModel.fromJson({
-          "id": apiData.id,
-          "channel": apiData.channel,
-          "name": apiData.name,
-          "created_at": apiData.createdAt.toIso8601String(),
-          "updated_at": apiData.updatedAt?.toIso8601String(),
-        });
-      },
-    ).toList();
+    for (var apiControl in apiControls) {
+      _channelsControls.add(
+        ChannelControlDataModel.fromJson({
+          "id": apiControl.id,
+          "channel": apiChannel.id,
+          "name": apiControl.name,
+          "created_at": apiControl.createdAt.toIso8601String(),
+          "updated_at": apiControl.updatedAt?.toIso8601String(),
+        }),
+      );
+    }
   }
 
-  List<ChannelPropertyDataModel> _parseChannelProperties(
-    List<DevicesChannelProperty> properties,
+  void _parseChannelProperties(
+    DevicesChannel apiChannel,
+    List<DevicesChannelProperty> apiProperties,
   ) {
-    return properties.map(
-      (apiData) {
-        return ChannelPropertyDataModel.fromJson({
-          "id": apiData.id,
-          "channel": apiData.channel,
-          "category": apiData.category.json,
-          "name": apiData.name,
-          "permission": apiData.permission
+    for (var apiProperty in apiProperties) {
+      _channelsProperties.add(
+        ChannelPropertyDataModel.fromJson({
+          "id": apiProperty.id,
+          "channel": apiChannel.id,
+          "category": apiProperty.category.json,
+          "name": apiProperty.name,
+          "permission": apiProperty.permission
               .map((item) => item.json)
               .whereType<String>()
               .toList(),
-          "data_type": apiData.dataType.json,
-          "unit": apiData.unit,
-          "format": apiData.format,
-          "invalid": apiData.invalid,
-          "step": apiData.step,
-          "value": apiData.value,
-          "created_at": apiData.createdAt.toIso8601String(),
-          "updated_at": apiData.updatedAt?.toIso8601String(),
-        });
-      },
-    ).toList();
+          "data_type": apiProperty.dataType.json,
+          "unit": apiProperty.unit,
+          "format": apiProperty.format,
+          "invalid": apiProperty.invalid,
+          "step": apiProperty.step,
+          "value": apiProperty.value,
+          "created_at": apiProperty.createdAt.toIso8601String(),
+          "updated_at": apiProperty.updatedAt?.toIso8601String(),
+        }),
+      );
+    }
   }
+
+  /// ////////////
+  /// API HANDLERS
+  /// ////////////
 
   Future<List<DevicesResDevicesDataUnion>> _fetchDevices() async {
     return _handleApiCall(

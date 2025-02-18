@@ -5,6 +5,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'dashboard_create_card_data_source_union.dart';
+import 'dashboard_create_card_tiles_union.dart';
 
 part 'dashboard_create_card.freezed.dart';
 part 'dashboard_create_card.g.dart';
@@ -23,7 +24,7 @@ class DashboardCreateCard with _$DashboardCreateCard {
     required int order,
 
     /// A list of tiles associated with the dashboard card, representing widgets or functional components.
-    required List<dynamic> tiles,
+    required List<DashboardCreateCardTilesUnion> tiles,
 
     /// A list of data sources used by the card, typically for real-time updates.
     @JsonKey(name: 'data_source')

@@ -4015,34 +4015,32 @@
                               "order": 1,
                               "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
                               "tiles": [
-                                [
-                                  {
-                                    "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                    "row": 1,
-                                    "col": 1,
-                                    "row_span": 2,
-                                    "col_span": 2,
-                                    "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                    "data_source": [
-                                      {
-                                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                        "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                        "created_at": "2025-01-25T12:00:00Z",
-                                        "updated_at": "2025-01-25T13:00:00Z",
-                                        "type": "device-channel",
-                                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                                        "icon": "icon-name"
-                                      }
-                                    ],
-                                    "created_at": "2025-01-25T12:00:00Z",
-                                    "updated_at": "2025-01-25T13:00:00Z",
-                                    "type": "device",
-                                    "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                    "icon": "icon-name"
-                                  }
-                                ]
+                                {
+                                  "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                  "row": 1,
+                                  "col": 1,
+                                  "row_span": 2,
+                                  "col_span": 2,
+                                  "card": "7943c740-52b6-4e18-a136-cf39061ac869",
+                                  "data_source": [
+                                    {
+                                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                      "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                      "created_at": "2025-01-25T12:00:00Z",
+                                      "updated_at": "2025-01-25T13:00:00Z",
+                                      "type": "device-channel",
+                                      "device": "234e5678-a89b-22d3-c456-426614174133",
+                                      "channel": "345e6789-b89c-32d4-d567-526715184244",
+                                      "property": "456e7890-c89d-42d5-e678-626816194355",
+                                      "icon": "icon-name"
+                                    }
+                                  ],
+                                  "created_at": "2025-01-25T12:00:00Z",
+                                  "updated_at": "2025-01-25T13:00:00Z",
+                                  "type": "device",
+                                  "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                                  "icon": "icon-name"
+                                }
                               ],
                               "data_source": [
                                 {
@@ -4142,34 +4140,32 @@
                             "order": 1,
                             "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
                             "tiles": [
-                              [
-                                {
-                                  "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                  "row": 1,
-                                  "col": 1,
-                                  "row_span": 2,
-                                  "col_span": 2,
-                                  "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                  "data_source": [
-                                    {
-                                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                      "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                      "created_at": "2025-01-25T12:00:00Z",
-                                      "updated_at": "2025-01-25T13:00:00Z",
-                                      "type": "device-channel",
-                                      "device": "234e5678-a89b-22d3-c456-426614174133",
-                                      "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                      "property": "456e7890-c89d-42d5-e678-626816194355",
-                                      "icon": "icon-name"
-                                    }
-                                  ],
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device",
-                                  "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                  "icon": "icon-name"
-                                }
-                              ]
+                              {
+                                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                "row": 1,
+                                "col": 1,
+                                "row_span": 2,
+                                "col_span": 2,
+                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
+                                "data_source": [
+                                  {
+                                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                    "created_at": "2025-01-25T12:00:00Z",
+                                    "updated_at": "2025-01-25T13:00:00Z",
+                                    "type": "device-channel",
+                                    "device": "234e5678-a89b-22d3-c456-426614174133",
+                                    "channel": "345e6789-b89c-32d4-d567-526715184244",
+                                    "property": "456e7890-c89d-42d5-e678-626816194355",
+                                    "icon": "icon-name"
+                                  }
+                                ],
+                                "created_at": "2025-01-25T12:00:00Z",
+                                "updated_at": "2025-01-25T13:00:00Z",
+                                "type": "device",
+                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                                "icon": "icon-name"
+                              }
                             ],
                             "data_source": [
                               {
@@ -4252,28 +4248,26 @@
                           "icon": "icon-name",
                           "order": 1,
                           "tiles": [
-                            [
-                              {
-                                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                "row": 1,
-                                "col": 2,
-                                "row_span": 1,
-                                "col_span": 2,
-                                "data_source": [
-                                  {
-                                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                    "type": "device-channel",
-                                    "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                    "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                                    "property": "3d988def-559f-498c-a804-5111aba2df66",
-                                    "icon": "icon-name"
-                                  }
-                                ],
-                                "type": "device",
-                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                "icon": "icon-name"
-                              }
-                            ]
+                            {
+                              "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                              "row": 1,
+                              "col": 2,
+                              "row_span": 1,
+                              "col_span": 2,
+                              "data_source": [
+                                {
+                                  "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                  "type": "device-channel",
+                                  "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                                  "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
+                                  "property": "3d988def-559f-498c-a804-5111aba2df66",
+                                  "icon": "icon-name"
+                                }
+                              ],
+                              "type": "device",
+                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                              "icon": "icon-name"
+                            }
                           ],
                           "data_source": [
                             {
@@ -4358,34 +4352,32 @@
                             "order": 1,
                             "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
                             "tiles": [
-                              [
-                                {
-                                  "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                  "row": 1,
-                                  "col": 1,
-                                  "row_span": 2,
-                                  "col_span": 2,
-                                  "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                  "data_source": [
-                                    {
-                                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                      "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                      "created_at": "2025-01-25T12:00:00Z",
-                                      "updated_at": "2025-01-25T13:00:00Z",
-                                      "type": "device-channel",
-                                      "device": "234e5678-a89b-22d3-c456-426614174133",
-                                      "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                      "property": "456e7890-c89d-42d5-e678-626816194355",
-                                      "icon": "icon-name"
-                                    }
-                                  ],
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device",
-                                  "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                  "icon": "icon-name"
-                                }
-                              ]
+                              {
+                                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                "row": 1,
+                                "col": 1,
+                                "row_span": 2,
+                                "col_span": 2,
+                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
+                                "data_source": [
+                                  {
+                                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                    "created_at": "2025-01-25T12:00:00Z",
+                                    "updated_at": "2025-01-25T13:00:00Z",
+                                    "type": "device-channel",
+                                    "device": "234e5678-a89b-22d3-c456-426614174133",
+                                    "channel": "345e6789-b89c-32d4-d567-526715184244",
+                                    "property": "456e7890-c89d-42d5-e678-626816194355",
+                                    "icon": "icon-name"
+                                  }
+                                ],
+                                "created_at": "2025-01-25T12:00:00Z",
+                                "updated_at": "2025-01-25T13:00:00Z",
+                                "type": "device",
+                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                                "icon": "icon-name"
+                              }
                             ],
                             "data_source": [
                               {
@@ -4487,34 +4479,32 @@
                             "order": 1,
                             "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
                             "tiles": [
-                              [
-                                {
-                                  "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                  "row": 1,
-                                  "col": 1,
-                                  "row_span": 2,
-                                  "col_span": 2,
-                                  "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                  "data_source": [
-                                    {
-                                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                      "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                      "created_at": "2025-01-25T12:00:00Z",
-                                      "updated_at": "2025-01-25T13:00:00Z",
-                                      "type": "device-channel",
-                                      "device": "234e5678-a89b-22d3-c456-426614174133",
-                                      "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                      "property": "456e7890-c89d-42d5-e678-626816194355",
-                                      "icon": "icon-name"
-                                    }
-                                  ],
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device",
-                                  "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                  "icon": "icon-name"
-                                }
-                              ]
+                              {
+                                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                "row": 1,
+                                "col": 1,
+                                "row_span": 2,
+                                "col_span": 2,
+                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
+                                "data_source": [
+                                  {
+                                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                    "created_at": "2025-01-25T12:00:00Z",
+                                    "updated_at": "2025-01-25T13:00:00Z",
+                                    "type": "device-channel",
+                                    "device": "234e5678-a89b-22d3-c456-426614174133",
+                                    "channel": "345e6789-b89c-32d4-d567-526715184244",
+                                    "property": "456e7890-c89d-42d5-e678-626816194355",
+                                    "icon": "icon-name"
+                                  }
+                                ],
+                                "created_at": "2025-01-25T12:00:00Z",
+                                "updated_at": "2025-01-25T13:00:00Z",
+                                "type": "device",
+                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                                "icon": "icon-name"
+                              }
                             ],
                             "data_source": [
                               {
@@ -5831,34 +5821,32 @@
                           "order": 1,
                           "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
                           "tiles": [
-                            [
-                              {
-                                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                "row": 1,
-                                "col": 1,
-                                "row_span": 2,
-                                "col_span": 2,
-                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                "data_source": [
-                                  {
-                                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                    "created_at": "2025-01-25T12:00:00Z",
-                                    "updated_at": "2025-01-25T13:00:00Z",
-                                    "type": "device-channel",
-                                    "device": "234e5678-a89b-22d3-c456-426614174133",
-                                    "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                    "property": "456e7890-c89d-42d5-e678-626816194355",
-                                    "icon": "icon-name"
-                                  }
-                                ],
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device",
-                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                "icon": "icon-name"
-                              }
-                            ]
+                            {
+                              "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                              "row": 1,
+                              "col": 1,
+                              "row_span": 2,
+                              "col_span": 2,
+                              "card": "7943c740-52b6-4e18-a136-cf39061ac869",
+                              "data_source": [
+                                {
+                                  "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                  "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                  "created_at": "2025-01-25T12:00:00Z",
+                                  "updated_at": "2025-01-25T13:00:00Z",
+                                  "type": "device-channel",
+                                  "device": "234e5678-a89b-22d3-c456-426614174133",
+                                  "channel": "345e6789-b89c-32d4-d567-526715184244",
+                                  "property": "456e7890-c89d-42d5-e678-626816194355",
+                                  "icon": "icon-name"
+                                }
+                              ],
+                              "created_at": "2025-01-25T12:00:00Z",
+                              "updated_at": "2025-01-25T13:00:00Z",
+                              "type": "device",
+                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                              "icon": "icon-name"
+                            }
                           ],
                           "data_source": [
                             {
@@ -5946,34 +5934,32 @@
                         "order": 1,
                         "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
                         "tiles": [
-                          [
-                            {
-                              "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                              "row": 1,
-                              "col": 1,
-                              "row_span": 2,
-                              "col_span": 2,
-                              "page": "7943c740-52b6-4e18-a136-cf39061ac869",
-                              "data_source": [
-                                {
-                                  "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                  "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device-channel",
-                                  "device": "234e5678-a89b-22d3-c456-426614174133",
-                                  "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                  "property": "456e7890-c89d-42d5-e678-626816194355",
-                                  "icon": "icon-name"
-                                }
-                              ],
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z",
-                              "type": "device",
-                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                              "icon": "icon-name"
-                            }
-                          ]
+                          {
+                            "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                            "row": 1,
+                            "col": 1,
+                            "row_span": 2,
+                            "col_span": 2,
+                            "page": "7943c740-52b6-4e18-a136-cf39061ac869",
+                            "data_source": [
+                              {
+                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                "created_at": "2025-01-25T12:00:00Z",
+                                "updated_at": "2025-01-25T13:00:00Z",
+                                "type": "device-channel",
+                                "device": "234e5678-a89b-22d3-c456-426614174133",
+                                "channel": "345e6789-b89c-32d4-d567-526715184244",
+                                "property": "456e7890-c89d-42d5-e678-626816194355",
+                                "icon": "icon-name"
+                              }
+                            ],
+                            "created_at": "2025-01-25T12:00:00Z",
+                            "updated_at": "2025-01-25T13:00:00Z",
+                            "type": "device",
+                            "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                            "icon": "icon-name"
+                          }
                         ],
                         "data_source": [
                           {
@@ -6030,28 +6016,26 @@
                       "icon": "icon-name",
                       "order": 1,
                       "tiles": [
-                        [
-                          {
-                            "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "row": 1,
-                            "col": 2,
-                            "row_span": 1,
-                            "col_span": 2,
-                            "data_source": [
-                              {
-                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                "type": "device-channel",
-                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                                "property": "3d988def-559f-498c-a804-5111aba2df66",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "type": "device",
-                            "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                            "icon": "icon-name"
-                          }
-                        ]
+                        {
+                          "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                          "row": 1,
+                          "col": 2,
+                          "row_span": 1,
+                          "col_span": 2,
+                          "data_source": [
+                            {
+                              "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                              "type": "device-channel",
+                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                              "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
+                              "property": "3d988def-559f-498c-a804-5111aba2df66",
+                              "icon": "icon-name"
+                            }
+                          ],
+                          "type": "device",
+                          "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                          "icon": "icon-name"
+                        }
                       ],
                       "data_source": [
                         {
@@ -6117,34 +6101,32 @@
                         "order": 1,
                         "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
                         "tiles": [
-                          [
-                            {
-                              "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                              "row": 1,
-                              "col": 1,
-                              "row_span": 2,
-                              "col_span": 2,
-                              "page": "7943c740-52b6-4e18-a136-cf39061ac869",
-                              "data_source": [
-                                {
-                                  "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                  "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device-channel",
-                                  "device": "234e5678-a89b-22d3-c456-426614174133",
-                                  "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                  "property": "456e7890-c89d-42d5-e678-626816194355",
-                                  "icon": "icon-name"
-                                }
-                              ],
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z",
-                              "type": "device",
-                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                              "icon": "icon-name"
-                            }
-                          ]
+                          {
+                            "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                            "row": 1,
+                            "col": 1,
+                            "row_span": 2,
+                            "col_span": 2,
+                            "page": "7943c740-52b6-4e18-a136-cf39061ac869",
+                            "data_source": [
+                              {
+                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                "created_at": "2025-01-25T12:00:00Z",
+                                "updated_at": "2025-01-25T13:00:00Z",
+                                "type": "device-channel",
+                                "device": "234e5678-a89b-22d3-c456-426614174133",
+                                "channel": "345e6789-b89c-32d4-d567-526715184244",
+                                "property": "456e7890-c89d-42d5-e678-626816194355",
+                                "icon": "icon-name"
+                              }
+                            ],
+                            "created_at": "2025-01-25T12:00:00Z",
+                            "updated_at": "2025-01-25T13:00:00Z",
+                            "type": "device",
+                            "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                            "icon": "icon-name"
+                          }
                         ],
                         "data_source": [
                           {
@@ -6222,34 +6204,32 @@
                         "order": 1,
                         "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
                         "tiles": [
-                          [
-                            {
-                              "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                              "row": 1,
-                              "col": 1,
-                              "row_span": 2,
-                              "col_span": 2,
-                              "page": "7943c740-52b6-4e18-a136-cf39061ac869",
-                              "data_source": [
-                                {
-                                  "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                  "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device-channel",
-                                  "device": "234e5678-a89b-22d3-c456-426614174133",
-                                  "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                  "property": "456e7890-c89d-42d5-e678-626816194355",
-                                  "icon": "icon-name"
-                                }
-                              ],
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z",
-                              "type": "device",
-                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                              "icon": "icon-name"
-                            }
-                          ]
+                          {
+                            "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                            "row": 1,
+                            "col": 1,
+                            "row_span": 2,
+                            "col_span": 2,
+                            "page": "7943c740-52b6-4e18-a136-cf39061ac869",
+                            "data_source": [
+                              {
+                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                                "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                                "created_at": "2025-01-25T12:00:00Z",
+                                "updated_at": "2025-01-25T13:00:00Z",
+                                "type": "device-channel",
+                                "device": "234e5678-a89b-22d3-c456-426614174133",
+                                "channel": "345e6789-b89c-32d4-d567-526715184244",
+                                "property": "456e7890-c89d-42d5-e678-626816194355",
+                                "icon": "icon-name"
+                              }
+                            ],
+                            "created_at": "2025-01-25T12:00:00Z",
+                            "updated_at": "2025-01-25T13:00:00Z",
+                            "type": "device",
+                            "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                            "icon": "icon-name"
+                          }
                         ],
                         "data_source": [
                           {
@@ -12648,29 +12628,27 @@
           "tiles": {
             "type": "array",
             "items": {
-              "items": {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/DashboardDeviceTile"
-                  },
-                  {
-                    "$ref": "#/components/schemas/DashboardTimeTile"
-                  },
-                  {
-                    "$ref": "#/components/schemas/DashboardDayWeatherTile"
-                  },
-                  {
-                    "$ref": "#/components/schemas/DashboardForecastWeatherTile"
-                  }
-                ],
-                "discriminator": {
-                  "propertyName": "type",
-                  "mapping": {
-                    "device": "#/components/schemas/DashboardDeviceTile",
-                    "clock": "#/components/schemas/DashboardTimeTile",
-                    "weather-day": "#/components/schemas/DashboardDayWeatherTile",
-                    "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
-                  }
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DashboardDeviceTile"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardTimeTile"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardDayWeatherTile"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "device": "#/components/schemas/DashboardDeviceTile",
+                  "clock": "#/components/schemas/DashboardTimeTile",
+                  "weather-day": "#/components/schemas/DashboardDayWeatherTile",
+                  "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
                 }
               }
             },
@@ -13324,29 +13302,27 @@
           "tiles": {
             "type": "array",
             "items": {
-              "items": {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/DashboardCreateDeviceTile"
-                  },
-                  {
-                    "$ref": "#/components/schemas/DashboardCreateTimeTile"
-                  },
-                  {
-                    "$ref": "#/components/schemas/DashboardCreateDayWeatherTile"
-                  },
-                  {
-                    "$ref": "#/components/schemas/DashboardCreateForecastWeatherTile"
-                  }
-                ],
-                "discriminator": {
-                  "propertyName": "type",
-                  "mapping": {
-                    "device": "#/components/schemas/DashboardCreateDeviceTile",
-                    "clock": "#/components/schemas/DashboardCreateTimeTile",
-                    "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
-                    "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
-                  }
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DashboardCreateDeviceTile"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardCreateTimeTile"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardCreateDayWeatherTile"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardCreateForecastWeatherTile"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "device": "#/components/schemas/DashboardCreateDeviceTile",
+                  "clock": "#/components/schemas/DashboardCreateTimeTile",
+                  "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
+                  "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
                 }
               }
             },

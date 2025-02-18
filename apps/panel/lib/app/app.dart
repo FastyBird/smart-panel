@@ -7,9 +7,7 @@ import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/scenes/scenes.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/pages.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/tiles.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -84,19 +82,10 @@ class MyApp extends StatelessWidget {
               create: (_) => locator<WeatherModuleRepository>(),
             ),
             ChangeNotifierProvider(
-              create: (_) => locator<PagesRepository>(),
-            ),
-            ChangeNotifierProvider(
-              create: (_) => locator<TilesRepository>(),
-            ),
-            ChangeNotifierProvider(
-              create: (_) => locator<TilesDataRepository>(),
-            ),
-            ChangeNotifierProvider(
-              create: (_) => locator<ScenesDataRepository>(),
-            ),
-            ChangeNotifierProvider(
               create: (_) => locator<DevicesModuleRepository>(),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => locator<DashboardModuleRepository>(),
             ),
           ],
           child: Consumer<ConfigModuleRepository>(builder: (

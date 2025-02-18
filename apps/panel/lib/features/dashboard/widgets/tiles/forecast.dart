@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/data_source/data_source.dart';
+import 'package:fastybird_smart_panel/features/dashboard/models/ui/data_source/data_source.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/weather.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/weather_detail.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/openweather.dart';
@@ -16,7 +16,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ForecastTileWidget
-    extends TileWidget<WeatherTileModel, List<TileDataSourceModel>> {
+    extends TileWidget<WeatherTileModel, List<DataSourceModel>> {
   const ForecastTileWidget(super.tile, super.dataSource, {super.key});
 
   @override
@@ -76,7 +76,7 @@ class _ForecastTileWidgetInnerState extends State<ForecastTileWidgetInner> {
       child: GestureDetector(
         onTap: () {
           if (kDebugMode) {
-            print('Open detail for weather via forecast tile');
+            debugPrint('Open detail for weather via forecast tile');
           }
 
           Navigator.push(
@@ -111,14 +111,14 @@ class _ForecastTileWidgetInnerState extends State<ForecastTileWidgetInner> {
             averageDayTemp,
             1,
           )
-        : '-';
+        : NumberUtils.formatUnavailableNumber();
 
     String wholeNightTemp = averageNightTemp != null
         ? NumberUtils.formatNumber(
             averageNightTemp,
             1,
           )
-        : '-';
+        : NumberUtils.formatUnavailableNumber();
 
     return SizedBox(
       width: _screenService.scale(70),

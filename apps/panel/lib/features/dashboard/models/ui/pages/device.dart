@@ -26,12 +26,16 @@ class DevicePageModel extends PageModel {
       device: UuidUtils.validateUuid(json['device']),
       id: UuidUtils.validateUuid(json['id']),
       title: json['title'],
-      icon: json['icon'] != null
+      icon: json['icon'] != null && json['icon'] is int
           ? IconData(json['icon'], fontFamily: 'MaterialIcons')
           : null,
       order: json['order'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 }

@@ -1,8 +1,8 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/page.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/pages.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/ui/page.dart';
+import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -21,12 +21,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PagesRepository>(builder: (
+    return Consumer<DashboardModuleRepository>(builder: (
       context,
-      pagesRepository,
+      dashboardRepository,
       _,
     ) {
-      if (pagesRepository.isLoading) {
+      if (dashboardRepository.isLoading) {
         return Scaffold(
           body: Center(
             child: SizedBox(
@@ -38,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
 
-      if (pagesRepository.getAll().isEmpty) {
+      if (dashboardRepository.getPages().isEmpty) {
         return Scaffold(
           body: Center(
             child: Padding(
@@ -68,8 +68,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
 
-      List<Widget> pages = pagesRepository
-          .getAll()
+      List<Widget> pages = dashboardRepository
+          .getPages()
           .map((model) => buildPageWidget(model))
           .toList();
 

@@ -45,6 +45,9 @@ export class CardsService {
 				.innerJoinAndSelect('card.page', 'page')
 				.leftJoinAndSelect('card.tiles', 'tiles')
 				.leftJoinAndSelect('card.dataSource', 'dataSource')
+				.leftJoinAndSelect('dataSource.device', 'device')
+				.leftJoinAndSelect('dataSource.channel', 'channel')
+				.leftJoinAndSelect('dataSource.property', 'property')
 				.where('page.id = :pageId', { pageId: page.id })
 				.getMany();
 
@@ -75,6 +78,9 @@ export class CardsService {
 				.innerJoinAndSelect('card.page', 'page')
 				.leftJoinAndSelect('card.tiles', 'tiles')
 				.leftJoinAndSelect('card.dataSource', 'dataSource')
+				.leftJoinAndSelect('dataSource.device', 'device')
+				.leftJoinAndSelect('dataSource.channel', 'channel')
+				.leftJoinAndSelect('dataSource.property', 'property')
 				.where('card.id = :id', { id })
 				.andWhere('page.id = :pageId', { pageId: page.id })
 				.getOne();
