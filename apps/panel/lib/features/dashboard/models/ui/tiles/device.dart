@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/tile.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/ui.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/get.dart';
 
 abstract class DeviceTileModel extends TileModel {
   final String _device;
@@ -58,8 +59,11 @@ class PageDeviceTileModel extends DeviceTileModel {
       rowSpan: json['row_span'],
       colSpan: json['col_span'],
       device: UuidUtils.validateUuid(json['device']),
-      icon: json['icon'] != null && json['icon'] is int
-          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+      icon: json['icon'] != null && json['icon'] is String
+          ? SymbolsGet.get(
+              json['icon'],
+              SymbolStyle.outlined,
+            )
           : null,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
@@ -98,8 +102,11 @@ class CardDeviceTileModel extends DeviceTileModel {
       rowSpan: json['row_span'],
       colSpan: json['col_span'],
       device: UuidUtils.validateUuid(json['device']),
-      icon: json['icon'] != null && json['icon'] is int
-          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+      icon: json['icon'] != null && json['icon'] is String
+          ? SymbolsGet.get(
+              json['icon'],
+              SymbolStyle.outlined,
+            )
           : null,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])

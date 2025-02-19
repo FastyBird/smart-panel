@@ -2,6 +2,8 @@ import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/categories.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/get.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class AirPurifierDeviceDataModel extends DeviceDataModel {
   AirPurifierDeviceDataModel({
@@ -18,13 +20,19 @@ class AirPurifierDeviceDataModel extends DeviceDataModel {
           category: DeviceCategoryType.airPurifier,
         );
 
+  @override
+  IconData get icon => super.icon ?? Symbols.air_purifier;
+
   factory AirPurifierDeviceDataModel.fromJson(Map<String, dynamic> json) {
     return AirPurifierDeviceDataModel(
       id: json['id'],
       name: json['name'],
       description: json['description'],
-      icon: json['icon'] != null && json['icon'] is int
-          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+      icon: json['icon'] != null && json['icon'] is String
+          ? SymbolsGet.get(
+              json['icon'],
+              SymbolStyle.outlined,
+            )
           : null,
       controls: UuidUtils.validateUuidList(
         List<String>.from(json['controls'] ?? []),

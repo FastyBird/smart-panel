@@ -1261,30 +1261,3 @@ Widget buildDeviceDetail(DeviceDataModel device, DeviceCapability capability) {
 
   return builder(device, capability);
 }
-
-Map<String, IconData> deviceIconMappers = {
-  DeviceCategoryType.airConditioner.value: Icons.hvac,
-  DeviceCategoryType.airDehumidifier.value: Icons.water_drop,
-  DeviceCategoryType.airHumidifier.value: Icons.water_drop,
-  DeviceCategoryType.airPurifier.value: Icons.hvac,
-  DeviceCategoryType.alarm.value: Icons.notifications,
-  DeviceCategoryType.camera.value: Icons.video_camera_back,
-  DeviceCategoryType.doorbell.value: Icons.notifications_active,
-  DeviceCategoryType.lock.value: Icons.door_front_door,
-  DeviceCategoryType.switcher.value: Icons.toggle_off,
-  DeviceCategoryType.heater.value: Icons.heat_pump,
-  DeviceCategoryType.lighting.value: Icons.light,
-  DeviceCategoryType.media.value: Icons.perm_media,
-  DeviceCategoryType.outlet.value: Icons.outlet,
-  DeviceCategoryType.sensor.value: Icons.sensors,
-  DeviceCategoryType.speaker.value: Icons.speaker,
-  DeviceCategoryType.television.value: Icons.tv,
-  DeviceCategoryType.thermostat.value: Icons.thermostat,
-  DeviceCategoryType.windowCovering.value: Icons.blinds_closed,
-};
-
-IconData buildDeviceIcon(DeviceDataModel device) {
-  return device.icon != null
-      ? device.icon!
-      : (deviceIconMappers[device.category.value] ?? Icons.devices_other);
-}

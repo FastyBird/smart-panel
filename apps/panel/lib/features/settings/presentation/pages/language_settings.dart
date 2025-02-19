@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class LanguageSettingsPage extends StatefulWidget {
   const LanguageSettingsPage({super.key});
@@ -102,7 +103,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.translate,
+                  Symbols.translate,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -202,7 +203,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.language,
+                  Symbols.language,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -310,7 +311,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.access_time,
+                  Symbols.access_time,
                   size: AppFontSize.large,
                 ),
                 title: Text(

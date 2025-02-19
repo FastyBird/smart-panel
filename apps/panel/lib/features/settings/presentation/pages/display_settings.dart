@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class DisplaySettingsPage extends StatefulWidget {
   const DisplaySettingsPage({super.key});
@@ -94,7 +95,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
                   leading: Icon(
-                    Icons.brightness_6,
+                    Symbols.brightness_medium,
                     size: AppFontSize.large,
                   ),
                   title: Text(
@@ -113,8 +114,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   ),
                   trailing: IconSwitch(
                     switchState: _isDarkMode,
-                    iconOn: Icons.dark_mode,
-                    iconOff: Icons.light_mode,
+                    iconOn: Symbols.dark_mode,
+                    iconOff: Symbols.light_mode,
                     toggleMode: true,
                     onChanged: (bool state) async {
                       HapticFeedback.lightImpact();
@@ -164,7 +165,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
                   leading: Icon(
-                    Icons.light_mode,
+                    Symbols.light_mode,
                     size: AppFontSize.large,
                   ),
                   title: Text(
@@ -178,7 +179,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Icon(
-                        Icons.brightness_low,
+                        Symbols.brightness_low,
                         size: AppFontSize.large,
                       ),
                       Expanded(
@@ -239,7 +240,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                         ),
                       ),
                       Icon(
-                        Icons.brightness_high,
+                        Symbols.brightness_high,
                         size: AppFontSize.large,
                       ),
                     ],
@@ -264,7 +265,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
                   leading: Icon(
-                    Icons.lock_clock,
+                    Symbols.screen_lock_portrait,
                     size: AppFontSize.large,
                   ),
                   title: Text(
@@ -366,7 +367,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular,
                   leading: Icon(
-                    Icons.wallpaper,
+                    Symbols.wallpaper,
                     size: AppFontSize.large,
                   ),
                   title: Text(
@@ -385,8 +386,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   ),
                   trailing: IconSwitch(
                     switchState: _hasScreenSaver,
-                    iconOn: Icons.visibility,
-                    iconOff: Icons.visibility_off,
+                    iconOn: Symbols.visibility,
+                    iconOff: Symbols.visibility_off,
                     onChanged: (bool state) async {
                       HapticFeedback.lightImpact();
 

@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/features/dashboard/mappers/data/device.dar
 import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 class DeviceDetailPage extends StatelessWidget {
@@ -65,7 +66,7 @@ class DeviceDetailPage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.warning,
+                    Symbols.warning,
                     color: Theme.of(context).warning,
                     size: _screenService.scale(64),
                   ),

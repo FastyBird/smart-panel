@@ -133,7 +133,7 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(
+            BoxedIcon(
               weatherIcon,
               size: _screenService.scale(60),
               color: Theme.of(context).brightness == Brightness.light
@@ -338,7 +338,7 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
               : AppTextColorDark.regular,
           leading: SizedBox(
             width: _screenService.scale(28),
-            child: Icon(
+            child: BoxedIcon(
               WeatherConditionMapper.getIcon(forecast.weather.code),
               size: _screenService.scale(18),
               color: Theme.of(context).brightness == Brightness.light

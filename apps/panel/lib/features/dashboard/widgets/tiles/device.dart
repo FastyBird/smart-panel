@@ -17,6 +17,7 @@ import 'package:fastybird_smart_panel/features/dashboard/widgets/tiles/tile.dart
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 class DeviceTileWidget
@@ -107,7 +108,7 @@ class DeviceTileWidget
                 .toList(),
           );
         }),
-        icon: buildDeviceIcon(device),
+        icon: device.icon,
         isOn: capability.isOn ?? false,
       );
     });
@@ -166,7 +167,7 @@ class DeviceTileWidget
             baseline: AppFontSize.small,
             baselineType: TextBaseline.alphabetic,
             child: Icon(
-              Icons.power_settings_new,
+              Symbols.power_settings_new,
               size: AppFontSize.small,
             ),
           ),
@@ -190,7 +191,7 @@ class DeviceTileWidget
             baseline: AppFontSize.small,
             baselineType: TextBaseline.alphabetic,
             child: Icon(
-              Icons.light_mode,
+              Symbols.light_mode,
               size: AppFontSize.small,
             ),
           ),

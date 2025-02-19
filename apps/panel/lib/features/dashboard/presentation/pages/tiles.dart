@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/features/dashboard/models/ui/pages/tiles.d
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 class TilesPage extends StatelessWidget {
@@ -35,7 +36,7 @@ class TilesPage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.grid_view_sharp,
+                    Symbols.dashboard,
                     color: Theme.of(context).warning,
                     size: _screenService.scale(64),
                   ),
@@ -67,7 +68,7 @@ class TilesPage extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    Icons.lightbulb,
+                    Symbols.lightbulb,
                     size: AppFontSize.small,
                   ),
                   AppSpacings.spacingSmHorizontal,
@@ -86,7 +87,7 @@ class TilesPage extends StatelessWidget {
               child: Row(
                 children: [
                   Icon(
-                    Icons.thermostat,
+                    Symbols.thermostat,
                     size: AppFontSize.small,
                   ),
                   AppSpacings.spacingSmHorizontal,

@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/features/dashboard/utils/openweather.dart'
 import 'package:fastybird_smart_panel/features/dashboard/widgets/tiles/tile.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:weather_icons/weather_icons.dart';
 
 class ForecastTileWidget
     extends TileWidget<WeatherTileModel, List<DataSourceModel>> {
@@ -136,7 +137,7 @@ class _ForecastTileWidgetInnerState extends State<ForecastTileWidgetInner> {
             ),
           ),
           AppSpacings.spacingSmVertical,
-          Icon(
+          BoxedIcon(
             WeatherConditionMapper.getIcon(forecast.weather.code),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.warning

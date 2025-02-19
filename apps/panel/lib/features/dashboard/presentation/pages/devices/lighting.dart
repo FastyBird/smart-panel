@@ -18,6 +18,7 @@ import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class LightingDeviceDetailPage extends StatefulWidget {
   final LightingDeviceDataModel _device;
@@ -242,32 +243,32 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
             switch (mode) {
               case LightChannelModeType.off:
                 return BottomNavigationBarItem(
-                  icon: Icon(Icons.power_settings_new),
+                  icon: Icon(Symbols.power_settings_new),
                   label: localizations.light_mode_off,
                 );
               case LightChannelModeType.brightness:
                 return BottomNavigationBarItem(
-                  icon: Icon(Icons.light_mode),
+                  icon: Icon(Symbols.light_mode),
                   label: localizations.light_mode_brightness,
                 );
               case LightChannelModeType.color:
                 return BottomNavigationBarItem(
-                  icon: Icon(Icons.palette),
+                  icon: Icon(Symbols.palette),
                   label: localizations.light_mode_color,
                 );
               case LightChannelModeType.temperature:
                 return BottomNavigationBarItem(
-                  icon: Icon(Icons.thermostat),
+                  icon: Icon(Symbols.device_thermostat),
                   label: localizations.light_mode_temperature,
                 );
               case LightChannelModeType.white:
                 return BottomNavigationBarItem(
-                  icon: Icon(Icons.lightbulb),
+                  icon: Icon(Symbols.lightbulb),
                   label: localizations.light_mode_white,
                 );
               case LightChannelModeType.swatches:
                 return BottomNavigationBarItem(
-                  icon: Icon(Icons.widgets),
+                  icon: Icon(Symbols.widgets),
                   label: localizations.light_mode_swatches,
                 );
             }
@@ -356,8 +357,8 @@ class LightSimpleDetail extends StatelessWidget {
                     children: [
                       ColoredSwitch(
                         switchState: lightCapability.on,
-                        iconOn: Icons.power_settings_new,
-                        iconOff: Icons.power_settings_new,
+                        iconOn: Symbols.power_settings_new,
+                        iconOff: Symbols.power_settings_new,
                         trackWidth: elementMaxSize,
                         vertical: true,
                         onChanged: (bool state) {
@@ -745,7 +746,7 @@ class _BrightnessChannelState extends State<BrightnessChannel> {
               RotatedBox(
                 quarterTurns: widget._vertical ? 1 : 0,
                 child: Icon(
-                  Icons.light_mode,
+                  Symbols.light_mode,
                   size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.placeholder
@@ -953,7 +954,7 @@ class _TemperatureChannelState extends State<TemperatureChannel> {
               RotatedBox(
                 quarterTurns: widget._vertical ? 1 : 0,
                 child: Icon(
-                  Icons.thermostat,
+                  Symbols.device_thermostat,
                   size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
@@ -1061,7 +1062,7 @@ class _WhiteChannelState extends State<WhiteChannel> {
               RotatedBox(
                 quarterTurns: widget._vertical ? 1 : 0,
                 child: Icon(
-                  Icons.lightbulb,
+                  Symbols.lightbulb,
                   size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
@@ -1152,7 +1153,7 @@ class _ChannelSwitchState extends State<ChannelSwitch> {
           child: Center(
             // Explicitly centers the icon
             child: Icon(
-              Icons.power_settings_new,
+              Symbols.power_settings_new,
               size: _screenService.scale(35),
             ),
           ),
@@ -1367,7 +1368,7 @@ class LightTiles extends StatelessWidget {
 
     final List<LightTileItem> items = [
       LightTileItem(
-        icon: Icons.bolt,
+        icon: Symbols.bolt,
         title: localizations.electrical_energy_consumption_title,
         subtitle: localizations.electrical_energy_consumption_description,
         trailingText: NumberUtils.formatNumber(
@@ -1377,7 +1378,7 @@ class LightTiles extends StatelessWidget {
         unit: 'kWh',
       ),
       LightTileItem(
-        icon: Icons.speed,
+        icon: Symbols.speed,
         title: localizations.electrical_energy_rate_title,
         subtitle: localizations.electrical_energy_rate_description,
         trailingText: NumberUtils.formatNumber(
@@ -1400,7 +1401,7 @@ class LightTiles extends StatelessWidget {
 
     final List<LightTileItem> items = [
       LightTileItem(
-        icon: Icons.electrical_services,
+        icon: Symbols.electrical_services,
         title: localizations.electrical_power_current_title,
         subtitle: localizations.electrical_power_current_description,
         trailingText: NumberUtils.formatNumber(
@@ -1410,7 +1411,7 @@ class LightTiles extends StatelessWidget {
         unit: 'A',
       ),
       LightTileItem(
-        icon: Icons.battery_charging_full,
+        icon: Symbols.battery_charging_full,
         title: localizations.electrical_power_voltage_title,
         subtitle: localizations.electrical_power_over_voltage_description,
         trailingText: NumberUtils.formatNumber(
@@ -1420,7 +1421,7 @@ class LightTiles extends StatelessWidget {
         unit: 'V',
       ),
       LightTileItem(
-        icon: Icons.power,
+        icon: Symbols.power,
         title: localizations.electrical_power_power_title,
         subtitle: localizations.electrical_power_power_description,
         trailingText: NumberUtils.formatNumber(
@@ -1430,7 +1431,7 @@ class LightTiles extends StatelessWidget {
         unit: 'W',
       ),
       LightTileItem(
-        icon: Icons.show_chart,
+        icon: Symbols.show_chart,
         title: localizations.electrical_power_frequency_title,
         subtitle: localizations.electrical_power_frequency_description,
         trailingText: NumberUtils.formatNumber(
@@ -1441,18 +1442,18 @@ class LightTiles extends StatelessWidget {
       ),
       _capability.isElectricalPowerOverCurrent
           ? LightTileItem(
-              icon: Icons.electrical_services,
+              icon: Symbols.electrical_services,
               title: localizations.electrical_power_over_current_title,
               subtitle: localizations.electrical_power_over_current_description,
-              trailingIcon: Icons.warning,
+              trailingIcon: Symbols.warning,
             )
           : null,
       _capability.isElectricalPowerOverVoltage
           ? LightTileItem(
-              icon: Icons.battery_charging_full,
+              icon: Symbols.battery_charging_full,
               title: localizations.electrical_power_over_voltage_title,
               subtitle: localizations.electrical_power_over_voltage_description,
-              trailingIcon: Icons.warning,
+              trailingIcon: Symbols.warning,
             )
           : null,
     ].whereType<LightTileItem>().toList();
