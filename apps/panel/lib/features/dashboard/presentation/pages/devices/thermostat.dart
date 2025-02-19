@@ -18,6 +18,7 @@ import 'package:fastybird_smart_panel/features/dashboard/types/payloads.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class ThermostatDeviceDetailPage extends StatefulWidget {
   final ThermostatDeviceDataModel _device;
@@ -123,27 +124,27 @@ class _ThermostatDeviceDetailPageState
                 switch (mode) {
                   case ThermostatModeType.off:
                     return BottomNavigationBarItem(
-                      icon: Icon(Icons.power_settings_new),
+                      icon: Icon(Symbols.power_settings_new),
                       label: localizations.thermostat_mode_off,
                     );
                   case ThermostatModeType.heat:
                     return BottomNavigationBarItem(
-                      icon: Icon(Icons.whatshot),
+                      icon: Icon(Symbols.whatshot),
                       label: localizations.thermostat_mode_heat,
                     );
                   case ThermostatModeType.cool:
                     return BottomNavigationBarItem(
-                      icon: Icon(Icons.ac_unit),
+                      icon: Icon(Symbols.ac_unit),
                       label: localizations.thermostat_mode_cool,
                     );
                   case ThermostatModeType.auto:
                     return BottomNavigationBarItem(
-                      icon: Icon(Icons.thermostat_auto),
+                      icon: Icon(Symbols.thermostat_auto),
                       label: localizations.thermostat_mode_auto,
                     );
                   case ThermostatModeType.manual:
                     return BottomNavigationBarItem(
-                      icon: Icon(Icons.touch_app),
+                      icon: Icon(Symbols.touch_app),
                       label: localizations.thermostat_mode_manual,
                     );
                 }
@@ -355,7 +356,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(
-                Icons.device_thermostat,
+                Symbols.device_thermostat,
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.secondary
                     : AppTextColorDark.secondary,
@@ -440,7 +441,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Icon(
-                Icons.water_drop,
+                Symbols.water_drop,
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.secondary
                     : AppTextColorDark.secondary,
@@ -529,7 +530,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
               RotatedBox(
                 quarterTurns: 1,
                 child: Icon(
-                  Icons.thermostat,
+                  Symbols.thermostat,
                   size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.placeholder
@@ -571,7 +572,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
               RotatedBox(
                 quarterTurns: 1,
                 child: Icon(
-                  Icons.thermostat,
+                  Symbols.thermostat,
                   size: _screenService.scale(40),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.placeholder
@@ -676,7 +677,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.error,
+                        Symbols.error,
                         color: Theme.of(context).error,
                         size: _screenService.scale(64),
                       ),
@@ -861,7 +862,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
             // Decrease Button
             _buildButton(
               context,
-              Icons.remove,
+              Symbols.remove,
               decrementCallback,
               _isLocked,
             ),
@@ -875,7 +876,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
             // Increase Button
             _buildButton(
               context,
-              Icons.add,
+              Symbols.add,
               incrementCallback,
               _isLocked,
             ),
@@ -889,7 +890,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                 children: [
                   widget._capability.hasContact
                       ? Icon(
-                          Icons.window,
+                          Symbols.window,
                           size: _screenService.scale(26),
                           color: widget._capability.isContactDetected == true
                               ? (Theme.of(context).brightness ==
@@ -904,7 +905,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                       : null,
                   widget._capability.hasHeater
                       ? Icon(
-                          Icons.whatshot,
+                          Symbols.whatshot,
                           size: _screenService.scale(26),
                           color: widget._capability.isOn &&
                                   widget._capability.isHeaterHeating == true
@@ -920,7 +921,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
                       : null,
                   widget._capability.hasCooler
                       ? Icon(
-                          Icons.ac_unit,
+                          Symbols.ac_unit,
                           size: _screenService.scale(26),
                           color: widget._capability.isOn &&
                                   widget._capability.isCoolerCooling == true
@@ -937,8 +938,8 @@ class _ThermostatDialState extends State<ThermostatDial> {
                   widget._capability.hasThermostatLock
                       ? IconSwitch(
                           switchState: !_isLocked,
-                          iconOn: Icons.lock_open,
-                          iconOff: Icons.lock,
+                          iconOn: Symbols.lock_open,
+                          iconOff: Symbols.lock,
                           onChanged: (value) {
                             setState(() {
                               _isLocked = !value;
@@ -1031,7 +1032,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
     return Row(
       children: [
         Icon(
-          Icons.device_thermostat,
+          Symbols.device_thermostat,
           color: Theme.of(context).brightness == Brightness.light
               ? AppTextColorLight.secondary
               : AppTextColorDark.secondary,
@@ -1081,7 +1082,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
       children: [
         AppSpacings.spacingMdHorizontal,
         Icon(
-          Icons.water_drop,
+          Symbols.water_drop,
           color: Theme.of(context).brightness == Brightness.light
               ? AppTextColorLight.secondary
               : AppTextColorDark.secondary,
@@ -1229,7 +1230,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
             ? AppTextColorLight.regular
             : AppTextColorDark.regular,
         leading: Icon(
-          _isLocked ? Icons.lock : Icons.lock_open,
+          _isLocked ? Symbols.lock : Symbols.lock_open,
           size: AppFontSize.large,
         ),
         title: Text(
@@ -1273,41 +1274,41 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
   Widget? _renderThermostatState(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    IconData icon = Icons.question_mark;
+    IconData icon = Symbols.question_mark;
     Color? iconColor;
     String? title;
     String? subtitle;
 
     if (widget._capability.isOn == false) {
-      icon = Icons.power_settings_new;
+      icon = Symbols.power_settings_new;
       iconColor = Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.info
           : AppColorsDark.info;
       title = localizations.thermostat_state_title;
       subtitle = localizations.thermostat_state_off;
     } else if (widget._capability.isContactDetected == true) {
-      icon = Icons.window;
+      icon = Symbols.window;
       iconColor = Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.primary
           : AppColorsDark.primary;
       title = localizations.thermostat_openings_state_title;
       subtitle = localizations.thermostat_openings_state_description;
     } else if (widget._capability.isHeaterHeating == true) {
-      icon = Icons.whatshot;
+      icon = Symbols.whatshot;
       iconColor = Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.primary
           : AppColorsDark.primary;
       title = localizations.thermostat_state_title;
       subtitle = localizations.thermostat_state_heating;
     } else if (widget._capability.isCoolerCooling == true) {
-      icon = Icons.ac_unit;
+      icon = Symbols.ac_unit;
       iconColor = Theme.of(context).brightness == Brightness.light
           ? AppColorsLight.flutter
           : AppColorsDark.flutter;
       title = localizations.thermostat_state_title;
       subtitle = localizations.thermostat_state_cooling;
     } else {
-      icon = Icons.power_settings_new;
+      icon = Symbols.power_settings_new;
       title = localizations.thermostat_state_title;
       subtitle = localizations.thermostat_state_idling;
     }

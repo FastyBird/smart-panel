@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/data_source/data_source.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/ui.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/get.dart';
 
 abstract class DeviceChannelDataSourceModel extends DataSourceModel {
   final String _device;
@@ -55,8 +56,11 @@ class PageDeviceChannelDataSourceModel extends DeviceChannelDataSourceModel {
       device: UuidUtils.validateUuid(json['device']),
       channel: UuidUtils.validateUuid(json['channel']),
       property: UuidUtils.validateUuid(json['property']),
-      icon: json['icon'] != null && json['icon'] is int
-          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+      icon: json['icon'] != null && json['icon'] is String
+          ? SymbolsGet.get(
+              json['icon'],
+              SymbolStyle.outlined,
+            )
           : null,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])

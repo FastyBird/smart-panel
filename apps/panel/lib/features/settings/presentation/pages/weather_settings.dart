@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class WeatherSettingsPage extends StatefulWidget {
   const WeatherSettingsPage({super.key});
@@ -80,7 +81,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.thermostat,
+                  Symbols.device_thermostat,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -193,7 +194,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.place,
+                  Symbols.place,
                   size: AppFontSize.large,
                 ),
                 title: Text(

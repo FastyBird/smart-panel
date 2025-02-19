@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devic
 import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/media.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class MediaDeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
@@ -34,7 +35,7 @@ class MediaDeviceDetailPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.warning,
+                Symbols.warning,
                 color: Theme.of(context).warning,
                 size: _screenService.scale(64),
               ),

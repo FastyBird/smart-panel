@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/tiles/tile.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/ui.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/get.dart';
 
 abstract class SceneTileModel extends TileModel {
   final String _scene;
@@ -75,8 +76,11 @@ class PageSceneTileModel extends SceneTileModel {
       rowSpan: json['row_span'],
       scene: UuidUtils.validateUuid(json['scene']),
       label: json['label'],
-      icon: json['icon'] != null && json['icon'] is int
-          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+      icon: json['icon'] != null && json['icon'] is String
+          ? SymbolsGet.get(
+              json['icon'],
+              SymbolStyle.outlined,
+            )
           : null,
       status: json['status'],
       isOn: json['is_on'],
@@ -121,8 +125,11 @@ class CardSceneTileModel extends SceneTileModel {
       rowSpan: json['row_span'],
       scene: UuidUtils.validateUuid(json['scene']),
       label: json['label'],
-      icon: json['icon'] != null && json['icon'] is int
-          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+      icon: json['icon'] != null && json['icon'] is String
+          ? SymbolsGet.get(
+              json['icon'],
+              SymbolStyle.outlined,
+            )
           : null,
       status: json['status'],
       isOn: json['is_on'],

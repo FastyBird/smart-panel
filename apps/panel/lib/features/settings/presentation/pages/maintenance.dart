@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/features/overlay/reboot.dart';
 import 'package:fastybird_smart_panel/features/overlay/reset.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class MaintenancePage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
@@ -45,7 +46,7 @@ class MaintenancePage extends StatelessWidget {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.restart_alt,
+                  Symbols.restart_alt,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -91,7 +92,7 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(Icons.restart_alt),
+                    child: Icon(Symbols.restart_alt),
                   ),
                 ),
               ),
@@ -114,7 +115,7 @@ class MaintenancePage extends StatelessWidget {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.power_settings_new,
+                  Symbols.power_settings_new,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -160,7 +161,7 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(Icons.power_settings_new),
+                    child: Icon(Symbols.power_settings_new),
                   ),
                 ),
               ),
@@ -183,7 +184,7 @@ class MaintenancePage extends StatelessWidget {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.cleaning_services_rounded,
+                  Symbols.cleaning_services_rounded,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -229,7 +230,7 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(Icons.cleaning_services_rounded),
+                    child: Icon(Symbols.cleaning_services_rounded),
                   ),
                 ),
               ),

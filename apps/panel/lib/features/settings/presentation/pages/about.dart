@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -140,7 +141,7 @@ class _AboutPageState extends State<AboutPage> {
                 child: Column(
                   children: [
                     Icon(
-                      Icons.settings,
+                      Symbols.settings,
                       size: _screenService.scale(72),
                     ),
                     AppSpacings.spacingLgVertical,
@@ -272,7 +273,7 @@ class _AboutPageState extends State<AboutPage> {
                         AppSpacings.pSm,
                     child: _buildInfoTile(
                       context,
-                      Icons.network_wifi,
+                      Symbols.lan,
                       localizations.settings_about_ip_address_title,
                       _ipAddress,
                     ),
@@ -283,7 +284,7 @@ class _AboutPageState extends State<AboutPage> {
                         AppSpacings.pSm,
                     child: _buildInfoTile(
                       context,
-                      Icons.device_hub,
+                      Symbols.host,
                       localizations.settings_about_mac_address_title,
                       _macAddress,
                     ),
@@ -294,7 +295,7 @@ class _AboutPageState extends State<AboutPage> {
                         AppSpacings.pSm,
                     child: _buildInfoTile(
                       context,
-                      Icons.memory,
+                      Symbols.earthquake,
                       localizations.settings_about_cpu_usage_title,
                       _cpuUsage,
                     ),
@@ -305,7 +306,7 @@ class _AboutPageState extends State<AboutPage> {
                         AppSpacings.pSm,
                     child: _buildInfoTile(
                       context,
-                      Icons.storage,
+                      Symbols.memory,
                       localizations.settings_about_memory_usage_title,
                       _memoryUsage,
                     ),

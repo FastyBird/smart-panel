@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class AudioSettingsPage extends StatefulWidget {
   const AudioSettingsPage({super.key});
@@ -93,7 +94,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.speaker_phone,
+                  Symbols.speaker,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -111,8 +112,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                 ),
                 trailing: IconSwitch(
                   switchState: _speakerEnabled,
-                  iconOn: Icons.volume_up,
-                  iconOff: Icons.volume_off,
+                  iconOn: Symbols.volume_up,
+                  iconOff: Symbols.volume_off,
                   onChanged: (bool state) async {
                     HapticFeedback.lightImpact();
 
@@ -163,7 +164,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.volume_up,
+                  Symbols.volume_up,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -177,7 +178,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Icon(
-                      Icons.volume_down,
+                      Symbols.volume_down,
                       size: AppFontSize.large,
                     ),
                     Expanded(
@@ -239,7 +240,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                       ),
                     ),
                     Icon(
-                      Icons.volume_up,
+                      Symbols.volume_up,
                       size: AppFontSize.large,
                     ),
                   ],
@@ -264,7 +265,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.mic_external_on,
+                  Symbols.mic_external_on,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -282,8 +283,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                 ),
                 trailing: IconSwitch(
                   switchState: _microphoneEnabled,
-                  iconOn: Icons.mic,
-                  iconOff: Icons.mic_off,
+                  iconOn: Symbols.mic,
+                  iconOff: Symbols.mic_off,
                   onChanged: (bool state) async {
                     HapticFeedback.lightImpact();
 
@@ -334,7 +335,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Icons.mic,
+                  Symbols.mic,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -348,7 +349,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Icon(
-                      Icons.mic_none,
+                      Symbols.mic_off,
                       size: AppFontSize.large,
                     ),
                     Expanded(
@@ -412,7 +413,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                       ),
                     ),
                     Icon(
-                      Icons.mic_sharp,
+                      Symbols.mic_sharp,
                       size: AppFontSize.large,
                     ),
                   ],

@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/features/dashboard/models/ui/pages/cards.d
 import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
 
 class CardsPage extends StatelessWidget {
@@ -34,7 +35,7 @@ class CardsPage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.grid_view_sharp,
+                    Symbols.dashboard,
                     color: Theme.of(context).warning,
                     size: _screenService.scale(64),
                   ),

@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/features/dashboard/models/ui/pages/page.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/ui.dart';
-import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/get.dart';
 
 class TilesPageModel extends PageModel {
   final List<String> _tiles;
@@ -31,8 +31,11 @@ class TilesPageModel extends PageModel {
     return TilesPageModel(
       id: UuidUtils.validateUuid(json['id']),
       title: json['title'],
-      icon: json['icon'] != null && json['icon'] is int
-          ? IconData(json['icon'], fontFamily: 'MaterialIcons')
+      icon: json['icon'] != null && json['icon'] is String
+          ? SymbolsGet.get(
+              json['icon'],
+              SymbolStyle.outlined,
+            )
           : null,
       order: json['order'],
       tiles: UuidUtils.validateUuidList(List<String>.from(json['tiles'] ?? [])),
