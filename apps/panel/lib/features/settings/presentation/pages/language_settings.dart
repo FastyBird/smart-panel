@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
 import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,18 +23,11 @@ class LanguageSettingsPage extends StatefulWidget {
 
 class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigModuleRepository _configModuleRepository =
-      locator<ConfigModuleRepository>();
+  final ConfigModuleRepository _repository = locator<ConfigModuleRepository>();
 
   late String _timezone;
-  late String? _timezoneBackup;
-  late bool _savingTimezone = false;
   late Language _language;
-  late Language? _languageBackup;
-  late bool _savingLanguage = false;
   late TimeFormat _timeFormat;
-  late TimeFormat? _timeFormatBackup;
-  late bool _savingTimeFormat = false;
 
   @override
   void initState() {
@@ -40,20 +35,23 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
     _syncStateWithRepository();
 
-    _configModuleRepository.addListener(_syncStateWithRepository);
+    _repository.addListener(_syncStateWithRepository);
   }
 
   @override
   void dispose() {
-    _configModuleRepository.removeListener(_syncStateWithRepository);
     super.dispose();
+
+    _repository.removeListener(_syncStateWithRepository);
   }
 
   void _syncStateWithRepository() {
+    ConfigLanguageModel config = _repository.languageConfiguration;
+
     setState(() {
-      _timezone = _configModuleRepository.languageConfiguration.timezone;
-      _language = _configModuleRepository.languageConfiguration.language;
-      _timeFormat = _configModuleRepository.languageConfiguration.timeFormat;
+      _timezone = config.timezone;
+      _language = config.language;
+      _timeFormat = config.timeFormat;
     });
   }
 
@@ -85,27 +83,8 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pMd,
-                ),
-                dense: true,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  side: BorderSide(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppBorderColorLight.base
-                        : AppBorderColorDark.base,
-                    width: _screenService.scale(1),
-                  ),
-                ),
-                textColor: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.regular
-                    : AppTextColorDark.regular,
-                leading: Icon(
-                  Symbols.translate,
-                  size: AppFontSize.large,
-                ),
+              SettingRow(
+                icon: Symbols.translate,
                 title: Text(
                   localizations.settings_language_settings_language_title,
                   style: TextStyle(
@@ -122,90 +101,16 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 trailing: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _language.value,
-                    items: {
-                      Language.english.value: 'English',
-                      Language.czech.value: 'Česky',
-                    }.entries.map((entry) {
-                      return DropdownMenuItem<String>(
-                        value: entry.key,
-                        child: Text(
-                          entry.value,
-                          style: TextStyle(
-                            fontSize: AppFontSize.extraSmall,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    items: getLanguageItems(),
                     onChanged: (String? value) async {
-                      if (value == null) return;
-
-                      final language = Language.fromValue(value);
-
-                      if (language == null) return;
-
-                      HapticFeedback.lightImpact();
-
-                      setState(() {
-                        _languageBackup =
-                            _savingLanguage ? _languageBackup : _language;
-                        _savingLanguage = true;
-                        _language = language;
-                      });
-
-                      final success =
-                          await _configModuleRepository.setLanguage(_language);
-
-                      Future.microtask(() async {
-                        await Future.delayed(
-                          const Duration(milliseconds: 500),
-                        );
-
-                        if (!context.mounted) return;
-
-                        if (success) {
-                          setState(() {
-                            _languageBackup = null;
-                            _savingLanguage = false;
-                          });
-                        } else {
-                          setState(() {
-                            _language = _languageBackup ?? _language;
-                            _languageBackup = null;
-                            _savingLanguage = false;
-                          });
-
-                          AlertBar.showError(
-                            context,
-                            message: 'Save settings failed.',
-                          );
-                        }
-                      });
+                      _handleLanguageChange(context, value);
                     },
                   ),
                 ),
               ),
               AppSpacings.spacingMdVertical,
-              ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pMd,
-                ),
-                dense: true,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  side: BorderSide(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppBorderColorLight.base
-                        : AppBorderColorDark.base,
-                    width: _screenService.scale(1),
-                  ),
-                ),
-                textColor: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.regular
-                    : AppTextColorDark.regular,
-                leading: Icon(
-                  Symbols.language,
-                  size: AppFontSize.large,
-                ),
+              SettingRow(
+                icon: Symbols.language,
                 title: Text(
                   localizations.settings_language_settings_timezone_title,
                   style: TextStyle(
@@ -237,83 +142,16 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         );
                       }).toList();
                     },
-                    items: timezones.map((timezone) {
-                      return DropdownMenuItem<String>(
-                        value: timezone,
-                        child: Text(
-                          timezone,
-                          style: TextStyle(
-                            fontSize: AppFontSize.extraSmall,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                    items: getTimezoneItems(timezones),
                     onChanged: (String? value) async {
-                      if (value == null) return;
-
-                      HapticFeedback.lightImpact();
-
-                      setState(() {
-                        _timezoneBackup =
-                            _savingTimezone ? _timezoneBackup : _timezone;
-                        _savingTimezone = true;
-                        _timezone = value;
-                      });
-
-                      final success =
-                          await _configModuleRepository.setTimezone(_timezone);
-
-                      Future.microtask(() async {
-                        await Future.delayed(
-                          const Duration(milliseconds: 500),
-                        );
-
-                        if (!context.mounted) return;
-
-                        if (success) {
-                          setState(() {
-                            _timezoneBackup = null;
-                            _savingTimezone = false;
-                          });
-                        } else {
-                          setState(() {
-                            _timezone = _timezoneBackup ?? _timezone;
-                            _timezoneBackup = null;
-                            _savingTimezone = false;
-                          });
-
-                          AlertBar.showError(
-                            context,
-                            message: 'Save settings failed.',
-                          );
-                        }
-                      });
+                      _handleTimeZoneChange(context, value);
                     },
                   ),
                 ),
               ),
               AppSpacings.spacingMdVertical,
-              ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pMd,
-                ),
-                dense: true,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  side: BorderSide(
-                    color: Theme.of(context).brightness == Brightness.light
-                        ? AppBorderColorLight.base
-                        : AppBorderColorDark.base,
-                    width: _screenService.scale(1),
-                  ),
-                ),
-                textColor: Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.regular
-                    : AppTextColorDark.regular,
-                leading: Icon(
-                  Symbols.access_time,
-                  size: AppFontSize.large,
-                ),
+              SettingRow(
+                icon: Symbols.access_time,
                 title: Text(
                   localizations.settings_language_settings_time_format_title,
                   style: TextStyle(
@@ -331,70 +169,9 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 trailing: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _timeFormat.value,
-                    items: [
-                      DropdownMenuItem(
-                        value: TimeFormat.twelveHour.value,
-                        child: Text(
-                          localizations.time_format_12h,
-                          style: TextStyle(
-                            fontSize: AppFontSize.extraSmall,
-                          ),
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: TimeFormat.twentyFourHour.value,
-                        child: Text(
-                          localizations.time_format_24h,
-                          style: TextStyle(
-                            fontSize: AppFontSize.extraSmall,
-                          ),
-                        ),
-                      ),
-                    ],
+                    items: getTimeFormatItems(context),
                     onChanged: (String? value) async {
-                      if (value == null) return;
-
-                      final timeFormat = TimeFormat.fromValue(value);
-
-                      if (timeFormat == null) return;
-
-                      HapticFeedback.lightImpact();
-
-                      setState(() {
-                        _timeFormatBackup =
-                            _savingTimeFormat ? _timeFormatBackup : _timeFormat;
-                        _savingTimeFormat = true;
-                        _timeFormat = timeFormat;
-                      });
-
-                      final success = await _configModuleRepository
-                          .setTimeFormat(_timeFormat);
-
-                      Future.microtask(() async {
-                        await Future.delayed(
-                          const Duration(milliseconds: 500),
-                        );
-
-                        if (!context.mounted) return;
-
-                        if (success) {
-                          setState(() {
-                            _timeFormatBackup = null;
-                            _savingTimeFormat = false;
-                          });
-                        } else {
-                          setState(() {
-                            _timeFormat = _timeFormatBackup ?? _timeFormat;
-                            _timeFormatBackup = null;
-                            _savingTimeFormat = false;
-                          });
-
-                          AlertBar.showError(
-                            context,
-                            message: 'Save settings failed.',
-                          );
-                        }
-                      });
+                      _handleTimeFormatChange(context, value);
                     },
                   ),
                 ),
@@ -403,6 +180,184 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
           ),
         ),
       ),
+    );
+  }
+
+  List<DropdownMenuItem<String>> getTimezoneItems(List<String> timezones) {
+    return timezones.map((timezone) {
+      return DropdownMenuItem<String>(
+        value: timezone,
+        child: Text(
+          timezone,
+          style: TextStyle(
+            fontSize: AppFontSize.extraSmall,
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  List<DropdownMenuItem<String>> getLanguageItems() {
+    return {
+      Language.english.value: 'English',
+      Language.czech.value: 'Česky',
+    }.entries.map((entry) {
+      return DropdownMenuItem<String>(
+        value: entry.key,
+        child: Text(
+          entry.value,
+          style: TextStyle(
+            fontSize: AppFontSize.extraSmall,
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  List<DropdownMenuItem<String>> getTimeFormatItems(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return [
+      DropdownMenuItem(
+        value: TimeFormat.twelveHour.value,
+        child: Text(
+          localizations.time_format_12h,
+          style: TextStyle(
+            fontSize: AppFontSize.extraSmall,
+          ),
+        ),
+      ),
+      DropdownMenuItem(
+        value: TimeFormat.twentyFourHour.value,
+        child: Text(
+          localizations.time_format_24h,
+          style: TextStyle(
+            fontSize: AppFontSize.extraSmall,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Future<void> _handleLanguageChange(
+    BuildContext context,
+    String? value,
+  ) async {
+    if (value == null) return;
+
+    final language = Language.fromValue(value);
+
+    if (language == null) return;
+
+    HapticFeedback.lightImpact();
+
+    final Language backup = _language;
+
+    setState(() {
+      _language = language;
+    });
+
+    final success = await _repository.setLanguage(_language);
+
+    Future.microtask(
+      () async {
+        await Future.delayed(
+          const Duration(milliseconds: 500),
+        );
+
+        if (!context.mounted) return;
+
+        if (!success) {
+          setState(() {
+            _language = backup;
+          });
+
+          AlertBar.showError(
+            context,
+            message: 'Save settings failed.',
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _handleTimeZoneChange(
+    BuildContext context,
+    String? value,
+  ) async {
+    if (value == null) return;
+
+    HapticFeedback.lightImpact();
+
+    final String backup = _timezone;
+
+    setState(() {
+      _timezone = value;
+    });
+
+    final success = await _repository.setTimezone(_timezone);
+
+    Future.microtask(
+      () async {
+        await Future.delayed(
+          const Duration(milliseconds: 500),
+        );
+
+        if (!context.mounted) return;
+
+        if (!success) {
+          setState(() {
+            _timezone = backup;
+          });
+
+          AlertBar.showError(
+            context,
+            message: 'Save settings failed.',
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _handleTimeFormatChange(
+    BuildContext context,
+    String? value,
+  ) async {
+    if (value == null) return;
+
+    final timeFormat = TimeFormat.fromValue(value);
+
+    if (timeFormat == null) return;
+
+    HapticFeedback.lightImpact();
+
+    final TimeFormat backup = _timeFormat;
+
+    setState(() {
+      _timeFormat = timeFormat;
+    });
+
+    final success = await _repository.setTimeFormat(_timeFormat);
+
+    Future.microtask(
+      () async {
+        await Future.delayed(
+          const Duration(milliseconds: 500),
+        );
+
+        if (!context.mounted) return;
+
+        if (!success) {
+          setState(() {
+            _timeFormat = backup;
+          });
+
+          AlertBar.showError(
+            context,
+            message: 'Save settings failed.',
+          );
+        }
+      },
     );
   }
 }

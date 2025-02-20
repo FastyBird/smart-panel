@@ -135,13 +135,21 @@ class GeneralSettingsPage extends StatelessWidget {
 }
 
 class SettingsButton {
-  final IconData icon;
-  final String label;
-  final String route;
+  final IconData _icon;
+  final String _label;
+  final String _route;
 
   SettingsButton({
-    required this.icon,
-    required this.label,
-    required this.route,
-  });
+    required IconData icon,
+    required String label,
+    required String route,
+  })  : _icon = icon,
+        _label = label,
+        _route = route;
+
+  IconData get icon => _icon;
+
+  String get label => _label;
+
+  String get route => _route;
 }

@@ -92,7 +92,12 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(Symbols.restart_alt),
+                    child: Icon(
+                      Symbols.restart_alt,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppColorsLight.primary
+                          : AppColorsDark.primary,
+                    ),
                   ),
                 ),
               ),
@@ -161,7 +166,12 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(Symbols.power_settings_new),
+                    child: Icon(
+                      Symbols.power_settings_new,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppColorsLight.primary
+                          : AppColorsDark.primary,
+                    ),
                   ),
                 ),
               ),
@@ -230,7 +240,12 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(Symbols.cleaning_services_rounded),
+                    child: Icon(
+                      Symbols.cleaning_services_rounded,
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? AppColorsLight.primary
+                          : AppColorsDark.primary,
+                    ),
                   ),
                 ),
               ),

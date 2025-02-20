@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
 import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,14 +24,16 @@ class DisplaySettingsPage extends StatefulWidget {
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigModuleRepository _configModuleRepository =
-      locator<ConfigModuleRepository>();
+  final ConfigModuleRepository _repository = locator<ConfigModuleRepository>();
 
   late bool _isDarkMode;
+
   late int _brightness;
   late int? _brightnessBackup;
   late bool _savingBrightness = false;
+
   late int _screenLockDuration;
+
   late bool _hasScreenSaver;
 
   Timer? _debounce;
@@ -39,23 +44,24 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
     _syncStateWithRepository();
 
-    _configModuleRepository.addListener(_syncStateWithRepository);
+    _repository.addListener(_syncStateWithRepository);
   }
 
   @override
   void dispose() {
-    _configModuleRepository.removeListener(_syncStateWithRepository);
     super.dispose();
+
+    _repository.removeListener(_syncStateWithRepository);
   }
 
   void _syncStateWithRepository() {
+    ConfigDisplayModel config = _repository.displayConfiguration;
+
     setState(() {
-      _isDarkMode = _configModuleRepository.displayConfiguration.hasDarkMode;
-      _brightness = _configModuleRepository.displayConfiguration.brightness;
-      _screenLockDuration =
-          _configModuleRepository.displayConfiguration.screenLockDuration;
-      _hasScreenSaver =
-          _configModuleRepository.displayConfiguration.hasScreenSaver;
+      _isDarkMode = config.hasDarkMode;
+      _brightness = config.brightness;
+      _screenLockDuration = config.screenLockDuration;
+      _hasScreenSaver = config.hasScreenSaver;
     });
   }
 
@@ -77,27 +83,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ListTile(
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pMd,
-                  ),
-                  dense: true,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                    side: BorderSide(
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppBorderColorLight.base
-                          : AppBorderColorDark.base,
-                      width: _screenService.scale(1),
-                    ),
-                  ),
-                  textColor: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular,
-                  leading: Icon(
-                    Symbols.brightness_medium,
-                    size: AppFontSize.large,
-                  ),
+                SettingRow(
+                  icon: Symbols.brightness_medium,
                   title: Text(
                     localizations.settings_display_settings_theme_mode_title,
                     style: TextStyle(
@@ -118,56 +105,13 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     iconOff: Symbols.light_mode,
                     toggleMode: true,
                     onChanged: (bool state) async {
-                      HapticFeedback.lightImpact();
-
-                      setState(() {
-                        _isDarkMode = !_isDarkMode;
-                      });
-
-                      final success = await _configModuleRepository
-                          .setDisplayDarkMode(_isDarkMode);
-
-                      Future.microtask(() async {
-                        await Future.delayed(
-                          const Duration(milliseconds: 500),
-                        );
-
-                        if (!context.mounted) return;
-
-                        if (!success) {
-                          setState(() {
-                            _isDarkMode = !_isDarkMode;
-                          });
-
-                          AlertBar.showError(context,
-                              message: 'Save settings failed.');
-                        }
-                      });
+                      _handleDarkModeChange(context, state);
                     },
                   ),
                 ),
                 AppSpacings.spacingMdVertical,
-                ListTile(
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pMd,
-                  ),
-                  dense: true,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                    side: BorderSide(
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppBorderColorLight.base
-                          : AppBorderColorDark.base,
-                      width: _screenService.scale(1),
-                    ),
-                  ),
-                  textColor: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular,
-                  leading: Icon(
-                    Symbols.light_mode,
-                    size: AppFontSize.large,
-                  ),
+                SettingRow(
+                  icon: Symbols.light_mode,
                   title: Text(
                     localizations.settings_display_settings_brightness_title,
                     style: TextStyle(
@@ -175,99 +119,19 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  subtitle: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Icon(
-                        Symbols.brightness_low,
-                        size: AppFontSize.large,
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: _brightness.toDouble(),
-                          min: 0,
-                          max: 100,
-                          divisions: 10,
-                          label: '$_brightness%',
-                          onChanged: (double value) async {
-                            HapticFeedback.lightImpact();
-
-                            setState(() {
-                              _brightnessBackup = _savingBrightness
-                                  ? _brightnessBackup
-                                  : _brightness;
-                              _savingBrightness = true;
-                              _brightness = value.toInt();
-                            });
-
-                            _debounce?.cancel();
-
-                            _debounce = Timer(
-                              const Duration(milliseconds: 500),
-                              () async {
-                                final success = await _configModuleRepository
-                                    .setDisplayBrightness(_brightness);
-
-                                Future.microtask(() async {
-                                  await Future.delayed(
-                                    const Duration(milliseconds: 500),
-                                  );
-
-                                  if (!context.mounted) return;
-
-                                  if (success) {
-                                    setState(() {
-                                      _brightnessBackup = null;
-                                      _savingBrightness = false;
-                                    });
-                                  } else {
-                                    setState(() {
-                                      _brightness =
-                                          _brightnessBackup ?? _brightness;
-                                      _brightnessBackup = null;
-                                      _savingBrightness = false;
-                                    });
-
-                                    AlertBar.showError(
-                                      context,
-                                      message: 'Save settings failed.',
-                                    );
-                                  }
-                                });
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                      Icon(
-                        Symbols.brightness_high,
-                        size: AppFontSize.large,
-                      ),
-                    ],
+                  subtitle: SettingSlider(
+                    leftIcon: Symbols.brightness_low,
+                    rightIcon: Symbols.brightness_high,
+                    value: _brightness.toDouble(),
+                    enabled: true,
+                    onChanged: (double value) async {
+                      _handleBrightnessChange(context, value);
+                    },
                   ),
                 ),
                 AppSpacings.spacingMdVertical,
-                ListTile(
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pMd,
-                  ),
-                  dense: true,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                    side: BorderSide(
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppBorderColorLight.base
-                          : AppBorderColorDark.base,
-                      width: _screenService.scale(1),
-                    ),
-                  ),
-                  textColor: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular,
-                  leading: Icon(
-                    Symbols.screen_lock_portrait,
-                    size: AppFontSize.large,
-                  ),
+                SettingRow(
+                  icon: Symbols.screen_lock_portrait,
                   title: Text(
                     localizations.settings_display_settings_screen_lock_title,
                     style: TextStyle(
@@ -285,58 +149,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   trailing: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
                       value: _screenLockDuration,
-                      items: {
-                        15: '15s',
-                        30: '30s',
-                        60: '1min',
-                        120: '2min',
-                        300: '5min',
-                        600: '10min',
-                        1800: '30min',
-                        0: 'Never',
-                      }.entries.map((entry) {
-                        return DropdownMenuItem<int>(
-                          value: entry.key,
-                          child: Text(
-                            entry.value,
-                            style: TextStyle(
-                              fontSize: AppFontSize.extraSmall,
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                      items: _getScreenLockDurationItems(),
                       onChanged: (int? value) async {
-                        HapticFeedback.lightImpact();
-
-                        if (value == null) return;
-
-                        final int backup = _screenLockDuration;
-
-                        setState(() {
-                          _screenLockDuration = value;
-                        });
-
-                        final success = await _configModuleRepository
-                            .setDisplayScreenLockDuration(_screenLockDuration);
-
-                        Future.microtask(() async {
-                          await Future.delayed(
-                            const Duration(milliseconds: 500),
-                          );
-
-                          if (!context.mounted) return;
-
-                          if (!success) {
-                            setState(() {
-                              _screenLockDuration = backup;
-                            });
-
-                            AlertBar.showError(
-                              context,
-                              message: 'Save settings failed.',
-                            );
-                          }
-                        });
+                        _handleScreenLockDurationChange(context, value);
                       },
                       style: TextStyle(
                         fontSize: AppFontSize.extraSmall,
@@ -349,27 +164,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   ),
                 ),
                 AppSpacings.spacingMdVertical,
-                ListTile(
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pMd,
-                  ),
-                  dense: true,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                    side: BorderSide(
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppBorderColorLight.base
-                          : AppBorderColorDark.base,
-                      width: _screenService.scale(1),
-                    ),
-                  ),
-                  textColor: Theme.of(context).brightness == Brightness.light
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular,
-                  leading: Icon(
-                    Symbols.wallpaper,
-                    size: AppFontSize.large,
-                  ),
+                SettingRow(
+                  icon: Symbols.wallpaper,
                   title: Text(
                     localizations.settings_display_settings_screen_saver_title,
                     style: TextStyle(
@@ -389,33 +185,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     iconOn: Symbols.visibility,
                     iconOff: Symbols.visibility_off,
                     onChanged: (bool state) async {
-                      HapticFeedback.lightImpact();
-
-                      setState(() {
-                        _hasScreenSaver = !_hasScreenSaver;
-                      });
-
-                      final success = await _configModuleRepository
-                          .setDisplayScreenSaver(_hasScreenSaver);
-
-                      Future.microtask(() async {
-                        await Future.delayed(
-                          const Duration(milliseconds: 500),
-                        );
-
-                        if (!context.mounted) return;
-
-                        if (!success) {
-                          setState(() {
-                            _hasScreenSaver = !_hasScreenSaver;
-                          });
-
-                          AlertBar.showError(
-                            context,
-                            message: 'Save settings failed.',
-                          );
-                        }
-                      });
+                      _handleScreenSaverChange(context, state);
                     },
                   ),
                 ),
@@ -424,6 +194,185 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
           ),
         ),
       ),
+    );
+  }
+
+  List<DropdownMenuItem<int>> _getScreenLockDurationItems() {
+    return {
+      15: '15s',
+      30: '30s',
+      60: '1min',
+      120: '2min',
+      300: '5min',
+      600: '10min',
+      1800: '30min',
+      0: 'Never',
+    }.entries.map((entry) {
+      return DropdownMenuItem<int>(
+        value: entry.key,
+        child: Text(
+          entry.value,
+          style: TextStyle(
+            fontSize: AppFontSize.extraSmall,
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  Future<void> _handleDarkModeChange(
+    BuildContext context,
+    bool state,
+  ) async {
+    HapticFeedback.lightImpact();
+
+    setState(() {
+      _isDarkMode = !_isDarkMode;
+    });
+
+    final success = await _repository.setDisplayDarkMode(_isDarkMode);
+
+    Future.microtask(
+      () async {
+        await Future.delayed(
+          const Duration(milliseconds: 500),
+        );
+
+        if (!context.mounted) return;
+
+        if (!success) {
+          setState(() {
+            _isDarkMode = !_isDarkMode;
+          });
+
+          AlertBar.showError(context, message: 'Save settings failed.');
+        }
+      },
+    );
+  }
+
+  Future<void> _handleBrightnessChange(
+    BuildContext context,
+    double value,
+  ) async {
+    HapticFeedback.lightImpact();
+
+    if (!_savingBrightness) {
+      setState(() {
+        _brightnessBackup = _brightness;
+        _savingBrightness = true;
+      });
+    }
+
+    setState(() {
+      _brightness = value.toInt();
+    });
+
+    _debounce?.cancel();
+
+    _debounce = Timer(
+      const Duration(milliseconds: 500),
+      () async {
+        final success = await _repository.setDisplayBrightness(_brightness);
+
+        Future.microtask(() async {
+          await Future.delayed(
+            const Duration(milliseconds: 500),
+          );
+
+          if (!context.mounted) return;
+
+          setState(() {
+            _brightnessBackup = null;
+            _savingBrightness = false;
+          });
+
+          if (!success) {
+            setState(() {
+              _brightness = _brightnessBackup ?? 0;
+            });
+
+            AlertBar.showError(
+              context,
+              message: 'Save settings failed.',
+            );
+          }
+        });
+      },
+    );
+  }
+
+  Future<void> _handleScreenLockDurationChange(
+    BuildContext context,
+    int? value,
+  ) async {
+    if (value == null) return;
+
+    HapticFeedback.lightImpact();
+
+    final int backup = _screenLockDuration;
+
+    setState(() {
+      _screenLockDuration = value;
+    });
+
+    final success = await _repository.setDisplayScreenLockDuration(
+      _screenLockDuration,
+    );
+
+    Future.microtask(
+      () async {
+        await Future.delayed(
+          const Duration(milliseconds: 500),
+        );
+
+        if (!context.mounted) return;
+
+        if (!success) {
+          setState(() {
+            _screenLockDuration = backup;
+          });
+
+          AlertBar.showError(
+            context,
+            message: 'Save settings failed.',
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _handleScreenSaverChange(
+    BuildContext context,
+    bool state,
+  ) async {
+    HapticFeedback.lightImpact();
+
+    setState(() {
+      _hasScreenSaver = !_hasScreenSaver;
+    });
+
+    final success = await _repository.setDisplayScreenSaver(_hasScreenSaver);
+
+    Future.microtask(
+      () async {
+        await Future.delayed(
+          const Duration(milliseconds: 500),
+        );
+
+        if (!context.mounted) return;
+
+        if (!success) {
+          setState(() {
+            _hasScreenSaver = !_hasScreenSaver;
+          });
+
+          AlertBar.showError(
+            context,
+            message: 'Save settings failed.',
+          );
+        }
+      },
     );
   }
 }

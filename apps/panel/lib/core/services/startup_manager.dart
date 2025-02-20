@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
+import 'package:fastybird_smart_panel/core/repositories/system_module.dart';
 import 'package:fastybird_smart_panel/core/repositories/weather_module.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -57,6 +58,9 @@ class StartupManagerService {
     var weatherModuleRepository = WeatherModuleRepository(
       apiClient: _apiClient.weatherModule,
     );
+    var systemModuleRepository = SystemModuleRepository(
+      apiClient: _apiClient.systemModule,
+    );
     var devicesModuleRepository = DevicesModuleRepository(
       apiClient: _apiClient.devicesModule,
     );
@@ -81,6 +85,7 @@ class StartupManagerService {
     // Register repositories
     locator.registerSingleton(configModuleRepository);
     locator.registerSingleton(weatherModuleRepository);
+    locator.registerSingleton(systemModuleRepository);
     locator.registerSingleton(dashboardModuleRepository);
     locator.registerSingleton(devicesModuleRepository);
 
@@ -104,6 +109,7 @@ class StartupManagerService {
       await Future.wait([
         configModuleRepository.initialize(),
         weatherModuleRepository.initialize(),
+        systemModuleRepository.initialize(),
         devicesModuleRepository.initialize(),
         dashboardModuleRepository.initialize(),
       ]);
