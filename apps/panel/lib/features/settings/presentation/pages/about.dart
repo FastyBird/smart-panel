@@ -1,7 +1,8 @@
-import 'dart:io';
-
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/models/general/system.dart';
+import 'package:fastybird_smart_panel/core/repositories/system_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -23,8 +25,6 @@ class _AboutPageState extends State<AboutPage> {
   String _appVersion = 'Loading...';
   String _ipAddress = 'Loading...';
   String _macAddress = 'Loading...';
-  String _cpuUsage = 'Loading...';
-  String _memoryUsage = 'Loading...';
 
   @override
   void initState() {
@@ -64,61 +64,6 @@ class _AboutPageState extends State<AboutPage> {
         _ipAddress = 'Error';
         _macAddress = 'Error';
       });
-    }
-
-    try {
-      // Fetch system information
-      final cpuUsage = await _getCpuUsage();
-      final memoryUsage = await _getMemoryUsage();
-
-      setState(() {
-        _cpuUsage = cpuUsage;
-        _memoryUsage = memoryUsage;
-      });
-    } catch (e) {
-      // Handle error gracefully
-      setState(() {
-        _cpuUsage = 'Error';
-        _memoryUsage = 'Error';
-      });
-    }
-  }
-
-  Future<String> _getCpuUsage() async {
-    try {
-      final lines = await File('/proc/stat').readAsLines();
-      final cpuLine = lines.firstWhere((line) => line.startsWith('cpu '));
-      final values =
-          cpuLine.split(' ').where((value) => value.isNotEmpty).toList();
-      final user = int.parse(values[1]);
-      final nice = int.parse(values[2]);
-      final system = int.parse(values[3]);
-      final idle = int.parse(values[4]);
-
-      final total = user + nice + system + idle;
-      final usage = ((user + nice + system) / total) * 100;
-
-      return '${usage.toStringAsFixed(1)}%';
-    } catch (e) {
-      return 'Error';
-    }
-  }
-
-  Future<String> _getMemoryUsage() async {
-    try {
-      final lines = await File('/proc/meminfo').readAsLines();
-      final totalMemoryLine =
-          lines.firstWhere((line) => line.startsWith('MemTotal:'));
-      final freeMemoryLine =
-          lines.firstWhere((line) => line.startsWith('MemFree:'));
-
-      final totalMemory = int.parse(totalMemoryLine.split(RegExp(r'\s+'))[1]);
-      final freeMemory = int.parse(freeMemoryLine.split(RegExp(r'\s+'))[1]);
-
-      final usedMemory = totalMemory - freeMemory;
-      return '${(usedMemory / 1024).toStringAsFixed(1)} MB';
-    } catch (e) {
-      return 'Error';
     }
   }
 
@@ -199,7 +144,7 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        AppSpacings.spacingSmVertical,
+                        AppSpacings.spacingMdVertical,
                         Text(
                           'FastyBird Team',
                           style: TextStyle(
@@ -207,10 +152,11 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        AppSpacings.spacingSmVertical,
                         Text(
                           'https://fastybird.com',
                           style: TextStyle(
-                            fontSize: AppFontSize.extraSmall,
+                            fontSize: _screenService.scale(8),
                             color: AppColorsLight.primary,
                           ),
                         ),
@@ -262,55 +208,27 @@ class _AboutPageState extends State<AboutPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               AppSpacings.spacingSmVertical,
+
               Wrap(
                 spacing: AppSpacings.pSm,
                 runSpacing: AppSpacings.pSm,
                 children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width / 2 -
-                        AppSpacings.pMd -
-                        AppSpacings.pSm,
-                    child: _buildInfoTile(
-                      context,
-                      Symbols.lan,
-                      localizations.settings_about_ip_address_title,
-                      _ipAddress,
-                    ),
+                  _renderInfoTile(
+                    context: context,
+                    icon: Symbols.earthquake,
+                    title: localizations.settings_about_cpu_usage_title,
+                    value: _ipAddress,
                   ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width / 2 -
-                        AppSpacings.pMd -
-                        AppSpacings.pSm,
-                    child: _buildInfoTile(
-                      context,
-                      Symbols.host,
-                      localizations.settings_about_mac_address_title,
-                      _macAddress,
-                    ),
+                  _renderInfoTile(
+                    context: context,
+                    icon: Symbols.host,
+                    title: localizations.settings_about_mac_address_title,
+                    value: _macAddress,
                   ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width / 2 -
-                        AppSpacings.pMd -
-                        AppSpacings.pSm,
-                    child: _buildInfoTile(
-                      context,
-                      Symbols.earthquake,
-                      localizations.settings_about_cpu_usage_title,
-                      _cpuUsage,
-                    ),
-                  ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width / 2 -
-                        AppSpacings.pMd -
-                        AppSpacings.pSm,
-                    child: _buildInfoTile(
-                      context,
-                      Symbols.memory,
-                      localizations.settings_about_memory_usage_title,
-                      _memoryUsage,
-                    ),
-                  ),
+                  _renderCpuUsageTile(context),
+                  _renderMemoryUsageTile(context),
                   // Add more ListTiles here in the same pattern for CPU and Memory
                 ],
               ),
@@ -321,14 +239,76 @@ class _AboutPageState extends State<AboutPage> {
     );
   }
 
-  Widget _buildInfoTile(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String value,
-  ) {
+  Widget _renderCpuUsageTile(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return Consumer<SystemModuleRepository>(
+      builder: (context, repository, _) {
+        if (repository.isLoading) {
+          return _renderInfoTile(
+            context: context,
+            icon: Symbols.earthquake,
+            title: localizations.settings_about_cpu_usage_title,
+            value: localizations.value_not_available,
+            showLoading: true,
+          );
+        }
+
+        SystemInfoModel systemInfo = repository.systemInfo;
+
+        return _renderInfoTile(
+          context: context,
+          icon: Symbols.earthquake,
+          title: localizations.settings_about_cpu_usage_title,
+          value: NumberUtils.formatNumber(systemInfo.cpuLoad, 2),
+          unit: '%',
+        );
+      },
+    );
+  }
+
+  Widget _renderMemoryUsageTile(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return Consumer<SystemModuleRepository>(
+      builder: (context, repository, _) {
+        if (repository.isLoading) {
+          return _renderInfoTile(
+            context: context,
+            icon: Symbols.memory,
+            title: localizations.settings_about_memory_usage_title,
+            value: localizations.value_not_available,
+            showLoading: true,
+          );
+        }
+
+        SystemInfoModel systemInfo = repository.systemInfo;
+
+        double memoryUsage = systemInfo.memory.used.toDouble() / 1024 / 1024;
+
+        return _renderInfoTile(
+          context: context,
+          icon: Symbols.memory,
+          title: localizations.settings_about_memory_usage_title,
+          value: NumberUtils.formatNumber(memoryUsage, 0),
+          unit: 'MB',
+        );
+      },
+    );
+  }
+
+  Widget _renderInfoTile({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String value,
+    String? unit,
+    bool showLoading = false,
+  }) {
     return SizedBox(
-      width: MediaQuery.of(context).size.width / 2 - AppSpacings.pMd * 2,
+      width: MediaQuery.of(context).size.width / 2 - // 2 columns layout
+          AppSpacings.pMd - // Screen vertical margin
+          AppSpacings.pSm / 2, // Grid spacing
       child: Material(
         elevation: 0,
         color: Colors.transparent,
@@ -349,10 +329,12 @@ class _AboutPageState extends State<AboutPage> {
           textColor: Theme.of(context).brightness == Brightness.light
               ? AppTextColorLight.regular
               : AppTextColorDark.regular,
-          leading: Icon(
-            icon,
-            size: AppFontSize.large,
-          ),
+          leading: showLoading
+              ? CircularProgressIndicator()
+              : Icon(
+                  icon,
+                  size: AppFontSize.large,
+                ),
           title: Text(
             title,
             style: TextStyle(
@@ -360,11 +342,28 @@ class _AboutPageState extends State<AboutPage> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          subtitle: Text(
-            value,
-            style: TextStyle(
-              fontSize: _screenService.scale(8),
-            ),
+          subtitle: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: _screenService.scale(8),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              unit != null ? AppSpacings.spacingXsHorizontal : null,
+              unit != null
+                  ? Text(
+                      unit,
+                      style: TextStyle(
+                        fontSize: _screenService.scale(7),
+                      ),
+                    )
+                  : null
+            ].whereType<Widget>().toList(),
           ),
         ),
       ),

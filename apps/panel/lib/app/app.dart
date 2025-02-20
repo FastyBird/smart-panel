@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/app/body.dart';
 import 'package:fastybird_smart_panel/app/app/error.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
+import 'package:fastybird_smart_panel/core/repositories/system_module.dart';
 import 'package:fastybird_smart_panel/core/repositories/weather_module.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/types/configuration.dart';
@@ -80,6 +81,9 @@ class MyApp extends StatelessWidget {
             ),
             ChangeNotifierProvider(
               create: (_) => locator<WeatherModuleRepository>(),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => locator<SystemModuleRepository>(),
             ),
             ChangeNotifierProvider(
               create: (_) => locator<DevicesModuleRepository>(),
