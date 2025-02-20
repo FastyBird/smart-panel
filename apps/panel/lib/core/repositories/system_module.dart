@@ -9,7 +9,7 @@ class SystemModuleRepository extends ChangeNotifier {
   final SystemModuleClient _apiClient;
 
   late SystemInfoModel _systemInfo;
-  late ThrottleStatusModel _throttleStatus;
+  late ThrottleStatusModel? _throttleStatus;
 
   bool _isLoading = true;
 
@@ -33,7 +33,7 @@ class SystemModuleRepository extends ChangeNotifier {
 
   SystemInfoModel get systemInfo => _systemInfo;
 
-  ThrottleStatusModel get throttleStatus => _throttleStatus;
+  ThrottleStatusModel? get throttleStatus => _throttleStatus;
 
   Future<bool> refresh() async {
     try {
@@ -90,14 +90,18 @@ class SystemModuleRepository extends ChangeNotifier {
   }
 
   Future<void> _loadThrottleStatus() async {
-    var resThrottleStatus = await _fetchThrottleStatus();
+    try {
+      var resThrottleStatus = await _fetchThrottleStatus();
 
-    _throttleStatus = ThrottleStatusModel.fromJson({
-      'undervoltage': resThrottleStatus.undervoltage,
-      'frequency_capping': resThrottleStatus.frequencyCapping,
-      'throttling': resThrottleStatus.throttling,
-      'soft_temp_limit': resThrottleStatus.softTempLimit,
-    });
+      _throttleStatus = ThrottleStatusModel.fromJson({
+        'undervoltage': resThrottleStatus.undervoltage,
+        'frequency_capping': resThrottleStatus.frequencyCapping,
+        'throttling': resThrottleStatus.throttling,
+        'soft_temp_limit': resThrottleStatus.softTempLimit,
+      });
+    } catch (e) {
+      // Could be ignored
+    }
   }
 
   Future<SystemSystemInfo> _fetchSystemInfo() async {

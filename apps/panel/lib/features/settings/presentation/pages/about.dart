@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:provider/provider.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -21,16 +20,40 @@ class AboutPage extends StatefulWidget {
 
 class _AboutPageState extends State<AboutPage> {
   final ScreenService _screenService = locator<ScreenService>();
+  final SystemModuleRepository _repository = locator<SystemModuleRepository>();
 
   String _appVersion = 'Loading...';
   String _ipAddress = 'Loading...';
   String _macAddress = 'Loading...';
+
+  late double _cpuLoad;
+  late int _memoryUsed;
 
   @override
   void initState() {
     super.initState();
 
     _fetchDeviceInfo();
+
+    _syncStateWithRepository();
+
+    _repository.addListener(_syncStateWithRepository);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+
+    _repository.removeListener(_syncStateWithRepository);
+  }
+
+  void _syncStateWithRepository() {
+    SystemInfoModel systemInfo = _repository.systemInfo;
+
+    setState(() {
+      _cpuLoad = systemInfo.cpuLoad;
+      _memoryUsed = systemInfo.memory.used;
+    });
   }
 
   Future<void> _fetchDeviceInfo() async {
@@ -242,58 +265,26 @@ class _AboutPageState extends State<AboutPage> {
   Widget _renderCpuUsageTile(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Consumer<SystemModuleRepository>(
-      builder: (context, repository, _) {
-        if (repository.isLoading) {
-          return _renderInfoTile(
-            context: context,
-            icon: Symbols.earthquake,
-            title: localizations.settings_about_cpu_usage_title,
-            value: localizations.value_not_available,
-            showLoading: true,
-          );
-        }
-
-        SystemInfoModel systemInfo = repository.systemInfo;
-
-        return _renderInfoTile(
-          context: context,
-          icon: Symbols.earthquake,
-          title: localizations.settings_about_cpu_usage_title,
-          value: NumberUtils.formatNumber(systemInfo.cpuLoad, 2),
-          unit: '%',
-        );
-      },
+    return _renderInfoTile(
+      context: context,
+      icon: Symbols.earthquake,
+      title: localizations.settings_about_cpu_usage_title,
+      value: NumberUtils.formatNumber(_cpuLoad, 2),
+      unit: '%',
     );
   }
 
   Widget _renderMemoryUsageTile(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Consumer<SystemModuleRepository>(
-      builder: (context, repository, _) {
-        if (repository.isLoading) {
-          return _renderInfoTile(
-            context: context,
-            icon: Symbols.memory,
-            title: localizations.settings_about_memory_usage_title,
-            value: localizations.value_not_available,
-            showLoading: true,
-          );
-        }
+    double memoryUsed = _memoryUsed.toDouble() / 1024 / 1024;
 
-        SystemInfoModel systemInfo = repository.systemInfo;
-
-        double memoryUsage = systemInfo.memory.used.toDouble() / 1024 / 1024;
-
-        return _renderInfoTile(
-          context: context,
-          icon: Symbols.memory,
-          title: localizations.settings_about_memory_usage_title,
-          value: NumberUtils.formatNumber(memoryUsage, 0),
-          unit: 'MB',
-        );
-      },
+    return _renderInfoTile(
+      context: context,
+      icon: Symbols.memory,
+      title: localizations.settings_about_memory_usage_title,
+      value: NumberUtils.formatNumber(memoryUsed, 0),
+      unit: 'MB',
     );
   }
 
