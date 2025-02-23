@@ -34,6 +34,8 @@ mixin _$SystemSystemInfo {
 
   /// List of network interfaces with statistics.
   List<SystemNetworkStats> get network => throw _privateConstructorUsedError;
+  @JsonKey(name: 'default_network')
+  SystemDefaultNetwork get defaultNetwork => throw _privateConstructorUsedError;
   SystemDisplayInfo get display => throw _privateConstructorUsedError;
 
   /// Serializes this SystemSystemInfo to a JSON map.
@@ -59,11 +61,13 @@ abstract class $SystemSystemInfoCopyWith<$Res> {
       SystemTemperatureInfo temperature,
       SystemOperatingSystemInfo os,
       List<SystemNetworkStats> network,
+      @JsonKey(name: 'default_network') SystemDefaultNetwork defaultNetwork,
       SystemDisplayInfo display});
 
   $SystemMemoryInfoCopyWith<$Res> get memory;
   $SystemTemperatureInfoCopyWith<$Res> get temperature;
   $SystemOperatingSystemInfoCopyWith<$Res> get os;
+  $SystemDefaultNetworkCopyWith<$Res> get defaultNetwork;
   $SystemDisplayInfoCopyWith<$Res> get display;
 }
 
@@ -88,6 +92,7 @@ class _$SystemSystemInfoCopyWithImpl<$Res, $Val extends SystemSystemInfo>
     Object? temperature = null,
     Object? os = null,
     Object? network = null,
+    Object? defaultNetwork = null,
     Object? display = null,
   }) {
     return _then(_value.copyWith(
@@ -115,6 +120,10 @@ class _$SystemSystemInfoCopyWithImpl<$Res, $Val extends SystemSystemInfo>
           ? _value.network
           : network // ignore: cast_nullable_to_non_nullable
               as List<SystemNetworkStats>,
+      defaultNetwork: null == defaultNetwork
+          ? _value.defaultNetwork
+          : defaultNetwork // ignore: cast_nullable_to_non_nullable
+              as SystemDefaultNetwork,
       display: null == display
           ? _value.display
           : display // ignore: cast_nullable_to_non_nullable
@@ -156,6 +165,16 @@ class _$SystemSystemInfoCopyWithImpl<$Res, $Val extends SystemSystemInfo>
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
+  $SystemDefaultNetworkCopyWith<$Res> get defaultNetwork {
+    return $SystemDefaultNetworkCopyWith<$Res>(_value.defaultNetwork, (value) {
+      return _then(_value.copyWith(defaultNetwork: value) as $Val);
+    });
+  }
+
+  /// Create a copy of SystemSystemInfo
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
   $SystemDisplayInfoCopyWith<$Res> get display {
     return $SystemDisplayInfoCopyWith<$Res>(_value.display, (value) {
       return _then(_value.copyWith(display: value) as $Val);
@@ -178,6 +197,7 @@ abstract class _$$SystemSystemInfoImplCopyWith<$Res>
       SystemTemperatureInfo temperature,
       SystemOperatingSystemInfo os,
       List<SystemNetworkStats> network,
+      @JsonKey(name: 'default_network') SystemDefaultNetwork defaultNetwork,
       SystemDisplayInfo display});
 
   @override
@@ -186,6 +206,8 @@ abstract class _$$SystemSystemInfoImplCopyWith<$Res>
   $SystemTemperatureInfoCopyWith<$Res> get temperature;
   @override
   $SystemOperatingSystemInfoCopyWith<$Res> get os;
+  @override
+  $SystemDefaultNetworkCopyWith<$Res> get defaultNetwork;
   @override
   $SystemDisplayInfoCopyWith<$Res> get display;
 }
@@ -209,6 +231,7 @@ class __$$SystemSystemInfoImplCopyWithImpl<$Res>
     Object? temperature = null,
     Object? os = null,
     Object? network = null,
+    Object? defaultNetwork = null,
     Object? display = null,
   }) {
     return _then(_$SystemSystemInfoImpl(
@@ -236,6 +259,10 @@ class __$$SystemSystemInfoImplCopyWithImpl<$Res>
           ? _value._network
           : network // ignore: cast_nullable_to_non_nullable
               as List<SystemNetworkStats>,
+      defaultNetwork: null == defaultNetwork
+          ? _value.defaultNetwork
+          : defaultNetwork // ignore: cast_nullable_to_non_nullable
+              as SystemDefaultNetwork,
       display: null == display
           ? _value.display
           : display // ignore: cast_nullable_to_non_nullable
@@ -254,6 +281,7 @@ class _$SystemSystemInfoImpl implements _SystemSystemInfo {
       required this.temperature,
       required this.os,
       required final List<SystemNetworkStats> network,
+      @JsonKey(name: 'default_network') required this.defaultNetwork,
       required this.display})
       : _storage = storage,
         _network = network;
@@ -298,11 +326,14 @@ class _$SystemSystemInfoImpl implements _SystemSystemInfo {
   }
 
   @override
+  @JsonKey(name: 'default_network')
+  final SystemDefaultNetwork defaultNetwork;
+  @override
   final SystemDisplayInfo display;
 
   @override
   String toString() {
-    return 'SystemSystemInfo(cpuLoad: $cpuLoad, memory: $memory, storage: $storage, temperature: $temperature, os: $os, network: $network, display: $display)';
+    return 'SystemSystemInfo(cpuLoad: $cpuLoad, memory: $memory, storage: $storage, temperature: $temperature, os: $os, network: $network, defaultNetwork: $defaultNetwork, display: $display)';
   }
 
   @override
@@ -317,6 +348,8 @@ class _$SystemSystemInfoImpl implements _SystemSystemInfo {
                 other.temperature == temperature) &&
             (identical(other.os, os) || other.os == os) &&
             const DeepCollectionEquality().equals(other._network, _network) &&
+            (identical(other.defaultNetwork, defaultNetwork) ||
+                other.defaultNetwork == defaultNetwork) &&
             (identical(other.display, display) || other.display == display));
   }
 
@@ -330,6 +363,7 @@ class _$SystemSystemInfoImpl implements _SystemSystemInfo {
       temperature,
       os,
       const DeepCollectionEquality().hash(_network),
+      defaultNetwork,
       display);
 
   /// Create a copy of SystemSystemInfo
@@ -357,6 +391,8 @@ abstract class _SystemSystemInfo implements SystemSystemInfo {
       required final SystemTemperatureInfo temperature,
       required final SystemOperatingSystemInfo os,
       required final List<SystemNetworkStats> network,
+      @JsonKey(name: 'default_network')
+      required final SystemDefaultNetwork defaultNetwork,
       required final SystemDisplayInfo display}) = _$SystemSystemInfoImpl;
 
   factory _SystemSystemInfo.fromJson(Map<String, dynamic> json) =
@@ -382,6 +418,9 @@ abstract class _SystemSystemInfo implements SystemSystemInfo {
   /// List of network interfaces with statistics.
   @override
   List<SystemNetworkStats> get network;
+  @override
+  @JsonKey(name: 'default_network')
+  SystemDefaultNetwork get defaultNetwork;
   @override
   SystemDisplayInfo get display;
 

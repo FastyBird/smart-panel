@@ -1,13 +1,13 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/models/layout/grid_item.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/fixed_screen_grid.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_grid.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/ui/tile.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/ui/pages/tiles.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/tile.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/tiles_page.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -21,9 +21,12 @@ class TilesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DashboardModuleRepository>(
-        builder: (context, dashboardRepository, _) {
-      final tiles = dashboardRepository.getTilesByIds(page.tiles);
+    return Consumer<TilesRepository>(builder: (
+      context,
+      tilesRepository,
+      _,
+    ) {
+      final tiles = tilesRepository.getItems(page.tiles);
 
       if (tiles.isEmpty) {
         final localizations = AppLocalizations.of(context)!;
@@ -106,29 +109,36 @@ class TilesPage extends StatelessWidget {
         body: SafeArea(
           child: Padding(
             padding: AppSpacings.paddingSm,
-            child: ScreenGrid(
-              children: tiles.map((tile) {
-                return GridItemModel(
-                  row: tile.row,
-                  col: tile.col,
-                  rowSpan: tile.rowSpan,
-                  colSpan: tile.colSpan,
-                  child: Container(
-                    alignment: Alignment.center,
-                    child: Padding(
-                      padding: AppSpacings.paddingSm,
-                      child: buildTileWidget(
-                        tile,
-                        dashboardRepository.getDataSourceByIds(tile.dataSource),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+            child: FixedScreenGrid(
+              children: tiles.map((tile) => _buildTile(context, tile)).toList(),
             ),
           ),
         ),
       );
     });
+  }
+
+  FixedScreenGridItem _buildTile(
+    BuildContext context,
+    TileModel tile,
+  ) {
+    return FixedScreenGridItem(
+      mainAxisIndex: tile.row,
+      crossAxisIndex: tile.col,
+      mainAxisCellCount: tile.rowSpan,
+      crossAxisCellCount: tile.colSpan,
+      child: Consumer<DataSourcesRepository>(builder: (
+        context,
+        dataSourcesRepository,
+        _,
+      ) {
+        return buildTileWidget(
+          tile,
+          dataSourcesRepository.getItems(
+            tile.dataSource,
+          ),
+        );
+      }),
+    );
   }
 }

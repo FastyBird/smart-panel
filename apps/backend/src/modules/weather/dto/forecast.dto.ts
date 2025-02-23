@@ -132,8 +132,9 @@ export class ForecastListItemDto {
 	wind: ForecastWindDto;
 
 	@Expose()
+	@IsOptional()
 	@IsInt()
-	visibility: number;
+	visibility?: number;
 
 	@Expose()
 	@IsNumber()

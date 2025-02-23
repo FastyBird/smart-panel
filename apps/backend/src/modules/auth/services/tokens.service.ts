@@ -1,4 +1,3 @@
-import bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
@@ -12,6 +11,7 @@ import { AuthException, AuthNotFoundException, AuthValidationException } from '.
 import { CreateTokenDto } from '../dto/create-token.dto';
 import { UpdateTokenDto } from '../dto/update-token.dto';
 import { TokenEntity } from '../entities/auth.entity';
+import { hashToken } from '../utils/token.utils';
 
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
 
@@ -89,8 +89,10 @@ export class TokensService {
 
 		let existingToken: TToken | null = null;
 
+		const hashedToken = hashToken(dtoInstance.token);
+
 		for (const storedToken of existingTokens) {
-			if (await bcrypt.compare(dtoInstance.token, storedToken.hashedToken)) {
+			if (hashedToken === storedToken.hashedToken) {
 				existingToken = storedToken;
 
 				break;

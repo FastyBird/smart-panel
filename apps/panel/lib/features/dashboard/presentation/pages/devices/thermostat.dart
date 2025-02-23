@@ -8,28 +8,25 @@ import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/rounded_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/channels/cooler.dart';
-import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/channels/heater.dart';
-import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/thermostat.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/thermostat.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/channels/cooler.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/channels/heater.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/devices/thermostat.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/features/dashboard/services/devices.dart';
 import 'package:fastybird_smart_panel/features/dashboard/types/payloads.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/properties.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 class ThermostatDeviceDetailPage extends StatefulWidget {
-  final ThermostatDeviceDataModel _device;
-  final ThermostatDeviceCapability _capability;
+  final ThermostatDeviceType _device;
 
   const ThermostatDeviceDetailPage({
     super.key,
-    required ThermostatDeviceDataModel device,
-    required ThermostatDeviceCapability capability,
-  })  : _device = device,
-        _capability = capability;
+    required ThermostatDeviceType device,
+  }) : _device = device;
 
   @override
   State<ThermostatDeviceDetailPage> createState() =>
@@ -49,34 +46,34 @@ class _ThermostatDeviceDetailPageState
 
     _thermostatModes.add(ThermostatModeType.off);
 
-    if (widget._capability.thermostatAvailableModes
+    if (widget._device.thermostatAvailableModes
         .contains(getValueFromMode(ThermostatModeType.heat))) {
       _thermostatModes.add(ThermostatModeType.heat);
     }
 
-    if (widget._capability.thermostatAvailableModes
+    if (widget._device.thermostatAvailableModes
         .contains(getValueFromMode(ThermostatModeType.cool))) {
       _thermostatModes.add(ThermostatModeType.cool);
     }
 
-    if (widget._capability.thermostatAvailableModes
+    if (widget._device.thermostatAvailableModes
         .contains(getValueFromMode(ThermostatModeType.auto))) {
       _thermostatModes.add(ThermostatModeType.auto);
     }
 
-    if (widget._capability.thermostatAvailableModes
+    if (widget._device.thermostatAvailableModes
         .contains(getValueFromMode(ThermostatModeType.manual))) {
       _thermostatModes.add(ThermostatModeType.manual);
     }
 
-    if (widget._capability.isOn == false) {
+    if (widget._device.isOn == false) {
       _currentModeIndex = 0;
     } else {
       _currentModeIndex = _thermostatModes.indexWhere(
         (mode) =>
             mode ==
             getModeFromValue(
-              widget._capability.thermostatMode,
+              widget._device.thermostatMode,
             ),
       );
     }
@@ -86,34 +83,38 @@ class _ThermostatDeviceDetailPageState
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
+    final parentDetailPage =
+        context.findAncestorWidgetOfExactType<DeviceDetailPage>();
+
     return Scaffold(
       appBar: ScreenAppBar(
         title: widget._device.name,
+        icon: parentDetailPage == null ? widget._device.icon : null,
       ),
       body: SafeArea(
         child: LayoutBuilder(builder: (
           BuildContext context,
           BoxConstraints constraints,
         ) {
-          if (widget._capability.hasCooler && widget._capability.hasHeater) {
+          if (widget._device.hasCooler && widget._device.hasHeater) {
             return ThermostatDial(
-              capability: widget._capability,
+              capability: widget._device,
             );
           }
 
           return ThermostatBar(
-            capability: widget._capability,
+            capability: widget._device,
           );
         }),
       ),
       bottomNavigationBar: IgnorePointer(
-        ignoring: widget._capability.isThermostatLocked,
+        ignoring: widget._device.isThermostatLocked,
         child: BottomNavigationBar(
           selectedItemColor: Theme.of(context).brightness == Brightness.light
-              ? (widget._capability.isThermostatLocked
+              ? (widget._device.isThermostatLocked
                   ? AppColorsLight.primaryLight3
                   : AppColorsLight.primary)
-              : (widget._capability.isThermostatLocked
+              : (widget._device.isThermostatLocked
                   ? AppColorsDark.primaryLight3
                   : AppColorsDark.primary),
           currentIndex: _currentModeIndex,
@@ -165,21 +166,21 @@ class _ThermostatDeviceDetailPageState
       case ThermostatModeType.off:
         _valueHelper.setPropertyValue(
           context,
-          widget._capability.thermostatCapability.activeProp,
+          widget._device.thermostatCapability.activeProp,
           false,
         );
         break;
       default:
         _valueHelper.setPropertyValue(
           context,
-          widget._capability.thermostatCapability.modeProp,
+          widget._device.thermostatCapability.modeProp,
           getValueFromMode(_thermostatModes[index])?.value,
         );
 
-        if (widget._capability.isOn == false) {
+        if (widget._device.isOn == false) {
           _valueHelper.setPropertyValue(
             context,
-            widget._capability.thermostatCapability.activeProp,
+            widget._device.thermostatCapability.activeProp,
             true,
           );
         }
@@ -189,11 +190,11 @@ class _ThermostatDeviceDetailPageState
 }
 
 class ThermostatBar extends StatefulWidget {
-  final ThermostatDeviceCapability _capability;
+  final ThermostatDeviceType _capability;
 
   const ThermostatBar({
     super.key,
-    required ThermostatDeviceCapability capability,
+    required ThermostatDeviceType capability,
   }) : _capability = capability;
 
   @override
@@ -280,7 +281,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
   Widget _renderConfiguredTemperature(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final ChannelPropertyDataModel? prop =
+    final ChannelPropertyModel? prop =
         widget._capability.heaterCapability?.temperatureProp;
 
     return Column(
@@ -297,7 +298,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
                             ? ValueUtils.formatValue(prop, 1)
                             : null) ??
                         localizations.value_not_available)
-                    : NumberUtils.formatUnavailableNumber(),
+                    : NumberUtils.formatUnavailableNumber(1),
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.regular
@@ -345,7 +346,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
   Widget _renderCurrentTemperature(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final ChannelPropertyDataModel prop =
+    final ChannelPropertyModel prop =
         widget._capability.temperatureCapability.temperatureProp;
 
     return IntrinsicWidth(
@@ -426,7 +427,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
       return null;
     }
 
-    final ChannelPropertyDataModel? prop =
+    final ChannelPropertyModel? prop =
         widget._capability.humidityCapability?.humidityProp;
 
     if (prop == null) {
@@ -588,11 +589,11 @@ class _ThermostatBarState extends State<ThermostatBar> {
 }
 
 class ThermostatDial extends StatefulWidget {
-  final ThermostatDeviceCapability _capability;
+  final ThermostatDeviceType _capability;
 
   const ThermostatDial({
     super.key,
-    required ThermostatDeviceCapability capability,
+    required ThermostatDeviceType capability,
   }) : _capability = capability;
 
   @override
@@ -957,7 +958,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
   Widget _renderConfiguredTemperature(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final ChannelPropertyDataModel? prop =
+    final ChannelPropertyModel? prop =
         widget._capability.heaterCapability?.temperatureProp;
 
     final String? temperature =
@@ -1026,7 +1027,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
   Widget _renderCurrentTemperature(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final ChannelPropertyDataModel prop =
+    final ChannelPropertyModel prop =
         widget._capability.temperatureCapability.temperatureProp;
 
     return Row(
@@ -1071,7 +1072,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
     if (!widget._capability.hasHumidity) {
       return null;
     }
-    final ChannelPropertyDataModel? prop =
+    final ChannelPropertyModel? prop =
         widget._capability.humidityCapability?.humidityProp;
 
     if (prop == null) {
@@ -1140,11 +1141,11 @@ class _ThermostatDialState extends State<ThermostatDial> {
 }
 
 class ThermostatTiles extends StatefulWidget {
-  final ThermostatDeviceCapability _capability;
+  final ThermostatDeviceType _capability;
 
   const ThermostatTiles({
     super.key,
-    required ThermostatDeviceCapability capability,
+    required ThermostatDeviceType capability,
   }) : _capability = capability;
 
   @override
@@ -1206,7 +1207,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
             _isLocked = !_isLocked;
           });
 
-          final ChannelPropertyDataModel? property =
+          final ChannelPropertyModel? property =
               widget._capability.thermostatCapability.lockedProp;
 
           if (property != null) {
@@ -1255,7 +1256,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
               _isLocked = value;
             });
 
-            final ChannelPropertyDataModel? property =
+            final ChannelPropertyModel? property =
                 widget._capability.thermostatCapability.lockedProp;
 
             if (property != null) {
@@ -1400,18 +1401,17 @@ ThermostatModeValue? getValueFromMode(ThermostatModeType type) {
 }
 
 class PropertyValueHelper {
-  final DevicesModuleRepository _repository =
-      locator<DevicesModuleRepository>();
+  final DevicesService _service = locator<DevicesService>();
 
   Future<void> setPropertyValue(
     BuildContext context,
-    ChannelPropertyDataModel property,
+    ChannelPropertyModel property,
     dynamic value,
   ) async {
     final localizations = AppLocalizations.of(context)!;
 
     try {
-      bool res = await _repository.setPropertyValue(
+      bool res = await _service.setPropertyValue(
         property.id,
         value,
       );

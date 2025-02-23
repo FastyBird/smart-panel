@@ -1190,7 +1190,7 @@ export interface paths {
          * Retrieve a list of all available data sources for a card’s tile
          * @description Fetches a list of data sources associated with a specific tile of a card. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.
          */
-        get: operations["get-dashboard-module-page-car-tile-data-sources"];
+        get: operations["get-dashboard-module-page-card-tile-data-sources"];
         put?: never;
         /**
          * Create a new data source for a specific card’s tile
@@ -1274,7 +1274,7 @@ export interface paths {
          * Retrieve a list of all available data sources for a card
          * @description Fetches a list of data sources associated with a specific card. Data sources represent attributes or measurements related to the card, such as device state, weather location, or timezone.
          */
-        get: operations["get-dashboard-module-page-car-data-sources"];
+        get: operations["get-dashboard-module-page-card-data-sources"];
         put?: never;
         /**
          * Create a new data source for a specific card
@@ -1426,10 +1426,50 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Retrieve current weather conditions
+         * Retrieve weather conditions
          * @description Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a specified location.
          */
         get: operations["get-weather-module-weather"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/weather-module/weather/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve current day conditions
+         * @description Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a current day and for a specified location.
+         */
+        get: operations["get-weather-module-current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/weather-module/weather/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve forecast conditions
+         * @description Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details forecast for a specified location.
+         */
+        get: operations["get-weather-module-forecast"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3788,7 +3828,7 @@ export interface components {
              */
             page: string;
             /** @description A list of tiles associated with the dashboard card, representing widgets or functional components. */
-            tiles: unknown[];
+            tiles: (components["schemas"]["DashboardDeviceTile"] | components["schemas"]["DashboardTimeTile"] | components["schemas"]["DashboardDayWeatherTile"] | components["schemas"]["DashboardForecastWeatherTile"])[];
             /** @description A list of data sources used by the card, typically for real-time updates. */
             data_source: components["schemas"]["DashboardDeviceChannelDataSource"][];
             /**
@@ -4175,7 +4215,7 @@ export interface components {
              */
             order?: number;
             /** @description A list of tiles associated with the dashboard card, representing widgets or functional components. */
-            tiles?: unknown[];
+            tiles?: (components["schemas"]["DashboardCreateDeviceTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"])[];
             /** @description A list of data sources used by the card, typically for real-time updates. */
             data_source?: components["schemas"]["DashboardCreateDeviceChannelDataSource"][];
         };
@@ -5459,6 +5499,32 @@ export interface components {
             readonly tx_bytes: number;
         };
         /**
+         * Default Network Info
+         * @description Schema for a default network info, including interface, ip addresses and mac address.
+         */
+        SystemDefaultNetwork: {
+            /**
+             * @description Network interface name.
+             * @example eth0
+             */
+            readonly interface: string;
+            /**
+             * @description IPv4 address.
+             * @example 192.168.1.5
+             */
+            readonly ip4: string;
+            /**
+             * @description IPv6 address.
+             * @example fe80::134a:1e43:abc5:d413
+             */
+            readonly ip6: string;
+            /**
+             * @description Default network interface physical address.
+             * @example xx:xx:xx:xx:xx:xx
+             */
+            readonly mac: string;
+        };
+        /**
          * System Info
          * @description Schema for a detailed information about the system, including CPU load, memory, storage, temperature, operating system, network, and display.
          */
@@ -5477,6 +5543,7 @@ export interface components {
             os: components["schemas"]["SystemOperatingSystemInfo"];
             /** @description List of network interfaces with statistics. */
             readonly network: components["schemas"]["SystemNetworkStats"][];
+            default_network: components["schemas"]["SystemDefaultNetwork"];
             display: components["schemas"]["SystemDisplayInfo"];
         };
         /**
@@ -5656,14 +5723,16 @@ export interface components {
             temperature: number;
             /**
              * @description Minimum recorded temperature for the day in degrees Celsius.
+             * @default null
              * @example 18.2
              */
-            temperature_min: number;
+            temperature_min?: number | null;
             /**
              * @description Maximum recorded temperature for the day in degrees Celsius.
+             * @default null
              * @example 25.8
              */
-            temperature_max: number;
+            temperature_max?: number | null;
             /**
              * @description Perceived temperature based on wind and humidity.
              * @example 21.9
@@ -5725,57 +5794,67 @@ export interface components {
             temperature: {
                 /**
                  * @description Morning temperature.
+                 * @default null
                  * @example 22.5
                  */
-                morn?: number;
+                morn?: number | null;
                 /**
                  * @description Day temperature.
+                 * @default null
                  * @example 24.5
                  */
-                day?: number;
+                day?: number | null;
                 /**
                  * @description Evening temperature.
+                 * @default null
                  * @example 22.5
                  */
-                eve?: number;
+                eve?: number | null;
                 /**
                  * @description Night temperature.
+                 * @default null
                  * @example 20.5
                  */
-                night?: number;
+                night?: number | null;
                 /**
                  * @description Min daily temperature.
+                 * @default null
                  * @example 20.5
                  */
-                min?: number;
+                min?: number | null;
                 /**
                  * @description Max daily temperature.
+                 * @default null
                  * @example 24.5
                  */
-                max?: number;
+                max?: number | null;
             };
             /** @description Perceived temperatures during the day based on wind and humidity. */
             feels_like: {
                 /**
                  * @description Morning temperature.
+                 * @default null
                  * @example 22.5
                  */
-                morn?: number;
+                morn?: number | null;
                 /**
                  * @description Day temperature.
+                 * @default null
                  * @example 24.5
                  */
-                day?: number;
+                day?: number | null;
                 /**
                  * @description Evening temperature.
+                 * @default null
                  * @example 22.5
                  */
-                eve?: number;
+                eve?: number | null;
                 /**
                  * @description Night temperature.
+                 * @default null
                  * @example 20.5
                  */
-                night?: number;
+                night?: number | null;
             };
             /**
              * @description Atmospheric pressure in hPa.
@@ -5809,27 +5888,31 @@ export interface components {
             /**
              * Format: date-time
              * @description Timestamp for sunrise in ISO 8601 format.
+             * @default null
              * @example 2025-02-06T06:45:00Z
              */
-            sunrise?: string;
+            sunrise?: string | null;
             /**
              * Format: date-time
              * @description Timestamp for sunset in ISO 8601 format.
+             * @default null
              * @example 2025-02-06T17:30:00Z
              */
-            sunset?: string;
+            sunset?: string | null;
             /**
              * Format: date-time
              * @description Timestamp for moonrise in ISO 8601 format.
+             * @default null
              * @example 2025-02-06T17:30:00Z
              */
-            moonrise?: string;
+            moonrise?: string | null;
             /**
              * Format: date-time
              * @description Timestamp for moonset in ISO 8601 format.
+             * @default null
              * @example 2025-02-06T17:30:00Z
              */
-            moonset?: string;
+            moonset?: string | null;
             /**
              * Format: date-time
              * @description Time of data calculation
@@ -5920,6 +6003,82 @@ export interface components {
             data: components["schemas"]["WeatherLocationWeather"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
+        };
+        /**
+         * Location Current Day Response
+         * @description Response containing detailed weather conditions for a current day and for a specified location.
+         */
+        WeatherResLocationCurrent: {
+            /**
+             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+             * @example success
+             */
+            readonly status?: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+             * @example 2025-01-18T12:00:00Z
+             */
+            readonly timestamp?: string;
+            /**
+             * Format: uuid
+             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+             */
+            readonly request_id?: string;
+            /**
+             * @description The API endpoint that was requested, including any dynamic parameters.
+             * @example /api/v1/weather-module/weather/current
+             */
+            readonly path?: string;
+            /**
+             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+             * @example GET
+             * @enum {string}
+             */
+            readonly method?: "GET" | "POST" | "PATCH" | "DELETE";
+            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+            data?: components["schemas"]["WeatherCurrentDay"];
+            /** @description Additional metadata about the request and server performance metrics. */
+            metadata?: components["schemas"]["CommonResMetadata"];
+        };
+        /**
+         * LocationForecast
+         * @description Response containing detailed weather conditions forecast for a specified location.
+         */
+        WeatherResLocationForecast: {
+            /**
+             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+             * @example success
+             */
+            readonly status?: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+             * @example 2025-01-18T12:00:00Z
+             */
+            readonly timestamp?: string;
+            /**
+             * Format: uuid
+             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+             */
+            readonly request_id?: string;
+            /**
+             * @description The API endpoint that was requested, including any dynamic parameters.
+             * @example /api/v1/weather-module/weather/forecast
+             */
+            readonly path?: string;
+            /**
+             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+             * @example GET
+             * @enum {string}
+             */
+            readonly method?: "GET" | "POST" | "PATCH" | "DELETE";
+            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+            data?: components["schemas"]["WeatherForecastDay"][];
+            /** @description Additional metadata about the request and server performance metrics. */
+            metadata?: components["schemas"]["CommonResMetadata"];
         };
         /**
          * City to Coordinates Geolocation Response
@@ -6424,6 +6583,7 @@ export type SchemaSystemTemperatureInfo = components['schemas']['SystemTemperatu
 export type SchemaSystemOperatingSystemInfo = components['schemas']['SystemOperatingSystemInfo'];
 export type SchemaSystemDisplayInfo = components['schemas']['SystemDisplayInfo'];
 export type SchemaSystemNetworkStats = components['schemas']['SystemNetworkStats'];
+export type SchemaSystemDefaultNetwork = components['schemas']['SystemDefaultNetwork'];
 export type SchemaSystemSystemInfo = components['schemas']['SystemSystemInfo'];
 export type SchemaSystemThrottleStatus = components['schemas']['SystemThrottleStatus'];
 export type SchemaSystemResSystemInfo = components['schemas']['SystemResSystemInfo'];
@@ -6436,6 +6596,8 @@ export type SchemaWeatherForecastDay = components['schemas']['WeatherForecastDay
 export type SchemaWeatherLocationWeather = components['schemas']['WeatherLocationWeather'];
 export type SchemaWeatherGeolocation = components['schemas']['WeatherGeolocation'];
 export type SchemaWeatherResLocationWeather = components['schemas']['WeatherResLocationWeather'];
+export type SchemaWeatherResLocationCurrent = components['schemas']['WeatherResLocationCurrent'];
+export type SchemaWeatherResLocationForecast = components['schemas']['WeatherResLocationForecast'];
 export type SchemaWeatherResGeolocationCityToCoordinates = components['schemas']['WeatherResGeolocationCityToCoordinates'];
 export type SchemaWeatherResGeolocationCoordinatesToCity = components['schemas']['WeatherResGeolocationCoordinatesToCity'];
 export type SchemaCommonResMetadata = components['schemas']['CommonResMetadata'];
@@ -9043,7 +9205,7 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "get-dashboard-module-page-car-tile-data-sources": {
+    "get-dashboard-module-page-card-tile-data-sources": {
         parameters: {
             query?: never;
             header?: never;
@@ -9263,7 +9425,7 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "get-dashboard-module-page-car-data-sources": {
+    "get-dashboard-module-page-card-data-sources": {
         parameters: {
             query?: never;
             header?: never;
@@ -9597,6 +9759,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeatherResLocationWeather"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "get-weather-module-current": {
+        parameters: {
+            query?: {
+                /** @description The location for weather updates, specified as a city name or coordinates (latitude, longitude). */
+                location?: string;
+                /** @description Specifies the method used to determine the location for weather updates. */
+                location_type?: "lat_lon" | "city_name" | "city_id" | "zip_code";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response containing current weather conditions details for a specified location. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeatherResLocationCurrent"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "get-weather-module-forecast": {
+        parameters: {
+            query?: {
+                /** @description The location for weather updates, specified as a city name or coordinates (latitude, longitude). */
+                location?: string;
+                /** @description Specifies the method used to determine the location for weather updates. */
+                location_type?: "lat_lon" | "city_name" | "city_id" | "zip_code";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response containing current weather forecast details for a specified location. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeatherResLocationForecast"];
                 };
             };
             400: components["responses"]["BadRequestError"];

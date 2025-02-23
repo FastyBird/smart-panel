@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/device.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/devices/type.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -10,7 +10,7 @@ import 'package:material_symbols_icons/symbols.dart';
 class GenericDeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final DeviceDataModel device;
+  final DeviceType device;
 
   GenericDeviceDetailPage({
     super.key,

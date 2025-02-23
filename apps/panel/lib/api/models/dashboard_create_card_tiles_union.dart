@@ -43,7 +43,7 @@ sealed class DashboardCreateCardTilesUnion with _$DashboardCreateCardTilesUnion 
     /// Specifies the type of tile as a device-specific tile.
     @Default('device')
     String type,
-  }) = DashboardCreateDeviceTile;
+  }) = DashboardCreateCardTilesUnionDevice;
 
   @FreezedUnionValue('clock')
   const factory DashboardCreateCardTilesUnion.clock({
@@ -71,7 +71,7 @@ sealed class DashboardCreateCardTilesUnion with _$DashboardCreateCardTilesUnion 
     /// Specifies the type of tile as a clock.
     @Default('clock')
     String type,
-  }) = DashboardCreateTimeTile;
+  }) = DashboardCreateCardTilesUnionClock;
 
   @FreezedUnionValue('weather-day')
   const factory DashboardCreateCardTilesUnion.weatherDay({
@@ -99,7 +99,7 @@ sealed class DashboardCreateCardTilesUnion with _$DashboardCreateCardTilesUnion 
     /// Specifies the type of tile as a day weather tile.
     @Default('weather-day')
     String type,
-  }) = DashboardCreateDayWeatherTile;
+  }) = DashboardCreateCardTilesUnionWeatherDay;
 
   @FreezedUnionValue('weather-forecast')
   const factory DashboardCreateCardTilesUnion.weatherForecast({
@@ -127,7 +127,7 @@ sealed class DashboardCreateCardTilesUnion with _$DashboardCreateCardTilesUnion 
     /// Specifies the type of tile as a weather forecast tile.
     @Default('weather-forecast')
     String type,
-  }) = DashboardCreateForecastWeatherTile;
+  }) = DashboardCreateCardTilesUnionWeatherForecast;
 
   
   factory DashboardCreateCardTilesUnion.fromJson(Map<String, Object?> json) => _$DashboardCreateCardTilesUnionFromJson(json);

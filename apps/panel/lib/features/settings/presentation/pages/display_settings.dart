@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
-import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
@@ -11,6 +9,7 @@ import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -24,7 +23,8 @@ class DisplaySettingsPage extends StatefulWidget {
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigModuleRepository _repository = locator<ConfigModuleRepository>();
+  final DisplayConfigRepository _repository =
+      locator<DisplayConfigRepository>();
 
   late bool _isDarkMode;
 
@@ -55,13 +55,11 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
   }
 
   void _syncStateWithRepository() {
-    ConfigDisplayModel config = _repository.displayConfiguration;
-
     setState(() {
-      _isDarkMode = config.hasDarkMode;
-      _brightness = config.brightness;
-      _screenLockDuration = config.screenLockDuration;
-      _hasScreenSaver = config.hasScreenSaver;
+      _isDarkMode = _repository.data.hasDarkMode;
+      _brightness = _repository.data.brightness;
+      _screenLockDuration = _repository.data.screenLockDuration;
+      _hasScreenSaver = _repository.data.hasScreenSaver;
     });
   }
 

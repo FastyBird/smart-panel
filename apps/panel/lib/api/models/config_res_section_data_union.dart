@@ -41,7 +41,7 @@ sealed class ConfigResSectionDataUnion with _$ConfigResSectionDataUnion {
     @JsonKey(name: 'microphone_volume')
     @Default(0)
     int microphoneVolume,
-  }) = ConfigAudio;
+  }) = ConfigResSectionDataUnionAudio;
 
   @FreezedUnionValue('display')
   const factory ConfigResSectionDataUnion.display({
@@ -67,7 +67,7 @@ sealed class ConfigResSectionDataUnion with _$ConfigResSectionDataUnion {
     @JsonKey(name: 'screen_saver')
     @Default(true)
     bool screenSaver,
-  }) = ConfigDisplay;
+  }) = ConfigResSectionDataUnionDisplay;
 
   @FreezedUnionValue('language')
   const factory ConfigResSectionDataUnion.language({
@@ -87,7 +87,7 @@ sealed class ConfigResSectionDataUnion with _$ConfigResSectionDataUnion {
     @JsonKey(name: 'time_format')
     @Default(ConfigLanguageTimeFormat.value24h)
     ConfigLanguageTimeFormat timeFormat,
-  }) = ConfigLanguage;
+  }) = ConfigResSectionDataUnionLanguage;
 
   @FreezedUnionValue('weather')
   const factory ConfigResSectionDataUnion.weather({
@@ -110,7 +110,7 @@ sealed class ConfigResSectionDataUnion with _$ConfigResSectionDataUnion {
     /// Defines the temperature unit for weather data.
     @Default(ConfigWeatherUnit.celsius)
     ConfigWeatherUnit unit,
-  }) = ConfigWeather;
+  }) = ConfigResSectionDataUnionWeather;
 
   
   factory ConfigResSectionDataUnion.fromJson(Map<String, Object?> json) => _$ConfigResSectionDataUnionFromJson(json);

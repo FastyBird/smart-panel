@@ -2,8 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/alarm.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/alarm.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/devices/alarm.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -11,13 +10,11 @@ import 'package:material_symbols_icons/symbols.dart';
 class AlarmDeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final AlarmDeviceDataModel device;
-  final AlarmDeviceCapability capability;
+  final AlarmDeviceType device;
 
   AlarmDeviceDetailPage({
     super.key,
     required this.device,
-    required this.capability,
   });
 
   @override

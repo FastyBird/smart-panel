@@ -15,7 +15,7 @@ const execAsync = promisify(exec);
 
 export class RaspberryPlatform extends Platform {
 	async getSystemInfo() {
-		const [cpu, memory, storage, os, time, temp, network, graphics]: [
+		const [cpu, memory, storage, os, time, temp, network, graphics, networkInterface]: [
 			Systeminformation.CurrentLoadData,
 			Systeminformation.MemData,
 			Systeminformation.FsSizeData[],
@@ -24,6 +24,7 @@ export class RaspberryPlatform extends Platform {
 			Systeminformation.CpuTemperatureData,
 			Systeminformation.NetworkStatsData[],
 			Systeminformation.GraphicsData,
+			Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[],
 		] = await Promise.all([
 			si.currentLoad(),
 			si.mem(),
@@ -33,7 +34,10 @@ export class RaspberryPlatform extends Platform {
 			si.cpuTemperature(),
 			si.networkStats(),
 			si.graphics(),
+			si.networkInterfaces('default'),
 		]);
+
+		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
 
 		const rawData = {
 			cpuLoad: cpu.currentLoad,
@@ -62,6 +66,12 @@ export class RaspberryPlatform extends Platform {
 				rxBytes: row.rx_bytes,
 				txBytes: row.tx_bytes,
 			})),
+			defaultNetwork: {
+				interface: defaultNetworkInterface.iface,
+				ip4: defaultNetworkInterface.ip4,
+				ip6: defaultNetworkInterface.ip6,
+				mac: defaultNetworkInterface.mac,
+			},
 			display: {
 				resolutionX: graphics.displays[0].resolutionX,
 				resolutionY: graphics.displays[0].resolutionY,

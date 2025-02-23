@@ -16,7 +16,7 @@ final _privateConstructorUsedError = UnsupportedError(
 
 DashboardReqUpdateDataSourceDataUnion
     _$DashboardReqUpdateDataSourceDataUnionFromJson(Map<String, dynamic> json) {
-  return DashboardUpdateDeviceChannelDataSource.fromJson(json);
+  return DashboardReqUpdateDataSourceDataUnionDeviceChannel.fromJson(json);
 }
 
 /// @nodoc
@@ -62,19 +62,20 @@ mixin _$DashboardReqUpdateDataSourceDataUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardUpdateDeviceChannelDataSource value)
+    required TResult Function(
+            DashboardReqUpdateDataSourceDataUnionDeviceChannel value)
         deviceChannel,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardUpdateDeviceChannelDataSource value)?
+    TResult? Function(DashboardReqUpdateDataSourceDataUnionDeviceChannel value)?
         deviceChannel,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardUpdateDeviceChannelDataSource value)?
+    TResult Function(DashboardReqUpdateDataSourceDataUnionDeviceChannel value)?
         deviceChannel,
     required TResult orElse(),
   }) =>
@@ -161,12 +162,15 @@ class _$DashboardReqUpdateDataSourceDataUnionCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$DashboardUpdateDeviceChannelDataSourceImplCopyWith<$Res>
-    implements $DashboardReqUpdateDataSourceDataUnionCopyWith<$Res> {
-  factory _$$DashboardUpdateDeviceChannelDataSourceImplCopyWith(
-          _$DashboardUpdateDeviceChannelDataSourceImpl value,
-          $Res Function(_$DashboardUpdateDeviceChannelDataSourceImpl) then) =
-      __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl<$Res>;
+abstract class _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWith<
+    $Res> implements $DashboardReqUpdateDataSourceDataUnionCopyWith<$Res> {
+  factory _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWith(
+          _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl value,
+          $Res Function(
+                  _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl)
+              then) =
+      __$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWithImpl<
+          $Res>;
   @override
   @useResult
   $Res call(
@@ -179,13 +183,17 @@ abstract class _$$DashboardUpdateDeviceChannelDataSourceImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl<$Res>
+class __$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWithImpl<
+        $Res>
     extends _$DashboardReqUpdateDataSourceDataUnionCopyWithImpl<$Res,
-        _$DashboardUpdateDeviceChannelDataSourceImpl>
-    implements _$$DashboardUpdateDeviceChannelDataSourceImplCopyWith<$Res> {
-  __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl(
-      _$DashboardUpdateDeviceChannelDataSourceImpl _value,
-      $Res Function(_$DashboardUpdateDeviceChannelDataSourceImpl) _then)
+        _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl>
+    implements
+        _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWith<
+            $Res> {
+  __$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWithImpl(
+      _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl _value,
+      $Res Function(_$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl)
+          _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardReqUpdateDataSourceDataUnion
@@ -200,7 +208,7 @@ class __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl<$Res>
     Object? icon = freezed,
     Object? type = null,
   }) {
-    return _then(_$DashboardUpdateDeviceChannelDataSourceImpl(
+    return _then(_$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl(
       tile: null == tile
           ? _value.tile
           : tile // ignore: cast_nullable_to_non_nullable
@@ -231,9 +239,9 @@ class __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardUpdateDeviceChannelDataSourceImpl
-    implements DashboardUpdateDeviceChannelDataSource {
-  const _$DashboardUpdateDeviceChannelDataSourceImpl(
+class _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl
+    implements DashboardReqUpdateDataSourceDataUnionDeviceChannel {
+  const _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl(
       {required this.tile,
       required this.device,
       required this.channel,
@@ -241,9 +249,9 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
       this.icon,
       this.type = 'device-channel'});
 
-  factory _$DashboardUpdateDeviceChannelDataSourceImpl.fromJson(
+  factory _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl.fromJson(
           Map<String, dynamic> json) =>
-      _$$DashboardUpdateDeviceChannelDataSourceImplFromJson(json);
+      _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplFromJson(json);
 
   /// The unique identifier of the associated tile.
   @override
@@ -279,7 +287,7 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardUpdateDeviceChannelDataSourceImpl &&
+            other is _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl &&
             (identical(other.tile, tile) || other.tile == tile) &&
             (identical(other.device, device) || other.device == device) &&
             (identical(other.channel, channel) || other.channel == channel) &&
@@ -299,11 +307,12 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardUpdateDeviceChannelDataSourceImplCopyWith<
-          _$DashboardUpdateDeviceChannelDataSourceImpl>
+  _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWith<
+          _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl>
       get copyWith =>
-          __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl<
-              _$DashboardUpdateDeviceChannelDataSourceImpl>(this, _$identity);
+          __$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWithImpl<
+                  _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl>(
+              this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -342,7 +351,8 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardUpdateDeviceChannelDataSource value)
+    required TResult Function(
+            DashboardReqUpdateDataSourceDataUnionDeviceChannel value)
         deviceChannel,
   }) {
     return deviceChannel(this);
@@ -351,7 +361,7 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardUpdateDeviceChannelDataSource value)?
+    TResult? Function(DashboardReqUpdateDataSourceDataUnionDeviceChannel value)?
         deviceChannel,
   }) {
     return deviceChannel?.call(this);
@@ -360,7 +370,7 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardUpdateDeviceChannelDataSource value)?
+    TResult Function(DashboardReqUpdateDataSourceDataUnionDeviceChannel value)?
         deviceChannel,
     required TResult orElse(),
   }) {
@@ -372,25 +382,26 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardUpdateDeviceChannelDataSourceImplToJson(
+    return _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardUpdateDeviceChannelDataSource
+abstract class DashboardReqUpdateDataSourceDataUnionDeviceChannel
     implements DashboardReqUpdateDataSourceDataUnion {
-  const factory DashboardUpdateDeviceChannelDataSource(
-      {required final String tile,
-      required final String device,
-      required final String channel,
-      required final String property,
-      final String? icon,
-      final String type}) = _$DashboardUpdateDeviceChannelDataSourceImpl;
+  const factory DashboardReqUpdateDataSourceDataUnionDeviceChannel(
+          {required final String tile,
+          required final String device,
+          required final String channel,
+          required final String property,
+          final String? icon,
+          final String type}) =
+      _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl;
 
-  factory DashboardUpdateDeviceChannelDataSource.fromJson(
+  factory DashboardReqUpdateDataSourceDataUnionDeviceChannel.fromJson(
           Map<String, dynamic> json) =
-      _$DashboardUpdateDeviceChannelDataSourceImpl.fromJson;
+      _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl.fromJson;
 
   /// The unique identifier of the associated tile.
   @override
@@ -420,7 +431,7 @@ abstract class DashboardUpdateDeviceChannelDataSource
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardUpdateDeviceChannelDataSourceImplCopyWith<
-          _$DashboardUpdateDeviceChannelDataSourceImpl>
+  _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplCopyWith<
+          _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl>
       get copyWith => throw _privateConstructorUsedError;
 }

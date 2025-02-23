@@ -6,18 +6,21 @@ import 'package:flutter/material.dart';
 class SettingRow extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final IconData icon;
-  final Widget title;
-  final Widget subtitle;
-  final Widget? trailing;
+  final IconData _icon;
+  final Widget _title;
+  final Widget _subtitle;
+  final Widget? _trailing;
 
   SettingRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.trailing,
+    required IconData icon,
+    required Widget title,
+    required Widget subtitle,
+    Widget? trailing,
     super.key,
-  });
+  })  : _icon = icon,
+        _title = title,
+        _subtitle = subtitle,
+        _trailing = trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -39,12 +42,12 @@ class SettingRow extends StatelessWidget {
           ? AppTextColorLight.regular
           : AppTextColorDark.regular,
       leading: Icon(
-        icon,
+        _icon,
         size: AppFontSize.large,
       ),
-      title: title,
-      subtitle: subtitle,
-      trailing: trailing,
+      title: _title,
+      subtitle: _subtitle,
+      trailing: _trailing,
     );
   }
 }

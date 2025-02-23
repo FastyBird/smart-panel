@@ -1,15 +1,16 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/models/general/weather.dart';
-import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
-import 'package:fastybird_smart_panel/core/repositories/weather_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/openweather.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/export.dart';
+import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/current_day.dart';
+import 'package:fastybird_smart_panel/modules/weather/models/forecast_day.dart';
+import 'package:fastybird_smart_panel/modules/weather/repositories/export.dart';
 import 'package:flutter/material.dart';
 import 'package:weather_icons/weather_icons.dart';
 
@@ -23,10 +24,12 @@ class WeatherDetailPage extends StatefulWidget {
 class _WeatherDetailPageState extends State<WeatherDetailPage> {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final WeatherModuleRepository _weatherModuleRepository =
-      locator<WeatherModuleRepository>();
-  final ConfigModuleRepository _configModuleRepository =
-      locator<ConfigModuleRepository>();
+  final CurrentWeatherRepository _currentWeatherRepository =
+      locator<CurrentWeatherRepository>();
+  final ForecastWeatherRepository _forecastWeatherRepository =
+      locator<ForecastWeatherRepository>();
+  final WeatherConfigRepository _weatherConfigRepository =
+      locator<WeatherConfigRepository>();
 
   late WeatherUnit _weatherUnit;
   late CurrentDayModel? _currentWeather;
@@ -38,23 +41,25 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
 
     _syncStateWithRepository();
 
-    _configModuleRepository.addListener(_syncStateWithRepository);
-    _weatherModuleRepository.addListener(_syncStateWithRepository);
+    _weatherConfigRepository.addListener(_syncStateWithRepository);
+    _currentWeatherRepository.addListener(_syncStateWithRepository);
+    _forecastWeatherRepository.addListener(_syncStateWithRepository);
   }
 
   @override
   void dispose() {
-    _configModuleRepository.removeListener(_syncStateWithRepository);
-    _weatherModuleRepository.removeListener(_syncStateWithRepository);
+    _weatherConfigRepository.removeListener(_syncStateWithRepository);
+    _currentWeatherRepository.removeListener(_syncStateWithRepository);
+    _forecastWeatherRepository.removeListener(_syncStateWithRepository);
 
     super.dispose();
   }
 
   void _syncStateWithRepository() {
     setState(() {
-      _weatherUnit = _configModuleRepository.weatherConfiguration.unit;
-      _currentWeather = _weatherModuleRepository.currentWeather;
-      _weatherForecast = _weatherModuleRepository.forecast;
+      _weatherUnit = _weatherConfigRepository.data.unit;
+      _currentWeather = _currentWeatherRepository.data;
+      _weatherForecast = _forecastWeatherRepository.data ?? [];
     });
   }
 
@@ -106,14 +111,14 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
             currentWeather.temperature,
             1,
           )
-        : NumberUtils.formatUnavailableNumber();
+        : NumberUtils.formatUnavailableNumber(1);
 
     String feelsLikeTemperature = currentWeather != null
         ? NumberUtils.formatNumber(
             currentWeather.feelsLike,
             1,
           )
-        : NumberUtils.formatUnavailableNumber();
+        : NumberUtils.formatUnavailableNumber(1);
 
     IconData weatherIcon = currentWeather != null
         ? WeatherConditionMapper.getIcon(
@@ -219,7 +224,8 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  currentWeather?.wind.speed.toString() ?? 'N/A',
+                  currentWeather?.wind.speed.toString() ??
+                      localizations.value_not_available,
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                   ),
@@ -238,7 +244,8 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  currentWeather?.pressure.toString() ?? 'N/A',
+                  currentWeather?.pressure.toString() ??
+                      localizations.value_not_available,
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                   ),
@@ -257,7 +264,8 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  currentWeather?.humidity.toString() ?? 'N/A',
+                  currentWeather?.humidity.toString() ??
+                      localizations.value_not_available,
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                   ),
@@ -306,14 +314,14 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
             averageDayTemp,
             1,
           )
-        : NumberUtils.formatUnavailableNumber();
+        : NumberUtils.formatUnavailableNumber(1);
 
     String wholeNightTemp = averageNightTemp != null
         ? NumberUtils.formatNumber(
             averageNightTemp,
             1,
           )
-        : NumberUtils.formatUnavailableNumber();
+        : NumberUtils.formatUnavailableNumber(1);
 
     return SizedBox(
       height: _screenService.scale(45),

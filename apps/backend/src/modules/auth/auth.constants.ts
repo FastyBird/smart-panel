@@ -17,3 +17,5 @@ export const DisplaySecretHeader = 'x-display-secret';
 export interface AuthenticatedRequest extends Request {
 	user?: { id: string | null; role: UserRole };
 }
+
+export const DisplaySecretCacheKey = 'display-secret';

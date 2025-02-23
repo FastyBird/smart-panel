@@ -3,13 +3,17 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
-import 'package:fastybird_smart_panel/core/repositories/system_module.dart';
-import 'package:fastybird_smart_panel/core/repositories/weather_module.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
+import 'package:fastybird_smart_panel/features/dashboard/services/devices.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/module.dart';
+import 'package:fastybird_smart_panel/modules/devices/module.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
+import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
+import 'package:fastybird_smart_panel/modules/system/module.dart';
+import 'package:fastybird_smart_panel/modules/weather/module.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -30,42 +34,29 @@ class StartupManagerService {
     required this.screenWidth,
     required this.screenHeight,
     required this.pixelRatio,
-  });
-
-  Future<void> initialize() async {
-    await locator.reset();
-
+  }) {
     _securedStorage = const FlutterSecureStorage();
-
-    _apiSecret = await _securedStorage.read(key: _apiSecretKey);
 
     _apiIoService = Dio(
       BaseOptions(
         baseUrl:
             '${Platform.environment['APP_HOST'] ?? 'http://10.0.2.2'}:${Platform.environment['BACKEND_PORT'] ?? '3000'}/api/v1',
-        headers: {
-          'X-Display-Secret': _apiSecret,
-        },
         contentType: 'application/json',
       ),
     );
 
     _apiClient = ApiClient(_apiIoService);
 
-    var configModuleRepository = ConfigModuleRepository(
-      apiClient: _apiClient.configurationModule,
-    );
-    var weatherModuleRepository = WeatherModuleRepository(
-      apiClient: _apiClient.weatherModule,
-    );
-    var systemModuleRepository = SystemModuleRepository(
-      apiClient: _apiClient.systemModule,
-    );
-    var devicesModuleRepository = DevicesModuleRepository(
-      apiClient: _apiClient.devicesModule,
-    );
-    var dashboardModuleRepository = DashboardModuleRepository(
-      apiClient: _apiClient.dashboardModule,
+    var configModuleService = ConfigModuleService(apiClient: _apiClient);
+    var systemModuleService = SystemModuleService(apiClient: _apiClient);
+    var weatherModuleService = WeatherModuleService(apiClient: _apiClient);
+    var devicesModuleService = DevicesModuleService(apiClient: _apiClient);
+    var dashboardModuleService = DashboardModuleService(apiClient: _apiClient);
+
+    var devicesService = DevicesService(
+      devicesRepository: locator.get<DevicesRepository>(),
+      channelsRepository: locator.get<ChannelsRepository>(),
+      channelPropertiesRepository: locator.get<ChannelPropertiesRepository>(),
     );
 
     // Register services
@@ -79,19 +70,29 @@ class StartupManagerService {
         pixelRatio: pixelRatio,
       ),
     );
-
     locator.registerSingleton(_securedStorage);
 
-    // Register repositories
-    locator.registerSingleton(configModuleRepository);
-    locator.registerSingleton(weatherModuleRepository);
-    locator.registerSingleton(systemModuleRepository);
-    locator.registerSingleton(dashboardModuleRepository);
-    locator.registerSingleton(devicesModuleRepository);
+    // Register modules
+    locator.registerSingleton(configModuleService);
+    locator.registerSingleton(systemModuleService);
+    locator.registerSingleton(weatherModuleService);
+    locator.registerSingleton(devicesModuleService);
+    locator.registerSingleton(dashboardModuleService);
 
     // Api client
     locator.registerSingleton(_apiIoService);
     locator.registerSingleton(_apiClient);
+
+    // Presentation services
+    locator.registerSingleton(devicesService);
+  }
+
+  Future<void> initialize() async {
+    _apiSecret = await _securedStorage.read(key: _apiSecretKey);
+
+    if (_apiSecret != null) {
+      _apiIoService.options.headers['X-Display-Secret'] = _apiSecret;
+    }
 
     try {
       await _initialize();
@@ -107,11 +108,11 @@ class StartupManagerService {
 
     try {
       await Future.wait([
-        configModuleRepository.initialize(),
-        weatherModuleRepository.initialize(),
-        systemModuleRepository.initialize(),
-        devicesModuleRepository.initialize(),
-        dashboardModuleRepository.initialize(),
+        locator.get<ConfigModuleService>().initialize(),
+        locator.get<SystemModuleService>().initialize(),
+        locator.get<WeatherModuleService>().initialize(),
+        locator.get<DevicesModuleService>().initialize(),
+        locator.get<DashboardModuleService>().initialize(),
       ]);
     } catch (e) {
       if (kDebugMode) {
@@ -120,6 +121,21 @@ class StartupManagerService {
 
       throw ArgumentError(
         'Data storage initialization failed. Ensure the server is running.',
+      );
+    }
+
+    try {
+      await Future.wait([
+        locator.get<DevicesService>().initialize(),
+      ]);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[PRESENTATION SERVICES INIT] Services initialization failed: $e');
+      }
+
+      throw ArgumentError(
+        'Presentation services initialization failed. Check the app logs.',
       );
     }
   }

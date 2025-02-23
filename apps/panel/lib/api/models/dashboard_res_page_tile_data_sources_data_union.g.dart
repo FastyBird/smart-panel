@@ -6,10 +6,10 @@ part of 'dashboard_res_page_tile_data_sources_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardDeviceChannelDataSourceImpl
-    _$$DashboardDeviceChannelDataSourceImplFromJson(
+_$DashboardResPageTileDataSourcesDataUnionDeviceChannelImpl
+    _$$DashboardResPageTileDataSourcesDataUnionDeviceChannelImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardDeviceChannelDataSourceImpl(
+        _$DashboardResPageTileDataSourcesDataUnionDeviceChannelImpl(
           id: json['id'] as String,
           createdAt: DateTime.parse(json['created_at'] as String),
           updatedAt: json['updated_at'] == null
@@ -22,8 +22,9 @@ _$DashboardDeviceChannelDataSourceImpl
           type: json['type'] as String? ?? 'device-channel',
         );
 
-Map<String, dynamic> _$$DashboardDeviceChannelDataSourceImplToJson(
-        _$DashboardDeviceChannelDataSourceImpl instance) =>
+Map<String,
+    dynamic> _$$DashboardResPageTileDataSourcesDataUnionDeviceChannelImplToJson(
+        _$DashboardResPageTileDataSourcesDataUnionDeviceChannelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'created_at': instance.createdAt.toIso8601String(),

@@ -53,7 +53,7 @@ sealed class DashboardResPageCardTilesDataUnion with _$DashboardResPageCardTiles
     /// Indicates that this is a device-specific tile.
     @Default('device')
     String type,
-  }) = DashboardDeviceTile;
+  }) = DashboardResPageCardTilesDataUnionDevice;
 
   @FreezedUnionValue('clock')
   const factory DashboardResPageCardTilesDataUnion.clock({
@@ -91,7 +91,7 @@ sealed class DashboardResPageCardTilesDataUnion with _$DashboardResPageCardTiles
     /// Indicates that this is a clock tile.
     @Default('clock')
     String type,
-  }) = DashboardTimeTile;
+  }) = DashboardResPageCardTilesDataUnionClock;
 
   @FreezedUnionValue('weather-day')
   const factory DashboardResPageCardTilesDataUnion.weatherDay({
@@ -129,7 +129,7 @@ sealed class DashboardResPageCardTilesDataUnion with _$DashboardResPageCardTiles
     /// Indicates that this is a day weather tile.
     @Default('weather-day')
     String type,
-  }) = DashboardDayWeatherTile;
+  }) = DashboardResPageCardTilesDataUnionWeatherDay;
 
   @FreezedUnionValue('weather-forecast')
   const factory DashboardResPageCardTilesDataUnion.weatherForecast({
@@ -167,7 +167,7 @@ sealed class DashboardResPageCardTilesDataUnion with _$DashboardResPageCardTiles
     /// Indicates that this is a weather forecast tile.
     @Default('weather-forecast')
     String type,
-  }) = DashboardForecastWeatherTile;
+  }) = DashboardResPageCardTilesDataUnionWeatherForecast;
 
   
   factory DashboardResPageCardTilesDataUnion.fromJson(Map<String, Object?> json) => _$DashboardResPageCardTilesDataUnionFromJson(json);

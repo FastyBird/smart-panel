@@ -21,6 +21,8 @@ _$SystemSystemInfoImpl _$$SystemSystemInfoImplFromJson(
       network: (json['network'] as List<dynamic>)
           .map((e) => SystemNetworkStats.fromJson(e as Map<String, dynamic>))
           .toList(),
+      defaultNetwork: SystemDefaultNetwork.fromJson(
+          json['default_network'] as Map<String, dynamic>),
       display:
           SystemDisplayInfo.fromJson(json['display'] as Map<String, dynamic>),
     );
@@ -34,5 +36,6 @@ Map<String, dynamic> _$$SystemSystemInfoImplToJson(
       'temperature': instance.temperature,
       'os': instance.os,
       'network': instance.network,
+      'default_network': instance.defaultNetwork,
       'display': instance.display,
     };

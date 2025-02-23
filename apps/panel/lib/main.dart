@@ -8,5 +8,5 @@ void main() async {
   // Enable fullscreen mode
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
 
-  runApp(const MyApp());
+  runApp(MyApp());
 }

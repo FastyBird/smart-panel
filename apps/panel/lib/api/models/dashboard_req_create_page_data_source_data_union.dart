@@ -29,7 +29,7 @@ sealed class DashboardReqCreatePageDataSourceDataUnion with _$DashboardReqCreate
     /// Specifies the type of data source as linked to a device channel.
     @Default('device-channel')
     String type,
-  }) = DashboardCreateDeviceChannelDataSource;
+  }) = DashboardReqCreatePageDataSourceDataUnionDeviceChannel;
 
   
   factory DashboardReqCreatePageDataSourceDataUnion.fromJson(Map<String, Object?> json) => _$DashboardReqCreatePageDataSourceDataUnionFromJson(json);

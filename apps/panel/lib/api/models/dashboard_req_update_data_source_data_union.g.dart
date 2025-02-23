@@ -6,10 +6,10 @@ part of 'dashboard_req_update_data_source_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardUpdateDeviceChannelDataSourceImpl
-    _$$DashboardUpdateDeviceChannelDataSourceImplFromJson(
+_$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl
+    _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardUpdateDeviceChannelDataSourceImpl(
+        _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl(
           tile: json['tile'] as String,
           device: json['device'] as String,
           channel: json['channel'] as String,
@@ -18,8 +18,9 @@ _$DashboardUpdateDeviceChannelDataSourceImpl
           type: json['type'] as String? ?? 'device-channel',
         );
 
-Map<String, dynamic> _$$DashboardUpdateDeviceChannelDataSourceImplToJson(
-        _$DashboardUpdateDeviceChannelDataSourceImpl instance) =>
+Map<String,
+    dynamic> _$$DashboardReqUpdateDataSourceDataUnionDeviceChannelImplToJson(
+        _$DashboardReqUpdateDataSourceDataUnionDeviceChannelImpl instance) =>
     <String, dynamic>{
       'tile': instance.tile,
       'device': instance.device,

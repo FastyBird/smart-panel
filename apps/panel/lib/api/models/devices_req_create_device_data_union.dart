@@ -40,7 +40,7 @@ sealed class DevicesReqCreateDeviceDataUnion with _$DevicesReqCreateDeviceDataUn
 
     /// Optional detailed description of the device.
     String? description,
-  }) = DevicesCreateThirdPartyDevice;
+  }) = DevicesReqCreateDeviceDataUnionThirdParty;
 
   
   factory DevicesReqCreateDeviceDataUnion.fromJson(Map<String, Object?> json) => _$DevicesReqCreateDeviceDataUnionFromJson(json);

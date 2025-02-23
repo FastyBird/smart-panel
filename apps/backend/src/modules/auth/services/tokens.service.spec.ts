@@ -50,7 +50,7 @@ describe('TokensService', () => {
 		createdAt: new Date(),
 		owner: null,
 		revoked: false,
-		updateToken: async (): Promise<void> => {},
+		updateToken: (): void => {},
 	};
 
 	beforeEach(async () => {
@@ -164,7 +164,7 @@ describe('TokensService', () => {
 				revoked: false,
 				createdAt: new Date(),
 				owner: null,
-				updateToken: async (): Promise<void> => {},
+				updateToken: (): void => {},
 			};
 
 			const queryBuilderMock: any = {
@@ -229,7 +229,7 @@ describe('TokensService', () => {
 				revoked: updateDto.revoked,
 				createdAt: mockToken.createdAt,
 				owner: null,
-				updateToken: async (): Promise<void> => {},
+				updateToken: (): void => {},
 			};
 			const mockUpdatedToken: LongLiveTokenEntity = {
 				id: mockUpdateToken.id,
@@ -242,7 +242,7 @@ describe('TokensService', () => {
 				createdAt: mockUpdateToken.createdAt,
 				updatedAt: new Date(),
 				owner: null,
-				updateToken: async (): Promise<void> => {},
+				updateToken: (): void => {},
 			};
 
 			const queryBuilderMock: any = {

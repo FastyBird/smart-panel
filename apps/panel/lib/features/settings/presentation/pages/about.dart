@@ -1,15 +1,14 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/models/general/system.dart';
-import 'package:fastybird_smart_panel/core/repositories/system_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/system/repositories/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:network_info_plus/network_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -20,40 +19,14 @@ class AboutPage extends StatefulWidget {
 
 class _AboutPageState extends State<AboutPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final SystemModuleRepository _repository = locator<SystemModuleRepository>();
 
   String _appVersion = 'Loading...';
-  String _ipAddress = 'Loading...';
-  String _macAddress = 'Loading...';
-
-  late double _cpuLoad;
-  late int _memoryUsed;
 
   @override
   void initState() {
     super.initState();
 
     _fetchDeviceInfo();
-
-    _syncStateWithRepository();
-
-    _repository.addListener(_syncStateWithRepository);
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-
-    _repository.removeListener(_syncStateWithRepository);
-  }
-
-  void _syncStateWithRepository() {
-    SystemInfoModel systemInfo = _repository.systemInfo;
-
-    setState(() {
-      _cpuLoad = systemInfo.cpuLoad;
-      _memoryUsed = systemInfo.memory.used;
-    });
   }
 
   Future<void> _fetchDeviceInfo() async {
@@ -68,24 +41,6 @@ class _AboutPageState extends State<AboutPage> {
       // Handle error gracefully
       setState(() {
         _appVersion = 'Error';
-      });
-    }
-
-    try {
-      // Fetch network information
-      final networkInfo = NetworkInfo();
-      final ipAddress = await networkInfo.getWifiIP();
-      final macAddress = await networkInfo.getWifiBSSID();
-
-      setState(() {
-        _ipAddress = ipAddress ?? 'Unknown';
-        _macAddress = macAddress ?? 'Unknown';
-      });
-    } catch (e) {
-      // Handle error gracefully
-      setState(() {
-        _ipAddress = 'Error';
-        _macAddress = 'Error';
       });
     }
   }
@@ -238,18 +193,8 @@ class _AboutPageState extends State<AboutPage> {
                 spacing: AppSpacings.pSm,
                 runSpacing: AppSpacings.pSm,
                 children: [
-                  _renderInfoTile(
-                    context: context,
-                    icon: Symbols.earthquake,
-                    title: localizations.settings_about_cpu_usage_title,
-                    value: _ipAddress,
-                  ),
-                  _renderInfoTile(
-                    context: context,
-                    icon: Symbols.host,
-                    title: localizations.settings_about_mac_address_title,
-                    value: _macAddress,
-                  ),
+                  _renderIpAddressTile(context),
+                  _renderMacAddressTile(context),
                   _renderCpuUsageTile(context),
                   _renderMemoryUsageTile(context),
                   // Add more ListTiles here in the same pattern for CPU and Memory
@@ -262,29 +207,93 @@ class _AboutPageState extends State<AboutPage> {
     );
   }
 
+  Widget _renderIpAddressTile(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return Consumer<SystemInfoRepository>(
+      builder: (
+        context,
+        systemInfoRepository,
+        _,
+      ) {
+        String? ipAddress = systemInfoRepository.data?.defaultNetwork.ip4;
+
+        return _renderInfoTile(
+          context: context,
+          icon: Symbols.lan,
+          title: localizations.settings_about_ip_address_title,
+          value: ipAddress ?? localizations.value_not_available,
+        );
+      },
+    );
+  }
+
+  Widget _renderMacAddressTile(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return Consumer<SystemInfoRepository>(
+      builder: (
+        context,
+        systemInfoRepository,
+        _,
+      ) {
+        String? macAddress = systemInfoRepository.data?.defaultNetwork.mac;
+
+        return _renderInfoTile(
+          context: context,
+          icon: Symbols.host,
+          title: localizations.settings_about_mac_address_title,
+          value: macAddress ?? localizations.value_not_available,
+        );
+      },
+    );
+  }
+
   Widget _renderCpuUsageTile(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    return _renderInfoTile(
-      context: context,
-      icon: Symbols.earthquake,
-      title: localizations.settings_about_cpu_usage_title,
-      value: NumberUtils.formatNumber(_cpuLoad, 2),
-      unit: '%',
+    return Consumer<SystemInfoRepository>(
+      builder: (
+        context,
+        systemInfoRepository,
+        _,
+      ) {
+        double? cpuLoad = systemInfoRepository.data?.cpuLoad;
+
+        return _renderInfoTile(
+          context: context,
+          icon: Symbols.earthquake,
+          title: localizations.settings_about_cpu_usage_title,
+          value: cpuLoad != null
+              ? NumberUtils.formatNumber(cpuLoad, 2)
+              : NumberUtils.formatUnavailableNumber(2),
+          unit: '%',
+        );
+      },
     );
   }
 
   Widget _renderMemoryUsageTile(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    double memoryUsed = _memoryUsed.toDouble() / 1024 / 1024;
+    return Consumer<SystemInfoRepository>(
+      builder: (
+        context,
+        systemInfoRepository,
+        _,
+      ) {
+        double? memoryUsed = systemInfoRepository.data?.memory.used.toDouble();
 
-    return _renderInfoTile(
-      context: context,
-      icon: Symbols.memory,
-      title: localizations.settings_about_memory_usage_title,
-      value: NumberUtils.formatNumber(memoryUsed, 0),
-      unit: 'MB',
+        return _renderInfoTile(
+          context: context,
+          icon: Symbols.memory,
+          title: localizations.settings_about_memory_usage_title,
+          value: memoryUsed != null
+              ? NumberUtils.formatNumber(memoryUsed / 1024 / 1024, 0)
+              : NumberUtils.formatUnavailableNumber(0),
+          unit: 'MB',
+        );
+      },
     );
   }
 

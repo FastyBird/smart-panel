@@ -8,29 +8,27 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/channels/light.dart';
-import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/lighting.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/devices/lighting.dart';
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
-import 'package:fastybird_smart_panel/features/dashboard/types/formats.dart';
-import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/channels/light.dart';
+import 'package:fastybird_smart_panel/features/dashboard/capabilities/devices/lighting.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/features/dashboard/services/devices.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 class LightingDeviceDetailPage extends StatefulWidget {
-  final LightingDeviceDataModel _device;
-  final LightingDeviceCapability _capability;
+  final LightingDeviceType _device;
+
   final bool _supportSwatches = false;
 
   const LightingDeviceDetailPage({
     super.key,
-    required LightingDeviceDataModel device,
-    required LightingDeviceCapability capability,
-  })  : _device = device,
-        _capability = capability;
+    required LightingDeviceType device,
+  }) : _device = device;
 
   @override
   State<LightingDeviceDetailPage> createState() =>
@@ -57,16 +55,16 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
 
     _lightModes.add(LightChannelModeType.off);
 
-    if (widget._capability.hasBrightness) {
+    if (widget._device.hasBrightness) {
       _lightModes.add(LightChannelModeType.brightness);
     }
-    if (widget._capability.hasColor) {
+    if (widget._device.hasColor) {
       _lightModes.add(LightChannelModeType.color);
     }
-    if (widget._capability.hasTemperature) {
+    if (widget._device.hasTemperature) {
       _lightModes.add(LightChannelModeType.temperature);
     }
-    if (widget._capability.hasWhite) {
+    if (widget._device.hasWhite) {
       _lightModes.add(LightChannelModeType.white);
     }
     if (widget._supportSwatches) {
@@ -92,13 +90,16 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
   }
 
   void _initializeWidget() {
-    _channelCapabilities = widget._capability.lightCapabilities;
+    _channelCapabilities = widget._device.lightCapabilities;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!widget._capability.isSimpleLight &&
-        !widget._capability.isSingleBrightness &&
+    final parentDetailPage =
+        context.findAncestorWidgetOfExactType<DeviceDetailPage>();
+
+    if (!widget._device.isSimpleLight &&
+        !widget._device.isSingleBrightness &&
         _channelCapabilities.length > 1) {
       return DefaultTabController(
         initialIndex: 0,
@@ -106,6 +107,7 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
         child: Scaffold(
           appBar: ScreenAppBar(
             title: widget._device.name,
+            icon: parentDetailPage == null ? widget._device.icon : null,
             bottom: TabBar(
               tabs: _channelCapabilities
                   .map(
@@ -134,7 +136,7 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
                 children: _channelCapabilities
                     .map(
                       (capability) => LightSingleChannelDetail(
-                        deviceCapability: widget._capability,
+                        deviceCapability: widget._device,
                         channelCapability: capability,
                         mode: _colorMode,
                       ),
@@ -154,17 +156,18 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
     return Scaffold(
       appBar: ScreenAppBar(
         title: widget._device.name,
+        icon: parentDetailPage == null ? widget._device.icon : null,
       ),
       body: LayoutBuilder(builder: (
         BuildContext context,
         BoxConstraints constraints,
       ) {
-        if (widget._capability.isSimpleLight ||
-            (widget._capability.isSingleBrightness &&
+        if (widget._device.isSimpleLight ||
+            (widget._device.isSingleBrightness &&
                 _channelCapabilities.length >= 2)) {
           return LightSimpleDetail(
-            capability: widget._capability,
-            withBrightness: widget._capability.isSingleBrightness &&
+            capability: widget._device,
+            withBrightness: widget._device.isSingleBrightness &&
                 _channelCapabilities.length >= 2,
           );
         }
@@ -172,7 +175,7 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
         final channelCapability = _channelCapabilities.first;
 
         return LightSingleChannelDetail(
-          deviceCapability: widget._capability,
+          deviceCapability: widget._device,
           channelCapability: channelCapability,
           mode: _colorMode,
         );
@@ -190,8 +193,8 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
   ) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (widget._capability.isSimpleLight ||
-        (widget._capability.isSingleBrightness &&
+    if (widget._device.isSimpleLight ||
+        (widget._device.isSingleBrightness &&
             channelCapabilities.length >= 2)) {
       return null;
     }
@@ -283,12 +286,12 @@ class LightSimpleDetail extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
-  final LightingDeviceCapability _capability;
+  final LightingDeviceType _capability;
   final bool _withBrightness;
 
   LightSimpleDetail({
     super.key,
-    required LightingDeviceCapability capability,
+    required LightingDeviceType capability,
     bool withBrightness = false,
   })  : _capability = capability,
         _withBrightness = withBrightness;
@@ -413,13 +416,13 @@ class LightSimpleDetail extends StatelessWidget {
 class LightSingleChannelDetail extends StatelessWidget {
   final PropertyValueHelper _valueHelper = PropertyValueHelper();
 
-  final LightingDeviceCapability _deviceCapability;
+  final LightingDeviceType _deviceCapability;
   final LightChannelCapability _channelCapability;
   final LightChannelModeType _mode;
 
   LightSingleChannelDetail({
     super.key,
-    required LightingDeviceCapability deviceCapability,
+    required LightingDeviceType deviceCapability,
     required LightChannelCapability channelCapability,
     required LightChannelModeType mode,
   })  : _deviceCapability = deviceCapability,
@@ -433,7 +436,7 @@ class LightSingleChannelDetail extends StatelessWidget {
 
       late Widget controlElement;
 
-      final ChannelPropertyDataModel? brightnessProp =
+      final ChannelPropertyModel? brightnessProp =
           _channelCapability.brightnessProp;
 
       if (_mode == LightChannelModeType.brightness && brightnessProp != null) {
@@ -503,8 +506,7 @@ class LightSingleChannelDetail extends StatelessWidget {
         );
       }
 
-      final ChannelPropertyDataModel? tempProp =
-          _channelCapability.temperatureProp;
+      final ChannelPropertyModel? tempProp = _channelCapability.temperatureProp;
 
       if (_mode == LightChannelModeType.temperature && tempProp != null) {
         controlElement = TemperatureChannel(
@@ -521,7 +523,7 @@ class LightSingleChannelDetail extends StatelessWidget {
         );
       }
 
-      final ChannelPropertyDataModel? colorWhiteProp =
+      final ChannelPropertyModel? colorWhiteProp =
           _channelCapability.colorWhiteProp;
 
       if (_mode == LightChannelModeType.white && colorWhiteProp != null) {
@@ -628,7 +630,7 @@ class BrightnessChannel extends StatefulWidget {
 class _BrightnessChannelState extends State<BrightnessChannel> {
   final ScreenService _screenService = locator<ScreenService>();
 
-  late ChannelPropertyDataModel? _property;
+  late ChannelPropertyModel? _property;
 
   late num? _brightness;
 
@@ -879,7 +881,7 @@ class TemperatureChannel extends StatefulWidget {
 class _TemperatureChannelState extends State<TemperatureChannel> {
   final ScreenService _screenService = locator<ScreenService>();
 
-  late ChannelPropertyDataModel? _property;
+  late ChannelPropertyModel? _property;
 
   late num? _temperature;
 
@@ -994,7 +996,7 @@ class WhiteChannel extends StatefulWidget {
 class _WhiteChannelState extends State<WhiteChannel> {
   final ScreenService _screenService = locator<ScreenService>();
 
-  late ChannelPropertyDataModel? _property;
+  late ChannelPropertyModel? _property;
 
   late num? _white;
 
@@ -1180,7 +1182,7 @@ class ChannelActualBrightness extends StatelessWidget {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final ChannelPropertyDataModel? property = _capability.brightnessProp;
+    final ChannelPropertyModel? property = _capability.brightnessProp;
 
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -1341,11 +1343,11 @@ class ChannelActualTemperature extends StatelessWidget {
 class LightTiles extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final LightingDeviceCapability _capability;
+  final LightingDeviceType _capability;
 
   LightTiles({
     super.key,
-    required LightingDeviceCapability capability,
+    required LightingDeviceType capability,
   }) : _capability = capability;
 
   @override
@@ -1564,18 +1566,17 @@ enum LightChannelModeType {
 }
 
 class PropertyValueHelper {
-  final DevicesModuleRepository _repository =
-      locator<DevicesModuleRepository>();
+  final DevicesService _service = locator<DevicesService>();
 
   Future<void> setPropertyValue(
     BuildContext context,
-    ChannelPropertyDataModel property,
+    ChannelPropertyModel property,
     dynamic value,
   ) async {
     final localizations = AppLocalizations.of(context)!;
 
     try {
-      bool res = await _repository.setPropertyValue(
+      bool res = await _service.setPropertyValue(
         property.id,
         value,
       );

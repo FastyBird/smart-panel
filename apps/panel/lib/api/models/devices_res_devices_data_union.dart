@@ -48,7 +48,7 @@ sealed class DevicesResDevicesDataUnion with _$DevicesResDevicesDataUnion {
     /// Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.
     @Default('third-party')
     String type,
-  }) = DevicesThirdPartyDevice;
+  }) = DevicesResDevicesDataUnionThirdParty;
 
   
   factory DevicesResDevicesDataUnion.fromJson(Map<String, Object?> json) => _$DevicesResDevicesDataUnionFromJson(json);

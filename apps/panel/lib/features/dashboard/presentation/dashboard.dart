@@ -1,8 +1,8 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/ui/page.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/ui/dashboard/dashboard_module.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/page.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
@@ -22,24 +22,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DashboardModuleRepository>(builder: (
+    return Consumer<PagesRepository>(builder: (
       context,
-      dashboardRepository,
+      pagesRepository,
       _,
     ) {
-      if (dashboardRepository.isLoading) {
-        return Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: _screenService.scale(50),
-              height: _screenService.scale(50),
-              child: const CircularProgressIndicator(),
-            ),
-          ),
-        );
-      }
-
-      if (dashboardRepository.getPages().isEmpty) {
+      if (pagesRepository.getItems().isEmpty) {
         return Scaffold(
           body: Center(
             child: Padding(
@@ -54,7 +42,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   AppSpacings.spacingMdVertical,
                   const Text(
-                    'No pages configured!',
+                    'No pages configured!?',
                     textAlign: TextAlign.center,
                   ),
                   AppSpacings.spacingSmVertical,
@@ -69,8 +57,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
 
-      List<Widget> pages = dashboardRepository
-          .getPages()
+      List<Widget> pages = pagesRepository
+          .getItems()
           .map((model) => buildPageWidget(model))
           .toList();
 

@@ -13,4 +13,4 @@ export enum UserRole {
 	DISPLAY = 'display',
 }
 
-export const DISPLAY_USERNAME = 'display';
+export const DisplayUsername = 'display';

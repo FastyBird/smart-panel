@@ -4,6 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'system_default_network.dart';
 import 'system_display_info.dart';
 import 'system_memory_info.dart';
 import 'system_network_stats.dart';
@@ -32,6 +33,8 @@ class SystemSystemInfo with _$SystemSystemInfo {
 
     /// List of network interfaces with statistics.
     required List<SystemNetworkStats> network,
+    @JsonKey(name: 'default_network')
+    required SystemDefaultNetwork defaultNetwork,
     required SystemDisplayInfo display,
   }) = _SystemSystemInfo;
   

@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
-import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
@@ -11,6 +9,7 @@ import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -24,7 +23,7 @@ class AudioSettingsPage extends StatefulWidget {
 
 class _AudioSettingsPageState extends State<AudioSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigModuleRepository _repository = locator<ConfigModuleRepository>();
+  final AudioConfigRepository _repository = locator<AudioConfigRepository>();
 
   late bool _speakerEnabled;
   late int _speakerVolume;
@@ -55,13 +54,11 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
   }
 
   void _syncStateWithRepository() {
-    ConfigAudioModel config = _repository.audioConfiguration;
-
     setState(() {
-      _speakerEnabled = config.hasSpeakerEnabled;
-      _speakerVolume = config.speakerVolume;
-      _microphoneEnabled = config.hasMicrophoneEnabled;
-      _microphoneVolume = config.microphoneVolume;
+      _speakerEnabled = _repository.data.hasSpeakerEnabled;
+      _speakerVolume = _repository.data.speakerVolume;
+      _microphoneEnabled = _repository.data.hasMicrophoneEnabled;
+      _microphoneVolume = _repository.data.microphoneVolume;
     });
   }
 

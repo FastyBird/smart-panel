@@ -46,7 +46,7 @@ sealed class DashboardResPageDataUnion with _$DashboardResPageDataUnion {
     /// Indicates that this is a cards dashboard page.
     @Default('cards')
     String type,
-  }) = DashboardCardsPage;
+  }) = DashboardResPageDataUnionCards;
 
   @FreezedUnionValue('tiles')
   const factory DashboardResPageDataUnion.tiles({
@@ -80,7 +80,7 @@ sealed class DashboardResPageDataUnion with _$DashboardResPageDataUnion {
     /// Indicates that this is a tiles dashboard page.
     @Default('tiles')
     String type,
-  }) = DashboardTilesPage;
+  }) = DashboardResPageDataUnionTiles;
 
   @FreezedUnionValue('device')
   const factory DashboardResPageDataUnion.device({
@@ -110,7 +110,7 @@ sealed class DashboardResPageDataUnion with _$DashboardResPageDataUnion {
     /// Indicates that this is a device-specific dashboard page.
     @Default('device')
     String type,
-  }) = DashboardDevicePage;
+  }) = DashboardResPageDataUnionDevice;
 
   
   factory DashboardResPageDataUnion.fromJson(Map<String, Object?> json) => _$DashboardResPageDataUnionFromJson(json);

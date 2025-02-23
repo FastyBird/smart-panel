@@ -18,9 +18,10 @@ import { JwtService } from '@nestjs/jwt';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { AccessTokenType, DisplaySecretHeader } from '../auth.constants';
+import { AccessTokenType, DisplaySecretCacheKey, DisplaySecretHeader } from '../auth.constants';
 import { AccessTokenEntity, LongLiveTokenEntity } from '../entities/auth.entity';
 import { TokensService } from '../services/tokens.service';
+import { hashToken } from '../utils/token.utils';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 
@@ -29,15 +30,14 @@ export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 @Injectable()
 export class AuthGuard implements CanActivate {
 	private readonly logger = new Logger(AuthGuard.name);
-	private readonly DISPLAY_SECRET_CACHE_KEY = 'display-secret';
 
 	constructor(
-		private jwtService: JwtService,
-		private reflector: Reflector,
-		private tokensService: TokensService,
-		private usersService: UsersService,
+		private readonly jwtService: JwtService,
+		private readonly reflector: Reflector,
+		private readonly tokensService: TokensService,
+		private readonly usersService: UsersService,
 		@Inject(CACHE_MANAGER)
-		private cacheManager: Cache,
+		private readonly cacheManager: Cache,
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -98,7 +98,7 @@ export class AuthGuard implements CanActivate {
 			let storedAccessToken: AccessTokenEntity | null = null;
 
 			for (const accessToken of storedAccessTokens) {
-				if (await bcrypt.compare(token, accessToken.hashedToken)) {
+				if (hashToken(token) === accessToken.hashedToken) {
 					storedAccessToken = accessToken;
 
 					break;
@@ -139,7 +139,7 @@ export class AuthGuard implements CanActivate {
 		let storedLongLiveToken: LongLiveTokenEntity | null = null;
 
 		for (const longLiveToken of storedLongLiveTokens) {
-			if (await bcrypt.compare(token, longLiveToken.hashedToken)) {
+			if (hashToken(token) === longLiveToken.hashedToken) {
 				storedLongLiveToken = longLiveToken;
 
 				break;
@@ -161,7 +161,7 @@ export class AuthGuard implements CanActivate {
 		let userSecret: string | undefined;
 
 		try {
-			userSecret = await this.cacheManager.get<string>(this.DISPLAY_SECRET_CACHE_KEY);
+			userSecret = await this.cacheManager.get<string>(DisplaySecretCacheKey);
 		} catch (error) {
 			const err = error as Error;
 
@@ -191,7 +191,7 @@ export class AuthGuard implements CanActivate {
 		}
 
 		try {
-			await this.cacheManager.set(this.DISPLAY_SECRET_CACHE_KEY, userSecret);
+			await this.cacheManager.set(DisplaySecretCacheKey, userSecret);
 		} catch (error) {
 			const err = error as Error;
 

@@ -6,10 +6,10 @@ part of 'dashboard_req_create_page_data_source_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardCreateDeviceChannelDataSourceImpl
-    _$$DashboardCreateDeviceChannelDataSourceImplFromJson(
+_$DashboardReqCreatePageDataSourceDataUnionDeviceChannelImpl
+    _$$DashboardReqCreatePageDataSourceDataUnionDeviceChannelImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardCreateDeviceChannelDataSourceImpl(
+        _$DashboardReqCreatePageDataSourceDataUnionDeviceChannelImpl(
           id: json['id'] as String,
           device: json['device'] as String,
           channel: json['channel'] as String,
@@ -18,13 +18,15 @@ _$DashboardCreateDeviceChannelDataSourceImpl
           type: json['type'] as String? ?? 'device-channel',
         );
 
-Map<String, dynamic> _$$DashboardCreateDeviceChannelDataSourceImplToJson(
-        _$DashboardCreateDeviceChannelDataSourceImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'device': instance.device,
-      'channel': instance.channel,
-      'property': instance.property,
-      'icon': instance.icon,
-      'type': instance.type,
-    };
+Map<String, dynamic>
+    _$$DashboardReqCreatePageDataSourceDataUnionDeviceChannelImplToJson(
+            _$DashboardReqCreatePageDataSourceDataUnionDeviceChannelImpl
+                instance) =>
+        <String, dynamic>{
+          'id': instance.id,
+          'device': instance.device,
+          'channel': instance.channel,
+          'property': instance.property,
+          'icon': instance.icon,
+          'type': instance.type,
+        };

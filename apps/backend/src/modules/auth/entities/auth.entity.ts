@@ -51,9 +51,9 @@ export abstract class TokenEntity extends BaseEntity {
 	}
 
 	@BeforeInsert()
-	async updateToken() {
+	updateToken() {
 		if (this.hashedToken && !this.hashedToken.startsWith('$2b$')) {
-			this.hashedToken = await hashToken(this.hashedToken);
+			this.hashedToken = hashToken(this.hashedToken);
 		}
 	}
 }

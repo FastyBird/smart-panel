@@ -10,13 +10,6 @@ import 'package:flutter/material.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  void _onVerticalSwipe(DragEndDetails details, BuildContext context) {
-    if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
-      // Swipe up detected
-      Navigator.of(context, rootNavigator: true).pop();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -54,5 +47,12 @@ class SettingsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  void _onVerticalSwipe(DragEndDetails details, BuildContext context) {
+    if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
+      // Swipe up detected
+      Navigator.of(context, rootNavigator: true).pop();
+    }
   }
 }

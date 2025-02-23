@@ -1,15 +1,14 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
-import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/export.dart';
+import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -23,7 +22,8 @@ class LanguageSettingsPage extends StatefulWidget {
 
 class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigModuleRepository _repository = locator<ConfigModuleRepository>();
+  final LanguageConfigRepository _repository =
+      locator<LanguageConfigRepository>();
 
   late String _timezone;
   late Language _language;
@@ -46,12 +46,10 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   }
 
   void _syncStateWithRepository() {
-    ConfigLanguageModel config = _repository.languageConfiguration;
-
     setState(() {
-      _timezone = config.timezone;
-      _language = config.language;
-      _timeFormat = config.timeFormat;
+      _timezone = _repository.data.timezone;
+      _language = _repository.data.language;
+      _timeFormat = _repository.data.timeFormat;
     });
   }
 

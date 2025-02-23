@@ -6,18 +6,19 @@ part of 'config_req_update_section_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$ConfigUpdateAudioImpl _$$ConfigUpdateAudioImplFromJson(
-        Map<String, dynamic> json) =>
-    _$ConfigUpdateAudioImpl(
-      type: ConfigUpdateAudioType.fromJson(json['type'] as String),
-      speaker: json['speaker'] as bool,
-      speakerVolume: (json['speaker_volume'] as num).toInt(),
-      microphone: json['microphone'] as bool,
-      microphoneVolume: (json['microphone_volume'] as num).toInt(),
-    );
+_$ConfigReqUpdateSectionDataUnionAudioImpl
+    _$$ConfigReqUpdateSectionDataUnionAudioImplFromJson(
+            Map<String, dynamic> json) =>
+        _$ConfigReqUpdateSectionDataUnionAudioImpl(
+          type: ConfigUpdateAudioType.fromJson(json['type'] as String),
+          speaker: json['speaker'] as bool,
+          speakerVolume: (json['speaker_volume'] as num).toInt(),
+          microphone: json['microphone'] as bool,
+          microphoneVolume: (json['microphone_volume'] as num).toInt(),
+        );
 
-Map<String, dynamic> _$$ConfigUpdateAudioImplToJson(
-        _$ConfigUpdateAudioImpl instance) =>
+Map<String, dynamic> _$$ConfigReqUpdateSectionDataUnionAudioImplToJson(
+        _$ConfigReqUpdateSectionDataUnionAudioImpl instance) =>
     <String, dynamic>{
       'type': _$ConfigUpdateAudioTypeEnumMap[instance.type]!,
       'speaker': instance.speaker,
@@ -31,18 +32,19 @@ const _$ConfigUpdateAudioTypeEnumMap = {
   ConfigUpdateAudioType.$unknown: r'$unknown',
 };
 
-_$ConfigUpdateDisplayImpl _$$ConfigUpdateDisplayImplFromJson(
-        Map<String, dynamic> json) =>
-    _$ConfigUpdateDisplayImpl(
-      type: ConfigUpdateDisplayType.fromJson(json['type'] as String),
-      darkMode: json['dark_mode'] as bool,
-      brightness: (json['brightness'] as num).toInt(),
-      screenLockDuration: (json['screen_lock_duration'] as num).toInt(),
-      screenSaver: json['screen_saver'] as bool,
-    );
+_$ConfigReqUpdateSectionDataUnionDisplayImpl
+    _$$ConfigReqUpdateSectionDataUnionDisplayImplFromJson(
+            Map<String, dynamic> json) =>
+        _$ConfigReqUpdateSectionDataUnionDisplayImpl(
+          type: ConfigUpdateDisplayType.fromJson(json['type'] as String),
+          darkMode: json['dark_mode'] as bool,
+          brightness: (json['brightness'] as num).toInt(),
+          screenLockDuration: (json['screen_lock_duration'] as num).toInt(),
+          screenSaver: json['screen_saver'] as bool,
+        );
 
-Map<String, dynamic> _$$ConfigUpdateDisplayImplToJson(
-        _$ConfigUpdateDisplayImpl instance) =>
+Map<String, dynamic> _$$ConfigReqUpdateSectionDataUnionDisplayImplToJson(
+        _$ConfigReqUpdateSectionDataUnionDisplayImpl instance) =>
     <String, dynamic>{
       'type': _$ConfigUpdateDisplayTypeEnumMap[instance.type]!,
       'dark_mode': instance.darkMode,
@@ -56,19 +58,20 @@ const _$ConfigUpdateDisplayTypeEnumMap = {
   ConfigUpdateDisplayType.$unknown: r'$unknown',
 };
 
-_$ConfigUpdateLanguageImpl _$$ConfigUpdateLanguageImplFromJson(
-        Map<String, dynamic> json) =>
-    _$ConfigUpdateLanguageImpl(
-      type: ConfigUpdateLanguageType.fromJson(json['type'] as String),
-      language:
-          ConfigUpdateLanguageLanguage.fromJson(json['language'] as String),
-      timezone: json['timezone'] as String,
-      timeFormat: ConfigUpdateLanguageTimeFormat.fromJson(
-          json['time_format'] as String),
-    );
+_$ConfigReqUpdateSectionDataUnionLanguageImpl
+    _$$ConfigReqUpdateSectionDataUnionLanguageImplFromJson(
+            Map<String, dynamic> json) =>
+        _$ConfigReqUpdateSectionDataUnionLanguageImpl(
+          type: ConfigUpdateLanguageType.fromJson(json['type'] as String),
+          language:
+              ConfigUpdateLanguageLanguage.fromJson(json['language'] as String),
+          timezone: json['timezone'] as String,
+          timeFormat: ConfigUpdateLanguageTimeFormat.fromJson(
+              json['time_format'] as String),
+        );
 
-Map<String, dynamic> _$$ConfigUpdateLanguageImplToJson(
-        _$ConfigUpdateLanguageImpl instance) =>
+Map<String, dynamic> _$$ConfigReqUpdateSectionDataUnionLanguageImplToJson(
+        _$ConfigReqUpdateSectionDataUnionLanguageImpl instance) =>
     <String, dynamic>{
       'type': _$ConfigUpdateLanguageTypeEnumMap[instance.type]!,
       'language': _$ConfigUpdateLanguageLanguageEnumMap[instance.language]!,
@@ -94,19 +97,20 @@ const _$ConfigUpdateLanguageTimeFormatEnumMap = {
   ConfigUpdateLanguageTimeFormat.$unknown: r'$unknown',
 };
 
-_$ConfigUpdateWeatherImpl _$$ConfigUpdateWeatherImplFromJson(
-        Map<String, dynamic> json) =>
-    _$ConfigUpdateWeatherImpl(
-      type: ConfigUpdateWeatherType.fromJson(json['type'] as String),
-      locationType: ConfigUpdateWeatherLocationType.fromJson(
-          json['location_type'] as String),
-      unit: ConfigUpdateWeatherUnit.fromJson(json['unit'] as String),
-      location: json['location'] as String?,
-      openWeatherApiKey: json['open_weather_api_key'] as String?,
-    );
+_$ConfigReqUpdateSectionDataUnionWeatherImpl
+    _$$ConfigReqUpdateSectionDataUnionWeatherImplFromJson(
+            Map<String, dynamic> json) =>
+        _$ConfigReqUpdateSectionDataUnionWeatherImpl(
+          type: ConfigUpdateWeatherType.fromJson(json['type'] as String),
+          locationType: ConfigUpdateWeatherLocationType.fromJson(
+              json['location_type'] as String),
+          unit: ConfigUpdateWeatherUnit.fromJson(json['unit'] as String),
+          location: json['location'] as String?,
+          openWeatherApiKey: json['open_weather_api_key'] as String?,
+        );
 
-Map<String, dynamic> _$$ConfigUpdateWeatherImplToJson(
-        _$ConfigUpdateWeatherImpl instance) =>
+Map<String, dynamic> _$$ConfigReqUpdateSectionDataUnionWeatherImplToJson(
+        _$ConfigReqUpdateSectionDataUnionWeatherImpl instance) =>
     <String, dynamic>{
       'type': _$ConfigUpdateWeatherTypeEnumMap[instance.type]!,
       'location_type':

@@ -38,7 +38,7 @@ sealed class DashboardReqCreatePageDataUnion with _$DashboardReqCreatePageDataUn
 
     /// The icon associated with the dashboard page.
     String? icon,
-  }) = DashboardCreateCardsPage;
+  }) = DashboardReqCreatePageDataUnionCards;
 
   @FreezedUnionValue('tiles')
   const factory DashboardReqCreatePageDataUnion.tiles({
@@ -64,7 +64,7 @@ sealed class DashboardReqCreatePageDataUnion with _$DashboardReqCreatePageDataUn
 
     /// The icon associated with the dashboard page.
     String? icon,
-  }) = DashboardCreateTilesPage;
+  }) = DashboardReqCreatePageDataUnionTiles;
 
   @FreezedUnionValue('device')
   const factory DashboardReqCreatePageDataUnion.device({
@@ -86,7 +86,7 @@ sealed class DashboardReqCreatePageDataUnion with _$DashboardReqCreatePageDataUn
 
     /// The icon associated with the dashboard page.
     String? icon,
-  }) = DashboardCreateDevicePage;
+  }) = DashboardReqCreatePageDataUnionDevice;
 
   
   factory DashboardReqCreatePageDataUnion.fromJson(Map<String, Object?> json) => _$DashboardReqCreatePageDataUnionFromJson(json);
