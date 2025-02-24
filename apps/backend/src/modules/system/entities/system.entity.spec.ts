@@ -206,6 +206,12 @@ describe('System module entity and OpenAPI Model Synchronization', () => {
 					tx_bytes: 98765432,
 				},
 			],
+			default_network: {
+				interface: 'eth0',
+				ip4: '192.168.0.1',
+				ip6: 'fe80::134a:1e43:abc5:d413',
+				mac: 'xx:xx:xx:xx:xx:xx',
+			},
 			display: {
 				resolution_x: 1920,
 				resolution_y: 1080,

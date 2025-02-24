@@ -6,10 +6,10 @@ part of 'dashboard_res_page_card_tile_data_source_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardDeviceChannelDataSourceImpl
-    _$$DashboardDeviceChannelDataSourceImplFromJson(
+_$DashboardResPageCardTileDataSourceDataUnionDeviceChannelImpl
+    _$$DashboardResPageCardTileDataSourceDataUnionDeviceChannelImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardDeviceChannelDataSourceImpl(
+        _$DashboardResPageCardTileDataSourceDataUnionDeviceChannelImpl(
           id: json['id'] as String,
           createdAt: DateTime.parse(json['created_at'] as String),
           updatedAt: json['updated_at'] == null
@@ -22,15 +22,17 @@ _$DashboardDeviceChannelDataSourceImpl
           type: json['type'] as String? ?? 'device-channel',
         );
 
-Map<String, dynamic> _$$DashboardDeviceChannelDataSourceImplToJson(
-        _$DashboardDeviceChannelDataSourceImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'created_at': instance.createdAt.toIso8601String(),
-      'updated_at': instance.updatedAt?.toIso8601String(),
-      'device': instance.device,
-      'channel': instance.channel,
-      'property': instance.property,
-      'icon': instance.icon,
-      'type': instance.type,
-    };
+Map<String, dynamic>
+    _$$DashboardResPageCardTileDataSourceDataUnionDeviceChannelImplToJson(
+            _$DashboardResPageCardTileDataSourceDataUnionDeviceChannelImpl
+                instance) =>
+        <String, dynamic>{
+          'id': instance.id,
+          'created_at': instance.createdAt.toIso8601String(),
+          'updated_at': instance.updatedAt?.toIso8601String(),
+          'device': instance.device,
+          'channel': instance.channel,
+          'property': instance.property,
+          'icon': instance.icon,
+          'type': instance.type,
+        };

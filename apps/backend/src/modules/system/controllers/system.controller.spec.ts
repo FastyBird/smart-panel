@@ -59,6 +59,12 @@ describe('SystemController', () => {
 					uptime: 1234,
 				},
 				network: [],
+				defaultNetwork: {
+					interface: 'eth0',
+					ip4: '192.168.0.1',
+					ip6: 'fe80::134a:1e43:abc5:d413',
+					mac: 'xx:xx:xx:xx:xx:xx',
+				},
 				display: {
 					resolutionX: 1024,
 					resolutionY: 768,

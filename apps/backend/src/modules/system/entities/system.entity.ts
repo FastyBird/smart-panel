@@ -95,6 +95,24 @@ export class NetworkStatsEntity {
 	txBytes: number;
 }
 
+export class DefaultNetwork {
+	@Expose()
+	@IsString()
+	interface: string;
+
+	@Expose()
+	@IsString()
+	ip4: string;
+
+	@Expose()
+	@IsString()
+	ip6: string;
+
+	@Expose()
+	@IsString()
+	mac: string;
+}
+
 export class SystemInfoEntity {
 	@Expose({ name: 'cpu_load' })
 	@IsNumber()
@@ -126,6 +144,11 @@ export class SystemInfoEntity {
 	@ValidateNested({ each: true })
 	@Type(() => NetworkStatsEntity)
 	network: NetworkStatsEntity[];
+
+	@Expose({ name: 'default_network' })
+	@ValidateNested()
+	@Type(() => DefaultNetwork)
+	defaultNetwork: DefaultNetwork;
 
 	@Expose()
 	@ValidateNested()

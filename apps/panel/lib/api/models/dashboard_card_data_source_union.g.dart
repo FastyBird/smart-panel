@@ -6,10 +6,10 @@ part of 'dashboard_card_data_source_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardDeviceChannelDataSourceImpl
-    _$$DashboardDeviceChannelDataSourceImplFromJson(
+_$DashboardCardDataSourceUnionDeviceChannelImpl
+    _$$DashboardCardDataSourceUnionDeviceChannelImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardDeviceChannelDataSourceImpl(
+        _$DashboardCardDataSourceUnionDeviceChannelImpl(
           id: json['id'] as String,
           createdAt: DateTime.parse(json['created_at'] as String),
           updatedAt: json['updated_at'] == null
@@ -22,8 +22,8 @@ _$DashboardDeviceChannelDataSourceImpl
           type: json['type'] as String? ?? 'device-channel',
         );
 
-Map<String, dynamic> _$$DashboardDeviceChannelDataSourceImplToJson(
-        _$DashboardDeviceChannelDataSourceImpl instance) =>
+Map<String, dynamic> _$$DashboardCardDataSourceUnionDeviceChannelImplToJson(
+        _$DashboardCardDataSourceUnionDeviceChannelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'created_at': instance.createdAt.toIso8601String(),

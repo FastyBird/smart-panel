@@ -24,7 +24,7 @@ sealed class DevicesReqUpdateDeviceDataUnion with _$DevicesReqUpdateDeviceDataUn
 
     /// Optional detailed description of the device.
     String? description,
-  }) = DevicesUpdateThirdPartyDevice;
+  }) = DevicesReqUpdateDeviceDataUnionThirdParty;
 
   
   factory DevicesReqUpdateDeviceDataUnion.fromJson(Map<String, Object?> json) => _$DevicesReqUpdateDeviceDataUnionFromJson(json);

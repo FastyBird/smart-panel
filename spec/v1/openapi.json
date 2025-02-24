@@ -6840,7 +6840,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "get-dashboard-module-page-car-tile-data-sources",
+        "operationId": "get-dashboard-module-page-card-tile-data-sources",
         "description": "Fetches a list of data sources associated with a specific tile of a card. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.",
         "security": [
           {
@@ -7210,7 +7210,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "get-dashboard-module-page-car-data-sources",
+        "operationId": "get-dashboard-module-page-card-data-sources",
         "description": "Fetches a list of data sources associated with a specific card. Data sources represent attributes or measurements related to the card, such as device state, weather location, or timezone.",
         "security": [
           {
@@ -7813,6 +7813,12 @@
                             "tx_bytes": 98765432
                           }
                         ],
+                        "default_network": {
+                          "interface": "eth0",
+                          "ip4": "192.168.1.5",
+                          "ip6": "fe80::134a:1e43:abc5:d413",
+                          "mac": "xx:xx:xx:xx:xx:xx"
+                        },
                         "display": {
                           "resolution_x": 1920,
                           "resolution_y": 1080,
@@ -7911,7 +7917,7 @@
         "tags": [
           "Weather module"
         ],
-        "summary": "Retrieve current weather conditions",
+        "summary": "Retrieve weather conditions",
         "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a specified location.",
         "operationId": "get-weather-module-weather",
         "responses": {
@@ -8018,6 +8024,230 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/weather-module/weather/current": {
+      "get": {
+        "summary": "Retrieve current day conditions",
+        "tags": [
+          "Weather module"
+        ],
+        "responses": {
+          "200": {
+            "description": "Response containing current weather conditions details for a specified location.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherResLocationCurrent"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/weather-module/weather/current",
+                      "method": "GET",
+                      "data": {
+                        "temperature": 22.5,
+                        "temperature_min": 18.2,
+                        "temperature_max": 25.8,
+                        "feels_like": 21.9,
+                        "pressure": 1013,
+                        "humidity": 55,
+                        "weather": {
+                          "code": 800,
+                          "main": "Clear",
+                          "description": "clear sky",
+                          "icon": "01d"
+                        },
+                        "wind": {
+                          "speed": 3.5,
+                          "deg": 180,
+                          "gust": 5.8
+                        },
+                        "clouds": 10,
+                        "rain": 10,
+                        "snow": 10,
+                        "sunrise": "2025-02-06T06:45:00Z",
+                        "sunset": "2025-02-06T17:30:00Z",
+                        "day_time": "2019-08-24T14:15:22Z"
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "operationId": "get-weather-module-current",
+        "x-stoplight": {
+          "id": "ufzjtgtcggdl0"
+        },
+        "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a current day and for a specified location.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "location",
+            "description": "The location for weather updates, specified as a city name or coordinates (latitude, longitude)."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "lat_lon",
+                "city_name",
+                "city_id",
+                "zip_code"
+              ],
+              "default": "city_name"
+            },
+            "in": "query",
+            "name": "location_type",
+            "description": "Specifies the method used to determine the location for weather updates."
+          }
+        ],
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/weather-module/weather/forecast": {
+      "get": {
+        "summary": "Retrieve forecast conditions",
+        "tags": [
+          "Weather module"
+        ],
+        "responses": {
+          "200": {
+            "description": "Response containing current weather forecast details for a specified location.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherResLocationForecast"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/weather-module/weather/forecast",
+                      "method": "GET",
+                      "data": [
+                        {
+                          "temperature": {
+                            "morn": 22.5,
+                            "day": 24.5,
+                            "eve": 22.5,
+                            "night": 20.5,
+                            "min": 20.5,
+                            "max": 24.5
+                          },
+                          "feels_like": {
+                            "morn": 22.5,
+                            "day": 24.5,
+                            "eve": 22.5,
+                            "night": 20.5
+                          },
+                          "pressure": 1013,
+                          "humidity": 55,
+                          "weather": {
+                            "code": 800,
+                            "main": "Clear",
+                            "description": "clear sky",
+                            "icon": "01d"
+                          },
+                          "wind": {
+                            "speed": 3.5,
+                            "deg": 180,
+                            "gust": 5.8
+                          },
+                          "clouds": 10,
+                          "rain": 10,
+                          "snow": 10,
+                          "sunrise": "2025-02-06T06:45:00Z",
+                          "sunset": "2025-02-06T17:30:00Z",
+                          "moonrise": "2025-02-06T17:30:00Z",
+                          "moonset": "2025-02-06T17:30:00Z",
+                          "day_time": "2019-08-24T14:15:22Z"
+                        }
+                      ],
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "operationId": "get-weather-module-forecast",
+        "x-stoplight": {
+          "id": "0vuymu08gcm7o"
+        },
+        "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details forecast for a specified location.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "location",
+            "description": "The location for weather updates, specified as a city name or coordinates (latitude, longitude)."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "lat_lon",
+                "city_name",
+                "city_id",
+                "zip_code"
+              ],
+              "default": "city_name"
+            },
+            "in": "query",
+            "name": "location_type",
+            "description": "Specifies the method used to determine the location for weather updates."
+          }
+        ],
         "security": [
           {
             "authentication": []
@@ -15659,6 +15889,43 @@
           }
         }
       },
+      "SystemDefaultNetwork": {
+        "title": "Default Network Info",
+        "description": "Schema for a default network info, including interface, ip addresses and mac address.",
+        "type": "object",
+        "required": [
+          "interface",
+          "ip4",
+          "ip6",
+          "mac"
+        ],
+        "properties": {
+          "interface": {
+            "type": "string",
+            "description": "Network interface name.",
+            "example": "eth0",
+            "readOnly": true
+          },
+          "ip4": {
+            "type": "string",
+            "description": "IPv4 address.",
+            "example": "192.168.1.5",
+            "readOnly": true
+          },
+          "ip6": {
+            "type": "string",
+            "description": "IPv6 address.",
+            "example": "fe80::134a:1e43:abc5:d413",
+            "readOnly": true
+          },
+          "mac": {
+            "type": "string",
+            "description": "Default network interface physical address.",
+            "example": "xx:xx:xx:xx:xx:xx",
+            "readOnly": true
+          }
+        }
+      },
       "SystemSystemInfo": {
         "title": "System Info",
         "description": "Schema for a detailed information about the system, including CPU load, memory, storage, temperature, operating system, network, and display.",
@@ -15670,6 +15937,7 @@
           "temperature",
           "os",
           "network",
+          "default_network",
           "display"
         ],
         "properties": {
@@ -15685,10 +15953,10 @@
           },
           "storage": {
             "type": "array",
+            "description": "List of available storage devices and their usage details.",
             "items": {
               "$ref": "#/components/schemas/SystemStorageInfo"
             },
-            "description": "List of available storage devices and their usage details.",
             "readOnly": true
           },
           "temperature": {
@@ -15700,11 +15968,17 @@
           },
           "network": {
             "type": "array",
+            "description": "List of network interfaces with statistics.",
             "items": {
               "$ref": "#/components/schemas/SystemNetworkStats"
             },
-            "description": "List of network interfaces with statistics.",
             "readOnly": true
+          },
+          "default_network": {
+            "$ref": "#/components/schemas/SystemDefaultNetwork",
+            "x-stoplight": {
+              "id": "6jx9n4ju5lzte"
+            }
           },
           "display": {
             "$ref": "#/components/schemas/SystemDisplayInfo"
@@ -15743,6 +16017,12 @@
                 "tx_bytes": 98765432
               }
             ],
+            "default_network": {
+              "interface": "eth0",
+              "ip4": "192.168.1.5",
+              "ip6": "fe80::134a:1e43:abc5:d413",
+              "mac": "xx:xx:xx:xx:xx:xx"
+            },
             "display": {
               "resolution_x": 1920,
               "resolution_y": 1080,
@@ -15897,6 +16177,12 @@
                   "tx_bytes": 98765432
                 }
               ],
+              "default_network": {
+                "interface": "eth0",
+                "ip4": "192.168.1.5",
+                "ip6": "fe80::134a:1e43:abc5:d413",
+                "mac": "xx:xx:xx:xx:xx:xx"
+              },
               "display": {
                 "resolution_x": 1920,
                 "resolution_y": 1080,
@@ -16731,6 +17017,216 @@
                 "country": "CZ"
               }
             },
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "WeatherResLocationCurrent": {
+        "title": "Location Current Day Response",
+        "x-stoplight": {
+          "id": "ujbz6pwqzw7eb"
+        },
+        "type": "object",
+        "description": "Response containing detailed weather conditions for a current day and for a specified location.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/weather-module/weather/current",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/WeatherCurrentDay",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/weather-module/weather/current",
+            "method": "GET",
+            "data": {
+              "temperature": 22.5,
+              "temperature_min": 18.2,
+              "temperature_max": 25.8,
+              "feels_like": 21.9,
+              "pressure": 1013,
+              "humidity": 55,
+              "weather": {
+                "code": 800,
+                "main": "Clear",
+                "description": "clear sky",
+                "icon": "01d"
+              },
+              "wind": {
+                "speed": 3.5,
+                "deg": 180,
+                "gust": 5.8
+              },
+              "clouds": 10,
+              "rain": 10,
+              "snow": 10,
+              "sunrise": "2025-02-06T06:45:00Z",
+              "sunset": "2025-02-06T17:30:00Z",
+              "day_time": "2019-08-24T14:15:22Z"
+            },
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "WeatherResLocationForecast": {
+        "title": "LocationForecast",
+        "x-stoplight": {
+          "id": "d0pmpalkxwk89"
+        },
+        "type": "object",
+        "description": "Response containing detailed weather conditions forecast for a specified location.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/weather-module/weather/forecast",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeatherForecastDay",
+              "x-stoplight": {
+                "id": "rjgikhudoqn3w"
+              }
+            }
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/weather-module/weather/forecast",
+            "method": "GET",
+            "data": [
+              {
+                "temperature": {
+                  "morn": 22.5,
+                  "day": 24.5,
+                  "eve": 22.5,
+                  "night": 20.5,
+                  "min": 20.5,
+                  "max": 24.5
+                },
+                "feels_like": {
+                  "morn": 22.5,
+                  "day": 24.5,
+                  "eve": 22.5,
+                  "night": 20.5
+                },
+                "pressure": 1013,
+                "humidity": 55,
+                "weather": {
+                  "code": 800,
+                  "main": "Clear",
+                  "description": "clear sky",
+                  "icon": "01d"
+                },
+                "wind": {
+                  "speed": 3.5,
+                  "deg": 180,
+                  "gust": 5.8
+                },
+                "clouds": 10,
+                "rain": 10,
+                "snow": 10,
+                "sunrise": "2025-02-06T06:45:00Z",
+                "sunset": "2025-02-06T17:30:00Z",
+                "moonrise": "2025-02-06T17:30:00Z",
+                "moonset": "2025-02-06T17:30:00Z",
+                "day_time": "2019-08-24T14:15:22Z"
+              }
+            ],
             "metadata": {
               "request_duration_ms": 57,
               "server_time": "2025-01-18T12:00:00Z",

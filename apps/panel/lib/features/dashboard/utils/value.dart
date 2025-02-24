@@ -1,12 +1,12 @@
 import 'dart:math';
 
-import 'package:fastybird_smart_panel/features/dashboard/models/data/devices/properties.dart';
-import 'package:fastybird_smart_panel/features/dashboard/types/data_types.dart';
-import 'package:fastybird_smart_panel/features/dashboard/types/formats.dart';
-import 'package:fastybird_smart_panel/features/dashboard/types/values.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/properties.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
 class ValueUtils {
-  static String? formatValue(ChannelPropertyDataModel property, [int? scale]) {
+  static String? formatValue(ChannelPropertyModel property, [int? scale]) {
     final ValueType? value = property.value;
     final InvalidValueType? invalid = property.invalid;
 
@@ -37,7 +37,7 @@ class ValueUtils {
 
   static String? _formatNumber({
     required NumberValueType value,
-    required DataTypeType dataType,
+    required DataType dataType,
     required FormatType? format,
     required InvalidValueType? invalid,
     int? scale,
@@ -61,14 +61,14 @@ class ValueUtils {
         : numValue.toString();
   }
 
-  static bool _isIntegerType(DataTypeType dataType) {
+  static bool _isIntegerType(DataType dataType) {
     return [
-      DataTypeType.char,
-      DataTypeType.uchar,
-      DataTypeType.short,
-      DataTypeType.ushort,
-      DataTypeType.int,
-      DataTypeType.uint
+      DataType.char,
+      DataType.uchar,
+      DataType.short,
+      DataType.ushort,
+      DataType.int,
+      DataType.uint
     ].contains(dataType);
   }
 

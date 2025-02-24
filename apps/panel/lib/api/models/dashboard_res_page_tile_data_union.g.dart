@@ -6,29 +6,30 @@ part of 'dashboard_res_page_tile_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardDeviceTileImpl _$$DashboardDeviceTileImplFromJson(
-        Map<String, dynamic> json) =>
-    _$DashboardDeviceTileImpl(
-      id: json['id'] as String,
-      row: (json['row'] as num).toInt(),
-      col: (json['col'] as num).toInt(),
-      dataSource: (json['data_source'] as List<dynamic>)
-          .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
-              e as Map<String, dynamic>))
-          .toList(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
-          ? null
-          : DateTime.parse(json['updated_at'] as String),
-      device: json['device'] as String,
-      icon: json['icon'] as String?,
-      rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
-      colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
-      type: json['type'] as String? ?? 'device',
-    );
+_$DashboardResPageTileDataUnionDeviceImpl
+    _$$DashboardResPageTileDataUnionDeviceImplFromJson(
+            Map<String, dynamic> json) =>
+        _$DashboardResPageTileDataUnionDeviceImpl(
+          id: json['id'] as String,
+          row: (json['row'] as num).toInt(),
+          col: (json['col'] as num).toInt(),
+          dataSource: (json['data_source'] as List<dynamic>)
+              .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
+                  e as Map<String, dynamic>))
+              .toList(),
+          createdAt: DateTime.parse(json['created_at'] as String),
+          updatedAt: json['updated_at'] == null
+              ? null
+              : DateTime.parse(json['updated_at'] as String),
+          device: json['device'] as String,
+          icon: json['icon'] as String?,
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
+          type: json['type'] as String? ?? 'device',
+        );
 
-Map<String, dynamic> _$$DashboardDeviceTileImplToJson(
-        _$DashboardDeviceTileImpl instance) =>
+Map<String, dynamic> _$$DashboardResPageTileDataUnionDeviceImplToJson(
+        _$DashboardResPageTileDataUnionDeviceImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'row': instance.row,
@@ -43,27 +44,28 @@ Map<String, dynamic> _$$DashboardDeviceTileImplToJson(
       'type': instance.type,
     };
 
-_$DashboardTimeTileImpl _$$DashboardTimeTileImplFromJson(
-        Map<String, dynamic> json) =>
-    _$DashboardTimeTileImpl(
-      id: json['id'] as String,
-      row: (json['row'] as num).toInt(),
-      col: (json['col'] as num).toInt(),
-      dataSource: (json['data_source'] as List<dynamic>)
-          .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
-              e as Map<String, dynamic>))
-          .toList(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
-          ? null
-          : DateTime.parse(json['updated_at'] as String),
-      rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
-      colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
-      type: json['type'] as String? ?? 'clock',
-    );
+_$DashboardResPageTileDataUnionClockImpl
+    _$$DashboardResPageTileDataUnionClockImplFromJson(
+            Map<String, dynamic> json) =>
+        _$DashboardResPageTileDataUnionClockImpl(
+          id: json['id'] as String,
+          row: (json['row'] as num).toInt(),
+          col: (json['col'] as num).toInt(),
+          dataSource: (json['data_source'] as List<dynamic>)
+              .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
+                  e as Map<String, dynamic>))
+              .toList(),
+          createdAt: DateTime.parse(json['created_at'] as String),
+          updatedAt: json['updated_at'] == null
+              ? null
+              : DateTime.parse(json['updated_at'] as String),
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
+          type: json['type'] as String? ?? 'clock',
+        );
 
-Map<String, dynamic> _$$DashboardTimeTileImplToJson(
-        _$DashboardTimeTileImpl instance) =>
+Map<String, dynamic> _$$DashboardResPageTileDataUnionClockImplToJson(
+        _$DashboardResPageTileDataUnionClockImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'row': instance.row,
@@ -76,27 +78,28 @@ Map<String, dynamic> _$$DashboardTimeTileImplToJson(
       'type': instance.type,
     };
 
-_$DashboardDayWeatherTileImpl _$$DashboardDayWeatherTileImplFromJson(
-        Map<String, dynamic> json) =>
-    _$DashboardDayWeatherTileImpl(
-      id: json['id'] as String,
-      row: (json['row'] as num).toInt(),
-      col: (json['col'] as num).toInt(),
-      dataSource: (json['data_source'] as List<dynamic>)
-          .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
-              e as Map<String, dynamic>))
-          .toList(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
-          ? null
-          : DateTime.parse(json['updated_at'] as String),
-      rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
-      colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
-      type: json['type'] as String? ?? 'weather-day',
-    );
+_$DashboardResPageTileDataUnionWeatherDayImpl
+    _$$DashboardResPageTileDataUnionWeatherDayImplFromJson(
+            Map<String, dynamic> json) =>
+        _$DashboardResPageTileDataUnionWeatherDayImpl(
+          id: json['id'] as String,
+          row: (json['row'] as num).toInt(),
+          col: (json['col'] as num).toInt(),
+          dataSource: (json['data_source'] as List<dynamic>)
+              .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
+                  e as Map<String, dynamic>))
+              .toList(),
+          createdAt: DateTime.parse(json['created_at'] as String),
+          updatedAt: json['updated_at'] == null
+              ? null
+              : DateTime.parse(json['updated_at'] as String),
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
+          type: json['type'] as String? ?? 'weather-day',
+        );
 
-Map<String, dynamic> _$$DashboardDayWeatherTileImplToJson(
-        _$DashboardDayWeatherTileImpl instance) =>
+Map<String, dynamic> _$$DashboardResPageTileDataUnionWeatherDayImplToJson(
+        _$DashboardResPageTileDataUnionWeatherDayImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'row': instance.row,
@@ -109,27 +112,28 @@ Map<String, dynamic> _$$DashboardDayWeatherTileImplToJson(
       'type': instance.type,
     };
 
-_$DashboardForecastWeatherTileImpl _$$DashboardForecastWeatherTileImplFromJson(
-        Map<String, dynamic> json) =>
-    _$DashboardForecastWeatherTileImpl(
-      id: json['id'] as String,
-      row: (json['row'] as num).toInt(),
-      col: (json['col'] as num).toInt(),
-      dataSource: (json['data_source'] as List<dynamic>)
-          .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
-              e as Map<String, dynamic>))
-          .toList(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
-          ? null
-          : DateTime.parse(json['updated_at'] as String),
-      rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
-      colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
-      type: json['type'] as String? ?? 'weather-forecast',
-    );
+_$DashboardResPageTileDataUnionWeatherForecastImpl
+    _$$DashboardResPageTileDataUnionWeatherForecastImplFromJson(
+            Map<String, dynamic> json) =>
+        _$DashboardResPageTileDataUnionWeatherForecastImpl(
+          id: json['id'] as String,
+          row: (json['row'] as num).toInt(),
+          col: (json['col'] as num).toInt(),
+          dataSource: (json['data_source'] as List<dynamic>)
+              .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
+                  e as Map<String, dynamic>))
+              .toList(),
+          createdAt: DateTime.parse(json['created_at'] as String),
+          updatedAt: json['updated_at'] == null
+              ? null
+              : DateTime.parse(json['updated_at'] as String),
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
+          type: json['type'] as String? ?? 'weather-forecast',
+        );
 
-Map<String, dynamic> _$$DashboardForecastWeatherTileImplToJson(
-        _$DashboardForecastWeatherTileImpl instance) =>
+Map<String, dynamic> _$$DashboardResPageTileDataUnionWeatherForecastImplToJson(
+        _$DashboardResPageTileDataUnionWeatherForecastImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'row': instance.row,

@@ -6,10 +6,10 @@ part of 'dashboard_create_tile_base_data_source_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardCreateDeviceChannelDataSourceImpl
-    _$$DashboardCreateDeviceChannelDataSourceImplFromJson(
+_$DashboardCreateTileBaseDataSourceUnionDeviceChannelImpl
+    _$$DashboardCreateTileBaseDataSourceUnionDeviceChannelImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardCreateDeviceChannelDataSourceImpl(
+        _$DashboardCreateTileBaseDataSourceUnionDeviceChannelImpl(
           id: json['id'] as String,
           device: json['device'] as String,
           channel: json['channel'] as String,
@@ -18,8 +18,9 @@ _$DashboardCreateDeviceChannelDataSourceImpl
           type: json['type'] as String? ?? 'device-channel',
         );
 
-Map<String, dynamic> _$$DashboardCreateDeviceChannelDataSourceImplToJson(
-        _$DashboardCreateDeviceChannelDataSourceImpl instance) =>
+Map<String,
+    dynamic> _$$DashboardCreateTileBaseDataSourceUnionDeviceChannelImplToJson(
+        _$DashboardCreateTileBaseDataSourceUnionDeviceChannelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'device': instance.device,

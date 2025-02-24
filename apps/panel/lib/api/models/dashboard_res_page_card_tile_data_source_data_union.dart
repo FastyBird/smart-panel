@@ -37,7 +37,7 @@ sealed class DashboardResPageCardTileDataSourceDataUnion with _$DashboardResPage
     /// Indicates that this data source is linked to a device channel.
     @Default('device-channel')
     String type,
-  }) = DashboardDeviceChannelDataSource;
+  }) = DashboardResPageCardTileDataSourceDataUnionDeviceChannel;
 
   
   factory DashboardResPageCardTileDataSourceDataUnion.fromJson(Map<String, Object?> json) => _$DashboardResPageCardTileDataSourceDataUnionFromJson(json);

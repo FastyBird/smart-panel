@@ -18,13 +18,13 @@ ConfigReqUpdateSectionDataUnion _$ConfigReqUpdateSectionDataUnionFromJson(
     Map<String, dynamic> json) {
   switch (json['type']) {
     case 'audio':
-      return ConfigUpdateAudio.fromJson(json);
+      return ConfigReqUpdateSectionDataUnionAudio.fromJson(json);
     case 'display':
-      return ConfigUpdateDisplay.fromJson(json);
+      return ConfigReqUpdateSectionDataUnionDisplay.fromJson(json);
     case 'language':
-      return ConfigUpdateLanguage.fromJson(json);
+      return ConfigReqUpdateSectionDataUnionLanguage.fromJson(json);
     case 'weather':
-      return ConfigUpdateWeather.fromJson(json);
+      return ConfigReqUpdateSectionDataUnionWeather.fromJson(json);
 
     default:
       throw CheckedFromJsonException(
@@ -141,26 +141,29 @@ mixin _$ConfigReqUpdateSectionDataUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigUpdateAudio value) audio,
-    required TResult Function(ConfigUpdateDisplay value) display,
-    required TResult Function(ConfigUpdateLanguage value) language,
-    required TResult Function(ConfigUpdateWeather value) weather,
+    required TResult Function(ConfigReqUpdateSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)
+        display,
+    required TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)
+        language,
+    required TResult Function(ConfigReqUpdateSectionDataUnionWeather value)
+        weather,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigUpdateAudio value)? audio,
-    TResult? Function(ConfigUpdateDisplay value)? display,
-    TResult? Function(ConfigUpdateLanguage value)? language,
-    TResult? Function(ConfigUpdateWeather value)? weather,
+    TResult? Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigUpdateAudio value)? audio,
-    TResult Function(ConfigUpdateDisplay value)? display,
-    TResult Function(ConfigUpdateLanguage value)? language,
-    TResult Function(ConfigUpdateWeather value)? weather,
+    TResult Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -194,10 +197,11 @@ class _$ConfigReqUpdateSectionDataUnionCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$ConfigUpdateAudioImplCopyWith<$Res> {
-  factory _$$ConfigUpdateAudioImplCopyWith(_$ConfigUpdateAudioImpl value,
-          $Res Function(_$ConfigUpdateAudioImpl) then) =
-      __$$ConfigUpdateAudioImplCopyWithImpl<$Res>;
+abstract class _$$ConfigReqUpdateSectionDataUnionAudioImplCopyWith<$Res> {
+  factory _$$ConfigReqUpdateSectionDataUnionAudioImplCopyWith(
+          _$ConfigReqUpdateSectionDataUnionAudioImpl value,
+          $Res Function(_$ConfigReqUpdateSectionDataUnionAudioImpl) then) =
+      __$$ConfigReqUpdateSectionDataUnionAudioImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
       {ConfigUpdateAudioType type,
@@ -208,12 +212,13 @@ abstract class _$$ConfigUpdateAudioImplCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$ConfigUpdateAudioImplCopyWithImpl<$Res>
+class __$$ConfigReqUpdateSectionDataUnionAudioImplCopyWithImpl<$Res>
     extends _$ConfigReqUpdateSectionDataUnionCopyWithImpl<$Res,
-        _$ConfigUpdateAudioImpl>
-    implements _$$ConfigUpdateAudioImplCopyWith<$Res> {
-  __$$ConfigUpdateAudioImplCopyWithImpl(_$ConfigUpdateAudioImpl _value,
-      $Res Function(_$ConfigUpdateAudioImpl) _then)
+        _$ConfigReqUpdateSectionDataUnionAudioImpl>
+    implements _$$ConfigReqUpdateSectionDataUnionAudioImplCopyWith<$Res> {
+  __$$ConfigReqUpdateSectionDataUnionAudioImplCopyWithImpl(
+      _$ConfigReqUpdateSectionDataUnionAudioImpl _value,
+      $Res Function(_$ConfigReqUpdateSectionDataUnionAudioImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ConfigReqUpdateSectionDataUnion
@@ -227,7 +232,7 @@ class __$$ConfigUpdateAudioImplCopyWithImpl<$Res>
     Object? microphone = null,
     Object? microphoneVolume = null,
   }) {
-    return _then(_$ConfigUpdateAudioImpl(
+    return _then(_$ConfigReqUpdateSectionDataUnionAudioImpl(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -254,16 +259,18 @@ class __$$ConfigUpdateAudioImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$ConfigUpdateAudioImpl implements ConfigUpdateAudio {
-  const _$ConfigUpdateAudioImpl(
+class _$ConfigReqUpdateSectionDataUnionAudioImpl
+    implements ConfigReqUpdateSectionDataUnionAudio {
+  const _$ConfigReqUpdateSectionDataUnionAudioImpl(
       {required this.type,
       required this.speaker,
       @JsonKey(name: 'speaker_volume') required this.speakerVolume,
       required this.microphone,
       @JsonKey(name: 'microphone_volume') required this.microphoneVolume});
 
-  factory _$ConfigUpdateAudioImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ConfigUpdateAudioImplFromJson(json);
+  factory _$ConfigReqUpdateSectionDataUnionAudioImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$ConfigReqUpdateSectionDataUnionAudioImplFromJson(json);
 
   /// Configuration section type
   @override
@@ -296,7 +303,7 @@ class _$ConfigUpdateAudioImpl implements ConfigUpdateAudio {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ConfigUpdateAudioImpl &&
+            other is _$ConfigReqUpdateSectionDataUnionAudioImpl &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.speaker, speaker) || other.speaker == speaker) &&
             (identical(other.speakerVolume, speakerVolume) ||
@@ -317,9 +324,10 @@ class _$ConfigUpdateAudioImpl implements ConfigUpdateAudio {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ConfigUpdateAudioImplCopyWith<_$ConfigUpdateAudioImpl> get copyWith =>
-      __$$ConfigUpdateAudioImplCopyWithImpl<_$ConfigUpdateAudioImpl>(
-          this, _$identity);
+  _$$ConfigReqUpdateSectionDataUnionAudioImplCopyWith<
+          _$ConfigReqUpdateSectionDataUnionAudioImpl>
+      get copyWith => __$$ConfigReqUpdateSectionDataUnionAudioImplCopyWithImpl<
+          _$ConfigReqUpdateSectionDataUnionAudioImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -437,10 +445,13 @@ class _$ConfigUpdateAudioImpl implements ConfigUpdateAudio {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigUpdateAudio value) audio,
-    required TResult Function(ConfigUpdateDisplay value) display,
-    required TResult Function(ConfigUpdateLanguage value) language,
-    required TResult Function(ConfigUpdateWeather value) weather,
+    required TResult Function(ConfigReqUpdateSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)
+        display,
+    required TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)
+        language,
+    required TResult Function(ConfigReqUpdateSectionDataUnionWeather value)
+        weather,
   }) {
     return audio(this);
   }
@@ -448,10 +459,10 @@ class _$ConfigUpdateAudioImpl implements ConfigUpdateAudio {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigUpdateAudio value)? audio,
-    TResult? Function(ConfigUpdateDisplay value)? display,
-    TResult? Function(ConfigUpdateLanguage value)? language,
-    TResult? Function(ConfigUpdateWeather value)? weather,
+    TResult? Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
   }) {
     return audio?.call(this);
   }
@@ -459,10 +470,10 @@ class _$ConfigUpdateAudioImpl implements ConfigUpdateAudio {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigUpdateAudio value)? audio,
-    TResult Function(ConfigUpdateDisplay value)? display,
-    TResult Function(ConfigUpdateLanguage value)? language,
-    TResult Function(ConfigUpdateWeather value)? weather,
+    TResult Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) {
     if (audio != null) {
@@ -473,23 +484,26 @@ class _$ConfigUpdateAudioImpl implements ConfigUpdateAudio {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$ConfigUpdateAudioImplToJson(
+    return _$$ConfigReqUpdateSectionDataUnionAudioImplToJson(
       this,
     );
   }
 }
 
-abstract class ConfigUpdateAudio implements ConfigReqUpdateSectionDataUnion {
-  const factory ConfigUpdateAudio(
-      {required final ConfigUpdateAudioType type,
-      required final bool speaker,
-      @JsonKey(name: 'speaker_volume') required final int speakerVolume,
-      required final bool microphone,
-      @JsonKey(name: 'microphone_volume')
-      required final int microphoneVolume}) = _$ConfigUpdateAudioImpl;
+abstract class ConfigReqUpdateSectionDataUnionAudio
+    implements ConfigReqUpdateSectionDataUnion {
+  const factory ConfigReqUpdateSectionDataUnionAudio(
+          {required final ConfigUpdateAudioType type,
+          required final bool speaker,
+          @JsonKey(name: 'speaker_volume') required final int speakerVolume,
+          required final bool microphone,
+          @JsonKey(name: 'microphone_volume')
+          required final int microphoneVolume}) =
+      _$ConfigReqUpdateSectionDataUnionAudioImpl;
 
-  factory ConfigUpdateAudio.fromJson(Map<String, dynamic> json) =
-      _$ConfigUpdateAudioImpl.fromJson;
+  factory ConfigReqUpdateSectionDataUnionAudio.fromJson(
+          Map<String, dynamic> json) =
+      _$ConfigReqUpdateSectionDataUnionAudioImpl.fromJson;
 
   /// Configuration section type
   @override
@@ -512,15 +526,17 @@ abstract class ConfigUpdateAudio implements ConfigReqUpdateSectionDataUnion {
   /// Create a copy of ConfigReqUpdateSectionDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ConfigUpdateAudioImplCopyWith<_$ConfigUpdateAudioImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$ConfigReqUpdateSectionDataUnionAudioImplCopyWith<
+          _$ConfigReqUpdateSectionDataUnionAudioImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ConfigUpdateDisplayImplCopyWith<$Res> {
-  factory _$$ConfigUpdateDisplayImplCopyWith(_$ConfigUpdateDisplayImpl value,
-          $Res Function(_$ConfigUpdateDisplayImpl) then) =
-      __$$ConfigUpdateDisplayImplCopyWithImpl<$Res>;
+abstract class _$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWith<$Res> {
+  factory _$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWith(
+          _$ConfigReqUpdateSectionDataUnionDisplayImpl value,
+          $Res Function(_$ConfigReqUpdateSectionDataUnionDisplayImpl) then) =
+      __$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
       {ConfigUpdateDisplayType type,
@@ -531,12 +547,13 @@ abstract class _$$ConfigUpdateDisplayImplCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$ConfigUpdateDisplayImplCopyWithImpl<$Res>
+class __$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWithImpl<$Res>
     extends _$ConfigReqUpdateSectionDataUnionCopyWithImpl<$Res,
-        _$ConfigUpdateDisplayImpl>
-    implements _$$ConfigUpdateDisplayImplCopyWith<$Res> {
-  __$$ConfigUpdateDisplayImplCopyWithImpl(_$ConfigUpdateDisplayImpl _value,
-      $Res Function(_$ConfigUpdateDisplayImpl) _then)
+        _$ConfigReqUpdateSectionDataUnionDisplayImpl>
+    implements _$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWith<$Res> {
+  __$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWithImpl(
+      _$ConfigReqUpdateSectionDataUnionDisplayImpl _value,
+      $Res Function(_$ConfigReqUpdateSectionDataUnionDisplayImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ConfigReqUpdateSectionDataUnion
@@ -550,7 +567,7 @@ class __$$ConfigUpdateDisplayImplCopyWithImpl<$Res>
     Object? screenLockDuration = null,
     Object? screenSaver = null,
   }) {
-    return _then(_$ConfigUpdateDisplayImpl(
+    return _then(_$ConfigReqUpdateSectionDataUnionDisplayImpl(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -577,16 +594,18 @@ class __$$ConfigUpdateDisplayImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$ConfigUpdateDisplayImpl implements ConfigUpdateDisplay {
-  const _$ConfigUpdateDisplayImpl(
+class _$ConfigReqUpdateSectionDataUnionDisplayImpl
+    implements ConfigReqUpdateSectionDataUnionDisplay {
+  const _$ConfigReqUpdateSectionDataUnionDisplayImpl(
       {required this.type,
       @JsonKey(name: 'dark_mode') required this.darkMode,
       required this.brightness,
       @JsonKey(name: 'screen_lock_duration') required this.screenLockDuration,
       @JsonKey(name: 'screen_saver') required this.screenSaver});
 
-  factory _$ConfigUpdateDisplayImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ConfigUpdateDisplayImplFromJson(json);
+  factory _$ConfigReqUpdateSectionDataUnionDisplayImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$ConfigReqUpdateSectionDataUnionDisplayImplFromJson(json);
 
   /// Configuration section type
   @override
@@ -620,7 +639,7 @@ class _$ConfigUpdateDisplayImpl implements ConfigUpdateDisplay {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ConfigUpdateDisplayImpl &&
+            other is _$ConfigReqUpdateSectionDataUnionDisplayImpl &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.darkMode, darkMode) ||
                 other.darkMode == darkMode) &&
@@ -642,9 +661,11 @@ class _$ConfigUpdateDisplayImpl implements ConfigUpdateDisplay {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ConfigUpdateDisplayImplCopyWith<_$ConfigUpdateDisplayImpl> get copyWith =>
-      __$$ConfigUpdateDisplayImplCopyWithImpl<_$ConfigUpdateDisplayImpl>(
-          this, _$identity);
+  _$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWith<
+          _$ConfigReqUpdateSectionDataUnionDisplayImpl>
+      get copyWith =>
+          __$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWithImpl<
+              _$ConfigReqUpdateSectionDataUnionDisplayImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -763,10 +784,13 @@ class _$ConfigUpdateDisplayImpl implements ConfigUpdateDisplay {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigUpdateAudio value) audio,
-    required TResult Function(ConfigUpdateDisplay value) display,
-    required TResult Function(ConfigUpdateLanguage value) language,
-    required TResult Function(ConfigUpdateWeather value) weather,
+    required TResult Function(ConfigReqUpdateSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)
+        display,
+    required TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)
+        language,
+    required TResult Function(ConfigReqUpdateSectionDataUnionWeather value)
+        weather,
   }) {
     return display(this);
   }
@@ -774,10 +798,10 @@ class _$ConfigUpdateDisplayImpl implements ConfigUpdateDisplay {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigUpdateAudio value)? audio,
-    TResult? Function(ConfigUpdateDisplay value)? display,
-    TResult? Function(ConfigUpdateLanguage value)? language,
-    TResult? Function(ConfigUpdateWeather value)? weather,
+    TResult? Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
   }) {
     return display?.call(this);
   }
@@ -785,10 +809,10 @@ class _$ConfigUpdateDisplayImpl implements ConfigUpdateDisplay {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigUpdateAudio value)? audio,
-    TResult Function(ConfigUpdateDisplay value)? display,
-    TResult Function(ConfigUpdateLanguage value)? language,
-    TResult Function(ConfigUpdateWeather value)? weather,
+    TResult Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) {
     if (display != null) {
@@ -799,24 +823,26 @@ class _$ConfigUpdateDisplayImpl implements ConfigUpdateDisplay {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$ConfigUpdateDisplayImplToJson(
+    return _$$ConfigReqUpdateSectionDataUnionDisplayImplToJson(
       this,
     );
   }
 }
 
-abstract class ConfigUpdateDisplay implements ConfigReqUpdateSectionDataUnion {
-  const factory ConfigUpdateDisplay(
+abstract class ConfigReqUpdateSectionDataUnionDisplay
+    implements ConfigReqUpdateSectionDataUnion {
+  const factory ConfigReqUpdateSectionDataUnionDisplay(
           {required final ConfigUpdateDisplayType type,
           @JsonKey(name: 'dark_mode') required final bool darkMode,
           required final int brightness,
           @JsonKey(name: 'screen_lock_duration')
           required final int screenLockDuration,
           @JsonKey(name: 'screen_saver') required final bool screenSaver}) =
-      _$ConfigUpdateDisplayImpl;
+      _$ConfigReqUpdateSectionDataUnionDisplayImpl;
 
-  factory ConfigUpdateDisplay.fromJson(Map<String, dynamic> json) =
-      _$ConfigUpdateDisplayImpl.fromJson;
+  factory ConfigReqUpdateSectionDataUnionDisplay.fromJson(
+          Map<String, dynamic> json) =
+      _$ConfigReqUpdateSectionDataUnionDisplayImpl.fromJson;
 
   /// Configuration section type
   @override
@@ -840,15 +866,17 @@ abstract class ConfigUpdateDisplay implements ConfigReqUpdateSectionDataUnion {
   /// Create a copy of ConfigReqUpdateSectionDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ConfigUpdateDisplayImplCopyWith<_$ConfigUpdateDisplayImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$ConfigReqUpdateSectionDataUnionDisplayImplCopyWith<
+          _$ConfigReqUpdateSectionDataUnionDisplayImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ConfigUpdateLanguageImplCopyWith<$Res> {
-  factory _$$ConfigUpdateLanguageImplCopyWith(_$ConfigUpdateLanguageImpl value,
-          $Res Function(_$ConfigUpdateLanguageImpl) then) =
-      __$$ConfigUpdateLanguageImplCopyWithImpl<$Res>;
+abstract class _$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWith<$Res> {
+  factory _$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWith(
+          _$ConfigReqUpdateSectionDataUnionLanguageImpl value,
+          $Res Function(_$ConfigReqUpdateSectionDataUnionLanguageImpl) then) =
+      __$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
       {ConfigUpdateLanguageType type,
@@ -858,12 +886,13 @@ abstract class _$$ConfigUpdateLanguageImplCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$ConfigUpdateLanguageImplCopyWithImpl<$Res>
+class __$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWithImpl<$Res>
     extends _$ConfigReqUpdateSectionDataUnionCopyWithImpl<$Res,
-        _$ConfigUpdateLanguageImpl>
-    implements _$$ConfigUpdateLanguageImplCopyWith<$Res> {
-  __$$ConfigUpdateLanguageImplCopyWithImpl(_$ConfigUpdateLanguageImpl _value,
-      $Res Function(_$ConfigUpdateLanguageImpl) _then)
+        _$ConfigReqUpdateSectionDataUnionLanguageImpl>
+    implements _$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWith<$Res> {
+  __$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWithImpl(
+      _$ConfigReqUpdateSectionDataUnionLanguageImpl _value,
+      $Res Function(_$ConfigReqUpdateSectionDataUnionLanguageImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ConfigReqUpdateSectionDataUnion
@@ -876,7 +905,7 @@ class __$$ConfigUpdateLanguageImplCopyWithImpl<$Res>
     Object? timezone = null,
     Object? timeFormat = null,
   }) {
-    return _then(_$ConfigUpdateLanguageImpl(
+    return _then(_$ConfigReqUpdateSectionDataUnionLanguageImpl(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -899,15 +928,17 @@ class __$$ConfigUpdateLanguageImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$ConfigUpdateLanguageImpl implements ConfigUpdateLanguage {
-  const _$ConfigUpdateLanguageImpl(
+class _$ConfigReqUpdateSectionDataUnionLanguageImpl
+    implements ConfigReqUpdateSectionDataUnionLanguage {
+  const _$ConfigReqUpdateSectionDataUnionLanguageImpl(
       {required this.type,
       required this.language,
       required this.timezone,
       @JsonKey(name: 'time_format') required this.timeFormat});
 
-  factory _$ConfigUpdateLanguageImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ConfigUpdateLanguageImplFromJson(json);
+  factory _$ConfigReqUpdateSectionDataUnionLanguageImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$ConfigReqUpdateSectionDataUnionLanguageImplFromJson(json);
 
   /// Configuration section type
   @override
@@ -935,7 +966,7 @@ class _$ConfigUpdateLanguageImpl implements ConfigUpdateLanguage {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ConfigUpdateLanguageImpl &&
+            other is _$ConfigReqUpdateSectionDataUnionLanguageImpl &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.language, language) ||
                 other.language == language) &&
@@ -955,10 +986,11 @@ class _$ConfigUpdateLanguageImpl implements ConfigUpdateLanguage {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ConfigUpdateLanguageImplCopyWith<_$ConfigUpdateLanguageImpl>
+  _$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWith<
+          _$ConfigReqUpdateSectionDataUnionLanguageImpl>
       get copyWith =>
-          __$$ConfigUpdateLanguageImplCopyWithImpl<_$ConfigUpdateLanguageImpl>(
-              this, _$identity);
+          __$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWithImpl<
+              _$ConfigReqUpdateSectionDataUnionLanguageImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1075,10 +1107,13 @@ class _$ConfigUpdateLanguageImpl implements ConfigUpdateLanguage {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigUpdateAudio value) audio,
-    required TResult Function(ConfigUpdateDisplay value) display,
-    required TResult Function(ConfigUpdateLanguage value) language,
-    required TResult Function(ConfigUpdateWeather value) weather,
+    required TResult Function(ConfigReqUpdateSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)
+        display,
+    required TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)
+        language,
+    required TResult Function(ConfigReqUpdateSectionDataUnionWeather value)
+        weather,
   }) {
     return language(this);
   }
@@ -1086,10 +1121,10 @@ class _$ConfigUpdateLanguageImpl implements ConfigUpdateLanguage {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigUpdateAudio value)? audio,
-    TResult? Function(ConfigUpdateDisplay value)? display,
-    TResult? Function(ConfigUpdateLanguage value)? language,
-    TResult? Function(ConfigUpdateWeather value)? weather,
+    TResult? Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
   }) {
     return language?.call(this);
   }
@@ -1097,10 +1132,10 @@ class _$ConfigUpdateLanguageImpl implements ConfigUpdateLanguage {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigUpdateAudio value)? audio,
-    TResult Function(ConfigUpdateDisplay value)? display,
-    TResult Function(ConfigUpdateLanguage value)? language,
-    TResult Function(ConfigUpdateWeather value)? weather,
+    TResult Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) {
     if (language != null) {
@@ -1111,23 +1146,25 @@ class _$ConfigUpdateLanguageImpl implements ConfigUpdateLanguage {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$ConfigUpdateLanguageImplToJson(
+    return _$$ConfigReqUpdateSectionDataUnionLanguageImplToJson(
       this,
     );
   }
 }
 
-abstract class ConfigUpdateLanguage implements ConfigReqUpdateSectionDataUnion {
-  const factory ConfigUpdateLanguage(
+abstract class ConfigReqUpdateSectionDataUnionLanguage
+    implements ConfigReqUpdateSectionDataUnion {
+  const factory ConfigReqUpdateSectionDataUnionLanguage(
           {required final ConfigUpdateLanguageType type,
           required final ConfigUpdateLanguageLanguage language,
           required final String timezone,
           @JsonKey(name: 'time_format')
           required final ConfigUpdateLanguageTimeFormat timeFormat}) =
-      _$ConfigUpdateLanguageImpl;
+      _$ConfigReqUpdateSectionDataUnionLanguageImpl;
 
-  factory ConfigUpdateLanguage.fromJson(Map<String, dynamic> json) =
-      _$ConfigUpdateLanguageImpl.fromJson;
+  factory ConfigReqUpdateSectionDataUnionLanguage.fromJson(
+          Map<String, dynamic> json) =
+      _$ConfigReqUpdateSectionDataUnionLanguageImpl.fromJson;
 
   /// Configuration section type
   @override
@@ -1146,15 +1183,17 @@ abstract class ConfigUpdateLanguage implements ConfigReqUpdateSectionDataUnion {
   /// Create a copy of ConfigReqUpdateSectionDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ConfigUpdateLanguageImplCopyWith<_$ConfigUpdateLanguageImpl>
+  _$$ConfigReqUpdateSectionDataUnionLanguageImplCopyWith<
+          _$ConfigReqUpdateSectionDataUnionLanguageImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ConfigUpdateWeatherImplCopyWith<$Res> {
-  factory _$$ConfigUpdateWeatherImplCopyWith(_$ConfigUpdateWeatherImpl value,
-          $Res Function(_$ConfigUpdateWeatherImpl) then) =
-      __$$ConfigUpdateWeatherImplCopyWithImpl<$Res>;
+abstract class _$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWith<$Res> {
+  factory _$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWith(
+          _$ConfigReqUpdateSectionDataUnionWeatherImpl value,
+          $Res Function(_$ConfigReqUpdateSectionDataUnionWeatherImpl) then) =
+      __$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
       {ConfigUpdateWeatherType type,
@@ -1166,12 +1205,13 @@ abstract class _$$ConfigUpdateWeatherImplCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$ConfigUpdateWeatherImplCopyWithImpl<$Res>
+class __$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWithImpl<$Res>
     extends _$ConfigReqUpdateSectionDataUnionCopyWithImpl<$Res,
-        _$ConfigUpdateWeatherImpl>
-    implements _$$ConfigUpdateWeatherImplCopyWith<$Res> {
-  __$$ConfigUpdateWeatherImplCopyWithImpl(_$ConfigUpdateWeatherImpl _value,
-      $Res Function(_$ConfigUpdateWeatherImpl) _then)
+        _$ConfigReqUpdateSectionDataUnionWeatherImpl>
+    implements _$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWith<$Res> {
+  __$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWithImpl(
+      _$ConfigReqUpdateSectionDataUnionWeatherImpl _value,
+      $Res Function(_$ConfigReqUpdateSectionDataUnionWeatherImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ConfigReqUpdateSectionDataUnion
@@ -1185,7 +1225,7 @@ class __$$ConfigUpdateWeatherImplCopyWithImpl<$Res>
     Object? location = freezed,
     Object? openWeatherApiKey = freezed,
   }) {
-    return _then(_$ConfigUpdateWeatherImpl(
+    return _then(_$ConfigReqUpdateSectionDataUnionWeatherImpl(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -1212,16 +1252,18 @@ class __$$ConfigUpdateWeatherImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$ConfigUpdateWeatherImpl implements ConfigUpdateWeather {
-  const _$ConfigUpdateWeatherImpl(
+class _$ConfigReqUpdateSectionDataUnionWeatherImpl
+    implements ConfigReqUpdateSectionDataUnionWeather {
+  const _$ConfigReqUpdateSectionDataUnionWeatherImpl(
       {required this.type,
       @JsonKey(name: 'location_type') required this.locationType,
       required this.unit,
       this.location,
       @JsonKey(name: 'open_weather_api_key') this.openWeatherApiKey});
 
-  factory _$ConfigUpdateWeatherImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ConfigUpdateWeatherImplFromJson(json);
+  factory _$ConfigReqUpdateSectionDataUnionWeatherImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$ConfigReqUpdateSectionDataUnionWeatherImplFromJson(json);
 
   /// Configuration section type
   @override
@@ -1254,7 +1296,7 @@ class _$ConfigUpdateWeatherImpl implements ConfigUpdateWeather {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ConfigUpdateWeatherImpl &&
+            other is _$ConfigReqUpdateSectionDataUnionWeatherImpl &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.locationType, locationType) ||
                 other.locationType == locationType) &&
@@ -1275,9 +1317,11 @@ class _$ConfigUpdateWeatherImpl implements ConfigUpdateWeather {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ConfigUpdateWeatherImplCopyWith<_$ConfigUpdateWeatherImpl> get copyWith =>
-      __$$ConfigUpdateWeatherImplCopyWithImpl<_$ConfigUpdateWeatherImpl>(
-          this, _$identity);
+  _$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWith<
+          _$ConfigReqUpdateSectionDataUnionWeatherImpl>
+      get copyWith =>
+          __$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWithImpl<
+              _$ConfigReqUpdateSectionDataUnionWeatherImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1394,10 +1438,13 @@ class _$ConfigUpdateWeatherImpl implements ConfigUpdateWeather {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigUpdateAudio value) audio,
-    required TResult Function(ConfigUpdateDisplay value) display,
-    required TResult Function(ConfigUpdateLanguage value) language,
-    required TResult Function(ConfigUpdateWeather value) weather,
+    required TResult Function(ConfigReqUpdateSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)
+        display,
+    required TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)
+        language,
+    required TResult Function(ConfigReqUpdateSectionDataUnionWeather value)
+        weather,
   }) {
     return weather(this);
   }
@@ -1405,10 +1452,10 @@ class _$ConfigUpdateWeatherImpl implements ConfigUpdateWeather {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigUpdateAudio value)? audio,
-    TResult? Function(ConfigUpdateDisplay value)? display,
-    TResult? Function(ConfigUpdateLanguage value)? language,
-    TResult? Function(ConfigUpdateWeather value)? weather,
+    TResult? Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
   }) {
     return weather?.call(this);
   }
@@ -1416,10 +1463,10 @@ class _$ConfigUpdateWeatherImpl implements ConfigUpdateWeather {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigUpdateAudio value)? audio,
-    TResult Function(ConfigUpdateDisplay value)? display,
-    TResult Function(ConfigUpdateLanguage value)? language,
-    TResult Function(ConfigUpdateWeather value)? weather,
+    TResult Function(ConfigReqUpdateSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigReqUpdateSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigReqUpdateSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigReqUpdateSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) {
     if (weather != null) {
@@ -1430,24 +1477,27 @@ class _$ConfigUpdateWeatherImpl implements ConfigUpdateWeather {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$ConfigUpdateWeatherImplToJson(
+    return _$$ConfigReqUpdateSectionDataUnionWeatherImplToJson(
       this,
     );
   }
 }
 
-abstract class ConfigUpdateWeather implements ConfigReqUpdateSectionDataUnion {
-  const factory ConfigUpdateWeather(
-      {required final ConfigUpdateWeatherType type,
-      @JsonKey(name: 'location_type')
-      required final ConfigUpdateWeatherLocationType locationType,
-      required final ConfigUpdateWeatherUnit unit,
-      final String? location,
-      @JsonKey(name: 'open_weather_api_key')
-      final String? openWeatherApiKey}) = _$ConfigUpdateWeatherImpl;
+abstract class ConfigReqUpdateSectionDataUnionWeather
+    implements ConfigReqUpdateSectionDataUnion {
+  const factory ConfigReqUpdateSectionDataUnionWeather(
+          {required final ConfigUpdateWeatherType type,
+          @JsonKey(name: 'location_type')
+          required final ConfigUpdateWeatherLocationType locationType,
+          required final ConfigUpdateWeatherUnit unit,
+          final String? location,
+          @JsonKey(name: 'open_weather_api_key')
+          final String? openWeatherApiKey}) =
+      _$ConfigReqUpdateSectionDataUnionWeatherImpl;
 
-  factory ConfigUpdateWeather.fromJson(Map<String, dynamic> json) =
-      _$ConfigUpdateWeatherImpl.fromJson;
+  factory ConfigReqUpdateSectionDataUnionWeather.fromJson(
+          Map<String, dynamic> json) =
+      _$ConfigReqUpdateSectionDataUnionWeatherImpl.fromJson;
 
   /// Configuration section type
   @override
@@ -1470,6 +1520,7 @@ abstract class ConfigUpdateWeather implements ConfigReqUpdateSectionDataUnion {
   /// Create a copy of ConfigReqUpdateSectionDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ConfigUpdateWeatherImplCopyWith<_$ConfigUpdateWeatherImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$ConfigReqUpdateSectionDataUnionWeatherImplCopyWith<
+          _$ConfigReqUpdateSectionDataUnionWeatherImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }

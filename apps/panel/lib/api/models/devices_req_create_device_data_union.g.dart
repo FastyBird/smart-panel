@@ -6,9 +6,10 @@ part of 'devices_req_create_device_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DevicesCreateThirdPartyDeviceImpl
-    _$$DevicesCreateThirdPartyDeviceImplFromJson(Map<String, dynamic> json) =>
-        _$DevicesCreateThirdPartyDeviceImpl(
+_$DevicesReqCreateDeviceDataUnionThirdPartyImpl
+    _$$DevicesReqCreateDeviceDataUnionThirdPartyImplFromJson(
+            Map<String, dynamic> json) =>
+        _$DevicesReqCreateDeviceDataUnionThirdPartyImpl(
           id: json['id'] as String,
           category: DevicesDeviceCategory.fromJson(json['category'] as String),
           name: json['name'] as String,
@@ -25,8 +26,8 @@ _$DevicesCreateThirdPartyDeviceImpl
           description: json['description'] as String?,
         );
 
-Map<String, dynamic> _$$DevicesCreateThirdPartyDeviceImplToJson(
-        _$DevicesCreateThirdPartyDeviceImpl instance) =>
+Map<String, dynamic> _$$DevicesReqCreateDeviceDataUnionThirdPartyImplToJson(
+        _$DevicesReqCreateDeviceDataUnionThirdPartyImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'category': _$DevicesDeviceCategoryEnumMap[instance.category]!,

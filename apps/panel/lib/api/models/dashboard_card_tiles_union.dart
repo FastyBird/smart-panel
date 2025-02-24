@@ -53,7 +53,7 @@ sealed class DashboardCardTilesUnion with _$DashboardCardTilesUnion {
     /// Indicates that this is a device-specific tile.
     @Default('device')
     String type,
-  }) = DashboardDeviceTile;
+  }) = DashboardCardTilesUnionDevice;
 
   @FreezedUnionValue('clock')
   const factory DashboardCardTilesUnion.clock({
@@ -91,7 +91,7 @@ sealed class DashboardCardTilesUnion with _$DashboardCardTilesUnion {
     /// Indicates that this is a clock tile.
     @Default('clock')
     String type,
-  }) = DashboardTimeTile;
+  }) = DashboardCardTilesUnionClock;
 
   @FreezedUnionValue('weather-day')
   const factory DashboardCardTilesUnion.weatherDay({
@@ -129,7 +129,7 @@ sealed class DashboardCardTilesUnion with _$DashboardCardTilesUnion {
     /// Indicates that this is a day weather tile.
     @Default('weather-day')
     String type,
-  }) = DashboardDayWeatherTile;
+  }) = DashboardCardTilesUnionWeatherDay;
 
   @FreezedUnionValue('weather-forecast')
   const factory DashboardCardTilesUnion.weatherForecast({
@@ -167,7 +167,7 @@ sealed class DashboardCardTilesUnion with _$DashboardCardTilesUnion {
     /// Indicates that this is a weather forecast tile.
     @Default('weather-forecast')
     String type,
-  }) = DashboardForecastWeatherTile;
+  }) = DashboardCardTilesUnionWeatherForecast;
 
   
   factory DashboardCardTilesUnion.fromJson(Map<String, Object?> json) => _$DashboardCardTilesUnionFromJson(json);

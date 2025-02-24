@@ -16,7 +16,7 @@ final _privateConstructorUsedError = UnsupportedError(
 
 DevicesResDeviceDataUnion _$DevicesResDeviceDataUnionFromJson(
     Map<String, dynamic> json) {
-  return DevicesThirdPartyDevice.fromJson(json);
+  return DevicesResDeviceDataUnionThirdParty.fromJson(json);
 }
 
 /// @nodoc
@@ -104,17 +104,18 @@ mixin _$DevicesResDeviceDataUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DevicesThirdPartyDevice value) thirdParty,
+    required TResult Function(DevicesResDeviceDataUnionThirdParty value)
+        thirdParty,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DevicesThirdPartyDevice value)? thirdParty,
+    TResult? Function(DevicesResDeviceDataUnionThirdParty value)? thirdParty,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DevicesThirdPartyDevice value)? thirdParty,
+    TResult Function(DevicesResDeviceDataUnionThirdParty value)? thirdParty,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -221,12 +222,12 @@ class _$DevicesResDeviceDataUnionCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$DevicesThirdPartyDeviceImplCopyWith<$Res>
+abstract class _$$DevicesResDeviceDataUnionThirdPartyImplCopyWith<$Res>
     implements $DevicesResDeviceDataUnionCopyWith<$Res> {
-  factory _$$DevicesThirdPartyDeviceImplCopyWith(
-          _$DevicesThirdPartyDeviceImpl value,
-          $Res Function(_$DevicesThirdPartyDeviceImpl) then) =
-      __$$DevicesThirdPartyDeviceImplCopyWithImpl<$Res>;
+  factory _$$DevicesResDeviceDataUnionThirdPartyImplCopyWith(
+          _$DevicesResDeviceDataUnionThirdPartyImpl value,
+          $Res Function(_$DevicesResDeviceDataUnionThirdPartyImpl) then) =
+      __$$DevicesResDeviceDataUnionThirdPartyImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
@@ -243,13 +244,13 @@ abstract class _$$DevicesThirdPartyDeviceImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$DevicesThirdPartyDeviceImplCopyWithImpl<$Res>
+class __$$DevicesResDeviceDataUnionThirdPartyImplCopyWithImpl<$Res>
     extends _$DevicesResDeviceDataUnionCopyWithImpl<$Res,
-        _$DevicesThirdPartyDeviceImpl>
-    implements _$$DevicesThirdPartyDeviceImplCopyWith<$Res> {
-  __$$DevicesThirdPartyDeviceImplCopyWithImpl(
-      _$DevicesThirdPartyDeviceImpl _value,
-      $Res Function(_$DevicesThirdPartyDeviceImpl) _then)
+        _$DevicesResDeviceDataUnionThirdPartyImpl>
+    implements _$$DevicesResDeviceDataUnionThirdPartyImplCopyWith<$Res> {
+  __$$DevicesResDeviceDataUnionThirdPartyImplCopyWithImpl(
+      _$DevicesResDeviceDataUnionThirdPartyImpl _value,
+      $Res Function(_$DevicesResDeviceDataUnionThirdPartyImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DevicesResDeviceDataUnion
@@ -268,7 +269,7 @@ class __$$DevicesThirdPartyDeviceImplCopyWithImpl<$Res>
     Object? serviceAddress = null,
     Object? type = null,
   }) {
-    return _then(_$DevicesThirdPartyDeviceImpl(
+    return _then(_$DevicesResDeviceDataUnionThirdPartyImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
@@ -315,8 +316,9 @@ class __$$DevicesThirdPartyDeviceImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DevicesThirdPartyDeviceImpl implements DevicesThirdPartyDevice {
-  const _$DevicesThirdPartyDeviceImpl(
+class _$DevicesResDeviceDataUnionThirdPartyImpl
+    implements DevicesResDeviceDataUnionThirdParty {
+  const _$DevicesResDeviceDataUnionThirdPartyImpl(
       {required this.id,
       required this.category,
       required this.name,
@@ -330,8 +332,9 @@ class _$DevicesThirdPartyDeviceImpl implements DevicesThirdPartyDevice {
       : _controls = controls,
         _channels = channels;
 
-  factory _$DevicesThirdPartyDeviceImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DevicesThirdPartyDeviceImplFromJson(json);
+  factory _$DevicesResDeviceDataUnionThirdPartyImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$DevicesResDeviceDataUnionThirdPartyImplFromJson(json);
 
   /// System-generated unique identifier for the device.
   @override
@@ -400,7 +403,7 @@ class _$DevicesThirdPartyDeviceImpl implements DevicesThirdPartyDevice {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DevicesThirdPartyDeviceImpl &&
+            other is _$DevicesResDeviceDataUnionThirdPartyImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.category, category) ||
                 other.category == category) &&
@@ -438,9 +441,10 @@ class _$DevicesThirdPartyDeviceImpl implements DevicesThirdPartyDevice {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DevicesThirdPartyDeviceImplCopyWith<_$DevicesThirdPartyDeviceImpl>
-      get copyWith => __$$DevicesThirdPartyDeviceImplCopyWithImpl<
-          _$DevicesThirdPartyDeviceImpl>(this, _$identity);
+  _$$DevicesResDeviceDataUnionThirdPartyImplCopyWith<
+          _$DevicesResDeviceDataUnionThirdPartyImpl>
+      get copyWith => __$$DevicesResDeviceDataUnionThirdPartyImplCopyWithImpl<
+          _$DevicesResDeviceDataUnionThirdPartyImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -509,7 +513,8 @@ class _$DevicesThirdPartyDeviceImpl implements DevicesThirdPartyDevice {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DevicesThirdPartyDevice value) thirdParty,
+    required TResult Function(DevicesResDeviceDataUnionThirdParty value)
+        thirdParty,
   }) {
     return thirdParty(this);
   }
@@ -517,7 +522,7 @@ class _$DevicesThirdPartyDeviceImpl implements DevicesThirdPartyDevice {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DevicesThirdPartyDevice value)? thirdParty,
+    TResult? Function(DevicesResDeviceDataUnionThirdParty value)? thirdParty,
   }) {
     return thirdParty?.call(this);
   }
@@ -525,7 +530,7 @@ class _$DevicesThirdPartyDeviceImpl implements DevicesThirdPartyDevice {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DevicesThirdPartyDevice value)? thirdParty,
+    TResult Function(DevicesResDeviceDataUnionThirdParty value)? thirdParty,
     required TResult orElse(),
   }) {
     if (thirdParty != null) {
@@ -536,14 +541,15 @@ class _$DevicesThirdPartyDeviceImpl implements DevicesThirdPartyDevice {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DevicesThirdPartyDeviceImplToJson(
+    return _$$DevicesResDeviceDataUnionThirdPartyImplToJson(
       this,
     );
   }
 }
 
-abstract class DevicesThirdPartyDevice implements DevicesResDeviceDataUnion {
-  const factory DevicesThirdPartyDevice(
+abstract class DevicesResDeviceDataUnionThirdParty
+    implements DevicesResDeviceDataUnion {
+  const factory DevicesResDeviceDataUnionThirdParty(
       {required final String id,
       required final DevicesDeviceCategory category,
       required final String name,
@@ -553,10 +559,11 @@ abstract class DevicesThirdPartyDevice implements DevicesResDeviceDataUnion {
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       @JsonKey(name: 'service_address') required final String serviceAddress,
-      final String type}) = _$DevicesThirdPartyDeviceImpl;
+      final String type}) = _$DevicesResDeviceDataUnionThirdPartyImpl;
 
-  factory DevicesThirdPartyDevice.fromJson(Map<String, dynamic> json) =
-      _$DevicesThirdPartyDeviceImpl.fromJson;
+  factory DevicesResDeviceDataUnionThirdParty.fromJson(
+          Map<String, dynamic> json) =
+      _$DevicesResDeviceDataUnionThirdPartyImpl.fromJson;
 
   /// System-generated unique identifier for the device.
   @override
@@ -605,6 +612,7 @@ abstract class DevicesThirdPartyDevice implements DevicesResDeviceDataUnion {
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DevicesThirdPartyDeviceImplCopyWith<_$DevicesThirdPartyDeviceImpl>
+  _$$DevicesResDeviceDataUnionThirdPartyImplCopyWith<
+          _$DevicesResDeviceDataUnionThirdPartyImpl>
       get copyWith => throw _privateConstructorUsedError;
 }

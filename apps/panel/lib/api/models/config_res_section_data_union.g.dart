@@ -6,18 +6,20 @@ part of 'config_res_section_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$ConfigAudioImpl _$$ConfigAudioImplFromJson(Map<String, dynamic> json) =>
-    _$ConfigAudioImpl(
-      type: json['type'] == null
-          ? ConfigAudioType.audio
-          : ConfigAudioType.fromJson(json['type'] as String),
-      speaker: json['speaker'] as bool? ?? false,
-      speakerVolume: (json['speaker_volume'] as num?)?.toInt() ?? 0,
-      microphone: json['microphone'] as bool? ?? false,
-      microphoneVolume: (json['microphone_volume'] as num?)?.toInt() ?? 0,
-    );
+_$ConfigResSectionDataUnionAudioImpl
+    _$$ConfigResSectionDataUnionAudioImplFromJson(Map<String, dynamic> json) =>
+        _$ConfigResSectionDataUnionAudioImpl(
+          type: json['type'] == null
+              ? ConfigAudioType.audio
+              : ConfigAudioType.fromJson(json['type'] as String),
+          speaker: json['speaker'] as bool? ?? false,
+          speakerVolume: (json['speaker_volume'] as num?)?.toInt() ?? 0,
+          microphone: json['microphone'] as bool? ?? false,
+          microphoneVolume: (json['microphone_volume'] as num?)?.toInt() ?? 0,
+        );
 
-Map<String, dynamic> _$$ConfigAudioImplToJson(_$ConfigAudioImpl instance) =>
+Map<String, dynamic> _$$ConfigResSectionDataUnionAudioImplToJson(
+        _$ConfigResSectionDataUnionAudioImpl instance) =>
     <String, dynamic>{
       'type': _$ConfigAudioTypeEnumMap[instance.type]!,
       'speaker': instance.speaker,
@@ -31,18 +33,22 @@ const _$ConfigAudioTypeEnumMap = {
   ConfigAudioType.$unknown: r'$unknown',
 };
 
-_$ConfigDisplayImpl _$$ConfigDisplayImplFromJson(Map<String, dynamic> json) =>
-    _$ConfigDisplayImpl(
-      type: json['type'] == null
-          ? ConfigDisplayType.display
-          : ConfigDisplayType.fromJson(json['type'] as String),
-      darkMode: json['dark_mode'] as bool? ?? false,
-      brightness: (json['brightness'] as num?)?.toInt() ?? 0,
-      screenLockDuration: (json['screen_lock_duration'] as num?)?.toInt() ?? 30,
-      screenSaver: json['screen_saver'] as bool? ?? true,
-    );
+_$ConfigResSectionDataUnionDisplayImpl
+    _$$ConfigResSectionDataUnionDisplayImplFromJson(
+            Map<String, dynamic> json) =>
+        _$ConfigResSectionDataUnionDisplayImpl(
+          type: json['type'] == null
+              ? ConfigDisplayType.display
+              : ConfigDisplayType.fromJson(json['type'] as String),
+          darkMode: json['dark_mode'] as bool? ?? false,
+          brightness: (json['brightness'] as num?)?.toInt() ?? 0,
+          screenLockDuration:
+              (json['screen_lock_duration'] as num?)?.toInt() ?? 30,
+          screenSaver: json['screen_saver'] as bool? ?? true,
+        );
 
-Map<String, dynamic> _$$ConfigDisplayImplToJson(_$ConfigDisplayImpl instance) =>
+Map<String, dynamic> _$$ConfigResSectionDataUnionDisplayImplToJson(
+        _$ConfigResSectionDataUnionDisplayImpl instance) =>
     <String, dynamic>{
       'type': _$ConfigDisplayTypeEnumMap[instance.type]!,
       'dark_mode': instance.darkMode,
@@ -56,22 +62,25 @@ const _$ConfigDisplayTypeEnumMap = {
   ConfigDisplayType.$unknown: r'$unknown',
 };
 
-_$ConfigLanguageImpl _$$ConfigLanguageImplFromJson(Map<String, dynamic> json) =>
-    _$ConfigLanguageImpl(
-      type: json['type'] == null
-          ? ConfigLanguageType.language
-          : ConfigLanguageType.fromJson(json['type'] as String),
-      language: json['language'] == null
-          ? ConfigLanguageLanguage.enUS
-          : ConfigLanguageLanguage.fromJson(json['language'] as String),
-      timezone: json['timezone'] as String? ?? 'Europe/Prague',
-      timeFormat: json['time_format'] == null
-          ? ConfigLanguageTimeFormat.value24h
-          : ConfigLanguageTimeFormat.fromJson(json['time_format'] as String),
-    );
+_$ConfigResSectionDataUnionLanguageImpl
+    _$$ConfigResSectionDataUnionLanguageImplFromJson(
+            Map<String, dynamic> json) =>
+        _$ConfigResSectionDataUnionLanguageImpl(
+          type: json['type'] == null
+              ? ConfigLanguageType.language
+              : ConfigLanguageType.fromJson(json['type'] as String),
+          language: json['language'] == null
+              ? ConfigLanguageLanguage.enUS
+              : ConfigLanguageLanguage.fromJson(json['language'] as String),
+          timezone: json['timezone'] as String? ?? 'Europe/Prague',
+          timeFormat: json['time_format'] == null
+              ? ConfigLanguageTimeFormat.value24h
+              : ConfigLanguageTimeFormat.fromJson(
+                  json['time_format'] as String),
+        );
 
-Map<String, dynamic> _$$ConfigLanguageImplToJson(
-        _$ConfigLanguageImpl instance) =>
+Map<String, dynamic> _$$ConfigResSectionDataUnionLanguageImplToJson(
+        _$ConfigResSectionDataUnionLanguageImpl instance) =>
     <String, dynamic>{
       'type': _$ConfigLanguageTypeEnumMap[instance.type]!,
       'language': _$ConfigLanguageLanguageEnumMap[instance.language]!,
@@ -96,22 +105,26 @@ const _$ConfigLanguageTimeFormatEnumMap = {
   ConfigLanguageTimeFormat.$unknown: r'$unknown',
 };
 
-_$ConfigWeatherImpl _$$ConfigWeatherImplFromJson(Map<String, dynamic> json) =>
-    _$ConfigWeatherImpl(
-      location: json['location'] as String?,
-      openWeatherApiKey: json['open_weather_api_key'] as String?,
-      type: json['type'] == null
-          ? ConfigWeatherType.weather
-          : ConfigWeatherType.fromJson(json['type'] as String),
-      locationType: json['location_type'] == null
-          ? ConfigWeatherLocationType.cityName
-          : ConfigWeatherLocationType.fromJson(json['location_type'] as String),
-      unit: json['unit'] == null
-          ? ConfigWeatherUnit.celsius
-          : ConfigWeatherUnit.fromJson(json['unit'] as String),
-    );
+_$ConfigResSectionDataUnionWeatherImpl
+    _$$ConfigResSectionDataUnionWeatherImplFromJson(
+            Map<String, dynamic> json) =>
+        _$ConfigResSectionDataUnionWeatherImpl(
+          location: json['location'] as String?,
+          openWeatherApiKey: json['open_weather_api_key'] as String?,
+          type: json['type'] == null
+              ? ConfigWeatherType.weather
+              : ConfigWeatherType.fromJson(json['type'] as String),
+          locationType: json['location_type'] == null
+              ? ConfigWeatherLocationType.cityName
+              : ConfigWeatherLocationType.fromJson(
+                  json['location_type'] as String),
+          unit: json['unit'] == null
+              ? ConfigWeatherUnit.celsius
+              : ConfigWeatherUnit.fromJson(json['unit'] as String),
+        );
 
-Map<String, dynamic> _$$ConfigWeatherImplToJson(_$ConfigWeatherImpl instance) =>
+Map<String, dynamic> _$$ConfigResSectionDataUnionWeatherImplToJson(
+        _$ConfigResSectionDataUnionWeatherImpl instance) =>
     <String, dynamic>{
       'location': instance.location,
       'open_weather_api_key': instance.openWeatherApiKey,

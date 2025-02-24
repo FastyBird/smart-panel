@@ -5,8 +5,11 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
+import '../models/location_type.dart';
 import '../models/weather_res_geolocation_city_to_coordinates.dart';
 import '../models/weather_res_geolocation_coordinates_to_city.dart';
+import '../models/weather_res_location_current.dart';
+import '../models/weather_res_location_forecast.dart';
 import '../models/weather_res_location_weather.dart';
 
 part 'weather_module_client.g.dart';
@@ -15,11 +18,37 @@ part 'weather_module_client.g.dart';
 abstract class WeatherModuleClient {
   factory WeatherModuleClient(Dio dio, {String? baseUrl}) = _WeatherModuleClient;
 
-  /// Retrieve current weather conditions.
+  /// Retrieve weather conditions.
   ///
   /// Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a specified location.
   @GET('/weather-module/weather')
   Future<HttpResponse<WeatherResLocationWeather>> getWeatherModuleWeather();
+
+  /// Retrieve current day conditions.
+  ///
+  /// Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a current day and for a specified location.
+  ///
+  /// [location] - The location for weather updates, specified as a city name or coordinates (latitude, longitude).
+  ///
+  /// [locationType] - Specifies the method used to determine the location for weather updates.
+  @GET('/weather-module/weather/current')
+  Future<HttpResponse<WeatherResLocationCurrent>> getWeatherModuleCurrent({
+    @Query('location_type') LocationType locationType = LocationType.cityName,
+    @Query('location') String? location,
+  });
+
+  /// Retrieve forecast conditions.
+  ///
+  /// Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details forecast for a specified location.
+  ///
+  /// [location] - The location for weather updates, specified as a city name or coordinates (latitude, longitude).
+  ///
+  /// [locationType] - Specifies the method used to determine the location for weather updates.
+  @GET('/weather-module/weather/forecast')
+  Future<HttpResponse<WeatherResLocationForecast>> getWeatherModuleForecast({
+    @Query('location_type') LocationType locationType = LocationType.cityName,
+    @Query('location') String? location,
+  });
 
   /// Convert city name to geographical coordinates.
   ///

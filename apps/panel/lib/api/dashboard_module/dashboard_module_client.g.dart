@@ -941,7 +941,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
 
   @override
   Future<HttpResponse<DashboardResPageCardTileDataSources>>
-      getDashboardModulePageCarTileDataSources({
+      getDashboardModulePageCardTileDataSources({
     required String pageId,
     required String cardId,
     required String tileId,
@@ -1109,7 +1109,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
 
   @override
   Future<HttpResponse<DashboardResPageCardDataSources>>
-      getDashboardModulePageCarDataSources({
+      getDashboardModulePageCardDataSources({
     required String pageId,
     required String cardId,
   }) async {

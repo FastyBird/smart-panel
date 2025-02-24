@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { v4 as uuid } from 'uuid';
 
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -44,6 +45,12 @@ describe('AuthService', () => {
 		updatedAt: null,
 	};
 
+	const mockCacheManager = {
+		get: jest.fn(),
+		set: jest.fn(),
+		del: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -70,6 +77,10 @@ describe('AuthService', () => {
 						sign: jest.fn().mockReturnValue('mocked-jwt-token'),
 						decode: jest.fn(),
 					},
+				},
+				{
+					provide: CACHE_MANAGER,
+					useValue: mockCacheManager,
 				},
 			],
 		}).compile();

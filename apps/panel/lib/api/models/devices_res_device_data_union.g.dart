@@ -6,29 +6,31 @@ part of 'devices_res_device_data_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DevicesThirdPartyDeviceImpl _$$DevicesThirdPartyDeviceImplFromJson(
-        Map<String, dynamic> json) =>
-    _$DevicesThirdPartyDeviceImpl(
-      id: json['id'] as String,
-      category: DevicesDeviceCategory.fromJson(json['category'] as String),
-      name: json['name'] as String,
-      description: json['description'] as String?,
-      controls: (json['controls'] as List<dynamic>)
-          .map((e) => DevicesDeviceControl.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      channels: (json['channels'] as List<dynamic>)
-          .map((e) => DevicesChannel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
-          ? null
-          : DateTime.parse(json['updated_at'] as String),
-      serviceAddress: json['service_address'] as String,
-      type: json['type'] as String? ?? 'third-party',
-    );
+_$DevicesResDeviceDataUnionThirdPartyImpl
+    _$$DevicesResDeviceDataUnionThirdPartyImplFromJson(
+            Map<String, dynamic> json) =>
+        _$DevicesResDeviceDataUnionThirdPartyImpl(
+          id: json['id'] as String,
+          category: DevicesDeviceCategory.fromJson(json['category'] as String),
+          name: json['name'] as String,
+          description: json['description'] as String?,
+          controls: (json['controls'] as List<dynamic>)
+              .map((e) =>
+                  DevicesDeviceControl.fromJson(e as Map<String, dynamic>))
+              .toList(),
+          channels: (json['channels'] as List<dynamic>)
+              .map((e) => DevicesChannel.fromJson(e as Map<String, dynamic>))
+              .toList(),
+          createdAt: DateTime.parse(json['created_at'] as String),
+          updatedAt: json['updated_at'] == null
+              ? null
+              : DateTime.parse(json['updated_at'] as String),
+          serviceAddress: json['service_address'] as String,
+          type: json['type'] as String? ?? 'third-party',
+        );
 
-Map<String, dynamic> _$$DevicesThirdPartyDeviceImplToJson(
-        _$DevicesThirdPartyDeviceImpl instance) =>
+Map<String, dynamic> _$$DevicesResDeviceDataUnionThirdPartyImplToJson(
+        _$DevicesResDeviceDataUnionThirdPartyImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'category': _$DevicesDeviceCategoryEnumMap[instance.category]!,

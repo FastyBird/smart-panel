@@ -37,7 +37,7 @@ sealed class DashboardTileBaseDataSourceUnion with _$DashboardTileBaseDataSource
     /// Indicates that this data source is linked to a device channel.
     @Default('device-channel')
     String type,
-  }) = DashboardDeviceChannelDataSource;
+  }) = DashboardTileBaseDataSourceUnionDeviceChannel;
 
   
   factory DashboardTileBaseDataSourceUnion.fromJson(Map<String, Object?> json) => _$DashboardTileBaseDataSourceUnionFromJson(json);

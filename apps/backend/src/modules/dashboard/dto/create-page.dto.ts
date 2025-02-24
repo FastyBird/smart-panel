@@ -14,13 +14,13 @@ import type { components } from '../../../openapi';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 import { ValidatePageTiles } from '../validators/page-tile-type-constraint.validator';
 
+import { CreateCardDto } from './create-card.dto';
 import {
 	CreatePageDayWeatherTileDto,
 	CreatePageDeviceTileDto,
 	CreatePageForecastWeatherTileDto,
 	CreatePageTimeTileDto,
 } from './create-page-tile.dto';
-import { CreateTileDto } from './create-tile.dto';
 
 type ReqCreatePage = components['schemas']['DashboardReqCreatePage'];
 type CreatePageBase = components['schemas']['DashboardCreatePageBase'];
@@ -87,10 +87,9 @@ export class CreateCardsPageDto extends CreatePageDto implements CreateCardsPage
 
 	@Expose()
 	@IsOptional()
-	@IsArray({ message: '[{"field":"tiles","reason":"Tiles must be a valid array."}]' })
+	@IsArray({ message: '[{"field":"tiles","reason":"Cards must be a valid array."}]' })
 	@ValidateNested({ each: true })
-	@ValidatePageTiles()
-	tiles?: CreateTileDto[];
+	cards?: CreateCardDto[];
 }
 
 export class CreateTilesPageDto extends CreatePageDto implements CreateTilesPage {

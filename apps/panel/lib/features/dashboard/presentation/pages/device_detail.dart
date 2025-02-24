@@ -1,10 +1,8 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/capabilities/data/devices/capability.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/data/channel.dart';
-import 'package:fastybird_smart_panel/features/dashboard/mappers/data/device.dart';
-import 'package:fastybird_smart_panel/features/dashboard/repositories/data/devices/devices_module.dart';
+import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
+import 'package:fastybird_smart_panel/features/dashboard/services/devices.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -19,43 +17,14 @@ class DeviceDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DevicesModuleRepository>(builder: (
+    return Consumer<DevicesService>(builder: (
       context,
-      devicesModuleRepository,
+      devicesService,
       _,
     ) {
-      if (devicesModuleRepository.isLoading) {
-        return Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: _screenService.scale(50),
-              height: _screenService.scale(50),
-              child: const CircularProgressIndicator(),
-            ),
-          ),
-        );
-      }
+      var deviceType = devicesService.getDevice(id);
 
-      var device = devicesModuleRepository.getDevice(id);
-      DeviceCapability? capability;
-
-      if (device != null) {
-        capability = buildDeviceCapability(
-          device,
-          devicesModuleRepository
-              .getChannels(device.channels)
-              .map(
-                (channel) => buildChannelCapability(
-                  channel,
-                  devicesModuleRepository
-                      .getChannelsProperties(channel.properties),
-                ),
-              )
-              .toList(),
-        );
-      }
-
-      if (device == null || capability == null) {
+      if (deviceType == null) {
         final localizations = AppLocalizations.of(context)!;
 
         return Scaffold(
@@ -87,7 +56,7 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
-      return buildDeviceDetail(device, capability);
+      return buildDeviceDetail(deviceType);
     });
   }
 }

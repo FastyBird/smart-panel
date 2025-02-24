@@ -1,13 +1,12 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/models/general/configuration.dart';
-import 'package:fastybird_smart_panel/core/repositories/config_module.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/types/configuration.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/export.dart';
+import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -21,7 +20,8 @@ class WeatherSettingsPage extends StatefulWidget {
 
 class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final ConfigModuleRepository _repository = locator<ConfigModuleRepository>();
+  final WeatherConfigRepository _repository =
+      locator<WeatherConfigRepository>();
 
   late WeatherUnit _unit;
   late String? _location;
@@ -43,11 +43,9 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   }
 
   void _syncStateWithRepository() {
-    ConfigWeatherModel config = _repository.weatherConfiguration;
-
     setState(() {
-      _unit = config.unit;
-      _location = config.location;
+      _unit = _repository.data.unit;
+      _location = _repository.data.location;
     });
   }
 

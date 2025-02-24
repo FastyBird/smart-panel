@@ -29,7 +29,7 @@ sealed class DashboardReqCreateCardDataSourceDataUnion with _$DashboardReqCreate
     /// Specifies the type of data source as linked to a device channel.
     @Default('device-channel')
     String type,
-  }) = DashboardCreateDeviceChannelDataSource;
+  }) = DashboardReqCreateCardDataSourceDataUnionDeviceChannel;
 
   
   factory DashboardReqCreateCardDataSourceDataUnion.fromJson(Map<String, Object?> json) => _$DashboardReqCreateCardDataSourceDataUnionFromJson(json);

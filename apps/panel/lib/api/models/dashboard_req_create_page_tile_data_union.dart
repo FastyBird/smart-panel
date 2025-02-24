@@ -43,7 +43,7 @@ sealed class DashboardReqCreatePageTileDataUnion with _$DashboardReqCreatePageTi
     /// Specifies the type of tile as a device-specific tile.
     @Default('device')
     String type,
-  }) = DashboardCreateDeviceTile;
+  }) = DashboardReqCreatePageTileDataUnionDevice;
 
   @FreezedUnionValue('clock')
   const factory DashboardReqCreatePageTileDataUnion.clock({
@@ -71,7 +71,7 @@ sealed class DashboardReqCreatePageTileDataUnion with _$DashboardReqCreatePageTi
     /// Specifies the type of tile as a clock.
     @Default('clock')
     String type,
-  }) = DashboardCreateTimeTile;
+  }) = DashboardReqCreatePageTileDataUnionClock;
 
   @FreezedUnionValue('weather-day')
   const factory DashboardReqCreatePageTileDataUnion.weatherDay({
@@ -99,7 +99,7 @@ sealed class DashboardReqCreatePageTileDataUnion with _$DashboardReqCreatePageTi
     /// Specifies the type of tile as a day weather tile.
     @Default('weather-day')
     String type,
-  }) = DashboardCreateDayWeatherTile;
+  }) = DashboardReqCreatePageTileDataUnionWeatherDay;
 
   @FreezedUnionValue('weather-forecast')
   const factory DashboardReqCreatePageTileDataUnion.weatherForecast({
@@ -127,7 +127,7 @@ sealed class DashboardReqCreatePageTileDataUnion with _$DashboardReqCreatePageTi
     /// Specifies the type of tile as a weather forecast tile.
     @Default('weather-forecast')
     String type,
-  }) = DashboardCreateForecastWeatherTile;
+  }) = DashboardReqCreatePageTileDataUnionWeatherForecast;
 
   
   factory DashboardReqCreatePageTileDataUnion.fromJson(Map<String, Object?> json) => _$DashboardReqCreatePageTileDataUnionFromJson(json);

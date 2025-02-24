@@ -36,7 +36,7 @@ sealed class ConfigReqUpdateSectionDataUnion with _$ConfigReqUpdateSectionDataUn
     /// Sets the microphone volume (0-100).
     @JsonKey(name: 'microphone_volume')
     required int microphoneVolume,
-  }) = ConfigUpdateAudio;
+  }) = ConfigReqUpdateSectionDataUnionAudio;
 
   @FreezedUnionValue('display')
   const factory ConfigReqUpdateSectionDataUnion.display({
@@ -57,7 +57,7 @@ sealed class ConfigReqUpdateSectionDataUnion with _$ConfigReqUpdateSectionDataUn
     /// Enables or disables the screen saver.
     @JsonKey(name: 'screen_saver')
     required bool screenSaver,
-  }) = ConfigUpdateDisplay;
+  }) = ConfigReqUpdateSectionDataUnionDisplay;
 
   @FreezedUnionValue('language')
   const factory ConfigReqUpdateSectionDataUnion.language({
@@ -73,7 +73,7 @@ sealed class ConfigReqUpdateSectionDataUnion with _$ConfigReqUpdateSectionDataUn
     /// Sets the time format (12-hour or 24-hour).
     @JsonKey(name: 'time_format')
     required ConfigUpdateLanguageTimeFormat timeFormat,
-  }) = ConfigUpdateLanguage;
+  }) = ConfigReqUpdateSectionDataUnionLanguage;
 
   @FreezedUnionValue('weather')
   const factory ConfigReqUpdateSectionDataUnion.weather({
@@ -93,7 +93,7 @@ sealed class ConfigReqUpdateSectionDataUnion with _$ConfigReqUpdateSectionDataUn
     /// API key for OpenWeatherMap. Required only if using OpenWeatherMap as a data source.
     @JsonKey(name: 'open_weather_api_key')
     String? openWeatherApiKey,
-  }) = ConfigUpdateWeather;
+  }) = ConfigReqUpdateSectionDataUnionWeather;
 
   
   factory ConfigReqUpdateSectionDataUnion.fromJson(Map<String, Object?> json) => _$ConfigReqUpdateSectionDataUnionFromJson(json);

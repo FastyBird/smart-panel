@@ -18,13 +18,13 @@ ConfigResSectionDataUnion _$ConfigResSectionDataUnionFromJson(
     Map<String, dynamic> json) {
   switch (json['type']) {
     case 'audio':
-      return ConfigAudio.fromJson(json);
+      return ConfigResSectionDataUnionAudio.fromJson(json);
     case 'display':
-      return ConfigDisplay.fromJson(json);
+      return ConfigResSectionDataUnionDisplay.fromJson(json);
     case 'language':
-      return ConfigLanguage.fromJson(json);
+      return ConfigResSectionDataUnionLanguage.fromJson(json);
     case 'weather':
-      return ConfigWeather.fromJson(json);
+      return ConfigResSectionDataUnionWeather.fromJson(json);
 
     default:
       throw CheckedFromJsonException(json, 'type', 'ConfigResSectionDataUnion',
@@ -135,26 +135,26 @@ mixin _$ConfigResSectionDataUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigAudio value) audio,
-    required TResult Function(ConfigDisplay value) display,
-    required TResult Function(ConfigLanguage value) language,
-    required TResult Function(ConfigWeather value) weather,
+    required TResult Function(ConfigResSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigResSectionDataUnionDisplay value) display,
+    required TResult Function(ConfigResSectionDataUnionLanguage value) language,
+    required TResult Function(ConfigResSectionDataUnionWeather value) weather,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigAudio value)? audio,
-    TResult? Function(ConfigDisplay value)? display,
-    TResult? Function(ConfigLanguage value)? language,
-    TResult? Function(ConfigWeather value)? weather,
+    TResult? Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigResSectionDataUnionWeather value)? weather,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigAudio value)? audio,
-    TResult Function(ConfigDisplay value)? display,
-    TResult Function(ConfigLanguage value)? language,
-    TResult Function(ConfigWeather value)? weather,
+    TResult Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigResSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -186,10 +186,11 @@ class _$ConfigResSectionDataUnionCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$ConfigAudioImplCopyWith<$Res> {
-  factory _$$ConfigAudioImplCopyWith(
-          _$ConfigAudioImpl value, $Res Function(_$ConfigAudioImpl) then) =
-      __$$ConfigAudioImplCopyWithImpl<$Res>;
+abstract class _$$ConfigResSectionDataUnionAudioImplCopyWith<$Res> {
+  factory _$$ConfigResSectionDataUnionAudioImplCopyWith(
+          _$ConfigResSectionDataUnionAudioImpl value,
+          $Res Function(_$ConfigResSectionDataUnionAudioImpl) then) =
+      __$$ConfigResSectionDataUnionAudioImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
       {ConfigAudioType type,
@@ -200,11 +201,13 @@ abstract class _$$ConfigAudioImplCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$ConfigAudioImplCopyWithImpl<$Res>
-    extends _$ConfigResSectionDataUnionCopyWithImpl<$Res, _$ConfigAudioImpl>
-    implements _$$ConfigAudioImplCopyWith<$Res> {
-  __$$ConfigAudioImplCopyWithImpl(
-      _$ConfigAudioImpl _value, $Res Function(_$ConfigAudioImpl) _then)
+class __$$ConfigResSectionDataUnionAudioImplCopyWithImpl<$Res>
+    extends _$ConfigResSectionDataUnionCopyWithImpl<$Res,
+        _$ConfigResSectionDataUnionAudioImpl>
+    implements _$$ConfigResSectionDataUnionAudioImplCopyWith<$Res> {
+  __$$ConfigResSectionDataUnionAudioImplCopyWithImpl(
+      _$ConfigResSectionDataUnionAudioImpl _value,
+      $Res Function(_$ConfigResSectionDataUnionAudioImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ConfigResSectionDataUnion
@@ -218,7 +221,7 @@ class __$$ConfigAudioImplCopyWithImpl<$Res>
     Object? microphone = null,
     Object? microphoneVolume = null,
   }) {
-    return _then(_$ConfigAudioImpl(
+    return _then(_$ConfigResSectionDataUnionAudioImpl(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -245,16 +248,18 @@ class __$$ConfigAudioImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$ConfigAudioImpl implements ConfigAudio {
-  const _$ConfigAudioImpl(
+class _$ConfigResSectionDataUnionAudioImpl
+    implements ConfigResSectionDataUnionAudio {
+  const _$ConfigResSectionDataUnionAudioImpl(
       {this.type = ConfigAudioType.audio,
       this.speaker = false,
       @JsonKey(name: 'speaker_volume') this.speakerVolume = 0,
       this.microphone = false,
       @JsonKey(name: 'microphone_volume') this.microphoneVolume = 0});
 
-  factory _$ConfigAudioImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ConfigAudioImplFromJson(json);
+  factory _$ConfigResSectionDataUnionAudioImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$ConfigResSectionDataUnionAudioImplFromJson(json);
 
   /// Configuration section type
   @override
@@ -290,7 +295,7 @@ class _$ConfigAudioImpl implements ConfigAudio {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ConfigAudioImpl &&
+            other is _$ConfigResSectionDataUnionAudioImpl &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.speaker, speaker) || other.speaker == speaker) &&
             (identical(other.speakerVolume, speakerVolume) ||
@@ -311,8 +316,10 @@ class _$ConfigAudioImpl implements ConfigAudio {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ConfigAudioImplCopyWith<_$ConfigAudioImpl> get copyWith =>
-      __$$ConfigAudioImplCopyWithImpl<_$ConfigAudioImpl>(this, _$identity);
+  _$$ConfigResSectionDataUnionAudioImplCopyWith<
+          _$ConfigResSectionDataUnionAudioImpl>
+      get copyWith => __$$ConfigResSectionDataUnionAudioImplCopyWithImpl<
+          _$ConfigResSectionDataUnionAudioImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -427,10 +434,10 @@ class _$ConfigAudioImpl implements ConfigAudio {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigAudio value) audio,
-    required TResult Function(ConfigDisplay value) display,
-    required TResult Function(ConfigLanguage value) language,
-    required TResult Function(ConfigWeather value) weather,
+    required TResult Function(ConfigResSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigResSectionDataUnionDisplay value) display,
+    required TResult Function(ConfigResSectionDataUnionLanguage value) language,
+    required TResult Function(ConfigResSectionDataUnionWeather value) weather,
   }) {
     return audio(this);
   }
@@ -438,10 +445,10 @@ class _$ConfigAudioImpl implements ConfigAudio {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigAudio value)? audio,
-    TResult? Function(ConfigDisplay value)? display,
-    TResult? Function(ConfigLanguage value)? language,
-    TResult? Function(ConfigWeather value)? weather,
+    TResult? Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigResSectionDataUnionWeather value)? weather,
   }) {
     return audio?.call(this);
   }
@@ -449,10 +456,10 @@ class _$ConfigAudioImpl implements ConfigAudio {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigAudio value)? audio,
-    TResult Function(ConfigDisplay value)? display,
-    TResult Function(ConfigLanguage value)? language,
-    TResult Function(ConfigWeather value)? weather,
+    TResult Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigResSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) {
     if (audio != null) {
@@ -463,23 +470,24 @@ class _$ConfigAudioImpl implements ConfigAudio {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$ConfigAudioImplToJson(
+    return _$$ConfigResSectionDataUnionAudioImplToJson(
       this,
     );
   }
 }
 
-abstract class ConfigAudio implements ConfigResSectionDataUnion {
-  const factory ConfigAudio(
+abstract class ConfigResSectionDataUnionAudio
+    implements ConfigResSectionDataUnion {
+  const factory ConfigResSectionDataUnionAudio(
           {final ConfigAudioType type,
           final bool speaker,
           @JsonKey(name: 'speaker_volume') final int speakerVolume,
           final bool microphone,
           @JsonKey(name: 'microphone_volume') final int microphoneVolume}) =
-      _$ConfigAudioImpl;
+      _$ConfigResSectionDataUnionAudioImpl;
 
-  factory ConfigAudio.fromJson(Map<String, dynamic> json) =
-      _$ConfigAudioImpl.fromJson;
+  factory ConfigResSectionDataUnionAudio.fromJson(Map<String, dynamic> json) =
+      _$ConfigResSectionDataUnionAudioImpl.fromJson;
 
   /// Configuration section type
   @override
@@ -502,15 +510,17 @@ abstract class ConfigAudio implements ConfigResSectionDataUnion {
   /// Create a copy of ConfigResSectionDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ConfigAudioImplCopyWith<_$ConfigAudioImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$ConfigResSectionDataUnionAudioImplCopyWith<
+          _$ConfigResSectionDataUnionAudioImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ConfigDisplayImplCopyWith<$Res> {
-  factory _$$ConfigDisplayImplCopyWith(
-          _$ConfigDisplayImpl value, $Res Function(_$ConfigDisplayImpl) then) =
-      __$$ConfigDisplayImplCopyWithImpl<$Res>;
+abstract class _$$ConfigResSectionDataUnionDisplayImplCopyWith<$Res> {
+  factory _$$ConfigResSectionDataUnionDisplayImplCopyWith(
+          _$ConfigResSectionDataUnionDisplayImpl value,
+          $Res Function(_$ConfigResSectionDataUnionDisplayImpl) then) =
+      __$$ConfigResSectionDataUnionDisplayImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
       {ConfigDisplayType type,
@@ -521,11 +531,13 @@ abstract class _$$ConfigDisplayImplCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$ConfigDisplayImplCopyWithImpl<$Res>
-    extends _$ConfigResSectionDataUnionCopyWithImpl<$Res, _$ConfigDisplayImpl>
-    implements _$$ConfigDisplayImplCopyWith<$Res> {
-  __$$ConfigDisplayImplCopyWithImpl(
-      _$ConfigDisplayImpl _value, $Res Function(_$ConfigDisplayImpl) _then)
+class __$$ConfigResSectionDataUnionDisplayImplCopyWithImpl<$Res>
+    extends _$ConfigResSectionDataUnionCopyWithImpl<$Res,
+        _$ConfigResSectionDataUnionDisplayImpl>
+    implements _$$ConfigResSectionDataUnionDisplayImplCopyWith<$Res> {
+  __$$ConfigResSectionDataUnionDisplayImplCopyWithImpl(
+      _$ConfigResSectionDataUnionDisplayImpl _value,
+      $Res Function(_$ConfigResSectionDataUnionDisplayImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ConfigResSectionDataUnion
@@ -539,7 +551,7 @@ class __$$ConfigDisplayImplCopyWithImpl<$Res>
     Object? screenLockDuration = null,
     Object? screenSaver = null,
   }) {
-    return _then(_$ConfigDisplayImpl(
+    return _then(_$ConfigResSectionDataUnionDisplayImpl(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -566,16 +578,18 @@ class __$$ConfigDisplayImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$ConfigDisplayImpl implements ConfigDisplay {
-  const _$ConfigDisplayImpl(
+class _$ConfigResSectionDataUnionDisplayImpl
+    implements ConfigResSectionDataUnionDisplay {
+  const _$ConfigResSectionDataUnionDisplayImpl(
       {this.type = ConfigDisplayType.display,
       @JsonKey(name: 'dark_mode') this.darkMode = false,
       this.brightness = 0,
       @JsonKey(name: 'screen_lock_duration') this.screenLockDuration = 30,
       @JsonKey(name: 'screen_saver') this.screenSaver = true});
 
-  factory _$ConfigDisplayImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ConfigDisplayImplFromJson(json);
+  factory _$ConfigResSectionDataUnionDisplayImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$ConfigResSectionDataUnionDisplayImplFromJson(json);
 
   /// Configuration section type
   @override
@@ -611,7 +625,7 @@ class _$ConfigDisplayImpl implements ConfigDisplay {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ConfigDisplayImpl &&
+            other is _$ConfigResSectionDataUnionDisplayImpl &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.darkMode, darkMode) ||
                 other.darkMode == darkMode) &&
@@ -633,8 +647,10 @@ class _$ConfigDisplayImpl implements ConfigDisplay {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ConfigDisplayImplCopyWith<_$ConfigDisplayImpl> get copyWith =>
-      __$$ConfigDisplayImplCopyWithImpl<_$ConfigDisplayImpl>(this, _$identity);
+  _$$ConfigResSectionDataUnionDisplayImplCopyWith<
+          _$ConfigResSectionDataUnionDisplayImpl>
+      get copyWith => __$$ConfigResSectionDataUnionDisplayImplCopyWithImpl<
+          _$ConfigResSectionDataUnionDisplayImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -750,10 +766,10 @@ class _$ConfigDisplayImpl implements ConfigDisplay {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigAudio value) audio,
-    required TResult Function(ConfigDisplay value) display,
-    required TResult Function(ConfigLanguage value) language,
-    required TResult Function(ConfigWeather value) weather,
+    required TResult Function(ConfigResSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigResSectionDataUnionDisplay value) display,
+    required TResult Function(ConfigResSectionDataUnionLanguage value) language,
+    required TResult Function(ConfigResSectionDataUnionWeather value) weather,
   }) {
     return display(this);
   }
@@ -761,10 +777,10 @@ class _$ConfigDisplayImpl implements ConfigDisplay {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigAudio value)? audio,
-    TResult? Function(ConfigDisplay value)? display,
-    TResult? Function(ConfigLanguage value)? language,
-    TResult? Function(ConfigWeather value)? weather,
+    TResult? Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigResSectionDataUnionWeather value)? weather,
   }) {
     return display?.call(this);
   }
@@ -772,10 +788,10 @@ class _$ConfigDisplayImpl implements ConfigDisplay {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigAudio value)? audio,
-    TResult Function(ConfigDisplay value)? display,
-    TResult Function(ConfigLanguage value)? language,
-    TResult Function(ConfigWeather value)? weather,
+    TResult Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigResSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) {
     if (display != null) {
@@ -786,23 +802,24 @@ class _$ConfigDisplayImpl implements ConfigDisplay {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$ConfigDisplayImplToJson(
+    return _$$ConfigResSectionDataUnionDisplayImplToJson(
       this,
     );
   }
 }
 
-abstract class ConfigDisplay implements ConfigResSectionDataUnion {
-  const factory ConfigDisplay(
+abstract class ConfigResSectionDataUnionDisplay
+    implements ConfigResSectionDataUnion {
+  const factory ConfigResSectionDataUnionDisplay(
           {final ConfigDisplayType type,
           @JsonKey(name: 'dark_mode') final bool darkMode,
           final int brightness,
           @JsonKey(name: 'screen_lock_duration') final int screenLockDuration,
           @JsonKey(name: 'screen_saver') final bool screenSaver}) =
-      _$ConfigDisplayImpl;
+      _$ConfigResSectionDataUnionDisplayImpl;
 
-  factory ConfigDisplay.fromJson(Map<String, dynamic> json) =
-      _$ConfigDisplayImpl.fromJson;
+  factory ConfigResSectionDataUnionDisplay.fromJson(Map<String, dynamic> json) =
+      _$ConfigResSectionDataUnionDisplayImpl.fromJson;
 
   /// Configuration section type
   @override
@@ -826,15 +843,17 @@ abstract class ConfigDisplay implements ConfigResSectionDataUnion {
   /// Create a copy of ConfigResSectionDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ConfigDisplayImplCopyWith<_$ConfigDisplayImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$ConfigResSectionDataUnionDisplayImplCopyWith<
+          _$ConfigResSectionDataUnionDisplayImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ConfigLanguageImplCopyWith<$Res> {
-  factory _$$ConfigLanguageImplCopyWith(_$ConfigLanguageImpl value,
-          $Res Function(_$ConfigLanguageImpl) then) =
-      __$$ConfigLanguageImplCopyWithImpl<$Res>;
+abstract class _$$ConfigResSectionDataUnionLanguageImplCopyWith<$Res> {
+  factory _$$ConfigResSectionDataUnionLanguageImplCopyWith(
+          _$ConfigResSectionDataUnionLanguageImpl value,
+          $Res Function(_$ConfigResSectionDataUnionLanguageImpl) then) =
+      __$$ConfigResSectionDataUnionLanguageImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
       {ConfigLanguageType type,
@@ -844,11 +863,13 @@ abstract class _$$ConfigLanguageImplCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$ConfigLanguageImplCopyWithImpl<$Res>
-    extends _$ConfigResSectionDataUnionCopyWithImpl<$Res, _$ConfigLanguageImpl>
-    implements _$$ConfigLanguageImplCopyWith<$Res> {
-  __$$ConfigLanguageImplCopyWithImpl(
-      _$ConfigLanguageImpl _value, $Res Function(_$ConfigLanguageImpl) _then)
+class __$$ConfigResSectionDataUnionLanguageImplCopyWithImpl<$Res>
+    extends _$ConfigResSectionDataUnionCopyWithImpl<$Res,
+        _$ConfigResSectionDataUnionLanguageImpl>
+    implements _$$ConfigResSectionDataUnionLanguageImplCopyWith<$Res> {
+  __$$ConfigResSectionDataUnionLanguageImplCopyWithImpl(
+      _$ConfigResSectionDataUnionLanguageImpl _value,
+      $Res Function(_$ConfigResSectionDataUnionLanguageImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ConfigResSectionDataUnion
@@ -861,7 +882,7 @@ class __$$ConfigLanguageImplCopyWithImpl<$Res>
     Object? timezone = null,
     Object? timeFormat = null,
   }) {
-    return _then(_$ConfigLanguageImpl(
+    return _then(_$ConfigResSectionDataUnionLanguageImpl(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -884,16 +905,18 @@ class __$$ConfigLanguageImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$ConfigLanguageImpl implements ConfigLanguage {
-  const _$ConfigLanguageImpl(
+class _$ConfigResSectionDataUnionLanguageImpl
+    implements ConfigResSectionDataUnionLanguage {
+  const _$ConfigResSectionDataUnionLanguageImpl(
       {this.type = ConfigLanguageType.language,
       this.language = ConfigLanguageLanguage.enUS,
       this.timezone = 'Europe/Prague',
       @JsonKey(name: 'time_format')
       this.timeFormat = ConfigLanguageTimeFormat.value24h});
 
-  factory _$ConfigLanguageImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ConfigLanguageImplFromJson(json);
+  factory _$ConfigResSectionDataUnionLanguageImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$ConfigResSectionDataUnionLanguageImplFromJson(json);
 
   /// Configuration section type
   @override
@@ -924,7 +947,7 @@ class _$ConfigLanguageImpl implements ConfigLanguage {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ConfigLanguageImpl &&
+            other is _$ConfigResSectionDataUnionLanguageImpl &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.language, language) ||
                 other.language == language) &&
@@ -944,9 +967,10 @@ class _$ConfigLanguageImpl implements ConfigLanguage {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ConfigLanguageImplCopyWith<_$ConfigLanguageImpl> get copyWith =>
-      __$$ConfigLanguageImplCopyWithImpl<_$ConfigLanguageImpl>(
-          this, _$identity);
+  _$$ConfigResSectionDataUnionLanguageImplCopyWith<
+          _$ConfigResSectionDataUnionLanguageImpl>
+      get copyWith => __$$ConfigResSectionDataUnionLanguageImplCopyWithImpl<
+          _$ConfigResSectionDataUnionLanguageImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1060,10 +1084,10 @@ class _$ConfigLanguageImpl implements ConfigLanguage {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigAudio value) audio,
-    required TResult Function(ConfigDisplay value) display,
-    required TResult Function(ConfigLanguage value) language,
-    required TResult Function(ConfigWeather value) weather,
+    required TResult Function(ConfigResSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigResSectionDataUnionDisplay value) display,
+    required TResult Function(ConfigResSectionDataUnionLanguage value) language,
+    required TResult Function(ConfigResSectionDataUnionWeather value) weather,
   }) {
     return language(this);
   }
@@ -1071,10 +1095,10 @@ class _$ConfigLanguageImpl implements ConfigLanguage {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigAudio value)? audio,
-    TResult? Function(ConfigDisplay value)? display,
-    TResult? Function(ConfigLanguage value)? language,
-    TResult? Function(ConfigWeather value)? weather,
+    TResult? Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigResSectionDataUnionWeather value)? weather,
   }) {
     return language?.call(this);
   }
@@ -1082,10 +1106,10 @@ class _$ConfigLanguageImpl implements ConfigLanguage {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigAudio value)? audio,
-    TResult Function(ConfigDisplay value)? display,
-    TResult Function(ConfigLanguage value)? language,
-    TResult Function(ConfigWeather value)? weather,
+    TResult Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigResSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) {
     if (language != null) {
@@ -1096,22 +1120,25 @@ class _$ConfigLanguageImpl implements ConfigLanguage {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$ConfigLanguageImplToJson(
+    return _$$ConfigResSectionDataUnionLanguageImplToJson(
       this,
     );
   }
 }
 
-abstract class ConfigLanguage implements ConfigResSectionDataUnion {
-  const factory ConfigLanguage(
-      {final ConfigLanguageType type,
-      final ConfigLanguageLanguage language,
-      final String timezone,
-      @JsonKey(name: 'time_format')
-      final ConfigLanguageTimeFormat timeFormat}) = _$ConfigLanguageImpl;
+abstract class ConfigResSectionDataUnionLanguage
+    implements ConfigResSectionDataUnion {
+  const factory ConfigResSectionDataUnionLanguage(
+          {final ConfigLanguageType type,
+          final ConfigLanguageLanguage language,
+          final String timezone,
+          @JsonKey(name: 'time_format')
+          final ConfigLanguageTimeFormat timeFormat}) =
+      _$ConfigResSectionDataUnionLanguageImpl;
 
-  factory ConfigLanguage.fromJson(Map<String, dynamic> json) =
-      _$ConfigLanguageImpl.fromJson;
+  factory ConfigResSectionDataUnionLanguage.fromJson(
+          Map<String, dynamic> json) =
+      _$ConfigResSectionDataUnionLanguageImpl.fromJson;
 
   /// Configuration section type
   @override
@@ -1130,15 +1157,17 @@ abstract class ConfigLanguage implements ConfigResSectionDataUnion {
   /// Create a copy of ConfigResSectionDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ConfigLanguageImplCopyWith<_$ConfigLanguageImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$ConfigResSectionDataUnionLanguageImplCopyWith<
+          _$ConfigResSectionDataUnionLanguageImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ConfigWeatherImplCopyWith<$Res> {
-  factory _$$ConfigWeatherImplCopyWith(
-          _$ConfigWeatherImpl value, $Res Function(_$ConfigWeatherImpl) then) =
-      __$$ConfigWeatherImplCopyWithImpl<$Res>;
+abstract class _$$ConfigResSectionDataUnionWeatherImplCopyWith<$Res> {
+  factory _$$ConfigResSectionDataUnionWeatherImplCopyWith(
+          _$ConfigResSectionDataUnionWeatherImpl value,
+          $Res Function(_$ConfigResSectionDataUnionWeatherImpl) then) =
+      __$$ConfigResSectionDataUnionWeatherImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
       {String? location,
@@ -1149,11 +1178,13 @@ abstract class _$$ConfigWeatherImplCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$ConfigWeatherImplCopyWithImpl<$Res>
-    extends _$ConfigResSectionDataUnionCopyWithImpl<$Res, _$ConfigWeatherImpl>
-    implements _$$ConfigWeatherImplCopyWith<$Res> {
-  __$$ConfigWeatherImplCopyWithImpl(
-      _$ConfigWeatherImpl _value, $Res Function(_$ConfigWeatherImpl) _then)
+class __$$ConfigResSectionDataUnionWeatherImplCopyWithImpl<$Res>
+    extends _$ConfigResSectionDataUnionCopyWithImpl<$Res,
+        _$ConfigResSectionDataUnionWeatherImpl>
+    implements _$$ConfigResSectionDataUnionWeatherImplCopyWith<$Res> {
+  __$$ConfigResSectionDataUnionWeatherImplCopyWithImpl(
+      _$ConfigResSectionDataUnionWeatherImpl _value,
+      $Res Function(_$ConfigResSectionDataUnionWeatherImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of ConfigResSectionDataUnion
@@ -1167,7 +1198,7 @@ class __$$ConfigWeatherImplCopyWithImpl<$Res>
     Object? locationType = null,
     Object? unit = null,
   }) {
-    return _then(_$ConfigWeatherImpl(
+    return _then(_$ConfigResSectionDataUnionWeatherImpl(
       location: freezed == location
           ? _value.location
           : location // ignore: cast_nullable_to_non_nullable
@@ -1194,8 +1225,9 @@ class __$$ConfigWeatherImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$ConfigWeatherImpl implements ConfigWeather {
-  const _$ConfigWeatherImpl(
+class _$ConfigResSectionDataUnionWeatherImpl
+    implements ConfigResSectionDataUnionWeather {
+  const _$ConfigResSectionDataUnionWeatherImpl(
       {required this.location,
       @JsonKey(name: 'open_weather_api_key') required this.openWeatherApiKey,
       this.type = ConfigWeatherType.weather,
@@ -1203,8 +1235,9 @@ class _$ConfigWeatherImpl implements ConfigWeather {
       this.locationType = ConfigWeatherLocationType.cityName,
       this.unit = ConfigWeatherUnit.celsius});
 
-  factory _$ConfigWeatherImpl.fromJson(Map<String, dynamic> json) =>
-      _$$ConfigWeatherImplFromJson(json);
+  factory _$ConfigResSectionDataUnionWeatherImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$ConfigResSectionDataUnionWeatherImplFromJson(json);
 
   /// The location for weather updates, specified as a city name or coordinates (latitude, longitude).
   @override
@@ -1239,7 +1272,7 @@ class _$ConfigWeatherImpl implements ConfigWeather {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ConfigWeatherImpl &&
+            other is _$ConfigResSectionDataUnionWeatherImpl &&
             (identical(other.location, location) ||
                 other.location == location) &&
             (identical(other.openWeatherApiKey, openWeatherApiKey) ||
@@ -1260,8 +1293,10 @@ class _$ConfigWeatherImpl implements ConfigWeather {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ConfigWeatherImplCopyWith<_$ConfigWeatherImpl> get copyWith =>
-      __$$ConfigWeatherImplCopyWithImpl<_$ConfigWeatherImpl>(this, _$identity);
+  _$$ConfigResSectionDataUnionWeatherImplCopyWith<
+          _$ConfigResSectionDataUnionWeatherImpl>
+      get copyWith => __$$ConfigResSectionDataUnionWeatherImplCopyWithImpl<
+          _$ConfigResSectionDataUnionWeatherImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1375,10 +1410,10 @@ class _$ConfigWeatherImpl implements ConfigWeather {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ConfigAudio value) audio,
-    required TResult Function(ConfigDisplay value) display,
-    required TResult Function(ConfigLanguage value) language,
-    required TResult Function(ConfigWeather value) weather,
+    required TResult Function(ConfigResSectionDataUnionAudio value) audio,
+    required TResult Function(ConfigResSectionDataUnionDisplay value) display,
+    required TResult Function(ConfigResSectionDataUnionLanguage value) language,
+    required TResult Function(ConfigResSectionDataUnionWeather value) weather,
   }) {
     return weather(this);
   }
@@ -1386,10 +1421,10 @@ class _$ConfigWeatherImpl implements ConfigWeather {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ConfigAudio value)? audio,
-    TResult? Function(ConfigDisplay value)? display,
-    TResult? Function(ConfigLanguage value)? language,
-    TResult? Function(ConfigWeather value)? weather,
+    TResult? Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult? Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult? Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult? Function(ConfigResSectionDataUnionWeather value)? weather,
   }) {
     return weather?.call(this);
   }
@@ -1397,10 +1432,10 @@ class _$ConfigWeatherImpl implements ConfigWeather {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ConfigAudio value)? audio,
-    TResult Function(ConfigDisplay value)? display,
-    TResult Function(ConfigLanguage value)? language,
-    TResult Function(ConfigWeather value)? weather,
+    TResult Function(ConfigResSectionDataUnionAudio value)? audio,
+    TResult Function(ConfigResSectionDataUnionDisplay value)? display,
+    TResult Function(ConfigResSectionDataUnionLanguage value)? language,
+    TResult Function(ConfigResSectionDataUnionWeather value)? weather,
     required TResult orElse(),
   }) {
     if (weather != null) {
@@ -1411,24 +1446,25 @@ class _$ConfigWeatherImpl implements ConfigWeather {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$ConfigWeatherImplToJson(
+    return _$$ConfigResSectionDataUnionWeatherImplToJson(
       this,
     );
   }
 }
 
-abstract class ConfigWeather implements ConfigResSectionDataUnion {
-  const factory ConfigWeather(
+abstract class ConfigResSectionDataUnionWeather
+    implements ConfigResSectionDataUnion {
+  const factory ConfigResSectionDataUnionWeather(
       {required final String? location,
       @JsonKey(name: 'open_weather_api_key')
       required final String? openWeatherApiKey,
       final ConfigWeatherType type,
       @JsonKey(name: 'location_type')
       final ConfigWeatherLocationType locationType,
-      final ConfigWeatherUnit unit}) = _$ConfigWeatherImpl;
+      final ConfigWeatherUnit unit}) = _$ConfigResSectionDataUnionWeatherImpl;
 
-  factory ConfigWeather.fromJson(Map<String, dynamic> json) =
-      _$ConfigWeatherImpl.fromJson;
+  factory ConfigResSectionDataUnionWeather.fromJson(Map<String, dynamic> json) =
+      _$ConfigResSectionDataUnionWeatherImpl.fromJson;
 
   /// The location for weather updates, specified as a city name or coordinates (latitude, longitude).
   String? get location;
@@ -1451,6 +1487,7 @@ abstract class ConfigWeather implements ConfigResSectionDataUnion {
   /// Create a copy of ConfigResSectionDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ConfigWeatherImplCopyWith<_$ConfigWeatherImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$ConfigResSectionDataUnionWeatherImplCopyWith<
+          _$ConfigResSectionDataUnionWeatherImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }

@@ -18,13 +18,13 @@ DashboardCardTilesUnion _$DashboardCardTilesUnionFromJson(
     Map<String, dynamic> json) {
   switch (json['type']) {
     case 'device':
-      return DashboardDeviceTile.fromJson(json);
+      return DashboardCardTilesUnionDevice.fromJson(json);
     case 'clock':
-      return DashboardTimeTile.fromJson(json);
+      return DashboardCardTilesUnionClock.fromJson(json);
     case 'weather-day':
-      return DashboardDayWeatherTile.fromJson(json);
+      return DashboardCardTilesUnionWeatherDay.fromJson(json);
     case 'weather-forecast':
-      return DashboardForecastWeatherTile.fromJson(json);
+      return DashboardCardTilesUnionWeatherForecast.fromJson(json);
 
     default:
       throw CheckedFromJsonException(json, 'type', 'DashboardCardTilesUnion',
@@ -231,27 +231,30 @@ mixin _$DashboardCardTilesUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardDeviceTile value) device,
-    required TResult Function(DashboardTimeTile value) clock,
-    required TResult Function(DashboardDayWeatherTile value) weatherDay,
-    required TResult Function(DashboardForecastWeatherTile value)
+    required TResult Function(DashboardCardTilesUnionDevice value) device,
+    required TResult Function(DashboardCardTilesUnionClock value) clock,
+    required TResult Function(DashboardCardTilesUnionWeatherDay value)
+        weatherDay,
+    required TResult Function(DashboardCardTilesUnionWeatherForecast value)
         weatherForecast,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardDeviceTile value)? device,
-    TResult? Function(DashboardTimeTile value)? clock,
-    TResult? Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult? Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult? Function(DashboardCardTilesUnionDevice value)? device,
+    TResult? Function(DashboardCardTilesUnionClock value)? clock,
+    TResult? Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult? Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardDeviceTile value)? device,
-    TResult Function(DashboardTimeTile value)? clock,
-    TResult Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult Function(DashboardCardTilesUnionDevice value)? device,
+    TResult Function(DashboardCardTilesUnionClock value)? clock,
+    TResult Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -353,11 +356,12 @@ class _$DashboardCardTilesUnionCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$DashboardDeviceTileImplCopyWith<$Res>
+abstract class _$$DashboardCardTilesUnionDeviceImplCopyWith<$Res>
     implements $DashboardCardTilesUnionCopyWith<$Res> {
-  factory _$$DashboardDeviceTileImplCopyWith(_$DashboardDeviceTileImpl value,
-          $Res Function(_$DashboardDeviceTileImpl) then) =
-      __$$DashboardDeviceTileImplCopyWithImpl<$Res>;
+  factory _$$DashboardCardTilesUnionDeviceImplCopyWith(
+          _$DashboardCardTilesUnionDeviceImpl value,
+          $Res Function(_$DashboardCardTilesUnionDeviceImpl) then) =
+      __$$DashboardCardTilesUnionDeviceImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
@@ -376,12 +380,13 @@ abstract class _$$DashboardDeviceTileImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$DashboardDeviceTileImplCopyWithImpl<$Res>
+class __$$DashboardCardTilesUnionDeviceImplCopyWithImpl<$Res>
     extends _$DashboardCardTilesUnionCopyWithImpl<$Res,
-        _$DashboardDeviceTileImpl>
-    implements _$$DashboardDeviceTileImplCopyWith<$Res> {
-  __$$DashboardDeviceTileImplCopyWithImpl(_$DashboardDeviceTileImpl _value,
-      $Res Function(_$DashboardDeviceTileImpl) _then)
+        _$DashboardCardTilesUnionDeviceImpl>
+    implements _$$DashboardCardTilesUnionDeviceImplCopyWith<$Res> {
+  __$$DashboardCardTilesUnionDeviceImplCopyWithImpl(
+      _$DashboardCardTilesUnionDeviceImpl _value,
+      $Res Function(_$DashboardCardTilesUnionDeviceImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardCardTilesUnion
@@ -401,7 +406,7 @@ class __$$DashboardDeviceTileImplCopyWithImpl<$Res>
     Object? colSpan = null,
     Object? type = null,
   }) {
-    return _then(_$DashboardDeviceTileImpl(
+    return _then(_$DashboardCardTilesUnionDeviceImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
@@ -452,8 +457,9 @@ class __$$DashboardDeviceTileImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardDeviceTileImpl implements DashboardDeviceTile {
-  const _$DashboardDeviceTileImpl(
+class _$DashboardCardTilesUnionDeviceImpl
+    implements DashboardCardTilesUnionDevice {
+  const _$DashboardCardTilesUnionDeviceImpl(
       {required this.id,
       required this.row,
       required this.col,
@@ -468,8 +474,9 @@ class _$DashboardDeviceTileImpl implements DashboardDeviceTile {
       this.type = 'device'})
       : _dataSource = dataSource;
 
-  factory _$DashboardDeviceTileImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DashboardDeviceTileImplFromJson(json);
+  factory _$DashboardCardTilesUnionDeviceImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$DashboardCardTilesUnionDeviceImplFromJson(json);
 
   /// A unique identifier for the dashboard tile.
   @override
@@ -537,7 +544,7 @@ class _$DashboardDeviceTileImpl implements DashboardDeviceTile {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardDeviceTileImpl &&
+            other is _$DashboardCardTilesUnionDeviceImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
@@ -575,9 +582,10 @@ class _$DashboardDeviceTileImpl implements DashboardDeviceTile {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardDeviceTileImplCopyWith<_$DashboardDeviceTileImpl> get copyWith =>
-      __$$DashboardDeviceTileImplCopyWithImpl<_$DashboardDeviceTileImpl>(
-          this, _$identity);
+  _$$DashboardCardTilesUnionDeviceImplCopyWith<
+          _$DashboardCardTilesUnionDeviceImpl>
+      get copyWith => __$$DashboardCardTilesUnionDeviceImplCopyWithImpl<
+          _$DashboardCardTilesUnionDeviceImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -760,10 +768,11 @@ class _$DashboardDeviceTileImpl implements DashboardDeviceTile {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardDeviceTile value) device,
-    required TResult Function(DashboardTimeTile value) clock,
-    required TResult Function(DashboardDayWeatherTile value) weatherDay,
-    required TResult Function(DashboardForecastWeatherTile value)
+    required TResult Function(DashboardCardTilesUnionDevice value) device,
+    required TResult Function(DashboardCardTilesUnionClock value) clock,
+    required TResult Function(DashboardCardTilesUnionWeatherDay value)
+        weatherDay,
+    required TResult Function(DashboardCardTilesUnionWeatherForecast value)
         weatherForecast,
   }) {
     return device(this);
@@ -772,10 +781,11 @@ class _$DashboardDeviceTileImpl implements DashboardDeviceTile {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardDeviceTile value)? device,
-    TResult? Function(DashboardTimeTile value)? clock,
-    TResult? Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult? Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult? Function(DashboardCardTilesUnionDevice value)? device,
+    TResult? Function(DashboardCardTilesUnionClock value)? clock,
+    TResult? Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult? Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
   }) {
     return device?.call(this);
   }
@@ -783,10 +793,11 @@ class _$DashboardDeviceTileImpl implements DashboardDeviceTile {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardDeviceTile value)? device,
-    TResult Function(DashboardTimeTile value)? clock,
-    TResult Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult Function(DashboardCardTilesUnionDevice value)? device,
+    TResult Function(DashboardCardTilesUnionClock value)? clock,
+    TResult Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
     required TResult orElse(),
   }) {
     if (device != null) {
@@ -797,14 +808,15 @@ class _$DashboardDeviceTileImpl implements DashboardDeviceTile {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardDeviceTileImplToJson(
+    return _$$DashboardCardTilesUnionDeviceImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardDeviceTile implements DashboardCardTilesUnion {
-  const factory DashboardDeviceTile(
+abstract class DashboardCardTilesUnionDevice
+    implements DashboardCardTilesUnion {
+  const factory DashboardCardTilesUnionDevice(
       {required final String id,
       required final int row,
       required final int col,
@@ -816,10 +828,10 @@ abstract class DashboardDeviceTile implements DashboardCardTilesUnion {
       required final String? icon,
       @JsonKey(name: 'row_span') final int rowSpan,
       @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardDeviceTileImpl;
+      final String type}) = _$DashboardCardTilesUnionDeviceImpl;
 
-  factory DashboardDeviceTile.fromJson(Map<String, dynamic> json) =
-      _$DashboardDeviceTileImpl.fromJson;
+  factory DashboardCardTilesUnionDevice.fromJson(Map<String, dynamic> json) =
+      _$DashboardCardTilesUnionDeviceImpl.fromJson;
 
   /// A unique identifier for the dashboard tile.
   @override
@@ -872,16 +884,18 @@ abstract class DashboardDeviceTile implements DashboardCardTilesUnion {
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardDeviceTileImplCopyWith<_$DashboardDeviceTileImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$DashboardCardTilesUnionDeviceImplCopyWith<
+          _$DashboardCardTilesUnionDeviceImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DashboardTimeTileImplCopyWith<$Res>
+abstract class _$$DashboardCardTilesUnionClockImplCopyWith<$Res>
     implements $DashboardCardTilesUnionCopyWith<$Res> {
-  factory _$$DashboardTimeTileImplCopyWith(_$DashboardTimeTileImpl value,
-          $Res Function(_$DashboardTimeTileImpl) then) =
-      __$$DashboardTimeTileImplCopyWithImpl<$Res>;
+  factory _$$DashboardCardTilesUnionClockImplCopyWith(
+          _$DashboardCardTilesUnionClockImpl value,
+          $Res Function(_$DashboardCardTilesUnionClockImpl) then) =
+      __$$DashboardCardTilesUnionClockImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
@@ -898,11 +912,13 @@ abstract class _$$DashboardTimeTileImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$DashboardTimeTileImplCopyWithImpl<$Res>
-    extends _$DashboardCardTilesUnionCopyWithImpl<$Res, _$DashboardTimeTileImpl>
-    implements _$$DashboardTimeTileImplCopyWith<$Res> {
-  __$$DashboardTimeTileImplCopyWithImpl(_$DashboardTimeTileImpl _value,
-      $Res Function(_$DashboardTimeTileImpl) _then)
+class __$$DashboardCardTilesUnionClockImplCopyWithImpl<$Res>
+    extends _$DashboardCardTilesUnionCopyWithImpl<$Res,
+        _$DashboardCardTilesUnionClockImpl>
+    implements _$$DashboardCardTilesUnionClockImplCopyWith<$Res> {
+  __$$DashboardCardTilesUnionClockImplCopyWithImpl(
+      _$DashboardCardTilesUnionClockImpl _value,
+      $Res Function(_$DashboardCardTilesUnionClockImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardCardTilesUnion
@@ -920,7 +936,7 @@ class __$$DashboardTimeTileImplCopyWithImpl<$Res>
     Object? colSpan = null,
     Object? type = null,
   }) {
-    return _then(_$DashboardTimeTileImpl(
+    return _then(_$DashboardCardTilesUnionClockImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
@@ -963,8 +979,9 @@ class __$$DashboardTimeTileImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardTimeTileImpl implements DashboardTimeTile {
-  const _$DashboardTimeTileImpl(
+class _$DashboardCardTilesUnionClockImpl
+    implements DashboardCardTilesUnionClock {
+  const _$DashboardCardTilesUnionClockImpl(
       {required this.id,
       required this.row,
       required this.col,
@@ -977,8 +994,9 @@ class _$DashboardTimeTileImpl implements DashboardTimeTile {
       this.type = 'clock'})
       : _dataSource = dataSource;
 
-  factory _$DashboardTimeTileImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DashboardTimeTileImplFromJson(json);
+  factory _$DashboardCardTilesUnionClockImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$DashboardCardTilesUnionClockImplFromJson(json);
 
   /// A unique identifier for the dashboard tile.
   @override
@@ -1038,7 +1056,7 @@ class _$DashboardTimeTileImpl implements DashboardTimeTile {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardTimeTileImpl &&
+            other is _$DashboardCardTilesUnionClockImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
@@ -1072,9 +1090,10 @@ class _$DashboardTimeTileImpl implements DashboardTimeTile {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardTimeTileImplCopyWith<_$DashboardTimeTileImpl> get copyWith =>
-      __$$DashboardTimeTileImplCopyWithImpl<_$DashboardTimeTileImpl>(
-          this, _$identity);
+  _$$DashboardCardTilesUnionClockImplCopyWith<
+          _$DashboardCardTilesUnionClockImpl>
+      get copyWith => __$$DashboardCardTilesUnionClockImplCopyWithImpl<
+          _$DashboardCardTilesUnionClockImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1257,10 +1276,11 @@ class _$DashboardTimeTileImpl implements DashboardTimeTile {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardDeviceTile value) device,
-    required TResult Function(DashboardTimeTile value) clock,
-    required TResult Function(DashboardDayWeatherTile value) weatherDay,
-    required TResult Function(DashboardForecastWeatherTile value)
+    required TResult Function(DashboardCardTilesUnionDevice value) device,
+    required TResult Function(DashboardCardTilesUnionClock value) clock,
+    required TResult Function(DashboardCardTilesUnionWeatherDay value)
+        weatherDay,
+    required TResult Function(DashboardCardTilesUnionWeatherForecast value)
         weatherForecast,
   }) {
     return clock(this);
@@ -1269,10 +1289,11 @@ class _$DashboardTimeTileImpl implements DashboardTimeTile {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardDeviceTile value)? device,
-    TResult? Function(DashboardTimeTile value)? clock,
-    TResult? Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult? Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult? Function(DashboardCardTilesUnionDevice value)? device,
+    TResult? Function(DashboardCardTilesUnionClock value)? clock,
+    TResult? Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult? Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
   }) {
     return clock?.call(this);
   }
@@ -1280,10 +1301,11 @@ class _$DashboardTimeTileImpl implements DashboardTimeTile {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardDeviceTile value)? device,
-    TResult Function(DashboardTimeTile value)? clock,
-    TResult Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult Function(DashboardCardTilesUnionDevice value)? device,
+    TResult Function(DashboardCardTilesUnionClock value)? clock,
+    TResult Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
     required TResult orElse(),
   }) {
     if (clock != null) {
@@ -1294,14 +1316,14 @@ class _$DashboardTimeTileImpl implements DashboardTimeTile {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardTimeTileImplToJson(
+    return _$$DashboardCardTilesUnionClockImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardTimeTile implements DashboardCardTilesUnion {
-  const factory DashboardTimeTile(
+abstract class DashboardCardTilesUnionClock implements DashboardCardTilesUnion {
+  const factory DashboardCardTilesUnionClock(
       {required final String id,
       required final int row,
       required final int col,
@@ -1311,10 +1333,10 @@ abstract class DashboardTimeTile implements DashboardCardTilesUnion {
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       @JsonKey(name: 'row_span') final int rowSpan,
       @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardTimeTileImpl;
+      final String type}) = _$DashboardCardTilesUnionClockImpl;
 
-  factory DashboardTimeTile.fromJson(Map<String, dynamic> json) =
-      _$DashboardTimeTileImpl.fromJson;
+  factory DashboardCardTilesUnionClock.fromJson(Map<String, dynamic> json) =
+      _$DashboardCardTilesUnionClockImpl.fromJson;
 
   /// A unique identifier for the dashboard tile.
   @override
@@ -1361,17 +1383,18 @@ abstract class DashboardTimeTile implements DashboardCardTilesUnion {
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardTimeTileImplCopyWith<_$DashboardTimeTileImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$DashboardCardTilesUnionClockImplCopyWith<
+          _$DashboardCardTilesUnionClockImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DashboardDayWeatherTileImplCopyWith<$Res>
+abstract class _$$DashboardCardTilesUnionWeatherDayImplCopyWith<$Res>
     implements $DashboardCardTilesUnionCopyWith<$Res> {
-  factory _$$DashboardDayWeatherTileImplCopyWith(
-          _$DashboardDayWeatherTileImpl value,
-          $Res Function(_$DashboardDayWeatherTileImpl) then) =
-      __$$DashboardDayWeatherTileImplCopyWithImpl<$Res>;
+  factory _$$DashboardCardTilesUnionWeatherDayImplCopyWith(
+          _$DashboardCardTilesUnionWeatherDayImpl value,
+          $Res Function(_$DashboardCardTilesUnionWeatherDayImpl) then) =
+      __$$DashboardCardTilesUnionWeatherDayImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
@@ -1388,13 +1411,13 @@ abstract class _$$DashboardDayWeatherTileImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$DashboardDayWeatherTileImplCopyWithImpl<$Res>
+class __$$DashboardCardTilesUnionWeatherDayImplCopyWithImpl<$Res>
     extends _$DashboardCardTilesUnionCopyWithImpl<$Res,
-        _$DashboardDayWeatherTileImpl>
-    implements _$$DashboardDayWeatherTileImplCopyWith<$Res> {
-  __$$DashboardDayWeatherTileImplCopyWithImpl(
-      _$DashboardDayWeatherTileImpl _value,
-      $Res Function(_$DashboardDayWeatherTileImpl) _then)
+        _$DashboardCardTilesUnionWeatherDayImpl>
+    implements _$$DashboardCardTilesUnionWeatherDayImplCopyWith<$Res> {
+  __$$DashboardCardTilesUnionWeatherDayImplCopyWithImpl(
+      _$DashboardCardTilesUnionWeatherDayImpl _value,
+      $Res Function(_$DashboardCardTilesUnionWeatherDayImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardCardTilesUnion
@@ -1412,7 +1435,7 @@ class __$$DashboardDayWeatherTileImplCopyWithImpl<$Res>
     Object? colSpan = null,
     Object? type = null,
   }) {
-    return _then(_$DashboardDayWeatherTileImpl(
+    return _then(_$DashboardCardTilesUnionWeatherDayImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
@@ -1455,8 +1478,9 @@ class __$$DashboardDayWeatherTileImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardDayWeatherTileImpl implements DashboardDayWeatherTile {
-  const _$DashboardDayWeatherTileImpl(
+class _$DashboardCardTilesUnionWeatherDayImpl
+    implements DashboardCardTilesUnionWeatherDay {
+  const _$DashboardCardTilesUnionWeatherDayImpl(
       {required this.id,
       required this.row,
       required this.col,
@@ -1469,8 +1493,9 @@ class _$DashboardDayWeatherTileImpl implements DashboardDayWeatherTile {
       this.type = 'weather-day'})
       : _dataSource = dataSource;
 
-  factory _$DashboardDayWeatherTileImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DashboardDayWeatherTileImplFromJson(json);
+  factory _$DashboardCardTilesUnionWeatherDayImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$DashboardCardTilesUnionWeatherDayImplFromJson(json);
 
   /// A unique identifier for the dashboard tile.
   @override
@@ -1530,7 +1555,7 @@ class _$DashboardDayWeatherTileImpl implements DashboardDayWeatherTile {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardDayWeatherTileImpl &&
+            other is _$DashboardCardTilesUnionWeatherDayImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
@@ -1564,9 +1589,10 @@ class _$DashboardDayWeatherTileImpl implements DashboardDayWeatherTile {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardDayWeatherTileImplCopyWith<_$DashboardDayWeatherTileImpl>
-      get copyWith => __$$DashboardDayWeatherTileImplCopyWithImpl<
-          _$DashboardDayWeatherTileImpl>(this, _$identity);
+  _$$DashboardCardTilesUnionWeatherDayImplCopyWith<
+          _$DashboardCardTilesUnionWeatherDayImpl>
+      get copyWith => __$$DashboardCardTilesUnionWeatherDayImplCopyWithImpl<
+          _$DashboardCardTilesUnionWeatherDayImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1749,10 +1775,11 @@ class _$DashboardDayWeatherTileImpl implements DashboardDayWeatherTile {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardDeviceTile value) device,
-    required TResult Function(DashboardTimeTile value) clock,
-    required TResult Function(DashboardDayWeatherTile value) weatherDay,
-    required TResult Function(DashboardForecastWeatherTile value)
+    required TResult Function(DashboardCardTilesUnionDevice value) device,
+    required TResult Function(DashboardCardTilesUnionClock value) clock,
+    required TResult Function(DashboardCardTilesUnionWeatherDay value)
+        weatherDay,
+    required TResult Function(DashboardCardTilesUnionWeatherForecast value)
         weatherForecast,
   }) {
     return weatherDay(this);
@@ -1761,10 +1788,11 @@ class _$DashboardDayWeatherTileImpl implements DashboardDayWeatherTile {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardDeviceTile value)? device,
-    TResult? Function(DashboardTimeTile value)? clock,
-    TResult? Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult? Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult? Function(DashboardCardTilesUnionDevice value)? device,
+    TResult? Function(DashboardCardTilesUnionClock value)? clock,
+    TResult? Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult? Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
   }) {
     return weatherDay?.call(this);
   }
@@ -1772,10 +1800,11 @@ class _$DashboardDayWeatherTileImpl implements DashboardDayWeatherTile {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardDeviceTile value)? device,
-    TResult Function(DashboardTimeTile value)? clock,
-    TResult Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult Function(DashboardCardTilesUnionDevice value)? device,
+    TResult Function(DashboardCardTilesUnionClock value)? clock,
+    TResult Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
     required TResult orElse(),
   }) {
     if (weatherDay != null) {
@@ -1786,14 +1815,15 @@ class _$DashboardDayWeatherTileImpl implements DashboardDayWeatherTile {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardDayWeatherTileImplToJson(
+    return _$$DashboardCardTilesUnionWeatherDayImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardDayWeatherTile implements DashboardCardTilesUnion {
-  const factory DashboardDayWeatherTile(
+abstract class DashboardCardTilesUnionWeatherDay
+    implements DashboardCardTilesUnion {
+  const factory DashboardCardTilesUnionWeatherDay(
       {required final String id,
       required final int row,
       required final int col,
@@ -1803,10 +1833,11 @@ abstract class DashboardDayWeatherTile implements DashboardCardTilesUnion {
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       @JsonKey(name: 'row_span') final int rowSpan,
       @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardDayWeatherTileImpl;
+      final String type}) = _$DashboardCardTilesUnionWeatherDayImpl;
 
-  factory DashboardDayWeatherTile.fromJson(Map<String, dynamic> json) =
-      _$DashboardDayWeatherTileImpl.fromJson;
+  factory DashboardCardTilesUnionWeatherDay.fromJson(
+          Map<String, dynamic> json) =
+      _$DashboardCardTilesUnionWeatherDayImpl.fromJson;
 
   /// A unique identifier for the dashboard tile.
   @override
@@ -1853,17 +1884,18 @@ abstract class DashboardDayWeatherTile implements DashboardCardTilesUnion {
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardDayWeatherTileImplCopyWith<_$DashboardDayWeatherTileImpl>
+  _$$DashboardCardTilesUnionWeatherDayImplCopyWith<
+          _$DashboardCardTilesUnionWeatherDayImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DashboardForecastWeatherTileImplCopyWith<$Res>
+abstract class _$$DashboardCardTilesUnionWeatherForecastImplCopyWith<$Res>
     implements $DashboardCardTilesUnionCopyWith<$Res> {
-  factory _$$DashboardForecastWeatherTileImplCopyWith(
-          _$DashboardForecastWeatherTileImpl value,
-          $Res Function(_$DashboardForecastWeatherTileImpl) then) =
-      __$$DashboardForecastWeatherTileImplCopyWithImpl<$Res>;
+  factory _$$DashboardCardTilesUnionWeatherForecastImplCopyWith(
+          _$DashboardCardTilesUnionWeatherForecastImpl value,
+          $Res Function(_$DashboardCardTilesUnionWeatherForecastImpl) then) =
+      __$$DashboardCardTilesUnionWeatherForecastImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
@@ -1880,13 +1912,13 @@ abstract class _$$DashboardForecastWeatherTileImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$DashboardForecastWeatherTileImplCopyWithImpl<$Res>
+class __$$DashboardCardTilesUnionWeatherForecastImplCopyWithImpl<$Res>
     extends _$DashboardCardTilesUnionCopyWithImpl<$Res,
-        _$DashboardForecastWeatherTileImpl>
-    implements _$$DashboardForecastWeatherTileImplCopyWith<$Res> {
-  __$$DashboardForecastWeatherTileImplCopyWithImpl(
-      _$DashboardForecastWeatherTileImpl _value,
-      $Res Function(_$DashboardForecastWeatherTileImpl) _then)
+        _$DashboardCardTilesUnionWeatherForecastImpl>
+    implements _$$DashboardCardTilesUnionWeatherForecastImplCopyWith<$Res> {
+  __$$DashboardCardTilesUnionWeatherForecastImplCopyWithImpl(
+      _$DashboardCardTilesUnionWeatherForecastImpl _value,
+      $Res Function(_$DashboardCardTilesUnionWeatherForecastImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardCardTilesUnion
@@ -1904,7 +1936,7 @@ class __$$DashboardForecastWeatherTileImplCopyWithImpl<$Res>
     Object? colSpan = null,
     Object? type = null,
   }) {
-    return _then(_$DashboardForecastWeatherTileImpl(
+    return _then(_$DashboardCardTilesUnionWeatherForecastImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
@@ -1947,9 +1979,9 @@ class __$$DashboardForecastWeatherTileImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardForecastWeatherTileImpl
-    implements DashboardForecastWeatherTile {
-  const _$DashboardForecastWeatherTileImpl(
+class _$DashboardCardTilesUnionWeatherForecastImpl
+    implements DashboardCardTilesUnionWeatherForecast {
+  const _$DashboardCardTilesUnionWeatherForecastImpl(
       {required this.id,
       required this.row,
       required this.col,
@@ -1962,9 +1994,9 @@ class _$DashboardForecastWeatherTileImpl
       this.type = 'weather-forecast'})
       : _dataSource = dataSource;
 
-  factory _$DashboardForecastWeatherTileImpl.fromJson(
+  factory _$DashboardCardTilesUnionWeatherForecastImpl.fromJson(
           Map<String, dynamic> json) =>
-      _$$DashboardForecastWeatherTileImplFromJson(json);
+      _$$DashboardCardTilesUnionWeatherForecastImplFromJson(json);
 
   /// A unique identifier for the dashboard tile.
   @override
@@ -2024,7 +2056,7 @@ class _$DashboardForecastWeatherTileImpl
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardForecastWeatherTileImpl &&
+            other is _$DashboardCardTilesUnionWeatherForecastImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
@@ -2058,10 +2090,11 @@ class _$DashboardForecastWeatherTileImpl
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardForecastWeatherTileImplCopyWith<
-          _$DashboardForecastWeatherTileImpl>
-      get copyWith => __$$DashboardForecastWeatherTileImplCopyWithImpl<
-          _$DashboardForecastWeatherTileImpl>(this, _$identity);
+  _$$DashboardCardTilesUnionWeatherForecastImplCopyWith<
+          _$DashboardCardTilesUnionWeatherForecastImpl>
+      get copyWith =>
+          __$$DashboardCardTilesUnionWeatherForecastImplCopyWithImpl<
+              _$DashboardCardTilesUnionWeatherForecastImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -2244,10 +2277,11 @@ class _$DashboardForecastWeatherTileImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardDeviceTile value) device,
-    required TResult Function(DashboardTimeTile value) clock,
-    required TResult Function(DashboardDayWeatherTile value) weatherDay,
-    required TResult Function(DashboardForecastWeatherTile value)
+    required TResult Function(DashboardCardTilesUnionDevice value) device,
+    required TResult Function(DashboardCardTilesUnionClock value) clock,
+    required TResult Function(DashboardCardTilesUnionWeatherDay value)
+        weatherDay,
+    required TResult Function(DashboardCardTilesUnionWeatherForecast value)
         weatherForecast,
   }) {
     return weatherForecast(this);
@@ -2256,10 +2290,11 @@ class _$DashboardForecastWeatherTileImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardDeviceTile value)? device,
-    TResult? Function(DashboardTimeTile value)? clock,
-    TResult? Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult? Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult? Function(DashboardCardTilesUnionDevice value)? device,
+    TResult? Function(DashboardCardTilesUnionClock value)? clock,
+    TResult? Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult? Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
   }) {
     return weatherForecast?.call(this);
   }
@@ -2267,10 +2302,11 @@ class _$DashboardForecastWeatherTileImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardDeviceTile value)? device,
-    TResult Function(DashboardTimeTile value)? clock,
-    TResult Function(DashboardDayWeatherTile value)? weatherDay,
-    TResult Function(DashboardForecastWeatherTile value)? weatherForecast,
+    TResult Function(DashboardCardTilesUnionDevice value)? device,
+    TResult Function(DashboardCardTilesUnionClock value)? clock,
+    TResult Function(DashboardCardTilesUnionWeatherDay value)? weatherDay,
+    TResult Function(DashboardCardTilesUnionWeatherForecast value)?
+        weatherForecast,
     required TResult orElse(),
   }) {
     if (weatherForecast != null) {
@@ -2281,14 +2317,15 @@ class _$DashboardForecastWeatherTileImpl
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardForecastWeatherTileImplToJson(
+    return _$$DashboardCardTilesUnionWeatherForecastImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardForecastWeatherTile implements DashboardCardTilesUnion {
-  const factory DashboardForecastWeatherTile(
+abstract class DashboardCardTilesUnionWeatherForecast
+    implements DashboardCardTilesUnion {
+  const factory DashboardCardTilesUnionWeatherForecast(
       {required final String id,
       required final int row,
       required final int col,
@@ -2298,10 +2335,11 @@ abstract class DashboardForecastWeatherTile implements DashboardCardTilesUnion {
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       @JsonKey(name: 'row_span') final int rowSpan,
       @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardForecastWeatherTileImpl;
+      final String type}) = _$DashboardCardTilesUnionWeatherForecastImpl;
 
-  factory DashboardForecastWeatherTile.fromJson(Map<String, dynamic> json) =
-      _$DashboardForecastWeatherTileImpl.fromJson;
+  factory DashboardCardTilesUnionWeatherForecast.fromJson(
+          Map<String, dynamic> json) =
+      _$DashboardCardTilesUnionWeatherForecastImpl.fromJson;
 
   /// A unique identifier for the dashboard tile.
   @override
@@ -2348,7 +2386,7 @@ abstract class DashboardForecastWeatherTile implements DashboardCardTilesUnion {
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardForecastWeatherTileImplCopyWith<
-          _$DashboardForecastWeatherTileImpl>
+  _$$DashboardCardTilesUnionWeatherForecastImplCopyWith<
+          _$DashboardCardTilesUnionWeatherForecastImpl>
       get copyWith => throw _privateConstructorUsedError;
 }

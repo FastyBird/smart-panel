@@ -19,7 +19,7 @@ import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
 import { UsersService } from '../services/users.service';
-import { DISPLAY_USERNAME, UsersModulePrefix } from '../users.constants';
+import { DisplayUsername, UsersModulePrefix } from '../users.constants';
 
 @Controller('users')
 export class UsersController {
@@ -54,7 +54,7 @@ export class UsersController {
 	async create(@Body() createDto: ReqCreateUserDto): Promise<UserEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new user');
 
-		if (createDto.data.username === DISPLAY_USERNAME) {
+		if (createDto.data.username === DisplayUsername) {
 			this.logger.warn('[REGISTER] User is trying to use reserved username');
 
 			throw new ForbiddenException('Trying to create user with reserved username');

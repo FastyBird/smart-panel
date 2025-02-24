@@ -37,4 +37,62 @@ export class WeatherController {
 			throw error;
 		}
 	}
+
+	@Get('/current')
+	async getCurrentWeather() {
+		this.logger.debug('[LOOKUP] Fetching current weather data');
+
+		try {
+			return await this.weatherService.getCurrentWeather();
+		} catch (error) {
+			const err = error as Error;
+
+			if (error instanceof WeatherValidationException) {
+				this.logger.error('[ERROR] Weather module is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
+
+				throw new UnprocessableEntityException('Weather module is not properly configured');
+			} else if (error instanceof WeatherNotFoundException) {
+				throw new NotFoundException('Current day weather data could not be loaded from OpenWeatherMap');
+			}
+
+			this.logger.error('[ERROR] Loading weather failed', {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			throw error;
+		}
+	}
+
+	@Get('/forecast')
+	async getForecastWeather() {
+		this.logger.debug('[LOOKUP] Fetching forecast weather data');
+
+		try {
+			return await this.weatherService.getForecastWeather();
+		} catch (error) {
+			const err = error as Error;
+
+			if (error instanceof WeatherValidationException) {
+				this.logger.error('[ERROR] Weather module is not properly configured', {
+					message: err.message,
+					stack: err.stack,
+				});
+
+				throw new UnprocessableEntityException('Weather module is not properly configured');
+			} else if (error instanceof WeatherNotFoundException) {
+				throw new NotFoundException('Current day weather data could not be loaded from OpenWeatherMap');
+			}
+
+			this.logger.error('[ERROR] Loading weather failed', {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			throw error;
+		}
+	}
 }

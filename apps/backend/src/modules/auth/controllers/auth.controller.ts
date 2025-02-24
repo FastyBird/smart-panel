@@ -15,7 +15,7 @@ import {
 
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
-import { DISPLAY_USERNAME } from '../../users/users.constants';
+import { DisplayUsername } from '../../users/users.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
 import { ReqCheckEmailDto } from '../dto/check-email.dto';
@@ -73,7 +73,7 @@ export class AuthController {
 			throw new ForbiddenException('Application owner already exists');
 		}
 
-		if (body.data.username === DISPLAY_USERNAME) {
+		if (body.data.username === DisplayUsername) {
 			this.logger.warn('[REGISTER] User is trying to use reserved username');
 
 			throw new ForbiddenException('Trying to register with reserved username');
@@ -115,7 +115,7 @@ export class AuthController {
 			throw new ForbiddenException('Access Denied');
 		}
 
-		const displayUser = await this.userService.findByUsername(DISPLAY_USERNAME);
+		const displayUser = await this.userService.findByUsername(DisplayUsername);
 
 		if (displayUser !== null) {
 			this.logger.warn('[REGISTER DISPLAY] Display user already registered');
@@ -127,7 +127,7 @@ export class AuthController {
 			const password = this.cryptoService.generateSecureSecret();
 
 			await this.authService.register({
-				username: DISPLAY_USERNAME,
+				username: DisplayUsername,
 				password,
 			});
 

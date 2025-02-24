@@ -37,7 +37,7 @@ sealed class DashboardCardsPageDataSourceUnion with _$DashboardCardsPageDataSour
     /// Indicates that this data source is linked to a device channel.
     @Default('device-channel')
     String type,
-  }) = DashboardDeviceChannelDataSource;
+  }) = DashboardCardsPageDataSourceUnionDeviceChannel;
 
   
   factory DashboardCardsPageDataSourceUnion.fromJson(Map<String, Object?> json) => _$DashboardCardsPageDataSourceUnionFromJson(json);

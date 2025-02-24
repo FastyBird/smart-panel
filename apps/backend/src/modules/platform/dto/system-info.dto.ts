@@ -43,6 +43,20 @@ export class OperatingSystemDto {
 	uptime: number;
 }
 
+export class DefaultNetworkDto {
+	@IsString()
+	interface: string;
+
+	@IsString()
+	ip4: string;
+
+	@IsString()
+	ip6: string;
+
+	@IsString()
+	mac: string;
+}
+
 export class DisplayDto {
 	@IsNumber()
 	resolutionX: number;
@@ -80,6 +94,10 @@ export class SystemInfoDto {
 	@ValidateNested({ each: true })
 	@Type(() => NetworkStatsDto)
 	network: NetworkStatsDto[];
+
+	@ValidateNested()
+	@Type(() => DefaultNetworkDto)
+	defaultNetwork: DefaultNetworkDto;
 
 	@ValidateNested()
 	@Type(() => DisplayDto)

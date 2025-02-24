@@ -1,14 +1,17 @@
 import bcrypt from 'bcrypt';
+import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { v4 as uuid } from 'uuid';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
-import { DISPLAY_USERNAME, UserRole } from '../../users/users.constants';
-import { AccessTokenType, TokenType } from '../auth.constants';
+import { DisplayUsername, UserRole } from '../../users/users.constants';
+import { AccessTokenType, DisplaySecretCacheKey, TokenType } from '../auth.constants';
 import {
 	AuthException,
 	AuthNotFoundException,
@@ -25,6 +28,7 @@ import { RefreshTokenResponseDto } from '../dto/refresh-token-response.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { UpdateRefreshTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
+import { hashToken } from '../utils/token.utils';
 
 import { TokensService } from './tokens.service';
 
@@ -36,12 +40,19 @@ export class AuthService {
 		private readonly usersService: UsersService,
 		private readonly tokensService: TokensService,
 		private readonly jwtService: JwtService,
+		@Inject(CACHE_MANAGER)
+		private readonly cacheManager: Cache,
 	) {}
 
 	generateToken(user: UserEntity, role?: UserRole, options?: JwtSignOptions): string {
 		this.logger.debug(`[TOKEN] Generating token for user=${user.id} role=${role || user.role}`);
 
-		const payload = { sub: user.id, role: role || user.role };
+		const payload = {
+			sub: user.id,
+			role: role || user.role,
+			iat: Math.floor(Date.now() / 1000),
+			jti: uuid().toString(),
+		};
 
 		const token = this.jwtService.sign(payload, options);
 
@@ -128,7 +139,7 @@ export class AuthService {
 		const { password, email, username } = dtoInstance;
 
 		// Ensure only one owner can be registered
-		if ((await this.usersService.findOwner()) && username !== DISPLAY_USERNAME) {
+		if ((await this.usersService.findOwner()) && username !== DisplayUsername) {
 			this.logger.warn(`[REGISTER] Registration failed - owner already exists`);
 
 			throw new AuthException('Owner already registered');
@@ -159,8 +170,12 @@ export class AuthService {
 		const user = await this.usersService.create({
 			...dtoInstance,
 			password: hashedPassword,
-			role: ownerExists || username === DISPLAY_USERNAME ? UserRole.USER : UserRole.OWNER,
+			role: ownerExists || username === DisplayUsername ? UserRole.USER : UserRole.OWNER,
 		});
+
+		if (registerDto.username === DisplayUsername) {
+			await this.cacheManager.del(DisplaySecretCacheKey);
+		}
 
 		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);
 	}
@@ -186,7 +201,7 @@ export class AuthService {
 		let existingRefreshToken: RefreshTokenEntity | null = null;
 
 		for (const refreshToken of existingRefreshTokens) {
-			if (await bcrypt.compare(token, refreshToken.hashedToken)) {
+			if (hashToken(token) === refreshToken.hashedToken) {
 				existingRefreshToken = refreshToken;
 
 				break;

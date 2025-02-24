@@ -429,7 +429,7 @@ abstract class DashboardModuleClient {
   ///
   /// [tileId] - The ID of the tile to retrieve.
   @GET('/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source')
-  Future<HttpResponse<DashboardResPageCardTileDataSources>> getDashboardModulePageCarTileDataSources({
+  Future<HttpResponse<DashboardResPageCardTileDataSources>> getDashboardModulePageCardTileDataSources({
     @Path('pageId') required String pageId,
     @Path('cardId') required String cardId,
     @Path('tileId') required String tileId,
@@ -518,7 +518,7 @@ abstract class DashboardModuleClient {
   ///
   /// [cardId] - The ID of the card to retrieve.
   @GET('/dashboard-module/pages/{pageId}/cards/{cardId}/data-source')
-  Future<HttpResponse<DashboardResPageCardDataSources>> getDashboardModulePageCarDataSources({
+  Future<HttpResponse<DashboardResPageCardDataSources>> getDashboardModulePageCardDataSources({
     @Path('pageId') required String pageId,
     @Path('cardId') required String cardId,
   });

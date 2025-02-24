@@ -78,7 +78,7 @@ export class WeatherService {
 			]);
 
 			if (current && forecast) {
-				const weatherData = plainToInstance(
+				return plainToInstance(
 					LocationWeatherEntity,
 					{
 						current: current.current,
@@ -89,8 +89,6 @@ export class WeatherService {
 						excludeExtraneousValues: true,
 					},
 				);
-
-				return weatherData;
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -101,6 +99,68 @@ export class WeatherService {
 		}
 
 		throw new WeatherNotFoundException('Current weather data or forecast could not be loaded');
+	}
+
+	async getCurrentWeather(force = false): Promise<CurrentDayEntity> {
+		this.loadConfiguration();
+
+		if (this.apiKey === null) {
+			this.logger.warn('[WEATHER] Missing API key for weather service');
+
+			throw new WeatherValidationException('Api key is required');
+		}
+
+		try {
+			this.logger.debug(`[WEATHER] Fetching current weather data for location='${this.location}'`);
+
+			const current = await this.fetchCurrentWeather(force);
+
+			if (current) {
+				return plainToInstance(CurrentDayEntity, current.current, {
+					excludeExtraneousValues: true,
+				});
+			}
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[WEATHER] Failed to fetch current weather data', { message: err.message, stack: err.stack });
+
+			throw new WeatherException('An unhandled error occur. Current weather data could not be loaded');
+		}
+
+		throw new WeatherNotFoundException('Current weather data could not be loaded');
+	}
+
+	async getForecastWeather(force = false): Promise<ForecastDayEntity[]> {
+		this.loadConfiguration();
+
+		if (this.apiKey === null) {
+			this.logger.warn('[WEATHER] Missing API key for weather service');
+
+			throw new WeatherValidationException('Api key is required');
+		}
+
+		try {
+			this.logger.debug(`[WEATHER] Fetching current weather data for location='${this.location}'`);
+
+			const forecast = await this.fetchWeatherForecast(force);
+
+			if (forecast) {
+				return forecast.map((day) =>
+					plainToInstance(ForecastDayEntity, day, {
+						excludeExtraneousValues: true,
+					}),
+				);
+			}
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[WEATHER] Failed to fetch current weather data', { message: err.message, stack: err.stack });
+
+			throw new WeatherException('An unhandled error occur. Current weather data could not be loaded');
+		}
+
+		throw new WeatherNotFoundException('Current weather data could not be loaded');
 	}
 
 	async refreshWeather(): Promise<void> {

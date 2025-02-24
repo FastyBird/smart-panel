@@ -15,7 +15,12 @@ import { ValidatePageTiles } from '../validators/page-tile-type-constraint.valid
 import { ValidateTileDataSources } from '../validators/tile-data-source-type-constraint.validator';
 
 import { CreateCardDeviceChannelDataSourceDto } from './create-card-data-source.dto';
-import { CreateTileDto } from './create-tile.dto';
+import {
+	CreatePageDayWeatherTileDto,
+	CreatePageDeviceTileDto,
+	CreatePageForecastWeatherTileDto,
+	CreatePageTimeTileDto,
+} from './create-page-tile.dto';
 
 type CreateCard = components['schemas']['DashboardCreateCard'];
 
@@ -49,7 +54,12 @@ export class CreateCardDto implements CreateCard {
 	@IsArray({ message: '[{"field":"tiles","reason":"Tiles must be a valid array."}]' })
 	@ValidateNested({ each: true })
 	@ValidatePageTiles()
-	tiles?: CreateTileDto[];
+	tiles?: (
+		| CreatePageDeviceTileDto
+		| CreatePageTimeTileDto
+		| CreatePageDayWeatherTileDto
+		| CreatePageForecastWeatherTileDto
+	)[];
 
 	@Expose()
 	@IsOptional()

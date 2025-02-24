@@ -34,7 +34,7 @@ sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUn
     /// Indicates that this is a device-specific dashboard tile.
     @Default('device')
     String type,
-  }) = DashboardUpdateDeviceTile;
+  }) = DashboardReqUpdateTileDataUnionDevice;
 
   @FreezedUnionValue('clock')
   const factory DashboardReqUpdateTileDataUnion.clock({
@@ -55,7 +55,7 @@ sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUn
     /// Specifies the type of tile as a clock.
     @Default('clock')
     String type,
-  }) = DashboardUpdateTimeTile;
+  }) = DashboardReqUpdateTileDataUnionClock;
 
   @FreezedUnionValue('weather-day')
   const factory DashboardReqUpdateTileDataUnion.weatherDay({
@@ -76,7 +76,7 @@ sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUn
     /// Specifies the type of tile as a day weather tile.
     @Default('weather-day')
     String type,
-  }) = DashboardUpdateDayWeatherTile;
+  }) = DashboardReqUpdateTileDataUnionWeatherDay;
 
   @FreezedUnionValue('weather-forecast')
   const factory DashboardReqUpdateTileDataUnion.weatherForecast({
@@ -97,7 +97,7 @@ sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUn
     /// Specifies the type of tile as a weather forecast tile.
     @Default('weather-forecast')
     String type,
-  }) = DashboardUpdateForecastWeatherTile;
+  }) = DashboardReqUpdateTileDataUnionWeatherForecast;
 
   
   factory DashboardReqUpdateTileDataUnion.fromJson(Map<String, Object?> json) => _$DashboardReqUpdateTileDataUnionFromJson(json);

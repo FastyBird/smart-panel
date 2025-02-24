@@ -29,7 +29,7 @@ sealed class DashboardReqUpdateDataSourceDataUnion with _$DashboardReqUpdateData
     /// Specifies the type of data source as linked to a device channel.
     @Default('device-channel')
     String type,
-  }) = DashboardUpdateDeviceChannelDataSource;
+  }) = DashboardReqUpdateDataSourceDataUnionDeviceChannel;
 
   
   factory DashboardReqUpdateDataSourceDataUnion.fromJson(Map<String, Object?> json) => _$DashboardReqUpdateDataSourceDataUnionFromJson(json);

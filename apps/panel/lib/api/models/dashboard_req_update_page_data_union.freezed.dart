@@ -18,11 +18,11 @@ DashboardReqUpdatePageDataUnion _$DashboardReqUpdatePageDataUnionFromJson(
     Map<String, dynamic> json) {
   switch (json['type']) {
     case 'cards':
-      return DashboardUpdateCardsPage.fromJson(json);
+      return DashboardReqUpdatePageDataUnionCards.fromJson(json);
     case 'tiles':
-      return DashboardUpdateTilesPage.fromJson(json);
+      return DashboardReqUpdatePageDataUnionTiles.fromJson(json);
     case 'device':
-      return DashboardUpdateDevicePage.fromJson(json);
+      return DashboardReqUpdatePageDataUnionDevice.fromJson(json);
 
     default:
       throw CheckedFromJsonException(
@@ -82,23 +82,24 @@ mixin _$DashboardReqUpdatePageDataUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardUpdateCardsPage value) cards,
-    required TResult Function(DashboardUpdateTilesPage value) tiles,
-    required TResult Function(DashboardUpdateDevicePage value) device,
+    required TResult Function(DashboardReqUpdatePageDataUnionCards value) cards,
+    required TResult Function(DashboardReqUpdatePageDataUnionTiles value) tiles,
+    required TResult Function(DashboardReqUpdatePageDataUnionDevice value)
+        device,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardUpdateCardsPage value)? cards,
-    TResult? Function(DashboardUpdateTilesPage value)? tiles,
-    TResult? Function(DashboardUpdateDevicePage value)? device,
+    TResult? Function(DashboardReqUpdatePageDataUnionCards value)? cards,
+    TResult? Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
+    TResult? Function(DashboardReqUpdatePageDataUnionDevice value)? device,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardUpdateCardsPage value)? cards,
-    TResult Function(DashboardUpdateTilesPage value)? tiles,
-    TResult Function(DashboardUpdateDevicePage value)? device,
+    TResult Function(DashboardReqUpdatePageDataUnionCards value)? cards,
+    TResult Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
+    TResult Function(DashboardReqUpdatePageDataUnionDevice value)? device,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -167,25 +168,25 @@ class _$DashboardReqUpdatePageDataUnionCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$DashboardUpdateCardsPageImplCopyWith<$Res>
+abstract class _$$DashboardReqUpdatePageDataUnionCardsImplCopyWith<$Res>
     implements $DashboardReqUpdatePageDataUnionCopyWith<$Res> {
-  factory _$$DashboardUpdateCardsPageImplCopyWith(
-          _$DashboardUpdateCardsPageImpl value,
-          $Res Function(_$DashboardUpdateCardsPageImpl) then) =
-      __$$DashboardUpdateCardsPageImplCopyWithImpl<$Res>;
+  factory _$$DashboardReqUpdatePageDataUnionCardsImplCopyWith(
+          _$DashboardReqUpdatePageDataUnionCardsImpl value,
+          $Res Function(_$DashboardReqUpdatePageDataUnionCardsImpl) then) =
+      __$$DashboardReqUpdatePageDataUnionCardsImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({String title, int order, String type, String? icon});
 }
 
 /// @nodoc
-class __$$DashboardUpdateCardsPageImplCopyWithImpl<$Res>
+class __$$DashboardReqUpdatePageDataUnionCardsImplCopyWithImpl<$Res>
     extends _$DashboardReqUpdatePageDataUnionCopyWithImpl<$Res,
-        _$DashboardUpdateCardsPageImpl>
-    implements _$$DashboardUpdateCardsPageImplCopyWith<$Res> {
-  __$$DashboardUpdateCardsPageImplCopyWithImpl(
-      _$DashboardUpdateCardsPageImpl _value,
-      $Res Function(_$DashboardUpdateCardsPageImpl) _then)
+        _$DashboardReqUpdatePageDataUnionCardsImpl>
+    implements _$$DashboardReqUpdatePageDataUnionCardsImplCopyWith<$Res> {
+  __$$DashboardReqUpdatePageDataUnionCardsImplCopyWithImpl(
+      _$DashboardReqUpdatePageDataUnionCardsImpl _value,
+      $Res Function(_$DashboardReqUpdatePageDataUnionCardsImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardReqUpdatePageDataUnion
@@ -198,7 +199,7 @@ class __$$DashboardUpdateCardsPageImplCopyWithImpl<$Res>
     Object? type = null,
     Object? icon = freezed,
   }) {
-    return _then(_$DashboardUpdateCardsPageImpl(
+    return _then(_$DashboardReqUpdatePageDataUnionCardsImpl(
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -221,15 +222,17 @@ class __$$DashboardUpdateCardsPageImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardUpdateCardsPageImpl implements DashboardUpdateCardsPage {
-  const _$DashboardUpdateCardsPageImpl(
+class _$DashboardReqUpdatePageDataUnionCardsImpl
+    implements DashboardReqUpdatePageDataUnionCards {
+  const _$DashboardReqUpdatePageDataUnionCardsImpl(
       {required this.title,
       required this.order,
       this.type = 'cards',
       this.icon});
 
-  factory _$DashboardUpdateCardsPageImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DashboardUpdateCardsPageImplFromJson(json);
+  factory _$DashboardReqUpdatePageDataUnionCardsImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$DashboardReqUpdatePageDataUnionCardsImplFromJson(json);
 
   /// The title of the page.
   @override
@@ -257,7 +260,7 @@ class _$DashboardUpdateCardsPageImpl implements DashboardUpdateCardsPage {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardUpdateCardsPageImpl &&
+            other is _$DashboardReqUpdatePageDataUnionCardsImpl &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
             (identical(other.type, type) || other.type == type) &&
@@ -273,9 +276,10 @@ class _$DashboardUpdateCardsPageImpl implements DashboardUpdateCardsPage {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardUpdateCardsPageImplCopyWith<_$DashboardUpdateCardsPageImpl>
-      get copyWith => __$$DashboardUpdateCardsPageImplCopyWithImpl<
-          _$DashboardUpdateCardsPageImpl>(this, _$identity);
+  _$$DashboardReqUpdatePageDataUnionCardsImplCopyWith<
+          _$DashboardReqUpdatePageDataUnionCardsImpl>
+      get copyWith => __$$DashboardReqUpdatePageDataUnionCardsImplCopyWithImpl<
+          _$DashboardReqUpdatePageDataUnionCardsImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -326,9 +330,10 @@ class _$DashboardUpdateCardsPageImpl implements DashboardUpdateCardsPage {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardUpdateCardsPage value) cards,
-    required TResult Function(DashboardUpdateTilesPage value) tiles,
-    required TResult Function(DashboardUpdateDevicePage value) device,
+    required TResult Function(DashboardReqUpdatePageDataUnionCards value) cards,
+    required TResult Function(DashboardReqUpdatePageDataUnionTiles value) tiles,
+    required TResult Function(DashboardReqUpdatePageDataUnionDevice value)
+        device,
   }) {
     return cards(this);
   }
@@ -336,9 +341,9 @@ class _$DashboardUpdateCardsPageImpl implements DashboardUpdateCardsPage {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardUpdateCardsPage value)? cards,
-    TResult? Function(DashboardUpdateTilesPage value)? tiles,
-    TResult? Function(DashboardUpdateDevicePage value)? device,
+    TResult? Function(DashboardReqUpdatePageDataUnionCards value)? cards,
+    TResult? Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
+    TResult? Function(DashboardReqUpdatePageDataUnionDevice value)? device,
   }) {
     return cards?.call(this);
   }
@@ -346,9 +351,9 @@ class _$DashboardUpdateCardsPageImpl implements DashboardUpdateCardsPage {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardUpdateCardsPage value)? cards,
-    TResult Function(DashboardUpdateTilesPage value)? tiles,
-    TResult Function(DashboardUpdateDevicePage value)? device,
+    TResult Function(DashboardReqUpdatePageDataUnionCards value)? cards,
+    TResult Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
+    TResult Function(DashboardReqUpdatePageDataUnionDevice value)? device,
     required TResult orElse(),
   }) {
     if (cards != null) {
@@ -359,22 +364,23 @@ class _$DashboardUpdateCardsPageImpl implements DashboardUpdateCardsPage {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardUpdateCardsPageImplToJson(
+    return _$$DashboardReqUpdatePageDataUnionCardsImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardUpdateCardsPage
+abstract class DashboardReqUpdatePageDataUnionCards
     implements DashboardReqUpdatePageDataUnion {
-  const factory DashboardUpdateCardsPage(
+  const factory DashboardReqUpdatePageDataUnionCards(
       {required final String title,
       required final int order,
       final String type,
-      final String? icon}) = _$DashboardUpdateCardsPageImpl;
+      final String? icon}) = _$DashboardReqUpdatePageDataUnionCardsImpl;
 
-  factory DashboardUpdateCardsPage.fromJson(Map<String, dynamic> json) =
-      _$DashboardUpdateCardsPageImpl.fromJson;
+  factory DashboardReqUpdatePageDataUnionCards.fromJson(
+          Map<String, dynamic> json) =
+      _$DashboardReqUpdatePageDataUnionCardsImpl.fromJson;
 
   /// The title of the page.
   @override
@@ -396,30 +402,31 @@ abstract class DashboardUpdateCardsPage
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardUpdateCardsPageImplCopyWith<_$DashboardUpdateCardsPageImpl>
+  _$$DashboardReqUpdatePageDataUnionCardsImplCopyWith<
+          _$DashboardReqUpdatePageDataUnionCardsImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DashboardUpdateTilesPageImplCopyWith<$Res>
+abstract class _$$DashboardReqUpdatePageDataUnionTilesImplCopyWith<$Res>
     implements $DashboardReqUpdatePageDataUnionCopyWith<$Res> {
-  factory _$$DashboardUpdateTilesPageImplCopyWith(
-          _$DashboardUpdateTilesPageImpl value,
-          $Res Function(_$DashboardUpdateTilesPageImpl) then) =
-      __$$DashboardUpdateTilesPageImplCopyWithImpl<$Res>;
+  factory _$$DashboardReqUpdatePageDataUnionTilesImplCopyWith(
+          _$DashboardReqUpdatePageDataUnionTilesImpl value,
+          $Res Function(_$DashboardReqUpdatePageDataUnionTilesImpl) then) =
+      __$$DashboardReqUpdatePageDataUnionTilesImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({String title, int order, String type, String? icon});
 }
 
 /// @nodoc
-class __$$DashboardUpdateTilesPageImplCopyWithImpl<$Res>
+class __$$DashboardReqUpdatePageDataUnionTilesImplCopyWithImpl<$Res>
     extends _$DashboardReqUpdatePageDataUnionCopyWithImpl<$Res,
-        _$DashboardUpdateTilesPageImpl>
-    implements _$$DashboardUpdateTilesPageImplCopyWith<$Res> {
-  __$$DashboardUpdateTilesPageImplCopyWithImpl(
-      _$DashboardUpdateTilesPageImpl _value,
-      $Res Function(_$DashboardUpdateTilesPageImpl) _then)
+        _$DashboardReqUpdatePageDataUnionTilesImpl>
+    implements _$$DashboardReqUpdatePageDataUnionTilesImplCopyWith<$Res> {
+  __$$DashboardReqUpdatePageDataUnionTilesImplCopyWithImpl(
+      _$DashboardReqUpdatePageDataUnionTilesImpl _value,
+      $Res Function(_$DashboardReqUpdatePageDataUnionTilesImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardReqUpdatePageDataUnion
@@ -432,7 +439,7 @@ class __$$DashboardUpdateTilesPageImplCopyWithImpl<$Res>
     Object? type = null,
     Object? icon = freezed,
   }) {
-    return _then(_$DashboardUpdateTilesPageImpl(
+    return _then(_$DashboardReqUpdatePageDataUnionTilesImpl(
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -455,15 +462,17 @@ class __$$DashboardUpdateTilesPageImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardUpdateTilesPageImpl implements DashboardUpdateTilesPage {
-  const _$DashboardUpdateTilesPageImpl(
+class _$DashboardReqUpdatePageDataUnionTilesImpl
+    implements DashboardReqUpdatePageDataUnionTiles {
+  const _$DashboardReqUpdatePageDataUnionTilesImpl(
       {required this.title,
       required this.order,
       this.type = 'tiles',
       this.icon});
 
-  factory _$DashboardUpdateTilesPageImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DashboardUpdateTilesPageImplFromJson(json);
+  factory _$DashboardReqUpdatePageDataUnionTilesImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$DashboardReqUpdatePageDataUnionTilesImplFromJson(json);
 
   /// The title of the page.
   @override
@@ -491,7 +500,7 @@ class _$DashboardUpdateTilesPageImpl implements DashboardUpdateTilesPage {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardUpdateTilesPageImpl &&
+            other is _$DashboardReqUpdatePageDataUnionTilesImpl &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
             (identical(other.type, type) || other.type == type) &&
@@ -507,9 +516,10 @@ class _$DashboardUpdateTilesPageImpl implements DashboardUpdateTilesPage {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardUpdateTilesPageImplCopyWith<_$DashboardUpdateTilesPageImpl>
-      get copyWith => __$$DashboardUpdateTilesPageImplCopyWithImpl<
-          _$DashboardUpdateTilesPageImpl>(this, _$identity);
+  _$$DashboardReqUpdatePageDataUnionTilesImplCopyWith<
+          _$DashboardReqUpdatePageDataUnionTilesImpl>
+      get copyWith => __$$DashboardReqUpdatePageDataUnionTilesImplCopyWithImpl<
+          _$DashboardReqUpdatePageDataUnionTilesImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -560,9 +570,10 @@ class _$DashboardUpdateTilesPageImpl implements DashboardUpdateTilesPage {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardUpdateCardsPage value) cards,
-    required TResult Function(DashboardUpdateTilesPage value) tiles,
-    required TResult Function(DashboardUpdateDevicePage value) device,
+    required TResult Function(DashboardReqUpdatePageDataUnionCards value) cards,
+    required TResult Function(DashboardReqUpdatePageDataUnionTiles value) tiles,
+    required TResult Function(DashboardReqUpdatePageDataUnionDevice value)
+        device,
   }) {
     return tiles(this);
   }
@@ -570,9 +581,9 @@ class _$DashboardUpdateTilesPageImpl implements DashboardUpdateTilesPage {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardUpdateCardsPage value)? cards,
-    TResult? Function(DashboardUpdateTilesPage value)? tiles,
-    TResult? Function(DashboardUpdateDevicePage value)? device,
+    TResult? Function(DashboardReqUpdatePageDataUnionCards value)? cards,
+    TResult? Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
+    TResult? Function(DashboardReqUpdatePageDataUnionDevice value)? device,
   }) {
     return tiles?.call(this);
   }
@@ -580,9 +591,9 @@ class _$DashboardUpdateTilesPageImpl implements DashboardUpdateTilesPage {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardUpdateCardsPage value)? cards,
-    TResult Function(DashboardUpdateTilesPage value)? tiles,
-    TResult Function(DashboardUpdateDevicePage value)? device,
+    TResult Function(DashboardReqUpdatePageDataUnionCards value)? cards,
+    TResult Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
+    TResult Function(DashboardReqUpdatePageDataUnionDevice value)? device,
     required TResult orElse(),
   }) {
     if (tiles != null) {
@@ -593,22 +604,23 @@ class _$DashboardUpdateTilesPageImpl implements DashboardUpdateTilesPage {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardUpdateTilesPageImplToJson(
+    return _$$DashboardReqUpdatePageDataUnionTilesImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardUpdateTilesPage
+abstract class DashboardReqUpdatePageDataUnionTiles
     implements DashboardReqUpdatePageDataUnion {
-  const factory DashboardUpdateTilesPage(
+  const factory DashboardReqUpdatePageDataUnionTiles(
       {required final String title,
       required final int order,
       final String type,
-      final String? icon}) = _$DashboardUpdateTilesPageImpl;
+      final String? icon}) = _$DashboardReqUpdatePageDataUnionTilesImpl;
 
-  factory DashboardUpdateTilesPage.fromJson(Map<String, dynamic> json) =
-      _$DashboardUpdateTilesPageImpl.fromJson;
+  factory DashboardReqUpdatePageDataUnionTiles.fromJson(
+          Map<String, dynamic> json) =
+      _$DashboardReqUpdatePageDataUnionTilesImpl.fromJson;
 
   /// The title of the page.
   @override
@@ -630,17 +642,18 @@ abstract class DashboardUpdateTilesPage
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardUpdateTilesPageImplCopyWith<_$DashboardUpdateTilesPageImpl>
+  _$$DashboardReqUpdatePageDataUnionTilesImplCopyWith<
+          _$DashboardReqUpdatePageDataUnionTilesImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DashboardUpdateDevicePageImplCopyWith<$Res>
+abstract class _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith<$Res>
     implements $DashboardReqUpdatePageDataUnionCopyWith<$Res> {
-  factory _$$DashboardUpdateDevicePageImplCopyWith(
-          _$DashboardUpdateDevicePageImpl value,
-          $Res Function(_$DashboardUpdateDevicePageImpl) then) =
-      __$$DashboardUpdateDevicePageImplCopyWithImpl<$Res>;
+  factory _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith(
+          _$DashboardReqUpdatePageDataUnionDeviceImpl value,
+          $Res Function(_$DashboardReqUpdatePageDataUnionDeviceImpl) then) =
+      __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
@@ -648,13 +661,13 @@ abstract class _$$DashboardUpdateDevicePageImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$DashboardUpdateDevicePageImplCopyWithImpl<$Res>
+class __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<$Res>
     extends _$DashboardReqUpdatePageDataUnionCopyWithImpl<$Res,
-        _$DashboardUpdateDevicePageImpl>
-    implements _$$DashboardUpdateDevicePageImplCopyWith<$Res> {
-  __$$DashboardUpdateDevicePageImplCopyWithImpl(
-      _$DashboardUpdateDevicePageImpl _value,
-      $Res Function(_$DashboardUpdateDevicePageImpl) _then)
+        _$DashboardReqUpdatePageDataUnionDeviceImpl>
+    implements _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith<$Res> {
+  __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl(
+      _$DashboardReqUpdatePageDataUnionDeviceImpl _value,
+      $Res Function(_$DashboardReqUpdatePageDataUnionDeviceImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardReqUpdatePageDataUnion
@@ -668,7 +681,7 @@ class __$$DashboardUpdateDevicePageImplCopyWithImpl<$Res>
     Object? type = null,
     Object? icon = freezed,
   }) {
-    return _then(_$DashboardUpdateDevicePageImpl(
+    return _then(_$DashboardReqUpdatePageDataUnionDeviceImpl(
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -695,16 +708,18 @@ class __$$DashboardUpdateDevicePageImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardUpdateDevicePageImpl implements DashboardUpdateDevicePage {
-  const _$DashboardUpdateDevicePageImpl(
+class _$DashboardReqUpdatePageDataUnionDeviceImpl
+    implements DashboardReqUpdatePageDataUnionDevice {
+  const _$DashboardReqUpdatePageDataUnionDeviceImpl(
       {required this.title,
       required this.order,
       required this.device,
       this.type = 'device',
       this.icon});
 
-  factory _$DashboardUpdateDevicePageImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DashboardUpdateDevicePageImplFromJson(json);
+  factory _$DashboardReqUpdatePageDataUnionDeviceImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$DashboardReqUpdatePageDataUnionDeviceImplFromJson(json);
 
   /// The title of the page.
   @override
@@ -736,7 +751,7 @@ class _$DashboardUpdateDevicePageImpl implements DashboardUpdateDevicePage {
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardUpdateDevicePageImpl &&
+            other is _$DashboardReqUpdatePageDataUnionDeviceImpl &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
             (identical(other.device, device) || other.device == device) &&
@@ -754,9 +769,10 @@ class _$DashboardUpdateDevicePageImpl implements DashboardUpdateDevicePage {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardUpdateDevicePageImplCopyWith<_$DashboardUpdateDevicePageImpl>
-      get copyWith => __$$DashboardUpdateDevicePageImplCopyWithImpl<
-          _$DashboardUpdateDevicePageImpl>(this, _$identity);
+  _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith<
+          _$DashboardReqUpdatePageDataUnionDeviceImpl>
+      get copyWith => __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<
+          _$DashboardReqUpdatePageDataUnionDeviceImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -807,9 +823,10 @@ class _$DashboardUpdateDevicePageImpl implements DashboardUpdateDevicePage {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardUpdateCardsPage value) cards,
-    required TResult Function(DashboardUpdateTilesPage value) tiles,
-    required TResult Function(DashboardUpdateDevicePage value) device,
+    required TResult Function(DashboardReqUpdatePageDataUnionCards value) cards,
+    required TResult Function(DashboardReqUpdatePageDataUnionTiles value) tiles,
+    required TResult Function(DashboardReqUpdatePageDataUnionDevice value)
+        device,
   }) {
     return device(this);
   }
@@ -817,9 +834,9 @@ class _$DashboardUpdateDevicePageImpl implements DashboardUpdateDevicePage {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardUpdateCardsPage value)? cards,
-    TResult? Function(DashboardUpdateTilesPage value)? tiles,
-    TResult? Function(DashboardUpdateDevicePage value)? device,
+    TResult? Function(DashboardReqUpdatePageDataUnionCards value)? cards,
+    TResult? Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
+    TResult? Function(DashboardReqUpdatePageDataUnionDevice value)? device,
   }) {
     return device?.call(this);
   }
@@ -827,9 +844,9 @@ class _$DashboardUpdateDevicePageImpl implements DashboardUpdateDevicePage {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardUpdateCardsPage value)? cards,
-    TResult Function(DashboardUpdateTilesPage value)? tiles,
-    TResult Function(DashboardUpdateDevicePage value)? device,
+    TResult Function(DashboardReqUpdatePageDataUnionCards value)? cards,
+    TResult Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
+    TResult Function(DashboardReqUpdatePageDataUnionDevice value)? device,
     required TResult orElse(),
   }) {
     if (device != null) {
@@ -840,23 +857,24 @@ class _$DashboardUpdateDevicePageImpl implements DashboardUpdateDevicePage {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardUpdateDevicePageImplToJson(
+    return _$$DashboardReqUpdatePageDataUnionDeviceImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardUpdateDevicePage
+abstract class DashboardReqUpdatePageDataUnionDevice
     implements DashboardReqUpdatePageDataUnion {
-  const factory DashboardUpdateDevicePage(
+  const factory DashboardReqUpdatePageDataUnionDevice(
       {required final String title,
       required final int order,
       required final String device,
       final String type,
-      final String? icon}) = _$DashboardUpdateDevicePageImpl;
+      final String? icon}) = _$DashboardReqUpdatePageDataUnionDeviceImpl;
 
-  factory DashboardUpdateDevicePage.fromJson(Map<String, dynamic> json) =
-      _$DashboardUpdateDevicePageImpl.fromJson;
+  factory DashboardReqUpdatePageDataUnionDevice.fromJson(
+          Map<String, dynamic> json) =
+      _$DashboardReqUpdatePageDataUnionDeviceImpl.fromJson;
 
   /// The title of the page.
   @override
@@ -881,6 +899,7 @@ abstract class DashboardUpdateDevicePage
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardUpdateDevicePageImplCopyWith<_$DashboardUpdateDevicePageImpl>
+  _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith<
+          _$DashboardReqUpdatePageDataUnionDeviceImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
