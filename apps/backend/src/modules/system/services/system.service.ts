@@ -54,7 +54,7 @@ export class SystemService {
 		);
 	}
 
-	//@Cron(CronExpression.EVERY_5_SECONDS)
+	@Cron(CronExpression.EVERY_5_SECONDS)
 	async broadcastSystemInfo() {
 		try {
 			const systemInfo = await this.getSystemInfo();
