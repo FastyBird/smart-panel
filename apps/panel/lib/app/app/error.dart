@@ -9,8 +9,12 @@ import 'package:material_symbols_icons/symbols.dart';
 
 class AppError extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
+  final Function() _onRestart;
 
-  AppError({super.key});
+  AppError({
+    required Function() onRestart,
+    super.key,
+  }) : _onRestart = onRestart;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +61,21 @@ class AppError extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: AppFontSize.small,
+                  ),
+                ),
+                AppSpacings.spacingLgVertical,
+                Theme(
+                  data: ThemeData(
+                    outlinedButtonTheme:
+                        Theme.of(context).brightness == Brightness.light
+                            ? AppOutlinedButtonsLightThemes.primary
+                            : AppOutlinedButtonsDarkThemes.primary,
+                  ),
+                  child: OutlinedButton(
+                    onPressed: () {
+                      _onRestart();
+                    },
+                    child: Text('Restart application'),
                   ),
                 ),
               ],
