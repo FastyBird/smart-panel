@@ -32,4 +32,18 @@ class ThrottleStatusModel extends Model {
       softTempLimit: json['soft_temp_limit'],
     );
   }
+
+  ThrottleStatusModel copyWith({
+    bool? undervoltage,
+    bool? frequencyCapping,
+    bool? throttling,
+    bool? softTempLimit,
+  }) {
+    return ThrottleStatusModel(
+      undervoltage: undervoltage ?? _undervoltage,
+      frequencyCapping: frequencyCapping ?? _frequencyCapping,
+      throttling: throttling ?? _throttling,
+      softTempLimit: softTempLimit ?? _softTempLimit,
+    );
+  }
 }

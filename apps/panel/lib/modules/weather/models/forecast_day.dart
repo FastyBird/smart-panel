@@ -78,6 +78,26 @@ class ForecastDayModel extends Model {
 
   DateTime get dayTime => _dayTime;
 
+  factory ForecastDayModel.fromJson(Map<String, dynamic> json) {
+    return ForecastDayModel(
+      temperature: ForecastTemperatureModel.fromJson(json['temperature']),
+      feelsLike: ForecastFeelsLikeModel.fromJson(json['feels_like']),
+      pressure: json['pressure'],
+      humidity: json['humidity'],
+      weather: WeatherInfoModel.fromJson(json['weather']),
+      wind: WindModel.fromJson(json['wind']),
+      clouds: json['clouds'].toDouble(),
+      rain: json['rain']?.toDouble(),
+      snow: json['snow']?.toDouble(),
+      sunrise: json['sunrise'] != null ? DateTime.parse(json['sunrise']) : null,
+      sunset: json['sunset'] != null ? DateTime.parse(json['sunset']) : null,
+      moonrise:
+          json['moonrise'] != null ? DateTime.parse(json['moonrise']) : null,
+      moonset: json['moonset'] != null ? DateTime.parse(json['moonset']) : null,
+      dayTime: DateTime.parse(json['day_time']),
+    );
+  }
+
   ForecastDayModel copyWith({
     ForecastTemperatureModel? temperature,
     ForecastFeelsLikeModel? feelsLike,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/api/models/config_language_language.dart';
 import 'package:fastybird_smart_panel/api/models/config_language_time_format.dart';
 import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
@@ -24,14 +26,8 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
     }
   }
 
-  void insertLanguageConfiguration(
-    ConfigResSectionDataUnionLanguage apiLanguageConfig,
-  ) {
-    data = LanguageConfigModel(
-      language: _convertLanguageFromApi(apiLanguageConfig.language),
-      timezone: apiLanguageConfig.timezone,
-      timeFormat: _convertTimeFormatFromApi(apiLanguageConfig.timeFormat),
-    );
+  void insertLanguageConfiguration(Map<String, dynamic> json) {
+    data = LanguageConfigModel.fromJson(json);
 
     notifyListeners();
   }
@@ -107,7 +103,7 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionLanguage) {
-          insertLanguageConfiguration(data);
+          insertLanguageConfiguration(jsonDecode(jsonEncode(data)));
         }
       },
       'fetch language configuration',

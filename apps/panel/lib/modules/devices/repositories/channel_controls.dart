@@ -1,32 +1,43 @@
-import 'package:fastybird_smart_panel/api/models/devices_channel_control.dart';
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/modules/devices/models/controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
+import 'package:flutter/foundation.dart';
 
 class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
   ChannelControlsRepository({
     required super.apiClient,
   });
 
-  void insertControls(
-    String channelId,
-    List<DevicesChannelControl> apiControls,
-  ) {
-    for (var apiControl in apiControls) {
-      data[apiControl.id] = ChannelControlDataModel.fromJson({
-        'id': apiControl.id,
-        'channel': channelId,
-        'name': apiControl.name,
-        'created_at': apiControl.createdAt.toIso8601String(),
-        'updated_at': apiControl.updatedAt?.toIso8601String(),
-      });
+  void insertControls(List<Map<String, dynamic>> json) {
+    late Map<String, ChannelControlDataModel> insertData = {...data};
+
+    for (var row in json) {
+      try {
+        ChannelControlDataModel control = ChannelControlDataModel.fromJson(row);
+
+        insertData[control.id] = control;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNELS CONTROLS] Failed to create control model: ${e.toString()}',
+          );
+        }
+
+        /// Failed to create new model
+      }
     }
 
-    notifyListeners();
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
+
+      notifyListeners();
+    }
   }
 
   Future<void> fetchControl(
-    String id,
     String channelId,
+    String id,
   ) async {
     return handleApiCall(
       () async {
@@ -35,7 +46,7 @@ class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
           id: id,
         );
 
-        insertControls(channelId, [response.data.data]);
+        insertControls([jsonDecode(jsonEncode(response.data.data))]);
       },
       'fetch channel control',
     );
@@ -50,7 +61,13 @@ class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
           channelId: channelId,
         );
 
-        insertControls(channelId, response.data.data);
+        List<Map<String, dynamic>> controls = [];
+
+        for (var control in response.data.data) {
+          controls.add(jsonDecode(jsonEncode(control)));
+        }
+
+        insertControls(controls);
       },
       'fetch channel controls',
     );

@@ -32,4 +32,18 @@ class OperatingSystemInfoModel extends Model {
       uptime: json['uptime'],
     );
   }
+
+  OperatingSystemInfoModel copyWith({
+    String? platform,
+    String? distro,
+    String? release,
+    int? uptime,
+  }) {
+    return OperatingSystemInfoModel(
+      platform: platform ?? _platform,
+      distro: distro ?? _distro,
+      release: release ?? _release,
+      uptime: uptime ?? _uptime,
+    );
+  }
 }

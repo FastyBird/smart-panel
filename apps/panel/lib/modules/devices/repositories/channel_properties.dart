@@ -1,4 +1,5 @@
-import 'package:fastybird_smart_panel/api/models/devices_channel_property.dart';
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/modules/devices/models/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
@@ -10,32 +11,30 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     required super.apiClient,
   });
 
-  void insertProperties(
-    String channelId,
-    List<DevicesChannelProperty> apiProperties,
-  ) {
-    for (var apiProperty in apiProperties) {
-      data[apiProperty.id] = ChannelPropertyModel.fromJson({
-        'id': apiProperty.id,
-        'channel': channelId,
-        'category': apiProperty.category.json,
-        'name': apiProperty.name,
-        'permission': apiProperty.permission
-            .map((item) => item.json)
-            .whereType<String>()
-            .toList(),
-        'data_type': apiProperty.dataType.json,
-        'unit': apiProperty.unit,
-        'format': apiProperty.format,
-        'invalid': apiProperty.invalid,
-        'step': apiProperty.step,
-        'value': apiProperty.value,
-        'created_at': apiProperty.createdAt.toIso8601String(),
-        'updated_at': apiProperty.updatedAt?.toIso8601String(),
-      });
+  void insertProperties(List<Map<String, dynamic>> json) {
+    late Map<String, ChannelPropertyModel> insertData = {...data};
+
+    for (var row in json) {
+      try {
+        ChannelPropertyModel property = ChannelPropertyModel.fromJson(row);
+
+        insertData[property.id] = property;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNELS PROPERTIES] Failed to create property model: ${e.toString()}',
+          );
+        }
+
+        /// Failed to create new model
+      }
     }
 
-    notifyListeners();
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
+
+      notifyListeners();
+    }
   }
 
   Future<bool> toggleValue(String id) async {
@@ -47,7 +46,8 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
     if (property.dataType != DataType.boolean) {
       debugPrint(
-          '[DEVICES MODULE][CHANNEL PROPERTIES] Only boolean values could be toggled');
+        '[DEVICES MODULE][CHANNEL PROPERTIES] Only boolean values could be toggled',
+      );
     }
 
     bool newValue = false;
@@ -148,8 +148,8 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   }
 
   Future<void> fetchProperty(
-    String id,
     String channelId,
+    String id,
   ) async {
     return handleApiCall(
       () async {
@@ -158,7 +158,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
           id: id,
         );
 
-        insertProperties(channelId, [response.data.data]);
+        insertProperties([jsonDecode(jsonEncode(response.data.data))]);
       },
       'fetch channel property',
     );
@@ -173,7 +173,13 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
           channelId: channelId,
         );
 
-        insertProperties(channelId, response.data.data);
+        List<Map<String, dynamic>> properties = [];
+
+        for (var property in response.data.data) {
+          properties.add(jsonDecode(jsonEncode(property)));
+        }
+
+        insertProperties(properties);
       },
       'fetch channel properties',
     );

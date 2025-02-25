@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
 import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
@@ -19,15 +21,8 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
     }
   }
 
-  void insertAudioConfiguration(
-    ConfigResSectionDataUnionAudio apiAudioConfig,
-  ) {
-    data = AudioConfigModel(
-      speaker: apiAudioConfig.speaker,
-      speakerVolume: apiAudioConfig.speakerVolume,
-      microphone: apiAudioConfig.microphone,
-      microphoneVolume: apiAudioConfig.microphoneVolume,
-    );
+  void insertAudioConfiguration(Map<String, dynamic> json) {
+    data = AudioConfigModel.fromJson(json);
 
     notifyListeners();
   }
@@ -112,7 +107,7 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionAudio) {
-          insertAudioConfiguration(data);
+          insertAudioConfiguration(jsonDecode(jsonEncode(data)));
         }
       },
       'fetch audio configuration',

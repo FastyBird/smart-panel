@@ -32,4 +32,18 @@ class StorageInfoModel extends Model {
       available: json['available'],
     );
   }
+
+  StorageInfoModel copyWith({
+    String? fs,
+    int? used,
+    int? size,
+    int? available,
+  }) {
+    return StorageInfoModel(
+      fs: fs ?? _fs,
+      used: used ?? _used,
+      size: size ?? _size,
+      available: available ?? _available,
+    );
+  }
 }

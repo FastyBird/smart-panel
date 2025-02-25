@@ -19,6 +19,14 @@ class WindModel extends Model {
 
   double? get gust => _gust;
 
+  factory WindModel.fromJson(Map<String, dynamic> json) {
+    return WindModel(
+      speed: json['speed'].toDouble(),
+      deg: json['deg'],
+      gust: json['gust']?.toDouble(),
+    );
+  }
+
   WindModel copyWith({
     double? speed,
     int? deg,

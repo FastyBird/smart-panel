@@ -26,4 +26,16 @@ class NetworkStatsModel extends Model {
       txBytes: json['tx_bytes'],
     );
   }
+
+  NetworkStatsModel copyWith({
+    String? interface,
+    int? rxBytes,
+    int? txBytes,
+  }) {
+    return NetworkStatsModel(
+      interface: interface ?? _interface,
+      rxBytes: rxBytes ?? _rxBytes,
+      txBytes: txBytes ?? _txBytes,
+    );
+  }
 }

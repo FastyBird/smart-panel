@@ -28,6 +28,31 @@ class CardsPageModel extends PageModel {
   List<String> get dataSource => _dataSource;
 
   factory CardsPageModel.fromJson(Map<String, dynamic> json) {
+    List<String> cards = [];
+
+    if (json['cards'] is List) {
+      for (var card in json['cards']) {
+        if (card is String) {
+          cards.add(card);
+        } else if (card is Map<String, dynamic> && card.containsKey('id')) {
+          cards.add(card['id']);
+        }
+      }
+    }
+
+    List<String> dataSources = [];
+
+    if (json['data_source'] is List) {
+      for (var dataSource in json['data_source']) {
+        if (dataSource is String) {
+          dataSources.add(dataSource);
+        } else if (dataSource is Map<String, dynamic> &&
+            dataSource.containsKey('id')) {
+          dataSources.add(dataSource['id']);
+        }
+      }
+    }
+
     return CardsPageModel(
       id: UuidUtils.validateUuid(json['id']),
       title: json['title'],
@@ -37,9 +62,8 @@ class CardsPageModel extends PageModel {
               SymbolStyle.outlined,
             )
           : null,
-      cards: UuidUtils.validateUuidList(List<String>.from(json['cards'] ?? [])),
-      dataSource: UuidUtils.validateUuidList(
-          List<String>.from(json['data_source'] ?? [])),
+      cards: UuidUtils.validateUuidList(cards),
+      dataSource: UuidUtils.validateUuidList(dataSources),
       order: json['order'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])

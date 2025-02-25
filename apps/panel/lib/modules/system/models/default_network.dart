@@ -32,4 +32,18 @@ class DefaultNetworkModel extends Model {
       mac: json['mac'],
     );
   }
+
+  DefaultNetworkModel copyWith({
+    String? interface,
+    String? ip4,
+    String? ip6,
+    String? mac,
+  }) {
+    return DefaultNetworkModel(
+      interface: interface ?? _interface,
+      ip4: ip4 ?? _ip4,
+      ip6: ip6 ?? _ip6,
+      mac: mac ?? _mac,
+    );
+  }
 }

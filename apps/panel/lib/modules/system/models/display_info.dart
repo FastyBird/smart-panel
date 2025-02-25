@@ -32,4 +32,18 @@ class DisplayInfoModel extends Model {
       currentResY: json['current_res_y'],
     );
   }
+
+  DisplayInfoModel copyWith({
+    int? resolutionX,
+    int? resolutionY,
+    int? currentResX,
+    int? currentResY,
+  }) {
+    return DisplayInfoModel(
+      resolutionX: resolutionX ?? _resolutionX,
+      resolutionY: resolutionY ?? _resolutionY,
+      currentResX: currentResX ?? _currentResX,
+      currentResY: currentResY ?? _currentResY,
+    );
+  }
 }

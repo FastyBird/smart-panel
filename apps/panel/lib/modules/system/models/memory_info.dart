@@ -26,4 +26,16 @@ class MemoryInfoModel extends Model {
       free: json['free'],
     );
   }
+
+  MemoryInfoModel copyWith({
+    int? total,
+    int? used,
+    int? free,
+  }) {
+    return MemoryInfoModel(
+      total: total ?? _total,
+      used: used ?? _used,
+      free: free ?? _free,
+    );
+  }
 }

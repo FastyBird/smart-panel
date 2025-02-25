@@ -1,32 +1,43 @@
-import 'package:fastybird_smart_panel/api/models/devices_device_control.dart';
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/modules/devices/models/controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
+import 'package:flutter/foundation.dart';
 
 class DeviceControlsRepository extends Repository<DeviceControlModel> {
   DeviceControlsRepository({
     required super.apiClient,
   });
 
-  void insertControls(
-    String deviceId,
-    List<DevicesDeviceControl> apiControls,
-  ) {
-    for (var apiControl in apiControls) {
-      data[apiControl.id] = DeviceControlModel.fromJson({
-        'id': apiControl.id,
-        'device': deviceId,
-        'name': apiControl.name,
-        'created_at': apiControl.createdAt.toIso8601String(),
-        'updated_at': apiControl.updatedAt?.toIso8601String(),
-      });
+  void insertControls(List<Map<String, dynamic>> json) {
+    late Map<String, DeviceControlModel> insertData = {...data};
+
+    for (var row in json) {
+      try {
+        DeviceControlModel control = DeviceControlModel.fromJson(row);
+
+        insertData[control.id] = control;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][DEVICES CONTROLS] Failed to create control model: ${e.toString()}',
+          );
+        }
+
+        /// Failed to create new model
+      }
     }
 
-    notifyListeners();
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
+
+      notifyListeners();
+    }
   }
 
   Future<void> fetchControl(
-    String id,
     String deviceId,
+    String id,
   ) async {
     return handleApiCall(
       () async {
@@ -35,7 +46,7 @@ class DeviceControlsRepository extends Repository<DeviceControlModel> {
           id: id,
         );
 
-        insertControls(deviceId, [response.data.data]);
+        insertControls([jsonDecode(jsonEncode(response.data.data))]);
       },
       'fetch device control',
     );
@@ -50,7 +61,13 @@ class DeviceControlsRepository extends Repository<DeviceControlModel> {
           deviceId: deviceId,
         );
 
-        insertControls(deviceId, response.data.data);
+        List<Map<String, dynamic>> controls = [];
+
+        for (var control in response.data.data) {
+          controls.add(jsonDecode(jsonEncode(control)));
+        }
+
+        insertControls(controls);
       },
       'fetch device controls',
     );

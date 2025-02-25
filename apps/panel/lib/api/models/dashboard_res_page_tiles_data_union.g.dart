@@ -23,6 +23,7 @@ _$DashboardResPageTilesDataUnionDeviceImpl
               : DateTime.parse(json['updated_at'] as String),
           device: json['device'] as String,
           icon: json['icon'] as String?,
+          page: json['page'] as String,
           rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
           colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
           type: json['type'] as String? ?? 'device',
@@ -39,6 +40,7 @@ Map<String, dynamic> _$$DashboardResPageTilesDataUnionDeviceImplToJson(
       'updated_at': instance.updatedAt?.toIso8601String(),
       'device': instance.device,
       'icon': instance.icon,
+      'page': instance.page,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
       'type': instance.type,
@@ -59,6 +61,7 @@ _$DashboardResPageTilesDataUnionClockImpl
           updatedAt: json['updated_at'] == null
               ? null
               : DateTime.parse(json['updated_at'] as String),
+          page: json['page'] as String,
           rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
           colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
           type: json['type'] as String? ?? 'clock',
@@ -73,6 +76,7 @@ Map<String, dynamic> _$$DashboardResPageTilesDataUnionClockImplToJson(
       'data_source': instance.dataSource,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
+      'page': instance.page,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
       'type': instance.type,
@@ -93,6 +97,7 @@ _$DashboardResPageTilesDataUnionWeatherDayImpl
           updatedAt: json['updated_at'] == null
               ? null
               : DateTime.parse(json['updated_at'] as String),
+          page: json['page'] as String,
           rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
           colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
           type: json['type'] as String? ?? 'weather-day',
@@ -107,6 +112,7 @@ Map<String, dynamic> _$$DashboardResPageTilesDataUnionWeatherDayImplToJson(
       'data_source': instance.dataSource,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
+      'page': instance.page,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
       'type': instance.type,
@@ -127,6 +133,7 @@ _$DashboardResPageTilesDataUnionWeatherForecastImpl
           updatedAt: json['updated_at'] == null
               ? null
               : DateTime.parse(json['updated_at'] as String),
+          page: json['page'] as String,
           rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
           colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
           type: json['type'] as String? ?? 'weather-forecast',
@@ -141,6 +148,7 @@ Map<String, dynamic> _$$DashboardResPageTilesDataUnionWeatherForecastImplToJson(
       'data_source': instance.dataSource,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
+      'page': instance.page,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
       'type': instance.type,

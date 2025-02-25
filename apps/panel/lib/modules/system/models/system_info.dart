@@ -69,7 +69,7 @@ class SystemInfoModel extends Model {
     }
 
     return SystemInfoModel(
-      cpuLoad: json['cpu_load'],
+      cpuLoad: json['cpu_load'].toDouble(),
       memory: MemoryInfoModel.fromJson(json['memory']),
       storage: storage,
       temperature: TemperatureInfoModel.fromJson(json['temperature']),
@@ -77,6 +77,28 @@ class SystemInfoModel extends Model {
       network: network,
       defaultNetwork: DefaultNetworkModel.fromJson(json['default_network']),
       display: DisplayInfoModel.fromJson(json['display']),
+    );
+  }
+
+  SystemInfoModel copyWith({
+    double? cpuLoad,
+    MemoryInfoModel? memory,
+    List<StorageInfoModel>? storage,
+    TemperatureInfoModel? temperature,
+    OperatingSystemInfoModel? os,
+    List<NetworkStatsModel>? network,
+    DefaultNetworkModel? defaultNetwork,
+    DisplayInfoModel? display,
+  }) {
+    return SystemInfoModel(
+      cpuLoad: cpuLoad ?? _cpuLoad,
+      memory: memory ?? _memory,
+      storage: storage ?? _storage,
+      temperature: temperature ?? _temperature,
+      os: os ?? _os,
+      network: network ?? _network,
+      defaultNetwork: defaultNetwork ?? _defaultNetwork,
+      display: display ?? _display,
     );
   }
 }

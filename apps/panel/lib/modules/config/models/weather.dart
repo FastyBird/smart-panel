@@ -20,6 +20,19 @@ class WeatherConfigModel extends Model {
 
   WeatherUnit get unit => _unit;
 
+  factory WeatherConfigModel.fromJson(Map<String, dynamic> json) {
+    WeatherLocationType? locationType =
+        WeatherLocationType.fromValue(json['location_type']);
+
+    WeatherUnit? unit = WeatherUnit.fromValue(json['unit']);
+
+    return WeatherConfigModel(
+      location: json['location'],
+      locationType: locationType ?? WeatherLocationType.cityName,
+      unit: unit ?? WeatherUnit.celsius,
+    );
+  }
+
   WeatherConfigModel copyWith({
     String? location,
     WeatherLocationType? locationType,

@@ -1,7 +1,7 @@
-import 'package:fastybird_smart_panel/api/models/devices_channel.dart';
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/modules/devices/models/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
-import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:flutter/foundation.dart';
 
 class ChannelsRepository extends Repository<ChannelModel> {
@@ -9,51 +9,30 @@ class ChannelsRepository extends Repository<ChannelModel> {
     required super.apiClient,
   });
 
-  void insertChannels(
-    String deviceId,
-    List<DevicesChannel> apiChannels,
-  ) {
-    for (var apiChannel in apiChannels) {
-      final ChannelCategory? category = ChannelCategory.fromValue(
-        apiChannel.category.json ?? ChannelCategory.generic.value,
-      );
+  void insertChannels(List<Map<String, dynamic>> json) {
+    late Map<String, ChannelModel> insertData = {...data};
 
-      if (category == null || apiChannel.category.json == null) {
+    for (var row in json) {
+      try {
+        ChannelModel channel = ChannelModel.fromJson(row);
+
+        insertData[channel.id] = channel;
+      } catch (e) {
         if (kDebugMode) {
           debugPrint(
-            '[DEVICES MODULE][CHANNELS] Unknown channel category: "${apiChannel.category.json}" for channel: "${apiChannel.id}"',
+            '[DEVICES MODULE][CHANNELS] Failed to create channel model: ${e.toString()}',
           );
         }
 
-        continue;
-      }
-
-      try {
-        data[apiChannel.id] = ChannelModel.fromJson({
-          'id': apiChannel.id,
-          'device': deviceId,
-          'category': apiChannel.category.json,
-          'name': apiChannel.name,
-          'description': apiChannel.description,
-          'created_at': apiChannel.createdAt.toIso8601String(),
-          'updated_at': apiChannel.updatedAt?.toIso8601String(),
-          'controls': apiChannel.controls
-              .map(
-                (control) => control.id,
-              )
-              .toList(),
-          'properties': apiChannel.properties
-              .map(
-                (property) => property.id,
-              )
-              .toList(),
-        });
-      } catch (e) {
-        continue;
+        /// Failed to create new model
       }
     }
 
-    notifyListeners();
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
+
+      notifyListeners();
+    }
   }
 
   Future<void> fetchChannel(
@@ -65,9 +44,9 @@ class ChannelsRepository extends Repository<ChannelModel> {
           id: id,
         );
 
-        insertChannels(response.data.data.device, [response.data.data]);
+        insertChannels([jsonDecode(jsonEncode(response.data.data))]);
       },
-      'fetch channel channel',
+      'fetch channel',
     );
   }
 
@@ -76,11 +55,15 @@ class ChannelsRepository extends Repository<ChannelModel> {
       () async {
         final response = await apiClient.getDevicesModuleChannels();
 
-        if (response.data.data.isNotEmpty) {
-          insertChannels(response.data.data[0].device, response.data.data);
+        List<Map<String, dynamic>> channels = [];
+
+        for (var channel in response.data.data) {
+          channels.add(jsonDecode(jsonEncode(channel)));
         }
+
+        insertChannels(channels);
       },
-      'fetch channel channels',
+      'fetch channels',
     );
   }
 }

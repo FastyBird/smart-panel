@@ -52,7 +52,7 @@ class PageDeviceChannelDataSourceModel extends DeviceChannelDataSourceModel {
   factory PageDeviceChannelDataSourceModel.fromJson(Map<String, dynamic> json) {
     return PageDeviceChannelDataSourceModel(
       id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['parent']),
+      parent: UuidUtils.validateUuid(json['page']),
       device: UuidUtils.validateUuid(json['device']),
       channel: UuidUtils.validateUuid(json['channel']),
       property: UuidUtils.validateUuid(json['property']),
@@ -87,7 +87,7 @@ class CardDeviceChannelDataSourceModel extends DeviceChannelDataSourceModel {
   factory CardDeviceChannelDataSourceModel.fromJson(Map<String, dynamic> json) {
     return CardDeviceChannelDataSourceModel(
       id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['parent']),
+      parent: UuidUtils.validateUuid(json['card']),
       device: UuidUtils.validateUuid(json['device']),
       channel: UuidUtils.validateUuid(json['channel']),
       property: UuidUtils.validateUuid(json['property']),
@@ -117,7 +117,7 @@ class TileDeviceChannelDataSourceModel extends DeviceChannelDataSourceModel {
   factory TileDeviceChannelDataSourceModel.fromJson(Map<String, dynamic> json) {
     return TileDeviceChannelDataSourceModel(
       id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['parent']),
+      parent: UuidUtils.validateUuid(json['tile']),
       device: UuidUtils.validateUuid(json['device']),
       channel: UuidUtils.validateUuid(json['channel']),
       property: UuidUtils.validateUuid(json['property']),

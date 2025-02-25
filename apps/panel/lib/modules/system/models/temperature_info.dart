@@ -20,4 +20,14 @@ class TemperatureInfoModel extends Model {
       gpu: json['gpu'],
     );
   }
+
+  TemperatureInfoModel copyWith({
+    int? cpu,
+    int? gpu,
+  }) {
+    return TemperatureInfoModel(
+      cpu: cpu ?? _cpu,
+      gpu: gpu ?? _gpu,
+    );
+  }
 }

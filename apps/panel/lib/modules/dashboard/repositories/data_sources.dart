@@ -1,15 +1,5 @@
-import 'package:fastybird_smart_panel/api/models/dashboard_card_data_source_union.dart'
-    as card_data_source;
-import 'package:fastybird_smart_panel/api/models/dashboard_cards_page_data_source_union.dart'
-    as cards_page_data_source;
-import 'package:fastybird_smart_panel/api/models/dashboard_res_page_card_data_sources_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/dashboard_res_page_card_tile_data_sources_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/dashboard_res_page_data_sources_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/dashboard_res_page_tile_data_sources_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/dashboard_tile_base_data_source_union.dart'
-    as tile_data_source;
-import 'package:fastybird_smart_panel/api/models/dashboard_tiles_page_data_source_union.dart'
-    as tiles_page_data_source;
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
@@ -19,180 +9,153 @@ import 'package:flutter/foundation.dart';
 class DataSourcesRepository extends Repository<DataSourceModel> {
   DataSourcesRepository({required super.apiClient});
 
-  void insertCardsPageDataSource(
-    String pageId,
-    List<cards_page_data_source.DashboardCardsPageDataSourceUnion>
-        apiDataSources,
-  ) {
-    for (var apiDataSource in apiDataSources) {
-      final DataSourceType? dataSourceType =
-          DataSourceType.fromValue(apiDataSource.type);
+  void insertPageDataSources(List<Map<String, dynamic>> json) {
+    late Map<String, DataSourceModel> insertData = {...data};
 
-      if (dataSourceType == null) {
+    for (var row in json) {
+      if (!row.containsKey('type')) {
         if (kDebugMode) {
           debugPrint(
-            '[DASHBOARD MODULE][DATA SOURCE] Unknown cards page data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
+            '[DASHBOARD MODULE][DATA SOURCE] Missing required attribute: "type" for data source: "${row['id']}"',
           );
         }
 
         continue;
       }
 
-      if (apiDataSource is cards_page_data_source
-          .DashboardCardsPageDataSourceUnionDeviceChannel) {
-        data[apiDataSource.id] = buildPageDataSourceModel(dataSourceType, {
-          'id': apiDataSource.id,
-          'type': apiDataSource.type,
-          'parent': pageId,
-          'device': apiDataSource.device,
-          'channel': apiDataSource.channel,
-          'property': apiDataSource.property,
-          'icon': apiDataSource.icon,
-          'created_at': apiDataSource.createdAt.toIso8601String(),
-          'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-        });
+      final DataSourceType? dataSourceType =
+          DataSourceType.fromValue(row['type']);
+
+      if (dataSourceType == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][DATA SOURCE] Unknown cards page data source type: "${row['type']}" for data source: "${row['id']}"',
+          );
+        }
+
+        continue;
       }
+
+      try {
+        DataSourceModel dataSource =
+            buildPageDataSourceModel(dataSourceType, row);
+
+        insertData[dataSource.id] = dataSource;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][DATA SOURCE] Failed to create data source model: ${e.toString()}',
+          );
+        }
+
+        /// Failed to create new model
+      }
+    }
+
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
+
+      notifyListeners();
     }
   }
 
-  void insertTilesPageDataSource(
-    String pageId,
-    List<tiles_page_data_source.DashboardTilesPageDataSourceUnion>
-        apiDataSources,
-  ) {
-    for (var apiDataSource in apiDataSources) {
-      final DataSourceType? dataSourceType =
-          DataSourceType.fromValue(apiDataSource.type);
+  void insertCardDataSources(List<Map<String, dynamic>> json) {
+    late Map<String, DataSourceModel> insertData = {...data};
 
-      if (dataSourceType == null) {
+    for (var row in json) {
+      if (!row.containsKey('type')) {
         if (kDebugMode) {
           debugPrint(
-            '[DASHBOARD MODULE][DATA SOURCE] Unknown tiles page data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
+            '[DASHBOARD MODULE][DATA SOURCE] Missing required attribute: "type" for data source: "${row['id']}"',
           );
         }
 
         continue;
       }
 
-      if (apiDataSource is tiles_page_data_source
-          .DashboardTilesPageDataSourceUnionDeviceChannel) {
-        data[apiDataSource.id] = buildPageDataSourceModel(dataSourceType, {
-          'id': apiDataSource.id,
-          'type': apiDataSource.type,
-          'parent': pageId,
-          'device': apiDataSource.device,
-          'channel': apiDataSource.channel,
-          'property': apiDataSource.property,
-          'icon': apiDataSource.icon,
-          'created_at': apiDataSource.createdAt.toIso8601String(),
-          'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-        });
+      final DataSourceType? dataSourceType =
+          DataSourceType.fromValue(row['type']);
+
+      if (dataSourceType == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][DATA SOURCE] Unknown cards page data source type: "${row['type']}" for data source: "${row['id']}"',
+          );
+        }
+
+        continue;
       }
+
+      try {
+        DataSourceModel dataSource =
+            buildCardDataSourceModel(dataSourceType, row);
+
+        insertData[dataSource.id] = dataSource;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][DATA SOURCE] Failed to create data source model: ${e.toString()}',
+          );
+        }
+
+        /// Failed to create new model
+      }
+    }
+
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
+
+      notifyListeners();
     }
   }
 
-  void insertPageCardDataSource(
-    String cardId,
-    List<card_data_source.DashboardCardDataSourceUnion> apiDataSources,
-  ) {
-    for (var apiDataSource in apiDataSources) {
-      final DataSourceType? dataSourceType =
-          DataSourceType.fromValue(apiDataSource.type);
+  void insertTileDataSources(List<Map<String, dynamic>> json) {
+    late Map<String, DataSourceModel> insertData = {...data};
 
-      if (dataSourceType == null) {
+    for (var row in json) {
+      if (!row.containsKey('type')) {
         if (kDebugMode) {
           debugPrint(
-            '[DASHBOARD MODULE][DATA SOURCE] Unknown card data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
+            '[DASHBOARD MODULE][DATA SOURCE] Missing required attribute: "type" for data source: "${row['id']}"',
           );
         }
 
         continue;
       }
 
-      if (apiDataSource
-          is card_data_source.DashboardCardDataSourceUnionDeviceChannel) {
-        data[apiDataSource.id] = buildCardDataSourceModel(dataSourceType, {
-          'id': apiDataSource.id,
-          'type': apiDataSource.type,
-          'parent': cardId,
-          'device': apiDataSource.device,
-          'channel': apiDataSource.channel,
-          'property': apiDataSource.property,
-          'icon': apiDataSource.icon,
-          'created_at': apiDataSource.createdAt.toIso8601String(),
-          'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-        });
+      final DataSourceType? dataSourceType =
+          DataSourceType.fromValue(row['type']);
+
+      if (dataSourceType == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][DATA SOURCE] Unknown cards page data source type: "${row['type']}" for data source: "${row['id']}"',
+          );
+        }
+
+        continue;
+      }
+
+      try {
+        DataSourceModel dataSource =
+            buildTileDataSourceModel(dataSourceType, row);
+
+        insertData[dataSource.id] = dataSource;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][DATA SOURCE] Failed to create data source model: ${e.toString()}',
+          );
+        }
+
+        /// Failed to create new model
       }
     }
-  }
 
-  void insertPageTileDataSource(
-    String tileId,
-    List<tile_data_source.DashboardTileBaseDataSourceUnion> apiDataSources,
-  ) {
-    for (var apiDataSource in apiDataSources) {
-      final DataSourceType? dataSourceType =
-          DataSourceType.fromValue(apiDataSource.type);
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
 
-      if (dataSourceType == null) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][DATA SOURCE] Unknown tile data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
-          );
-        }
-
-        continue;
-      }
-
-      if (apiDataSource
-          is tile_data_source.DashboardTileBaseDataSourceUnionDeviceChannel) {
-        data[apiDataSource.id] = buildPageDataSourceModel(dataSourceType, {
-          'id': apiDataSource.id,
-          'type': apiDataSource.type,
-          'parent': tileId,
-          'device': apiDataSource.device,
-          'channel': apiDataSource.channel,
-          'property': apiDataSource.property,
-          'icon': apiDataSource.icon,
-          'created_at': apiDataSource.createdAt.toIso8601String(),
-          'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-        });
-      }
-    }
-  }
-
-  void insertCardTileDataSource(
-    String tileId,
-    List<tile_data_source.DashboardTileBaseDataSourceUnion> apiDataSources,
-  ) {
-    for (var apiDataSource in apiDataSources) {
-      final DataSourceType? dataSourceType =
-          DataSourceType.fromValue(apiDataSource.type);
-
-      if (dataSourceType == null) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][DATA SOURCE] Unknown tile data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
-          );
-        }
-
-        continue;
-      }
-
-      if (apiDataSource
-          is tile_data_source.DashboardTileBaseDataSourceUnionDeviceChannel) {
-        data[apiDataSource.id] = buildPageDataSourceModel(dataSourceType, {
-          'id': apiDataSource.id,
-          'type': apiDataSource.type,
-          'parent': tileId,
-          'device': apiDataSource.device,
-          'channel': apiDataSource.channel,
-          'property': apiDataSource.property,
-          'icon': apiDataSource.icon,
-          'created_at': apiDataSource.createdAt.toIso8601String(),
-          'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-        });
-      }
+      notifyListeners();
     }
   }
 
@@ -205,35 +168,13 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
           pageId: pageId,
         );
 
-        for (var apiDataSource in response.data.data) {
-          final DataSourceType? dataSourceType =
-              DataSourceType.fromValue(apiDataSource.type);
+        List<Map<String, dynamic>> dataSources = [];
 
-          if (dataSourceType == null) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DASHBOARD MODULE][DATA SOURCE] Unknown cards page data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
-              );
-            }
-
-            continue;
-          }
-
-          if (apiDataSource
-              is DashboardResPageDataSourcesDataUnionDeviceChannel) {
-            data[apiDataSource.id] = buildPageDataSourceModel(dataSourceType, {
-              'id': apiDataSource.id,
-              'type': apiDataSource.type,
-              'parent': pageId,
-              'device': apiDataSource.device,
-              'channel': apiDataSource.channel,
-              'property': apiDataSource.property,
-              'icon': apiDataSource.icon,
-              'created_at': apiDataSource.createdAt.toIso8601String(),
-              'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-            });
-          }
+        for (var dataSource in response.data.data) {
+          dataSources.add(jsonDecode(jsonEncode(dataSource)));
         }
+
+        insertPageDataSources(dataSources);
       },
       'fetch page data sources',
     );
@@ -250,35 +191,13 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
           cardId: cardId,
         );
 
-        for (var apiDataSource in response.data.data) {
-          final DataSourceType? dataSourceType =
-              DataSourceType.fromValue(apiDataSource.type);
+        List<Map<String, dynamic>> dataSources = [];
 
-          if (dataSourceType == null) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DASHBOARD MODULE][DATA SOURCE] Unknown card data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
-              );
-            }
-
-            continue;
-          }
-
-          if (apiDataSource
-              is DashboardResPageCardDataSourcesDataUnionDeviceChannel) {
-            data[apiDataSource.id] = buildCardDataSourceModel(dataSourceType, {
-              'id': apiDataSource.id,
-              'type': apiDataSource.type,
-              'parent': cardId,
-              'device': apiDataSource.device,
-              'channel': apiDataSource.channel,
-              'property': apiDataSource.property,
-              'icon': apiDataSource.icon,
-              'created_at': apiDataSource.createdAt.toIso8601String(),
-              'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-            });
-          }
+        for (var dataSource in response.data.data) {
+          dataSources.add(jsonDecode(jsonEncode(dataSource)));
         }
+
+        insertCardDataSources(dataSources);
       },
       'fetch page card data sources',
     );
@@ -295,35 +214,13 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
           tileId: tileId,
         );
 
-        for (var apiDataSource in response.data.data) {
-          final DataSourceType? dataSourceType =
-              DataSourceType.fromValue(apiDataSource.type);
+        List<Map<String, dynamic>> dataSources = [];
 
-          if (dataSourceType == null) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DASHBOARD MODULE][DATA SOURCE] Unknown tile data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
-              );
-            }
-
-            continue;
-          }
-
-          if (apiDataSource
-              is DashboardResPageTileDataSourcesDataUnionDeviceChannel) {
-            data[apiDataSource.id] = buildPageDataSourceModel(dataSourceType, {
-              'id': apiDataSource.id,
-              'type': apiDataSource.type,
-              'parent': tileId,
-              'device': apiDataSource.device,
-              'channel': apiDataSource.channel,
-              'property': apiDataSource.property,
-              'icon': apiDataSource.icon,
-              'created_at': apiDataSource.createdAt.toIso8601String(),
-              'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-            });
-          }
+        for (var dataSource in response.data.data) {
+          dataSources.add(jsonDecode(jsonEncode(dataSource)));
         }
+
+        insertTileDataSources(dataSources);
       },
       'fetch page tile data sources',
     );
@@ -343,35 +240,13 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
           tileId: tileId,
         );
 
-        for (var apiDataSource in response.data.data) {
-          final DataSourceType? dataSourceType =
-              DataSourceType.fromValue(apiDataSource.type);
+        List<Map<String, dynamic>> dataSources = [];
 
-          if (dataSourceType == null) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DASHBOARD MODULE][DATA SOURCE] Unknown tile data source type: "${apiDataSource.type}" for data source: "${apiDataSource.id}"',
-              );
-            }
-
-            continue;
-          }
-
-          if (apiDataSource
-              is DashboardResPageCardTileDataSourcesDataUnionDeviceChannel) {
-            data[apiDataSource.id] = buildPageDataSourceModel(dataSourceType, {
-              'id': apiDataSource.id,
-              'type': apiDataSource.type,
-              'parent': tileId,
-              'device': apiDataSource.device,
-              'channel': apiDataSource.channel,
-              'property': apiDataSource.property,
-              'icon': apiDataSource.icon,
-              'created_at': apiDataSource.createdAt.toIso8601String(),
-              'updated_at': apiDataSource.updatedAt?.toIso8601String(),
-            });
-          }
+        for (var dataSource in response.data.data) {
+          dataSources.add(jsonDecode(jsonEncode(dataSource)));
         }
+
+        insertTileDataSources(dataSources);
       },
       'fetch card tile data sources',
     );

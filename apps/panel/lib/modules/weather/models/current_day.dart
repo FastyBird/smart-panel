@@ -76,6 +76,25 @@ class CurrentDayModel extends Model {
 
   DateTime get dayTime => _dayTime;
 
+  factory CurrentDayModel.fromJson(Map<String, dynamic> json) {
+    return CurrentDayModel(
+      temperature: json['temperature'].toDouble(),
+      temperatureMin: json['temperature_min']?.toDouble(),
+      temperatureMax: json['temperature_max']?.toDouble(),
+      feelsLike: json['feels_like'].toDouble(),
+      pressure: json['pressure'],
+      humidity: json['humidity'],
+      weather: WeatherInfoModel.fromJson(json['weather']),
+      wind: WindModel.fromJson(json['wind']),
+      clouds: json['clouds'].toDouble(),
+      rain: json['rain']?.toDouble(),
+      snow: json['snow']?.toDouble(),
+      sunrise: DateTime.parse(json['sunrise']),
+      sunset: DateTime.parse(json['sunset']),
+      dayTime: DateTime.parse(json['day_time']),
+    );
+  }
+
   CurrentDayModel copyWith({
     double? temperature,
     double? temperatureMin,

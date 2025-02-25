@@ -24,6 +24,15 @@ class ForecastFeelsLikeModel extends Model {
 
   double? get night => _night;
 
+  factory ForecastFeelsLikeModel.fromJson(Map<String, dynamic> json) {
+    return ForecastFeelsLikeModel(
+      morn: json['morn']?.toDouble(),
+      day: json['day']?.toDouble(),
+      eve: json['eve']?.toDouble(),
+      night: json['night']?.toDouble(),
+    );
+  }
+
   ForecastFeelsLikeModel copyWith({
     double? morn,
     double? day,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
@@ -61,28 +63,47 @@ class DevicesModuleService {
   Future<void> _initializeDevices() async {
     var apiDevices = await _fetchDevices();
 
-    _devicesRepository.insertDevices(apiDevices);
+    List<Map<String, dynamic>> devices = [];
+
+    for (var device in apiDevices) {
+      devices.add(jsonDecode(jsonEncode(device)));
+    }
+
+    _devicesRepository.insertDevices(devices);
 
     for (var apiDevice in apiDevices) {
-      _deviceControlsRepository.insertControls(
-        apiDevice.id,
-        apiDevice.controls,
-      );
+      List<Map<String, dynamic>> deviceControls = [];
 
-      _channelsRepository.insertChannels(
-        apiDevice.id,
-        apiDevice.channels,
-      );
+      for (var control in apiDevice.controls) {
+        deviceControls.add(jsonDecode(jsonEncode(control)));
+      }
+
+      _deviceControlsRepository.insertControls(deviceControls);
+
+      List<Map<String, dynamic>> channels = [];
+
+      for (var channel in apiDevice.channels) {
+        channels.add(jsonDecode(jsonEncode(channel)));
+      }
+
+      _channelsRepository.insertChannels(channels);
 
       for (var apiChannel in apiDevice.channels) {
-        _channelControlsRepository.insertControls(
-          apiChannel.id,
-          apiChannel.controls,
-        );
-        _channelPropertiesRepository.insertProperties(
-          apiChannel.id,
-          apiChannel.properties,
-        );
+        List<Map<String, dynamic>> channelControls = [];
+
+        for (var control in apiChannel.controls) {
+          channelControls.add(jsonDecode(jsonEncode(control)));
+        }
+
+        _channelControlsRepository.insertControls(channelControls);
+
+        List<Map<String, dynamic>> properties = [];
+
+        for (var property in apiChannel.properties) {
+          properties.add(jsonDecode(jsonEncode(property)));
+        }
+
+        _channelPropertiesRepository.insertProperties(properties);
       }
     }
   }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
 import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
@@ -24,16 +26,8 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
     }
   }
 
-  void insertWeatherConfiguration(
-    ConfigResSectionDataUnionWeather apiWeatherConfig,
-  ) {
-    data = WeatherConfigModel(
-      location: apiWeatherConfig.location,
-      locationType: _convertWeatherLocationTypeFromApi(
-        apiWeatherConfig.locationType,
-      ),
-      unit: _convertWeatherUnitFromApi(apiWeatherConfig.unit),
-    );
+  void insertWeatherConfiguration(Map<String, dynamic> json) {
+    data = WeatherConfigModel.fromJson(json);
 
     notifyListeners();
   }
@@ -84,7 +78,7 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionWeather) {
-          insertWeatherConfiguration(data);
+          insertWeatherConfiguration(jsonDecode(jsonEncode(data)));
         }
       },
       'fetch weather configuration',

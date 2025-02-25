@@ -40,6 +40,9 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     /// The icon representing the device tile.
     required String? icon,
 
+    /// The unique identifier of the associated page.
+    required String page,
+
     /// The number of rows the tile spans.
     @JsonKey(name: 'row_span')
     @Default(0)
@@ -77,6 +80,9 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     /// The timestamp when the dashboard tile was last updated.
     @JsonKey(name: 'updated_at')
     required DateTime? updatedAt,
+
+    /// The unique identifier of the associated page.
+    required String page,
 
     /// The number of rows the tile spans.
     @JsonKey(name: 'row_span')
@@ -116,6 +122,9 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     @JsonKey(name: 'updated_at')
     required DateTime? updatedAt,
 
+    /// The unique identifier of the associated page.
+    required String page,
+
     /// The number of rows the tile spans.
     @JsonKey(name: 'row_span')
     @Default(0)
@@ -153,6 +162,9 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     /// The timestamp when the dashboard tile was last updated.
     @JsonKey(name: 'updated_at')
     required DateTime? updatedAt,
+
+    /// The unique identifier of the associated page.
+    required String page,
 
     /// The number of rows the tile spans.
     @JsonKey(name: 'row_span')

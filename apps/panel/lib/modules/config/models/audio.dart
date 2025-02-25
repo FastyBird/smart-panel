@@ -24,6 +24,15 @@ class AudioConfigModel extends Model {
 
   int get microphoneVolume => _microphoneVolume;
 
+  factory AudioConfigModel.fromJson(Map<String, dynamic> json) {
+    return AudioConfigModel(
+      speaker: json['speaker'],
+      speakerVolume: json['speaker_volume'],
+      microphone: json['microphone'],
+      microphoneVolume: json['microphone_volume'],
+    );
+  }
+
   AudioConfigModel copyWith({
     bool? speaker,
     int? speakerVolume,

@@ -24,6 +24,15 @@ class WeatherInfoModel extends Model {
 
   String get icon => _icon;
 
+  factory WeatherInfoModel.fromJson(Map<String, dynamic> json) {
+    return WeatherInfoModel(
+      code: json['code'],
+      main: json['main'],
+      description: json['description'],
+      icon: json['icon'],
+    );
+  }
+
   WeatherInfoModel copyWith({
     int? code,
     String? main,

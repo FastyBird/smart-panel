@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/dashboard_module/dashboard_module_client.dart';
@@ -54,51 +56,84 @@ class DashboardModuleService {
   Future<void> _initializePages() async {
     var apiPages = await _fetchPages();
 
-    _pagesRepository.insertPages(apiPages);
+    List<Map<String, dynamic>> pages = [];
+
+    for (var page in apiPages) {
+      pages.add(jsonDecode(jsonEncode(page)));
+    }
+
+    _pagesRepository.insertPages(pages);
 
     for (var apiPage in apiPages) {
       if (apiPage is DashboardResPagesDataUnionCards) {
-        _cardsRepository.insertCards(
-          apiPage.id,
-          apiPage.cards,
-        );
-        _dataSourcesRepository.insertCardsPageDataSource(
-          apiPage.id,
-          apiPage.dataSource,
-        );
+        List<Map<String, dynamic>> cards = [];
+
+        for (var card in apiPage.cards) {
+          cards.add(jsonDecode(jsonEncode(card)));
+        }
+
+        _cardsRepository.insertCards(cards);
+
+        List<Map<String, dynamic>> pageDataSource = [];
+
+        for (var dataSource in apiPage.dataSource) {
+          pageDataSource.add(jsonDecode(jsonEncode(dataSource)));
+        }
+
+        _dataSourcesRepository.insertPageDataSources(pageDataSource);
 
         for (var apiCard in apiPage.cards) {
-          _dataSourcesRepository.insertPageCardDataSource(
-            apiCard.id,
-            apiCard.dataSource,
-          );
-          _tilesRepository.insertCardTiles(
-            apiCard.id,
-            apiCard.tiles,
-          );
+          List<Map<String, dynamic>> cardDataSource = [];
+
+          for (var dataSource in apiCard.dataSource) {
+            cardDataSource.add(jsonDecode(jsonEncode(dataSource)));
+          }
+
+          _dataSourcesRepository.insertCardDataSources(cardDataSource);
+
+          List<Map<String, dynamic>> cardTiles = [];
+
+          for (var tile in apiCard.tiles) {
+            cardTiles.add(jsonDecode(jsonEncode(tile)));
+          }
+
+          _tilesRepository.insertCardTiles(cardTiles);
 
           for (var apiTile in apiCard.tiles) {
-            _dataSourcesRepository.insertCardTileDataSource(
-              apiTile.id,
-              apiTile.dataSource,
-            );
+            List<Map<String, dynamic>> tileDataSource = [];
+
+            for (var dataSource in apiTile.dataSource) {
+              tileDataSource.add(jsonDecode(jsonEncode(dataSource)));
+            }
+
+            _dataSourcesRepository.insertTileDataSources(tileDataSource);
           }
         }
       } else if (apiPage is DashboardResPagesDataUnionTiles) {
-        _tilesRepository.insertPageTiles(
-          apiPage.id,
-          apiPage.tiles,
-        );
-        _dataSourcesRepository.insertTilesPageDataSource(
-          apiPage.id,
-          apiPage.dataSource,
-        );
+        List<Map<String, dynamic>> pageTiles = [];
+
+        for (var tile in apiPage.tiles) {
+          pageTiles.add(jsonDecode(jsonEncode(tile)));
+        }
+
+        _tilesRepository.insertPageTiles(pageTiles);
+
+        List<Map<String, dynamic>> pageDataSource = [];
+
+        for (var dataSource in apiPage.dataSource) {
+          pageDataSource.add(jsonDecode(jsonEncode(dataSource)));
+        }
+
+        _dataSourcesRepository.insertPageDataSources(pageDataSource);
 
         for (var apiTile in apiPage.tiles) {
-          _dataSourcesRepository.insertPageTileDataSource(
-            apiTile.id,
-            apiTile.dataSource,
-          );
+          List<Map<String, dynamic>> tileDataSource = [];
+
+          for (var dataSource in apiTile.dataSource) {
+            tileDataSource.add(jsonDecode(jsonEncode(dataSource)));
+          }
+
+          _dataSourcesRepository.insertTileDataSources(tileDataSource);
         }
       }
     }

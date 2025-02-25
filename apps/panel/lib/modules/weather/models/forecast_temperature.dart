@@ -34,6 +34,17 @@ class ForecastTemperatureModel extends Model {
 
   double? get max => _max;
 
+  factory ForecastTemperatureModel.fromJson(Map<String, dynamic> json) {
+    return ForecastTemperatureModel(
+      morn: json['morn']?.toDouble(),
+      day: json['day']?.toDouble(),
+      eve: json['eve']?.toDouble(),
+      night: json['night']?.toDouble(),
+      min: json['min']?.toDouble(),
+      max: json['max']?.toDouble(),
+    );
+  }
+
   ForecastTemperatureModel copyWith({
     double? morn,
     double? day,

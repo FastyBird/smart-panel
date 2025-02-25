@@ -20,6 +20,18 @@ class LanguageConfigModel extends Model {
 
   TimeFormat get timeFormat => _timeFormat;
 
+  factory LanguageConfigModel.fromJson(Map<String, dynamic> json) {
+    Language? language = Language.fromValue(json['language']);
+
+    TimeFormat? timeFormat = TimeFormat.fromValue(json['time_format']);
+
+    return LanguageConfigModel(
+      language: language ?? Language.english,
+      timezone: json['timezone'],
+      timeFormat: timeFormat ?? TimeFormat.twentyFourHour,
+    );
+  }
+
   LanguageConfigModel copyWith({
     Language? language,
     String? timezone,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
 import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
@@ -19,15 +21,8 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
     }
   }
 
-  void insertDisplayConfiguration(
-    ConfigResSectionDataUnionDisplay apiDisplayConfig,
-  ) {
-    data = DisplayConfigModel(
-      darkMode: apiDisplayConfig.darkMode,
-      brightness: apiDisplayConfig.brightness,
-      screenLockDuration: apiDisplayConfig.screenLockDuration,
-      screenSaver: apiDisplayConfig.screenSaver,
-    );
+  void insertDisplayConfiguration(Map<String, dynamic> json) {
+    data = DisplayConfigModel.fromJson(json);
 
     notifyListeners();
   }
@@ -118,7 +113,7 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionDisplay) {
-          insertDisplayConfiguration(data);
+          insertDisplayConfiguration(jsonDecode(jsonEncode(data)));
         }
       },
       'fetch display configuration',

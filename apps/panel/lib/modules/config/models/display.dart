@@ -24,6 +24,15 @@ class DisplayConfigModel extends Model {
 
   bool get hasScreenSaver => _screenSaver;
 
+  factory DisplayConfigModel.fromJson(Map<String, dynamic> json) {
+    return DisplayConfigModel(
+      darkMode: json['dark_mode'],
+      brightness: json['brightness'],
+      screenLockDuration: json['screen_lock_duration'],
+      screenSaver: json['screen_saver'],
+    );
+  }
+
   DisplayConfigModel copyWith({
     bool? darkMode,
     int? brightness,

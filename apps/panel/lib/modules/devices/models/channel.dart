@@ -47,18 +47,40 @@ class ChannelModel extends Model {
       json['category'],
     );
 
+    List<String> controls = [];
+
+    if (json['controls'] is List) {
+      for (var control in json['controls']) {
+        if (control is String) {
+          controls.add(control);
+        } else if (control is Map<String, dynamic> &&
+            control.containsKey('id')) {
+          controls.add(control['id']);
+        }
+      }
+    }
+
+    List<String> properties = [];
+
+    if (json['properties'] is List) {
+      for (var property in json['properties']) {
+        if (property is String) {
+          properties.add(property);
+        } else if (property is Map<String, dynamic> &&
+            property.containsKey('id')) {
+          properties.add(property['id']);
+        }
+      }
+    }
+
     return ChannelModel(
       id: json['id'],
       category: category ?? ChannelCategory.generic,
       name: json['name'],
       description: json['description'],
       device: json['device'],
-      controls: UuidUtils.validateUuidList(
-        List<String>.from(json['controls'] ?? []),
-      ),
-      properties: UuidUtils.validateUuidList(
-        List<String>.from(json['properties'] ?? []),
-      ),
+      controls: UuidUtils.validateUuidList(controls),
+      properties: UuidUtils.validateUuidList(properties),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
