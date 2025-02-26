@@ -6,9 +6,9 @@ import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
@@ -28,7 +28,7 @@ export class DevicesService {
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly propertyValueService: PropertyValueService,
 		private readonly dataSource: DataSource,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	// Devices
@@ -151,7 +151,7 @@ export class DevicesService {
 
 		this.logger.debug(`[CREATE] Successfully created device with id=${savedDevice.id}`);
 
-		this.gateway.sendMessage(EventType.DEVICE_CREATED, savedDevice);
+		this.eventEmitter.emit(EventType.DEVICE_CREATED, savedDevice);
 
 		return savedDevice;
 	}
@@ -188,7 +188,7 @@ export class DevicesService {
 
 		this.logger.debug(`[UPDATE] Successfully updated device with id=${updatedDevice.id}`);
 
-		this.gateway.sendMessage(EventType.DEVICE_UPDATED, updatedDevice);
+		this.eventEmitter.emit(EventType.DEVICE_UPDATED, updatedDevice);
 
 		return updatedDevice;
 	}
@@ -202,7 +202,7 @@ export class DevicesService {
 
 		this.logger.log(`[DELETE] Successfully removed device with id=${id}`);
 
-		this.gateway.sendMessage(EventType.DEVICE_DELETED, device);
+		this.eventEmitter.emit(EventType.DEVICE_DELETED, device);
 	}
 
 	async getOneOrThrow(id: string): Promise<DeviceEntity> {

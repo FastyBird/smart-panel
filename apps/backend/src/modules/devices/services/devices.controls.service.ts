@@ -3,9 +3,9 @@ import { validate } from 'class-validator';
 import { Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../devices.constants';
 import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
@@ -21,7 +21,7 @@ export class DevicesControlsService {
 		@InjectRepository(DeviceControlEntity)
 		private readonly repository: Repository<DeviceControlEntity>,
 		private readonly devicesService: DevicesService,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findAll(deviceId: string): Promise<DeviceControlEntity[]> {
@@ -119,7 +119,7 @@ export class DevicesControlsService {
 
 		this.logger.debug(`[CREATE] Successfully created control with id=${savedControl.id} for deviceId=${deviceId}`);
 
-		this.gateway.sendMessage(EventType.DEVICE_CONTROL_CREATED, savedControl);
+		this.eventEmitter.emit(EventType.DEVICE_CONTROL_CREATED, savedControl);
 
 		return savedControl;
 	}
@@ -134,7 +134,7 @@ export class DevicesControlsService {
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for deviceId=${deviceId}`);
 
-		this.gateway.sendMessage(EventType.DEVICE_CONTROL_DELETED, control);
+		this.eventEmitter.emit(EventType.DEVICE_CONTROL_DELETED, control);
 	}
 
 	async getOneOrThrow(id: string, deviceId: string): Promise<DeviceControlEntity> {

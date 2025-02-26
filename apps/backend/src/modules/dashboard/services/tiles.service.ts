@@ -5,9 +5,9 @@ import omitBy from 'lodash.omitby';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
@@ -37,7 +37,7 @@ export class TilesService {
 		private readonly tilesMapperService: TilesTypeMapperService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 		private readonly dataSource: OrmDataSource,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findAll<TTile extends TileEntity>(filterBy?: FilterBy): Promise<TTile[]> {
@@ -224,7 +224,7 @@ export class TilesService {
 
 		this.logger.debug(`[CREATE] Successfully created tile with id=${savedTile.id}`);
 
-		this.gateway.sendMessage(EventType.TILE_CREATED, savedTile);
+		this.eventEmitter.emit(EventType.TILE_CREATED, savedTile);
 
 		return savedTile;
 	}
@@ -261,7 +261,7 @@ export class TilesService {
 
 		this.logger.debug(`[UPDATE] Successfully updated tile with id=${updatedTile.id}`);
 
-		this.gateway.sendMessage(EventType.TILE_UPDATED, updatedTile);
+		this.eventEmitter.emit(EventType.TILE_UPDATED, updatedTile);
 
 		return updatedTile;
 	}
@@ -275,7 +275,7 @@ export class TilesService {
 
 		this.logger.log(`[DELETE] Successfully removed tile with id=${id}`);
 
-		this.gateway.sendMessage(EventType.TILE_DELETED, tile);
+		this.eventEmitter.emit(EventType.TILE_DELETED, tile);
 	}
 
 	async getOneOrThrow<TTile extends TileEntity>(id: string, filterBy?: FilterBy): Promise<TTile> {

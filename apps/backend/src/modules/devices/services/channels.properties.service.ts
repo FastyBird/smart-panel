@@ -5,9 +5,9 @@ import omitBy from 'lodash.omitby';
 import { Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../devices.constants';
 import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -26,7 +26,7 @@ export class ChannelsPropertiesService {
 		private readonly repository: Repository<ChannelPropertyEntity>,
 		private readonly channelsService: ChannelsService,
 		private readonly propertyValueService: PropertyValueService,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findAll(channelId?: string): Promise<ChannelPropertyEntity[]> {
@@ -126,7 +126,7 @@ export class ChannelsPropertiesService {
 
 		this.logger.debug(`[CREATE] Successfully created property with id=${savedProperty.id} for channelId=${channelId}`);
 
-		this.gateway.sendMessage(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
+		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_CREATED, savedProperty);
 
 		return savedProperty;
 	}
@@ -160,7 +160,7 @@ export class ChannelsPropertiesService {
 
 		this.logger.debug(`[UPDATE] Successfully updated property with id=${updatedProperty.id}`);
 
-		this.gateway.sendMessage(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
+		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
 
 		return updatedProperty;
 	}
@@ -174,7 +174,7 @@ export class ChannelsPropertiesService {
 
 		this.logger.log(`[DELETE] Successfully removed property with id=${id}`);
 
-		this.gateway.sendMessage(EventType.CHANNEL_PROPERTY_DELETED, property);
+		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, property);
 	}
 
 	async getOneOrThrow(id: string): Promise<ChannelPropertyEntity> {

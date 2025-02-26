@@ -5,9 +5,9 @@ import omitBy from 'lodash.omitby';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
@@ -37,7 +37,7 @@ export class DataSourceService {
 		private readonly tilesService: TilesService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 		private readonly dataSource: OrmDataSource,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findAll<TDataSource extends DataSourceEntity>(filterBy?: FilterBy): Promise<TDataSource[]> {
@@ -244,7 +244,7 @@ export class DataSourceService {
 
 		this.logger.debug(`[CREATE] Successfully created data source with id=${savedDataSource.id}`);
 
-		this.gateway.sendMessage(EventType.DATA_SOURCE_CREATED, savedDataSource);
+		this.eventEmitter.emit(EventType.DATA_SOURCE_CREATED, savedDataSource);
 
 		return savedDataSource;
 	}
@@ -281,7 +281,7 @@ export class DataSourceService {
 
 		this.logger.debug(`[UPDATE] Successfully updated data source with id=${updatedDataSource.id}`);
 
-		this.gateway.sendMessage(EventType.DATA_SOURCE_UPDATED, updatedDataSource);
+		this.eventEmitter.emit(EventType.DATA_SOURCE_UPDATED, updatedDataSource);
 
 		return updatedDataSource;
 	}
@@ -295,7 +295,7 @@ export class DataSourceService {
 
 		this.logger.log(`[DELETE] Successfully removed data source with id=${id}`);
 
-		this.gateway.sendMessage(EventType.DATA_SOURCE_DELETED, dataSource);
+		this.eventEmitter.emit(EventType.DATA_SOURCE_DELETED, dataSource);
 	}
 
 	async getOneOrThrow<TDataSource extends DataSourceEntity>(id: string, filterBy?: FilterBy): Promise<TDataSource> {

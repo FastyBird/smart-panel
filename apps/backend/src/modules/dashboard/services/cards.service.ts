@@ -5,9 +5,9 @@ import omitBy from 'lodash.omitby';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../dashboard.constants';
 import { DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateCardDto } from '../dto/create-card.dto';
@@ -31,7 +31,7 @@ export class CardsService {
 		private readonly tilesMapperService: TilesTypeMapperService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 		private readonly dataSource: OrmDataSource,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findAll(pageId?: string): Promise<CardEntity[]> {
@@ -197,7 +197,7 @@ export class CardsService {
 
 		this.logger.debug(`[CREATE] Successfully created card with id=${savedCard.id} for pageId=${pageId}`);
 
-		this.gateway.sendMessage(EventType.CARD_CREATED, savedCard);
+		this.eventEmitter.emit(EventType.CARD_CREATED, savedCard);
 
 		return savedCard;
 	}
@@ -228,7 +228,7 @@ export class CardsService {
 
 		this.logger.debug(`[UPDATE] Successfully updated card with id=${updatedCard.id} for pageId=${pageId}`);
 
-		this.gateway.sendMessage(EventType.CARD_UPDATED, updatedCard);
+		this.eventEmitter.emit(EventType.CARD_UPDATED, updatedCard);
 
 		return updatedCard;
 	}
@@ -243,7 +243,7 @@ export class CardsService {
 
 		this.logger.log(`[DELETE] Successfully removed card with id=${id} for pageId=${pageId}`);
 
-		this.gateway.sendMessage(EventType.CARD_DELETED, card);
+		this.eventEmitter.emit(EventType.CARD_DELETED, card);
 	}
 
 	async getOneOrThrow(id: string, pageId?: string): Promise<CardEntity> {

@@ -50,44 +50,102 @@ class SocketEventModel {
   }
 }
 
+class SocketCommandAckResultModel {
+  final String _handler;
+  final bool _success;
+  final String? _reason;
+
+  SocketCommandAckResultModel({
+    required String handler,
+    required bool success,
+    required String? reason,
+  })  : _handler = handler,
+        _success = success,
+        _reason = reason;
+
+  String get handler => _handler;
+
+  bool get success => _success;
+
+  String? get reason => _reason;
+
+  factory SocketCommandAckResultModel.fromJson(Map<String, dynamic> json) {
+    return SocketCommandAckResultModel(
+      handler: json['handler'],
+      success: json['success'],
+      reason: json['reason'],
+    );
+  }
+}
+
+class SocketCommandAckModel {
+  final String _status;
+  final String _message;
+  final List<SocketCommandAckResultModel> _results;
+
+  SocketCommandAckModel({
+    required String status,
+    required String message,
+    required List<SocketCommandAckResultModel> results,
+  })  : _status = status,
+        _message = message,
+        _results = results;
+
+  String get status => _status;
+
+  String get message => _message;
+
+  List<SocketCommandAckResultModel> get results => _results;
+
+  factory SocketCommandAckModel.fromJson(Map<String, dynamic> json) {
+    List<SocketCommandAckResultModel> results = [];
+
+    if (json['results'] is List) {
+      for (var result in json['results']) {
+        results.add(SocketCommandAckResultModel.fromJson(result));
+      }
+    }
+
+    return SocketCommandAckModel(
+      status: json['status'],
+      message: json['message'],
+      results: results,
+    );
+  }
+}
+
 class SocketService {
-  late io.Socket socket;
+  late io.Socket _socket;
 
   final Map<String, List<void Function(String, Map<String, dynamic>)>>
       _eventCallbacks = {};
 
   void initialize(String apiSecret) {
-    socket = io.io(
+    _socket = io.io(
       '${Platform.environment['APP_HOST'] ?? 'http://10.0.2.2'}:${Platform.environment['BACKEND_PORT'] ?? '3000'}',
       io.OptionBuilder()
           .setTransports(['websocket'])
-          .setExtraHeaders({'Authorization': 'Bearer $apiSecret'})
+          .setExtraHeaders({'X-Display-Secret': apiSecret})
           .disableAutoConnect()
           .disableReconnection()
           .build(),
     );
 
-    socket.onConnect((_) {
+    _socket.onConnect((_) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Connected to Socket.IO backend');
       }
     });
 
-    socket.onDisconnect((_) {
+    _socket.onDisconnect((_) {
       if (kDebugMode) {
         debugPrint('[SOCKETS] Disconnected from Socket.IO backend');
       }
 
-      Future.delayed(const Duration(seconds: 2), () {
-        if (kDebugMode) {
-          debugPrint('[SOCKETS] Trying to reconnect to Socket.IO backend');
-        }
-
-        socket.connect();
-      });
+      _attemptReconnect();
     });
 
-    socket.on(
+    _socket.on(
       'event',
       (data) {
         try {
@@ -113,12 +171,42 @@ class SocketService {
       },
     );
 
-    // Connect manually
-    socket.connect();
+    _socket.connect();
   }
 
-  void sendEvent(String event, dynamic data) {
-    socket.emit(event, data);
+  Future<void> sendEvent(String event, dynamic data,
+      {Function(SocketCommandAckModel?)? onAck}) async {
+    Map<String, dynamic> payload = {
+      'event': event,
+      'payload': data,
+    };
+
+    await _socket.emitWithAckAsync(
+      'command',
+      payload,
+      ack: (dynamic response) {
+        if (onAck != null) {
+          try {
+            SocketCommandAckModel res =
+                SocketCommandAckModel.fromJson(response);
+
+            if (kDebugMode) {
+              debugPrint('[SOCKETS] Received command acknowledge');
+            }
+
+            onAck(res);
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint(
+                '[SOCKETS] Received acknowledge payload is not valid: ${e.toString()}',
+              );
+            }
+
+            onAck(null);
+          }
+        }
+      },
+    );
   }
 
   void registerEventHandler(
@@ -144,7 +232,7 @@ class SocketService {
   }
 
   void dispose() {
-    socket.dispose();
+    _socket.dispose();
   }
 
   void _dispatchEvent(SocketEventModel event) {
@@ -172,5 +260,45 @@ class SocketService {
     RegExp regex = RegExp(pattern);
 
     return regex.hasMatch(receivedEvent);
+  }
+
+  void _attemptReconnect({int delayInSeconds = 2, int? maxAttempts}) {
+    int attempt = 0;
+
+    void reconnect() {
+      if (_socket.connected) {
+        if (kDebugMode) {
+          debugPrint('[SOCKETS] Successfully reconnected to Socket.IO backend');
+        }
+
+        return;
+      }
+
+      if (maxAttempts != null && attempt >= maxAttempts) {
+        if (kDebugMode) {
+          debugPrint('[SOCKETS] Max reconnection attempts reached, stopping.');
+        }
+
+        return;
+      }
+
+      attempt++;
+
+      Future.delayed(Duration(seconds: delayInSeconds), () {
+        if (kDebugMode) {
+          debugPrint(
+            '[SOCKETS] Reconnection attempt $attempt/${maxAttempts ?? '-'} to Socket.IO backend...',
+          );
+        }
+
+        _socket.connect();
+
+        if (!_socket.connected) {
+          reconnect();
+        }
+      });
+    }
+
+    reconnect();
   }
 }

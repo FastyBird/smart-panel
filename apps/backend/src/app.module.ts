@@ -6,6 +6,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { RouterModule } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -61,6 +62,18 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
 			},
 		}),
 		ScheduleModule.forRoot(),
+		JwtModule.registerAsync({
+			imports: [NestConfigModule],
+			inject: [NestConfigService],
+			useFactory: (configService: NestConfigService) => ({
+				secret: getEnvValue<string | undefined>(
+					configService,
+					'TOKEN_SECRET',
+					'g3xHbkELpMD9LRqW4WmJkHL7kz2bdNYAQJyEuFVzR3k=',
+				),
+				signOptions: { expiresIn: '1h' },
+			}),
+		}),
 		RouterModule.register([
 			{
 				path: AuthModulePrefix,
@@ -103,5 +116,6 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
 		WeatherModule,
 		WebsocketModule,
 	],
+	exports: [JwtModule],
 })
 export class AppModule {}

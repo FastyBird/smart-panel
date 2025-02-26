@@ -11,10 +11,10 @@ import { plainToInstance } from 'class-transformer';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { ChannelCategory, EventType } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
@@ -27,7 +27,7 @@ describe('ChannelsControlsService', () => {
 	let channelsService: ChannelsService;
 	let channelsControlsService: ChannelsControlsService;
 	let repository: Repository<ChannelControlEntity>;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
@@ -77,9 +77,9 @@ describe('ChannelsControlsService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 			],
@@ -88,14 +88,14 @@ describe('ChannelsControlsService', () => {
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsControlsService = module.get<ChannelsControlsService>(ChannelsControlsService);
 		repository = module.get<Repository<ChannelControlEntity>>(getRepositoryToken(ChannelControlEntity));
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 	});
 
 	it('should be defined', () => {
 		expect(channelsService).toBeDefined();
 		expect(channelsControlsService).toBeDefined();
 		expect(repository).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 	});
 
 	describe('findAllControls', () => {
@@ -217,7 +217,7 @@ describe('ChannelsControlsService', () => {
 				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCreatedControl);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CONTROL_CREATED,
 				plainToInstance(ChannelControlEntity, mockCreatedControl),
 			);
@@ -265,7 +265,7 @@ describe('ChannelsControlsService', () => {
 			await channelsControlsService.remove(mockChannelControl.id, mockChannel.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(ChannelControlEntity, mockChannelControl));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CONTROL_DELETED,
 				plainToInstance(ChannelControlEntity, mockChannelControl),
 			);

@@ -14,12 +14,12 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateTimeTileDto } from '../dto/create-tile.dto';
@@ -52,7 +52,7 @@ describe('TilesService', () => {
 	let repository: Repository<TileEntity>;
 	let tilesMapper: TilesTypeMapperService;
 	let dataSourceMapper: DataSourcesTypeMapperService;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 
 	const mockDevice: MockDevice = {
@@ -152,9 +152,9 @@ describe('TilesService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 				{
@@ -171,7 +171,7 @@ describe('TilesService', () => {
 		repository = module.get<Repository<TileEntity>>(getRepositoryToken(TileEntity));
 		tilesMapper = module.get<TilesTypeMapperService>(TilesTypeMapperService);
 		dataSourceMapper = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -186,7 +186,7 @@ describe('TilesService', () => {
 		expect(repository).toBeDefined();
 		expect(tilesMapper).toBeDefined();
 		expect(dataSourceMapper).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 		expect(dataSource).toBeDefined();
 	});
 
@@ -331,7 +331,7 @@ describe('TilesService', () => {
 				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCratedTile);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.TILE_CREATED,
 				plainToInstance(TimeTileEntity, mockCratedTile),
 			);
@@ -412,7 +412,7 @@ describe('TilesService', () => {
 
 			expect(result).toEqual(plainToInstance(TimeTileEntity, mockUpdatedTile));
 			expect(repository.save).toHaveBeenCalledWith(plainToInstance(TimeTileEntity, mockUpdatedTile));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.TILE_UPDATED,
 				plainToInstance(TimeTileEntity, mockUpdatedTile),
 			);
@@ -433,7 +433,7 @@ describe('TilesService', () => {
 			await tilesService.remove(mockTimeTile.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(TimeTileEntity, mockTimeTile));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.TILE_DELETED,
 				plainToInstance(TimeTileEntity, mockTimeTile),
 			);

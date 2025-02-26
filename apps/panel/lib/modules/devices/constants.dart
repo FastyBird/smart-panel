@@ -25,4 +25,7 @@ class DevicesModuleConstants {
 
   static const String channelPropertySetEvent =
       'DevicesModule.ChannelProperty.Set';
+
+  static const String setPropertyHandlerName =
+      'DevicesModule.Internal.SetPropertyValue';
 }

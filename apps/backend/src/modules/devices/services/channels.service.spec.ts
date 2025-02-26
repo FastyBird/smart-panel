@@ -12,10 +12,10 @@ import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { ChannelCategory, DeviceCategory, EventType } from '../devices.constants';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
@@ -43,7 +43,7 @@ class MockDevice extends DeviceEntity {
 describe('ChannelsService', () => {
 	let service: ChannelsService;
 	let repository: Repository<ChannelEntity>;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 
 	const mockDevice: MockDevice = {
 		id: uuid().toString(),
@@ -105,9 +105,9 @@ describe('ChannelsService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 			],
@@ -117,7 +117,7 @@ describe('ChannelsService', () => {
 
 		service = module.get<ChannelsService>(ChannelsService);
 		repository = module.get<Repository<ChannelEntity>>(getRepositoryToken(ChannelEntity));
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
@@ -125,7 +125,7 @@ describe('ChannelsService', () => {
 	it('should be defined', () => {
 		expect(service).toBeDefined();
 		expect(repository).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 	});
 
 	describe('findAll', () => {
@@ -217,7 +217,7 @@ describe('ChannelsService', () => {
 				where: { id: mockCreatedChannel.id },
 				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
 			});
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CREATED,
 				plainToInstance(ChannelEntity, mockCreatedChannel),
 			);
@@ -264,7 +264,7 @@ describe('ChannelsService', () => {
 				where: { id: mockChannel.id },
 				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
 			});
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_UPDATED,
 				plainToInstance(ChannelEntity, mockUpdatedChannel),
 			);
@@ -279,7 +279,7 @@ describe('ChannelsService', () => {
 			await service.remove(mockChannel.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(mockChannel);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_DELETED,
 				plainToInstance(ChannelEntity, mockChannel),
 			);

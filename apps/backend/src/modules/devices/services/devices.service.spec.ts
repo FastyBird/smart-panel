@@ -12,10 +12,10 @@ import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { DeviceCategory, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
@@ -57,7 +57,7 @@ describe('DevicesService', () => {
 	let service: DevicesService;
 	let repository: Repository<DeviceEntity>;
 	let mapper: DevicesTypeMapperService;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 	let dataSource: DataSource;
 
 	const mockDevice: MockDevice = {
@@ -119,9 +119,9 @@ describe('DevicesService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 			],
@@ -130,7 +130,7 @@ describe('DevicesService', () => {
 		service = module.get<DevicesService>(DevicesService);
 		repository = module.get<Repository<DeviceEntity>>(getRepositoryToken(DeviceEntity));
 		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -140,7 +140,7 @@ describe('DevicesService', () => {
 		expect(service).toBeDefined();
 		expect(repository).toBeDefined();
 		expect(mapper).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 		expect(dataSource).toBeDefined();
 	});
 
@@ -267,7 +267,7 @@ describe('DevicesService', () => {
 					'channels.properties.channel',
 				],
 			});
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CREATED,
 				plainToInstance(MockDevice, mockCratedDevice),
 			);
@@ -346,7 +346,7 @@ describe('DevicesService', () => {
 					'channels.properties.channel',
 				],
 			});
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_UPDATED,
 				plainToInstance(MockDevice, mockUpdatedDevice),
 			);
@@ -361,10 +361,7 @@ describe('DevicesService', () => {
 			await service.remove(mockDevice.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(MockDevice, mockDevice));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
-				EventType.DEVICE_DELETED,
-				plainToInstance(MockDevice, mockDevice),
-			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DEVICE_DELETED, plainToInstance(MockDevice, mockDevice));
 		});
 	});
 });

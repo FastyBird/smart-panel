@@ -6,9 +6,9 @@ import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../devices.constants';
 import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
@@ -25,7 +25,7 @@ export class ChannelsService {
 		@InjectRepository(ChannelEntity)
 		private readonly repository: Repository<ChannelEntity>,
 		private readonly propertyValueService: PropertyValueService,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	// Channels
@@ -135,7 +135,7 @@ export class ChannelsService {
 
 		this.logger.debug(`[CREATE] Successfully created channel with id=${savedChannel.id}`);
 
-		this.gateway.sendMessage(EventType.CHANNEL_CREATED, savedChannel);
+		this.eventEmitter.emit(EventType.CHANNEL_CREATED, savedChannel);
 
 		return savedChannel;
 	}
@@ -165,7 +165,7 @@ export class ChannelsService {
 
 		this.logger.debug(`[UPDATE] Successfully updated channel with id=${updatedChannel.id}`);
 
-		this.gateway.sendMessage(EventType.CHANNEL_UPDATED, updatedChannel);
+		this.eventEmitter.emit(EventType.CHANNEL_UPDATED, updatedChannel);
 
 		return updatedChannel;
 	}
@@ -179,7 +179,7 @@ export class ChannelsService {
 
 		this.logger.log(`[DELETE] Successfully removed channel with id=${id}`);
 
-		this.gateway.sendMessage(EventType.CHANNEL_DELETED, channel);
+		this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
 	}
 
 	async getOneOrThrow(id: string): Promise<ChannelEntity> {

@@ -10,10 +10,10 @@ import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
@@ -25,7 +25,7 @@ import { UsersService } from './users.service';
 describe('UsersService', () => {
 	let service: UsersService;
 	let repository: Repository<UserEntity>;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 
 	const mockUser: UserEntity = {
 		id: uuid().toString(),
@@ -54,9 +54,9 @@ describe('UsersService', () => {
 				UsersService,
 				{ provide: getRepositoryToken(UserEntity), useFactory: mockRepository },
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 			],
@@ -64,7 +64,7 @@ describe('UsersService', () => {
 
 		service = module.get<UsersService>(UsersService);
 		repository = module.get<Repository<UserEntity>>(getRepositoryToken(UserEntity));
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
@@ -76,7 +76,7 @@ describe('UsersService', () => {
 	it('should be defined', () => {
 		expect(service).toBeDefined();
 		expect(repository).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 	});
 
 	describe('findAll', () => {
@@ -154,7 +154,7 @@ describe('UsersService', () => {
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockCreatedUser.id },
 			});
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.USER_CREATED,
 				plainToInstance(UserEntity, mockCreatedUser),
 			);
@@ -208,7 +208,7 @@ describe('UsersService', () => {
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockUser.id },
 			});
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.USER_UPDATED,
 				plainToInstance(UserEntity, mockUpdatedUser),
 			);
@@ -233,7 +233,7 @@ describe('UsersService', () => {
 			await service.remove(mockUser.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(mockUser);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(EventType.USER_DELETED, plainToInstance(UserEntity, mockUser));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_DELETED, plainToInstance(UserEntity, mockUser));
 		});
 
 		it('should throw UsersNotFoundException if user not found', async () => {

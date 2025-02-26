@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 enum AlertType { success, info, warning, error }
 
@@ -8,6 +9,7 @@ class AlertBar {
     BuildContext context, {
     required String message,
     required AlertType type,
+    IconData? icon,
     Duration duration = const Duration(seconds: 3),
   }) {
     final theme = Theme.of(context);
@@ -17,12 +19,47 @@ class AlertBar {
     final textColor = _getTextColor(type, isLight);
     final closeIconColor = isLight ? AppColors.white : textColor;
 
+    late Widget content;
+
+    if (icon != null) {
+      content = Row(
+        children: [
+          Baseline(
+            baseline: AppFontSize.extraSmall,
+            baselineType: TextBaseline.alphabetic,
+            child: Icon(
+              icon,
+              size: AppFontSize.extraSmall,
+              color: textColor,
+            ),
+          ),
+          AppSpacings.spacingSmHorizontal,
+          Baseline(
+            baseline: AppFontSize.extraSmall,
+            baselineType: TextBaseline.alphabetic,
+            child: Text(
+              message,
+              style: TextStyle(
+                color: textColor,
+                fontSize: AppFontSize.extraSmall,
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      content = Text(
+        message,
+        style: TextStyle(
+          color: textColor,
+          fontSize: AppFontSize.extraSmall,
+        ),
+      );
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(color: textColor),
-        ),
+        content: content,
         behavior: SnackBarBehavior.floating,
         showCloseIcon: true,
         backgroundColor: backgroundColor,
@@ -32,7 +69,6 @@ class AlertBar {
     );
   }
 
-  // ✅ Aliases for cleaner function calls
   static void showSuccess(
     BuildContext context, {
     required String message,
@@ -42,6 +78,7 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.success,
+        icon: Symbols.check_circle,
         duration: duration,
       );
 
@@ -54,6 +91,7 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.info,
+        icon: Symbols.info,
         duration: duration,
       );
 
@@ -66,6 +104,7 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.warning,
+        icon: Symbols.warning,
         duration: duration,
       );
 
@@ -78,6 +117,7 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.error,
+        icon: Symbols.error,
         duration: duration,
       );
 

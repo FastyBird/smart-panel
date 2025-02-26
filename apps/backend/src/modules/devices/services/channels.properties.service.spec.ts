@@ -11,10 +11,10 @@ import { plainToInstance } from 'class-transformer';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { ChannelCategory, DataTypeType, EventType, PermissionType, PropertyCategory } from '../devices.constants';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
@@ -28,7 +28,7 @@ describe('ChannelsPropertiesService', () => {
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
 	let repository: Repository<ChannelPropertyEntity>;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
@@ -92,9 +92,9 @@ describe('ChannelsPropertiesService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 			],
@@ -103,14 +103,14 @@ describe('ChannelsPropertiesService', () => {
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 		repository = module.get<Repository<ChannelPropertyEntity>>(getRepositoryToken(ChannelPropertyEntity));
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 	});
 
 	it('should be defined', () => {
 		expect(channelsService).toBeDefined();
 		expect(channelsPropertiesService).toBeDefined();
 		expect(repository).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 	});
 
 	describe('findAll', () => {
@@ -244,7 +244,7 @@ describe('ChannelsPropertiesService', () => {
 				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCreatedProperty);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_CREATED,
 				plainToInstance(ChannelPropertyEntity, mockCreatedProperty),
 			);
@@ -301,7 +301,7 @@ describe('ChannelsPropertiesService', () => {
 
 			expect(result).toEqual(plainToInstance(ChannelPropertyEntity, mockUpdatedProperty));
 			expect(repository.save).toHaveBeenCalledWith(plainToInstance(ChannelPropertyEntity, mockUpdateProperty));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_UPDATED,
 				plainToInstance(ChannelPropertyEntity, mockUpdatedProperty),
 			);
@@ -324,7 +324,7 @@ describe('ChannelsPropertiesService', () => {
 			await channelsPropertiesService.remove(mockChannelProperty.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(ChannelPropertyEntity, mockChannelProperty));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_DELETED,
 				plainToInstance(ChannelPropertyEntity, mockChannelProperty),
 			);

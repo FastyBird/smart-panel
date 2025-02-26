@@ -121,7 +121,14 @@ class ChannelPropertyModel extends Model {
 
   ChannelPropertyModel copyWith({
     ValueType? value,
+    bool? clearValue,
   }) {
+    ValueType? setValue = value ?? _value;
+
+    if (clearValue != null) {
+      setValue = null;
+    }
+
     return ChannelPropertyModel(
       channel: _channel,
       id: id,
@@ -134,7 +141,7 @@ class ChannelPropertyModel extends Model {
       invalid: _invalid,
       step: _step,
       defaultValue: _defaultValue,
-      value: value ?? _value,
+      value: setValue,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

@@ -13,10 +13,10 @@ import { IsString } from 'class-validator';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { DeviceCategory, EventType } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
@@ -43,7 +43,7 @@ describe('DevicesControlsService', () => {
 	let devicesService: DevicesService;
 	let devicesControlsService: DevicesControlsService;
 	let repository: Repository<DeviceControlEntity>;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 
 	const mockDevice: MockDevice = {
 		id: uuid().toString(),
@@ -94,9 +94,9 @@ describe('DevicesControlsService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 			],
@@ -105,14 +105,14 @@ describe('DevicesControlsService', () => {
 		devicesService = module.get<DevicesService>(DevicesService);
 		devicesControlsService = module.get<DevicesControlsService>(DevicesControlsService);
 		repository = module.get<Repository<DeviceControlEntity>>(getRepositoryToken(DeviceControlEntity));
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 	});
 
 	it('should be defined', () => {
 		expect(devicesService).toBeDefined();
 		expect(devicesControlsService).toBeDefined();
 		expect(repository).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 	});
 
 	describe('findAllControls', () => {
@@ -234,7 +234,7 @@ describe('DevicesControlsService', () => {
 				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCreatedControl);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CONTROL_CREATED,
 				plainToInstance(DeviceControlEntity, mockCreatedControl),
 			);
@@ -289,7 +289,7 @@ describe('DevicesControlsService', () => {
 			await devicesControlsService.remove(mockDeviceControl.id, mockDevice.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(DeviceControlEntity, mockDeviceControl));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CONTROL_DELETED,
 				plainToInstance(DeviceControlEntity, mockDeviceControl),
 			);

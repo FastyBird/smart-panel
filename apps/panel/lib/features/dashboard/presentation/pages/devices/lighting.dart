@@ -206,7 +206,7 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
           ? AppColorsLight.primary
           : AppColorsDark.primary,
       currentIndex: _currentModeIndex,
-      onTap: (int index) {
+      onTap: (int index) async {
         if (_lightModes[index] == LightChannelModeType.off) {
           if (_channelCapabilities[_selectedChannel].on) {
             setState(() {
@@ -318,7 +318,7 @@ class LightSimpleDetail extends StatelessWidget {
                             elementMaxSize: elementMaxSize,
                             vertical: true,
                             showValue: true,
-                            onValueChanged: (double value) {
+                            onValueChanged: (double value) async {
                               final brightnessProp =
                                   lightCapability.brightnessProp;
 
@@ -336,7 +336,7 @@ class LightSimpleDetail extends StatelessWidget {
                           AppSpacings.spacingSmVertical,
                           ChannelSwitch(
                             capability: lightCapability,
-                            onStateChanged: (bool state) {
+                            onStateChanged: (bool state) async {
                               _valueHelper.setPropertyValue(
                                 context,
                                 lightCapability.onProp,
@@ -364,7 +364,7 @@ class LightSimpleDetail extends StatelessWidget {
                         iconOff: Symbols.power_settings_new,
                         trackWidth: elementMaxSize,
                         vertical: true,
-                        onChanged: (bool state) {
+                        onChanged: (bool state) async {
                           _valueHelper.setPropertyValue(
                             context,
                             lightCapability.onProp,
@@ -444,7 +444,7 @@ class LightSingleChannelDetail extends StatelessWidget {
           capability: _channelCapability,
           vertical: true,
           elementMaxSize: elementMaxSize,
-          onValueChanged: (double value) {
+          onValueChanged: (double value) async {
             _valueHelper.setPropertyValue(
               context,
               brightnessProp,
@@ -459,7 +459,7 @@ class LightSingleChannelDetail extends StatelessWidget {
           capability: _channelCapability,
           vertical: true,
           elementMaxSize: elementMaxSize,
-          onValueChanged: (Color value) {
+          onValueChanged: (Color value) async {
             final rgbValue = ColorUtils.toRGB(value);
             final hsvValue = ColorUtils.toHSV(value);
 
@@ -513,7 +513,7 @@ class LightSingleChannelDetail extends StatelessWidget {
           capability: _channelCapability,
           vertical: true,
           elementMaxSize: elementMaxSize,
-          onValueChanged: (double value) {
+          onValueChanged: (double value) async {
             _valueHelper.setPropertyValue(
               context,
               tempProp,
@@ -531,7 +531,7 @@ class LightSingleChannelDetail extends StatelessWidget {
           capability: _channelCapability,
           vertical: true,
           elementMaxSize: elementMaxSize,
-          onValueChanged: (double value) {
+          onValueChanged: (double value) async {
             _valueHelper.setPropertyValue(
               context,
               colorWhiteProp,
@@ -1568,7 +1568,7 @@ enum LightChannelModeType {
 class PropertyValueHelper {
   final DevicesService _service = locator<DevicesService>();
 
-  Future<void> setPropertyValue(
+  Future<bool> setPropertyValue(
     BuildContext context,
     ChannelPropertyModel property,
     dynamic value,
@@ -1587,14 +1587,18 @@ class PropertyValueHelper {
           message: localizations.action_failed,
         );
       }
+
+      return res;
     } catch (e) {
-      if (!context.mounted) return;
+      if (!context.mounted) return false;
 
       AlertBar.showError(
         context,
         message: localizations.action_failed,
       );
     }
+
+    return false;
   }
 }
 

@@ -46,6 +46,8 @@ class DevicesModuleService {
     );
     _channelPropertiesRepository = ChannelPropertiesRepository(
       apiClient: apiClient.devicesModule,
+      socketService: _socketService,
+      channelsRepository: _channelsRepository,
     );
 
     locator.registerSingleton(_devicesRepository);

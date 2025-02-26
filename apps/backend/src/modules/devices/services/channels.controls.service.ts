@@ -3,9 +3,9 @@ import { validate } from 'class-validator';
 import { Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../devices.constants';
 import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
@@ -21,7 +21,7 @@ export class ChannelsControlsService {
 		@InjectRepository(ChannelControlEntity)
 		private readonly repository: Repository<ChannelControlEntity>,
 		private readonly channelsService: ChannelsService,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findAll(channelId: string): Promise<ChannelControlEntity[]> {
@@ -119,7 +119,7 @@ export class ChannelsControlsService {
 
 		this.logger.debug(`[CREATE] Successfully created control with id=${savedControl.id} for channelId=${channelId}`);
 
-		this.gateway.sendMessage(EventType.CHANNEL_CONTROL_CREATED, savedControl);
+		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_CREATED, savedControl);
 
 		return savedControl;
 	}
@@ -134,7 +134,7 @@ export class ChannelsControlsService {
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for channelId=${channelId}`);
 
-		this.gateway.sendMessage(EventType.CHANNEL_CONTROL_DELETED, control);
+		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_DELETED, control);
 	}
 
 	async getOneOrThrow(id: string, channelId: string): Promise<ChannelControlEntity> {

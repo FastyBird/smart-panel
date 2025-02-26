@@ -16,7 +16,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PlatformService } from '../../platform/services/platform.service';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import {
 	EventType,
 	LanguageType,
@@ -40,7 +39,7 @@ jest.mock('yaml', () => ({
 
 describe('ConfigService', () => {
 	let service: ConfigService;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 	let platform: PlatformService;
 
 	const mockRawConfig = {
@@ -88,12 +87,6 @@ describe('ConfigService', () => {
 			providers: [
 				ConfigService,
 				{
-					provide: WebsocketGateway,
-					useValue: {
-						sendMessage: jest.fn(() => {}),
-					},
-				},
-				{
 					provide: PlatformService,
 					useValue: {
 						setSpeakerVolume: jest.fn(() => {}),
@@ -112,7 +105,7 @@ describe('ConfigService', () => {
 		}).compile();
 
 		service = module.get<ConfigService>(ConfigService);
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		platform = module.get<PlatformService>(PlatformService);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -127,7 +120,7 @@ describe('ConfigService', () => {
 
 	it('should be defined', () => {
 		expect(service).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 		expect(platform).toBeDefined();
 	});
 
@@ -276,7 +269,7 @@ describe('ConfigService', () => {
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(updatedRawConfig));
 			expect(mockYamlStringify).toHaveBeenCalled();
 			expect(mockFsWriteFileSync).toHaveBeenCalled();
-			expect(gateway.sendMessage).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, service['config']);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, service['config']);
 		});
 
 		it('should throw validation errors for an invalid update', async () => {
