@@ -1,10 +1,12 @@
 import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { defaultTokenExpiration, defaultTokenSecret } from '../../app.constants';
+import { getEnvValue } from '../../common/utils/config.utils';
 import { UsersModule } from '../users/users.module';
 
 import { TokenType } from './auth.constants';
@@ -22,7 +24,16 @@ import { TokensService } from './services/tokens.service';
 
 @Module({
 	imports: [
-		JwtModule,
+		JwtModule.registerAsync({
+			imports: [NestConfigModule],
+			inject: [NestConfigService],
+			useFactory: (configService: NestConfigService) => {
+				return {
+					secret: getEnvValue<string | undefined>(configService, 'TOKEN_SECRET', defaultTokenSecret),
+					signOptions: { expiresIn: defaultTokenExpiration },
+				};
+			},
+		}),
 		NestConfigModule,
 		TypeOrmModule.forFeature([TokenEntity, AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity]),
 		CacheModule.register(),
