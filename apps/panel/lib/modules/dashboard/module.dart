@@ -5,6 +5,8 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/dashboard_module/dashboard_module_client.dart';
 import 'package:fastybird_smart_panel/api/models/dashboard_res_pages_data_union.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/constants.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/cards.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/data_sources.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/pages.dart';
@@ -13,6 +15,8 @@ import 'package:flutter/foundation.dart';
 
 class DashboardModuleService {
   final DashboardModuleClient _apiClient;
+
+  final SocketService _socketService;
 
   late PagesRepository _pagesRepository;
   late CardsRepository _cardsRepository;
@@ -23,7 +27,9 @@ class DashboardModuleService {
 
   DashboardModuleService({
     required ApiClient apiClient,
-  }) : _apiClient = apiClient.dashboardModule {
+    required SocketService socketService,
+  })  : _apiClient = apiClient.dashboardModule,
+        _socketService = socketService {
     _pagesRepository = PagesRepository(
       apiClient: apiClient.dashboardModule,
     );
@@ -49,9 +55,21 @@ class DashboardModuleService {
     await _initializePages();
 
     _isLoading = false;
+
+    _socketService.registerEventHandler(
+      DashboardModuleConstants.moduleWildcardEvent,
+      _socketEventHandler,
+    );
   }
 
   bool get isLoading => _isLoading;
+
+  void dispose() {
+    _socketService.unregisterEventHandler(
+      DashboardModuleConstants.moduleWildcardEvent,
+      _socketEventHandler,
+    );
+  }
 
   Future<void> _initializePages() async {
     var apiPages = await _fetchPages();
@@ -176,6 +194,79 @@ class DashboardModuleService {
       }
 
       throw Exception('Unexpected error when calling backend service');
+    }
+  }
+
+  /// ////////////////
+  /// SOCKETS HANDLERS
+  /// ////////////////
+
+  void _socketEventHandler(String event, Map<String, dynamic> payload) {
+    /// Page CREATE/UPDATE
+    if (event == DashboardModuleConstants.pageCreatedEvent ||
+        event == DashboardModuleConstants.pageUpdatedEvent) {
+      _pagesRepository.insertPages([payload]);
+
+      /// Page DELETE
+    } else if (event == DashboardModuleConstants.pageDeletedEvent &&
+        payload.containsKey('id')) {
+      _pagesRepository.delete(payload['id']);
+
+      /// Card CREATE/UPDATE
+    } else if (event == DashboardModuleConstants.cardCreatedEvent ||
+        event == DashboardModuleConstants.cardUpdatedEvent) {
+      _cardsRepository.insertCards([payload]);
+
+      /// Card DELETE
+    } else if (event == DashboardModuleConstants.cardDeletedEvent &&
+        payload.containsKey('id')) {
+      _cardsRepository.delete(payload['id']);
+
+      /// Tile CREATE/UPDATE
+    } else if (event == DashboardModuleConstants.tileCreatedEvent ||
+        event == DashboardModuleConstants.tileUpdatedEvent) {
+      if (payload.containsKey('page')) {
+        _tilesRepository.insertPageTiles([payload]);
+      } else if (payload.containsKey('card')) {
+        _tilesRepository.insertCardTiles([payload]);
+      } else {
+        /// Invalid tile type
+
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][SOCKETS] Received unsupported tile',
+          );
+        }
+      }
+
+      /// Tile DELETE
+    } else if (event == DashboardModuleConstants.tileDeletedEvent &&
+        payload.containsKey('id')) {
+      _tilesRepository.delete(payload['id']);
+
+      /// Data source CREATE/UPDATE
+    } else if (event == DashboardModuleConstants.dataSourceCreatedEvent ||
+        event == DashboardModuleConstants.dataSourceUpdatedEvent) {
+      if (payload.containsKey('page')) {
+        _dataSourcesRepository.insertPageDataSources([payload]);
+      } else if (payload.containsKey('card')) {
+        _dataSourcesRepository.insertCardDataSources([payload]);
+      } else if (payload.containsKey('tile')) {
+        _dataSourcesRepository.insertTileDataSources([payload]);
+      } else {
+        /// Invalid data source type
+
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][SOCKETS] Received unsupported data source',
+          );
+        }
+      }
+
+      /// Data source DELETE
+    } else if (event == DashboardModuleConstants.dataSourceDeletedEvent &&
+        payload.containsKey('id')) {
+      _dataSourcesRepository.delete(payload['id']);
     }
   }
 }

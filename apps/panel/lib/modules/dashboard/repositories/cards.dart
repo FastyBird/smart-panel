@@ -35,6 +35,18 @@ class CardsRepository extends Repository<CardModel> {
     }
   }
 
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DASHBOARD MODULE][CARDS] Removed card: $id',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchCard(
     String pageId,
     String id,

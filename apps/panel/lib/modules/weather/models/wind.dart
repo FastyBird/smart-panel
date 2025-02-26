@@ -38,4 +38,19 @@ class WindModel extends Model {
       gust: gust ?? _gust,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WindModel &&
+          other._speed == _speed &&
+          other._deg == _deg &&
+          other._gust == _gust);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _speed,
+        _deg,
+        _gust,
+      ]);
 }

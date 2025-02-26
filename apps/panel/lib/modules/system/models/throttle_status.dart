@@ -46,4 +46,21 @@ class ThrottleStatusModel extends Model {
       softTempLimit: softTempLimit ?? _softTempLimit,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ThrottleStatusModel &&
+          other._undervoltage == _undervoltage &&
+          other._frequencyCapping == _frequencyCapping &&
+          other._throttling == _throttling &&
+          other._softTempLimit == _softTempLimit);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _undervoltage,
+        _frequencyCapping,
+        _throttling,
+        _softTempLimit,
+      ]);
 }

@@ -9,7 +9,7 @@ class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
     required super.apiClient,
   });
 
-  void insertControls(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
     late Map<String, ChannelControlDataModel> insertData = {...data};
 
     for (var row in json) {
@@ -35,6 +35,18 @@ class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
     }
   }
 
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][CHANNELS CONTROLS] Removed control: $id',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchControl(
     String channelId,
     String id,
@@ -46,7 +58,7 @@ class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
           id: id,
         );
 
-        insertControls([jsonDecode(jsonEncode(response.data.data))]);
+        insert([jsonDecode(jsonEncode(response.data.data))]);
       },
       'fetch channel control',
     );
@@ -67,7 +79,7 @@ class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
           controls.add(jsonDecode(jsonEncode(control)));
         }
 
-        insertControls(controls);
+        insert(controls);
       },
       'fetch channel controls',
     );

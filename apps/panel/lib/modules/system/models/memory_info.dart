@@ -38,4 +38,19 @@ class MemoryInfoModel extends Model {
       free: free ?? _free,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MemoryInfoModel &&
+          other._total == _total &&
+          other._used == _used &&
+          other._free == _free);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _total,
+        _used,
+        _free,
+      ]);
 }

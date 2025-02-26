@@ -59,9 +59,9 @@ class _AppBodyState extends State<AppBody> {
 
   void _syncStateWithRepository() {
     setState(() {
-      _hasDarkMode = _displayConfigRepository.data.hasDarkMode;
-      _language = _languageConfigRepository.data.language;
-      _screenLockDuration = _displayConfigRepository.data.screenLockDuration;
+      _hasDarkMode = _displayConfigRepository.hasDarkMode;
+      _language = _languageConfigRepository.language;
+      _screenLockDuration = _displayConfigRepository.screenLockDuration;
     });
   }
 
@@ -74,7 +74,7 @@ class _AppBodyState extends State<AppBody> {
         locator<NavigationService>().navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) {
-              if (_displayConfigRepository.data.hasScreenSaver) {
+              if (_displayConfigRepository.hasScreenSaver) {
                 return ScreenSaverScreen();
               }
 

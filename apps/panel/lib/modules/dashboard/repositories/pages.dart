@@ -57,6 +57,18 @@ class PagesRepository extends Repository<PageModel> {
     }
   }
 
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DASHBOARD MODULE][PAGES] Removed page: $id',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchPage(
     String id,
   ) async {

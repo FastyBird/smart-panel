@@ -46,4 +46,21 @@ class StorageInfoModel extends Model {
       available: available ?? _available,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StorageInfoModel &&
+          other._fs == _fs &&
+          other._used == _used &&
+          other._size == _size &&
+          other._available == _available);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _fs,
+        _used,
+        _size,
+        _available,
+      ]);
 }

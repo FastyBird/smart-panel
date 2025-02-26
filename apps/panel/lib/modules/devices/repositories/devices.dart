@@ -9,7 +9,7 @@ class DevicesRepository extends Repository<DeviceModel> {
     required super.apiClient,
   });
 
-  void insertDevices(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
     late Map<String, DeviceModel> insertData = {...data};
 
     for (var row in json) {
@@ -35,6 +35,16 @@ class DevicesRepository extends Repository<DeviceModel> {
     }
   }
 
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint('[DEVICES MODULE][DEVICES] Removed device: $id');
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchDevice(
     String id,
   ) async {
@@ -44,7 +54,7 @@ class DevicesRepository extends Repository<DeviceModel> {
           id: id,
         );
 
-        insertDevices([jsonDecode(jsonEncode(response.data.data))]);
+        insert([jsonDecode(jsonEncode(response.data.data))]);
       },
       'fetch device',
     );
@@ -61,7 +71,7 @@ class DevicesRepository extends Repository<DeviceModel> {
           devices.add(jsonDecode(jsonEncode(device)));
         }
 
-        insertDevices(devices);
+        insert(devices);
       },
       'fetch devices',
     );

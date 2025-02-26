@@ -5,6 +5,8 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
 import 'package:fastybird_smart_panel/api/models/devices_res_devices_data_union.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channel_controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
@@ -14,6 +16,8 @@ import 'package:flutter/foundation.dart';
 
 class DevicesModuleService {
   final DevicesModuleClient _apiClient;
+
+  final SocketService _socketService;
 
   late DevicesRepository _devicesRepository;
   late DeviceControlsRepository _deviceControlsRepository;
@@ -25,7 +29,9 @@ class DevicesModuleService {
 
   DevicesModuleService({
     required ApiClient apiClient,
-  }) : _apiClient = apiClient.devicesModule {
+    required SocketService socketService,
+  })  : _apiClient = apiClient.devicesModule,
+        _socketService = socketService {
     _devicesRepository = DevicesRepository(
       apiClient: apiClient.devicesModule,
     );
@@ -56,9 +62,21 @@ class DevicesModuleService {
     await _initializeDevices();
 
     _isLoading = false;
+
+    _socketService.registerEventHandler(
+      DevicesModuleConstants.moduleWildcardEvent,
+      _socketEventHandler,
+    );
   }
 
   bool get isLoading => _isLoading;
+
+  void dispose() {
+    _socketService.unregisterEventHandler(
+      DevicesModuleConstants.moduleWildcardEvent,
+      _socketEventHandler,
+    );
+  }
 
   Future<void> _initializeDevices() async {
     var apiDevices = await _fetchDevices();
@@ -69,7 +87,7 @@ class DevicesModuleService {
       devices.add(jsonDecode(jsonEncode(device)));
     }
 
-    _devicesRepository.insertDevices(devices);
+    _devicesRepository.insert(devices);
 
     for (var apiDevice in apiDevices) {
       List<Map<String, dynamic>> deviceControls = [];
@@ -78,7 +96,7 @@ class DevicesModuleService {
         deviceControls.add(jsonDecode(jsonEncode(control)));
       }
 
-      _deviceControlsRepository.insertControls(deviceControls);
+      _deviceControlsRepository.insert(deviceControls);
 
       List<Map<String, dynamic>> channels = [];
 
@@ -86,7 +104,7 @@ class DevicesModuleService {
         channels.add(jsonDecode(jsonEncode(channel)));
       }
 
-      _channelsRepository.insertChannels(channels);
+      _channelsRepository.insert(channels);
 
       for (var apiChannel in apiDevice.channels) {
         List<Map<String, dynamic>> channelControls = [];
@@ -95,7 +113,7 @@ class DevicesModuleService {
           channelControls.add(jsonDecode(jsonEncode(control)));
         }
 
-        _channelControlsRepository.insertControls(channelControls);
+        _channelControlsRepository.insert(channelControls);
 
         List<Map<String, dynamic>> properties = [];
 
@@ -103,7 +121,7 @@ class DevicesModuleService {
           properties.add(jsonDecode(jsonEncode(property)));
         }
 
-        _channelPropertiesRepository.insertProperties(properties);
+        _channelPropertiesRepository.insert(properties);
       }
     }
   }
@@ -145,6 +163,61 @@ class DevicesModuleService {
       }
 
       throw Exception('Unexpected error when calling backend service');
+    }
+  }
+
+  /// ////////////////
+  /// SOCKETS HANDLERS
+  /// ////////////////
+
+  void _socketEventHandler(String event, Map<String, dynamic> payload) {
+    /// Device CREATE/UPDATE
+    if (event == DevicesModuleConstants.deviceCreatedEvent ||
+        event == DevicesModuleConstants.deviceUpdatedEvent) {
+      _devicesRepository.insert([payload]);
+
+      /// Device DELETE
+    } else if (event == DevicesModuleConstants.deviceDeletedEvent &&
+        payload.containsKey('id')) {
+      _devicesRepository.delete(payload['id']);
+
+      /// Device control CREATE
+    } else if (event == DevicesModuleConstants.deviceControlCreatedEvent) {
+      _deviceControlsRepository.insert([payload]);
+
+      /// Device control DELETE
+    } else if (event == DevicesModuleConstants.deviceControlDeletedEvent &&
+        payload.containsKey('id')) {
+      _deviceControlsRepository.delete(payload['id']);
+
+      /// Channel CREATE/UPDATE
+    } else if (event == DevicesModuleConstants.channelCreatedEvent ||
+        event == DevicesModuleConstants.channelUpdatedEvent) {
+      _channelsRepository.insert([payload]);
+
+      /// Channel DELETE
+    } else if (event == DevicesModuleConstants.channelDeletedEvent &&
+        payload.containsKey('id')) {
+      _channelsRepository.delete(payload['id']);
+
+      /// Channel control CREATE
+    } else if (event == DevicesModuleConstants.channelControlCreatedEvent) {
+      _channelControlsRepository.insert([payload]);
+
+      /// Channel control DELETE
+    } else if (event == DevicesModuleConstants.channelControlDeletedEvent &&
+        payload.containsKey('id')) {
+      _channelControlsRepository.delete(payload['id']);
+
+      /// Channel property CREATE/UPDATE
+    } else if (event == DevicesModuleConstants.channelPropertyCreatedEvent ||
+        event == DevicesModuleConstants.channelPropertyUpdatedEvent) {
+      _channelPropertiesRepository.insert([payload]);
+
+      /// Channel property DELETE
+    } else if (event == DevicesModuleConstants.channelPropertyDeletedEvent &&
+        payload.containsKey('id')) {
+      _channelPropertiesRepository.delete(payload['id']);
     }
   }
 }

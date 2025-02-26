@@ -128,4 +128,41 @@ class CurrentDayModel extends Model {
       dayTime: dayTime ?? _dayTime,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CurrentDayModel &&
+          other._temperature == _temperature &&
+          other._temperatureMin == _temperatureMin &&
+          other._temperatureMax == _temperatureMax &&
+          other._feelsLike == _feelsLike &&
+          other._pressure == _pressure &&
+          other._humidity == _humidity &&
+          other._weather == _weather &&
+          other._wind == _wind &&
+          other._clouds == _clouds &&
+          other._rain == _rain &&
+          other._snow == _snow &&
+          other._sunrise == _sunrise &&
+          other._sunset == _sunset &&
+          other._dayTime == _dayTime);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _temperature,
+        _temperatureMin,
+        _temperatureMax,
+        _feelsLike,
+        _pressure,
+        _humidity,
+        _weather,
+        _wind,
+        _clouds,
+        _rain,
+        _snow,
+        _sunrise,
+        _sunset,
+        _dayTime,
+      ]);
 }

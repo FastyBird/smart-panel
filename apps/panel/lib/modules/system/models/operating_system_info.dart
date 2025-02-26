@@ -46,4 +46,21 @@ class OperatingSystemInfoModel extends Model {
       uptime: uptime ?? _uptime,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OperatingSystemInfoModel &&
+          other._platform == _platform &&
+          other._distro == _distro &&
+          other._release == _release &&
+          other._uptime == _uptime);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _platform,
+        _distro,
+        _release,
+        _uptime,
+      ]);
 }

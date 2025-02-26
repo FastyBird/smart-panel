@@ -9,7 +9,7 @@ class ChannelsRepository extends Repository<ChannelModel> {
     required super.apiClient,
   });
 
-  void insertChannels(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
     late Map<String, ChannelModel> insertData = {...data};
 
     for (var row in json) {
@@ -35,6 +35,18 @@ class ChannelsRepository extends Repository<ChannelModel> {
     }
   }
 
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][CHANNELS] Removed channel: $id',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchChannel(
     String id,
   ) async {
@@ -44,7 +56,7 @@ class ChannelsRepository extends Repository<ChannelModel> {
           id: id,
         );
 
-        insertChannels([jsonDecode(jsonEncode(response.data.data))]);
+        insert([jsonDecode(jsonEncode(response.data.data))]);
       },
       'fetch channel',
     );
@@ -61,7 +73,7 @@ class ChannelsRepository extends Repository<ChannelModel> {
           channels.add(jsonDecode(jsonEncode(channel)));
         }
 
-        insertChannels(channels);
+        insert(channels);
       },
       'fetch channels',
     );

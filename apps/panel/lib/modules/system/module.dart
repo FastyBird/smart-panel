@@ -1,8 +1,12 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/system/constants.dart';
 import 'package:fastybird_smart_panel/modules/system/repositories/export.dart';
 
 class SystemModuleService {
+  final SocketService _socketService;
+
   late SystemInfoRepository _systemInfoRepository;
   late ThrottleStatusRepository _throttleStatusRepository;
 
@@ -10,7 +14,8 @@ class SystemModuleService {
 
   SystemModuleService({
     required ApiClient apiClient,
-  }) {
+    required SocketService socketService,
+  }) : _socketService = socketService {
     _systemInfoRepository = SystemInfoRepository(
       apiClient: apiClient.systemModule,
     );
@@ -28,9 +33,21 @@ class SystemModuleService {
     await _initializeSystemData();
 
     _isLoading = false;
+
+    _socketService.registerEventHandler(
+      SystemModuleConstants.systemInfoEvent,
+      _socketEventHandler,
+    );
   }
 
   bool get isLoading => _isLoading;
+
+  void dispose() {
+    _socketService.unregisterEventHandler(
+      SystemModuleConstants.systemInfoEvent,
+      _socketEventHandler,
+    );
+  }
 
   Future<void> _initializeSystemData() async {
     await _systemInfoRepository.fetchSystemInfo();
@@ -40,5 +57,9 @@ class SystemModuleService {
     } catch (e) {
       // This error could be ignored
     }
+  }
+
+  void _socketEventHandler(String event, Map<String, dynamic> payload) {
+    _systemInfoRepository.insertSystemInfo(payload);
   }
 }

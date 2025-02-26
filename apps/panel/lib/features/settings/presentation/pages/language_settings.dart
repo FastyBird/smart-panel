@@ -47,9 +47,9 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
   void _syncStateWithRepository() {
     setState(() {
-      _timezone = _repository.data.timezone;
-      _language = _repository.data.language;
-      _timeFormat = _repository.data.timeFormat;
+      _timezone = _repository.timezone;
+      _language = _repository.language;
+      _timeFormat = _repository.timeFormat;
     });
   }
 

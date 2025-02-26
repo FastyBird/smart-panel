@@ -159,6 +159,18 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
     }
   }
 
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DASHBOARD MODULE][DATA SOURCE] Removed data source: $id',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchPageDataSource(
     String pageId,
   ) async {

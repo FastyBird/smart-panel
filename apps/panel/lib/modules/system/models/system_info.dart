@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/system/models/default_network.dart';
 import 'package:fastybird_smart_panel/modules/system/models/display_info.dart';
 import 'package:fastybird_smart_panel/modules/system/models/memory_info.dart';
@@ -101,4 +102,27 @@ class SystemInfoModel extends Model {
       display: display ?? _display,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SystemInfoModel &&
+          other._cpuLoad == _cpuLoad &&
+          other._memory == _memory &&
+          ListEquality().equals(other._storage, _storage) &&
+          other._temperature == _temperature &&
+          other._os == _os &&
+          ListEquality().equals(other._network, _network) &&
+          other._display == _display);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _cpuLoad,
+        _memory,
+        Object.hashAll(_storage),
+        _temperature,
+        _os,
+        Object.hashAll(_network),
+        _display,
+      ]);
 }

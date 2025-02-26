@@ -216,7 +216,7 @@ class _AboutPageState extends State<AboutPage> {
         systemInfoRepository,
         _,
       ) {
-        String? ipAddress = systemInfoRepository.data?.defaultNetwork.ip4;
+        String? ipAddress = systemInfoRepository.defaultNetwork?.ip4;
 
         return _renderInfoTile(
           context: context,
@@ -237,7 +237,7 @@ class _AboutPageState extends State<AboutPage> {
         systemInfoRepository,
         _,
       ) {
-        String? macAddress = systemInfoRepository.data?.defaultNetwork.mac;
+        String? macAddress = systemInfoRepository.defaultNetwork?.mac;
 
         return _renderInfoTile(
           context: context,
@@ -258,7 +258,7 @@ class _AboutPageState extends State<AboutPage> {
         systemInfoRepository,
         _,
       ) {
-        double? cpuLoad = systemInfoRepository.data?.cpuLoad;
+        double? cpuLoad = systemInfoRepository.cpuLoad;
 
         return _renderInfoTile(
           context: context,
@@ -282,7 +282,7 @@ class _AboutPageState extends State<AboutPage> {
         systemInfoRepository,
         _,
       ) {
-        double? memoryUsed = systemInfoRepository.data?.memory.used.toDouble();
+        double? memoryUsed = systemInfoRepository.memory?.used.toDouble();
 
         return _renderInfoTile(
           context: context,

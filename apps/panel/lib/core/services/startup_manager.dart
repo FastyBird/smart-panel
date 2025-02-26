@@ -52,11 +52,26 @@ class StartupManagerService {
 
     _socketClient = SocketService();
 
-    var configModuleService = ConfigModuleService(apiClient: _apiClient);
-    var systemModuleService = SystemModuleService(apiClient: _apiClient);
-    var weatherModuleService = WeatherModuleService(apiClient: _apiClient);
-    var devicesModuleService = DevicesModuleService(apiClient: _apiClient);
-    var dashboardModuleService = DashboardModuleService(apiClient: _apiClient);
+    var configModuleService = ConfigModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var systemModuleService = SystemModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var weatherModuleService = WeatherModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var devicesModuleService = DevicesModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var dashboardModuleService = DashboardModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
 
     var devicesService = DevicesService(
       devicesRepository: locator.get<DevicesRepository>(),
@@ -147,7 +162,11 @@ class StartupManagerService {
       );
     }
 
-    _socketClient.initialize();
+    String? apiSecret = _apiSecret;
+
+    if (apiSecret != null) {
+      _socketClient.initialize(apiSecret);
+    }
   }
 
   Future<void> _initialize() async {

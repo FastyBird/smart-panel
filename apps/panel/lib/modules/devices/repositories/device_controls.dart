@@ -9,7 +9,7 @@ class DeviceControlsRepository extends Repository<DeviceControlModel> {
     required super.apiClient,
   });
 
-  void insertControls(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
     late Map<String, DeviceControlModel> insertData = {...data};
 
     for (var row in json) {
@@ -35,6 +35,18 @@ class DeviceControlsRepository extends Repository<DeviceControlModel> {
     }
   }
 
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][DEVICES CONTROLS] Removed control: $id',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchControl(
     String deviceId,
     String id,
@@ -46,7 +58,7 @@ class DeviceControlsRepository extends Repository<DeviceControlModel> {
           id: id,
         );
 
-        insertControls([jsonDecode(jsonEncode(response.data.data))]);
+        insert([jsonDecode(jsonEncode(response.data.data))]);
       },
       'fetch device control',
     );
@@ -67,7 +79,7 @@ class DeviceControlsRepository extends Repository<DeviceControlModel> {
           controls.add(jsonDecode(jsonEncode(control)));
         }
 
-        insertControls(controls);
+        insert(controls);
       },
       'fetch device controls',
     );

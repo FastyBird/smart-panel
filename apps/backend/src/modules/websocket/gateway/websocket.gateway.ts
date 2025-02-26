@@ -44,6 +44,15 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	}
 
 	async handleConnection(client: Socket): Promise<void> {
+		const token = client.handshake.headers.authorization?.split(' ')[1];
+
+		if (!token /*|| !this.jwtService.verify(token)*/) {
+			// TODO: Implement token validation
+			this.logger.warn(`[WS GATEWAY] Unauthorized client is trying to connect: ${client.handshake.headers.host}`);
+
+			client.disconnect();
+		}
+
 		this.logger.log(`[WS GATEWAY] Client connected: ${client.id}`);
 
 		await client.join('default-room');

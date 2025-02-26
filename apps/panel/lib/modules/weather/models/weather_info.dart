@@ -46,4 +46,21 @@ class WeatherInfoModel extends Model {
       icon: icon ?? _icon,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WeatherInfoModel &&
+          other._code == _code &&
+          other._main == _main &&
+          other._description == _description &&
+          other._icon == _icon);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _code,
+        _main,
+        _description,
+        _icon,
+      ]);
 }

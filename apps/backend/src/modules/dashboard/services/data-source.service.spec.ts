@@ -435,7 +435,7 @@ describe('DataSourceService', () => {
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCratedDataSource);
 			expect(gateway.sendMessage).toHaveBeenCalledWith(
-				EventType.TILE_DATA_SOURCE_CREATED,
+				EventType.DATA_SOURCE_CREATED,
 				plainToInstance(DeviceChannelDataSourceEntity, mockCratedDataSource),
 			);
 			expect(repository.findOne).toHaveBeenCalledWith({
@@ -522,7 +522,7 @@ describe('DataSourceService', () => {
 				plainToInstance(DeviceChannelDataSourceEntity, mockUpdatedDataSource),
 			);
 			expect(gateway.sendMessage).toHaveBeenCalledWith(
-				EventType.TILE_DATA_SOURCE_UPDATED,
+				EventType.DATA_SOURCE_UPDATED,
 				plainToInstance(DeviceChannelDataSourceEntity, mockUpdatedDataSource),
 			);
 			expect(repository.findOne).toHaveBeenCalledWith({
@@ -548,7 +548,7 @@ describe('DataSourceService', () => {
 				plainToInstance(DeviceChannelDataSourceEntity, mockDeviceChannelDataSource),
 			);
 			expect(gateway.sendMessage).toHaveBeenCalledWith(
-				EventType.TILE_DATA_SOURCE_DELETED,
+				EventType.DATA_SOURCE_DELETED,
 				plainToInstance(DeviceChannelDataSourceEntity, mockDeviceChannelDataSource),
 			);
 		});

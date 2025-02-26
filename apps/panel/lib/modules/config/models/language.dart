@@ -43,4 +43,19 @@ class LanguageConfigModel extends Model {
       timeFormat: timeFormat ?? _timeFormat,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LanguageConfigModel &&
+          other._language.value == _language.value &&
+          other._timezone == _timezone &&
+          other._timeFormat.value == _timeFormat.value);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _language.value,
+        _timezone,
+        _timeFormat.value,
+      ]);
 }

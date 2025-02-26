@@ -7,9 +7,26 @@ import 'package:fastybird_smart_panel/api/models/config_update_display_type.dart
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/display.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
+import 'package:flutter/foundation.dart';
 
 class DisplayConfigRepository extends Repository<DisplayConfigModel> {
   DisplayConfigRepository({required super.apiClient});
+
+  DisplayConfigModel _getConfig() {
+    if (data == null) {
+      throw Exception('Config module is not initialized');
+    }
+
+    return data!;
+  }
+
+  bool get hasDarkMode => _getConfig().hasDarkMode;
+
+  int get brightness => _getConfig().brightness;
+
+  int get screenLockDuration => _getConfig().screenLockDuration;
+
+  bool get hasScreenSaver => _getConfig().hasScreenSaver;
 
   Future<bool> refresh() async {
     try {
@@ -21,10 +38,30 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
     }
   }
 
-  void insertDisplayConfiguration(Map<String, dynamic> json) {
-    data = DisplayConfigModel.fromJson(json);
+  void insertConfiguration(Map<String, dynamic> json) {
+    try {
+      DisplayConfigModel newData = DisplayConfigModel.fromJson(json);
 
-    notifyListeners();
+      if (data != newData) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CONFIG MODULE] Display configuration was successfully updated',
+          );
+        }
+
+        data = newData;
+
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[CONFIG MODULE] Display configuration model could not be created',
+        );
+      }
+
+      rethrow;
+    }
   }
 
   Future<bool> setDisplayDarkMode(bool state) async {
@@ -85,15 +122,16 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
       section: Section.display,
       data: ConfigReqUpdateSectionDataUnionDisplay(
         type: ConfigUpdateDisplayType.display,
-        darkMode: darkMode ?? data.hasDarkMode,
-        brightness: brightness ?? data.brightness,
-        screenLockDuration: screenLockDuration ?? data.screenLockDuration,
-        screenSaver: screenSaver ?? data.hasScreenSaver,
+        darkMode: darkMode ?? _getConfig().hasDarkMode,
+        brightness: brightness ?? _getConfig().brightness,
+        screenLockDuration:
+            screenLockDuration ?? _getConfig().screenLockDuration,
+        screenSaver: screenSaver ?? _getConfig().hasScreenSaver,
       ),
     );
 
     if (updated is ConfigResSectionDataUnionDisplay) {
-      data = data.copyWith(
+      data = _getConfig().copyWith(
         darkMode: updated.darkMode,
         brightness: updated.brightness,
         screenLockDuration: updated.screenLockDuration,
@@ -113,7 +151,7 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionDisplay) {
-          insertDisplayConfiguration(jsonDecode(jsonEncode(data)));
+          insertConfiguration(jsonDecode(jsonEncode(data)));
         }
       },
       'fetch display configuration',

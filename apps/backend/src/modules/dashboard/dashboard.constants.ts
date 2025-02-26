@@ -10,7 +10,7 @@ export enum EventType {
 	TILE_CREATED = 'DashboardModule.Tile.Created',
 	TILE_UPDATED = 'DashboardModule.Tile.Updated',
 	TILE_DELETED = 'DashboardModule.Tile.Deleted',
-	TILE_DATA_SOURCE_CREATED = 'DashboardModule.TileDataSource.Created',
-	TILE_DATA_SOURCE_UPDATED = 'DashboardModule.TileDataSource.Updated',
-	TILE_DATA_SOURCE_DELETED = 'DashboardModule.TileDataSource.Deleted',
+	DATA_SOURCE_CREATED = 'DashboardModule.DataSource.Created',
+	DATA_SOURCE_UPDATED = 'DashboardModule.DataSource.Updated',
+	DATA_SOURCE_DELETED = 'DashboardModule.DataSource.Deleted',
 }

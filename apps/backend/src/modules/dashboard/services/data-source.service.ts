@@ -244,7 +244,7 @@ export class DataSourceService {
 
 		this.logger.debug(`[CREATE] Successfully created data source with id=${savedDataSource.id}`);
 
-		this.gateway.sendMessage(EventType.TILE_DATA_SOURCE_CREATED, savedDataSource);
+		this.gateway.sendMessage(EventType.DATA_SOURCE_CREATED, savedDataSource);
 
 		return savedDataSource;
 	}
@@ -281,7 +281,7 @@ export class DataSourceService {
 
 		this.logger.debug(`[UPDATE] Successfully updated data source with id=${updatedDataSource.id}`);
 
-		this.gateway.sendMessage(EventType.TILE_DATA_SOURCE_UPDATED, updatedDataSource);
+		this.gateway.sendMessage(EventType.DATA_SOURCE_UPDATED, updatedDataSource);
 
 		return updatedDataSource;
 	}
@@ -295,7 +295,7 @@ export class DataSourceService {
 
 		this.logger.log(`[DELETE] Successfully removed data source with id=${id}`);
 
-		this.gateway.sendMessage(EventType.TILE_DATA_SOURCE_DELETED, dataSource);
+		this.gateway.sendMessage(EventType.DATA_SOURCE_DELETED, dataSource);
 	}
 
 	async getOneOrThrow<TDataSource extends DataSourceEntity>(id: string, filterBy?: FilterBy): Promise<TDataSource> {

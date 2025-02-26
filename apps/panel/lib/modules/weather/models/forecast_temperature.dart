@@ -62,4 +62,25 @@ class ForecastTemperatureModel extends Model {
       max: max ?? _max,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ForecastTemperatureModel &&
+          other._morn == _morn &&
+          other._day == _day &&
+          other._eve == _eve &&
+          other._night == _night &&
+          other._min == _min &&
+          other._max == _max);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _morn,
+        _day,
+        _eve,
+        _night,
+        _min,
+        _max,
+      ]);
 }

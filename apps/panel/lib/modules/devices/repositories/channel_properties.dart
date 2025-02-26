@@ -11,7 +11,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     required super.apiClient,
   });
 
-  void insertProperties(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
     late Map<String, ChannelPropertyModel> insertData = {...data};
 
     for (var row in json) {
@@ -32,6 +32,18 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
 
     if (!mapEquals(data, insertData)) {
       data = insertData;
+
+      notifyListeners();
+    }
+  }
+
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DEVICES MODULE][CHANNELS PROPERTIES] Removed property: $id',
+        );
+      }
 
       notifyListeners();
     }
@@ -158,7 +170,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
           id: id,
         );
 
-        insertProperties([jsonDecode(jsonEncode(response.data.data))]);
+        insert([jsonDecode(jsonEncode(response.data.data))]);
       },
       'fetch channel property',
     );
@@ -179,7 +191,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
           properties.add(jsonDecode(jsonEncode(property)));
         }
 
-        insertProperties(properties);
+        insert(properties);
       },
       'fetch channel properties',
     );

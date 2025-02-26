@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:fastybird_smart_panel/modules/weather/models/forecast_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/repository.dart';
+import 'package:flutter/foundation.dart';
 
 class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
   ForecastWeatherRepository({required super.apiClient});
@@ -16,7 +17,7 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
     }
   }
 
-  Future<void> insertForecastWeather(List<Map<String, dynamic>> json) async {
+  Future<void> insertForecast(List<Map<String, dynamic>> json) async {
     late List<ForecastDayModel> insertData = [];
 
     for (var row in json) {
@@ -25,11 +26,23 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
 
         insertData.add(day);
       } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[WEATHER MODULE][FORECAST] Failed to create forecast model: ${e.toString()}',
+          );
+        }
+
         /// Failed to create new model
       }
     }
 
     if (data != insertData) {
+      if (kDebugMode) {
+        debugPrint(
+          '[WEATHER MODULE][FORECAST] Weather forecast was successfully updated',
+        );
+      }
+
       data = insertData;
 
       notifyListeners();
@@ -49,7 +62,7 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
           forecast.add(jsonDecode(jsonEncode(day)));
         }
 
-        insertForecastWeather(forecast);
+        insertForecast(forecast);
       },
       'fetch forecast weather',
     );

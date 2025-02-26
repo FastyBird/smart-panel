@@ -12,9 +12,24 @@ import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/weather.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:flutter/foundation.dart';
 
 class WeatherConfigRepository extends Repository<WeatherConfigModel> {
   WeatherConfigRepository({required super.apiClient});
+
+  WeatherConfigModel _getConfig() {
+    if (data == null) {
+      throw Exception('Config module is not initialized');
+    }
+
+    return data!;
+  }
+
+  String? get location => _getConfig().location;
+
+  WeatherLocationType get locationType => _getConfig().locationType;
+
+  WeatherUnit get unit => _getConfig().unit;
 
   Future<bool> refresh() async {
     try {
@@ -26,10 +41,30 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
     }
   }
 
-  void insertWeatherConfiguration(Map<String, dynamic> json) {
-    data = WeatherConfigModel.fromJson(json);
+  void insertConfiguration(Map<String, dynamic> json) {
+    try {
+      WeatherConfigModel newData = WeatherConfigModel.fromJson(json);
 
-    notifyListeners();
+      if (data != newData) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CONFIG MODULE] Weather configuration was successfully updated',
+          );
+        }
+
+        data = newData;
+
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[CONFIG MODULE] Weather configuration model could not be created',
+        );
+      }
+
+      rethrow;
+    }
   }
 
   Future<bool> setWeatherUnit(WeatherUnit unit) async {
@@ -53,13 +88,13 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
       data: ConfigReqUpdateSectionDataUnionWeather(
           type: ConfigUpdateWeatherType.weather,
           locationType: _convertWeatherLocationTypeToApi(
-            locationType ?? data.locationType,
+            locationType ?? _getConfig().locationType,
           ),
-          unit: _convertWeatherUnitToApi(unit ?? data.unit)),
+          unit: _convertWeatherUnitToApi(unit ?? _getConfig().unit)),
     );
 
     if (updated is ConfigResSectionDataUnionWeather) {
-      data = data.copyWith(
+      data = _getConfig().copyWith(
         locationType: _convertWeatherLocationTypeFromApi(updated.locationType),
         unit: _convertWeatherUnitFromApi(updated.unit),
         location: updated.location,
@@ -78,7 +113,7 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionWeather) {
-          insertWeatherConfiguration(jsonDecode(jsonEncode(data)));
+          insertConfiguration(jsonDecode(jsonEncode(data)));
         }
       },
       'fetch weather configuration',

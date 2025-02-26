@@ -1,18 +1,22 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/weather/constants.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 
 class WeatherModuleService {
-  late CurrentWeatherRepository _currentWeatherRepository;
+  final SocketService _socketService;
 
+  late CurrentWeatherRepository _currentWeatherRepository;
   late ForecastWeatherRepository _forecastWeatherRepository;
 
   bool _isLoading = true;
 
   WeatherModuleService({
     required ApiClient apiClient,
-  }) {
+    required SocketService socketService,
+  }) : _socketService = socketService {
     _currentWeatherRepository = CurrentWeatherRepository(
       apiClient: apiClient.weatherModule,
     );
@@ -30,9 +34,21 @@ class WeatherModuleService {
     await _initializeWeatherData();
 
     _isLoading = false;
+
+    _socketService.registerEventHandler(
+      WeatherModuleConstants.weatherInfoEvent,
+      _socketEventHandler,
+    );
   }
 
   bool get isLoading => _isLoading;
+
+  void dispose() {
+    _socketService.unregisterEventHandler(
+      WeatherModuleConstants.weatherInfoEvent,
+      _socketEventHandler,
+    );
+  }
 
   Future<void> _initializeWeatherData() async {
     try {
@@ -40,6 +56,21 @@ class WeatherModuleService {
       await _forecastWeatherRepository.fetchWeather();
     } catch (e) {
       // This error could be ignored
+    }
+  }
+
+  void _socketEventHandler(String event, Map<String, dynamic> payload) {
+    if (payload.containsKey('current') &&
+        payload['current'] is Map<String, dynamic>) {
+      _currentWeatherRepository.insertWeather(payload['current']);
+    }
+
+    if (payload.containsKey('forecast') && payload['forecast'] is List) {
+      List<Map<String, dynamic>> mapped = (payload['forecast'] as List<dynamic>)
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+
+      _forecastWeatherRepository.insertForecast(mapped);
     }
   }
 }

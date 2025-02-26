@@ -105,6 +105,18 @@ class TilesRepository extends Repository<TileModel> {
     }
   }
 
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DASHBOARD MODULE][TILES] Removed tile: $id',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchPageTile(
     String pageId,
     String id,
