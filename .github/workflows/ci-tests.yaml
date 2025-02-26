@@ -32,6 +32,10 @@ jobs:
         with:
           node-version: "20"
 
+      - name: "Get Yarn cache directory"
+        id: "yarn-cache-dir-path"
+        run: 'echo "::set-output name=dir::$(yarn cache dir)"'
+
       - name: "Cache JS dependencies"
         uses: "actions/cache@v3"
         with:
