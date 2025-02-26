@@ -114,13 +114,13 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 		try {
 			const handlers = this.commandEventRegistry.get(event);
-			console.log('CHECK', handlers.length);
+
 			const results = (
 				await Promise.all(
 					handlers.map(async ({ name, handler }) => {
 						try {
 							const clientData = client.data as ClientData;
-							console.log('CALL HANDLER');
+
 							const response = await handler(clientData.user, payload);
 
 							return response !== null ? { handler: name, ...response } : null;
