@@ -18,7 +18,7 @@ import {
 } from '@nestjs/common';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DashboardModulePrefix } from '../dashboard.constants';
+import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { ReqCreateCardTileDto } from '../dto/create-card-tile.dto';
 import { CreateTileDto } from '../dto/create-tile.dto';
@@ -76,7 +76,7 @@ export class PagesCardsTilesController {
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DashboardModulePrefix}/pages/:page/cards/:card/tiles/:id`)
+	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:page/cards/:card/tiles/:id`)
 	async create(
 		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
 		@Param('cardId', new ParseUUIDPipe({ version: '4' })) cardId: string,

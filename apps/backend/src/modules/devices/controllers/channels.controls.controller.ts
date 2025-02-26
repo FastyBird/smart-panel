@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DevicesModulePrefix } from '../devices.constants';
+import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity';
@@ -61,7 +61,7 @@ export class ChannelsControlsController {
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DevicesModulePrefix}/channels/:channel/controls/:id`)
+	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:channel/controls/:id`)
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Body() createControlDto: ReqCreateChannelControlDto,

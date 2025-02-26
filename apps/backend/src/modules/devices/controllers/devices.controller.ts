@@ -18,7 +18,7 @@ import {
 } from '@nestjs/common';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DevicesModulePrefix } from '../devices.constants';
+import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
 import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
@@ -58,7 +58,7 @@ export class DevicesController {
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DevicesModulePrefix}/devices/:id`)
+	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:id`)
 	async create(@Body() createDto: ReqCreateDeviceDto): Promise<DeviceEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new device');
 

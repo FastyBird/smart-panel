@@ -10,8 +10,8 @@ import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
-import { DisplayUsername, UserRole } from '../../users/users.constants';
-import { AccessTokenType, DisplaySecretCacheKey, TokenType } from '../auth.constants';
+import { DISPLAY_USERNAME, UserRole } from '../../users/users.constants';
+import { ACCESS_TOKEN_TYPE, DISPLAY_SECRET_CACHE_KEY, TokenType } from '../auth.constants';
 import {
 	AuthException,
 	AuthNotFoundException,
@@ -126,7 +126,7 @@ export class AuthService {
 
 		return plainToInstance(
 			LoggedInResponseDto,
-			{ ...tokens, type: AccessTokenType, expiration: accessTokenExpiresAt },
+			{ ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt },
 			{ excludeExtraneousValues: true },
 		);
 	}
@@ -139,7 +139,7 @@ export class AuthService {
 		const { password, email, username } = dtoInstance;
 
 		// Ensure only one owner can be registered
-		if ((await this.usersService.findOwner()) && username !== DisplayUsername) {
+		if ((await this.usersService.findOwner()) && username !== DISPLAY_USERNAME) {
 			this.logger.warn(`[REGISTER] Registration failed - owner already exists`);
 
 			throw new AuthException('Owner already registered');
@@ -170,11 +170,11 @@ export class AuthService {
 		const user = await this.usersService.create({
 			...dtoInstance,
 			password: hashedPassword,
-			role: ownerExists || username === DisplayUsername ? UserRole.USER : UserRole.OWNER,
+			role: ownerExists || username === DISPLAY_USERNAME ? UserRole.USER : UserRole.OWNER,
 		});
 
-		if (registerDto.username === DisplayUsername) {
-			await this.cacheManager.del(DisplaySecretCacheKey);
+		if (registerDto.username === DISPLAY_USERNAME) {
+			await this.cacheManager.del(DISPLAY_SECRET_CACHE_KEY);
 		}
 
 		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);
@@ -251,7 +251,7 @@ export class AuthService {
 
 		return plainToInstance(
 			RefreshTokenResponseDto,
-			{ ...tokens, type: AccessTokenType, expiration: accessTokenExpiresAt },
+			{ ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt },
 			{ excludeExtraneousValues: true },
 		);
 	}

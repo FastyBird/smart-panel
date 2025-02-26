@@ -1,6 +1,6 @@
 import { FieldType, ISchemaOptions } from 'influx';
 
-export const DevicesModulePrefix = 'devices-module';
+export const DEVICES_MODULE_PREFIX = 'devices-module';
 
 export enum EventHandlerName {
 	/**

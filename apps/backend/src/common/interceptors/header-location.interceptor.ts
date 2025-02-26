@@ -5,7 +5,7 @@ import { map } from 'rxjs/operators';
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
-import { ApiPrefix } from '../../app.constants';
+import { API_PREFIX } from '../../app.constants';
 import { getEnvValue } from '../utils/config.utils';
 
 @Injectable()
@@ -24,10 +24,10 @@ export class HeaderLocationInterceptor implements NestInterceptor {
 		const response: Response = httpContext.getResponse<Response>();
 
 		// Extract version dynamically from request URL (assuming format "/api/vX/...")
-		const versionMatch = request.url.match(new RegExp(`/${ApiPrefix}/(v\\d+)`));
+		const versionMatch = request.url.match(new RegExp(`/${API_PREFIX}/(v\\d+)`));
 		const version = versionMatch ? versionMatch[1] : 'v1'; // Default to v1 if not found
 
-		const fullBaseUrl = `${this.appHost}:${this.appPort}/${ApiPrefix}/v${version}`;
+		const fullBaseUrl = `${this.appHost}:${this.appPort}/${API_PREFIX}/v${version}`;
 
 		return next.handle().pipe(
 			map((data: Record<string, any>) => {

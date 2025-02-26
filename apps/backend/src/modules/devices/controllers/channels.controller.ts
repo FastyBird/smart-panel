@@ -13,7 +13,7 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
-import { DevicesModulePrefix } from '../devices.constants';
+import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateChannelDto } from '../dto/create-channel.dto';
 import { ReqUpdateChannelDto } from '../dto/update-channel.dto';
@@ -50,7 +50,7 @@ export class ChannelsController {
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DevicesModulePrefix}/channels/:id`)
+	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:id`)
 	async create(@Body() createDto: ReqCreateChannelDto): Promise<ChannelEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new channel');
 

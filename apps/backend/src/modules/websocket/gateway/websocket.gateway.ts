@@ -22,7 +22,7 @@ import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandResultDto } from '../dto/command-result.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
-import { ClientDefaultRoom, DisplayInternalRoom } from '../websocket.constants';
+import { CLIENT_DEFAULT_ROOM, DISPLAY_INTERNAL_ROOM } from '../websocket.constants';
 import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 interface ClientData {
@@ -75,12 +75,12 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 			this.logger.log(`[WS GATEWAY] Client connected: ${client.id}`);
 
-			await client.join(ClientDefaultRoom);
+			await client.join(CLIENT_DEFAULT_ROOM);
 
 			const clientData = client.data as ClientData;
 
 			if (clientData.user && clientData.user.role === UserRole.DISPLAY) {
-				await client.join(DisplayInternalRoom);
+				await client.join(DISPLAY_INTERNAL_ROOM);
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -195,7 +195,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 		this.logger.debug(`[WS GATEWAY] Emitting event bus message: ${JSON.stringify(message)}`);
 
-		this.server.to(DisplayInternalRoom).emit('event', message);
+		this.server.to(DISPLAY_INTERNAL_ROOM).emit('event', message);
 	}
 
 	private transformPayload(payload: Record<string, any>): Record<string, any> {

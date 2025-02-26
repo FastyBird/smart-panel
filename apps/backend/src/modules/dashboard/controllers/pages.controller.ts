@@ -18,7 +18,7 @@ import {
 } from '@nestjs/common';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { DashboardModulePrefix } from '../dashboard.constants';
+import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreatePageDto, ReqCreatePageDto } from '../dto/create-page.dto';
 import { ReqUpdatePageDto, UpdatePageDto } from '../dto/update-page.dto';
@@ -59,7 +59,7 @@ export class PagesController {
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DashboardModulePrefix}/pages/:id`)
+	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:id`)
 	async create(@Body() createDto: ReqCreatePageDto): Promise<PageEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new page');
 

@@ -1,4 +1,4 @@
-export const DashboardModulePrefix = 'dashboard-module';
+export const DASHBOARD_MODULE_PREFIX = 'dashboard-module';
 
 export enum EventType {
 	PAGE_CREATED = 'DashboardModule.Page.Created',

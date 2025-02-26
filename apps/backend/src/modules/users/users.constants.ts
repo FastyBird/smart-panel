@@ -1,4 +1,4 @@
-export const UsersModulePrefix = 'users-module';
+export const USERS_MODULE_PREFIX = 'users-module';
 
 export enum EventType {
 	USER_CREATED = 'UsersModule.User.Created',
@@ -13,4 +13,4 @@ export enum UserRole {
 	DISPLAY = 'display',
 }
 
-export const DisplayUsername = 'display';
+export const DISPLAY_USERNAME = 'display';

@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
-import { AuthModulePrefix, AuthenticatedRequest } from '../auth.constants';
+import { AUTH_MODULE_PREFIX, AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
 import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
@@ -59,7 +59,7 @@ export class TokensController {
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${AuthModulePrefix}/auth/:id`)
+	@Header('Location', `:baseUrl/${AUTH_MODULE_PREFIX}/auth/:id`)
 	async create(@Body() createDto: ReqCreateTokenDto): Promise<TokenEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new token');
 

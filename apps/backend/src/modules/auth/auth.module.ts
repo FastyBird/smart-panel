@@ -5,7 +5,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { defaultTokenExpiration, defaultTokenSecret } from '../../app.constants';
+import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
 import { UsersModule } from '../users/users.module';
 
@@ -29,8 +29,8 @@ import { TokensService } from './services/tokens.service';
 			inject: [NestConfigService],
 			useFactory: (configService: NestConfigService) => {
 				return {
-					secret: getEnvValue<string | undefined>(configService, 'TOKEN_SECRET', defaultTokenSecret),
-					signOptions: { expiresIn: defaultTokenExpiration },
+					secret: getEnvValue<string | undefined>(configService, 'TOKEN_SECRET', DEFAULT_TOKEN_SECRET),
+					signOptions: { expiresIn: DEFAULT_TOKEN_EXPIRATION },
 				};
 			},
 		}),

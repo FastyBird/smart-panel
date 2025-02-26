@@ -8,7 +8,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { AccessTokenType } from '../../auth/auth.constants';
+import { ACCESS_TOKEN_TYPE } from '../../auth/auth.constants';
 import { AccessTokenEntity, LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
@@ -16,7 +16,7 @@ import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
-import { DisplaySecretCacheKey, DisplaySecretHeader } from '../websocket.constants';
+import { DISPLAY_SECRET_CACHE_KEY, DISPLAY_SECRET_HEADER } from '../websocket.constants';
 import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 @Injectable()
@@ -40,7 +40,7 @@ export class WsAuthService {
 		}
 
 		// If no JWT, check for x-display-secret header
-		const displaySecret = client.handshake.headers[DisplaySecretHeader] as string;
+		const displaySecret = client.handshake.headers[DISPLAY_SECRET_HEADER] as string;
 
 		if (displaySecret && (await this.validateDisplaySecret(client, displaySecret))) {
 			return true;
@@ -139,7 +139,7 @@ export class WsAuthService {
 		let userSecret: string | undefined;
 
 		try {
-			userSecret = await this.cacheManager.get<string>(DisplaySecretCacheKey);
+			userSecret = await this.cacheManager.get<string>(DISPLAY_SECRET_CACHE_KEY);
 		} catch (error) {
 			const err = error as Error;
 
@@ -163,13 +163,13 @@ export class WsAuthService {
 		const match = await bcrypt.compare(providedSecret, userSecret);
 
 		if (!match) {
-			this.logger.warn(`[WS AUTH] Invalid ${DisplaySecretHeader} provided`);
+			this.logger.warn(`[WS AUTH] Invalid ${DISPLAY_SECRET_HEADER} provided`);
 
 			throw new WebsocketNotAllowedException('Invalid display authentication');
 		}
 
 		try {
-			await this.cacheManager.set(DisplaySecretCacheKey, userSecret);
+			await this.cacheManager.set(DISPLAY_SECRET_CACHE_KEY, userSecret);
 		} catch (error) {
 			const err = error as Error;
 
@@ -192,6 +192,6 @@ export class WsAuthService {
 
 		const [type, token] = authHeader.split(' ');
 
-		return type === AccessTokenType ? token : undefined;
+		return type === ACCESS_TOKEN_TYPE ? token : undefined;
 	}
 }

@@ -13,7 +13,7 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
-import { DashboardModulePrefix } from '../dashboard.constants';
+import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { ReqCreatePageCardDto } from '../dto/create-page-card.dto';
 import { ReqUpdateCardDto } from '../dto/update-card.dto';
@@ -60,7 +60,7 @@ export class PagesCardsController {
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DashboardModulePrefix}/pages/:page/cards/:id`)
+	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:page/cards/:id`)
 	async create(
 		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
 		@Body() createDto: ReqCreatePageCardDto,
