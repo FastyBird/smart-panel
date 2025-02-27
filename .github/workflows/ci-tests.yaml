@@ -33,13 +33,12 @@ jobs:
           node-version: "20"
 
       - name: "Get Yarn cache directory"
-        id: "yarn-cache-dir-path"
-        run: 'echo "::set-output name=dir::$(yarn cache dir)"'
+        run: echo "YARN_CACHE_DIR=$(yarn cache dir)" >> $GITHUB_ENV
 
       - name: "Cache JS dependencies"
         uses: "actions/cache@v3"
         with:
-          path: "${{ steps.yarn-cache-dir-path.outputs.dir }}"
+          path: "${{ env.YARN_CACHE_DIR }}"
           key: "${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}"
           restore-keys: "${{ runner.os }}-node-modules-"
 
@@ -71,10 +70,13 @@ jobs:
         with:
           node-version: "20"
 
+      - name: "Get Yarn cache directory"
+        run: echo "YARN_CACHE_DIR=$(yarn cache dir)" >> $GITHUB_ENV
+
       - name: "Cache JS dependencies"
         uses: "actions/cache@v3"
         with:
-          path: "${{ steps.yarn-cache-dir-path.outputs.dir }}"
+          path: "${{ env.YARN_CACHE_DIR }}"
           key: "${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}"
           restore-keys: "${{ runner.os }}-node-modules-"
 
