@@ -13,7 +13,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
-import { DisplayUsername } from '../../users/users.constants';
+import { DISPLAY_USERNAME } from '../../users/users.constants';
 import { CheckResponseDto } from '../dto/check-response.dto';
 import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
 import { RegisterDto } from '../dto/register.dto';
@@ -112,7 +112,7 @@ describe('AuthController', () => {
 		});
 
 		it('should throw ForbiddenException if display user already exists', async () => {
-			jest.spyOn(usersService, 'findByUsername').mockResolvedValue({ username: DisplayUsername } as UserEntity);
+			jest.spyOn(usersService, 'findByUsername').mockResolvedValue({ username: DISPLAY_USERNAME } as UserEntity);
 
 			await expect(controller.registerDisplay('FlutterApp')).rejects.toThrow(ForbiddenException);
 		});

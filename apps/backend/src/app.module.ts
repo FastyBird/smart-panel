@@ -10,21 +10,21 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { getEnvValue } from './common/utils/config.utils';
-import { AuthModulePrefix } from './modules/auth/auth.constants';
+import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
-import { ConfigModulePrefix } from './modules/config/config.constants';
+import { CONFIG_MODULE_PREFIX } from './modules/config/config.constants';
 import { ConfigModule } from './modules/config/config.module';
-import { DashboardModulePrefix } from './modules/dashboard/dashboard.constants';
+import { DASHBOARD_MODULE_PREFIX } from './modules/dashboard/dashboard.constants';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
-import { DevicesModulePrefix } from './modules/devices/devices.constants';
+import { DEVICES_MODULE_PREFIX } from './modules/devices/devices.constants';
 import { DevicesModule } from './modules/devices/devices.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SeedModule } from './modules/seed/seeding.module';
-import { SystemModulePrefix } from './modules/system/system.constants';
+import { SYSTEM_MODULE_PREFIX } from './modules/system/system.constants';
 import { SystemModule } from './modules/system/system.module';
-import { UsersModulePrefix } from './modules/users/users.constants';
+import { USERS_MODULE_PREFIX } from './modules/users/users.constants';
 import { UsersModule } from './modules/users/users.module';
-import { WeatherModulePrefix } from './modules/weather/weather.constants';
+import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 
@@ -63,31 +63,31 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
 		ScheduleModule.forRoot(),
 		RouterModule.register([
 			{
-				path: AuthModulePrefix,
+				path: AUTH_MODULE_PREFIX,
 				module: AuthModule,
 			},
 			{
-				path: DevicesModulePrefix,
+				path: DEVICES_MODULE_PREFIX,
 				module: DevicesModule,
 			},
 			{
-				path: DashboardModulePrefix,
+				path: DASHBOARD_MODULE_PREFIX,
 				module: DashboardModule,
 			},
 			{
-				path: ConfigModulePrefix,
+				path: CONFIG_MODULE_PREFIX,
 				module: ConfigModule,
 			},
 			{
-				path: SystemModulePrefix,
+				path: SYSTEM_MODULE_PREFIX,
 				module: SystemModule,
 			},
 			{
-				path: UsersModulePrefix,
+				path: USERS_MODULE_PREFIX,
 				module: UsersModule,
 			},
 			{
-				path: WeatherModulePrefix,
+				path: WEATHER_MODULE_PREFIX,
 				module: WeatherModule,
 			},
 		]),

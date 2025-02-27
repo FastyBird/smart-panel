@@ -34,6 +34,9 @@ sealed class DashboardCardDataSourceUnion with _$DashboardCardDataSourceUnion {
     /// The icon representing the data source.
     required String? icon,
 
+    /// The unique identifier of the associated card.
+    required String card,
+
     /// Indicates that this data source is linked to a device channel.
     @Default('device-channel')
     String type,

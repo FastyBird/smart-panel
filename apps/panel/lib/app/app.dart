@@ -21,34 +21,80 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
-class MyApp extends StatelessWidget {
-  final StartupManagerService _startupManager;
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
 
-  MyApp({super.key})
-      : _startupManager = StartupManagerService(
-          screenHeight: MediaQueryData.fromView(
-                WidgetsBinding.instance.platformDispatcher.views.first,
-              ).size.height *
-              MediaQueryData.fromView(
-                WidgetsBinding.instance.platformDispatcher.views.first,
-              ).devicePixelRatio,
-          screenWidth: MediaQueryData.fromView(
-                WidgetsBinding.instance.platformDispatcher.views.first,
-              ).size.width *
-              MediaQueryData.fromView(
-                WidgetsBinding.instance.platformDispatcher.views.first,
-              ).devicePixelRatio,
-          pixelRatio: MediaQueryData.fromView(
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late StartupManagerService _startupManager;
+  late ValueNotifier<bool> _isInitializing;
+  late ValueNotifier<bool> _isInitializationError;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _isInitializing = ValueNotifier<bool>(true);
+    _isInitializationError = ValueNotifier<bool>(false);
+
+    _startupManager = StartupManagerService(
+      screenHeight: MediaQueryData.fromView(
+            WidgetsBinding.instance.platformDispatcher.views.first,
+          ).size.height *
+          MediaQueryData.fromView(
             WidgetsBinding.instance.platformDispatcher.views.first,
           ).devicePixelRatio,
-        );
+      screenWidth: MediaQueryData.fromView(
+            WidgetsBinding.instance.platformDispatcher.views.first,
+          ).size.width *
+          MediaQueryData.fromView(
+            WidgetsBinding.instance.platformDispatcher.views.first,
+          ).devicePixelRatio,
+      pixelRatio: MediaQueryData.fromView(
+        WidgetsBinding.instance.platformDispatcher.views.first,
+      ).devicePixelRatio,
+    );
+
+    locator.registerSingleton(_startupManager);
+
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    _isInitializing.value = true;
+
+    try {
+      await _startupManager.initialize();
+
+      /// Ensure loader is shown for at least 500ms
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      _isInitializing.value = false;
+      _isInitializationError.value = false;
+    } catch (error) {
+      debugPrint(error.toString());
+
+      /// Ensure loader is shown even in case of an error
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      _isInitializing.value = false;
+      _isInitializationError.value = true;
+    }
+  }
+
+  Future<void> _restartApp() async {
+    await _initializeApp();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _startupManager.initialize(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isInitializing,
+      builder: (context, isInitializing, child) {
+        if (isInitializing) {
           return MaterialApp(
             theme: AppTheme.startThemeLight,
             darkTheme: AppTheme.startThemeDark,
@@ -82,10 +128,8 @@ class MyApp extends StatelessWidget {
           );
         }
 
-        if (snapshot.hasError) {
-          debugPrint(snapshot.error.toString());
-
-          return AppError();
+        if (_isInitializationError.value) {
+          return AppError(onRestart: _restartApp);
         }
 
         return MultiProvider(

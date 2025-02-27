@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/modules/system/models/default_network.dart';
 import 'package:fastybird_smart_panel/modules/system/models/display_info.dart';
 import 'package:fastybird_smart_panel/modules/system/models/memory_info.dart';
@@ -69,7 +70,7 @@ class SystemInfoModel extends Model {
     }
 
     return SystemInfoModel(
-      cpuLoad: json['cpu_load'],
+      cpuLoad: json['cpu_load'].toDouble(),
       memory: MemoryInfoModel.fromJson(json['memory']),
       storage: storage,
       temperature: TemperatureInfoModel.fromJson(json['temperature']),
@@ -79,4 +80,49 @@ class SystemInfoModel extends Model {
       display: DisplayInfoModel.fromJson(json['display']),
     );
   }
+
+  SystemInfoModel copyWith({
+    double? cpuLoad,
+    MemoryInfoModel? memory,
+    List<StorageInfoModel>? storage,
+    TemperatureInfoModel? temperature,
+    OperatingSystemInfoModel? os,
+    List<NetworkStatsModel>? network,
+    DefaultNetworkModel? defaultNetwork,
+    DisplayInfoModel? display,
+  }) {
+    return SystemInfoModel(
+      cpuLoad: cpuLoad ?? _cpuLoad,
+      memory: memory ?? _memory,
+      storage: storage ?? _storage,
+      temperature: temperature ?? _temperature,
+      os: os ?? _os,
+      network: network ?? _network,
+      defaultNetwork: defaultNetwork ?? _defaultNetwork,
+      display: display ?? _display,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SystemInfoModel &&
+          other._cpuLoad == _cpuLoad &&
+          other._memory == _memory &&
+          ListEquality().equals(other._storage, _storage) &&
+          other._temperature == _temperature &&
+          other._os == _os &&
+          ListEquality().equals(other._network, _network) &&
+          other._display == _display);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _cpuLoad,
+        _memory,
+        Object.hashAll(_storage),
+        _temperature,
+        _os,
+        Object.hashAll(_network),
+        _display,
+      ]);
 }

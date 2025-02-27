@@ -5,9 +5,9 @@ import omitBy from 'lodash.omitby';
 import { Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
@@ -21,7 +21,7 @@ export class UsersService {
 	constructor(
 		@InjectRepository(UserEntity)
 		private readonly repository: Repository<UserEntity>,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findOwner(): Promise<UserEntity | null> {
@@ -72,7 +72,7 @@ export class UsersService {
 
 		this.logger.debug(`[CREATE] Successfully created user with id=${savedUser.id}`);
 
-		this.gateway.sendMessage(EventType.USER_CREATED, savedUser);
+		this.eventEmitter.emit(EventType.USER_CREATED, savedUser);
 
 		return savedUser;
 	}
@@ -102,7 +102,7 @@ export class UsersService {
 
 		this.logger.debug(`[UPDATE] Successfully updated user with id=${updatedUser.id}`);
 
-		this.gateway.sendMessage(EventType.USER_UPDATED, updatedUser);
+		this.eventEmitter.emit(EventType.USER_UPDATED, updatedUser);
 
 		return updatedUser;
 	}
@@ -116,7 +116,7 @@ export class UsersService {
 
 		this.logger.log(`[DELETE] Successfully removed user with id=${id}`);
 
-		this.gateway.sendMessage(EventType.USER_DELETED, user);
+		this.eventEmitter.emit(EventType.USER_DELETED, user);
 	}
 
 	async getOneOrThrow(id: string): Promise<UserEntity> {

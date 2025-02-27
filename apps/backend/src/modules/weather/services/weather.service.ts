@@ -6,7 +6,7 @@ import fetch from 'node-fetch';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
 import {
@@ -17,7 +17,6 @@ import {
 } from '../../config/config.constants';
 import { LanguageConfigEntity, WeatherConfigEntity } from '../../config/entities/config.entity';
 import { ConfigService } from '../../config/services/config.service';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { ForecastDto, ForecastListItemDto } from '../dto/forecast.dto';
 import { WeatherDto } from '../dto/weather.dto';
 import { CurrentDayEntity, ForecastDayEntity, LocationEntity, LocationWeatherEntity } from '../entities/weather.entity';
@@ -41,7 +40,7 @@ export class WeatherService {
 	constructor(
 		private readonly schedulerRegistry: SchedulerRegistry,
 		private readonly configService: ConfigService,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
 	) {
@@ -169,7 +168,7 @@ export class WeatherService {
 
 			const weather = await this.getWeather(true);
 
-			this.gateway.sendMessage(EventType.WEATHER_INFO, weather);
+			this.eventEmitter.emit(EventType.WEATHER_INFO, weather);
 
 			this.logger.debug('[EVENT] Weather info broadcasted successfully');
 		} catch (error) {

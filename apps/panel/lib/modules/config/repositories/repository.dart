@@ -6,15 +6,17 @@ import 'package:flutter/foundation.dart';
 class Repository<TModel extends Model> extends ChangeNotifier {
   final ConfigurationModuleClient _apiClient;
 
-  late TModel data;
+  late TModel? data;
 
   Repository({
     required ConfigurationModuleClient apiClient,
-  }) : _apiClient = apiClient;
+  }) : _apiClient = apiClient {
+    data = null;
+  }
 
   ConfigurationModuleClient get apiClient => _apiClient;
 
-  TModel getItem() {
+  TModel? getItem() {
     return data;
   }
 

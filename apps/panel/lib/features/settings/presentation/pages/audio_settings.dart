@@ -55,10 +55,10 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 
   void _syncStateWithRepository() {
     setState(() {
-      _speakerEnabled = _repository.data.hasSpeakerEnabled;
-      _speakerVolume = _repository.data.speakerVolume;
-      _microphoneEnabled = _repository.data.hasMicrophoneEnabled;
-      _microphoneVolume = _repository.data.microphoneVolume;
+      _speakerEnabled = _repository.hasSpeakerEnabled;
+      _speakerVolume = _repository.speakerVolume;
+      _microphoneEnabled = _repository.hasMicrophoneEnabled;
+      _microphoneVolume = _repository.microphoneVolume;
     });
   }
 

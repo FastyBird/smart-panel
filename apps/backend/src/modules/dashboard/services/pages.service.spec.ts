@@ -13,12 +13,12 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException } from '../dashboard.exceptions';
 import { CreateDevicePageDto, CreateTilesPageDto } from '../dto/create-page.dto';
@@ -48,7 +48,7 @@ describe('PagesService', () => {
 	let service: PagesService;
 	let repository: Repository<PageEntity>;
 	let mapper: PagesTypeMapperService;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 
 	const mockDevice: MockDevice = {
@@ -128,9 +128,9 @@ describe('PagesService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 				{
@@ -145,7 +145,7 @@ describe('PagesService', () => {
 		service = module.get<PagesService>(PagesService);
 		repository = module.get<Repository<PageEntity>>(getRepositoryToken(PageEntity));
 		mapper = module.get<PagesTypeMapperService>(PagesTypeMapperService);
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -158,7 +158,7 @@ describe('PagesService', () => {
 		expect(service).toBeDefined();
 		expect(repository).toBeDefined();
 		expect(mapper).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 		expect(dataSource).toBeDefined();
 	});
 
@@ -295,7 +295,7 @@ describe('PagesService', () => {
 					'dataSource.property',
 				],
 			});
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_CREATED,
 				plainToInstance(TilesPageEntity, mockCratedPage),
 			);
@@ -389,7 +389,7 @@ describe('PagesService', () => {
 					'dataSource.property',
 				],
 			});
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_UPDATED,
 				plainToInstance(TilesPageEntity, mockUpdatedPage),
 			);
@@ -404,7 +404,7 @@ describe('PagesService', () => {
 			await service.remove(mockDevicePage.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(MockDevice, mockDevicePage));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_DELETED,
 				plainToInstance(MockDevice, mockDevicePage),
 			);

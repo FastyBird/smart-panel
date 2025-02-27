@@ -157,7 +157,7 @@ class _ThermostatDeviceDetailPageState
     );
   }
 
-  void _onModeSelect(int index) {
+  Future<void> _onModeSelect(int index) async {
     setState(() {
       _currentModeIndex = index;
     });
@@ -516,7 +516,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
       vertical: true,
       trackWidth: elementMaxSize,
       showThumb: false,
-      onValueChanged: (double value) {
+      onValueChanged: (double value) async {
         _valueHelper.setPropertyValue(
           context,
           capability.temperatureProp,
@@ -558,7 +558,7 @@ class _ThermostatBarState extends State<ThermostatBar> {
       vertical: true,
       trackWidth: elementMaxSize,
       showThumb: false,
-      onValueChanged: (double value) {
+      onValueChanged: (double value) async {
         _valueHelper.setPropertyValue(
           context,
           capability.temperatureProp,
@@ -721,7 +721,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
           !widget._capability.isThermostatLocked && widget._capability.isOn,
       availableWidth: availableWidth,
       availableHeight: availableHeight,
-      onValueChanged: (num value) {
+      onValueChanged: (num value) async {
         _valueHelper.setPropertyValue(
           context,
           capability.temperatureProp,
@@ -751,14 +751,14 @@ class _ThermostatDialState extends State<ThermostatDial> {
       inner: _renderDialInner(
         context,
         showStatus,
-        () {
+        () async {
           _valueHelper.setPropertyValue(
             context,
             capability.temperatureProp,
             capability.temperature + 0.1,
           );
         },
-        () {
+        () async {
           _valueHelper.setPropertyValue(
             context,
             capability.temperatureProp,
@@ -785,7 +785,7 @@ class _ThermostatDialState extends State<ThermostatDial> {
       enabled: !widget._capability.isThermostatLocked,
       availableWidth: availableWidth,
       availableHeight: availableHeight,
-      onValueChanged: (num value) {
+      onValueChanged: (num value) async {
         _valueHelper.setPropertyValue(
           context,
           capability.temperatureProp,
@@ -815,14 +815,14 @@ class _ThermostatDialState extends State<ThermostatDial> {
       inner: _renderDialInner(
         context,
         showStatus,
-        () {
+        () async {
           _valueHelper.setPropertyValue(
             context,
             capability.temperatureProp,
             capability.temperature + 0.1,
           );
         },
-        () {
+        () async {
           _valueHelper.setPropertyValue(
             context,
             capability.temperatureProp,
@@ -1202,7 +1202,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
           horizontal: AppSpacings.pSm,
         ),
         dense: true,
-        onTap: () {
+        onTap: () async {
           setState(() {
             _isLocked = !_isLocked;
           });
@@ -1251,7 +1251,7 @@ class _ThermostatTilesState extends State<ThermostatTiles> {
         ),
         trailing: Switch(
           value: _isLocked,
-          onChanged: (bool value) {
+          onChanged: (bool value) async {
             setState(() {
               _isLocked = value;
             });
@@ -1403,7 +1403,7 @@ ThermostatModeValue? getValueFromMode(ThermostatModeType type) {
 class PropertyValueHelper {
   final DevicesService _service = locator<DevicesService>();
 
-  Future<void> setPropertyValue(
+  Future<bool> setPropertyValue(
     BuildContext context,
     ChannelPropertyModel property,
     dynamic value,
@@ -1422,13 +1422,17 @@ class PropertyValueHelper {
           message: localizations.action_failed,
         );
       }
+
+      return res;
     } catch (e) {
-      if (!context.mounted) return;
+      if (!context.mounted) return false;
 
       AlertBar.showError(
         context,
         message: localizations.action_failed,
       );
     }
+
+    return false;
   }
 }

@@ -1,9 +1,5 @@
-import 'package:fastybird_smart_panel/api/models/dashboard_card_tiles_union.dart'
-    as card_tile;
-import 'package:fastybird_smart_panel/api/models/dashboard_res_page_card_tiles_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/dashboard_res_page_tiles_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/dashboard_tiles_page_tiles_union.dart'
-    as page_tile;
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
@@ -13,122 +9,129 @@ import 'package:flutter/foundation.dart';
 class TilesRepository extends Repository<TileModel> {
   TilesRepository({required super.apiClient});
 
-  void insertPageTiles(
-    String pageId,
-    List<page_tile.DashboardTilesPageTilesUnion> apiTiles,
-  ) {
-    for (var apiTile in apiTiles) {
-      final TileType? tileType = TileType.fromValue(apiTile.type);
+  void insertPageTiles(List<Map<String, dynamic>> json) {
+    late Map<String, TileModel> insertData = {...data};
 
-      if (tileType == null) {
+    for (var row in json) {
+      if (!row.containsKey('type')) {
         if (kDebugMode) {
           debugPrint(
-            '[DASHBOARD MODULE][TILES] Unknown tiles page tile type: "${apiTile.type}" for tile: "${apiTile.id}"',
+            '[DASHBOARD MODULE][TILES] Missing required attribute: "type" for tile: "${row['id']}"',
           );
         }
 
         continue;
       }
 
-      if (apiTile is page_tile.DashboardTilesPageTilesUnionDevice) {
-        data[apiTile.id] = buildPageTileModel(tileType, {
-          'id': apiTile.id,
-          'type': apiTile.type,
-          'parent': pageId,
-          'row': apiTile.row,
-          'col': apiTile.col,
-          'row_span': apiTile.rowSpan,
-          'col_span': apiTile.colSpan,
-          'icon': apiTile.icon,
-          'device': apiTile.device,
-          'created_at': apiTile.createdAt.toIso8601String(),
-          'updated_at': apiTile.updatedAt?.toIso8601String(),
-          'data_source': apiTile.dataSource
-              .map(
-                (dataSource) => dataSource.id,
-              )
-              .toList(),
-        });
-      } else if (apiTile is page_tile.DashboardTilesPageTilesUnionClock ||
-          apiTile is page_tile.DashboardTilesPageTilesUnionWeatherDay ||
-          apiTile is page_tile.DashboardTilesPageTilesUnionWeatherForecast) {
-        data[apiTile.id] = buildPageTileModel(tileType, {
-          'id': apiTile.id,
-          'type': apiTile.type,
-          'parent': pageId,
-          'row': apiTile.row,
-          'col': apiTile.col,
-          'row_span': apiTile.rowSpan,
-          'col_span': apiTile.colSpan,
-          'created_at': apiTile.createdAt.toIso8601String(),
-          'updated_at': apiTile.updatedAt?.toIso8601String(),
-          'data_source': apiTile.dataSource
-              .map(
-                (dataSource) => dataSource.id,
-              )
-              .toList(),
-        });
+      final TileType? tileType = TileType.fromValue(row['type']);
+
+      if (tileType == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][TILES] Unknown tile type: "${row['type']}" for tile: "${row['id']}"',
+          );
+        }
+
+        continue;
       }
+
+      try {
+        TileModel tile = buildPageTileModel(tileType, row);
+
+        insertData[tile.id] = tile;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][TILES] Failed to create tile model: ${e.toString()}',
+          );
+        }
+
+        /// Failed to create new model
+      }
+    }
+
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
+
+      notifyListeners();
     }
   }
 
-  void insertCardTiles(
-    String cardId,
-    List<card_tile.DashboardCardTilesUnion> apiTiles,
-  ) {
-    for (var apiTile in apiTiles) {
-      final TileType? tileType = TileType.fromValue(apiTile.type);
+  void insertCardTiles(List<Map<String, dynamic>> json) {
+    late Map<String, TileModel> insertData = {...data};
 
-      if (tileType == null) {
+    for (var row in json) {
+      if (!row.containsKey('type')) {
         if (kDebugMode) {
           debugPrint(
-            '[DASHBOARD MODULE][TILES] Unknown tiles page tile type: "${apiTile.type}" for tile: "${apiTile.id}"',
+            '[DASHBOARD MODULE][TILES] Missing required attribute: "type" for tile: "${row['id']}"',
           );
         }
 
         continue;
       }
 
-      if (apiTile is card_tile.DashboardCardTilesUnionDevice) {
-        data[apiTile.id] = buildPageTileModel(tileType, {
-          'id': apiTile.id,
-          'type': apiTile.type,
-          'parent': cardId,
-          'row': apiTile.row,
-          'col': apiTile.col,
-          'row_span': apiTile.rowSpan,
-          'col_span': apiTile.colSpan,
-          'icon': apiTile.icon,
-          'device': apiTile.device,
-          'created_at': apiTile.createdAt.toIso8601String(),
-          'updated_at': apiTile.updatedAt?.toIso8601String(),
-          'data_source': apiTile.dataSource
-              .map(
-                (dataSource) => dataSource.id,
-              )
-              .toList(),
-        });
-      } else if (apiTile is card_tile.DashboardCardTilesUnionClock ||
-          apiTile is card_tile.DashboardCardTilesUnionWeatherDay ||
-          apiTile is card_tile.DashboardCardTilesUnionWeatherForecast) {
-        data[apiTile.id] = buildPageTileModel(tileType, {
-          'id': apiTile.id,
-          'type': apiTile.type,
-          'parent': cardId,
-          'row': apiTile.row,
-          'col': apiTile.col,
-          'row_span': apiTile.rowSpan,
-          'col_span': apiTile.colSpan,
-          'created_at': apiTile.createdAt.toIso8601String(),
-          'updated_at': apiTile.updatedAt?.toIso8601String(),
-          'data_source': apiTile.dataSource
-              .map(
-                (dataSource) => dataSource.id,
-              )
-              .toList(),
-        });
+      final TileType? tileType = TileType.fromValue(row['type']);
+
+      if (tileType == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][TILES] Unknown tile type: "${row['type']}" for tile: "${row['id']}"',
+          );
+        }
+
+        continue;
+      }
+
+      try {
+        TileModel tile = buildCardTileModel(tileType, row);
+
+        insertData[tile.id] = tile;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DASHBOARD MODULE][TILES] Failed to create tile model: ${e.toString()}',
+          );
+        }
+
+        /// Failed to create new model
       }
     }
+
+    if (!mapEquals(data, insertData)) {
+      data = insertData;
+
+      notifyListeners();
+    }
+  }
+
+  void delete(String id) {
+    if (data.containsKey(id) && data.remove(id) != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DASHBOARD MODULE][TILES] Removed tile: $id',
+        );
+      }
+
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchPageTile(
+    String pageId,
+    String id,
+  ) async {
+    return handleApiCall(
+      () async {
+        final response = await apiClient.getDashboardModulePageTile(
+          pageId: pageId,
+          id: id,
+        );
+
+        insertPageTiles([jsonDecode(jsonEncode(response.data.data))]);
+      },
+      'fetch page tiles',
+    );
   }
 
   Future<void> fetchPageTiles(
@@ -140,61 +143,34 @@ class TilesRepository extends Repository<TileModel> {
           pageId: pageId,
         );
 
-        for (var apiTile in response.data.data) {
-          final TileType? tileType = TileType.fromValue(apiTile.type);
+        List<Map<String, dynamic>> tiles = [];
 
-          if (tileType == null) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DASHBOARD MODULE][TILES] Unknown tiles page tile type: "${apiTile.type}" for tile: "${apiTile.id}"',
-              );
-            }
-
-            continue;
-          }
-
-          if (apiTile is DashboardResPageTilesDataUnionDevice) {
-            data[apiTile.id] = buildPageTileModel(tileType, {
-              'id': apiTile.id,
-              'type': apiTile.type,
-              'parent': pageId,
-              'row': apiTile.row,
-              'col': apiTile.col,
-              'row_span': apiTile.rowSpan,
-              'col_span': apiTile.colSpan,
-              'icon': apiTile.icon,
-              'device': apiTile.device,
-              'created_at': apiTile.createdAt.toIso8601String(),
-              'updated_at': apiTile.updatedAt?.toIso8601String(),
-              'data_source': apiTile.dataSource
-                  .map(
-                    (dataSource) => dataSource.id,
-                  )
-                  .toList(),
-            });
-          } else if (apiTile is DashboardResPageTilesDataUnionClock ||
-              apiTile is DashboardResPageTilesDataUnionWeatherDay ||
-              apiTile is DashboardResPageTilesDataUnionWeatherForecast) {
-            data[apiTile.id] = buildPageTileModel(tileType, {
-              'id': apiTile.id,
-              'type': apiTile.type,
-              'parent': pageId,
-              'row': apiTile.row,
-              'col': apiTile.col,
-              'row_span': apiTile.rowSpan,
-              'col_span': apiTile.colSpan,
-              'created_at': apiTile.createdAt.toIso8601String(),
-              'updated_at': apiTile.updatedAt?.toIso8601String(),
-              'data_source': apiTile.dataSource
-                  .map(
-                    (dataSource) => dataSource.id,
-                  )
-                  .toList(),
-            });
-          }
+        for (var tile in response.data.data) {
+          tiles.add(jsonDecode(jsonEncode(tile)));
         }
+
+        insertPageTiles(tiles);
       },
       'fetch page tiles',
+    );
+  }
+
+  Future<void> fetchCardTile(
+    String pageId,
+    String cardId,
+    String id,
+  ) async {
+    return handleApiCall(
+      () async {
+        final response = await apiClient.getDashboardModulePageCardTile(
+          pageId: pageId,
+          cardId: cardId,
+          id: id,
+        );
+
+        insertCardTiles([jsonDecode(jsonEncode(response.data.data))]);
+      },
+      'fetch card tile',
     );
   }
 
@@ -209,59 +185,13 @@ class TilesRepository extends Repository<TileModel> {
           cardId: cardId,
         );
 
-        for (var apiTile in response.data.data) {
-          final TileType? tileType = TileType.fromValue(apiTile.type);
+        List<Map<String, dynamic>> tiles = [];
 
-          if (tileType == null) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DASHBOARD MODULE][TILES] Unknown tiles page tile type: "${apiTile.type}" for tile: "${apiTile.id}"',
-              );
-            }
-
-            continue;
-          }
-
-          if (apiTile is DashboardResPageCardTilesDataUnionDevice) {
-            data[apiTile.id] = buildPageTileModel(tileType, {
-              'id': apiTile.id,
-              'type': apiTile.type,
-              'parent': cardId,
-              'row': apiTile.row,
-              'col': apiTile.col,
-              'row_span': apiTile.rowSpan,
-              'col_span': apiTile.colSpan,
-              'icon': apiTile.icon,
-              'device': apiTile.device,
-              'created_at': apiTile.createdAt.toIso8601String(),
-              'updated_at': apiTile.updatedAt?.toIso8601String(),
-              'data_source': apiTile.dataSource
-                  .map(
-                    (dataSource) => dataSource.id,
-                  )
-                  .toList(),
-            });
-          } else if (apiTile is DashboardResPageCardTilesDataUnionClock ||
-              apiTile is DashboardResPageCardTilesDataUnionWeatherDay ||
-              apiTile is DashboardResPageCardTilesDataUnionWeatherForecast) {
-            data[apiTile.id] = buildPageTileModel(tileType, {
-              'id': apiTile.id,
-              'type': apiTile.type,
-              'parent': cardId,
-              'row': apiTile.row,
-              'col': apiTile.col,
-              'row_span': apiTile.rowSpan,
-              'col_span': apiTile.colSpan,
-              'created_at': apiTile.createdAt.toIso8601String(),
-              'updated_at': apiTile.updatedAt?.toIso8601String(),
-              'data_source': apiTile.dataSource
-                  .map(
-                    (dataSource) => dataSource.id,
-                  )
-                  .toList(),
-            });
-          }
+        for (var tile in response.data.data) {
+          tiles.add(jsonDecode(jsonEncode(tile)));
         }
+
+        insertCardTiles(tiles);
       },
       'fetch card tiles',
     );

@@ -20,6 +20,18 @@ class LanguageConfigModel extends Model {
 
   TimeFormat get timeFormat => _timeFormat;
 
+  factory LanguageConfigModel.fromJson(Map<String, dynamic> json) {
+    Language? language = Language.fromValue(json['language']);
+
+    TimeFormat? timeFormat = TimeFormat.fromValue(json['time_format']);
+
+    return LanguageConfigModel(
+      language: language ?? Language.english,
+      timezone: json['timezone'],
+      timeFormat: timeFormat ?? TimeFormat.twentyFourHour,
+    );
+  }
+
   LanguageConfigModel copyWith({
     Language? language,
     String? timezone,
@@ -31,4 +43,19 @@ class LanguageConfigModel extends Model {
       timeFormat: timeFormat ?? _timeFormat,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LanguageConfigModel &&
+          other._language.value == _language.value &&
+          other._timezone == _timezone &&
+          other._timeFormat.value == _timeFormat.value);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _language.value,
+        _timezone,
+        _timeFormat.value,
+      ]);
 }

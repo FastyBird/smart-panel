@@ -24,6 +24,15 @@ class WeatherInfoModel extends Model {
 
   String get icon => _icon;
 
+  factory WeatherInfoModel.fromJson(Map<String, dynamic> json) {
+    return WeatherInfoModel(
+      code: json['code'],
+      main: json['main'],
+      description: json['description'],
+      icon: json['icon'],
+    );
+  }
+
   WeatherInfoModel copyWith({
     int? code,
     String? main,
@@ -37,4 +46,21 @@ class WeatherInfoModel extends Model {
       icon: icon ?? _icon,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WeatherInfoModel &&
+          other._code == _code &&
+          other._main == _main &&
+          other._description == _description &&
+          other._icon == _icon);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _code,
+        _main,
+        _description,
+        _icon,
+      ]);
 }

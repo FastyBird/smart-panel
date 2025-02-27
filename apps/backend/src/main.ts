@@ -4,7 +4,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 
-import { ApiPrefix } from './app.constants';
+import { API_PREFIX } from './app.constants';
 import { AppModule } from './app.module';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
 import { GlobalErrorFilter } from './common/filters/global-error.filter';
@@ -54,7 +54,7 @@ async function bootstrap() {
 		new HeaderLocationInterceptor(app.get(NestConfigService)),
 	);
 
-	app.setGlobalPrefix(ApiPrefix);
+	app.setGlobalPrefix(API_PREFIX);
 
 	app.enableVersioning({
 		type: VersioningType.URI,

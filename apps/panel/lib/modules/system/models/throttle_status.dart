@@ -32,4 +32,35 @@ class ThrottleStatusModel extends Model {
       softTempLimit: json['soft_temp_limit'],
     );
   }
+
+  ThrottleStatusModel copyWith({
+    bool? undervoltage,
+    bool? frequencyCapping,
+    bool? throttling,
+    bool? softTempLimit,
+  }) {
+    return ThrottleStatusModel(
+      undervoltage: undervoltage ?? _undervoltage,
+      frequencyCapping: frequencyCapping ?? _frequencyCapping,
+      throttling: throttling ?? _throttling,
+      softTempLimit: softTempLimit ?? _softTempLimit,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ThrottleStatusModel &&
+          other._undervoltage == _undervoltage &&
+          other._frequencyCapping == _frequencyCapping &&
+          other._throttling == _throttling &&
+          other._softTempLimit == _softTempLimit);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _undervoltage,
+        _frequencyCapping,
+        _throttling,
+        _softTempLimit,
+      ]);
 }

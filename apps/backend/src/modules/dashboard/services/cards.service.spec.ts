@@ -14,12 +14,12 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateCardDto } from '../dto/create-card.dto';
@@ -51,7 +51,7 @@ describe('CardsService', () => {
 	let repository: Repository<CardEntity>;
 	let tilesMapper: TilesTypeMapperService;
 	let dataSourceMapper: DataSourcesTypeMapperService;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 
 	const mockDevice: MockDevice = {
@@ -142,9 +142,9 @@ describe('CardsService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 				{
@@ -161,7 +161,7 @@ describe('CardsService', () => {
 		repository = module.get<Repository<CardEntity>>(getRepositoryToken(CardEntity));
 		tilesMapper = module.get<TilesTypeMapperService>(TilesTypeMapperService);
 		dataSourceMapper = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -176,7 +176,7 @@ describe('CardsService', () => {
 		expect(repository).toBeDefined();
 		expect(tilesMapper).toBeDefined();
 		expect(dataSourceMapper).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 		expect(dataSource).toBeDefined();
 	});
 
@@ -313,7 +313,7 @@ describe('CardsService', () => {
 				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCratedCard);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CARD_CREATED,
 				plainToInstance(CardEntity, mockCratedCard),
 			);
@@ -389,7 +389,7 @@ describe('CardsService', () => {
 
 			expect(result).toEqual(plainToInstance(CardEntity, mockUpdatedCard));
 			expect(repository.save).toHaveBeenCalledWith(plainToInstance(CardEntity, mockUpdatedCard));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CARD_UPDATED,
 				plainToInstance(CardEntity, mockUpdatedCard),
 			);
@@ -413,7 +413,7 @@ describe('CardsService', () => {
 			await cardsService.remove(mockCard.id, mockCardsPage.id);
 
 			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(CardEntity, mockCard));
-			expect(gateway.sendMessage).toHaveBeenCalledWith(EventType.CARD_DELETED, plainToInstance(CardEntity, mockCard));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CARD_DELETED, plainToInstance(CardEntity, mockCard));
 		});
 	});
 });

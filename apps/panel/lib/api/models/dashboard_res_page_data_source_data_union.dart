@@ -34,6 +34,9 @@ sealed class DashboardResPageDataSourceDataUnion with _$DashboardResPageDataSour
     /// The icon representing the data source.
     required String? icon,
 
+    /// The unique identifier of the associated page.
+    required String page,
+
     /// Indicates that this data source is linked to a device channel.
     @Default('device-channel')
     String type,

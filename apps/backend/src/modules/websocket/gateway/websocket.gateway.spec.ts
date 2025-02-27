@@ -10,10 +10,14 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Server, Socket } from 'socket.io';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { UserRole } from '../../users/users.constants';
+import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
+import { WsAuthService } from '../services/ws-auth.service';
 
 import { WebsocketGateway } from './websocket.gateway';
 
@@ -25,10 +29,19 @@ describe('WebsocketGateway', () => {
 		emit: jest.fn(),
 	} as unknown as Server;
 
+	const mockClientUser: ClientUserDto = {
+		id: null,
+		role: UserRole.DISPLAY,
+	};
+
 	const mockSocket = {
 		id: 'test-socket-id',
 		join: jest.fn().mockResolvedValue(undefined),
 		emit: jest.fn(),
+		disconnect: jest.fn(),
+		data: {
+			user: mockClientUser,
+		},
 	} as unknown as Socket;
 
 	beforeEach(async () => {
@@ -40,6 +53,18 @@ describe('WebsocketGateway', () => {
 					useValue: {
 						has: jest.fn(),
 						get: jest.fn(),
+					},
+				},
+				{
+					provide: EventEmitter2,
+					useValue: {
+						onAny: jest.fn(),
+					},
+				},
+				{
+					provide: WsAuthService,
+					useValue: {
+						validateClient: jest.fn(),
 					},
 				},
 			],
@@ -105,10 +130,10 @@ describe('WebsocketGateway', () => {
 
 			const mockMessage: CommandMessageDto = { event: 'unknown.event', payload: {} };
 
-			await gateway.handleCommand(mockMessage, mockSocket);
+			const result = await gateway.handleCommand(mockMessage, mockSocket);
 
 			expect(eventRegistry.has).toHaveBeenCalledWith(mockMessage.event);
-			expect(mockSocket.emit).toHaveBeenCalledWith('response', {
+			expect(result).toEqual({
 				status: 'error',
 				message: `Event '${mockMessage.event}' is not supported.`,
 			});
@@ -124,11 +149,11 @@ describe('WebsocketGateway', () => {
 
 			const mockMessage: CommandMessageDto = { event: 'DevicesModule.Property.Updated', payload: { id: '1' } };
 
-			await gateway.handleCommand(mockMessage, mockSocket);
+			const result = await gateway.handleCommand(mockMessage, mockSocket);
 
 			expect(eventRegistry.get).toHaveBeenCalledWith(mockMessage.event);
-			expect(mockHandler.handler).toHaveBeenCalledWith(mockMessage.payload);
-			expect(mockSocket.emit).toHaveBeenCalledWith('response', {
+			expect(mockHandler.handler).toHaveBeenCalledWith(mockClientUser, mockMessage.payload);
+			expect(result).toEqual({
 				status: 'ok',
 				message: 'Event handled successfully',
 				results: [{ handler: mockHandler.name, success: true, result: 'handler result' }],
@@ -142,9 +167,9 @@ describe('WebsocketGateway', () => {
 
 			const mockMessage: CommandMessageDto = { event: 'DevicesModule.Property.Updated', payload: { id: '1' } };
 
-			await gateway.handleCommand(mockMessage, mockSocket);
+			const result = await gateway.handleCommand(mockMessage, mockSocket);
 
-			expect(mockSocket.emit).toHaveBeenCalledWith('response', {
+			expect(result).toEqual({
 				status: 'ok',
 				message: 'Event handled successfully',
 				results: [

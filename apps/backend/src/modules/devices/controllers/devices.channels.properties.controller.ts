@@ -13,7 +13,7 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
-import { DevicesModulePrefix } from '../devices.constants';
+import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { ReqCreateDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
 import { ReqUpdateDeviceChannelPropertyDto } from '../dto/update-device-channel-property.dto';
@@ -70,7 +70,7 @@ export class DevicesChannelsPropertiesController {
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DevicesModulePrefix}/devices/:device/channels/:channel/properties/:id`)
+	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:device/channels/:channel/properties/:id`)
 	async create(
 		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,

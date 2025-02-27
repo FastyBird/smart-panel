@@ -3990,98 +3990,7 @@
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPages"
                 },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages",
-                      "method": "GET",
-                      "data": [
-                        {
-                          "id": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                          "title": "Cards Dashboard",
-                          "icon": "icon-name",
-                          "order": 1,
-                          "created_at": "2025-01-25T12:00:00Z",
-                          "updated_at": "2025-01-25T13:00:00Z",
-                          "type": "cards",
-                          "cards": [
-                            {
-                              "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                              "title": "Mood lights",
-                              "icon": "icon-name",
-                              "order": 1,
-                              "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                              "tiles": [
-                                {
-                                  "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                  "row": 1,
-                                  "col": 1,
-                                  "row_span": 2,
-                                  "col_span": 2,
-                                  "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                  "data_source": [
-                                    {
-                                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                      "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                      "created_at": "2025-01-25T12:00:00Z",
-                                      "updated_at": "2025-01-25T13:00:00Z",
-                                      "type": "device-channel",
-                                      "device": "234e5678-a89b-22d3-c456-426614174133",
-                                      "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                      "property": "456e7890-c89d-42d5-e678-626816194355",
-                                      "icon": "icon-name"
-                                    }
-                                  ],
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device",
-                                  "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                  "icon": "icon-name"
-                                }
-                              ],
-                              "data_source": [
-                                {
-                                  "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                  "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device-channel",
-                                  "device": "234e5678-a89b-22d3-c456-426614174133",
-                                  "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                  "property": "456e7890-c89d-42d5-e678-626816194355",
-                                  "icon": "icon-name"
-                                }
-                              ],
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z"
-                            }
-                          ],
-                          "data_source": [
-                            {
-                              "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                              "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z",
-                              "type": "device-channel",
-                              "device": "234e5678-a89b-22d3-c456-426614174133",
-                              "channel": "345e6789-b89c-32d4-d567-526715184244",
-                              "property": "456e7890-c89d-42d5-e678-626816194355",
-                              "icon": "icon-name"
-                            }
-                          ]
-                        }
-                      ],
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
+                "examples": {}
               }
             },
             "description": "A list of pages successfully retrieved. Each page includes its metadata (ID and title), associated tiles and data sources."
@@ -4115,96 +4024,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPage"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages",
-                      "method": "POST",
-                      "data": {
-                        "id": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "title": "Cards Dashboard",
-                        "icon": "icon-name",
-                        "order": 1,
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "cards",
-                        "cards": [
-                          {
-                            "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "title": "Mood lights",
-                            "icon": "icon-name",
-                            "order": 1,
-                            "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                            "tiles": [
-                              {
-                                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                "row": 1,
-                                "col": 1,
-                                "row_span": 2,
-                                "col_span": 2,
-                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                "data_source": [
-                                  {
-                                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                    "created_at": "2025-01-25T12:00:00Z",
-                                    "updated_at": "2025-01-25T13:00:00Z",
-                                    "type": "device-channel",
-                                    "device": "234e5678-a89b-22d3-c456-426614174133",
-                                    "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                    "property": "456e7890-c89d-42d5-e678-626816194355",
-                                    "icon": "icon-name"
-                                  }
-                                ],
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device",
-                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "data_source": [
-                              {
-                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device-channel",
-                                "device": "234e5678-a89b-22d3-c456-426614174133",
-                                "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                "property": "456e7890-c89d-42d5-e678-626816194355",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z"
-                          }
-                        ],
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ]
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -4327,96 +4146,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPage"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                      "method": "GET",
-                      "data": {
-                        "id": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "title": "Cards Dashboard",
-                        "icon": "icon-name",
-                        "order": 1,
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "cards",
-                        "cards": [
-                          {
-                            "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "title": "Mood lights",
-                            "icon": "icon-name",
-                            "order": 1,
-                            "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                            "tiles": [
-                              {
-                                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                "row": 1,
-                                "col": 1,
-                                "row_span": 2,
-                                "col_span": 2,
-                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                "data_source": [
-                                  {
-                                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                    "created_at": "2025-01-25T12:00:00Z",
-                                    "updated_at": "2025-01-25T13:00:00Z",
-                                    "type": "device-channel",
-                                    "device": "234e5678-a89b-22d3-c456-426614174133",
-                                    "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                    "property": "456e7890-c89d-42d5-e678-626816194355",
-                                    "icon": "icon-name"
-                                  }
-                                ],
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device",
-                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "data_source": [
-                              {
-                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device-channel",
-                                "device": "234e5678-a89b-22d3-c456-426614174133",
-                                "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                "property": "456e7890-c89d-42d5-e678-626816194355",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z"
-                          }
-                        ],
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ]
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -4454,96 +4183,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPage"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                      "method": "PATCH",
-                      "data": {
-                        "id": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "title": "Cards Dashboard",
-                        "icon": "icon-name",
-                        "order": 1,
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "cards",
-                        "cards": [
-                          {
-                            "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "title": "Mood lights",
-                            "icon": "icon-name",
-                            "order": 1,
-                            "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                            "tiles": [
-                              {
-                                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                "row": 1,
-                                "col": 1,
-                                "row_span": 2,
-                                "col_span": 2,
-                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                "data_source": [
-                                  {
-                                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                    "created_at": "2025-01-25T12:00:00Z",
-                                    "updated_at": "2025-01-25T13:00:00Z",
-                                    "type": "device-channel",
-                                    "device": "234e5678-a89b-22d3-c456-426614174133",
-                                    "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                    "property": "456e7890-c89d-42d5-e678-626816194355",
-                                    "icon": "icon-name"
-                                  }
-                                ],
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device",
-                                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "data_source": [
-                              {
-                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device-channel",
-                                "device": "234e5678-a89b-22d3-c456-426614174133",
-                                "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                "property": "456e7890-c89d-42d5-e678-626816194355",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z"
-                          }
-                        ],
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ]
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -5804,74 +5443,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageCards"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards",
-                      "method": "GET",
-                      "data": [
-                        {
-                          "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                          "title": "Mood lights",
-                          "icon": "icon-name",
-                          "order": 1,
-                          "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                          "tiles": [
-                            {
-                              "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                              "row": 1,
-                              "col": 1,
-                              "row_span": 2,
-                              "col_span": 2,
-                              "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                              "data_source": [
-                                {
-                                  "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                  "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                  "created_at": "2025-01-25T12:00:00Z",
-                                  "updated_at": "2025-01-25T13:00:00Z",
-                                  "type": "device-channel",
-                                  "device": "234e5678-a89b-22d3-c456-426614174133",
-                                  "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                  "property": "456e7890-c89d-42d5-e678-626816194355",
-                                  "icon": "icon-name"
-                                }
-                              ],
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z",
-                              "type": "device",
-                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                              "icon": "icon-name"
-                            }
-                          ],
-                          "data_source": [
-                            {
-                              "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                              "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z",
-                              "type": "device-channel",
-                              "device": "234e5678-a89b-22d3-c456-426614174133",
-                              "channel": "345e6789-b89c-32d4-d567-526715184244",
-                              "property": "456e7890-c89d-42d5-e678-626816194355",
-                              "icon": "icon-name"
-                            }
-                          ],
-                          "created_at": "2025-01-25T12:00:00Z",
-                          "updated_at": "2025-01-25T13:00:00Z"
-                        }
-                      ],
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -5918,72 +5489,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageCard"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869",
-                      "method": "POST",
-                      "data": {
-                        "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "title": "Mood lights",
-                        "icon": "icon-name",
-                        "order": 1,
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "tiles": [
-                          {
-                            "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "row": 1,
-                            "col": 1,
-                            "row_span": 2,
-                            "col_span": 2,
-                            "page": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "data_source": [
-                              {
-                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device-channel",
-                                "device": "234e5678-a89b-22d3-c456-426614174133",
-                                "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                "property": "456e7890-c89d-42d5-e678-626816194355",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device",
-                            "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -6085,72 +5590,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageCard"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869",
-                      "method": "GET",
-                      "data": {
-                        "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "title": "Mood lights",
-                        "icon": "icon-name",
-                        "order": 1,
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "tiles": [
-                          {
-                            "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "row": 1,
-                            "col": 1,
-                            "row_span": 2,
-                            "col_span": 2,
-                            "page": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "data_source": [
-                              {
-                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device-channel",
-                                "device": "234e5678-a89b-22d3-c456-426614174133",
-                                "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                "property": "456e7890-c89d-42d5-e678-626816194355",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device",
-                            "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -6188,72 +5627,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageCard"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869",
-                      "method": "PATCH",
-                      "data": {
-                        "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "title": "Mood lights",
-                        "icon": "icon-name",
-                        "order": 1,
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "tiles": [
-                          {
-                            "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "row": 1,
-                            "col": 1,
-                            "row_span": 2,
-                            "col_span": 2,
-                            "page": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "data_source": [
-                              {
-                                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                                "created_at": "2025-01-25T12:00:00Z",
-                                "updated_at": "2025-01-25T13:00:00Z",
-                                "type": "device-channel",
-                                "device": "234e5678-a89b-22d3-c456-426614174133",
-                                "channel": "345e6789-b89c-32d4-d567-526715184244",
-                                "property": "456e7890-c89d-42d5-e678-626816194355",
-                                "icon": "icon-name"
-                              }
-                            ],
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device",
-                            "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -6352,50 +5725,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageCardTiles"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles",
-                      "method": "GET",
-                      "data": [
-                        {
-                          "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                          "row": 1,
-                          "col": 1,
-                          "row_span": 2,
-                          "col_span": 2,
-                          "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                          "data_source": [
-                            {
-                              "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                              "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z",
-                              "type": "device-channel",
-                              "device": "234e5678-a89b-22d3-c456-426614174133",
-                              "channel": "345e6789-b89c-32d4-d567-526715184244",
-                              "property": "456e7890-c89d-42d5-e678-626816194355",
-                              "icon": "icon-name"
-                            }
-                          ],
-                          "created_at": "2025-01-25T12:00:00Z",
-                          "updated_at": "2025-01-25T13:00:00Z",
-                          "type": "device",
-                          "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -6435,48 +5764,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageCardTile"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                      "method": "POST",
-                      "data": {
-                        "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "row": 1,
-                        "col": 1,
-                        "row_span": 2,
-                        "col_span": 2,
-                        "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device",
-                        "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -6570,48 +5857,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageCardTile"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                      "method": "GET",
-                      "data": {
-                        "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "row": 1,
-                        "col": 1,
-                        "row_span": 2,
-                        "col_span": 2,
-                        "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device",
-                        "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -6649,48 +5894,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageCardTile"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                      "method": "PATCH",
-                      "data": {
-                        "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "row": 1,
-                        "col": 1,
-                        "row_span": 2,
-                        "col_span": 2,
-                        "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device",
-                        "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -8100,9 +7303,6 @@
           }
         },
         "operationId": "get-weather-module-current",
-        "x-stoplight": {
-          "id": "ufzjtgtcggdl0"
-        },
         "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a current day and for a specified location.",
         "parameters": [
           {
@@ -8219,9 +7419,6 @@
           }
         },
         "operationId": "get-weather-module-forecast",
-        "x-stoplight": {
-          "id": "0vuymu08gcm7o"
-        },
         "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details forecast for a specified location.",
         "parameters": [
           {
@@ -12675,27 +11872,27 @@
               },
               "cards": {
                 "type": "array",
+                "description": "A list of cards associated with the page.",
                 "items": {
                   "$ref": "#/components/schemas/DashboardCard"
-                },
-                "description": "A list of cards associated with the page."
+                }
               },
               "data_source": {
                 "type": "array",
+                "description": "A list of data sources associated with the page.",
                 "items": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                      "$ref": "#/components/schemas/DashboardPageDeviceChannelDataSource"
                     }
                   ],
                   "discriminator": {
                     "propertyName": "type",
                     "mapping": {
-                      "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                      "device-channel": "#/components/schemas/DashboardPageDeviceChannelDataSource"
                     }
                   }
-                },
-                "description": "A list of data sources associated with the page."
+                }
               }
             }
           }
@@ -12726,51 +11923,103 @@
               },
               "tiles": {
                 "type": "array",
+                "description": "A list of tiles associated with the tiles page.",
                 "items": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/DashboardDeviceTile"
+                      "$ref": "#/components/schemas/DashboardPageDeviceTile"
                     },
                     {
-                      "$ref": "#/components/schemas/DashboardTimeTile"
+                      "$ref": "#/components/schemas/DashboardPageTimeTile"
                     },
                     {
-                      "$ref": "#/components/schemas/DashboardDayWeatherTile"
+                      "$ref": "#/components/schemas/DashboardPageDayWeatherTile"
                     },
                     {
-                      "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+                      "$ref": "#/components/schemas/DashboardPageForecastWeatherTile"
                     }
                   ],
                   "discriminator": {
                     "propertyName": "type",
                     "mapping": {
-                      "device": "#/components/schemas/DashboardDeviceTile",
-                      "clock": "#/components/schemas/DashboardTimeTile",
-                      "weather-day": "#/components/schemas/DashboardDayWeatherTile",
-                      "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
+                      "device": "#/components/schemas/DashboardPageDeviceTile",
+                      "clock": "#/components/schemas/DashboardPageTimeTile",
+                      "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
+                      "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"
                     }
                   }
-                },
-                "description": "A list of tiles associated with the tiles page."
+                }
               },
               "data_source": {
                 "type": "array",
+                "description": "A list of data sources associated with the tiles page.",
                 "items": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                      "$ref": "#/components/schemas/DashboardPageDeviceChannelDataSource"
                     }
                   ],
                   "discriminator": {
                     "propertyName": "type",
                     "mapping": {
-                      "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                      "device-channel": "#/components/schemas/DashboardPageDeviceChannelDataSource"
                     }
                   }
-                },
-                "description": "A list of data sources associated with the tiles page."
+                }
               }
             }
+          }
+        ],
+        "examples": [
+          {
+            "id": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
+            "title": "Cards Dashboard",
+            "icon": "icon-name",
+            "order": 1,
+            "created_at": "2025-01-25T12:00:00Z",
+            "updated_at": "2025-01-25T13:00:00Z",
+            "type": "tiles",
+            "tiles": [
+              {
+                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+                "row": 1,
+                "col": 1,
+                "row_span": 2,
+                "col_span": 2,
+                "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
+                "data_source": [
+                  {
+                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                    "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
+                    "created_at": "2025-01-25T12:00:00Z",
+                    "updated_at": "2025-01-25T13:00:00Z",
+                    "type": "device-channel",
+                    "device": "234e5678-a89b-22d3-c456-426614174133",
+                    "channel": "345e6789-b89c-32d4-d567-526715184244",
+                    "property": "456e7890-c89d-42d5-e678-626816194355",
+                    "icon": "icon-name"
+                  }
+                ],
+                "created_at": "2025-01-25T12:00:00Z",
+                "updated_at": "2025-01-25T13:00:00Z",
+                "type": "device",
+                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
+                "icon": "icon-name"
+              }
+            ],
+            "data_source": [
+              {
+                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
+                "created_at": "2025-01-25T12:00:00Z",
+                "updated_at": "2025-01-25T13:00:00Z",
+                "type": "device-channel",
+                "device": "234e5678-a89b-22d3-c456-426614174133",
+                "channel": "345e6789-b89c-32d4-d567-526715184244",
+                "property": "456e7890-c89d-42d5-e678-626816194355",
+                "icon": "icon-name"
+              }
+            ]
           }
         ]
       },
@@ -12860,25 +12109,25 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardDeviceTile"
+                  "$ref": "#/components/schemas/DashboardCardDeviceTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardTimeTile"
+                  "$ref": "#/components/schemas/DashboardCardTimeTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardDayWeatherTile"
+                  "$ref": "#/components/schemas/DashboardCardDayWeatherTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+                  "$ref": "#/components/schemas/DashboardCardForecastWeatherTile"
                 }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device": "#/components/schemas/DashboardDeviceTile",
-                  "clock": "#/components/schemas/DashboardTimeTile",
-                  "weather-day": "#/components/schemas/DashboardDayWeatherTile",
-                  "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
+                  "device": "#/components/schemas/DashboardCardDeviceTile",
+                  "clock": "#/components/schemas/DashboardCardTimeTile",
+                  "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
+                  "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
                 }
               }
             },
@@ -12889,13 +12138,13 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "$ref": "#/components/schemas/DashboardCardDeviceChannelDataSource"
                 }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "device-channel": "#/components/schemas/DashboardCardDeviceChannelDataSource"
                 }
               }
             },
@@ -13020,13 +12269,13 @@
                 "items": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                      "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
                     }
                   ],
                   "discriminator": {
                     "propertyName": "type",
                     "mapping": {
-                      "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                      "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
                     }
                   }
                 },
@@ -13090,6 +12339,52 @@
           }
         ]
       },
+      "DashboardPageDeviceTile": {
+        "title": "Device Tile On Page",
+        "description": "A dashboard tile associated with a specific device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardDeviceTile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "page"
+            ],
+            "properties": {
+              "page": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated page.",
+                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
+              }
+            }
+          }
+        ]
+      },
+      "DashboardCardDeviceTile": {
+        "title": "Device Tile On Card",
+        "description": "A dashboard tile associated with a specific device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardDeviceTile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "card"
+            ],
+            "properties": {
+              "card": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated card.",
+                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
+              }
+            }
+          }
+        ]
+      },
       "DashboardTimeTile": {
         "title": "Time Tile",
         "description": "A dashboard tile displaying a clock.",
@@ -13110,6 +12405,52 @@
                 "default": "clock",
                 "example": "clock",
                 "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DashboardPageTimeTile": {
+        "title": "Device Tile On Page",
+        "description": "A dashboard tile associated with a specific device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardTimeTile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "page"
+            ],
+            "properties": {
+              "page": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated page.",
+                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
+              }
+            }
+          }
+        ]
+      },
+      "DashboardCardTimeTile": {
+        "title": "Device Tile On Card",
+        "description": "A dashboard tile associated with a specific device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardTimeTile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "card"
+            ],
+            "properties": {
+              "card": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated card.",
+                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
               }
             }
           }
@@ -13140,6 +12481,52 @@
           }
         ]
       },
+      "DashboardPageDayWeatherTile": {
+        "title": "Device Tile On Page",
+        "description": "A dashboard tile associated with a specific device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardDayWeatherTile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "page"
+            ],
+            "properties": {
+              "page": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated page.",
+                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
+              }
+            }
+          }
+        ]
+      },
+      "DashboardCardDayWeatherTile": {
+        "title": "Device Tile On Card",
+        "description": "A dashboard tile associated with a specific device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardDayWeatherTile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "card"
+            ],
+            "properties": {
+              "card": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated card.",
+                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
+              }
+            }
+          }
+        ]
+      },
       "DashboardForecastWeatherTile": {
         "title": "Forecast Weather Tile",
         "description": "A dashboard tile displaying a weather forecast.",
@@ -13160,6 +12547,52 @@
                 "default": "weather-forecast",
                 "example": "weather-forecast",
                 "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DashboardPageForecastWeatherTile": {
+        "title": "Device Tile On Page",
+        "description": "A dashboard tile associated with a specific device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "page"
+            ],
+            "properties": {
+              "page": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated page.",
+                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
+              }
+            }
+          }
+        ]
+      },
+      "DashboardCardForecastWeatherTile": {
+        "title": "Device Tile On Card",
+        "description": "A dashboard tile associated with a specific device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+          },
+          {
+            "type": "object",
+            "required": [
+              "card"
+            ],
+            "properties": {
+              "card": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated card.",
+                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
               }
             }
           }
@@ -13305,6 +12738,75 @@
                 "default": null,
                 "description": "The icon representing the data source.",
                 "example": "icon-name"
+              }
+            }
+          }
+        ]
+      },
+      "DashboardPageDeviceChannelDataSource": {
+        "title": "Device Channel Data Source",
+        "description": "A data source linked to a specific device channel and property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+          },
+          {
+            "type": "object",
+            "required": [
+              "page"
+            ],
+            "properties": {
+              "page": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated page.",
+                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
+              }
+            }
+          }
+        ]
+      },
+      "DashboardCardDeviceChannelDataSource": {
+        "title": "Device Channel Data Source",
+        "description": "A data source linked to a specific device channel and property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+          },
+          {
+            "type": "object",
+            "required": [
+              "card"
+            ],
+            "properties": {
+              "card": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated card.",
+                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
+              }
+            }
+          }
+        ]
+      },
+      "DashboardTileDeviceChannelDataSource": {
+        "title": "Device Channel Data Source",
+        "description": "A data source linked to a specific device channel and property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+          },
+          {
+            "type": "object",
+            "required": [
+              "tile"
+            ],
+            "properties": {
+              "tile": {
+                "type": "string",
+                "format": "uuid",
+                "description": "The unique identifier of the associated card.",
+                "example": "9f807d44-bd0f-4f5e-b409-3d048efa03d8"
               }
             }
           }
@@ -14785,25 +14287,25 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardDeviceTile"
+                "$ref": "#/components/schemas/DashboardCardDeviceTile"
               },
               {
-                "$ref": "#/components/schemas/DashboardTimeTile"
+                "$ref": "#/components/schemas/DashboardCardTimeTile"
               },
               {
-                "$ref": "#/components/schemas/DashboardDayWeatherTile"
+                "$ref": "#/components/schemas/DashboardCardDayWeatherTile"
               },
               {
-                "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+                "$ref": "#/components/schemas/DashboardCardForecastWeatherTile"
               }
             ],
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device": "#/components/schemas/DashboardDeviceTile",
-                "clock": "#/components/schemas/DashboardTimeTile",
-                "weather-day": "#/components/schemas/DashboardDayWeatherTile",
-                "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
+                "device": "#/components/schemas/DashboardCardDeviceTile",
+                "clock": "#/components/schemas/DashboardCardTimeTile",
+                "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
+                "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
               }
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
@@ -14871,25 +14373,25 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardDeviceTile"
+                  "$ref": "#/components/schemas/DashboardCardDeviceTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardTimeTile"
+                  "$ref": "#/components/schemas/DashboardCardTimeTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardDayWeatherTile"
+                  "$ref": "#/components/schemas/DashboardCardDayWeatherTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+                  "$ref": "#/components/schemas/DashboardCardForecastWeatherTile"
                 }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device": "#/components/schemas/DashboardDeviceTile",
-                  "clock": "#/components/schemas/DashboardTimeTile",
-                  "weather-day": "#/components/schemas/DashboardDayWeatherTile",
-                  "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
+                  "device": "#/components/schemas/DashboardCardDeviceTile",
+                  "clock": "#/components/schemas/DashboardCardTimeTile",
+                  "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
+                  "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
                 }
               }
             },
@@ -14956,13 +14458,13 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
               }
             ],
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
               }
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
@@ -15030,13 +14532,13 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
                 }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
                 }
               }
             },
@@ -15103,13 +14605,13 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                "$ref": "#/components/schemas/DashboardCardDeviceChannelDataSource"
               }
             ],
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                "device-channel": "#/components/schemas/DashboardCardDeviceChannelDataSource"
               }
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
@@ -15177,13 +14679,13 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "$ref": "#/components/schemas/DashboardCardDeviceChannelDataSource"
                 }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "device-channel": "#/components/schemas/DashboardCardDeviceChannelDataSource"
                 }
               }
             },
@@ -15250,25 +14752,25 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardDeviceTile"
+                "$ref": "#/components/schemas/DashboardPageDeviceTile"
               },
               {
-                "$ref": "#/components/schemas/DashboardTimeTile"
+                "$ref": "#/components/schemas/DashboardPageTimeTile"
               },
               {
-                "$ref": "#/components/schemas/DashboardDayWeatherTile"
+                "$ref": "#/components/schemas/DashboardPageDayWeatherTile"
               },
               {
-                "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+                "$ref": "#/components/schemas/DashboardPageForecastWeatherTile"
               }
             ],
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device": "#/components/schemas/DashboardDeviceTile",
-                "clock": "#/components/schemas/DashboardTimeTile",
-                "weather-day": "#/components/schemas/DashboardDayWeatherTile",
-                "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
+                "device": "#/components/schemas/DashboardPageDeviceTile",
+                "clock": "#/components/schemas/DashboardPageTimeTile",
+                "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
+                "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"
               }
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
@@ -15336,25 +14838,25 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardDeviceTile"
+                  "$ref": "#/components/schemas/DashboardPageDeviceTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardTimeTile"
+                  "$ref": "#/components/schemas/DashboardPageTimeTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardDayWeatherTile"
+                  "$ref": "#/components/schemas/DashboardPageDayWeatherTile"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardForecastWeatherTile"
+                  "$ref": "#/components/schemas/DashboardPageForecastWeatherTile"
                 }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device": "#/components/schemas/DashboardDeviceTile",
-                  "clock": "#/components/schemas/DashboardTimeTile",
-                  "weather-day": "#/components/schemas/DashboardDayWeatherTile",
-                  "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
+                  "device": "#/components/schemas/DashboardPageDeviceTile",
+                  "clock": "#/components/schemas/DashboardPageTimeTile",
+                  "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
+                  "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"
                 }
               }
             },
@@ -15421,13 +14923,13 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
               }
             ],
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
               }
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
@@ -15495,13 +14997,13 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
                 }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
                 }
               }
             },
@@ -15568,13 +15070,13 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                "$ref": "#/components/schemas/DashboardPageDeviceChannelDataSource"
               }
             ],
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                "device-channel": "#/components/schemas/DashboardPageDeviceChannelDataSource"
               }
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
@@ -15642,13 +15144,13 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "$ref": "#/components/schemas/DashboardPageDeviceChannelDataSource"
                 }
               ],
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+                  "device-channel": "#/components/schemas/DashboardPageDeviceChannelDataSource"
                 }
               }
             },
@@ -15975,10 +15477,7 @@
             "readOnly": true
           },
           "default_network": {
-            "$ref": "#/components/schemas/SystemDefaultNetwork",
-            "x-stoplight": {
-              "id": "6jx9n4ju5lzte"
-            }
+            "$ref": "#/components/schemas/SystemDefaultNetwork"
           },
           "display": {
             "$ref": "#/components/schemas/SystemDisplayInfo"
@@ -17027,9 +16526,6 @@
       },
       "WeatherResLocationCurrent": {
         "title": "Location Current Day Response",
-        "x-stoplight": {
-          "id": "ujbz6pwqzw7eb"
-        },
         "type": "object",
         "description": "Response containing detailed weather conditions for a current day and for a specified location.",
         "properties": {
@@ -17122,9 +16618,6 @@
       },
       "WeatherResLocationForecast": {
         "title": "LocationForecast",
-        "x-stoplight": {
-          "id": "d0pmpalkxwk89"
-        },
         "type": "object",
         "description": "Response containing detailed weather conditions forecast for a specified location.",
         "properties": {
@@ -17170,10 +16663,7 @@
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/WeatherForecastDay",
-              "x-stoplight": {
-                "id": "rjgikhudoqn3w"
-              }
+              "$ref": "#/components/schemas/WeatherForecastDay"
             }
           },
           "metadata": {

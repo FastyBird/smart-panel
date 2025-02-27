@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/features/dashboard/services/devices.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/module.dart';
@@ -28,6 +29,8 @@ class StartupManagerService {
   late ApiClient _apiClient;
   late Dio _apiIoService;
 
+  late SocketService _socketClient;
+
   late FlutterSecureStorage _securedStorage;
 
   StartupManagerService({
@@ -47,11 +50,28 @@ class StartupManagerService {
 
     _apiClient = ApiClient(_apiIoService);
 
-    var configModuleService = ConfigModuleService(apiClient: _apiClient);
-    var systemModuleService = SystemModuleService(apiClient: _apiClient);
-    var weatherModuleService = WeatherModuleService(apiClient: _apiClient);
-    var devicesModuleService = DevicesModuleService(apiClient: _apiClient);
-    var dashboardModuleService = DashboardModuleService(apiClient: _apiClient);
+    _socketClient = SocketService();
+
+    var configModuleService = ConfigModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var systemModuleService = SystemModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var weatherModuleService = WeatherModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var devicesModuleService = DevicesModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var dashboardModuleService = DashboardModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
 
     var devicesService = DevicesService(
       devicesRepository: locator.get<DevicesRepository>(),
@@ -82,6 +102,9 @@ class StartupManagerService {
     // Api client
     locator.registerSingleton(_apiIoService);
     locator.registerSingleton(_apiClient);
+
+    // Sockets client
+    locator.registerSingleton(_socketClient);
 
     // Presentation services
     locator.registerSingleton(devicesService);
@@ -137,6 +160,12 @@ class StartupManagerService {
       throw ArgumentError(
         'Presentation services initialization failed. Check the app logs.',
       );
+    }
+
+    String? apiSecret = _apiSecret;
+
+    if (apiSecret != null) {
+      _socketClient.initialize(apiSecret);
     }
   }
 

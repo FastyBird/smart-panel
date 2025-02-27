@@ -10,7 +10,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { AccessTokenType } from '../auth.constants';
+import { ACCESS_TOKEN_TYPE } from '../auth.constants';
 import { AuthException, AuthNotFoundException } from '../auth.exceptions';
 import { CheckResponseDto } from '../dto/check-response.dto';
 import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
@@ -193,7 +193,7 @@ describe('AuthService', () => {
 				plainToInstance(LoggedInResponseDto, {
 					accessToken: 'mocked-jwt-token',
 					refreshToken: 'mocked-jwt-token',
-					type: AccessTokenType,
+					type: ACCESS_TOKEN_TYPE,
 					expiration: mockDate,
 				}),
 			);

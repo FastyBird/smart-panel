@@ -78,6 +78,26 @@ class ForecastDayModel extends Model {
 
   DateTime get dayTime => _dayTime;
 
+  factory ForecastDayModel.fromJson(Map<String, dynamic> json) {
+    return ForecastDayModel(
+      temperature: ForecastTemperatureModel.fromJson(json['temperature']),
+      feelsLike: ForecastFeelsLikeModel.fromJson(json['feels_like']),
+      pressure: json['pressure'],
+      humidity: json['humidity'],
+      weather: WeatherInfoModel.fromJson(json['weather']),
+      wind: WindModel.fromJson(json['wind']),
+      clouds: json['clouds'].toDouble(),
+      rain: json['rain']?.toDouble(),
+      snow: json['snow']?.toDouble(),
+      sunrise: json['sunrise'] != null ? DateTime.parse(json['sunrise']) : null,
+      sunset: json['sunset'] != null ? DateTime.parse(json['sunset']) : null,
+      moonrise:
+          json['moonrise'] != null ? DateTime.parse(json['moonrise']) : null,
+      moonset: json['moonset'] != null ? DateTime.parse(json['moonset']) : null,
+      dayTime: DateTime.parse(json['day_time']),
+    );
+  }
+
   ForecastDayModel copyWith({
     ForecastTemperatureModel? temperature,
     ForecastFeelsLikeModel? feelsLike,
@@ -111,4 +131,41 @@ class ForecastDayModel extends Model {
       dayTime: dayTime ?? _dayTime,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ForecastDayModel &&
+          other._temperature == _temperature &&
+          other._feelsLike == _feelsLike &&
+          other._pressure == _pressure &&
+          other._humidity == _humidity &&
+          other._weather == _weather &&
+          other._wind == _wind &&
+          other._clouds == _clouds &&
+          other._rain == _rain &&
+          other._snow == _snow &&
+          other._sunrise == _sunrise &&
+          other._sunset == _sunset &&
+          other._moonrise == _moonrise &&
+          other._moonset == _moonset &&
+          other._dayTime == _dayTime);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _temperature,
+        _feelsLike,
+        _pressure,
+        _humidity,
+        _weather,
+        _wind,
+        _clouds,
+        _rain,
+        _snow,
+        _sunrise,
+        _sunset,
+        _moonrise,
+        _moonset,
+        _dayTime,
+      ]);
 }

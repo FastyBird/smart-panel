@@ -20,4 +20,27 @@ class TemperatureInfoModel extends Model {
       gpu: json['gpu'],
     );
   }
+
+  TemperatureInfoModel copyWith({
+    int? cpu,
+    int? gpu,
+  }) {
+    return TemperatureInfoModel(
+      cpu: cpu ?? _cpu,
+      gpu: gpu ?? _gpu,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TemperatureInfoModel &&
+          other._cpu == _cpu &&
+          other._gpu == _gpu);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _cpu,
+        _gpu,
+      ]);
 }

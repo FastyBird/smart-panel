@@ -32,4 +32,35 @@ class OperatingSystemInfoModel extends Model {
       uptime: json['uptime'],
     );
   }
+
+  OperatingSystemInfoModel copyWith({
+    String? platform,
+    String? distro,
+    String? release,
+    int? uptime,
+  }) {
+    return OperatingSystemInfoModel(
+      platform: platform ?? _platform,
+      distro: distro ?? _distro,
+      release: release ?? _release,
+      uptime: uptime ?? _uptime,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OperatingSystemInfoModel &&
+          other._platform == _platform &&
+          other._distro == _distro &&
+          other._release == _release &&
+          other._uptime == _uptime);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _platform,
+        _distro,
+        _release,
+        _uptime,
+      ]);
 }

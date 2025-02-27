@@ -44,8 +44,8 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 
   void _syncStateWithRepository() {
     setState(() {
-      _unit = _repository.data.unit;
-      _location = _repository.data.location;
+      _unit = _repository.unit;
+      _location = _repository.location;
     });
   }
 

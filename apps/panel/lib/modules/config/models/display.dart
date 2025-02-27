@@ -24,6 +24,15 @@ class DisplayConfigModel extends Model {
 
   bool get hasScreenSaver => _screenSaver;
 
+  factory DisplayConfigModel.fromJson(Map<String, dynamic> json) {
+    return DisplayConfigModel(
+      darkMode: json['dark_mode'],
+      brightness: json['brightness'],
+      screenLockDuration: json['screen_lock_duration'],
+      screenSaver: json['screen_saver'],
+    );
+  }
+
   DisplayConfigModel copyWith({
     bool? darkMode,
     int? brightness,
@@ -37,4 +46,21 @@ class DisplayConfigModel extends Model {
       screenSaver: screenSaver ?? _screenSaver,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DisplayConfigModel &&
+          other._darkMode == _darkMode &&
+          other._brightness == _brightness &&
+          other._screenLockDuration == _screenLockDuration &&
+          other._screenSaver == _screenSaver);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _darkMode,
+        _brightness,
+        _screenLockDuration,
+        _screenSaver,
+      ]);
 }

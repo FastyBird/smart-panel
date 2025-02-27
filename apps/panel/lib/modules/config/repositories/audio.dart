@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
 import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
@@ -5,9 +7,26 @@ import 'package:fastybird_smart_panel/api/models/config_update_audio_type.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/audio.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
+import 'package:flutter/foundation.dart';
 
 class AudioConfigRepository extends Repository<AudioConfigModel> {
   AudioConfigRepository({required super.apiClient});
+
+  AudioConfigModel _getConfig() {
+    if (data == null) {
+      throw Exception('Config module is not initialized');
+    }
+
+    return data!;
+  }
+
+  bool get hasSpeakerEnabled => _getConfig().hasSpeakerEnabled;
+
+  int get speakerVolume => _getConfig().speakerVolume;
+
+  bool get hasMicrophoneEnabled => _getConfig().hasMicrophoneEnabled;
+
+  int get microphoneVolume => _getConfig().microphoneVolume;
 
   Future<bool> refresh() async {
     try {
@@ -19,17 +38,30 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
     }
   }
 
-  void insertAudioConfiguration(
-    ConfigResSectionDataUnionAudio apiAudioConfig,
-  ) {
-    data = AudioConfigModel(
-      speaker: apiAudioConfig.speaker,
-      speakerVolume: apiAudioConfig.speakerVolume,
-      microphone: apiAudioConfig.microphone,
-      microphoneVolume: apiAudioConfig.microphoneVolume,
-    );
+  void insertConfiguration(Map<String, dynamic> json) {
+    try {
+      AudioConfigModel newData = AudioConfigModel.fromJson(json);
 
-    notifyListeners();
+      if (data != newData) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CONFIG MODULE] Audio configuration was successfully updated',
+          );
+        }
+
+        data = newData;
+
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[CONFIG MODULE] Audio configuration model could not be created',
+        );
+      }
+
+      rethrow;
+    }
   }
 
   Future<bool> setSpeakerState(bool state) async {
@@ -82,15 +114,15 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
       section: Section.audio,
       data: ConfigReqUpdateSectionDataUnionAudio(
         type: ConfigUpdateAudioType.audio,
-        speaker: speaker ?? data.hasSpeakerEnabled,
-        speakerVolume: speakerVolume ?? data.speakerVolume,
-        microphone: microphone ?? data.hasMicrophoneEnabled,
-        microphoneVolume: microphoneVolume ?? data.microphoneVolume,
+        speaker: speaker ?? _getConfig().hasSpeakerEnabled,
+        speakerVolume: speakerVolume ?? _getConfig().speakerVolume,
+        microphone: microphone ?? _getConfig().hasMicrophoneEnabled,
+        microphoneVolume: microphoneVolume ?? _getConfig().microphoneVolume,
       ),
     );
 
     if (updated is ConfigResSectionDataUnionAudio) {
-      data = data.copyWith(
+      data = _getConfig().copyWith(
         speaker: updated.speaker,
         speakerVolume: updated.speakerVolume,
         microphone: updated.microphone,
@@ -112,7 +144,7 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionAudio) {
-          insertAudioConfiguration(data);
+          insertConfiguration(jsonDecode(jsonEncode(data)));
         }
       },
       'fetch audio configuration',

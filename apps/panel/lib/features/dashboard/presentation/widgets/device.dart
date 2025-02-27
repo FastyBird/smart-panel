@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/features/dashboard/capabilities/channels/capability.dart';
 import 'package:fastybird_smart_panel/features/dashboard/capabilities/devices/type.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/button.dart';
@@ -27,6 +28,8 @@ class DeviceTileWidget
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     return Consumer<DevicesService>(builder: (
       context,
       devicesService,
@@ -52,14 +55,23 @@ class DeviceTileWidget
         },
         onIconTap: deviceType.isOn == null
             ? null
-            : () {
+            : () async {
                 if (kDebugMode) {
                   debugPrint(
                     'Toggle state for device: ${deviceType.name}',
                   );
                 }
 
-                devicesService.toggleDeviceOnState(deviceType.id);
+                bool res = await devicesService.toggleDeviceOnState(
+                  deviceType.id,
+                );
+
+                if (!res && context.mounted) {
+                  AlertBar.showError(
+                    context,
+                    message: localizations.action_failed,
+                  );
+                }
               },
         title: deviceType.name,
         subTitle: LayoutBuilder(builder: (context, constraints) {

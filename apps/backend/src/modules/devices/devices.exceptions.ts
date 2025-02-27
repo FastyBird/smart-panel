@@ -18,3 +18,10 @@ export class DevicesValidationException extends DevicesException {
 		this.name = 'DevicesValidationException';
 	}
 }
+
+export class DevicesNotAllowedException extends DevicesException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'DevicesNotAllowedException';
+	}
+}

@@ -1,10 +1,10 @@
 import { plainToInstance } from 'class-transformer';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { PlatformService } from '../../platform/services/platform.service';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import {
 	NetworkStatsEntity,
 	SystemInfoEntity,
@@ -19,7 +19,7 @@ export class SystemService {
 
 	constructor(
 		private readonly platformService: PlatformService,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async getSystemInfo(): Promise<SystemInfoEntity> {
@@ -59,7 +59,7 @@ export class SystemService {
 		try {
 			const systemInfo = await this.getSystemInfo();
 
-			this.gateway.sendMessage(EventType.SYSTEM_INFO, systemInfo);
+			this.eventEmitter.emit(EventType.SYSTEM_INFO, systemInfo);
 
 			this.logger.debug('[EVENT] System info broadcasted successfully');
 		} catch (error) {

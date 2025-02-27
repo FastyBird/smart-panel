@@ -5,6 +5,8 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { UserRole } from '../../users/users.constants';
+import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 import { PropertyCommandDto } from '../dto/property-command.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
@@ -85,6 +87,11 @@ describe('PropertyCommandService', () => {
 		updatedAt: new Date(),
 	};
 
+	const mockWsUser: ClientUserDto = {
+		id: null,
+		role: UserRole.DISPLAY,
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -158,7 +165,7 @@ describe('PropertyCommandService', () => {
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
 		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
 
-		const result = await service.handle(validPayload);
+		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result.success).toBe(true);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: true }]);
@@ -170,7 +177,7 @@ describe('PropertyCommandService', () => {
 	it('should return an error if validation fails', async () => {
 		const invalidPayload = { properties: [{ device: 'invalid-id' }] };
 
-		const result = await service.handle(invalidPayload);
+		const result = await service.handleInternal(mockWsUser, invalidPayload);
 
 		expect(result.success).toBe(false);
 		expect(result.results).toBe('Invalid payload');
@@ -180,7 +187,7 @@ describe('PropertyCommandService', () => {
 	it('should return an error if device is not found', async () => {
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(null);
 
-		const result = await service.handle(validPayload);
+		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result.success).toBe(false);
 		expect(result.results).toEqual('Invalid payload');
@@ -190,7 +197,7 @@ describe('PropertyCommandService', () => {
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(null);
 
-		const result = await service.handle(validPayload);
+		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result.success).toBe(false);
 		expect(result.results).toEqual('Invalid payload');
@@ -201,7 +208,7 @@ describe('PropertyCommandService', () => {
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
 		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
 
-		const result = await service.handle(validPayload);
+		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result.success).toBe(false);
 		expect(result.results).toEqual('Invalid payload');
@@ -213,7 +220,7 @@ describe('PropertyCommandService', () => {
 		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(mockChannelProperty);
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(null);
 
-		const result = await service.handle(validPayload);
+		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result.success).toBe(false);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: false, reason: 'Unsupported device type' }]);
@@ -229,7 +236,7 @@ describe('PropertyCommandService', () => {
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
 		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(false);
 
-		const result = await service.handle(validPayload);
+		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result.success).toBe(false);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: false, reason: 'Execution failed' }]);

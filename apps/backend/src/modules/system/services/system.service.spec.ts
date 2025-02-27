@@ -8,10 +8,10 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { plainToInstance } from 'class-transformer';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PlatformService } from '../../platform/services/platform.service';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { SystemInfoEntity } from '../entities/system.entity';
 import { EventType } from '../system.constants';
 
@@ -19,7 +19,7 @@ import { SystemService } from './system.service';
 
 describe('SystemService', () => {
 	let service: SystemService;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 	let platform: PlatformService;
 
 	beforeEach(async () => {
@@ -36,16 +36,16 @@ describe('SystemService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 			],
 		}).compile();
 
 		service = module.get<SystemService>(SystemService);
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		platform = module.get<PlatformService>(PlatformService);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
@@ -60,7 +60,7 @@ describe('SystemService', () => {
 
 	it('should be defined', () => {
 		expect(service).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 		expect(platform).toBeDefined();
 	});
 
@@ -123,7 +123,7 @@ describe('SystemService', () => {
 
 			await service.broadcastSystemInfo();
 
-			expect(gateway.sendMessage).toHaveBeenCalledWith(EventType.SYSTEM_INFO, expect.any(SystemInfoEntity));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.SYSTEM_INFO, expect.any(SystemInfoEntity));
 		});
 
 		it('should log an error if broadcasting fails', async () => {

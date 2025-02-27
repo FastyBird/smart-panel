@@ -26,4 +26,31 @@ class NetworkStatsModel extends Model {
       txBytes: json['tx_bytes'],
     );
   }
+
+  NetworkStatsModel copyWith({
+    String? interface,
+    int? rxBytes,
+    int? txBytes,
+  }) {
+    return NetworkStatsModel(
+      interface: interface ?? _interface,
+      rxBytes: rxBytes ?? _rxBytes,
+      txBytes: txBytes ?? _txBytes,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NetworkStatsModel &&
+          other._interface == _interface &&
+          other._rxBytes == _rxBytes &&
+          other._txBytes == _txBytes);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _interface,
+        _rxBytes,
+        _txBytes,
+      ]);
 }

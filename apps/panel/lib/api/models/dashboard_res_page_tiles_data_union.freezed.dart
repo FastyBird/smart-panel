@@ -59,6 +59,9 @@ mixin _$DashboardResPageTilesDataUnion {
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
+  /// The unique identifier of the associated page.
+  String get page => throw _privateConstructorUsedError;
+
   /// The number of rows the tile spans.
   @JsonKey(name: 'row_span')
   int get rowSpan => throw _privateConstructorUsedError;
@@ -81,6 +84,7 @@ mixin _$DashboardResPageTilesDataUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -93,6 +97,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -105,6 +110,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -117,6 +123,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -135,6 +142,7 @@ mixin _$DashboardResPageTilesDataUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -147,6 +155,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -159,6 +168,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -171,6 +181,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -189,6 +200,7 @@ mixin _$DashboardResPageTilesDataUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -201,6 +213,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -213,6 +226,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -225,6 +239,7 @@ mixin _$DashboardResPageTilesDataUnion {
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -292,6 +307,7 @@ abstract class $DashboardResPageTilesDataUnionCopyWith<$Res> {
       List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      String page,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan,
       String type});
@@ -319,6 +335,7 @@ class _$DashboardResPageTilesDataUnionCopyWithImpl<$Res,
     Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
     Object? type = null,
@@ -348,6 +365,10 @@ class _$DashboardResPageTilesDataUnionCopyWithImpl<$Res,
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      page: null == page
+          ? _value.page
+          : page // ignore: cast_nullable_to_non_nullable
+              as String,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -383,6 +404,7 @@ abstract class _$$DashboardResPageTilesDataUnionDeviceImplCopyWith<$Res>
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
       String? icon,
+      String page,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan,
       String type});
@@ -411,6 +433,7 @@ class __$$DashboardResPageTilesDataUnionDeviceImplCopyWithImpl<$Res>
     Object? updatedAt = freezed,
     Object? device = null,
     Object? icon = freezed,
+    Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
     Object? type = null,
@@ -448,6 +471,10 @@ class __$$DashboardResPageTilesDataUnionDeviceImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      page: null == page
+          ? _value.page
+          : page // ignore: cast_nullable_to_non_nullable
+              as String,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -478,6 +505,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.device,
       required this.icon,
+      required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
       @JsonKey(name: 'col_span') this.colSpan = 0,
       this.type = 'device'})
@@ -529,6 +557,10 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
   @override
   final String? icon;
 
+  /// The unique identifier of the associated page.
+  @override
+  final String page;
+
   /// The number of rows the tile spans.
   @override
   @JsonKey(name: 'row_span')
@@ -546,7 +578,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
 
   @override
   String toString() {
-    return 'DashboardResPageTilesDataUnion.device(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, icon: $icon, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardResPageTilesDataUnion.device(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, icon: $icon, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
   }
 
   @override
@@ -565,6 +597,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
                 other.updatedAt == updatedAt) &&
             (identical(other.device, device) || other.device == device) &&
             (identical(other.icon, icon) || other.icon == icon) &&
+            (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
             (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             (identical(other.type, type) || other.type == type));
@@ -582,6 +615,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
       updatedAt,
       device,
       icon,
+      page,
       rowSpan,
       colSpan,
       type);
@@ -609,6 +643,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -621,6 +656,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -633,6 +669,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -645,13 +682,14 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
         weatherForecast,
   }) {
     return device(id, row, col, dataSource, createdAt, updatedAt, this.device,
-        icon, rowSpan, colSpan, type);
+        icon, page, rowSpan, colSpan, type);
   }
 
   @override
@@ -667,6 +705,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -679,6 +718,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -691,6 +731,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -703,13 +744,14 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
         weatherForecast,
   }) {
     return device?.call(id, row, col, dataSource, createdAt, updatedAt,
-        this.device, icon, rowSpan, colSpan, type);
+        this.device, icon, page, rowSpan, colSpan, type);
   }
 
   @override
@@ -725,6 +767,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -737,6 +780,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -749,6 +793,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -761,6 +806,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -769,7 +815,7 @@ class _$DashboardResPageTilesDataUnionDeviceImpl
   }) {
     if (device != null) {
       return device(id, row, col, dataSource, createdAt, updatedAt, this.device,
-          icon, rowSpan, colSpan, type);
+          icon, page, rowSpan, colSpan, type);
     }
     return orElse();
   }
@@ -839,6 +885,7 @@ abstract class DashboardResPageTilesDataUnionDevice
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       required final String device,
       required final String? icon,
+      required final String page,
       @JsonKey(name: 'row_span') final int rowSpan,
       @JsonKey(name: 'col_span') final int colSpan,
       final String type}) = _$DashboardResPageTilesDataUnionDeviceImpl;
@@ -880,6 +927,10 @@ abstract class DashboardResPageTilesDataUnionDevice
   /// The icon representing the device tile.
   String? get icon;
 
+  /// The unique identifier of the associated page.
+  @override
+  String get page;
+
   /// The number of rows the tile spans.
   @override
   @JsonKey(name: 'row_span')
@@ -920,6 +971,7 @@ abstract class _$$DashboardResPageTilesDataUnionClockImplCopyWith<$Res>
       List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      String page,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan,
       String type});
@@ -946,6 +998,7 @@ class __$$DashboardResPageTilesDataUnionClockImplCopyWithImpl<$Res>
     Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
     Object? type = null,
@@ -975,6 +1028,10 @@ class __$$DashboardResPageTilesDataUnionClockImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      page: null == page
+          ? _value.page
+          : page // ignore: cast_nullable_to_non_nullable
+              as String,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -1003,6 +1060,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
       required final List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
+      required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
       @JsonKey(name: 'col_span') this.colSpan = 0,
       this.type = 'clock'})
@@ -1046,6 +1104,10 @@ class _$DashboardResPageTilesDataUnionClockImpl
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
+  /// The unique identifier of the associated page.
+  @override
+  final String page;
+
   /// The number of rows the tile spans.
   @override
   @JsonKey(name: 'row_span')
@@ -1063,7 +1125,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
 
   @override
   String toString() {
-    return 'DashboardResPageTilesDataUnion.clock(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardResPageTilesDataUnion.clock(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
   }
 
   @override
@@ -1080,6 +1142,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
+            (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
             (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             (identical(other.type, type) || other.type == type));
@@ -1095,6 +1158,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
       const DeepCollectionEquality().hash(_dataSource),
       createdAt,
       updatedAt,
+      page,
       rowSpan,
       colSpan,
       type);
@@ -1122,6 +1186,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -1134,6 +1199,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -1146,6 +1212,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -1158,13 +1225,14 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
         weatherForecast,
   }) {
-    return clock(
-        id, row, col, dataSource, createdAt, updatedAt, rowSpan, colSpan, type);
+    return clock(id, row, col, dataSource, createdAt, updatedAt, page, rowSpan,
+        colSpan, type);
   }
 
   @override
@@ -1180,6 +1248,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1192,6 +1261,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1204,6 +1274,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1216,13 +1287,14 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
         weatherForecast,
   }) {
-    return clock?.call(
-        id, row, col, dataSource, createdAt, updatedAt, rowSpan, colSpan, type);
+    return clock?.call(id, row, col, dataSource, createdAt, updatedAt, page,
+        rowSpan, colSpan, type);
   }
 
   @override
@@ -1238,6 +1310,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1250,6 +1323,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1262,6 +1336,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1274,6 +1349,7 @@ class _$DashboardResPageTilesDataUnionClockImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1281,8 +1357,8 @@ class _$DashboardResPageTilesDataUnionClockImpl
     required TResult orElse(),
   }) {
     if (clock != null) {
-      return clock(id, row, col, dataSource, createdAt, updatedAt, rowSpan,
-          colSpan, type);
+      return clock(id, row, col, dataSource, createdAt, updatedAt, page,
+          rowSpan, colSpan, type);
     }
     return orElse();
   }
@@ -1350,6 +1426,7 @@ abstract class DashboardResPageTilesDataUnionClock
       required final List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+      required final String page,
       @JsonKey(name: 'row_span') final int rowSpan,
       @JsonKey(name: 'col_span') final int colSpan,
       final String type}) = _$DashboardResPageTilesDataUnionClockImpl;
@@ -1384,6 +1461,10 @@ abstract class DashboardResPageTilesDataUnionClock
   @override
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
+
+  /// The unique identifier of the associated page.
+  @override
+  String get page;
 
   /// The number of rows the tile spans.
   @override
@@ -1425,6 +1506,7 @@ abstract class _$$DashboardResPageTilesDataUnionWeatherDayImplCopyWith<$Res>
       List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      String page,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan,
       String type});
@@ -1451,6 +1533,7 @@ class __$$DashboardResPageTilesDataUnionWeatherDayImplCopyWithImpl<$Res>
     Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
     Object? type = null,
@@ -1480,6 +1563,10 @@ class __$$DashboardResPageTilesDataUnionWeatherDayImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      page: null == page
+          ? _value.page
+          : page // ignore: cast_nullable_to_non_nullable
+              as String,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -1508,6 +1595,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
       required final List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
+      required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
       @JsonKey(name: 'col_span') this.colSpan = 0,
       this.type = 'weather-day'})
@@ -1551,6 +1639,10 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
+  /// The unique identifier of the associated page.
+  @override
+  final String page;
+
   /// The number of rows the tile spans.
   @override
   @JsonKey(name: 'row_span')
@@ -1568,7 +1660,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
 
   @override
   String toString() {
-    return 'DashboardResPageTilesDataUnion.weatherDay(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardResPageTilesDataUnion.weatherDay(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
   }
 
   @override
@@ -1585,6 +1677,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
+            (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
             (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             (identical(other.type, type) || other.type == type));
@@ -1600,6 +1693,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
       const DeepCollectionEquality().hash(_dataSource),
       createdAt,
       updatedAt,
+      page,
       rowSpan,
       colSpan,
       type);
@@ -1628,6 +1722,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -1640,6 +1735,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -1652,6 +1748,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -1664,13 +1761,14 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
         weatherForecast,
   }) {
-    return weatherDay(
-        id, row, col, dataSource, createdAt, updatedAt, rowSpan, colSpan, type);
+    return weatherDay(id, row, col, dataSource, createdAt, updatedAt, page,
+        rowSpan, colSpan, type);
   }
 
   @override
@@ -1686,6 +1784,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1698,6 +1797,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1710,6 +1810,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1722,13 +1823,14 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
         weatherForecast,
   }) {
-    return weatherDay?.call(
-        id, row, col, dataSource, createdAt, updatedAt, rowSpan, colSpan, type);
+    return weatherDay?.call(id, row, col, dataSource, createdAt, updatedAt,
+        page, rowSpan, colSpan, type);
   }
 
   @override
@@ -1744,6 +1846,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1756,6 +1859,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1768,6 +1872,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1780,6 +1885,7 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -1787,8 +1893,8 @@ class _$DashboardResPageTilesDataUnionWeatherDayImpl
     required TResult orElse(),
   }) {
     if (weatherDay != null) {
-      return weatherDay(id, row, col, dataSource, createdAt, updatedAt, rowSpan,
-          colSpan, type);
+      return weatherDay(id, row, col, dataSource, createdAt, updatedAt, page,
+          rowSpan, colSpan, type);
     }
     return orElse();
   }
@@ -1856,6 +1962,7 @@ abstract class DashboardResPageTilesDataUnionWeatherDay
       required final List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+      required final String page,
       @JsonKey(name: 'row_span') final int rowSpan,
       @JsonKey(name: 'col_span') final int colSpan,
       final String type}) = _$DashboardResPageTilesDataUnionWeatherDayImpl;
@@ -1890,6 +1997,10 @@ abstract class DashboardResPageTilesDataUnionWeatherDay
   @override
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
+
+  /// The unique identifier of the associated page.
+  @override
+  String get page;
 
   /// The number of rows the tile spans.
   @override
@@ -1932,6 +2043,7 @@ abstract class _$$DashboardResPageTilesDataUnionWeatherForecastImplCopyWith<
       List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      String page,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan,
       String type});
@@ -1959,6 +2071,7 @@ class __$$DashboardResPageTilesDataUnionWeatherForecastImplCopyWithImpl<$Res>
     Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
     Object? type = null,
@@ -1988,6 +2101,10 @@ class __$$DashboardResPageTilesDataUnionWeatherForecastImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      page: null == page
+          ? _value.page
+          : page // ignore: cast_nullable_to_non_nullable
+              as String,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -2016,6 +2133,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
       required final List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
+      required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
       @JsonKey(name: 'col_span') this.colSpan = 0,
       this.type = 'weather-forecast'})
@@ -2059,6 +2177,10 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
+  /// The unique identifier of the associated page.
+  @override
+  final String page;
+
   /// The number of rows the tile spans.
   @override
   @JsonKey(name: 'row_span')
@@ -2076,7 +2198,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
 
   @override
   String toString() {
-    return 'DashboardResPageTilesDataUnion.weatherForecast(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardResPageTilesDataUnion.weatherForecast(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
   }
 
   @override
@@ -2093,6 +2215,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
+            (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
             (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             (identical(other.type, type) || other.type == type));
@@ -2108,6 +2231,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
       const DeepCollectionEquality().hash(_dataSource),
       createdAt,
       updatedAt,
+      page,
       rowSpan,
       colSpan,
       type);
@@ -2137,6 +2261,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -2149,6 +2274,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -2161,6 +2287,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
@@ -2173,13 +2300,14 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)
         weatherForecast,
   }) {
-    return weatherForecast(
-        id, row, col, dataSource, createdAt, updatedAt, rowSpan, colSpan, type);
+    return weatherForecast(id, row, col, dataSource, createdAt, updatedAt, page,
+        rowSpan, colSpan, type);
   }
 
   @override
@@ -2195,6 +2323,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -2207,6 +2336,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -2219,6 +2349,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -2231,13 +2362,14 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
         weatherForecast,
   }) {
-    return weatherForecast?.call(
-        id, row, col, dataSource, createdAt, updatedAt, rowSpan, colSpan, type);
+    return weatherForecast?.call(id, row, col, dataSource, createdAt, updatedAt,
+        page, rowSpan, colSpan, type);
   }
 
   @override
@@ -2253,6 +2385,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String? icon,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -2265,6 +2398,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -2277,6 +2411,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -2289,6 +2424,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
             List<DashboardTileBaseDataSourceUnion> dataSource,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            String page,
             @JsonKey(name: 'row_span') int rowSpan,
             @JsonKey(name: 'col_span') int colSpan,
             String type)?
@@ -2297,7 +2433,7 @@ class _$DashboardResPageTilesDataUnionWeatherForecastImpl
   }) {
     if (weatherForecast != null) {
       return weatherForecast(id, row, col, dataSource, createdAt, updatedAt,
-          rowSpan, colSpan, type);
+          page, rowSpan, colSpan, type);
     }
     return orElse();
   }
@@ -2365,6 +2501,7 @@ abstract class DashboardResPageTilesDataUnionWeatherForecast
       required final List<DashboardTileBaseDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+      required final String page,
       @JsonKey(name: 'row_span') final int rowSpan,
       @JsonKey(name: 'col_span') final int colSpan,
       final String type}) = _$DashboardResPageTilesDataUnionWeatherForecastImpl;
@@ -2399,6 +2536,10 @@ abstract class DashboardResPageTilesDataUnionWeatherForecast
   @override
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
+
+  /// The unique identifier of the associated page.
+  @override
+  String get page;
 
   /// The number of rows the tile spans.
   @override

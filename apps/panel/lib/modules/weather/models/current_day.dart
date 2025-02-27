@@ -76,6 +76,25 @@ class CurrentDayModel extends Model {
 
   DateTime get dayTime => _dayTime;
 
+  factory CurrentDayModel.fromJson(Map<String, dynamic> json) {
+    return CurrentDayModel(
+      temperature: json['temperature'].toDouble(),
+      temperatureMin: json['temperature_min']?.toDouble(),
+      temperatureMax: json['temperature_max']?.toDouble(),
+      feelsLike: json['feels_like'].toDouble(),
+      pressure: json['pressure'],
+      humidity: json['humidity'],
+      weather: WeatherInfoModel.fromJson(json['weather']),
+      wind: WindModel.fromJson(json['wind']),
+      clouds: json['clouds'].toDouble(),
+      rain: json['rain']?.toDouble(),
+      snow: json['snow']?.toDouble(),
+      sunrise: DateTime.parse(json['sunrise']),
+      sunset: DateTime.parse(json['sunset']),
+      dayTime: DateTime.parse(json['day_time']),
+    );
+  }
+
   CurrentDayModel copyWith({
     double? temperature,
     double? temperatureMin,
@@ -109,4 +128,41 @@ class CurrentDayModel extends Model {
       dayTime: dayTime ?? _dayTime,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CurrentDayModel &&
+          other._temperature == _temperature &&
+          other._temperatureMin == _temperatureMin &&
+          other._temperatureMax == _temperatureMax &&
+          other._feelsLike == _feelsLike &&
+          other._pressure == _pressure &&
+          other._humidity == _humidity &&
+          other._weather == _weather &&
+          other._wind == _wind &&
+          other._clouds == _clouds &&
+          other._rain == _rain &&
+          other._snow == _snow &&
+          other._sunrise == _sunrise &&
+          other._sunset == _sunset &&
+          other._dayTime == _dayTime);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _temperature,
+        _temperatureMin,
+        _temperatureMax,
+        _feelsLike,
+        _pressure,
+        _humidity,
+        _weather,
+        _wind,
+        _clouds,
+        _rain,
+        _snow,
+        _sunrise,
+        _sunset,
+        _dayTime,
+      ]);
 }

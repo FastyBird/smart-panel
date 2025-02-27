@@ -5,7 +5,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DevicesModule } from '../devices/devices.module';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedService } from '../seed/services/seed.service';
-import { WebsocketModule } from '../websocket/websocket.module';
 
 import { PagesCardsController } from './controllers/pages.cards.controller';
 import { PagesCardsDataSourceController } from './controllers/pages.cards.data-source.controller';
@@ -76,7 +75,6 @@ import { TileDataSourceTypeConstraintValidator } from './validators/tile-data-so
 		]),
 		DevicesModule,
 		SeedModule,
-		WebsocketModule,
 	],
 	providers: [
 		PagesService,

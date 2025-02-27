@@ -24,6 +24,15 @@ class ForecastFeelsLikeModel extends Model {
 
   double? get night => _night;
 
+  factory ForecastFeelsLikeModel.fromJson(Map<String, dynamic> json) {
+    return ForecastFeelsLikeModel(
+      morn: json['morn']?.toDouble(),
+      day: json['day']?.toDouble(),
+      eve: json['eve']?.toDouble(),
+      night: json['night']?.toDouble(),
+    );
+  }
+
   ForecastFeelsLikeModel copyWith({
     double? morn,
     double? day,
@@ -37,4 +46,21 @@ class ForecastFeelsLikeModel extends Model {
       night: night ?? _night,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ForecastFeelsLikeModel &&
+          other._morn == _morn &&
+          other._day == _day &&
+          other._eve == _eve &&
+          other._night == _night);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _morn,
+        _day,
+        _eve,
+        _night,
+      ]);
 }

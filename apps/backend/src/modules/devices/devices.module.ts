@@ -6,6 +6,7 @@ import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedService } from '../seed/services/seed.service';
+import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
 
@@ -131,7 +132,7 @@ export class DevicesModule {
 		this.eventRegistry.register(
 			EventType.CHANNEL_PROPERTY_SET,
 			EventHandlerName.INTERNAL_SET_PROPERTY,
-			(payload?: object) => this.propertyCommandService.handle(payload),
+			(user: ClientUserDto, payload?: object) => this.propertyCommandService.handleInternal(user, payload),
 		);
 
 		this.influxDbService.registerSchema(PropertyInfluxDbSchema);

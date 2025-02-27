@@ -65,12 +65,23 @@ class PageSceneTileModel extends SceneTileModel {
   });
 
   factory PageSceneTileModel.fromJson(Map<String, dynamic> json) {
+    List<String> dataSources = [];
+
+    if (json['data_source'] is List) {
+      for (var dataSource in json['data_source']) {
+        if (dataSource is String) {
+          dataSources.add(dataSource);
+        } else if (dataSource is Map<String, dynamic> &&
+            dataSource.containsKey('id')) {
+          dataSources.add(dataSource['id']);
+        }
+      }
+    }
+
     return PageSceneTileModel(
       id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['parent']),
-      dataSource: UuidUtils.validateUuidList(
-        List<String>.from(json['data_source'] ?? []),
-      ),
+      parent: UuidUtils.validateUuid(json['page']),
+      dataSource: UuidUtils.validateUuidList(dataSources),
       row: json['row'],
       col: json['col'],
       rowSpan: json['row_span'],
@@ -114,12 +125,23 @@ class CardSceneTileModel extends SceneTileModel {
   });
 
   factory CardSceneTileModel.fromJson(Map<String, dynamic> json) {
+    List<String> dataSources = [];
+
+    if (json['data_source'] is List) {
+      for (var dataSource in json['data_source']) {
+        if (dataSource is String) {
+          dataSources.add(dataSource);
+        } else if (dataSource is Map<String, dynamic> &&
+            dataSource.containsKey('id')) {
+          dataSources.add(dataSource['id']);
+        }
+      }
+    }
+
     return CardSceneTileModel(
       id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['parent']),
-      dataSource: UuidUtils.validateUuidList(
-        List<String>.from(json['data_source'] ?? []),
-      ),
+      parent: UuidUtils.validateUuid(json['card']),
+      dataSource: UuidUtils.validateUuidList(dataSources),
       row: json['row'],
       col: json['col'],
       rowSpan: json['row_span'],

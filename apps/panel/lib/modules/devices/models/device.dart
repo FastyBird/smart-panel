@@ -48,6 +48,32 @@ class DeviceModel extends Model {
       json['category'],
     );
 
+    List<String> controls = [];
+
+    if (json['controls'] is List) {
+      for (var control in json['controls']) {
+        if (control is String) {
+          controls.add(control);
+        } else if (control is Map<String, dynamic> &&
+            control.containsKey('id')) {
+          controls.add(control['id']);
+        }
+      }
+    }
+
+    List<String> channels = [];
+
+    if (json['channels'] is List) {
+      for (var channel in json['channels']) {
+        if (channel is String) {
+          channels.add(channel);
+        } else if (channel is Map<String, dynamic> &&
+            channel.containsKey('id')) {
+          channels.add(channel['id']);
+        }
+      }
+    }
+
     return DeviceModel(
       id: json['id'],
       category: category ?? DeviceCategory.generic,
@@ -59,12 +85,8 @@ class DeviceModel extends Model {
               SymbolStyle.outlined,
             )
           : null,
-      controls: UuidUtils.validateUuidList(
-        List<String>.from(json['controls'] ?? []),
-      ),
-      channels: UuidUtils.validateUuidList(
-        List<String>.from(json['channels'] ?? []),
-      ),
+      controls: UuidUtils.validateUuidList(controls),
+      channels: UuidUtils.validateUuidList(channels),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

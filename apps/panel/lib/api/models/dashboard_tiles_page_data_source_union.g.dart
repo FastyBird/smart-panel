@@ -19,6 +19,7 @@ _$DashboardTilesPageDataSourceUnionDeviceChannelImpl
           channel: json['channel'] as String,
           property: json['property'] as String,
           icon: json['icon'] as String?,
+          page: json['page'] as String,
           type: json['type'] as String? ?? 'device-channel',
         );
 
@@ -33,5 +34,6 @@ Map<String, dynamic>
           'channel': instance.channel,
           'property': instance.property,
           'icon': instance.icon,
+          'page': instance.page,
           'type': instance.type,
         };

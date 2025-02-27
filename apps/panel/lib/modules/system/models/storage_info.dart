@@ -32,4 +32,35 @@ class StorageInfoModel extends Model {
       available: json['available'],
     );
   }
+
+  StorageInfoModel copyWith({
+    String? fs,
+    int? used,
+    int? size,
+    int? available,
+  }) {
+    return StorageInfoModel(
+      fs: fs ?? _fs,
+      used: used ?? _used,
+      size: size ?? _size,
+      available: available ?? _available,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StorageInfoModel &&
+          other._fs == _fs &&
+          other._used == _used &&
+          other._size == _size &&
+          other._available == _available);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _fs,
+        _used,
+        _size,
+        _available,
+      ]);
 }

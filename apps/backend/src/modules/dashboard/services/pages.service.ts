@@ -5,9 +5,9 @@ import omitBy from 'lodash.omitby';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateCardDto } from '../dto/create-card.dto';
@@ -32,7 +32,7 @@ export class PagesService {
 		private readonly tilesMapperService: TilesTypeMapperService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 		private readonly dataSource: OrmDataSource,
-		private readonly gateway: WebsocketGateway,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findAll<TPage extends PageEntity>(): Promise<TPage[]> {
@@ -239,7 +239,7 @@ export class PagesService {
 
 		this.logger.debug(`[CREATE] Successfully created page with id=${savedPage.id}`);
 
-		this.gateway.sendMessage(EventType.PAGE_CREATED, savedPage);
+		this.eventEmitter.emit(EventType.PAGE_CREATED, savedPage);
 
 		return savedPage;
 	}
@@ -276,7 +276,7 @@ export class PagesService {
 
 		this.logger.debug(`[UPDATE] Successfully updated page with id=${updatedPage.id}`);
 
-		this.gateway.sendMessage(EventType.PAGE_UPDATED, updatedPage);
+		this.eventEmitter.emit(EventType.PAGE_UPDATED, updatedPage);
 
 		return updatedPage;
 	}
@@ -290,7 +290,7 @@ export class PagesService {
 
 		this.logger.log(`[DELETE] Successfully removed page with id=${id}`);
 
-		this.gateway.sendMessage(EventType.PAGE_DELETED, page);
+		this.eventEmitter.emit(EventType.PAGE_DELETED, page);
 	}
 
 	async getOneOrThrow<TPage extends PageEntity>(id: string): Promise<TPage> {

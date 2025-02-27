@@ -20,6 +20,19 @@ class WeatherConfigModel extends Model {
 
   WeatherUnit get unit => _unit;
 
+  factory WeatherConfigModel.fromJson(Map<String, dynamic> json) {
+    WeatherLocationType? locationType =
+        WeatherLocationType.fromValue(json['location_type']);
+
+    WeatherUnit? unit = WeatherUnit.fromValue(json['unit']);
+
+    return WeatherConfigModel(
+      location: json['location'],
+      locationType: locationType ?? WeatherLocationType.cityName,
+      unit: unit ?? WeatherUnit.celsius,
+    );
+  }
+
   WeatherConfigModel copyWith({
     String? location,
     WeatherLocationType? locationType,
@@ -31,4 +44,19 @@ class WeatherConfigModel extends Model {
       unit: unit ?? _unit,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WeatherConfigModel &&
+          other._location == _location &&
+          other._locationType.value == _locationType.value &&
+          other._unit.value == _unit.value);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _location,
+        _locationType.value,
+        _unit.value,
+      ]);
 }

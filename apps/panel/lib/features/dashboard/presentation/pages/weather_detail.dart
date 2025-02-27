@@ -57,7 +57,7 @@ class _WeatherDetailPageState extends State<WeatherDetailPage> {
 
   void _syncStateWithRepository() {
     setState(() {
-      _weatherUnit = _weatherConfigRepository.data.unit;
+      _weatherUnit = _weatherConfigRepository.unit;
       _currentWeather = _currentWeatherRepository.data;
       _weatherForecast = _forecastWeatherRepository.data ?? [];
     });

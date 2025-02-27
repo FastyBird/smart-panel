@@ -45,6 +45,9 @@ mixin _$DashboardResPageCardDataSourcesDataUnion {
   /// The icon representing the data source.
   String? get icon => throw _privateConstructorUsedError;
 
+  /// The unique identifier of the associated card.
+  String get card => throw _privateConstructorUsedError;
+
   /// Indicates that this data source is linked to a device channel.
   String get type => throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -57,6 +60,7 @@ mixin _$DashboardResPageCardDataSourcesDataUnion {
             String channel,
             String property,
             String? icon,
+            String card,
             String type)
         deviceChannel,
   }) =>
@@ -71,6 +75,7 @@ mixin _$DashboardResPageCardDataSourcesDataUnion {
             String channel,
             String property,
             String? icon,
+            String card,
             String type)?
         deviceChannel,
   }) =>
@@ -85,6 +90,7 @@ mixin _$DashboardResPageCardDataSourcesDataUnion {
             String channel,
             String property,
             String? icon,
+            String card,
             String type)?
         deviceChannel,
     required TResult orElse(),
@@ -140,6 +146,7 @@ abstract class $DashboardResPageCardDataSourcesDataUnionCopyWith<$Res> {
       String channel,
       String property,
       String? icon,
+      String card,
       String type});
 }
 
@@ -167,6 +174,7 @@ class _$DashboardResPageCardDataSourcesDataUnionCopyWithImpl<$Res,
     Object? channel = null,
     Object? property = null,
     Object? icon = freezed,
+    Object? card = null,
     Object? type = null,
   }) {
     return _then(_value.copyWith(
@@ -198,6 +206,10 @@ class _$DashboardResPageCardDataSourcesDataUnionCopyWithImpl<$Res,
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      card: null == card
+          ? _value.card
+          : card // ignore: cast_nullable_to_non_nullable
+              as String,
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -226,6 +238,7 @@ abstract class _$$DashboardResPageCardDataSourcesDataUnionDeviceChannelImplCopyW
       String channel,
       String property,
       String? icon,
+      String card,
       String type});
 }
 
@@ -255,6 +268,7 @@ class __$$DashboardResPageCardDataSourcesDataUnionDeviceChannelImplCopyWithImpl<
     Object? channel = null,
     Object? property = null,
     Object? icon = freezed,
+    Object? card = null,
     Object? type = null,
   }) {
     return _then(_$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl(
@@ -286,6 +300,10 @@ class __$$DashboardResPageCardDataSourcesDataUnionDeviceChannelImplCopyWithImpl<
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      card: null == card
+          ? _value.card
+          : card // ignore: cast_nullable_to_non_nullable
+              as String,
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
@@ -306,6 +324,7 @@ class _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl
       required this.channel,
       required this.property,
       required this.icon,
+      required this.card,
       this.type = 'device-channel'});
 
   factory _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl.fromJson(
@@ -343,6 +362,10 @@ class _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl
   @override
   final String? icon;
 
+  /// The unique identifier of the associated card.
+  @override
+  final String card;
+
   /// Indicates that this data source is linked to a device channel.
   @override
   @JsonKey()
@@ -350,7 +373,7 @@ class _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl
 
   @override
   String toString() {
-    return 'DashboardResPageCardDataSourcesDataUnion.deviceChannel(id: $id, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, channel: $channel, property: $property, icon: $icon, type: $type)';
+    return 'DashboardResPageCardDataSourcesDataUnion.deviceChannel(id: $id, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, channel: $channel, property: $property, icon: $icon, card: $card, type: $type)';
   }
 
   @override
@@ -369,13 +392,14 @@ class _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl
             (identical(other.property, property) ||
                 other.property == property) &&
             (identical(other.icon, icon) || other.icon == icon) &&
+            (identical(other.card, card) || other.card == card) &&
             (identical(other.type, type) || other.type == type));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, createdAt, updatedAt, device,
-      channel, property, icon, type);
+      channel, property, icon, card, type);
 
   /// Create a copy of DashboardResPageCardDataSourcesDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -400,11 +424,12 @@ class _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl
             String channel,
             String property,
             String? icon,
+            String card,
             String type)
         deviceChannel,
   }) {
     return deviceChannel(
-        id, createdAt, updatedAt, device, channel, property, icon, type);
+        id, createdAt, updatedAt, device, channel, property, icon, card, type);
   }
 
   @override
@@ -418,11 +443,12 @@ class _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl
             String channel,
             String property,
             String? icon,
+            String card,
             String type)?
         deviceChannel,
   }) {
     return deviceChannel?.call(
-        id, createdAt, updatedAt, device, channel, property, icon, type);
+        id, createdAt, updatedAt, device, channel, property, icon, card, type);
   }
 
   @override
@@ -436,13 +462,14 @@ class _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl
             String channel,
             String property,
             String? icon,
+            String card,
             String type)?
         deviceChannel,
     required TResult orElse(),
   }) {
     if (deviceChannel != null) {
-      return deviceChannel(
-          id, createdAt, updatedAt, device, channel, property, icon, type);
+      return deviceChannel(id, createdAt, updatedAt, device, channel, property,
+          icon, card, type);
     }
     return orElse();
   }
@@ -499,6 +526,7 @@ abstract class DashboardResPageCardDataSourcesDataUnionDeviceChannel
           required final String channel,
           required final String property,
           required final String? icon,
+          required final String card,
           final String type}) =
       _$DashboardResPageCardDataSourcesDataUnionDeviceChannelImpl;
 
@@ -535,6 +563,10 @@ abstract class DashboardResPageCardDataSourcesDataUnionDeviceChannel
   /// The icon representing the data source.
   @override
   String? get icon;
+
+  /// The unique identifier of the associated card.
+  @override
+  String get card;
 
   /// Indicates that this data source is linked to a device channel.
   @override

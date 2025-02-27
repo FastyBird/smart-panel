@@ -18,7 +18,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
-import { AccessTokenType, DisplaySecretCacheKey, DisplaySecretHeader } from '../auth.constants';
+import { ACCESS_TOKEN_TYPE, DISPLAY_SECRET_CACHE_KEY, DISPLAY_SECRET_HEADER } from '../auth.constants';
 import { AccessTokenEntity, LongLiveTokenEntity } from '../entities/auth.entity';
 import { TokensService } from '../services/tokens.service';
 import { hashToken } from '../utils/token.utils';
@@ -62,7 +62,7 @@ export class AuthGuard implements CanActivate {
 		}
 
 		// If no JWT, check for x-display-secret header
-		const displaySecret = request.headers[DisplaySecretHeader] as string;
+		const displaySecret = request.headers[DISPLAY_SECRET_HEADER] as string;
 
 		if (displaySecret && (await this.validateDisplaySecret(request, displaySecret))) {
 			return true;
@@ -161,7 +161,7 @@ export class AuthGuard implements CanActivate {
 		let userSecret: string | undefined;
 
 		try {
-			userSecret = await this.cacheManager.get<string>(DisplaySecretCacheKey);
+			userSecret = await this.cacheManager.get<string>(DISPLAY_SECRET_CACHE_KEY);
 		} catch (error) {
 			const err = error as Error;
 
@@ -185,13 +185,13 @@ export class AuthGuard implements CanActivate {
 		const match = await bcrypt.compare(providedSecret, userSecret);
 
 		if (!match) {
-			this.logger.warn(`[AUTH] Invalid ${DisplaySecretHeader} provided`);
+			this.logger.warn(`[AUTH] Invalid ${DISPLAY_SECRET_HEADER} provided`);
 
 			throw new UnauthorizedException('Invalid display authentication');
 		}
 
 		try {
-			await this.cacheManager.set(DisplaySecretCacheKey, userSecret);
+			await this.cacheManager.set(DISPLAY_SECRET_CACHE_KEY, userSecret);
 		} catch (error) {
 			const err = error as Error;
 
@@ -214,6 +214,6 @@ export class AuthGuard implements CanActivate {
 
 		const [type, token] = authHeader.split(' ');
 
-		return type === AccessTokenType ? token : undefined;
+		return type === ACCESS_TOKEN_TYPE ? token : undefined;
 	}
 }

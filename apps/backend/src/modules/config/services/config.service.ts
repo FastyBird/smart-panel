@@ -10,7 +10,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { PlatformService } from '../../platform/services/platform.service';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType, SectionType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { BaseConfigDto } from '../dto/config.dto';
@@ -25,7 +24,6 @@ export class ConfigService {
 	constructor(
 		private readonly configService: NestConfigService,
 		private readonly platform: PlatformService,
-		private readonly gateway: WebsocketGateway,
 		private readonly eventEmitter: EventEmitter2,
 	) {
 		this.loadConfig();
@@ -201,8 +199,7 @@ export class ConfigService {
 		}
 
 		this.logger.log(`[EVENT] Broadcasting configuration change for section=${key}`);
-		this.gateway.sendMessage(EventType.CONFIG_UPDATED, this.config);
-		this.eventEmitter.emit(EventType.CONFIG_UPDATED);
+		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.config);
 
 		this.logger.log(`[UPDATE] Configuration update for section=${key} completed successfully`);
 	}

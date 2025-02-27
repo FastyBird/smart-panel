@@ -34,6 +34,9 @@ sealed class DashboardResPageCardTileDataSourceDataUnion with _$DashboardResPage
     /// The icon representing the data source.
     required String? icon,
 
+    /// The unique identifier of the associated card.
+    required String tile,
+
     /// Indicates that this data source is linked to a device channel.
     @Default('device-channel')
     String type,

@@ -3,6 +3,9 @@ import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import { UserRole } from '../../users/users.constants';
+import { ClientUserDto } from '../../websocket/dto/client-user.dto';
+import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
 import { DataTypeType } from '../devices.constants';
 import { PropertyCommandDto, PropertyCommandValueDto } from '../dto/property-command.dto';
 import { IDevicePropertyData } from '../platforms/device.platform';
@@ -23,9 +26,14 @@ export class PropertyCommandService {
 		private readonly platformRegistryService: PlatformRegistryService,
 	) {}
 
-	async handle(
+	async handleInternal(
+		user: ClientUserDto,
 		payload?: object,
 	): Promise<{ success: boolean; results: Array<{ device: string; success: boolean; reason?: string }> | string }> {
+		if (user.role !== UserRole.DISPLAY) {
+			throw new WebsocketNotAllowedException('This action is not allowed for this user');
+		}
+
 		const dtoInstance = plainToInstance(PropertyCommandDto, payload, {
 			enableImplicitConversion: true,
 			excludeExtraneousValues: true,

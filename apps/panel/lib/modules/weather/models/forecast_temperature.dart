@@ -34,6 +34,17 @@ class ForecastTemperatureModel extends Model {
 
   double? get max => _max;
 
+  factory ForecastTemperatureModel.fromJson(Map<String, dynamic> json) {
+    return ForecastTemperatureModel(
+      morn: json['morn']?.toDouble(),
+      day: json['day']?.toDouble(),
+      eve: json['eve']?.toDouble(),
+      night: json['night']?.toDouble(),
+      min: json['min']?.toDouble(),
+      max: json['max']?.toDouble(),
+    );
+  }
+
   ForecastTemperatureModel copyWith({
     double? morn,
     double? day,
@@ -51,4 +62,25 @@ class ForecastTemperatureModel extends Model {
       max: max ?? _max,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ForecastTemperatureModel &&
+          other._morn == _morn &&
+          other._day == _day &&
+          other._eve == _eve &&
+          other._night == _night &&
+          other._min == _min &&
+          other._max == _max);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _morn,
+        _day,
+        _eve,
+        _night,
+        _min,
+        _max,
+      ]);
 }

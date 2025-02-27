@@ -32,4 +32,35 @@ class DisplayInfoModel extends Model {
       currentResY: json['current_res_y'],
     );
   }
+
+  DisplayInfoModel copyWith({
+    int? resolutionX,
+    int? resolutionY,
+    int? currentResX,
+    int? currentResY,
+  }) {
+    return DisplayInfoModel(
+      resolutionX: resolutionX ?? _resolutionX,
+      resolutionY: resolutionY ?? _resolutionY,
+      currentResX: currentResX ?? _currentResX,
+      currentResY: currentResY ?? _currentResY,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DisplayInfoModel &&
+          other._resolutionX == _resolutionX &&
+          other._resolutionY == _resolutionY &&
+          other._currentResX == _currentResX &&
+          other._currentResY == _currentResY);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _resolutionX,
+        _resolutionY,
+        _currentResX,
+        _currentResY,
+      ]);
 }

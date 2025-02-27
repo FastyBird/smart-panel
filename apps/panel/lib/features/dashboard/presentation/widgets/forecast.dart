@@ -65,7 +65,7 @@ class _ForecastTileWidgetInnerState extends State<ForecastTileWidgetInner> {
 
   void _syncStateWithRepository() {
     setState(() {
-      _weatherUnit = _weatherConfigRepository.data.unit;
+      _weatherUnit = _weatherConfigRepository.unit;
       _weatherForecast = _forecastWeatherRepository.data ?? [];
     });
   }

@@ -24,6 +24,15 @@ class AudioConfigModel extends Model {
 
   int get microphoneVolume => _microphoneVolume;
 
+  factory AudioConfigModel.fromJson(Map<String, dynamic> json) {
+    return AudioConfigModel(
+      speaker: json['speaker'],
+      speakerVolume: json['speaker_volume'],
+      microphone: json['microphone'],
+      microphoneVolume: json['microphone_volume'],
+    );
+  }
+
   AudioConfigModel copyWith({
     bool? speaker,
     int? speakerVolume,
@@ -37,4 +46,21 @@ class AudioConfigModel extends Model {
       microphoneVolume: microphoneVolume ?? _microphoneVolume,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AudioConfigModel &&
+          other._speaker == _speaker &&
+          other._speakerVolume == _speakerVolume &&
+          other._microphone == _microphone &&
+          other._microphoneVolume == _microphoneVolume);
+
+  @override
+  int get hashCode => Object.hashAll([
+        _speaker,
+        _speakerVolume,
+        _microphone,
+        _microphoneVolume,
+      ]);
 }

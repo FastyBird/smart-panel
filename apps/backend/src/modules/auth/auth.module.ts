@@ -1,9 +1,11 @@
+import { CacheModule } from '@nestjs/cache-manager';
 import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
 import { UsersModule } from '../users/users.module';
 
@@ -22,21 +24,20 @@ import { TokensService } from './services/tokens.service';
 
 @Module({
 	imports: [
-		NestConfigModule,
-		UsersModule,
-		TypeOrmModule.forFeature([TokenEntity, AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity]),
 		JwtModule.registerAsync({
 			imports: [NestConfigModule],
 			inject: [NestConfigService],
-			useFactory: (configService: NestConfigService) => ({
-				secret: getEnvValue<string | undefined>(
-					configService,
-					'TOKEN_SECRET',
-					'g3xHbkELpMD9LRqW4WmJkHL7kz2bdNYAQJyEuFVzR3k=',
-				),
-				signOptions: { expiresIn: '1h' },
-			}),
+			useFactory: (configService: NestConfigService) => {
+				return {
+					secret: getEnvValue<string | undefined>(configService, 'TOKEN_SECRET', DEFAULT_TOKEN_SECRET),
+					signOptions: { expiresIn: DEFAULT_TOKEN_EXPIRATION },
+				};
+			},
 		}),
+		NestConfigModule,
+		TypeOrmModule.forFeature([TokenEntity, AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity]),
+		CacheModule.register(),
+		UsersModule,
 	],
 	providers: [
 		AuthService,

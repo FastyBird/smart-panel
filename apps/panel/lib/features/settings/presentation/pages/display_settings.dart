@@ -56,10 +56,10 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
   void _syncStateWithRepository() {
     setState(() {
-      _isDarkMode = _repository.data.hasDarkMode;
-      _brightness = _repository.data.brightness;
-      _screenLockDuration = _repository.data.screenLockDuration;
-      _hasScreenSaver = _repository.data.hasScreenSaver;
+      _isDarkMode = _repository.hasDarkMode;
+      _brightness = _repository.brightness;
+      _screenLockDuration = _repository.screenLockDuration;
+      _hasScreenSaver = _repository.hasScreenSaver;
     });
   }
 

@@ -1,6 +1,8 @@
-import 'package:fastybird_smart_panel/api/models/system_throttle_status.dart';
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/modules/system/models/throttle_status.dart';
 import 'package:fastybird_smart_panel/modules/system/repositories/repository.dart';
+import 'package:flutter/foundation.dart';
 
 class ThrottleStatusRepository extends Repository<ThrottleStatusModel> {
   ThrottleStatusRepository({required super.apiClient});
@@ -15,17 +17,30 @@ class ThrottleStatusRepository extends Repository<ThrottleStatusModel> {
     }
   }
 
-  Future<void> insertThrottleStatus(
-    SystemThrottleStatus apiThrottleStatus,
-  ) async {
-    data = ThrottleStatusModel.fromJson({
-      'undervoltage': apiThrottleStatus.undervoltage,
-      'frequency_capping': apiThrottleStatus.frequencyCapping,
-      'throttling': apiThrottleStatus.throttling,
-      'soft_temp_limit': apiThrottleStatus.softTempLimit,
-    });
+  Future<void> insertThrottleStatus(Map<String, dynamic> json) async {
+    try {
+      ThrottleStatusModel newData = ThrottleStatusModel.fromJson(json);
 
-    notifyListeners();
+      if (data != newData) {
+        if (kDebugMode) {
+          debugPrint(
+            '[SYSTEM MODULE] Throttle info was successfully updated',
+          );
+        }
+
+        data = newData;
+
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SYSTEM MODULE] Throttle info model could not be created',
+        );
+      }
+
+      /// Failed to create new model
+    }
   }
 
   Future<void> fetchThrottleStatus() async {
@@ -33,7 +48,7 @@ class ThrottleStatusRepository extends Repository<ThrottleStatusModel> {
       () async {
         final response = await apiClient.getSystemModuleSystemThrottle();
 
-        insertThrottleStatus(response.data.data);
+        insertThrottleStatus(jsonDecode(jsonEncode(response.data.data)));
       },
       'fetch throttle status',
     );

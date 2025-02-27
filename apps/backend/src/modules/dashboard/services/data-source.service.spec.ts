@@ -15,6 +15,7 @@ import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
@@ -29,7 +30,6 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../device
 import { ChannelsPropertiesService } from '../../devices/services/channels.properties.service';
 import { ChannelsService } from '../../devices/services/channels.service';
 import { DevicesService } from '../../devices/services/devices.service';
-import { WebsocketGateway } from '../../websocket/gateway/websocket.gateway';
 import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateDeviceChannelDataSourceDto } from '../dto/create-data-source.dto';
@@ -70,7 +70,7 @@ describe('DataSourceService', () => {
 	let dataSourceService: DataSourceService;
 	let repository: Repository<DataSourceEntity>;
 	let mapper: DataSourcesTypeMapperService;
-	let gateway: WebsocketGateway;
+	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 	let devicesService: DevicesService;
 	let channelsService: ChannelsService;
@@ -229,9 +229,9 @@ describe('DataSourceService', () => {
 					},
 				},
 				{
-					provide: WebsocketGateway,
+					provide: EventEmitter2,
 					useValue: {
-						sendMessage: jest.fn(() => {}),
+						emit: jest.fn(() => {}),
 					},
 				},
 				{
@@ -250,7 +250,7 @@ describe('DataSourceService', () => {
 		dataSourceService = module.get<DataSourceService>(DataSourceService);
 		repository = module.get<Repository<DataSourceEntity>>(getRepositoryToken(DataSourceEntity));
 		mapper = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
-		gateway = module.get<WebsocketGateway>(WebsocketGateway);
+		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<OrmDataSource>(OrmDataSource);
 		devicesService = module.get<DevicesService>(DevicesService);
 		channelsService = module.get<ChannelsService>(ChannelsService);
@@ -268,7 +268,7 @@ describe('DataSourceService', () => {
 		expect(dataSourceService).toBeDefined();
 		expect(repository).toBeDefined();
 		expect(mapper).toBeDefined();
-		expect(gateway).toBeDefined();
+		expect(eventEmitter).toBeDefined();
 		expect(dataSource).toBeDefined();
 		expect(devicesService).toBeDefined();
 		expect(channelsService).toBeDefined();
@@ -434,8 +434,8 @@ describe('DataSourceService', () => {
 				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCratedDataSource);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
-				EventType.TILE_DATA_SOURCE_CREATED,
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.DATA_SOURCE_CREATED,
 				plainToInstance(DeviceChannelDataSourceEntity, mockCratedDataSource),
 			);
 			expect(repository.findOne).toHaveBeenCalledWith({
@@ -521,8 +521,8 @@ describe('DataSourceService', () => {
 			expect(repository.save).toHaveBeenCalledWith(
 				plainToInstance(DeviceChannelDataSourceEntity, mockUpdatedDataSource),
 			);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
-				EventType.TILE_DATA_SOURCE_UPDATED,
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.DATA_SOURCE_UPDATED,
 				plainToInstance(DeviceChannelDataSourceEntity, mockUpdatedDataSource),
 			);
 			expect(repository.findOne).toHaveBeenCalledWith({
@@ -547,8 +547,8 @@ describe('DataSourceService', () => {
 			expect(repository.remove).toHaveBeenCalledWith(
 				plainToInstance(DeviceChannelDataSourceEntity, mockDeviceChannelDataSource),
 			);
-			expect(gateway.sendMessage).toHaveBeenCalledWith(
-				EventType.TILE_DATA_SOURCE_DELETED,
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.DATA_SOURCE_DELETED,
 				plainToInstance(DeviceChannelDataSourceEntity, mockDeviceChannelDataSource),
 			);
 		});

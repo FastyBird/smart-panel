@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fastybird_smart_panel/api/models/config_language_language.dart';
 import 'package:fastybird_smart_panel/api/models/config_language_time_format.dart';
 import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
@@ -10,9 +12,24 @@ import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/language.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
+import 'package:flutter/foundation.dart';
 
 class LanguageConfigRepository extends Repository<LanguageConfigModel> {
   LanguageConfigRepository({required super.apiClient});
+
+  LanguageConfigModel _getConfig() {
+    if (data == null) {
+      throw Exception('Config module is not initialized');
+    }
+
+    return data!;
+  }
+
+  Language get language => _getConfig().language;
+
+  String get timezone => _getConfig().timezone;
+
+  TimeFormat get timeFormat => _getConfig().timeFormat;
 
   Future<bool> refresh() async {
     try {
@@ -24,16 +41,30 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
     }
   }
 
-  void insertLanguageConfiguration(
-    ConfigResSectionDataUnionLanguage apiLanguageConfig,
-  ) {
-    data = LanguageConfigModel(
-      language: _convertLanguageFromApi(apiLanguageConfig.language),
-      timezone: apiLanguageConfig.timezone,
-      timeFormat: _convertTimeFormatFromApi(apiLanguageConfig.timeFormat),
-    );
+  void insertConfiguration(Map<String, dynamic> json) {
+    try {
+      LanguageConfigModel newData = LanguageConfigModel.fromJson(json);
 
-    notifyListeners();
+      if (data != newData) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CONFIG MODULE] Language configuration was successfully updated',
+          );
+        }
+
+        data = newData;
+
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[CONFIG MODULE] Language configuration model could not be created',
+        );
+      }
+
+      rethrow;
+    }
   }
 
   Future<bool> setLanguage(Language language) async {
@@ -81,14 +112,15 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
       section: Section.language,
       data: ConfigReqUpdateSectionDataUnionLanguage(
         type: ConfigUpdateLanguageType.language,
-        language: _convertLanguageToApi(language ?? data.language),
-        timezone: timezone ?? data.timezone,
-        timeFormat: _convertTimeFormatToApi(timeFormat ?? data.timeFormat),
+        language: _convertLanguageToApi(language ?? _getConfig().language),
+        timezone: timezone ?? _getConfig().timezone,
+        timeFormat:
+            _convertTimeFormatToApi(timeFormat ?? _getConfig().timeFormat),
       ),
     );
 
     if (updated is ConfigResSectionDataUnionLanguage) {
-      data = data.copyWith(
+      data = _getConfig().copyWith(
         language: _convertLanguageFromApi(updated.language),
         timezone: updated.timezone,
         timeFormat: _convertTimeFormatFromApi(updated.timeFormat),
@@ -107,7 +139,7 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionLanguage) {
-          insertLanguageConfiguration(data);
+          insertConfiguration(jsonDecode(jsonEncode(data)));
         }
       },
       'fetch language configuration',
