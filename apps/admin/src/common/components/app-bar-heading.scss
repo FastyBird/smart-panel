@@ -1,0 +1,72 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+@use 'element-plus/theme-chalk/src/common/var' as *;
+
+@include b(app-bar-heading) {
+	@include e(title) {
+		overflow: hidden;
+		margin: 0;
+		flex-grow: 1;
+
+		> span {
+			color: var(--el-color-white);
+			display: block !important;
+		}
+
+		> span:first-child {
+			line-height: 1.2rem;
+			font-size: 1.2rem;
+			font-weight: bold;
+		}
+
+		> span:last-child {
+			line-height: 1.1rem;
+			font-size: 0.9rem;
+		}
+
+		> span:only-child {
+			line-height: 2rem;
+			font-size: 1.3rem;
+		}
+
+		@include m(align-center) {
+			text-align: center;
+		}
+
+		@include m(align-left) {
+			text-align: left;
+		}
+
+		@include m(align-right) {
+			text-align: right;
+		}
+	}
+
+	@include e(prepend) {
+		flex: 0 0 2rem;
+		text-align: center;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	@include e(append) {
+		flex: 0 0 5rem;
+		text-align: center;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		margin-left: 0.25rem;
+	}
+
+	@include e(icon) {
+		color: getCssVar('app-bar', 'heading', 'bg-color');
+		background-color: getCssVar('app-bar', 'heading', 'color');
+		border-radius: 50%;
+		height: getCssVar('app-bar', 'heading', 'icon-size');
+		width: getCssVar('app-bar', 'heading', 'icon-size');
+		line-height: getCssVar('app-bar', 'heading', 'icon-size');
+		font-size: getCssVar('app-bar', 'heading', 'icon-font-size');
+		text-align: center;
+		margin-right: getCssVar('app-bar', 'heading', 'icon-margin');
+	}
+}

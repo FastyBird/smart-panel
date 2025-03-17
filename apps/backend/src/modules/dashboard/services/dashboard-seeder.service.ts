@@ -53,10 +53,14 @@ export class DashboardSeederService implements Seeder {
 
 		this.logger.log('[SEED] Seeding dashboard module...');
 
-		const pages = this.seedTools.loadJsonData(getEnvValue<string>(this.configService, 'SEED_PAGES_FILE', 'pages.json'));
-		const tiles = this.seedTools.loadJsonData(getEnvValue<string>(this.configService, 'SEED_TILES_FILE', 'tiles.json'));
+		const pages = this.seedTools.loadJsonData(
+			getEnvValue<string>(this.configService, 'FB_SEED_PAGES_FILE', 'pages.json'),
+		);
+		const tiles = this.seedTools.loadJsonData(
+			getEnvValue<string>(this.configService, 'FB_SEED_TILES_FILE', 'tiles.json'),
+		);
 		const dataSources = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'SEED_TILES_DATA_SOURCE_FILE', 'tiles_data_source.json'),
+			getEnvValue<string>(this.configService, 'FB_SEED_TILES_DATA_SOURCE_FILE', 'tiles_data_source.json'),
 		);
 
 		if (!pages.length) {

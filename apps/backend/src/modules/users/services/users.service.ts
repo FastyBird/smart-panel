@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
@@ -55,13 +56,20 @@ export class UsersService {
 
 		const dtoInstance = await this.validateDto<CreateUserDto>(CreateUserDto, createDto);
 
+		// Hash password before storing it
+		const hashedPassword = await bcrypt.hash(dtoInstance.password, 10);
+
 		const user = this.repository.create(
-			plainToInstance(UserEntity, dtoInstance, {
-				enableImplicitConversion: true,
-				excludeExtraneousValues: true,
-				exposeUnsetFields: false,
-				groups: ['internal'],
-			}),
+			plainToInstance(
+				UserEntity,
+				{ ...dtoInstance, password: hashedPassword },
+				{
+					enableImplicitConversion: true,
+					excludeExtraneousValues: true,
+					exposeUnsetFields: false,
+					groups: ['internal'],
+				},
+			),
 		);
 
 		// Save the user
@@ -84,14 +92,22 @@ export class UsersService {
 
 		const dtoInstance = await this.validateDto<UpdateUserDto>(UpdateUserDto, updateDto);
 
+		// Hash password before storing it
+		const hashedPassword = dtoInstance.password ? await bcrypt.hash(dtoInstance.password, 10) : undefined;
+
 		Object.assign(
 			user,
 			omitBy(
-				plainToInstance(UserEntity, dtoInstance, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeDefaultValues: false,
-				}),
+				plainToInstance(
+					UserEntity,
+					{ ...dtoInstance, password: hashedPassword },
+					{
+						enableImplicitConversion: true,
+						excludeExtraneousValues: true,
+						exposeDefaultValues: false,
+						groups: ['internal'],
+					},
+				),
 				isUndefined,
 			),
 		);

@@ -21,7 +21,7 @@ export class SeedTools {
 	private getSeedPath(): string {
 		return getEnvValue<string>(
 			this.configService,
-			'SEED_DATA_PATH',
+			'FB_SEED_DATA_PATH',
 			path.resolve(__dirname, '../../../../../../var/data/seed'),
 		);
 	}

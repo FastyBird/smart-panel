@@ -1,0 +1,181 @@
+$--colors: (
+	'primary': (
+		'base': #d9230f,
+	),
+	'success': (
+		'base': #469408,
+	),
+	'warning': (
+		'base': #d9831f,
+	),
+	'danger': (
+		'base': #db2828,
+	),
+	'error': (
+		'base': #db2828,
+	),
+	'info': (
+		'base': #029acf,
+	),
+);
+
+@forward 'element-plus/theme-chalk/src/common/var' with (
+	$colors: $--colors,
+	$button-padding-horizontal: (
+		'default': 50px,
+	),
+	// Break-point
+	$sm: 576px !default,
+	$md: 768px !default,
+	$lg: 992px !default,
+	$xl: 1200px !default
+);
+
+@use 'element-plus/theme-chalk/src/index' as *;
+@use 'element-plus/theme-chalk/src/reset' as *;
+
+// Dark theme
+@use './dark';
+@use 'element-plus/theme-chalk/src/dark/css-vars' as *;
+
+* {
+	border-color: var(--el-border-color);
+}
+
+a {
+	color: var(--el-color-primary);
+}
+
+code {
+	border-radius: 2px;
+	padding: 2px 4px;
+	background-color: var(--el-color-primary-light-9);
+	color: var(--el-color-primary);
+}
+
+.el-result .el-result__icon .el-icon-with-child svg {
+	--el-result-icon-font-size: 100%;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+	z-index: 1;
+}
+
+::view-transition-new(root) {
+	z-index: 2147483646;
+}
+
+.dark::view-transition-old(root) {
+	z-index: 2147483646;
+}
+
+.dark::view-transition-new(root) {
+	z-index: 1;
+}
+
+:root {
+	// colors
+	--text-color: var(--el-text-color-primary);
+	--text-color-light: var(--el-text-color-regular);
+	--text-color-lighter: var(--el-text-color-secondary);
+
+	--brand-color: var(--el-color-primary);
+	--brand-color-light: var(--el-color-primary-light-1);
+	--bg-brand-color: var(--el-color-primary-light-9);
+
+	--bg-color: var(--el-bg-color);
+	--bg-color-rgb: 255, 255, 255;
+	--bg-color-soft: #fafafa;
+	--bg-color-mute: #f2f2f2;
+	--border-color: var(--el-border-color);
+	--border-color-light: var(--el-border-color-lighter);
+}
+
+.dark {
+	--bg-color-rgb: 0, 0, 0;
+	--bg-color-soft: #242424;
+	--bg-color-mute: #2c2c2c;
+}
+
+#nprogress {
+	pointer-events: none;
+}
+
+#nprogress .bar {
+	background: var(--el-color-primary);
+	position: fixed;
+	z-index: 1031;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 2px;
+}
+
+#nprogress .peg {
+	display: block;
+	position: absolute;
+	right: 0;
+	width: 100px;
+	height: 100%;
+	box-shadow:
+		0 0 10px var(--el-color-primary),
+		0 0 5px var(--el-color-primary);
+	opacity: 1;
+	-webkit-transform: rotate(3deg) translateY(-4px);
+	-ms-transform: rotate(3deg) translateY(-4px);
+	transform: rotate(3deg) translateY(-4px);
+}
+
+#nprogress .spinner {
+	display: block;
+	position: fixed;
+	z-index: 1031;
+	top: 15px;
+	right: 15px;
+}
+
+#nprogress .spinner-icon {
+	width: 18px;
+	height: 18px;
+	box-sizing: border-box;
+	border-color: var(--el-color-primary) transparent transparent var(--el-color-primary);
+	border-style: solid;
+	border-width: 2px;
+	border-radius: 50%;
+	-webkit-animation: nprogress-spinner 0.4s linear infinite;
+	animation: nprogress-spinner 0.4s linear infinite;
+}
+
+.nprogress-custom-parent {
+	overflow: hidden;
+	position: relative;
+}
+
+.nprogress-custom-parent #nprogress .bar,
+.nprogress-custom-parent #nprogress .spinner {
+	position: absolute;
+}
+
+@-webkit-keyframes nprogress-spinner {
+	0% {
+		-webkit-transform: rotate(0deg);
+	}
+	to {
+		-webkit-transform: rotate(1turn);
+	}
+}
+
+@keyframes nprogress-spinner {
+	0% {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(1turn);
+	}
+}

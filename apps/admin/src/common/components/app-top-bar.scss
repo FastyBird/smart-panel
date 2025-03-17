@@ -1,0 +1,34 @@
+@use 'sass:map';
+
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+@use 'element-plus/theme-chalk/src/mixins/var' as *;
+@use 'element-plus/theme-chalk/src/common/var' as *;
+
+@include b(app-top-bar) {
+	@include set-css-var-value(('header', 'padding'), '0.25rem 0.5rem');
+	@include set-css-var-value(('header', 'height'), '44px');
+
+	border-bottom: 1px solid var(--el-border-color);
+}
+
+:deep(.el-switch__core) {
+	--el-switch-on-color: var(--bg-color-mute);
+	--el-switch-off-color: var(--bg-color-mute);
+	--el-switch-border-color: var(--el-border-color);
+
+	.el-switch__action {
+		width: 14px;
+		height: 14px;
+		background-color: transparent;
+	}
+}
+
+:deep(.dark-icon) {
+	border-radius: 50%;
+	color: #cfd3dc;
+	background-color: #141414;
+}
+
+:deep(.light-icon) {
+	color: #606266;
+}

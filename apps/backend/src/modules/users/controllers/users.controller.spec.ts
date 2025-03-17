@@ -43,6 +43,8 @@ describe('UsersController', () => {
 		create: jest.fn().mockResolvedValue(mockUser),
 		update: jest.fn().mockResolvedValue({ ...mockUser, firstName: 'UpdatedName' }),
 		remove: jest.fn().mockResolvedValue(undefined),
+		findByUsername: jest.fn().mockResolvedValue(null),
+		findByEmail: jest.fn().mockResolvedValue(null),
 	};
 
 	beforeEach(async () => {

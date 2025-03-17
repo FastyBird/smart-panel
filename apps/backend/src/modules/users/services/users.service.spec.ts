@@ -5,6 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
@@ -21,6 +22,11 @@ import { EventType, UserRole } from '../users.constants';
 import { UsersNotFoundException, UsersValidationException } from '../users.exceptions';
 
 import { UsersService } from './users.service';
+
+jest.mock('bcrypt', () => ({
+	hash: jest.fn(),
+	compare: jest.fn(),
+}));
 
 describe('UsersService', () => {
 	let service: UsersService;
@@ -134,6 +140,9 @@ describe('UsersService', () => {
 				createdAt: new Date(),
 				updatedAt: null,
 			};
+
+			// @ts-expect-error: bcrypt is mocked, but TypeScript still reports an error when mocking the method
+			jest.spyOn(bcrypt, 'hash').mockResolvedValue('securepassword');
 
 			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedUser);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedUser);

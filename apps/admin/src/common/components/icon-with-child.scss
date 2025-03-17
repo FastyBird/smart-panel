@@ -1,0 +1,48 @@
+@use 'sass:color';
+@use 'sass:math';
+
+@use 'element-plus/theme-chalk/src/common/var' as *;
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+
+@include b(icon-with-child) {
+	display: inline-block;
+	position: relative;
+
+	@include e(icon) {
+		display: block;
+
+		svg {
+			height: 100%;
+			width: 100%;
+		}
+	}
+
+	@include e(child-icon) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: absolute;
+		bottom: -3px;
+		right: -5px;
+		z-index: 2;
+		border-radius: 50%;
+		text-align: center;
+		padding: 4px;
+		border: 3px solid;
+
+		svg {
+			height: 100%;
+			width: 100%;
+		}
+	}
+
+	@each $type in (primary, default, info, success, warning, danger) {
+		@include m(type-#{$type}) {
+			@include e(child-icon) {
+				background-color: getCssVar('color', $type);
+				border-color: getCssVar('color', $type);
+				color: getCssVar('color', 'white');
+			}
+		}
+	}
+}

@@ -60,19 +60,19 @@ export class DevicesSeederService implements Seeder {
 		let seededChannels = 0;
 
 		const devices = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'SEED_DEVICES_FILE', 'devices.json'),
+			getEnvValue<string>(this.configService, 'FB_SEED_DEVICES_FILE', 'devices.json'),
 		);
 		const devicesControls = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'SEED_DEVICES_CONTROLS_FILE', 'devices_controls.json'),
+			getEnvValue<string>(this.configService, 'FB_SEED_DEVICES_CONTROLS_FILE', 'devices_controls.json'),
 		);
 		const channels = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'SEED_CHANNELS_FILE', 'channels.json'),
+			getEnvValue<string>(this.configService, 'FB_SEED_CHANNELS_FILE', 'channels.json'),
 		);
 		const channelsControls = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'SEED_CHANNELS_CONTROLS_FILE', 'channels_controls.json'),
+			getEnvValue<string>(this.configService, 'FB_SEED_CHANNELS_CONTROLS_FILE', 'channels_controls.json'),
 		);
 		const channelsProperties = this.seedTools.loadJsonData(
-			getEnvValue<string>(this.configService, 'SEED_CHANNELS_PROPERTIES_FILE', 'channels_properties.json'),
+			getEnvValue<string>(this.configService, 'FB_SEED_CHANNELS_PROPERTIES_FILE', 'channels_properties.json'),
 		);
 
 		if (!devices.length) {

@@ -1,0 +1,9 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+
+@include b(view-user-edit) {
+  @include e(form-box) {
+    :deep(.el-card__body) {
+      padding: 0;
+    }
+  }
+}

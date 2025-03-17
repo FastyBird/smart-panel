@@ -32,7 +32,7 @@ export class ConfigService {
 	private getConfigPath(): string {
 		return getEnvValue<string>(
 			this.configService,
-			'APP_CONFIG_PATH',
+			'FB_CONFIG_PATH',
 			path.resolve(__dirname, '../../../../../../var/data'),
 		);
 	}

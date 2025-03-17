@@ -29,7 +29,7 @@ import { TokensService } from './services/tokens.service';
 			inject: [NestConfigService],
 			useFactory: (configService: NestConfigService) => {
 				return {
-					secret: getEnvValue<string | undefined>(configService, 'TOKEN_SECRET', DEFAULT_TOKEN_SECRET),
+					secret: getEnvValue<string | undefined>(configService, 'FB_TOKEN_SECRET', DEFAULT_TOKEN_SECRET),
 					signOptions: { expiresIn: DEFAULT_TOKEN_EXPIRATION },
 				};
 			},
