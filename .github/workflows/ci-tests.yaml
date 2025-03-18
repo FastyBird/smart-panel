@@ -99,19 +99,9 @@ jobs:
             -e INFLUXDB_ADMIN_PASSWORD= \
             influxdb:1.8
 
-      - name: "Install system dependencies"
-        run: "sudo apt-get install -y build-essential python3"
-
-      - name: "Force Install bcrypt"
-        run: "pnpm add bcrypt --save --force"
-
       - name: "Install NPM dependencies"
         shell: "bash"
-        run: |
-          pnpm store prune
-          rm -rf node_modules
-          pnpm install --ignore-scripts
-          pnpm rebuild bcrypt
+        run: "pnpm install"
 
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-backend test:unit"
