@@ -32,25 +32,30 @@ jobs:
         with:
           node-version: "20"
 
-      - name: "Get Yarn cache directory"
-        run: echo "YARN_CACHE_DIR=$(yarn cache dir)" >> $GITHUB_ENV
+      - name: "Setup pnpm"
+        uses: "pnpm/action-setup@v2"
+        with:
+          version: "9.13.0"
 
-      - name: "Cache JS dependencies"
+      - name: "Get pnpm store directory"
+        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: "Cache pnpm dependencies"
         uses: "actions/cache@v3"
         with:
-          path: "${{ env.YARN_CACHE_DIR }}"
-          key: "${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}"
-          restore-keys: "${{ runner.os }}-node-modules-"
+          path: "${{ env.PNPM_STORE_PATH }}"
+          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
+          restore-keys: "${{ runner.os }}-pnpm-store-"
 
       - name: "Install NPM dependencies"
         shell: "bash"
-        run: "yarn install"
+        run: "pnpm install"
 
       - name: "Run Code Linting"
-        run: "yarn workspace @fastybird/smart-panel-backend lint:js"
+        run: "pnpm --filter @fastybird/smart-panel-backend lint:js"
 
       - name: "Run Code Linting"
-        run: "yarn workspace @fastybird/smart-panel-backend lint:openapi"
+        run: "pnpm --filter @fastybird/smart-panel-backend lint:openapi"
 
   backend-tests:
     name: "Backend code tests"
@@ -70,15 +75,20 @@ jobs:
         with:
           node-version: "20"
 
-      - name: "Get Yarn cache directory"
-        run: echo "YARN_CACHE_DIR=$(yarn cache dir)" >> $GITHUB_ENV
+      - name: "Setup pnpm"
+        uses: "pnpm/action-setup@v2"
+        with:
+          version: "9.13.0"
 
-      - name: "Cache JS dependencies"
+      - name: "Get pnpm store directory"
+        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: "Cache pnpm dependencies"
         uses: "actions/cache@v3"
         with:
-          path: "${{ env.YARN_CACHE_DIR }}"
-          key: "${{ runner.os }}-node-modules-${{ hashFiles('yarn.lock') }}"
-          restore-keys: "${{ runner.os }}-node-modules-"
+          path: "${{ env.PNPM_STORE_PATH }}"
+          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
+          restore-keys: "${{ runner.os }}-pnpm-store-"
 
       - name: "Start InfluxDB"
         run: |
@@ -91,16 +101,102 @@ jobs:
 
       - name: "Install NPM dependencies"
         shell: "bash"
-        run: "yarn install"
+        run: "pnpm install"
 
       - name: "Run Unit Tests"
-        run: "yarn workspace @fastybird/smart-panel-backend test:unit"
+        run: "pnpm --filter @fastybird/smart-panel-backend test:unit"
 
       - name: "Run E2E Tests"
-        run: "yarn workspace @fastybird/smart-panel-backend test:e2e"
+        run: "pnpm --filter @fastybird/smart-panel-backend test:e2e"
 
       - name: "Generate Coverage Report"
-        run: "yarn workspace @fastybird/smart-panel-backend test:cov"
+        run: "pnpm --filter @fastybird/smart-panel-backend test:cov"
+
+  admin-analyze:
+    name: "Admin code analysis"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "20"
+
+      - name: "Setup pnpm"
+        uses: "pnpm/action-setup@v2"
+        with:
+          version: "9.13.0"
+
+      - name: "Get pnpm store directory"
+        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: "Cache pnpm dependencies"
+        uses: "actions/cache@v3"
+        with:
+          path: "${{ env.PNPM_STORE_PATH }}"
+          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
+          restore-keys: "${{ runner.os }}-pnpm-store-"
+
+      - name: "Install NPM dependencies"
+        shell: "bash"
+        run: "pnpm install"
+
+      - name: "Run Code Linting"
+        run: "pnpm --filter @fastybird/smart-panel-admin lint:js"
+
+      - name: "TS Code Check"
+        run: "pnpm --filter @fastybird/smart-panel-admin type-check"
+
+  admin-tests:
+    name: "Admin code tests"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "20"
+
+      - name: "Setup pnpm"
+        uses: "pnpm/action-setup@v2"
+        with:
+          version: "9.13.0"
+
+      - name: "Get pnpm store directory"
+        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: "Cache pnpm dependencies"
+        uses: "actions/cache@v3"
+        with:
+          path: "${{ env.PNPM_STORE_PATH }}"
+          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
+          restore-keys: "${{ runner.os }}-pnpm-store-"
+
+      - name: "Install NPM dependencies"
+        shell: "bash"
+        run: "pnpm install"
+
+      - name: "Run Unit Tests"
+        run: "pnpm --filter @fastybird/smart-panel-admin test:unit"
+
+      - name: "Generate Coverage Report"
+        run: "pnpm --filter @fastybird/smart-panel-admin test:cov"
 
   panel-analyze:
     name: "Panel code analysis"

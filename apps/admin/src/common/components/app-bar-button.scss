@@ -1,0 +1,12 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+@use 'element-plus/theme-chalk/src/common/var' as *;
+
+@include b(app-bar-button) {
+	@include m(align-left) {
+		order: -1;
+	}
+
+	@include m(align-right) {
+		order: 1;
+	}
+}

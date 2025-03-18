@@ -10,7 +10,7 @@
 **/flutter_export_environment.json
 
 # npm
-**/yarn.lock
+**/pnpm-lock.yaml
 
 # macOS related
 .DS_Store

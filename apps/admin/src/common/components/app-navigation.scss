@@ -1,0 +1,25 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+
+@include b(app-navigation) {
+	border: 0 none;
+
+	@include when(collapsed) {
+		:deep(.el-menu-item-group__title) {
+			visibility: hidden;
+		}
+	}
+
+	@include when(desktop) {
+		@include set-css-var-value(('menu', 'bg', 'color'), 'transparent');
+		@include set-css-var-value(('menu', 'text', 'color'), '#808080');
+		@include set-css-var-value(('menu', 'hover', 'text', 'color'), '#a6a6a6');
+		@include set-css-var-value(('menu', 'hover', 'bg', 'color'), '#191919');
+		@include set-css-var-value(('menu', 'active', 'color'), '#fff');
+		@include set-css-var-value(('menu', 'item', 'height'), '40px');
+		@include set-css-var-value(('menu', 'item', 'font-size'), '0.8rem');
+
+		:deep(.el-menu-item.is-active) {
+			background-color: #191919;
+		}
+	}
+}

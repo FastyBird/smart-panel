@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "sign": {
+      "in": {
+        "title": "Sign in"
+      },
+      "up": {
+        "title": "Sign up"
+      }
+    },
+    "profile": {
+      "general": {
+        "title": "General"
+      },
+      "security": {
+        "title": "Security"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "homepage": "homepage",
+    "profile": "profile",
+    "general": "general",
+    "security": "security"
+  },
+  "headings": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "profileGeneral": "General settings",
+    "profileSecurity": "Security settings",
+    "yourProfile": "Your profile"
+  },
+  "messages": {
+    "requestError": "Something went wrong, please try again later.",
+    "profileEdited": "Your profile has been updated successfully.",
+    "profileNotEdited": "Your profile couldn't be edited.",
+    "passwordEdited": "Your password has been updated successfully.",
+    "passwordNotEdited": "Your password couldn't be changed."
+  },
+  "texts": {
+    "processing": "Processing request..."
+  },
+  "tabs": {
+    "general": "General",
+    "security": "Security"
+  },
+  "fields": {
+    "username": {
+      "title": "Username",
+      "validation": {
+        "required": "Please fill in your username"
+      }
+    },
+    "password": {
+      "title": "Password",
+      "validation": {
+        "required": "Please fill in your password"
+      }
+    },
+    "email": {
+      "title": "Email",
+      "placeholder": "eg. john{'@'}doe.com",
+      "validation": {
+        "required": "Please fill in your email address",
+        "email": "Please provide valid email address"
+      }
+    },
+    "firstName": {
+      "title": "First name",
+      "placeholder": "eg. John",
+      "validation": {
+        "required": "Please fill in first name"
+      }
+    },
+    "lastName": {
+      "title": "Last name",
+      "placeholder": "eg. Doe",
+      "validation": {
+        "required": "Please fill in last name"
+      }
+    },
+    "currentPassword": {
+      "title": "Current password",
+      "help": "Your actual password",
+      "validation": {
+        "required": "Please fill in your current password"
+      }
+    },
+    "newPassword": {
+      "title": "New password",
+      "help": "Your new password",
+      "validation": {
+        "required": "Please fill in your new password"
+      }
+    },
+    "repeatPassword": {
+      "title": "Repeat new password",
+      "help": "Confirm your new password",
+      "validation": {
+        "required": "Please repeat your new password",
+        "different": "Entered new passwords are not same"
+      }
+    }
+  },
+  "buttons": {
+    "signIn": {
+      "title": "Sign in"
+    },
+    "signUp": {
+      "title": "Sign up"
+    },
+    "backToSignIn": {
+      "title": "Back to sign in"
+    },
+    "save": {
+      "title": "Save"
+    },
+    "close": {
+      "title": "Close"
+    }
+  }
+}

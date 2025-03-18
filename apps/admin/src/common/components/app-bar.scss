@@ -1,0 +1,98 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+@use 'element-plus/theme-chalk/src/common/var' as *;
+
+@include b(app-bar) {
+	@include css-var-from-global(('app-bar', 'heading', 'bg-color'), ('color', 'primary'));
+	@include css-var-from-global(('app-bar', 'heading', 'color'), ('color', 'white'));
+	@include set-css-var-value(('app-bar', 'heading', 'icon-size'), '32px');
+	@include set-css-var-value(('app-bar', 'heading', 'icon-font-size'), '18px');
+	@include set-css-var-value(('app-bar', 'heading', 'icon-margin'), '10px');
+
+	// Override element-plus styling
+	@include set-css-var-value(('header', 'padding'), '0');
+	@include set-css-var-value(('header', 'height'), 'auto');
+}
+
+@include b(app-bar) {
+	background-color: getCssVar('app-bar', 'heading', 'bg-color');
+	color: getCssVar('app-bar', 'heading', 'color');
+	box-shadow: 0 3px 9px rgb(0 0 0 / 50%);
+	z-index: 1030;
+	position: relative;
+
+	@include e(buttons-small) {
+		height: 0;
+		transition: height 0.3s ease-in-out;
+		overflow: hidden;
+		justify-content: space-between;
+		display: flex;
+		flex-flow: row nowrap;
+
+		@include when(expanded) {
+			padding: 0.25rem;
+			height: 1.5rem;
+			transition: height 0.3s ease-in-out;
+		}
+	}
+
+	@include e(header) {
+		position: relative;
+		display: flex;
+		flex-flow: row nowrap;
+		padding: 0.25rem 0 0.25rem 0.5rem;
+		align-items: center;
+		height: 3.125rem;
+		box-sizing: border-box;
+	}
+
+	@include e(heading) {
+		flex-grow: 2;
+		order: 2;
+		display: flex;
+		flex-flow: row nowrap;
+		align-items: center;
+		overflow: hidden;
+	}
+
+	@include e(button-back) {
+		flex-grow: 0;
+		flex-shrink: 0;
+		order: 1;
+		max-width: 3rem;
+		display: flex;
+		justify-content: center;
+	}
+
+	@include e(button-left) {
+		flex-grow: 0;
+		flex-shrink: 0;
+		order: 3;
+		max-width: 3rem;
+		display: flex;
+		justify-content: center;
+	}
+
+	@include e(button-right) {
+		flex-grow: 0;
+		flex-shrink: 0;
+		order: 4;
+		max-width: 3rem;
+		display: flex;
+		justify-content: center;
+	}
+
+	@include e(content) {
+		height: 0;
+		line-height: 3rem;
+		padding-left: 1rem;
+		transition: height 0.3s ease-in-out;
+		display: flex;
+		flex-flow: row nowrap;
+		font-size: 1.5rem;
+
+		@include when(expanded) {
+			height: 3rem;
+			transition: height 0.3s ease-in-out;
+		}
+	}
+}

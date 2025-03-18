@@ -1,6 +1,6 @@
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
-export function getEnvValue<T>(configService: NestConfigService, key: string, defaultValue?: T): T {
+export const getEnvValue = <T>(configService: NestConfigService, key: string, defaultValue?: T): T => {
 	const value = configService.get<T>(key);
 
 	if ((typeof value === 'string' && value.trim() === '') || typeof value === 'undefined') {
@@ -18,4 +18,4 @@ export function getEnvValue<T>(configService: NestConfigService, key: string, de
 	}
 
 	return value as unknown as T;
-}
+};

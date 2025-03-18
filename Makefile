@@ -4,13 +4,13 @@ _: list
 
 .PHONY: tests
 server-unit-tests: ## Run all unit tests
-	cd apps/backend && yarn test:unit $(ARGS)
+	cd apps/backend && pnpm test:unit $(ARGS)
 
 server-e2e-tests: ## Run all integration tests
-	cd apps/backend && yarn test:e2e $(ARGS)
+	cd apps/backend && pnpm test:e2e $(ARGS)
 
 server-cov-tests: ## Run all coverage tests
-	cd apps/backend && yarn test:cov $(ARGS)
+	cd apps/backend && pnpm test:cov $(ARGS)
 
 # DOCKER
 

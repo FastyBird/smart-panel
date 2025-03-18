@@ -50,13 +50,13 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
 					database: isTest
 						? ':memory:'
 						: path.resolve(
-								getEnvValue<string>(configService, 'DB_PATH', path.resolve(__dirname, '../../../var/db')),
+								getEnvValue<string>(configService, 'FB_DB_PATH', path.resolve(__dirname, '../../../var/db')),
 								'database.sqlite',
 							),
 					entities: [__dirname + '/**/*.entity{.ts,.js}'],
 					subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
-					synchronize: getEnvValue<boolean>(configService, 'DB_SYNC', false),
-					logging: getEnvValue<boolean>(configService, 'DB_LOGGING', false),
+					synchronize: getEnvValue<boolean>(configService, 'FB_DB_SYNC', false),
+					logging: getEnvValue<boolean>(configService, 'FB_DB_LOGGING', false),
 				};
 			},
 		}),

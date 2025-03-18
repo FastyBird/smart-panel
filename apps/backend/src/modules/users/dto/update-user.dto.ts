@@ -10,6 +10,12 @@ type UpdateUser = components['schemas']['UsersUpdateUser'];
 export class UpdateUserDto implements UpdateUser {
 	@Expose()
 	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })
+	@IsString({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })
+	username?: string;
+
+	@Expose()
+	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	password?: string;

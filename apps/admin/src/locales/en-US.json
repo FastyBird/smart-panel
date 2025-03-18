@@ -1,0 +1,20 @@
+{
+  "application": {
+    "menu": {
+      "root": "FastyBird SmartPanel",
+      "user": "User"
+    },
+    "userMenu": {
+      "profileGeneralSettings": "Profile general setting",
+      "profileSecuritySettings": "Profile security setting",
+      "lockScreen": "Lock screen",
+      "signOut": "Sign out"
+    },
+    "headings": {
+      "loadingFailed": "An error occurred"
+    },
+    "breadcrumbs": {
+      "homepage": "homepage"
+    }
+  }
+}

@@ -93,7 +93,7 @@ src/
 
 Before starting, make sure you have the following installed:
 - Node.js v20+
-- Yarn v1.22+
+- PNPM v9+
 - SQLite database
 
 ## 🚀 Getting Started
@@ -107,19 +107,19 @@ cd apps/backend
 ### 2️⃣ Install Dependencies
 
 ```shell
-yarn install
+pnpm install
 ```
 
 ### 3️⃣ Run Migrations
 
 ```shell
-yarn typeorm:migration:run
+pnpm typeorm:migration:run
 ```
 
 ### 4️⃣ Start the Server
 
 ```shell
-yarn start:dev
+pnpm start:dev
 ```
 
 ### 5️⃣ Access the API
@@ -130,17 +130,17 @@ The server runs on http://localhost:3000 by default. Test endpoints using a tool
 
 - Run unit tests:
 ```shell
-yarn test:unit
+pnpm test:unit
 ```
 
 - Run end-to-end tests:
 ```shell
-yarn test:e2e
+pnpm test:e2e
 ```
 
 - Check code coverage:
 ```shell
-yarn test:cov
+pnpm test:cov
 ```
 
 ## 👨‍💻 Contributing

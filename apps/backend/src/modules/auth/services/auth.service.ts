@@ -164,12 +164,9 @@ export class AuthService {
 			throw new AuthException('Username already registered');
 		}
 
-		// Hash password before storing it
-		const hashedPassword = await bcrypt.hash(password, 10);
-
 		const user = await this.usersService.create({
 			...dtoInstance,
-			password: hashedPassword,
+			password,
 			role: ownerExists || username === DISPLAY_USERNAME ? UserRole.USER : UserRole.OWNER,
 		});
 

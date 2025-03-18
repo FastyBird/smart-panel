@@ -24,10 +24,10 @@ export class InfluxDbService {
 	}
 
 	private async initializeConnection() {
-		const host = getEnvValue<string>(this.configService, 'INFLUXDB_HOST', 'localhost');
-		const database = getEnvValue<string>(this.configService, 'INFLUXDB_DB', 'fastybird');
-		const username = getEnvValue<string | undefined>(this.configService, 'INFLUXDB_USER', undefined);
-		const password = getEnvValue<string | undefined>(this.configService, 'INFLUXDB_PASSWORD', undefined);
+		const host = getEnvValue<string>(this.configService, 'FB_INFLUXDB_HOST', 'localhost');
+		const database = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
+		const username = getEnvValue<string | undefined>(this.configService, 'FB_INFLUXDB_USER', undefined);
+		const password = getEnvValue<string | undefined>(this.configService, 'FB_INFLUXDB_PASSWORD', undefined);
 
 		this.connection = new InfluxDB({
 			host,
@@ -42,7 +42,7 @@ export class InfluxDbService {
 
 	private async setupDatabase(): Promise<void> {
 		try {
-			const database = getEnvValue<string>(this.configService, 'INFLUXDB_DB', 'fastybird');
+			const database = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
 			const databases = await this.connection.getDatabaseNames();
 
 			if (!databases.includes(database)) {

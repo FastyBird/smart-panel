@@ -2,7 +2,6 @@ import {
 	Body,
 	Controller,
 	Delete,
-	ForbiddenException,
 	Get,
 	Header,
 	Logger,
@@ -12,6 +11,7 @@ import {
 	Patch,
 	Post,
 	Req,
+	UnprocessableEntityException,
 } from '@nestjs/common';
 
 import { AuthenticatedRequest } from '../../auth/auth.constants';
@@ -55,9 +55,27 @@ export class UsersController {
 		this.logger.debug('[CREATE] Incoming request to create a new user');
 
 		if (createDto.data.username === DISPLAY_USERNAME) {
-			this.logger.warn('[REGISTER] User is trying to use reserved username');
+			this.logger.warn('[CREATE] User is trying to use reserved username');
 
-			throw new ForbiddenException('Trying to create user with reserved username');
+			throw new UnprocessableEntityException('Trying to create user with reserved username');
+		}
+
+		const existingUsername = await this.usersService.findByUsername(createDto.data.username);
+
+		if (existingUsername) {
+			this.logger.warn('[CREATE] User is trying to use used username');
+
+			throw new UnprocessableEntityException('Trying to create user with used username');
+		}
+
+		if (createDto.data.email) {
+			const existingEmail = await this.usersService.findByEmail(createDto.data.email);
+
+			if (existingEmail) {
+				this.logger.warn('[CREATE] User is trying to use used email');
+
+				throw new UnprocessableEntityException('Trying to create user with used email');
+			}
 		}
 
 		const user = await this.usersService.create(createDto.data);
@@ -75,6 +93,16 @@ export class UsersController {
 		this.logger.debug(`[UPDATE] Incoming update request for user id=${id}`);
 
 		const user = await this.getOneOrThrow(id);
+
+		if (updateDto.data.email) {
+			const existingEmail = await this.usersService.findByEmail(updateDto.data.email);
+
+			if (existingEmail && existingEmail.id !== id) {
+				this.logger.warn('[UPDATE] User is trying to use used email');
+
+				throw new UnprocessableEntityException('Trying to create user with used email');
+			}
+		}
 
 		const updatedUser = await this.usersService.update(user.id, updateDto.data);
 
@@ -96,7 +124,7 @@ export class UsersController {
 
 		// Prevent user from deleting themselves
 		if (actualUser && actualUser.id === id) {
-			throw new ForbiddenException('You cannot delete your own account');
+			throw new UnprocessableEntityException('You cannot delete your own account');
 		}
 
 		await this.usersService.remove(user.id);

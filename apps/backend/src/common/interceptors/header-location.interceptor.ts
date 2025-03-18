@@ -14,8 +14,8 @@ export class HeaderLocationInterceptor implements NestInterceptor {
 	private readonly appPort: number;
 
 	constructor(private readonly configService: NestConfigService) {
-		this.appHost = getEnvValue<string>(this.configService, 'APP_HOST', 'https://localhost');
-		this.appPort = getEnvValue<number>(this.configService, 'BACKEND_PORT', 3000);
+		this.appHost = getEnvValue<string>(this.configService, 'FB_APP_HOST', 'https://localhost');
+		this.appPort = getEnvValue<number>(this.configService, 'FB_BACKEND_PORT', 3000);
 	}
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<any> {

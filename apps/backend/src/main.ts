@@ -23,13 +23,13 @@ async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
 
 	const configService = app.get(NestConfigService);
-	const port = getEnvValue<number>(configService, 'BACKEND_PORT', 3000);
+	const port = getEnvValue<number>(configService, 'FB_BACKEND_PORT', 3000);
 
 	app.useGlobalFilters(
 		new GlobalErrorFilter(),
 		new InternalServerErrorExceptionFilter(),
-		new UnprocessableEntityExceptionFilter(),
 		new BadRequestExceptionFilter(),
+		new UnprocessableEntityExceptionFilter(),
 		new NotFoundExceptionFilter(),
 		new QueryFailedExceptionFilter(),
 	);

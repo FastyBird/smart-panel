@@ -112,7 +112,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			await request(app.getHttpServer())
 				.delete(`/users-module/users/${userId}`)
 				.set('Authorization', `Bearer ${accessToken}`)
-				.expect(403);
+				.expect(422);
 		}
 	});
 
