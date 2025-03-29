@@ -30,5 +30,23 @@
     "configDisplay": "Smart panel display config",
     "configLanguage": "Smart panel language config",
     "configWeather": "Smart panel weather config"
+  },
+  "languages": {
+    "en_US": "English",
+    "cs_CZ": "Česky"
+  },
+  "timeFormats": {
+    "12h": "12 hour format",
+    "24h": "24 hour format"
+  },
+  "locationTypes": {
+    "lat_lon": "Lat & Lon coordinates",
+    "city_name": "City name",
+    "city_id": "OpenWeather City ID",
+    "zip_code": "ZIP code"
+  },
+  "weatherUnits": {
+    "celsius": "Celsius",
+    "fahrenheit": "Fahrenheit"
   }
 }

@@ -13,3 +13,12 @@ export const RouteNames = {
 	CONFIG_LANGUAGE: 'config_module-config_language',
 	CONFIG_WEATHER: 'config_module-config_weather',
 };
+
+export enum FormResult {
+	NONE = 'none',
+	WORKING = 'working',
+	ERROR = 'error',
+	OK = 'ok',
+}
+
+export type FormResultType = FormResult.NONE | FormResult.WORKING | FormResult.ERROR | FormResult.OK;
