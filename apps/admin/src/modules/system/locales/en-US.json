@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "systemInfo": {
+      "title": "System info",
+      "throttleStatus": "Throttle status"
+    }
+  },
+  "breadcrumbs": {
+    "systemInfo": "System info",
+    "throttleStatus": "Throttle status"
+  },
+  "headings": {
+    "systemInfo": "System info",
+    "throttleStatus": "Throttle status"
+  },
+  "subHeadings": {
+    "systemInfo": "Smart panel system informations",
+    "throttleStatus": "Smart panel throttling status"
+  }
+}

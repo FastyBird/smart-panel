@@ -53,7 +53,7 @@ const defaultSemaphore: IDevicesStateSemaphore = {
 	deleting: [],
 };
 
-export const useDevices = defineStore<'devices-module_devices', DevicesStoreSetup>('devices-module_devices', (): DevicesStoreSetup => {
+export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetup>('devices_module-devices', (): DevicesStoreSetup => {
 	const backend = useBackend();
 
 	const { getByType: getPluginByType } = usePlugins();

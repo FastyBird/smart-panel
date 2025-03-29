@@ -1,0 +1,107 @@
+import { ref } from 'vue';
+
+import { type Pinia, type Store, defineStore } from 'pinia';
+
+import { getErrorReason, useBackend } from '../../../common';
+import type { operations } from '../../../openapi';
+import { SYSTEM_MODULE_PREFIX } from '../system.constants';
+import { SystemApiException, SystemValidationException } from '../system.exceptions';
+
+import {
+	type ISystemInfo,
+	type ISystemInfoSetActionPayload,
+	type ISystemInfoStateSemaphore,
+	type ISystemInfoStoreActions,
+	type ISystemInfoStoreState,
+	SystemInfoSchema,
+	type SystemInfoStoreSetup,
+} from './system-info.store.types';
+import { transformSystemInfoResponse } from './system-info.transformers';
+
+const defaultSemaphore: ISystemInfoStateSemaphore = {
+	getting: false,
+};
+
+export const useSystemInfo = defineStore<'system_module-system_info', SystemInfoStoreSetup>('system_module-system_info', (): SystemInfoStoreSetup => {
+	const backend = useBackend();
+
+	const semaphore = ref<ISystemInfoStateSemaphore>(defaultSemaphore);
+
+	const firstLoad = ref<boolean>(false);
+
+	const data = ref<ISystemInfo | null>(null);
+
+	const firstLoadFinished = (): boolean => firstLoad.value;
+
+	const getting = (): boolean => semaphore.value.getting;
+
+	let pendingGetPromises: Promise<ISystemInfo> | null = null;
+
+	const set = (payload: ISystemInfoSetActionPayload): ISystemInfo => {
+		const parsedSystemInfo = SystemInfoSchema.safeParse(payload.data);
+
+		if (!parsedSystemInfo.success) {
+			throw new SystemValidationException('Failed to insert system info.');
+		}
+
+		data.value = data.value ?? null;
+
+		return (data.value = parsedSystemInfo.data);
+	};
+
+	const get = async (): Promise<ISystemInfo> => {
+		if (pendingGetPromises) {
+			return pendingGetPromises;
+		}
+
+		const fetchPromise = (async (): Promise<ISystemInfo> => {
+			if (semaphore.value.getting) {
+				throw new SystemApiException('Already getting system info.');
+			}
+
+			semaphore.value.getting = true;
+
+			const apiResponse = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/system/info`);
+
+			const { data: responseData, error, response } = apiResponse;
+
+			semaphore.value.getting = false;
+
+			if (typeof responseData !== 'undefined') {
+				data.value = transformSystemInfoResponse(responseData.data);
+
+				return data.value;
+			}
+
+			let errorReason: string | null = 'Failed to fetch system info.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['get-system-module-system-info']>(error, errorReason);
+			}
+
+			throw new SystemApiException(errorReason, response.status);
+		})();
+
+		pendingGetPromises = fetchPromise;
+
+		try {
+			return await fetchPromise;
+		} finally {
+			pendingGetPromises = null;
+		}
+	};
+
+	return {
+		semaphore,
+		firstLoad,
+		data,
+		firstLoadFinished,
+		getting,
+		set,
+		get,
+	};
+});
+
+export const registerSystemInfoStore = (pinia: Pinia): Store<string, ISystemInfoStoreState, object, ISystemInfoStoreActions> => {
+	return useSystemInfo(pinia);
+};

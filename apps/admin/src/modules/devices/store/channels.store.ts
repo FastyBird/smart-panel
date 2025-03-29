@@ -48,7 +48,7 @@ const defaultSemaphore: IChannelsStateSemaphore = {
 	deleting: [],
 };
 
-export const useChannels = defineStore<'devices-module_channels', ChannelsStoreSetup>('devices-module_channels', (): ChannelsStoreSetup => {
+export const useChannels = defineStore<'devices_module-channels', ChannelsStoreSetup>('devices_module-channels', (): ChannelsStoreSetup => {
 	const backend = useBackend();
 
 	const storesManager = injectStoresManager();

@@ -30,7 +30,7 @@ const defaultSemaphore: ISessionStateSemaphore = {
 	updating: false,
 };
 
-export const useSession = defineStore<'auth-module_session', SessionStoreSetup>('auth-module_session', (): SessionStoreSetup => {
+export const useSession = defineStore<'auth_module-session', SessionStoreSetup>('auth_module-session', (): SessionStoreSetup => {
 	const backend = useBackend();
 
 	const { cookies } = useCookies();

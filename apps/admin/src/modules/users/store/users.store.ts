@@ -36,7 +36,7 @@ const defaultSemaphore: IUsersStateSemaphore = {
 	deleting: [],
 };
 
-export const useUsers = defineStore<'users-module_users', UsersStoreSetup>('users-module_users', (): UsersStoreSetup => {
+export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('users_module-users', (): UsersStoreSetup => {
 	const backend = useBackend();
 
 	const semaphore = ref<IUsersStateSemaphore>(defaultSemaphore);
