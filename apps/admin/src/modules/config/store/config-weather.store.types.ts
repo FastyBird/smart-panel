@@ -37,11 +37,10 @@ export type IConfigWeatherStateSemaphore = z.infer<typeof ConfigWeatherStateSema
 
 export const ConfigWeatherSetActionPayloadSchema = z.object({
 	data: z.object({
-		type: z.nativeEnum(ConfigWeatherType),
 		location: z.string().nullable(),
-		location_type: z.nativeEnum(PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type),
+		locationType: z.nativeEnum(PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type),
 		unit: z.nativeEnum(ConfigWeatherUnit),
-		open_weather_api_key: z.string().nullable(),
+		openWeatherApiKey: z.string().nullable(),
 	}),
 });
 export type IConfigWeatherSetActionPayload = z.infer<typeof ConfigWeatherSetActionPayloadSchema>;

@@ -31,10 +31,9 @@ export type IConfigLanguageStateSemaphore = z.infer<typeof ConfigLanguageStateSe
 
 export const ConfigLanguageSetActionPayloadSchema = z.object({
 	data: z.object({
-		type: z.nativeEnum(ConfigLanguageType),
 		language: z.nativeEnum(ConfigLanguageLanguage),
 		timezone: z.string(),
-		time_format: z.nativeEnum(ConfigLanguageTime_format),
+		timeFormat: z.nativeEnum(ConfigLanguageTime_format),
 	}),
 });
 export type IConfigLanguageSetActionPayload = z.infer<typeof ConfigLanguageSetActionPayloadSchema>;

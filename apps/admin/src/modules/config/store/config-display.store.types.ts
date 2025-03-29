@@ -15,7 +15,7 @@ type ApiConfigUpdateDisplay = components['schemas']['ConfigUpdateDisplay'];
 export const ConfigDisplaySchema = z.object({
 	type: z.nativeEnum(ConfigDisplayType),
 	darkMode: z.boolean(),
-	brightness: z.number(),
+	brightness: z.number().min(0).max(100),
 	screenLockDuration: z.number(),
 	screenSaver: z.boolean(),
 });
@@ -32,11 +32,10 @@ export type IConfigDisplayStateSemaphore = z.infer<typeof ConfigDisplayStateSema
 
 export const ConfigDisplaySetActionPayloadSchema = z.object({
 	data: z.object({
-		type: z.nativeEnum(ConfigDisplayType),
-		dark_mode: z.boolean(),
-		brightness: z.number(),
-		screen_lock_duration: z.number(),
-		screen_saver: z.boolean(),
+		darkMode: z.boolean(),
+		brightness: z.number().min(0).max(100),
+		screenLockDuration: z.number(),
+		screenSaver: z.boolean(),
 	}),
 });
 export type IConfigDisplaySetActionPayload = z.infer<typeof ConfigDisplaySetActionPayloadSchema>;
@@ -44,7 +43,7 @@ export type IConfigDisplaySetActionPayload = z.infer<typeof ConfigDisplaySetActi
 export const ConfigDisplayEditActionPayloadSchema = z.object({
 	data: z.object({
 		darkMode: z.boolean(),
-		brightness: z.number(),
+		brightness: z.number().min(0).max(100),
 		screenLockDuration: z.number(),
 		screenSaver: z.boolean(),
 	}),
@@ -78,7 +77,7 @@ export type ConfigDisplayStoreSetup = IConfigDisplayStoreState & IConfigDisplayS
 export const ConfigDisplayUpdateReqSchema: ZodType<ApiConfigUpdateDisplay> = z.object({
 	type: z.nativeEnum(ConfigDisplayType),
 	dark_mode: z.boolean(),
-	brightness: z.number(),
+	brightness: z.number().min(0).max(100),
 	screen_lock_duration: z.number(),
 	screen_saver: z.boolean(),
 });
@@ -87,7 +86,7 @@ export type IConfigDisplayUpdateReq = z.infer<typeof ConfigDisplayUpdateReqSchem
 export const ConfigDisplayResSchema: ZodType<ApiConfigDisplay> = z.object({
 	type: z.nativeEnum(ConfigDisplayType),
 	dark_mode: z.boolean(),
-	brightness: z.number(),
+	brightness: z.number().min(0).max(100),
 	screen_lock_duration: z.number(),
 	screen_saver: z.boolean(),
 });

@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { ConfigLanguageType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -45,10 +45,10 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 		let pendingGetPromises: Promise<IConfigLanguage> | null = null;
 
 		const set = (payload: IConfigLanguageSetActionPayload): IConfigLanguage => {
-			const parsedConfigLanguage = ConfigLanguageSchema.safeParse(payload.data);
+			const parsedConfigLanguage = ConfigLanguageSchema.safeParse({ ...payload.data, type: ConfigLanguageType.language });
 
 			if (!parsedConfigLanguage.success) {
-				throw new ConfigValidationException('Failed to insert throttle status.');
+				throw new ConfigValidationException('Failed to insert language config.');
 			}
 
 			data.value = data.value ?? null;
@@ -63,7 +63,7 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 
 			const fetchPromise = (async (): Promise<IConfigLanguage> => {
 				if (semaphore.value.getting) {
-					throw new ConfigApiException('Already getting system info.');
+					throw new ConfigApiException('Already getting language config.');
 				}
 
 				semaphore.value.getting = true;
@@ -86,7 +86,7 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 					return data.value;
 				}
 
-				let errorReason: string | null = 'Failed to fetch system info.';
+				let errorReason: string | null = 'Failed to fetch language config.';
 
 				if (error) {
 					errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);

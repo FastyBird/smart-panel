@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { ConfigAudioType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -45,10 +45,10 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 		let pendingGetPromises: Promise<IConfigAudio> | null = null;
 
 		const set = (payload: IConfigAudioSetActionPayload): IConfigAudio => {
-			const parsedConfigAudio = ConfigAudioSchema.safeParse(payload.data);
+			const parsedConfigAudio = ConfigAudioSchema.safeParse({ ...payload.data, type: ConfigAudioType.audio });
 
 			if (!parsedConfigAudio.success) {
-				throw new ConfigValidationException('Failed to insert throttle status.');
+				throw new ConfigValidationException('Failed to insert audio config.');
 			}
 
 			data.value = data.value ?? null;
@@ -63,7 +63,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 
 			const fetchPromise = (async (): Promise<IConfigAudio> => {
 				if (semaphore.value.getting) {
-					throw new ConfigApiException('Already getting system info.');
+					throw new ConfigApiException('Already getting audio config.');
 				}
 
 				semaphore.value.getting = true;
@@ -86,7 +86,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 					return data.value;
 				}
 
-				let errorReason: string | null = 'Failed to fetch system info.';
+				let errorReason: string | null = 'Failed to fetch audio config.';
 
 				if (error) {
 					errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
@@ -148,10 +148,10 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 
 				return data.value;
 			}
-
+			console.log('call');
 			// Updating record on api failed, we need to refresh record
 			await get();
-
+			console.log('called');
 			let errorReason: string | null = 'Failed to update audio config.';
 
 			if (error) {

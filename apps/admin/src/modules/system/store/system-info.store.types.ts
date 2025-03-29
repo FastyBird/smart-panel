@@ -27,8 +27,8 @@ export const SystemInfoSchema = z.object({
 		})
 	),
 	temperature: z.object({
-		cpu: z.number().optional(),
-		gpu: z.number().optional(),
+		cpu: z.number().nullable().optional(),
+		gpu: z.number().nullable().optional(),
 	}),
 	os: z.object({
 		platform: z.string(),
@@ -68,7 +68,7 @@ export type ISystemInfoStateSemaphore = z.infer<typeof SystemInfoStateSemaphoreS
 
 export const SystemInfoSetActionPayloadSchema = z.object({
 	data: z.object({
-		cpu_load: z.number(),
+		cpuLoad: z.number(),
 		memory: z.object({
 			total: z.number(),
 			used: z.number(),
@@ -83,8 +83,8 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 			})
 		),
 		temperature: z.object({
-			cpu: z.number().optional(),
-			gpu: z.number().optional(),
+			cpu: z.number().nullable().optional(),
+			gpu: z.number().nullable().optional(),
 		}),
 		os: z.object({
 			platform: z.string(),
@@ -95,21 +95,21 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 		network: z.array(
 			z.object({
 				interface: z.string(),
-				rx_bytes: z.number(),
-				tx_bytes: z.number(),
+				rxBytes: z.number(),
+				txBytes: z.number(),
 			})
 		),
-		default_network: z.object({
+		defaultNetwork: z.object({
 			interface: z.string(),
 			ip4: z.string(),
 			ip6: z.string(),
 			mac: z.string(),
 		}),
 		display: z.object({
-			resolution_x: z.number(),
-			resolution_y: z.number(),
-			current_res_x: z.number(),
-			current_res_y: z.number(),
+			resolutionX: z.number(),
+			resolutionY: z.number(),
+			currentResX: z.number(),
+			currentResY: z.number(),
 		}),
 	}),
 });
@@ -154,8 +154,8 @@ export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
 		})
 	),
 	temperature: z.object({
-		cpu: z.number().optional(),
-		gpu: z.number().optional(),
+		cpu: z.number().nullable().optional(),
+		gpu: z.number().nullable().optional(),
 	}),
 	os: z.object({
 		platform: z.string(),

@@ -15,9 +15,9 @@ type ApiConfigUpdateAudio = components['schemas']['ConfigUpdateAudio'];
 export const ConfigAudioSchema = z.object({
 	type: z.nativeEnum(ConfigAudioType),
 	speaker: z.boolean(),
-	speakerVolume: z.number(),
+	speakerVolume: z.number().min(0).max(100),
 	microphone: z.boolean(),
-	microphoneVolume: z.number(),
+	microphoneVolume: z.number().min(0).max(100),
 });
 export type IConfigAudio = z.infer<typeof ConfigAudioSchema>;
 
@@ -32,11 +32,10 @@ export type IConfigAudioStateSemaphore = z.infer<typeof ConfigAudioStateSemaphor
 
 export const ConfigAudioSetActionPayloadSchema = z.object({
 	data: z.object({
-		type: z.nativeEnum(ConfigAudioType),
 		speaker: z.boolean(),
-		speaker_volume: z.number(),
+		speakerVolume: z.number().min(0).max(100),
 		microphone: z.boolean(),
-		microphone_volume: z.number(),
+		microphoneVolume: z.number().min(0).max(100),
 	}),
 });
 export type IConfigAudioSetActionPayload = z.infer<typeof ConfigAudioSetActionPayloadSchema>;
@@ -44,9 +43,9 @@ export type IConfigAudioSetActionPayload = z.infer<typeof ConfigAudioSetActionPa
 export const ConfigAudioEditActionPayloadSchema = z.object({
 	data: z.object({
 		speaker: z.boolean(),
-		speakerVolume: z.number(),
+		speakerVolume: z.number().min(0).max(100),
 		microphone: z.boolean(),
-		microphoneVolume: z.number(),
+		microphoneVolume: z.number().min(0).max(100),
 	}),
 });
 export type IConfigAudioEditActionPayload = z.infer<typeof ConfigAudioEditActionPayloadSchema>;
@@ -78,18 +77,18 @@ export type ConfigAudioStoreSetup = IConfigAudioStoreState & IConfigAudioStoreAc
 export const ConfigAudioUpdateReqSchema: ZodType<ApiConfigUpdateAudio> = z.object({
 	type: z.nativeEnum(ConfigAudioType),
 	speaker: z.boolean(),
-	speaker_volume: z.number(),
+	speaker_volume: z.number().min(0).max(100),
 	microphone: z.boolean(),
-	microphone_volume: z.number(),
+	microphone_volume: z.number().min(0).max(100),
 });
 export type IConfigAudioUpdateReq = z.infer<typeof ConfigAudioUpdateReqSchema>;
 
 export const ConfigAudioResSchema: ZodType<ApiConfigAudio> = z.object({
 	type: z.nativeEnum(ConfigAudioType),
 	speaker: z.boolean(),
-	speaker_volume: z.number(),
+	speaker_volume: z.number().min(0).max(100),
 	microphone: z.boolean(),
-	microphone_volume: z.number(),
+	microphone_volume: z.number().min(0).max(100),
 });
 export type IConfigAudioRes = z.infer<typeof ConfigAudioResSchema>;
 

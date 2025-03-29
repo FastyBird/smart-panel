@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest';
+
+import { ConfigDisplayType } from '../../../openapi';
+import { ConfigValidationException } from '../config.exceptions';
+
+import type { IConfigDisplayEditActionPayload, IConfigDisplayRes } from './config-display.store.types';
+import { transformConfigDisplayResponse, transformConfigDisplayUpdateRequest } from './config-display.transformers';
+
+const validConfigDisplayResponse: IConfigDisplayRes = {
+	type: ConfigDisplayType.display,
+	dark_mode: true,
+	brightness: 80,
+	screen_lock_duration: 300,
+	screen_saver: true,
+};
+
+const validConfigDisplayUpdatePayload: IConfigDisplayEditActionPayload['data'] = {
+	darkMode: true,
+	brightness: 80,
+	screenLockDuration: 300,
+	screenSaver: true,
+};
+
+describe('Config Display Transformers', (): void => {
+	describe('transformConfigDisplayResponse', (): void => {
+		it('should transform a valid config display response', (): void => {
+			const result = transformConfigDisplayResponse(validConfigDisplayResponse);
+
+			expect(result).toEqual({
+				type: ConfigDisplayType.display,
+				darkMode: true,
+				brightness: 80,
+				screenLockDuration: 300,
+				screenSaver: true,
+			});
+		});
+
+		it('should throw an error for an invalid config display response', (): void => {
+			expect(() => transformConfigDisplayResponse({ ...validConfigDisplayResponse, darkMode: null } as unknown as IConfigDisplayRes)).toThrow(
+				ConfigValidationException
+			);
+		});
+	});
+
+	describe('transformConfigDisplayUpdateRequest', (): void => {
+		it('should transform a valid config display update request', (): void => {
+			const result = transformConfigDisplayUpdateRequest(validConfigDisplayUpdatePayload);
+
+			expect(result).toEqual({
+				type: ConfigDisplayType.display,
+				dark_mode: true,
+				brightness: 80,
+				screen_lock_duration: 300,
+				screen_saver: true,
+			});
+		});
+
+		it('should throw an error for an invalid config display update request', (): void => {
+			expect(() =>
+				transformConfigDisplayUpdateRequest({
+					...validConfigDisplayUpdatePayload,
+					brightness: 200,
+				} as unknown as IConfigDisplayEditActionPayload['data'])
+			).toThrow(ConfigValidationException);
+		});
+	});
+});

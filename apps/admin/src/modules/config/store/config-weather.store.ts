@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { ConfigWeatherType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -45,10 +45,10 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 		let pendingGetPromises: Promise<IConfigWeather> | null = null;
 
 		const set = (payload: IConfigWeatherSetActionPayload): IConfigWeather => {
-			const parsedConfigWeather = ConfigWeatherSchema.safeParse(payload.data);
+			const parsedConfigWeather = ConfigWeatherSchema.safeParse({ ...payload.data, type: ConfigWeatherType.weather });
 
 			if (!parsedConfigWeather.success) {
-				throw new ConfigValidationException('Failed to insert throttle status.');
+				throw new ConfigValidationException('Failed to insert weather config.');
 			}
 
 			data.value = data.value ?? null;
@@ -63,7 +63,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 
 			const fetchPromise = (async (): Promise<IConfigWeather> => {
 				if (semaphore.value.getting) {
-					throw new ConfigApiException('Already getting system info.');
+					throw new ConfigApiException('Already getting weather config.');
 				}
 
 				semaphore.value.getting = true;
@@ -86,7 +86,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 					return data.value;
 				}
 
-				let errorReason: string | null = 'Failed to fetch system info.';
+				let errorReason: string | null = 'Failed to fetch weather config.';
 
 				if (error) {
 					errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);

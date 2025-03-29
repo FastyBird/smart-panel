@@ -1,0 +1,143 @@
+import { createPinia, setActivePinia } from 'pinia';
+
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ConfigWeatherType, ConfigWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
+import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
+
+import { useConfigWeather } from './config-weather.store';
+import type { IConfigWeatherEditActionPayload, IConfigWeatherSetActionPayload } from './config-weather.store.types';
+
+const mockWeatherRes = {
+	type: ConfigWeatherType.weather,
+	location: 'Prague',
+	location_type: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
+	unit: ConfigWeatherUnit.celsius,
+	open_weather_api_key: null,
+};
+
+const mockWeather = {
+	type: ConfigWeatherType.weather,
+	location: 'Prague',
+	locationType: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
+	unit: ConfigWeatherUnit.celsius,
+	openWeatherApiKey: null,
+};
+
+const backendClient = {
+	GET: vi.fn(),
+	PATCH: vi.fn(),
+};
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		useBackend: () => ({
+			client: backendClient,
+		}),
+		getErrorReason: () => 'Some error',
+	};
+});
+
+describe('ConfigWeather Store', () => {
+	let store: ReturnType<typeof useConfigWeather>;
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+
+		store = useConfigWeather();
+
+		vi.clearAllMocks();
+	});
+
+	it('should set config weather data successfully', () => {
+		const result = store.set({ data: mockWeather });
+
+		expect(result).toEqual(mockWeather);
+		expect(store.data).toEqual(mockWeather);
+	});
+
+	it('should throw validation error if set config weather with invalid data', () => {
+		expect(() => store.set({ data: { ...mockWeather, unit: 'invalid' } } as unknown as IConfigWeatherSetActionPayload)).toThrow(
+			ConfigValidationException
+		);
+	});
+
+	it('should fetch config weather successfully', async () => {
+		(backendClient.GET as Mock).mockResolvedValue({
+			data: { data: mockWeatherRes },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const result = await store.get();
+
+		expect(result).toEqual(mockWeather);
+		expect(store.data).toEqual(mockWeather);
+	});
+
+	it('should throw error if fetch fails', async () => {
+		(backendClient.GET as Mock).mockResolvedValue({
+			data: undefined,
+			error: new Error('Network error'),
+			response: { status: 500 },
+		});
+
+		await expect(store.get()).rejects.toThrow(ConfigApiException);
+	});
+
+	it('should update config weather successfully', async () => {
+		store.data = { ...mockWeather };
+
+		(backendClient.PATCH as Mock).mockResolvedValue({
+			data: { data: { ...mockWeatherRes, unit: ConfigWeatherUnit.fahrenheit } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		const result = await store.edit({
+			data: { ...mockWeather, unit: ConfigWeatherUnit.fahrenheit },
+		});
+
+		expect(result.unit).toBe(ConfigWeatherUnit.fahrenheit);
+		expect(store.data?.unit).toBe(ConfigWeatherUnit.fahrenheit);
+	});
+
+	it('should throw validation error if edit payload is invalid', async () => {
+		await expect(
+			store.edit({
+				data: { ...mockWeather, unit: 'not-a-enum' },
+			} as unknown as IConfigWeatherEditActionPayload)
+		).rejects.toThrow(ConfigValidationException);
+	});
+
+	it('should throw validation error if local data + edit is invalid', async () => {
+		store.data = { ...mockWeather, unit: ConfigWeatherUnit.fahrenheit };
+
+		await expect(
+			store.edit({
+				data: { ...mockWeather, unit: undefined },
+			} as unknown as IConfigWeatherEditActionPayload)
+		).rejects.toThrow(ConfigValidationException);
+	});
+
+	it('should refresh data and throw if API update fails', async () => {
+		store.data = { ...mockWeather };
+
+		(backendClient.PATCH as Mock).mockResolvedValue({
+			data: undefined,
+			error: new Error('Patch error'),
+			response: { status: 500 },
+		});
+
+		(backendClient.GET as Mock).mockResolvedValue({
+			data: { data: mockWeatherRes },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		await expect(store.edit({ data: { ...mockWeather, unit: ConfigWeatherUnit.fahrenheit } })).rejects.toThrow(ConfigApiException);
+	});
+});

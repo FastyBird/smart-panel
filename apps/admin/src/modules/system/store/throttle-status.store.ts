@@ -58,7 +58,7 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 
 			const fetchPromise = (async (): Promise<IThrottleStatus> => {
 				if (semaphore.value.getting) {
-					throw new SystemApiException('Already getting system info.');
+					throw new SystemApiException('Already getting throttle status.');
 				}
 
 				semaphore.value.getting = true;
@@ -75,7 +75,7 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 					return data.value;
 				}
 
-				let errorReason: string | null = 'Failed to fetch system info.';
+				let errorReason: string | null = 'Failed to fetch throttle status.';
 
 				if (error) {
 					errorReason = getErrorReason<operations['get-system-module-system-throttle']>(error, errorReason);
