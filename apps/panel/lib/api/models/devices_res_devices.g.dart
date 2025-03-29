@@ -15,8 +15,7 @@ _$DevicesResDevicesImpl _$$DevicesResDevicesImplFromJson(
       path: json['path'] as String,
       method: DevicesResDevicesMethod.fromJson(json['method'] as String),
       data: (json['data'] as List<dynamic>)
-          .map((e) =>
-              DevicesResDevicesDataUnion.fromJson(e as Map<String, dynamic>))
+          .map((e) => DevicesDevice.fromJson(e as Map<String, dynamic>))
           .toList(),
       metadata:
           CommonResMetadata.fromJson(json['metadata'] as Map<String, dynamic>),

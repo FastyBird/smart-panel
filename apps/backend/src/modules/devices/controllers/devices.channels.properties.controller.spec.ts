@@ -55,7 +55,7 @@ describe('DevicesChannelsPropertiesController', () => {
 		id: uuid().toString(),
 		name: 'Test Property',
 		category: PropertyCategory.GENERIC,
-		permission: [PermissionType.READ_ONLY],
+		permissions: [PermissionType.READ_ONLY],
 		dataType: DataTypeType.STRING,
 		unit: '°C',
 		format: null,
@@ -145,7 +145,7 @@ describe('DevicesChannelsPropertiesController', () => {
 			const createDto: CreateChannelPropertyDto = {
 				category: PropertyCategory.GENERIC,
 				name: 'New Property',
-				permission: [PermissionType.READ_ONLY],
+				permissions: [PermissionType.READ_ONLY],
 				data_type: DataTypeType.UNKNOWN,
 			};
 

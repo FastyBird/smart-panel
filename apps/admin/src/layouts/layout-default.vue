@@ -49,7 +49,9 @@
 			<app-top-bar v-model:menu-collapsed="mainMenuCollapsed" />
 
 			<el-main class="flex-1">
-				<router-view />
+				<div class="flex flex-col overflow-hidden h-full">
+					<router-view />
+				</div>
 			</el-main>
 		</el-container>
 	</el-container>

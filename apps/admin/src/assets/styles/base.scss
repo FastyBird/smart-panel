@@ -53,10 +53,6 @@ code {
 	color: var(--el-color-primary);
 }
 
-.el-result .el-result__icon .el-icon-with-child svg {
-	--el-result-icon-font-size: 100%;
-}
-
 ::view-transition-old(root),
 ::view-transition-new(root) {
 	animation: none;

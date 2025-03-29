@@ -870,7 +870,7 @@
                                   "id": "208f4790-21b0-4927-8835-7302d883a141",
                                   "category": "generic",
                                   "name": "Thermostat mode",
-                                  "permission": [
+                                  "permissions": [
                                     "ro"
                                   ],
                                   "data_type": "string",
@@ -969,7 +969,7 @@
                               "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
                               "category": "generic",
                               "name": "Thermostat mode",
-                              "permission": [
+                              "permissions": [
                                 "ro"
                               ],
                               "data_type": "string",
@@ -1046,7 +1046,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "category": "generic",
                                 "name": "Thermostat mode",
-                                "permission": [
+                                "permissions": [
                                   "ro"
                                 ],
                                 "data_type": "string",
@@ -1173,7 +1173,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "category": "generic",
                                 "name": "Thermostat mode",
-                                "permission": [
+                                "permissions": [
                                   "ro"
                                 ],
                                 "data_type": "string",
@@ -1309,7 +1309,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "category": "generic",
                                 "name": "Thermostat mode",
-                                "permission": [
+                                "permissions": [
                                   "ro"
                                 ],
                                 "data_type": "string",
@@ -1703,7 +1703,7 @@
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
                               "category": "generic",
                               "name": "Thermostat mode",
-                              "permission": [
+                              "permissions": [
                                 "ro"
                               ],
                               "data_type": "string",
@@ -1787,7 +1787,7 @@
                           "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
                           "category": "generic",
                           "name": "Thermostat mode",
-                          "permission": [
+                          "permissions": [
                             "ro"
                           ],
                           "data_type": "string",
@@ -1844,7 +1844,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "category": "generic",
                             "name": "Thermostat mode",
-                            "permission": [
+                            "permissions": [
                               "ro"
                             ],
                             "data_type": "string",
@@ -1956,7 +1956,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "category": "generic",
                             "name": "Thermostat mode",
-                            "permission": [
+                            "permissions": [
                               "ro"
                             ],
                             "data_type": "string",
@@ -2069,7 +2069,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "category": "generic",
                             "name": "Thermostat mode",
-                            "permission": [
+                            "permissions": [
                               "ro"
                             ],
                             "data_type": "string",
@@ -2451,7 +2451,7 @@
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
                           "category": "generic",
                           "name": "Thermostat mode",
-                          "permission": [
+                          "permissions": [
                             "ro"
                           ],
                           "data_type": "string",
@@ -2519,7 +2519,7 @@
                       "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
                       "category": "generic",
                       "name": "Thermostat mode",
-                      "permission": [
+                      "permissions": [
                         "ro"
                       ],
                       "data_type": "string",
@@ -2558,7 +2558,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "category": "generic",
                         "name": "Thermostat mode",
-                        "permission": [
+                        "permissions": [
                           "ro"
                         ],
                         "data_type": "string",
@@ -2653,7 +2653,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "category": "generic",
                         "name": "Thermostat mode",
-                        "permission": [
+                        "permissions": [
                           "ro"
                         ],
                         "data_type": "string",
@@ -2753,7 +2753,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "category": "generic",
                         "name": "Thermostat mode",
-                        "permission": [
+                        "permissions": [
                           "ro"
                         ],
                         "data_type": "string",
@@ -2875,7 +2875,7 @@
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
                               "category": "generic",
                               "name": "Thermostat mode",
-                              "permission": [
+                              "permissions": [
                                 "ro"
                               ],
                               "data_type": "string",
@@ -2956,7 +2956,7 @@
                           "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
                           "category": "generic",
                           "name": "Thermostat mode",
-                          "permission": [
+                          "permissions": [
                             "ro"
                           ],
                           "data_type": "string",
@@ -3014,7 +3014,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "category": "generic",
                             "name": "Thermostat mode",
-                            "permission": [
+                            "permissions": [
                               "ro"
                             ],
                             "data_type": "string",
@@ -3120,7 +3120,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "category": "generic",
                             "name": "Thermostat mode",
-                            "permission": [
+                            "permissions": [
                               "ro"
                             ],
                             "data_type": "string",
@@ -3233,7 +3233,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "category": "generic",
                             "name": "Thermostat mode",
-                            "permission": [
+                            "permissions": [
                               "ro"
                             ],
                             "data_type": "string",
@@ -3394,13 +3394,15 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DevicesCreateChannelControl"
+                "$ref": "#/components/schemas/DevicesReqCreateChannelControl"
               },
               "examples": {
                 "Example 1": {
                   "value": {
-                    "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
-                    "name": "reset"
+                    "data": {
+                      "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
+                      "name": "reset"
+                    }
                   }
                 }
               }
@@ -3604,7 +3606,7 @@
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
                           "category": "generic",
                           "name": "Thermostat mode",
-                          "permission": [
+                          "permissions": [
                             "ro"
                           ],
                           "data_type": "string",
@@ -3663,26 +3665,28 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DevicesCreateChannelProperty"
+                "$ref": "#/components/schemas/DevicesReqCreateChannelProperty"
               },
               "examples": {
                 "Example 1": {
                   "value": {
-                    "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
-                    "category": "generic",
-                    "name": "Thermostat mode",
-                    "permission": [
-                      "ro"
-                    ],
-                    "data_type": "string",
-                    "unit": "°C",
-                    "format": [
-                      "heat",
-                      "auto"
-                    ],
-                    "invalid": -999,
-                    "step": 0.5,
-                    "value": 22.1
+                    "data": {
+                      "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
+                      "category": "generic",
+                      "name": "Thermostat mode",
+                      "permissions": [
+                        "ro"
+                      ],
+                      "data_type": "string",
+                      "unit": "°C",
+                      "format": [
+                        "heat",
+                        "auto"
+                      ],
+                      "invalid": -999,
+                      "step": 0.5,
+                      "value": 22.1
+                    }
                   }
                 }
               }
@@ -3709,7 +3713,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "category": "generic",
                         "name": "Thermostat mode",
-                        "permission": [
+                        "permissions": [
                           "ro"
                         ],
                         "data_type": "string",
@@ -3801,7 +3805,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "category": "generic",
                         "name": "Thermostat mode",
-                        "permission": [
+                        "permissions": [
                           "ro"
                         ],
                         "data_type": "string",
@@ -3859,20 +3863,22 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DevicesUpdateChannelProperty"
+                "$ref": "#/components/schemas/DevicesReqUpdateChannelProperty"
               },
               "examples": {
                 "Example 1": {
                   "value": {
-                    "name": "Thermostat mode",
-                    "unit": "°C",
-                    "format": [
-                      "heat",
-                      "auto"
-                    ],
-                    "invalid": -999,
-                    "step": 0.5,
-                    "value": 22.1
+                    "data": {
+                      "name": "Thermostat mode",
+                      "unit": "°C",
+                      "format": [
+                        "heat",
+                        "auto"
+                      ],
+                      "invalid": -999,
+                      "step": 0.5,
+                      "value": 22.1
+                    }
                   }
                 }
               }
@@ -3899,7 +3905,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "category": "generic",
                         "name": "Thermostat mode",
-                        "permission": [
+                        "permissions": [
                           "ro"
                         ],
                         "data_type": "string",
@@ -9713,12 +9719,13 @@
           }
         ]
       },
-      "DevicesDeviceBase": {
+      "DevicesDevice": {
         "title": "Device",
         "description": "Represents the core attributes of a device, including its unique identifier, name, and category. This model forms the foundation for more detailed device representations, such as those including related entities (e.g., channels, properties, or controls).",
         "type": "object",
         "required": [
           "id",
+          "type",
           "category",
           "name",
           "description",
@@ -9733,6 +9740,12 @@
             "format": "uuid",
             "description": "System-generated unique identifier for the device.",
             "example": "332dda32-b7de-4557-956a-b6ed6c6799a4",
+            "readOnly": true
+          },
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of device.",
+            "example": "third-party",
             "readOnly": true
           },
           "category": {
@@ -9783,38 +9796,6 @@
             "readOnly": true
           }
         }
-      },
-      "DevicesThirdPartyDevice": {
-        "title": "Third-Party Device",
-        "description": "The ThirdPartyDevice model represents a software-based or non-physical device that is capable of being controlled or monitored. Unlike physical devices, a ThirdPartyDevice interacts with external systems through a service_address. This address allows for integration with third-party APIs or services, enabling remote control and monitoring capabilities.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DevicesDeviceBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type",
-              "service_address"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "third-party",
-                "description": "Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.",
-                "default": "third-party",
-                "example": "third-party",
-                "readOnly": true
-              },
-              "service_address": {
-                "type": "string",
-                "pattern": "^(https?:\\/\\/)?([a-zA-Z0-9.-]+)(:\\d+)?(\\/.*)?$",
-                "description": "The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.",
-                "example": "http://192.168.1.100/webhook"
-              }
-            }
-          }
-        ]
       },
       "DevicesDeviceControl": {
         "title": "Device Control",
@@ -10000,7 +9981,7 @@
           "id",
           "category",
           "name",
-          "permission",
+          "permissions",
           "data_type",
           "unit",
           "format",
@@ -10031,7 +10012,7 @@
             "default": null,
             "example": "Thermostat mode"
           },
-          "permission": {
+          "permissions": {
             "type": "array",
             "items": {
               "type": "string",
@@ -10146,11 +10127,12 @@
           }
         }
       },
-      "DevicesCreateDeviceBase": {
+      "DevicesCreateDevice": {
         "title": "Create Device",
         "description": "Schema for creating a new device. This includes essential attributes like type, category, and name, along with optional details such as a description.",
         "type": "object",
         "required": [
+          "type",
           "category",
           "name"
         ],
@@ -10160,6 +10142,12 @@
             "format": "uuid",
             "description": "Unique identifier for the device. Optional during creation and system-generated if not provided.",
             "example": "332dda32-b7de-4557-956a-b6ed6c6799a4"
+          },
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of device.",
+            "default": "third-party",
+            "example": "third-party"
           },
           "category": {
             "$ref": "#/components/schemas/DevicesDeviceCategory",
@@ -10191,37 +10179,6 @@
             }
           }
         }
-      },
-      "DevicesCreateThirdPartyDevice": {
-        "title": "Create Third-Party Device",
-        "description": "Schema for creating a third-party device, including its type, category, and a third-party service address.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DevicesCreateDeviceBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type",
-              "service_address"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "third-party",
-                "description": "Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.",
-                "default": "third-party",
-                "example": "third-party"
-              },
-              "service_address": {
-                "type": "string",
-                "pattern": "^(https?:\\/\\/)?([a-zA-Z0-9.-]+)(:\\d+)?(\\/.*)?$",
-                "description": "The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.",
-                "example": "http://192.168.1.100/webhook"
-              }
-            }
-          }
-        ]
       },
       "DevicesCreateDeviceControl": {
         "title": "Create Device Control",
@@ -10340,7 +10297,7 @@
         "type": "object",
         "required": [
           "category",
-          "permission",
+          "permissions",
           "data_type"
         ],
         "properties": {
@@ -10360,7 +10317,7 @@
             "description": "Optional name of the property for easier identification.",
             "example": "Thermostat mode"
           },
-          "permission": {
+          "permissions": {
             "type": "array",
             "items": {
               "type": "string",
@@ -10445,7 +10402,7 @@
           }
         }
       },
-      "DevicesUpdateDeviceBase": {
+      "DevicesUpdateDevice": {
         "title": "Update Device",
         "description": "Schema for updating basic details of a device, including its name and description.",
         "type": "object",
@@ -10462,36 +10419,6 @@
             "example": "Living room thermostat"
           }
         }
-      },
-      "DevicesUpdateThirdPartyDevice": {
-        "title": "Update Third-Party Device",
-        "description": "Schema for updating a third-party device, including its basic details and the service address it connects to.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DevicesUpdateDeviceBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "third-party",
-                "description": "Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.",
-                "default": "third-party",
-                "example": "third-party"
-              },
-              "service_address": {
-                "type": "string",
-                "pattern": "^(https?:\\/\\/)?([a-zA-Z0-9.-]+)(:\\d+)?(\\/.*)?$",
-                "description": "The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.",
-                "example": "http://192.168.1.100/webhook"
-              }
-            }
-          }
-        ]
       },
       "DevicesUpdateChannel": {
         "title": "Update Channel",
@@ -10582,17 +10509,7 @@
         ],
         "properties": {
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DevicesCreateThirdPartyDevice"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "third-party": "#/components/schemas/DevicesCreateThirdPartyDevice"
-              }
-            }
+            "$ref": "#/components/schemas/DevicesCreateDevice"
           }
         }
       },
@@ -10670,17 +10587,7 @@
         ],
         "properties": {
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DevicesUpdateThirdPartyDevice"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "third-party": "#/components/schemas/DevicesUpdateThirdPartyDevice"
-              }
-            }
+            "$ref": "#/components/schemas/DevicesUpdateDevice"
           }
         }
       },
@@ -10763,18 +10670,7 @@
             "readOnly": true
           },
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DevicesThirdPartyDevice"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "third-party": "#/components/schemas/DevicesThirdPartyDevice"
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+            "$ref": "#/components/schemas/DevicesDevice"
           },
           "metadata": {
             "$ref": "#/components/schemas/CommonResMetadata",
@@ -10837,19 +10733,8 @@
           "data": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DevicesThirdPartyDevice"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "third-party": "#/components/schemas/DevicesThirdPartyDevice"
-                }
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+              "$ref": "#/components/schemas/DevicesDevice"
+            }
           },
           "metadata": {
             "$ref": "#/components/schemas/CommonResMetadata",

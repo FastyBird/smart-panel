@@ -21,8 +21,7 @@ DevicesReqCreateDevice _$DevicesReqCreateDeviceFromJson(
 
 /// @nodoc
 mixin _$DevicesReqCreateDevice {
-  DevicesReqCreateDeviceDataUnion get data =>
-      throw _privateConstructorUsedError;
+  DevicesCreateDevice get data => throw _privateConstructorUsedError;
 
   /// Serializes this DevicesReqCreateDevice to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -40,9 +39,9 @@ abstract class $DevicesReqCreateDeviceCopyWith<$Res> {
           $Res Function(DevicesReqCreateDevice) then) =
       _$DevicesReqCreateDeviceCopyWithImpl<$Res, DevicesReqCreateDevice>;
   @useResult
-  $Res call({DevicesReqCreateDeviceDataUnion data});
+  $Res call({DevicesCreateDevice data});
 
-  $DevicesReqCreateDeviceDataUnionCopyWith<$Res> get data;
+  $DevicesCreateDeviceCopyWith<$Res> get data;
 }
 
 /// @nodoc
@@ -67,7 +66,7 @@ class _$DevicesReqCreateDeviceCopyWithImpl<$Res,
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DevicesReqCreateDeviceDataUnion,
+              as DevicesCreateDevice,
     ) as $Val);
   }
 
@@ -75,8 +74,8 @@ class _$DevicesReqCreateDeviceCopyWithImpl<$Res,
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $DevicesReqCreateDeviceDataUnionCopyWith<$Res> get data {
-    return $DevicesReqCreateDeviceDataUnionCopyWith<$Res>(_value.data, (value) {
+  $DevicesCreateDeviceCopyWith<$Res> get data {
+    return $DevicesCreateDeviceCopyWith<$Res>(_value.data, (value) {
       return _then(_value.copyWith(data: value) as $Val);
     });
   }
@@ -91,10 +90,10 @@ abstract class _$$DevicesReqCreateDeviceImplCopyWith<$Res>
       __$$DevicesReqCreateDeviceImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({DevicesReqCreateDeviceDataUnion data});
+  $Res call({DevicesCreateDevice data});
 
   @override
-  $DevicesReqCreateDeviceDataUnionCopyWith<$Res> get data;
+  $DevicesCreateDeviceCopyWith<$Res> get data;
 }
 
 /// @nodoc
@@ -118,7 +117,7 @@ class __$$DevicesReqCreateDeviceImplCopyWithImpl<$Res>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DevicesReqCreateDeviceDataUnion,
+              as DevicesCreateDevice,
     ));
   }
 }
@@ -132,7 +131,7 @@ class _$DevicesReqCreateDeviceImpl implements _DevicesReqCreateDevice {
       _$$DevicesReqCreateDeviceImplFromJson(json);
 
   @override
-  final DevicesReqCreateDeviceDataUnion data;
+  final DevicesCreateDevice data;
 
   @override
   String toString() {
@@ -170,14 +169,13 @@ class _$DevicesReqCreateDeviceImpl implements _DevicesReqCreateDevice {
 
 abstract class _DevicesReqCreateDevice implements DevicesReqCreateDevice {
   const factory _DevicesReqCreateDevice(
-          {required final DevicesReqCreateDeviceDataUnion data}) =
-      _$DevicesReqCreateDeviceImpl;
+      {required final DevicesCreateDevice data}) = _$DevicesReqCreateDeviceImpl;
 
   factory _DevicesReqCreateDevice.fromJson(Map<String, dynamic> json) =
       _$DevicesReqCreateDeviceImpl.fromJson;
 
   @override
-  DevicesReqCreateDeviceDataUnion get data;
+  DevicesCreateDevice get data;
 
   /// Create a copy of DevicesReqCreateDevice
   /// with the given fields replaced by the non-null parameter values.

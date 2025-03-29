@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Icon } from '@iconify/vue';
 import { mount } from '@vue/test-utils';
 
-import { RouteNames, sessionStoreKey } from '../../modules/auth-module';
+import { RouteNames, sessionStoreKey } from '../../modules/auth';
 import { useDarkMode } from '../composables';
 import { injectStoresManager } from '../services';
 

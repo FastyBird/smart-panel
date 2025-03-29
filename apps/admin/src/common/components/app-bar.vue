@@ -1,11 +1,18 @@
 <template>
 	<el-header :class="[ns.b()]">
-		<div
-			id="app-bar-button-small"
-			ref="buttonSmall"
-			:class="[ns.e('buttons-small'), ns.is('expanded', hasSmallButtons)]"
-		>
-			<slot name="button-small" />
+		<div :class="[ns.e('buttons-small'), ns.is('expanded', hasSmallButtons)]">
+			<div
+				id="app-bar-button-small-left"
+				ref="buttonSmallLeft"
+			>
+				<slot name="button-small-left" />
+			</div>
+			<div
+				id="app-bar-button-small-right"
+				ref="buttonSmallRight"
+			>
+				<slot name="button-small-right" />
+			</div>
 		</div>
 
 		<div :class="[ns.e('header')]">
@@ -96,7 +103,8 @@ const newMutationObserver = (callback: () => void): MutationObserver | null => {
 	return new MutationObserver(callback);
 };
 
-const buttonSmall = ref<HTMLElement | null>(null);
+const buttonSmallLeft = ref<HTMLElement | null>(null);
+const buttonSmallRight = ref<HTMLElement | null>(null);
 const content = ref<HTMLElement | null>(null);
 
 const hasSmallButtons = ref<boolean>(false);
@@ -105,18 +113,26 @@ const hasContent = ref<boolean>(false);
 let mutationObserver: MutationObserver | null = null;
 
 const mutationObserverCallback = (): void => {
-	hasSmallButtons.value = buttonSmall.value !== null && buttonSmall.value?.children.length > 0;
+	hasSmallButtons.value =
+		(buttonSmallLeft.value !== null && buttonSmallLeft.value?.children.length > 0) ||
+		(buttonSmallRight.value !== null && buttonSmallRight.value?.children.length > 0);
 	hasContent.value = content.value !== null && (content.value?.childElementCount > 0 || content.value.textContent !== '');
 };
 
 onMounted((): void => {
-	hasSmallButtons.value = buttonSmall.value !== null && buttonSmall.value?.children.length > 0;
+	hasSmallButtons.value =
+		(buttonSmallLeft.value !== null && buttonSmallLeft.value?.children.length > 0) ||
+		(buttonSmallRight.value !== null && buttonSmallRight.value?.children.length > 0);
 	hasContent.value = content.value !== null && (content.value?.childElementCount > 0 || content.value.textContent !== '');
 
 	mutationObserver = newMutationObserver(mutationObserverCallback);
 
-	if (mutationObserver !== null && buttonSmall.value !== null) {
-		mutationObserver.observe(buttonSmall.value as unknown as Node, { childList: true });
+	if (mutationObserver !== null && buttonSmallLeft.value !== null) {
+		mutationObserver.observe(buttonSmallLeft.value as unknown as Node, { childList: true });
+	}
+
+	if (mutationObserver !== null && buttonSmallRight.value !== null) {
+		mutationObserver.observe(buttonSmallRight.value as unknown as Node, { childList: true });
 	}
 
 	if (mutationObserver !== null && content.value !== null) {

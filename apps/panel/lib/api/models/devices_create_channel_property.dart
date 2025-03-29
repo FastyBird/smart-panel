@@ -6,7 +6,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'devices_channel_property_category.dart';
 import 'devices_create_channel_property_data_type.dart';
-import 'devices_create_channel_property_permission.dart';
+import 'devices_create_channel_property_permissions.dart';
 
 part 'devices_create_channel_property.freezed.dart';
 part 'devices_create_channel_property.g.dart';
@@ -22,7 +22,7 @@ class DevicesCreateChannelProperty with _$DevicesCreateChannelProperty {
     required DevicesChannelPropertyCategory category,
 
     /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
-    required List<DevicesCreateChannelPropertyPermission> permission,
+    required List<DevicesCreateChannelPropertyPermissions> permissions,
 
     /// Data type of the property’s value, e.g., string, integer, or boolean.
     @JsonKey(name: 'data_type')

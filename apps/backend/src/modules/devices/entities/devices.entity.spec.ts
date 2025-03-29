@@ -10,10 +10,10 @@ import {
 	ChannelEntity,
 	ChannelPropertyEntity,
 	DeviceControlEntity,
-	ThirdPartyDeviceEntity,
+	DeviceEntity,
 } from './devices.entity';
 
-type ThirdPartyDevice = components['schemas']['DevicesThirdPartyDevice'];
+type Device = components['schemas']['DevicesDevice'];
 type DeviceControl = components['schemas']['DevicesDeviceControl'];
 type Channel = components['schemas']['DevicesChannel'];
 type ChannelControl = components['schemas']['DevicesChannelControl'];
@@ -41,20 +41,19 @@ describe('Devices module entity and OpenAPI Model Synchronization', () => {
 	};
 
 	test('DeviceEntity matches DevicesDevice', () => {
-		const openApiModel: ThirdPartyDevice = {
+		const openApiModel: Device = {
 			id: uuid().toString(),
-			type: 'third-party',
+			type: 'device',
 			category: DeviceCategory.GENERIC,
 			name: 'Thermostat',
 			description: 'Living room thermostat',
-			service_address: 'http://192.168.1.100/webhook',
 			controls: [],
 			channels: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(ThirdPartyDeviceEntity, openApiModel, {
+		const entityInstance = plainToInstance(DeviceEntity, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
@@ -146,7 +145,7 @@ describe('Devices module entity and OpenAPI Model Synchronization', () => {
 			id: uuid().toString(),
 			category: PropertyCategory.GENERIC,
 			name: 'Thermostat Mode',
-			permission: [PermissionType.READ_ONLY],
+			permissions: [PermissionType.READ_ONLY],
 			data_type: DataTypeType.STRING,
 			unit: '°C',
 			format: ['heat', 'auto'],

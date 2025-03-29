@@ -11,7 +11,11 @@
       "signOut": "Sign out"
     },
     "headings": {
-      "loadingFailed": "An error occurred"
+      "loadingFailed": "An error occurred",
+      "home": "Administration"
+    },
+    "subHeadings": {
+      "home": "Smart Panel display administration"
     },
     "breadcrumbs": {
       "homepage": "homepage"

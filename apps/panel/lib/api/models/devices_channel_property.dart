@@ -6,7 +6,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'devices_channel_property_category.dart';
 import 'devices_channel_property_data_type.dart';
-import 'devices_channel_property_permission.dart';
+import 'devices_channel_property_permissions.dart';
 
 part 'devices_channel_property.freezed.dart';
 part 'devices_channel_property.g.dart';
@@ -25,7 +25,7 @@ class DevicesChannelProperty with _$DevicesChannelProperty {
     required String? name,
 
     /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
-    required List<DevicesChannelPropertyPermission> permission,
+    required List<DevicesChannelPropertyPermissions> permissions,
 
     /// Measurement unit associated with the property’s value, if applicable.
     required String? unit,

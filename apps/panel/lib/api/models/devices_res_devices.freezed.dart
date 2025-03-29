@@ -35,10 +35,7 @@ mixin _$DevicesResDevices {
 
   /// The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
   DevicesResDevicesMethod get method => throw _privateConstructorUsedError;
-
-  /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
-  List<DevicesResDevicesDataUnion> get data =>
-      throw _privateConstructorUsedError;
+  List<DevicesDevice> get data => throw _privateConstructorUsedError;
 
   /// Additional metadata about the request and server performance metrics.
   CommonResMetadata get metadata => throw _privateConstructorUsedError;
@@ -65,7 +62,7 @@ abstract class $DevicesResDevicesCopyWith<$Res> {
       @JsonKey(name: 'request_id') String requestId,
       String path,
       DevicesResDevicesMethod method,
-      List<DevicesResDevicesDataUnion> data,
+      List<DevicesDevice> data,
       CommonResMetadata metadata});
 
   $CommonResMetadataCopyWith<$Res> get metadata;
@@ -118,7 +115,7 @@ class _$DevicesResDevicesCopyWithImpl<$Res, $Val extends DevicesResDevices>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as List<DevicesResDevicesDataUnion>,
+              as List<DevicesDevice>,
       metadata: null == metadata
           ? _value.metadata
           : metadata // ignore: cast_nullable_to_non_nullable
@@ -151,7 +148,7 @@ abstract class _$$DevicesResDevicesImplCopyWith<$Res>
       @JsonKey(name: 'request_id') String requestId,
       String path,
       DevicesResDevicesMethod method,
-      List<DevicesResDevicesDataUnion> data,
+      List<DevicesDevice> data,
       CommonResMetadata metadata});
 
   @override
@@ -203,7 +200,7 @@ class __$$DevicesResDevicesImplCopyWithImpl<$Res>
       data: null == data
           ? _value._data
           : data // ignore: cast_nullable_to_non_nullable
-              as List<DevicesResDevicesDataUnion>,
+              as List<DevicesDevice>,
       metadata: null == metadata
           ? _value.metadata
           : metadata // ignore: cast_nullable_to_non_nullable
@@ -221,7 +218,7 @@ class _$DevicesResDevicesImpl implements _DevicesResDevices {
       @JsonKey(name: 'request_id') required this.requestId,
       required this.path,
       required this.method,
-      required final List<DevicesResDevicesDataUnion> data,
+      required final List<DevicesDevice> data,
       required this.metadata})
       : _data = data;
 
@@ -248,13 +245,9 @@ class _$DevicesResDevicesImpl implements _DevicesResDevices {
   /// The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
   @override
   final DevicesResDevicesMethod method;
-
-  /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
-  final List<DevicesResDevicesDataUnion> _data;
-
-  /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
+  final List<DevicesDevice> _data;
   @override
-  List<DevicesResDevicesDataUnion> get data {
+  List<DevicesDevice> get data {
     if (_data is EqualUnmodifiableListView) return _data;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_data);
@@ -315,7 +308,7 @@ abstract class _DevicesResDevices implements DevicesResDevices {
       @JsonKey(name: 'request_id') required final String requestId,
       required final String path,
       required final DevicesResDevicesMethod method,
-      required final List<DevicesResDevicesDataUnion> data,
+      required final List<DevicesDevice> data,
       required final CommonResMetadata metadata}) = _$DevicesResDevicesImpl;
 
   factory _DevicesResDevices.fromJson(Map<String, dynamic> json) =
@@ -341,10 +334,8 @@ abstract class _DevicesResDevices implements DevicesResDevices {
   /// The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
   @override
   DevicesResDevicesMethod get method;
-
-  /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
   @override
-  List<DevicesResDevicesDataUnion> get data;
+  List<DevicesDevice> get data;
 
   /// Additional metadata about the request and server performance metrics.
   @override

@@ -81,8 +81,8 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitc
 
 import { Icon } from '@iconify/vue';
 
-import { RouteNames, sessionStoreKey } from '../../modules/auth-module';
-import type { IUser } from '../../modules/users-module';
+import { RouteNames, sessionStoreKey } from '../../modules/auth';
+import type { IUser } from '../../modules/users';
 import { UserAvatar } from '../components';
 import { useDarkMode } from '../composables';
 import { injectStoresManager } from '../services';

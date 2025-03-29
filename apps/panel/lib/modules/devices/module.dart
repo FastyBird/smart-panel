@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
-import 'package:fastybird_smart_panel/api/models/devices_res_devices_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/devices_device.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
@@ -132,7 +132,7 @@ class DevicesModuleService {
   /// API HANDLERS
   /// ////////////
 
-  Future<List<DevicesResDevicesDataUnion>> _fetchDevices() async {
+  Future<List<DevicesDevice>> _fetchDevices() async {
     return _handleApiCall(
       () async {
         final response = await _apiClient.getDevicesModuleDevices();

@@ -2,48 +2,50 @@
 @use 'element-plus/theme-chalk/src/mixins/var' as *;
 
 @include b(app-layout-default) {
-  @include e(aside) {
-    @include set-css-var-value(('aside', 'width'), '220px');
+	@include e(aside) {
+		@include set-css-var-value(('aside', 'width'), '220px');
 
-    transition: all getCssVar('transition-duration');
+		transition: all getCssVar('transition-duration');
 
-    @include m(collapsed) {
-      @include set-css-var-value(('aside', 'width'), '64px');
-    }
-  }
+		@include m(collapsed) {
+			@include set-css-var-value(('aside', 'width'), '64px');
+		}
+	}
 
-  @include e(mobile-menu) {
-    .el-drawer {
-      &__header {
-        @include set-css-var-value(('drawer', 'padding', 'primary'), '0px');
+	@include e(mobile-menu) {
+		.el-drawer {
+			&__header {
+				@include set-css-var-value(('drawer', 'padding', 'primary'), '0px');
 
-        position: absolute;
-        width: 100%;
-        margin: 0;
-        padding: 1rem 1rem 0 0;
-        z-index: 1;
-        box-sizing: border-box;
-      }
-    }
-  }
+				position: absolute;
+				width: 100%;
+				margin: 0;
+				padding: 1rem 1rem 0 0;
+				z-index: 1;
+				box-sizing: border-box;
+			}
+		}
+	}
 
-  .el-main {
-    @include set-css-var-value(('main', 'padding'), '0');
+	.el-main {
+		@include set-css-var-value(('main', 'padding'), '0');
 
-    background-color: #f5f5f5;
-  }
+		@include res('sm') {
+			background-color: #f5f5f5;
+		}
+	}
 
-  .el-drawer {
-    &__body {
-      @include set-css-var-value(('drawer', 'padding', 'primary'), '0px');
-    }
-  }
+	.el-drawer {
+		&__body {
+			@include set-css-var-value(('drawer', 'padding', 'primary'), '0px');
+		}
+	}
 }
 
 .dark {
-  @include b(app-layout-default) {
-    .el-main {
-      background-color: transparent;
-    }
-  }
+	@include b(app-layout-default) {
+		.el-main {
+			background-color: transparent;
+		}
+	}
 }

@@ -12,7 +12,7 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
-import { ChildEntity, Column, Entity, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
@@ -20,7 +20,7 @@ import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, Property
 
 @Entity('devices_module_devices')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
-export abstract class DeviceEntity extends BaseEntity {
+export class DeviceEntity extends BaseEntity {
 	@Expose()
 	@IsEnum(DeviceCategory)
 	@Column({
@@ -59,24 +59,6 @@ export abstract class DeviceEntity extends BaseEntity {
 	get type(): string {
 		const constructorName = (this.constructor as { name: string }).name;
 		return constructorName.toLowerCase();
-	}
-}
-
-@ChildEntity()
-export class ThirdPartyDeviceEntity extends DeviceEntity {
-	@Expose({ name: 'service_address' })
-	@IsString()
-	@Column()
-	@Transform(
-		({ obj }: { obj: { service_address?: string; serviceAddress?: string } }) =>
-			obj.service_address || obj.serviceAddress,
-		{ toClassOnly: true },
-	)
-	serviceAddress: string;
-
-	@Expose()
-	get type(): string {
-		return 'third-party';
 	}
 }
 
@@ -190,7 +172,7 @@ export class ChannelPropertyEntity extends BaseEntity {
 		type: 'simple-array',
 		default: `${PermissionType.READ_ONLY}`,
 	})
-	permission: PermissionType[];
+	permissions: PermissionType[];
 
 	@Expose({ name: 'data_type' })
 	@IsEnum(DataTypeType)

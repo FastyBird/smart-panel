@@ -2522,13 +2522,18 @@ export interface components {
          * Device
          * @description Represents the core attributes of a device, including its unique identifier, name, and category. This model forms the foundation for more detailed device representations, such as those including related entities (e.g., channels, properties, or controls).
          */
-        DevicesDeviceBase: {
+        DevicesDevice: {
             /**
              * Format: uuid
              * @description System-generated unique identifier for the device.
              * @example 332dda32-b7de-4557-956a-b6ed6c6799a4
              */
             readonly id: string;
+            /**
+             * @description Specifies the type of device.
+             * @example third-party
+             */
+            readonly type: string;
             /** @description Type of the device, defining its purpose or category (e.g., thermostat, lighting). */
             readonly category: components["schemas"]["DevicesDeviceCategory"];
             /**
@@ -2559,30 +2564,6 @@ export interface components {
              * @example 2024-12-11T12:00:00Z
              */
             readonly updated_at: string | null;
-        };
-        /**
-         * Third-Party Device
-         * @description The ThirdPartyDevice model represents a software-based or non-physical device that is capable of being controlled or monitored. Unlike physical devices, a ThirdPartyDevice interacts with external systems through a service_address. This address allows for integration with third-party APIs or services, enabling remote control and monitoring capabilities.
-         */
-        DevicesThirdPartyDevice: components["schemas"]["DevicesDeviceBase"] & {
-            /**
-             * @description Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.
-             * @default third-party
-             * @example third-party
-             * @constant
-             */
-            readonly type: "third-party";
-            /**
-             * @description The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.
-             * @example http://192.168.1.100/webhook
-             */
-            service_address: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "third-party";
         };
         /**
          * Device Control
@@ -2729,7 +2710,7 @@ export interface components {
              *       "ro"
              *     ]
              */
-            readonly permission: ("ro" | "rw" | "wo" | "ev")[];
+            readonly permissions: ("ro" | "rw" | "wo" | "ev")[];
             /**
              * @description Data type of the property’s value, e.g., string, integer, or boolean.
              * @default unknown
@@ -2794,13 +2775,19 @@ export interface components {
          * Create Device
          * @description Schema for creating a new device. This includes essential attributes like type, category, and name, along with optional details such as a description.
          */
-        DevicesCreateDeviceBase: {
+        DevicesCreateDevice: {
             /**
              * Format: uuid
              * @description Unique identifier for the device. Optional during creation and system-generated if not provided.
              * @example 332dda32-b7de-4557-956a-b6ed6c6799a4
              */
             id?: string;
+            /**
+             * @description Specifies the type of device.
+             * @default third-party
+             * @example third-party
+             */
+            type: string;
             /** @description Type of the device, defining its purpose or category (e.g., thermostat, lighting). */
             category: components["schemas"]["DevicesDeviceCategory"];
             /**
@@ -2817,30 +2804,6 @@ export interface components {
             controls?: components["schemas"]["DevicesCreateDeviceControl"][];
             /** @description A list of channels associated with the device. Each channel represents a functional unit of the device, such as a sensor, actuator, or logical grouping of properties. */
             channels?: components["schemas"]["DevicesCreateDeviceChannel"][];
-        };
-        /**
-         * Create Third-Party Device
-         * @description Schema for creating a third-party device, including its type, category, and a third-party service address.
-         */
-        DevicesCreateThirdPartyDevice: components["schemas"]["DevicesCreateDeviceBase"] & {
-            /**
-             * @description Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.
-             * @default third-party
-             * @example third-party
-             * @constant
-             */
-            type: "third-party";
-            /**
-             * @description The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.
-             * @example http://192.168.1.100/webhook
-             */
-            service_address: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "third-party";
         };
         /**
          * Create Device Control
@@ -2940,7 +2903,7 @@ export interface components {
              *       "ro"
              *     ]
              */
-            permission: ("ro" | "rw" | "wo" | "ev")[];
+            permissions: ("ro" | "rw" | "wo" | "ev")[];
             /**
              * @description Data type of the property’s value, e.g., string, integer, or boolean.
              * @example string
@@ -2980,7 +2943,7 @@ export interface components {
          * Update Device
          * @description Schema for updating basic details of a device, including its name and description.
          */
-        DevicesUpdateDeviceBase: {
+        DevicesUpdateDevice: {
             /**
              * @description Human-readable name of the device.
              * @example Thermostat
@@ -2991,30 +2954,6 @@ export interface components {
              * @example Living room thermostat
              */
             description?: string | null;
-        };
-        /**
-         * Update Third-Party Device
-         * @description Schema for updating a third-party device, including its basic details and the service address it connects to.
-         */
-        DevicesUpdateThirdPartyDevice: components["schemas"]["DevicesUpdateDeviceBase"] & {
-            /**
-             * @description Specifies the type of device. This value is fixed as 'third-party' for third-party device integrations.
-             * @default third-party
-             * @example third-party
-             * @constant
-             */
-            type: "third-party";
-            /**
-             * @description The address of the third-party service used by the third-party device. It can be a URL or IP address with an optional port.
-             * @example http://192.168.1.100/webhook
-             */
-            service_address?: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "third-party";
         };
         /**
          * Update Channel
@@ -3076,7 +3015,7 @@ export interface components {
          * @description Request schema for creating new device.
          */
         DevicesReqCreateDevice: {
-            data: components["schemas"]["DevicesCreateThirdPartyDevice"];
+            data: components["schemas"]["DevicesCreateDevice"];
         };
         /**
          * Create Device Control Request
@@ -3118,7 +3057,7 @@ export interface components {
          * @description Request schema for updating an existing device.
          */
         DevicesReqUpdateDevice: {
-            data: components["schemas"]["DevicesUpdateThirdPartyDevice"];
+            data: components["schemas"]["DevicesUpdateDevice"];
         };
         /**
          * Update Channel Request
@@ -3167,8 +3106,7 @@ export interface components {
              * @enum {string}
              */
             readonly method: "GET" | "POST" | "PATCH" | "DELETE";
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DevicesThirdPartyDevice"];
+            data: components["schemas"]["DevicesDevice"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -3205,8 +3143,7 @@ export interface components {
              * @enum {string}
              */
             readonly method: "GET" | "POST" | "PATCH" | "DELETE";
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DevicesThirdPartyDevice"][];
+            data: components["schemas"]["DevicesDevice"][];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -6636,21 +6573,18 @@ export type SchemaConfigUpdateWeather = components['schemas']['ConfigUpdateWeath
 export type SchemaConfigReqUpdateSection = components['schemas']['ConfigReqUpdateSection'];
 export type SchemaConfigResApp = components['schemas']['ConfigResApp'];
 export type SchemaConfigResSection = components['schemas']['ConfigResSection'];
-export type SchemaDevicesDeviceBase = components['schemas']['DevicesDeviceBase'];
-export type SchemaDevicesThirdPartyDevice = components['schemas']['DevicesThirdPartyDevice'];
+export type SchemaDevicesDevice = components['schemas']['DevicesDevice'];
 export type SchemaDevicesDeviceControl = components['schemas']['DevicesDeviceControl'];
 export type SchemaDevicesChannel = components['schemas']['DevicesChannel'];
 export type SchemaDevicesChannelControl = components['schemas']['DevicesChannelControl'];
 export type SchemaDevicesChannelProperty = components['schemas']['DevicesChannelProperty'];
-export type SchemaDevicesCreateDeviceBase = components['schemas']['DevicesCreateDeviceBase'];
-export type SchemaDevicesCreateThirdPartyDevice = components['schemas']['DevicesCreateThirdPartyDevice'];
+export type SchemaDevicesCreateDevice = components['schemas']['DevicesCreateDevice'];
 export type SchemaDevicesCreateDeviceControl = components['schemas']['DevicesCreateDeviceControl'];
 export type SchemaDevicesCreateDeviceChannel = components['schemas']['DevicesCreateDeviceChannel'];
 export type SchemaDevicesCreateChannel = components['schemas']['DevicesCreateChannel'];
 export type SchemaDevicesCreateChannelControl = components['schemas']['DevicesCreateChannelControl'];
 export type SchemaDevicesCreateChannelProperty = components['schemas']['DevicesCreateChannelProperty'];
-export type SchemaDevicesUpdateDeviceBase = components['schemas']['DevicesUpdateDeviceBase'];
-export type SchemaDevicesUpdateThirdPartyDevice = components['schemas']['DevicesUpdateThirdPartyDevice'];
+export type SchemaDevicesUpdateDevice = components['schemas']['DevicesUpdateDevice'];
 export type SchemaDevicesUpdateChannel = components['schemas']['DevicesUpdateChannel'];
 export type SchemaDevicesUpdateChannelProperty = components['schemas']['DevicesUpdateChannelProperty'];
 export type SchemaDevicesReqCreateDevice = components['schemas']['DevicesReqCreateDevice'];
@@ -8087,7 +8021,7 @@ export interface operations {
         /** @description The data required to create a new channel control */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DevicesCreateChannelControl"];
+                "application/json": components["schemas"]["DevicesReqCreateChannelControl"];
             };
         };
         responses: {
@@ -8218,7 +8152,7 @@ export interface operations {
         /** @description The data required to create a new channel property */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DevicesCreateChannelProperty"];
+                "application/json": components["schemas"]["DevicesReqCreateChannelProperty"];
             };
         };
         responses: {
@@ -8325,7 +8259,7 @@ export interface operations {
         /** @description The data required to update a existing channel property */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DevicesUpdateChannelProperty"];
+                "application/json": components["schemas"]["DevicesReqUpdateChannelProperty"];
             };
         };
         responses: {

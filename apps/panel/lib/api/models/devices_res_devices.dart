@@ -5,7 +5,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'common_res_metadata.dart';
-import 'devices_res_devices_data_union.dart';
+import 'devices_device.dart';
 import 'devices_res_devices_method.dart';
 
 part 'devices_res_devices.freezed.dart';
@@ -30,9 +30,7 @@ class DevicesResDevices with _$DevicesResDevices {
 
     /// The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
     required DevicesResDevicesMethod method,
-
-    /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
-    required List<DevicesResDevicesDataUnion> data,
+    required List<DevicesDevice> data,
 
     /// Additional metadata about the request and server performance metrics.
     required CommonResMetadata metadata,

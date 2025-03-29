@@ -286,6 +286,7 @@ describe('DevicesService', () => {
 	describe('update', () => {
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
+				type: 'device',
 				name: 'Updated device',
 				mock_value: 'Changed text',
 			};

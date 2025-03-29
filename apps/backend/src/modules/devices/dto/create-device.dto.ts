@@ -8,11 +8,9 @@ import { UniqueControlNames } from '../validators/unique-control-names-constrain
 import { CreateDeviceChannelDto } from './create-device-channel.dto';
 import { CreateDeviceControlDto } from './create-device-control.dto';
 
-type ReqCreateDevice = components['schemas']['DevicesReqCreateDevice'];
-type CreateDeviceBase = components['schemas']['DevicesCreateDeviceBase'];
-type CreateThirdPartyDevice = components['schemas']['DevicesCreateThirdPartyDevice'];
+type CreateDeviceBase = components['schemas']['DevicesCreateDevice'];
 
-export abstract class CreateDeviceDto implements CreateDeviceBase {
+export class CreateDeviceDto implements CreateDeviceBase {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
@@ -64,20 +62,4 @@ export abstract class CreateDeviceDto implements CreateDeviceBase {
 	@ValidateNested({ each: true })
 	@Type(() => CreateDeviceChannelDto)
 	channels?: CreateDeviceChannelDto[];
-}
-
-export class CreateThirdPartyDeviceDto extends CreateDeviceDto implements CreateThirdPartyDevice {
-	readonly type: 'third-party';
-
-	@Expose()
-	@IsNotEmpty({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
-	@IsString({ message: '[{"field":"service_address","reason":"Service address must be a valid string."}]' })
-	service_address: string;
-}
-
-export class ReqCreateDeviceDto implements ReqCreateDevice {
-	@Expose()
-	@ValidateNested()
-	@Type(() => CreateThirdPartyDeviceDto)
-	data: CreateThirdPartyDeviceDto;
 }

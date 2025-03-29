@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
-import { RouteNames, sessionStoreKey } from '../../modules/auth-module';
+import { RouteNames, sessionStoreKey } from '../../modules/auth';
 import { injectStoresManager } from '../services';
 
 import enUS from './../../locales/en-US.json';

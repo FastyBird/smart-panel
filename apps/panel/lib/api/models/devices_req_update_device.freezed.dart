@@ -21,8 +21,7 @@ DevicesReqUpdateDevice _$DevicesReqUpdateDeviceFromJson(
 
 /// @nodoc
 mixin _$DevicesReqUpdateDevice {
-  DevicesReqUpdateDeviceDataUnion get data =>
-      throw _privateConstructorUsedError;
+  DevicesUpdateDevice get data => throw _privateConstructorUsedError;
 
   /// Serializes this DevicesReqUpdateDevice to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -40,9 +39,9 @@ abstract class $DevicesReqUpdateDeviceCopyWith<$Res> {
           $Res Function(DevicesReqUpdateDevice) then) =
       _$DevicesReqUpdateDeviceCopyWithImpl<$Res, DevicesReqUpdateDevice>;
   @useResult
-  $Res call({DevicesReqUpdateDeviceDataUnion data});
+  $Res call({DevicesUpdateDevice data});
 
-  $DevicesReqUpdateDeviceDataUnionCopyWith<$Res> get data;
+  $DevicesUpdateDeviceCopyWith<$Res> get data;
 }
 
 /// @nodoc
@@ -67,7 +66,7 @@ class _$DevicesReqUpdateDeviceCopyWithImpl<$Res,
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DevicesReqUpdateDeviceDataUnion,
+              as DevicesUpdateDevice,
     ) as $Val);
   }
 
@@ -75,8 +74,8 @@ class _$DevicesReqUpdateDeviceCopyWithImpl<$Res,
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $DevicesReqUpdateDeviceDataUnionCopyWith<$Res> get data {
-    return $DevicesReqUpdateDeviceDataUnionCopyWith<$Res>(_value.data, (value) {
+  $DevicesUpdateDeviceCopyWith<$Res> get data {
+    return $DevicesUpdateDeviceCopyWith<$Res>(_value.data, (value) {
       return _then(_value.copyWith(data: value) as $Val);
     });
   }
@@ -91,10 +90,10 @@ abstract class _$$DevicesReqUpdateDeviceImplCopyWith<$Res>
       __$$DevicesReqUpdateDeviceImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({DevicesReqUpdateDeviceDataUnion data});
+  $Res call({DevicesUpdateDevice data});
 
   @override
-  $DevicesReqUpdateDeviceDataUnionCopyWith<$Res> get data;
+  $DevicesUpdateDeviceCopyWith<$Res> get data;
 }
 
 /// @nodoc
@@ -118,7 +117,7 @@ class __$$DevicesReqUpdateDeviceImplCopyWithImpl<$Res>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DevicesReqUpdateDeviceDataUnion,
+              as DevicesUpdateDevice,
     ));
   }
 }
@@ -132,7 +131,7 @@ class _$DevicesReqUpdateDeviceImpl implements _DevicesReqUpdateDevice {
       _$$DevicesReqUpdateDeviceImplFromJson(json);
 
   @override
-  final DevicesReqUpdateDeviceDataUnion data;
+  final DevicesUpdateDevice data;
 
   @override
   String toString() {
@@ -170,14 +169,13 @@ class _$DevicesReqUpdateDeviceImpl implements _DevicesReqUpdateDevice {
 
 abstract class _DevicesReqUpdateDevice implements DevicesReqUpdateDevice {
   const factory _DevicesReqUpdateDevice(
-          {required final DevicesReqUpdateDeviceDataUnion data}) =
-      _$DevicesReqUpdateDeviceImpl;
+      {required final DevicesUpdateDevice data}) = _$DevicesReqUpdateDeviceImpl;
 
   factory _DevicesReqUpdateDevice.fromJson(Map<String, dynamic> json) =
       _$DevicesReqUpdateDeviceImpl.fromJson;
 
   @override
-  DevicesReqUpdateDeviceDataUnion get data;
+  DevicesUpdateDevice get data;
 
   /// Create a copy of DevicesReqUpdateDevice
   /// with the given fields replaced by the non-null parameter values.

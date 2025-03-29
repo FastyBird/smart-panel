@@ -9,8 +9,7 @@ part of 'devices_req_update_device.dart';
 _$DevicesReqUpdateDeviceImpl _$$DevicesReqUpdateDeviceImplFromJson(
         Map<String, dynamic> json) =>
     _$DevicesReqUpdateDeviceImpl(
-      data: DevicesReqUpdateDeviceDataUnion.fromJson(
-          json['data'] as Map<String, dynamic>),
+      data: DevicesUpdateDevice.fromJson(json['data'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$DevicesReqUpdateDeviceImplToJson(
