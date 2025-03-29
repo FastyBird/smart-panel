@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "configAudio": {
+      "title": "Audio config"
+    },
+    "configDisplay": {
+      "title": "Display config"
+    },
+    "configLanguage": {
+      "title": "Language config"
+    },
+    "configWeather": {
+      "title": "Weather config"
+    }
+  },
+  "breadcrumbs": {
+    "configAudio": "Audio config",
+    "configDisplay": "Display config",
+    "configLanguage": "Language config",
+    "configWeather": "Weather config"
+  },
+  "headings": {
+    "configAudio": "Audio config",
+    "configDisplay": "Display config",
+    "configLanguage": "Language config",
+    "configWeather": "Weather config"
+  },
+  "subHeadings": {
+    "configAudio": "Smart panel audio config",
+    "configDisplay": "Smart panel display config",
+    "configLanguage": "Smart panel language config",
+    "configWeather": "Smart panel weather config"
+  }
+}

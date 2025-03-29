@@ -26,6 +26,7 @@ import {
 } from './common';
 import i18n from './locales';
 import { AuthModule, sessionStoreKey } from './modules/auth';
+import { ConfigModule } from './modules/config';
 import { DevicesModule } from './modules/devices';
 import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
@@ -76,6 +77,7 @@ const moduleOptions: IModuleOptions = {
 };
 
 app.use(SystemModule, moduleOptions);
+app.use(ConfigModule, moduleOptions);
 app.use(DevicesModule, moduleOptions);
 app.use(UsersModule, moduleOptions);
 app.use(AuthModule, moduleOptions);

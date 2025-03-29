@@ -6,6 +6,9 @@ import type { IThrottleStatusStoreActions, IThrottleStatusStoreState } from './t
 export * from './system-info.store.types';
 export * from './throttle-status.store.types';
 
+export { registerSystemInfoStore } from './system-info.store';
+export { registerThrottleStatusStore } from './throttle-status.store';
+
 export const systemInfoStoreKey: StoreInjectionKey<string, ISystemInfoStoreState, object, ISystemInfoStoreActions> =
 	Symbol('FB-SystemModuleSystemInfo');
 

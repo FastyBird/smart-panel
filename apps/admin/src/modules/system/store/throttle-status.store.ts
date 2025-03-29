@@ -22,8 +22,8 @@ const defaultSemaphore: IThrottleStatusStateSemaphore = {
 	getting: false,
 };
 
-export const useThrottleStatus = defineStore<'system-module_throttle-status', ThrottleStatusStoreSetup>(
-	'system-module_throttle-status',
+export const useThrottleStatus = defineStore<'system_module-throttle_status', ThrottleStatusStoreSetup>(
+	'system_module-throttle_status',
 	(): ThrottleStatusStoreSetup => {
 		const backend = useBackend();
 

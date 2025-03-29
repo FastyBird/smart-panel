@@ -1,8 +1,10 @@
 {
   "meta": {
     "systemInfo": {
-      "title": "System info",
-      "throttleStatus": "Throttle status"
+      "title": "System info"
+    },
+    "throttleStatus": {
+      "title": "Throttle status"
     }
   },
   "breadcrumbs": {
