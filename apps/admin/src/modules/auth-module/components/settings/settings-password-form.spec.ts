@@ -8,7 +8,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
-import { UserRole } from '../../../users-module';
+import { UsersUserRole } from '../../../../openapi';
 import { FormResult, Layout } from '../../auth.constants';
 import enUS from '../../locales/en-US.json';
 import type { SessionStore } from '../../store';
@@ -69,7 +69,7 @@ describe('SettingsPasswordForm', (): void => {
 					lastName: null,
 					draft: false,
 					isHidden: false,
-					role: UserRole.USER,
+					role: UsersUserRole.user,
 					createdAt: new Date(),
 					updatedAt: null,
 				},

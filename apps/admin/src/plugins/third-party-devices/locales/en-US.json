@@ -1,0 +1,45 @@
+{
+  "messages": {
+    "devices": {
+      "created": "New third party device added successfully.",
+      "notCreated": "Something went wrong. Unable to create the third party device.",
+      "edited": "Changes saved! The third party device: {device} has been updated.",
+      "notEdited": "Something went wrong. Third party device update was not successful."
+    }
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Device id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Device category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select device category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Device name",
+        "validation": {
+          "required": "Please fill in device name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Device description"
+      },
+      "serviceAddress": {
+        "title": "Service address",
+        "placeholder": "http://device-address.local",
+        "validation": {
+          "required": "Please fill in device service address",
+          "url": "Please provide valid URL address"
+        }
+      }
+    }
+  }
+}

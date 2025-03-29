@@ -889,7 +889,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
   Future<HttpResponse<DevicesResChannelControl>>
       createDevicesModuleChannelControl({
     required String channelId,
-    DevicesCreateChannelControl? body,
+    DevicesReqCreateChannelControl? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -1007,7 +1007,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
   Future<HttpResponse<DevicesResChannelProperty>>
       createDevicesModuleChannelProperty({
     required String channelId,
-    DevicesCreateChannelProperty? body,
+    DevicesReqCreateChannelProperty? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -1073,7 +1073,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
       updateDevicesModuleChannelProperty({
     required String channelId,
     required String id,
-    DevicesUpdateChannelProperty? body,
+    DevicesReqUpdateChannelProperty? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};

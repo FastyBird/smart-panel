@@ -14,18 +14,22 @@ import type { IModuleOptions } from './app.types';
 import './assets/styles/base.scss';
 import {
 	type Events,
+	PluginsManager,
 	RouterGuards,
 	StoresManager,
 	provideBackendClient,
 	provideEventBus,
+	providePluginsManager,
 	provideRouterGuards,
 	provideStoresManager,
 	router,
 } from './common';
 import i18n from './locales';
 import { AuthModule, sessionStoreKey } from './modules/auth-module';
+import { DevicesModule } from './modules/devices-module';
 import { UsersModule } from './modules/users-module';
 import type { paths } from './openapi';
+import { ThirdPartyDevicesPlugin } from './plugins/third-party-devices';
 
 const app = createApp(AppMain);
 
@@ -40,6 +44,11 @@ app.use(pinia);
 const storesManager = new StoresManager();
 app.config.globalProperties['storesManager'] = storesManager;
 provideStoresManager(app, storesManager);
+
+// Plugins
+const pluginsManager = new PluginsManager();
+app.config.globalProperties['pluginsManager'] = pluginsManager;
+providePluginsManager(app, pluginsManager);
 
 // Backend
 const backendClient = createClient<paths>({
@@ -65,8 +74,18 @@ const moduleOptions: IModuleOptions = {
 	i18n,
 };
 
-app.use(AuthModule, moduleOptions);
+app.use(DevicesModule, moduleOptions);
 app.use(UsersModule, moduleOptions);
+app.use(AuthModule, moduleOptions);
+
+// Plugins
+const pluginOptions: IModuleOptions = {
+	router,
+	store: pinia,
+	i18n,
+};
+
+app.use(ThirdPartyDevicesPlugin, pluginOptions);
 
 router.beforeEach((to) => {
 	const sessionStore = storesManager.getStore(sessionStoreKey);

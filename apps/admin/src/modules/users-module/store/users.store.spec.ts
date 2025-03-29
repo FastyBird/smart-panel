@@ -5,7 +5,7 @@ import { type Mock, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
 import { type IUseBackend, useBackend } from '../../../common';
-import { UserRole } from '../users.constants';
+import { UsersUserRole } from '../../../openapi';
 import { UsersApiException } from '../users.exceptions';
 
 import { useUsers } from './users.store';
@@ -50,7 +50,7 @@ describe('Users Store', (): void => {
 						email: 'john@example.com',
 						first_name: 'John',
 						last_name: 'Doe',
-						role: UserRole.USER,
+						role: UsersUserRole.user,
 						created_at: '2024-03-01T12:00:00Z',
 						updated_at: '2024-03-02T12:00:00Z',
 					},
@@ -80,7 +80,7 @@ describe('Users Store', (): void => {
 					email: 'jane@example.com',
 					first_name: 'Jane',
 					last_name: 'Doe',
-					role: UserRole.ADMIN,
+					role: UsersUserRole.admin,
 					created_at: '2024-03-01T12:00:00Z',
 					updated_at: '2024-03-02T12:00:00Z',
 				},
@@ -96,7 +96,7 @@ describe('Users Store', (): void => {
 				email: 'jane@example.com',
 				firstName: 'Jane',
 				lastName: 'Doe',
-				role: UserRole.ADMIN,
+				role: UsersUserRole.admin,
 			},
 		});
 
@@ -117,7 +117,7 @@ describe('Users Store', (): void => {
 					email: 'jack@example.com',
 					firstName: 'Jack',
 					lastName: 'Doe',
-					role: UserRole.USER,
+					role: UsersUserRole.user,
 				},
 			})
 		).rejects.toThrow(UsersApiException);
@@ -130,7 +130,7 @@ describe('Users Store', (): void => {
 			email: 'alex@example.com',
 			firstName: 'Alex',
 			lastName: 'Doe',
-			role: UserRole.USER,
+			role: UsersUserRole.user,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -145,7 +145,7 @@ describe('Users Store', (): void => {
 					email: 'alex@example.com',
 					first_name: 'Alex',
 					last_name: 'Doe',
-					role: UserRole.ADMIN,
+					role: UsersUserRole.admin,
 					created_at: '2024-03-01T12:00:00Z',
 					updated_at: '2024-03-02T12:00:00Z',
 				},
@@ -154,11 +154,11 @@ describe('Users Store', (): void => {
 
 		const updatedUser = await usersStore.edit({
 			id: userId,
-			data: { username: 'alex_updated', role: UserRole.ADMIN },
+			data: { username: 'alex_updated', role: UsersUserRole.admin },
 		});
 
 		expect(updatedUser.username).toBe('alex_updated');
-		expect(usersStore.findById(userId)?.role).toBe(UserRole.ADMIN);
+		expect(usersStore.findById(userId)?.role).toBe(UsersUserRole.admin);
 	});
 
 	it('should throw an error when editing a user fails', async (): Promise<void> => {
@@ -168,7 +168,7 @@ describe('Users Store', (): void => {
 			email: 'charlie@example.com',
 			firstName: 'Charlie',
 			lastName: 'Doe',
-			role: UserRole.USER,
+			role: UsersUserRole.user,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -187,7 +187,7 @@ describe('Users Store', (): void => {
 			email: 'dave@example.com',
 			firstName: 'Dave',
 			lastName: 'Doe',
-			role: UserRole.USER,
+			role: UsersUserRole.user,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -209,7 +209,7 @@ describe('Users Store', (): void => {
 			email: 'eve@example.com',
 			firstName: 'Eve',
 			lastName: 'Doe',
-			role: UserRole.USER,
+			role: UsersUserRole.user,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),

@@ -6,13 +6,6 @@ export enum EventType {
 	USER_DELETED = 'UsersModule.User.Deleted',
 }
 
-export enum UserRole {
-	OWNER = 'owner',
-	ADMIN = 'admin',
-	USER = 'user',
-	DISPLAY = 'display',
-}
-
 export const DISPLAY_USERNAME = 'display';
 
 export enum FormResult {

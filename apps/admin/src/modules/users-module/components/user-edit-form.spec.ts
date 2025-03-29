@@ -1,4 +1,4 @@
-import { type ComponentPublicInstance, type Reactive, type Ref, ref } from 'vue';
+import { type ComponentPublicInstance, type Reactive, type Ref, reactive, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import { ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect } from 'element-plus';
@@ -6,26 +6,62 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
+import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth-module';
+import type { IUserEditForm } from '../composables';
 import enUS from '../locales/en-US.json';
-import { UserRole } from '../users.constants';
 
-import type { IUserEditFormFields, IUserEditFormProps } from './user-edit-form.types';
+import type { IUserEditFormProps } from './user-edit-form.types';
 import UserEditForm from './user-edit-form.vue';
 
 const editFormMock = {
-	submit: vi.fn(),
+	model: reactive({
+		username: 'admin',
+		firstName: 'Admin',
+		lastName: 'User',
+		email: 'admin@example.com',
+		role: UsersUserRole.admin,
+	}),
+	formEl: ref({
+		clearValidate: vi.fn(),
+	}),
+	submit: vi.fn().mockResolvedValue('saved'),
+	formChanged: ref(false),
+	formResult: ref(FormResult.NONE),
+};
+
+const usernameFormMock = {
+	model: reactive({
+		username: '',
+	}),
+	formEl: ref({
+		clearValidate: vi.fn(),
+	}),
+	submit: vi.fn().mockResolvedValue('saved'),
+	formResult: ref(FormResult.NONE),
+};
+
+const passwordFormMock = {
+	model: reactive({
+		username: '',
+	}),
+	formEl: ref({
+		clearValidate: vi.fn(),
+	}),
+	submit: vi.fn().mockResolvedValue('saved'),
 	formResult: ref(FormResult.NONE),
 };
 
 vi.mock('../composables', () => ({
 	useUserEditForm: vi.fn(() => editFormMock),
+	useUserUsernameForm: vi.fn(() => usernameFormMock),
+	useUserPasswordForm: vi.fn(() => passwordFormMock),
 }));
 
 type UserEditFormInstance = ComponentPublicInstance<IUserEditFormProps> & {
 	usernameFormVisible: Ref<boolean>;
 	passwordFormVisible: Ref<boolean>;
-	userEditForm: Reactive<IUserEditFormFields & { username: string; password: string }>;
+	model: Reactive<IUserEditForm>;
 };
 
 describe('UserEditForm', (): void => {
@@ -37,7 +73,7 @@ describe('UserEditForm', (): void => {
 		firstName: 'Admin',
 		lastName: 'User',
 		email: 'admin@example.com',
-		role: UserRole.ADMIN,
+		role: UsersUserRole.admin,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),
@@ -114,13 +150,15 @@ describe('UserEditForm', (): void => {
 	it('updates role when selected', async (): Promise<void> => {
 		createWrapper();
 
+		editFormMock.formChanged.value = true;
+
 		const roleSelect = wrapper.findComponent(ElSelect);
 
-		await roleSelect.setValue(UserRole.USER);
+		await roleSelect.setValue(UsersUserRole.user);
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.userEditForm.role).toBe(UserRole.USER);
+		expect(wrapper.vm.model.role).toBe(UsersUserRole.user);
 
 		expect(wrapper.emitted('update:remote-form-changed')).toBeTruthy();
 	});
@@ -138,16 +176,16 @@ describe('UserEditForm', (): void => {
 	it('resets form fields', async (): Promise<void> => {
 		createWrapper();
 
-		wrapper.vm.userEditForm.email = 'changed@example.com';
+		wrapper.vm.model.email = 'changed@example.com';
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.userEditForm.email).toBe('changed@example.com');
+		expect(wrapper.vm.model.email).toBe('changed@example.com');
 
 		await wrapper.setProps({ remoteFormReset: true });
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.userEditForm.email).toBe(mockUser.email);
+		expect(wrapper.vm.model.email).toBe(mockUser.email);
 	});
 });

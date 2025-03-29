@@ -1,17 +1,8 @@
-import type { FormResultType, UserRole } from '../users.constants';
-
-export interface IUserAddFormFields {
-	username: string;
-	password: string;
-	repeatPassword: string;
-	email?: string | null;
-	firstName?: string | null;
-	lastName?: string | null;
-	role: UserRole;
-}
+import type { IUser } from '../store';
+import type { FormResultType } from '../users.constants';
 
 export interface IUserAddFormProps {
-	id: string;
+	id: IUser['id'];
 	remoteFormSubmit?: boolean;
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;

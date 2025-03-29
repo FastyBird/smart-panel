@@ -7,7 +7,7 @@ import { v4 as uuid } from 'uuid';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type IUseBackend, getErrorReason, useBackend } from '../../../common';
-import { UserRole } from '../../users-module';
+import { UsersUserRole } from '../../../openapi';
 import { ACCESS_TOKEN_COOKIE_NAME, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 
@@ -98,7 +98,7 @@ describe('Session Store', (): void => {
 		(jwtDecode as Mock).mockReturnValue({ exp: Math.floor(Date.now() / 1000) + 3600 });
 
 		(backendMock.client.GET as Mock).mockResolvedValue({
-			data: { data: { id: uuid(), username: 'tester', role: UserRole.USER, created_at: '2024-03-01T12:00:00Z' } },
+			data: { data: { id: uuid(), username: 'tester', role: UsersUserRole.user, created_at: '2024-03-01T12:00:00Z' } },
 		});
 
 		const result = await sessionStore.initialize();
@@ -135,7 +135,7 @@ describe('Session Store', (): void => {
 		});
 
 		(backendMock.client.GET as Mock).mockResolvedValue({
-			data: { data: { id: userId, username: 'tester', role: UserRole.USER, created_at: '2024-03-01T12:00:00Z' } },
+			data: { data: { id: userId, username: 'tester', role: UsersUserRole.user, created_at: '2024-03-01T12:00:00Z' } },
 		});
 
 		const user = await sessionStore.create(payload);
@@ -148,7 +148,7 @@ describe('Session Store', (): void => {
 			firstName: null,
 			lastName: null,
 			isHidden: false,
-			role: UserRole.USER,
+			role: UsersUserRole.user,
 			createdAt: new Date('2024-03-01T12:00:00Z'),
 			updatedAt: null,
 		});

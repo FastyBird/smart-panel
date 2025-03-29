@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'devices_req_create_device_data_union.dart';
+import 'devices_create_device.dart';
 
 part 'devices_req_create_device.freezed.dart';
 part 'devices_req_create_device.g.dart';
@@ -13,7 +13,7 @@ part 'devices_req_create_device.g.dart';
 @Freezed()
 class DevicesReqCreateDevice with _$DevicesReqCreateDevice {
   const factory DevicesReqCreateDevice({
-    required DevicesReqCreateDeviceDataUnion data,
+    required DevicesCreateDevice data,
   }) = _DevicesReqCreateDevice;
   
   factory DevicesReqCreateDevice.fromJson(Map<String, Object?> json) => _$DevicesReqCreateDeviceFromJson(json);

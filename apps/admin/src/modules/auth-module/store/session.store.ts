@@ -209,6 +209,8 @@ export const useSession = defineStore<'auth-module_session', SessionStoreSetup>(
 		const refreshToken = readCookie(REFRESH_TOKEN_COOKIE_NAME);
 
 		if (refreshToken === null) {
+			deleteCookie(REFRESH_TOKEN_COOKIE_NAME);
+
 			return false;
 		}
 
@@ -233,6 +235,8 @@ export const useSession = defineStore<'auth-module_session', SessionStoreSetup>(
 
 			return true;
 		}
+
+		deleteCookie(REFRESH_TOKEN_COOKIE_NAME);
 
 		return false;
 	};

@@ -13,8 +13,8 @@ _$DevicesChannelPropertyImpl _$$DevicesChannelPropertyImplFromJson(
       category:
           DevicesChannelPropertyCategory.fromJson(json['category'] as String),
       name: json['name'] as String?,
-      permission: (json['permission'] as List<dynamic>)
-          .map((e) => DevicesChannelPropertyPermission.fromJson(e as String))
+      permissions: (json['permissions'] as List<dynamic>)
+          .map((e) => DevicesChannelPropertyPermissions.fromJson(e as String))
           .toList(),
       unit: json['unit'] as String?,
       format: json['format'] as List<dynamic>?,
@@ -38,8 +38,8 @@ Map<String, dynamic> _$$DevicesChannelPropertyImplToJson(
       'id': instance.id,
       'category': _$DevicesChannelPropertyCategoryEnumMap[instance.category]!,
       'name': instance.name,
-      'permission': instance.permission
-          .map((e) => _$DevicesChannelPropertyPermissionEnumMap[e]!)
+      'permissions': instance.permissions
+          .map((e) => _$DevicesChannelPropertyPermissionsEnumMap[e]!)
           .toList(),
       'unit': instance.unit,
       'format': instance.format,
@@ -117,12 +117,12 @@ const _$DevicesChannelPropertyCategoryEnumMap = {
   DevicesChannelPropertyCategory.$unknown: r'$unknown',
 };
 
-const _$DevicesChannelPropertyPermissionEnumMap = {
-  DevicesChannelPropertyPermission.ro: 'ro',
-  DevicesChannelPropertyPermission.rw: 'rw',
-  DevicesChannelPropertyPermission.wo: 'wo',
-  DevicesChannelPropertyPermission.ev: 'ev',
-  DevicesChannelPropertyPermission.$unknown: r'$unknown',
+const _$DevicesChannelPropertyPermissionsEnumMap = {
+  DevicesChannelPropertyPermissions.ro: 'ro',
+  DevicesChannelPropertyPermissions.rw: 'rw',
+  DevicesChannelPropertyPermissions.wo: 'wo',
+  DevicesChannelPropertyPermissions.ev: 'ev',
+  DevicesChannelPropertyPermissions.$unknown: r'$unknown',
 };
 
 const _$DevicesChannelPropertyDataTypeEnumMap = {

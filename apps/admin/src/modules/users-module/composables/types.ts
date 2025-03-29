@@ -1,29 +1,42 @@
-import type { ComputedRef, Ref } from 'vue';
+import type { ComputedRef, Reactive, Ref } from 'vue';
 
+import type { FormInstance } from 'element-plus';
+
+import { UsersUserRole } from '../../../openapi';
 import type { IUser } from '../store';
-import type { FormResultType, UserRole } from '../users.constants';
+import type { FormResultType } from '../users.constants';
 
 export interface IUsersFilter {
 	search: string | undefined;
-	role: UserRole | null;
+	roles: UsersUserRole[];
 }
 
 export interface IUserAddForm {
 	username: string;
 	password: string;
-	email?: string | null;
-	firstName?: string | null;
-	lastName?: string | null;
-	role: UserRole;
+	repeatPassword: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+	role: UsersUserRole;
 }
 
 export interface IUserEditForm {
-	username?: string;
-	password?: string;
-	email?: string | null;
-	firstName?: string | null;
-	lastName?: string | null;
-	role?: UserRole;
+	username: string;
+	password: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+	role: UsersUserRole;
+}
+
+export interface IUserPasswordForm {
+	password: string;
+	repeatPassword: string;
+}
+
+export interface IUserUsernameForm {
+	username: string;
 }
 
 export interface IUseUser {
@@ -32,7 +45,7 @@ export interface IUseUser {
 	fetchUser: () => Promise<void>;
 }
 
-export interface IUseUsers {
+export interface IUseUsersDataSource {
 	users: ComputedRef<IUser[]>;
 	usersPaginated: ComputedRef<IUser[]>;
 	totalRows: ComputedRef<number>;
@@ -40,6 +53,7 @@ export interface IUseUsers {
 	loaded: ComputedRef<boolean>;
 	fetchUsers: () => Promise<void>;
 	filters: Ref<IUsersFilter>;
+	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
 	sortBy: Ref<'username' | 'firstName' | 'lastName' | 'email' | 'role'>;
@@ -47,18 +61,42 @@ export interface IUseUsers {
 	resetFilter: () => void;
 }
 
-export interface IUseUserActions {
+export interface IUseUsersActions {
 	remove: (id: IUser['id']) => Promise<void>;
 }
 
 export interface IUseUserAddForm {
-	submit: (model: IUserAddForm) => Promise<'added' | 'saved'>;
+	model: Reactive<IUserAddForm>;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'added'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
 }
 
 export interface IUseUserEditForm {
-	submit: (model: IUserEditForm) => Promise<'added' | 'saved'>;
+	model: Reactive<IUserEditForm>;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'added' | 'saved'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUseUserPasswordForm {
+	model: Reactive<IUserPasswordForm>;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'saved'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUseUserUsernameForm {
+	model: Reactive<IUserUsernameForm>;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'saved'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
 }

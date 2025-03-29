@@ -1,18 +1,18 @@
 <template>
 	<el-form
-		ref="userAddFormEl"
-		:model="userAddForm"
+		ref="formEl"
+		:model="model"
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="px-5"
+		class="xs:px-2 md:px-5"
 	>
 		<el-form-item
 			:label="t('usersModule.fields.username.title')"
 			:prop="['username']"
 		>
 			<el-input
-				v-model="userAddForm.username"
+				v-model="model.username"
 				name="username"
 			/>
 		</el-form-item>
@@ -22,7 +22,7 @@
 			:prop="['password']"
 		>
 			<el-input
-				v-model="userAddForm.password"
+				v-model="model.password"
 				name="password"
 				type="password"
 				show-password
@@ -34,7 +34,7 @@
 			:prop="['repeatPassword']"
 		>
 			<el-input
-				v-model="userAddForm.repeatPassword"
+				v-model="model.repeatPassword"
 				name="repeatPassword"
 				type="password"
 				show-password
@@ -48,7 +48,7 @@
 			:prop="['email']"
 		>
 			<el-input
-				v-model="userAddForm.email"
+				v-model="model.email"
 				:placeholder="t('usersModule.fields.email.placeholder')"
 				name="email"
 			/>
@@ -59,7 +59,7 @@
 			:prop="['firstName']"
 		>
 			<el-input
-				v-model="userAddForm.firstName"
+				v-model="model.firstName"
 				:placeholder="t('usersModule.fields.firstName.placeholder')"
 				name="firstName"
 			/>
@@ -70,7 +70,7 @@
 			:prop="['lastName']"
 		>
 			<el-input
-				v-model="userAddForm.lastName"
+				v-model="model.lastName"
 				:placeholder="t('usersModule.fields.lastName.placeholder')"
 				name="lastName"
 			/>
@@ -79,11 +79,11 @@
 		<el-divider />
 
 		<el-form-item
-			:label="t('usersModule.fields.role.label')"
+			:label="t('usersModule.fields.role.title')"
 			:prop="['role']"
 		>
 			<el-select
-				v-model="userAddForm.role"
+				v-model="model.role"
 				:placeholder="t('usersModule.fields.role.placeholder')"
 				name="role"
 			>
@@ -99,16 +99,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { InternalRuleItem } from 'async-validator';
-import { ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
+import { ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import { useUserAddForm } from '../composables';
-import { FormResult, type FormResultType, UserRole } from '../users.constants';
+import { UsersUserRole } from '../../../openapi';
+import { type IUserAddForm, useUserAddForm } from '../composables';
+import { FormResult, type FormResultType } from '../users.constants';
 
-import type { IUserAddFormFields, IUserAddFormProps } from './user-add-form.types';
+import type { IUserAddFormProps } from './user-add-form.types';
 
 defineOptions({
 	name: 'UserAddForm',
@@ -124,16 +125,14 @@ const emit = defineEmits<{
 	(e: 'update:remote-form-submit', remoteFormSubmit: boolean): void;
 	(e: 'update:remote-form-result', remoteFormResult: FormResultType): void;
 	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
-	(e: 'update:remote-form-changed', formUpdated: boolean): void;
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
 
 const { t } = useI18n();
 
-const { submit, formResult } = useUserAddForm(props.id);
+const { model, formEl, formChanged, submit, formResult } = useUserAddForm(props.id);
 
-const userAddFormEl = ref<FormInstance | undefined>(undefined);
-
-const rules = reactive<FormRules<IUserAddFormFields>>({
+const rules = reactive<FormRules<IUserAddForm>>({
 	username: [{ required: true, message: t('usersModule.fields.username.validation.required'), trigger: 'change' }],
 	password: [{ required: true, message: t('usersModule.fields.password.validation.required'), trigger: 'change' }],
 	repeatPassword: [
@@ -142,7 +141,7 @@ const rules = reactive<FormRules<IUserAddFormFields>>({
 			validator: (_rule: InternalRuleItem, value: string, callback: (message?: Error) => void): void => {
 				if (value === '') {
 					callback(new Error(t('usersModule.fields.repeatPassword.validation.required')));
-				} else if (value !== userAddForm.password) {
+				} else if (value !== model.password) {
 					callback(new Error(t('usersModule.fields.repeatPassword.validation.different')));
 				} else {
 					callback();
@@ -155,45 +154,17 @@ const rules = reactive<FormRules<IUserAddFormFields>>({
 	role: [{ required: true, message: t('usersModule.fields.role.validation.required'), trigger: 'change' }],
 });
 
-const userAddForm = reactive<IUserAddFormFields>({
-	username: '',
-	password: '',
-	repeatPassword: '',
-	email: '',
-	firstName: '',
-	lastName: '',
-	role: UserRole.USER,
-});
-
-const formChanges = computed<boolean>((): boolean => {
-	if (userAddForm.username !== '') {
-		return true;
-	} else if (userAddForm.password !== '') {
-		return true;
-	} else if (userAddForm.email !== '') {
-		return true;
-	} else if (userAddForm.firstName !== '') {
-		return true;
-	} else if (userAddForm.lastName !== '') {
-		return true;
-	} else if (userAddForm.role !== UserRole.USER) {
-		return true;
-	}
-
-	return false;
-});
-
-const roleOptions: { value: UserRole; label: string }[] = [
+const roleOptions: { value: UsersUserRole; label: string }[] = [
 	{
-		value: UserRole.USER,
+		value: UsersUserRole.user,
 		label: t('usersModule.fields.role.options.user'),
 	},
 	{
-		value: UserRole.ADMIN,
+		value: UsersUserRole.admin,
 		label: t('usersModule.fields.role.options.admin'),
 	},
 	{
-		value: UserRole.OWNER,
+		value: UsersUserRole.owner,
 		label: t('usersModule.fields.role.options.owner'),
 	},
 ];
@@ -211,14 +182,8 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			userAddFormEl.value!.clearValidate();
-
-			userAddFormEl.value!.validate(async (valid: boolean): Promise<void> => {
-				if (!valid) {
-					return;
-				}
-
-				await submit(userAddForm);
+			submit().catch(() => {
+				// Form is not valid
 			});
 		}
 	}
@@ -230,15 +195,15 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
-			if (!userAddFormEl.value) return;
+			if (!formEl.value) return;
 
-			userAddFormEl.value.resetFields();
+			formEl.value.resetFields();
 		}
 	}
 );
 
 watch(
-	(): boolean => formChanges.value,
+	(): boolean => formChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
 	}

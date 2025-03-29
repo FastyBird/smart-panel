@@ -1,6 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { RouteNames, UserRole } from '../users.constants';
+import { UsersUserRole } from '../../../openapi';
+import { RouteNames } from '../users.constants';
 
 export * from './guards';
 
@@ -12,7 +13,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		meta: {
 			guards: {
 				authenticated: true,
-				roles: [UserRole.ADMIN, UserRole.OWNER],
+				roles: [UsersUserRole.admin, UsersUserRole.owner],
 			},
 			title: 'Application users',
 			icon: 'mdi:users-group',
@@ -27,7 +28,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UserRole.ADMIN, UserRole.OWNER],
+						roles: [UsersUserRole.admin, UsersUserRole.owner],
 					},
 				},
 			},
@@ -39,7 +40,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UserRole.ADMIN, UserRole.OWNER],
+						roles: [UsersUserRole.admin, UsersUserRole.owner],
 					},
 				},
 			},

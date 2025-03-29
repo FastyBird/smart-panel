@@ -12,9 +12,9 @@ _$DevicesCreateChannelPropertyImpl _$$DevicesCreateChannelPropertyImplFromJson(
       id: json['id'] as String,
       category:
           DevicesChannelPropertyCategory.fromJson(json['category'] as String),
-      permission: (json['permission'] as List<dynamic>)
+      permissions: (json['permissions'] as List<dynamic>)
           .map((e) =>
-              DevicesCreateChannelPropertyPermission.fromJson(e as String))
+              DevicesCreateChannelPropertyPermissions.fromJson(e as String))
           .toList(),
       dataType: DevicesCreateChannelPropertyDataType.fromJson(
           json['data_type'] as String),
@@ -31,8 +31,8 @@ Map<String, dynamic> _$$DevicesCreateChannelPropertyImplToJson(
     <String, dynamic>{
       'id': instance.id,
       'category': _$DevicesChannelPropertyCategoryEnumMap[instance.category]!,
-      'permission': instance.permission
-          .map((e) => _$DevicesCreateChannelPropertyPermissionEnumMap[e]!)
+      'permissions': instance.permissions
+          .map((e) => _$DevicesCreateChannelPropertyPermissionsEnumMap[e]!)
           .toList(),
       'data_type':
           _$DevicesCreateChannelPropertyDataTypeEnumMap[instance.dataType]!,
@@ -109,12 +109,12 @@ const _$DevicesChannelPropertyCategoryEnumMap = {
   DevicesChannelPropertyCategory.$unknown: r'$unknown',
 };
 
-const _$DevicesCreateChannelPropertyPermissionEnumMap = {
-  DevicesCreateChannelPropertyPermission.ro: 'ro',
-  DevicesCreateChannelPropertyPermission.rw: 'rw',
-  DevicesCreateChannelPropertyPermission.wo: 'wo',
-  DevicesCreateChannelPropertyPermission.ev: 'ev',
-  DevicesCreateChannelPropertyPermission.$unknown: r'$unknown',
+const _$DevicesCreateChannelPropertyPermissionsEnumMap = {
+  DevicesCreateChannelPropertyPermissions.ro: 'ro',
+  DevicesCreateChannelPropertyPermissions.rw: 'rw',
+  DevicesCreateChannelPropertyPermissions.wo: 'wo',
+  DevicesCreateChannelPropertyPermissions.ev: 'ev',
+  DevicesCreateChannelPropertyPermissions.$unknown: r'$unknown',
 };
 
 const _$DevicesCreateChannelPropertyDataTypeEnumMap = {

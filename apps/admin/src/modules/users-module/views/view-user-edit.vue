@@ -24,7 +24,7 @@
 		:align="AppBarButtonAlign.LEFT"
 		teleport
 		small
-		@click="onClose"
+		@click="() => (remoteFormChanged ? onDiscard() : onClose())"
 	>
 		<template #icon>
 			<el-icon :size="24">
@@ -33,49 +33,35 @@
 		</template>
 	</app-bar-button>
 
-	<app-breadcrumbs
-		:items="[
-			{
-				label: t('usersModule.breadcrumbs.users'),
-				route: { name: RouteNames.USERS },
-			},
-			{
-				label: t('usersModule.breadcrumbs.editUser'),
-				route: { name: RouteNames.USER_EDIT, params: { id: props.id } },
-			},
-		]"
-	/>
+	<app-bar-button
+		v-if="!isMDDevice"
+		:align="AppBarButtonAlign.RIGHT"
+		teleport
+		small
+		@click="onSubmit"
+	>
+		<span class="uppercase">{{ t('usersModule.buttons.save.title') }}</span>
+	</app-bar-button>
+
+	<app-breadcrumbs :items="breadcrumbs" />
 
 	<div
 		v-loading="isLoading || user === null"
 		:element-loading-text="t('usersModule.texts.misc.loadingUser')"
-		:class="[ns.b()]"
 		class="flex flex-col overflow-hidden h-full pt-2"
 	>
-		<template v-if="user !== null">
+		<el-scrollbar
+			v-if="user !== null"
+			class="flex-1 md:pb-[3rem]"
+		>
 			<user-edit-form
-				v-if="isMDDevice"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
 				v-model:remote-form-changed="remoteFormChanged"
 				:user="user"
 			/>
-
-			<el-card
-				v-else
-				:class="[ns.e('form-box')]"
-				class="py-3"
-			>
-				<user-edit-form
-					v-model:remote-form-submit="remoteFormSubmit"
-					v-model:remote-form-result="remoteFormResult"
-					v-model:remote-form-reset="remoteFormReset"
-					v-model:remote-form-changed="remoteFormChanged"
-					:user="user"
-				/>
-			</el-card>
-		</template>
+		</el-scrollbar>
 
 		<div
 			v-if="isMDDevice"
@@ -128,12 +114,12 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, ref, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElIcon, ElMessageBox, useNamespace, vLoading } from 'element-plus';
+import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -146,20 +132,23 @@ import { UsersApiException, UsersException } from '../users.exceptions';
 
 import type { IViewUserEditProps } from './view-user-edit.types';
 
-const { validate: validateUuid } = useUuid();
-
 defineOptions({
 	name: 'ViewUserEdit',
 });
 
 const props = defineProps<IViewUserEditProps>();
 
-const ns = useNamespace('view-user-edit');
-const { t } = useI18n();
+const emit = defineEmits<{
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
+}>();
+
 const router = useRouter();
+const { t } = useI18n();
 const { meta } = useMeta({});
 
-const { isMDDevice } = useBreakpoints();
+const { validate: validateUuid } = useUuid();
+
+const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { user, isLoading, fetchUser } = useUser(props.id);
 
@@ -172,6 +161,21 @@ const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
+const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
+	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
+		return [
+			{
+				label: t('usersModule.breadcrumbs.users'),
+				route: router.resolve({ name: RouteNames.USERS }),
+			},
+			{
+				label: t('usersModule.breadcrumbs.editUser'),
+				route: router.resolve({ name: RouteNames.USER_EDIT, params: { id: props.id } }),
+			},
+		];
+	}
+);
+
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('usersModule.messages.confirmDiscard'), t('usersModule.headings.discard'), {
 		confirmButtonText: t('usersModule.buttons.yes.title'),
@@ -179,7 +183,11 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
-			router.push({ name: RouteNames.USERS });
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.USERS });
+			} else {
+				router.push({ name: RouteNames.USERS });
+			}
 		})
 		.catch((): void => {
 			// Just ignore it
@@ -191,7 +199,11 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	router.push({ name: RouteNames.USERS });
+	if (isLGDevice.value) {
+		router.replace({ name: RouteNames.USERS });
+	} else {
+		router.push({ name: RouteNames.USERS });
+	}
 };
 
 onBeforeMount(async (): Promise<void> => {
@@ -201,13 +213,19 @@ onBeforeMount(async (): Promise<void> => {
 				throw new UsersException('User not found');
 			}
 		})
-		.catch((e): void => {
-			if (e instanceof UsersApiException && e.code === 404) {
+		.catch((error: unknown): void => {
+			const err = error as Error;
+
+			if (err instanceof UsersApiException && err.code === 404) {
 				throw new UsersException('User not found');
 			} else {
-				throw new UsersException('Something went wrong', e);
+				throw new UsersException('Something went wrong', err);
 			}
 		});
+});
+
+onMounted((): void => {
+	emit('update:remote-form-changed', remoteFormChanged.value);
 });
 
 watch(
@@ -231,8 +249,11 @@ watch(
 		}
 	}
 );
-</script>
 
-<style rel="stylesheet/scss" lang="scss" scoped>
-@use 'view-user-edit.scss';
-</style>
+watch(
+	(): boolean => remoteFormChanged.value,
+	(val: boolean): void => {
+		emit('update:remote-form-changed', val);
+	}
+);
+</script>

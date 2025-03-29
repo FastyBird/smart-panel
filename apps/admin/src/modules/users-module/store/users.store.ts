@@ -184,7 +184,7 @@ export const useUsers = defineStore<'users-module_users', UsersStoreSetup>('user
 			let errorReason: string | null = 'Failed to create user.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['update-users-module-user']>(error, errorReason);
+				errorReason = getErrorReason<operations['create-users-module-user']>(error, errorReason);
 			}
 
 			throw new UsersApiException(errorReason, response.status);

@@ -14,8 +14,7 @@ _$DevicesResDeviceImpl _$$DevicesResDeviceImplFromJson(
       requestId: json['request_id'] as String,
       path: json['path'] as String,
       method: DevicesResDeviceMethod.fromJson(json['method'] as String),
-      data: DevicesResDeviceDataUnion.fromJson(
-          json['data'] as Map<String, dynamic>),
+      data: DevicesDevice.fromJson(json['data'] as Map<String, dynamic>),
       metadata:
           CommonResMetadata.fromJson(json['metadata'] as Map<String, dynamic>),
     );

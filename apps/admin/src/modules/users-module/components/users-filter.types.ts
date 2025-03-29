@@ -1,11 +1,6 @@
-import type { UserRole } from '../users.constants';
-
-export interface IUsersFilterFields {
-	search: string;
-	role: UserRole | string;
-}
+import type { IUsersFilter } from '../composables';
 
 export interface IUsersFilterProps {
-	filters: IUsersFilterFields;
-	remoteFormReset?: boolean;
+	filters: IUsersFilter;
+	filtersActive: boolean;
 }

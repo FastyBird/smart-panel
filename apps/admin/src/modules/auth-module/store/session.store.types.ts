@@ -4,8 +4,8 @@ import type { Store } from 'pinia';
 
 import { type ZodType, z } from 'zod';
 
-import type { components } from '../../../openapi';
-import { type IUser, UserRole } from '../../users-module';
+import { UsersUserRole, type components } from '../../../openapi';
+import { type IUser } from '../../users-module';
 import { AccessTokenType } from '../auth.constants';
 
 type ApiLogin = components['schemas']['AuthLogin'];
@@ -13,7 +13,7 @@ type ApiTokenPair = components['schemas']['AuthTokenPair'];
 
 export const TokenPayloadSchema = z.object({
 	sub: z.string().uuid(),
-	role: z.nativeEnum(UserRole),
+	role: z.nativeEnum(UsersUserRole),
 	exp: z.number(),
 	iat: z.number(),
 	jti: z.string().uuid(),

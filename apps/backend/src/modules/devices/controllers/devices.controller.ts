@@ -20,8 +20,8 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { CreateDeviceDto, ReqCreateDeviceDto } from '../dto/create-device.dto';
-import { ReqUpdateDeviceDto, UpdateDeviceDto } from '../dto/update-device.dto';
+import { CreateDeviceDto } from '../dto/create-device.dto';
+import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 import { DeviceTypeMapping, DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
@@ -59,10 +59,11 @@ export class DevicesController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:id`)
-	async create(@Body() createDto: ReqCreateDeviceDto): Promise<DeviceEntity> {
+	async create(@Body() createDto: { data: object }): Promise<DeviceEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new device');
 
-		const type: string | undefined = createDto.data.type;
+		const type: string | undefined =
+			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
 		if (!type) {
 			this.logger.error('[VALIDATION] Missing required field: type');
@@ -103,7 +104,7 @@ export class DevicesController {
 		}
 
 		try {
-			const device = await this.devicesService.create(createDto.data);
+			const device = await this.devicesService.create(dtoInstance);
 
 			this.logger.debug(`[CREATE] Successfully created device id=${device.id}`);
 
@@ -120,7 +121,7 @@ export class DevicesController {
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: ReqUpdateDeviceDto,
+		@Body() updateDto: { data: object },
 	): Promise<DeviceEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for device id=${id}`);
 
@@ -166,7 +167,7 @@ export class DevicesController {
 		}
 
 		try {
-			const updatedDevice = await this.devicesService.update(device.id, updateDto.data);
+			const updatedDevice = await this.devicesService.update(device.id, dtoInstance);
 
 			this.logger.debug(`[UPDATE] Successfully updated device id=${updatedDevice.id}`);
 

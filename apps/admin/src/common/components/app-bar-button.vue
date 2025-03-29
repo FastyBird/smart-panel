@@ -10,6 +10,7 @@
 				:disabled="props.disabled"
 				:circle="'icon' in $slots"
 				:class="[ns.b(), ns.m(`align-${props.align}`), ...(props.classes ?? [])]"
+				class="ml-0!"
 				type="primary"
 				@click="emit('click', $event)"
 			>
@@ -28,6 +29,7 @@
 			:disabled="props.disabled"
 			:circle="'icon' in $slots"
 			:class="[ns.b(), ns.m(`align-${props.align}`), ...(props.classes ?? [])]"
+			class="ml-0!"
 			type="primary"
 			@click="emit('click', $event)"
 		>
@@ -68,7 +70,7 @@ const mounted = ref<boolean>(false);
 let teleportTarget = 'app-bar-button';
 
 if (props.small) {
-	teleportTarget = `${teleportTarget}-small`;
+	teleportTarget = `${teleportTarget}-small-${props.align}`;
 } else {
 	teleportTarget = `${teleportTarget}-${props.align}`;
 }

@@ -1,10 +1,11 @@
 import { type App, type InjectionKey, inject as _inject, hasInjectionContext } from 'vue';
 
 import type { Client } from 'openapi-fetch';
+import type { MediaType } from 'openapi-typescript-helpers';
 
 import type { paths } from '../../openapi';
 
-export const backendKey: InjectionKey<Client<paths> | undefined> = Symbol('FB-App-Backend');
+export const backendKey: InjectionKey<Client<paths, MediaType> | undefined> = Symbol('FB-App-Backend');
 
 export const injectBackendClient = (app?: App): Client<paths> => {
 	if (app && app._context && app._context.provides && app._context.provides[backendKey]) {

@@ -5,8 +5,6 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
-import '../models/devices_create_channel_control.dart';
-import '../models/devices_create_channel_property.dart';
 import '../models/devices_req_create_channel.dart';
 import '../models/devices_req_create_channel_control.dart';
 import '../models/devices_req_create_channel_property.dart';
@@ -29,7 +27,6 @@ import '../models/devices_res_device_control.dart';
 import '../models/devices_res_device_controls.dart';
 import '../models/devices_res_devices.dart';
 import '../models/devices_third_party_device_properties_update_request.dart';
-import '../models/devices_update_channel_property.dart';
 
 part 'devices_module_client.g.dart';
 
@@ -388,7 +385,7 @@ abstract class DevicesModuleClient {
   @POST('/devices-module/channels/{channelId}/controls')
   Future<HttpResponse<DevicesResChannelControl>> createDevicesModuleChannelControl({
     @Path('channelId') required String channelId,
-    @Body() DevicesCreateChannelControl? body,
+    @Body() DevicesReqCreateChannelControl? body,
   });
 
   /// Retrieve details of a specific control for a channel.
@@ -435,7 +432,7 @@ abstract class DevicesModuleClient {
   @POST('/devices-module/channels/{channelId}/properties')
   Future<HttpResponse<DevicesResChannelProperty>> createDevicesModuleChannelProperty({
     @Path('channelId') required String channelId,
-    @Body() DevicesCreateChannelProperty? body,
+    @Body() DevicesReqCreateChannelProperty? body,
   });
 
   /// Retrieve details of a specific property for a channel.
@@ -462,7 +459,7 @@ abstract class DevicesModuleClient {
   Future<HttpResponse<DevicesResChannelProperty>> updateDevicesModuleChannelProperty({
     @Path('channelId') required String channelId,
     @Path('id') required String id,
-    @Body() DevicesUpdateChannelProperty? body,
+    @Body() DevicesReqUpdateChannelProperty? body,
   });
 
   /// Delete an existing property for a channel.

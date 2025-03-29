@@ -1,10 +1,12 @@
-import { ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+
+import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { type IUser, usersStoreKey } from '../store';
 import { FormResult, type FormResultType } from '../users.constants';
-import { UsersApiException } from '../users.exceptions';
+import { UsersApiException, UsersValidationException } from '../users.exceptions';
 
 import type { IUseUserEditForm, IUserEditForm } from './types';
 
@@ -21,7 +23,20 @@ export const useUserEditForm = (user: IUser, messages?: { success?: string; erro
 
 	let timer: number;
 
-	const submit = async (model: IUserEditForm): Promise<'added' | 'saved'> => {
+	const model = reactive<IUserEditForm>({
+		username: user.username,
+		password: 'secretpassword',
+		email: user.email || '',
+		firstName: user.firstName || '',
+		lastName: user.lastName || '',
+		role: user.role,
+	});
+
+	const formEl = ref<FormInstance | undefined>(undefined);
+
+	const formChanged = ref<boolean>(false);
+
+	const submit = async (): Promise<'added' | 'saved'> => {
 		formResult.value = FormResult.WORKING;
 
 		const isDraft = user.draft;
@@ -33,12 +48,16 @@ export const useUserEditForm = (user: IUser, messages?: { success?: string; erro
 					? t('usersModule.messages.notCreated', { user: user.username })
 					: t('usersModule.messages.notEdited', { user: user.username });
 
+		formEl.value!.clearValidate();
+
+		const valid = await formEl.value!.validate();
+
+		if (!valid) throw new UsersValidationException('Form not valid');
+
 		try {
 			await usersStore.edit({
 				id: user.id,
 				data: {
-					username: model.username,
-					password: model.password,
 					email: !model.email || model.email.trim() === '' ? null : model.email,
 					firstName: !model.firstName || model.firstName.trim() === '' ? null : model.firstName,
 					lastName: !model.lastName || model.lastName.trim() === '' ? null : model.lastName,
@@ -94,7 +113,24 @@ export const useUserEditForm = (user: IUser, messages?: { success?: string; erro
 		formResult.value = FormResult.NONE;
 	};
 
+	watch(model, (val: IUserEditForm): void => {
+		if (val.email !== user.email) {
+			formChanged.value = true;
+		} else if (val.firstName !== user.firstName) {
+			formChanged.value = true;
+		} else if (val.lastName !== user.lastName) {
+			formChanged.value = true;
+		} else if (val.role !== user.role) {
+			formChanged.value = true;
+		} else {
+			formChanged.value = false;
+		}
+	});
+
 	return {
+		model,
+		formEl,
+		formChanged,
 		submit,
 		clear,
 		formResult,

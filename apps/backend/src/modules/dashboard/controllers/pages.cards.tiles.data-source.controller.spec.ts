@@ -94,7 +94,7 @@ describe('PagesCardsTilesDataSourceController', () => {
 		id: uuid().toString(),
 		name: 'Test Property',
 		category: PropertyCategory.GENERIC,
-		permission: [PermissionType.READ_ONLY],
+		permissions: [PermissionType.READ_ONLY],
 		dataType: DataTypeType.STRING,
 		unit: '°C',
 		format: null,

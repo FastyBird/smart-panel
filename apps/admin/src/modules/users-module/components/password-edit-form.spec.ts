@@ -1,4 +1,4 @@
-import { type ComponentPublicInstance, ref } from 'vue';
+import { type ComponentPublicInstance, reactive, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput } from 'element-plus';
@@ -6,21 +6,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
+import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth-module';
-import { useUserEditForm } from '../composables';
+import { useUserPasswordForm } from '../composables';
 import enUS from '../locales/en-US.json';
-import { UserRole } from '../users.constants';
 
 import { PasswordEditForm } from './index';
 import type { IPasswordEditFormProps } from './password-edit-form.types';
 
 const editFormMock = {
-	submit: vi.fn(),
+	model: reactive({
+		username: '',
+	}),
+	formEl: ref({
+		clearValidate: vi.fn(),
+	}),
+	submit: vi.fn().mockResolvedValue('saved'),
 	formResult: ref(FormResult.NONE),
 };
 
 vi.mock('../composables', () => ({
-	useUserEditForm: vi.fn(() => editFormMock),
+	useUserPasswordForm: vi.fn(() => editFormMock),
 }));
 
 type PasswordEditFormInstance = ComponentPublicInstance<IPasswordEditFormProps>;
@@ -34,7 +40,7 @@ describe('PasswordEditForm', (): void => {
 		firstName: 'Admin',
 		lastName: 'User',
 		email: 'admin@example.com',
-		role: UserRole.ADMIN,
+		role: UsersUserRole.admin,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),
@@ -82,7 +88,7 @@ describe('PasswordEditForm', (): void => {
 	});
 
 	it('calls submit when the form is submitted', async (): Promise<void> => {
-		const { submit } = useUserEditForm(mockUser);
+		const { submit } = useUserPasswordForm(mockUser);
 
 		const form = wrapper.findComponent(ElForm);
 
@@ -100,11 +106,11 @@ describe('PasswordEditForm', (): void => {
 
 		await flushPromises();
 
-		expect(submit).toHaveBeenCalledWith({ password: 'password123' });
+		expect(submit).toHaveBeenCalled();
 	});
 
 	it('submits the form when valid', async (): Promise<void> => {
-		const { submit } = useUserEditForm(mockUser);
+		const { submit } = useUserPasswordForm(mockUser);
 
 		const form = wrapper.findComponent(ElForm);
 
@@ -122,6 +128,6 @@ describe('PasswordEditForm', (): void => {
 		await flushPromises();
 
 		expect(submit).toHaveBeenCalled();
-		expect(submit).toHaveBeenCalledWith({ password: 'password123' });
+		expect(submit).toHaveBeenCalled();
 	});
 });

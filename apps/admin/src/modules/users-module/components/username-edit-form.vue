@@ -1,11 +1,11 @@
 <template>
 	<el-form
-		ref="usernameEditFormEl"
-		:model="usernameEditForm"
+		ref="formEl"
+		:model="model"
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="px-5"
+		class="xs:px-2 md:px-5"
 		@submit.prevent="submit"
 	>
 		<el-form-item
@@ -13,7 +13,7 @@
 			:prop="['username']"
 		>
 			<el-input
-				v-model="usernameEditForm.username"
+				v-model="model.username"
 				name="username"
 			/>
 		</el-form-item>
@@ -21,15 +21,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { useUserEditForm } from '../composables';
+import { type IUserUsernameForm, useUserUsernameForm } from '../composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
-import type { IUsernameEditFormFields, IUsernameEditFormProps } from './username-edit-form.types';
+import type { IUsernameEditFormProps } from './username-edit-form.types';
 
 defineOptions({
 	name: 'UsernameEditForm',
@@ -48,19 +48,13 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { submit, formResult } = useUserEditForm(props.user, {
+const { model, formEl, submit, formResult } = useUserUsernameForm(props.user, {
 	success: t('usersModule.messages.usernameEdited'),
 	error: t('usersModule.messages.usernameNotEdited'),
 });
 
-const usernameEditFormEl = ref<FormInstance | undefined>(undefined);
-
-const rules = reactive<FormRules<IUsernameEditFormFields>>({
+const rules = reactive<FormRules<IUserUsernameForm>>({
 	username: [{ required: true, message: t('usersModule.fields.newUsername.validation.required'), trigger: 'change' }],
-});
-
-const usernameEditForm = reactive<IUsernameEditFormFields>({
-	username: props.user.username,
 });
 
 watch(
@@ -76,16 +70,8 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			usernameEditFormEl.value!.clearValidate();
-
-			usernameEditFormEl.value!.validate(async (valid: boolean): Promise<void> => {
-				if (!valid) {
-					return;
-				}
-
-				await submit({
-					username: usernameEditForm.username,
-				});
+			submit().catch(() => {
+				// Form is not valid
 			});
 		}
 	}
@@ -97,9 +83,9 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
-			if (!usernameEditFormEl.value) return;
+			if (!formEl.value) return;
 
-			usernameEditFormEl.value.resetFields();
+			formEl.value.resetFields();
 		}
 	}
 );

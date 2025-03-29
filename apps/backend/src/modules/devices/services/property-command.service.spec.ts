@@ -75,7 +75,7 @@ describe('PropertyCommandService', () => {
 		id: uuid().toString(),
 		name: 'Test Property',
 		category: PropertyCategory.GENERIC,
-		permission: [PermissionType.READ_WRITE],
+		permissions: [PermissionType.READ_WRITE],
 		dataType: DataTypeType.BOOL,
 		unit: null,
 		format: null,

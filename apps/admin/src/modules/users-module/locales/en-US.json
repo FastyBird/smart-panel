@@ -27,8 +27,8 @@
     "changePassword": "Change password"
   },
   "subHeadings": {
-    "users": "Manage application user accounts",
-    "addUser": "Add new application user"
+    "users": "Manage smart panel user accounts",
+    "addUser": "Add new smart panel user"
   },
   "messages": {
     "requestError": "Something went wrong, please try again later.",
@@ -60,7 +60,7 @@
       "placeholder": "Search for user"
     },
     "role": {
-      "label": "User role",
+      "title": "User role",
       "placeholder": "Select role",
       "validation": {
         "required": "Please select user role"

@@ -1,4 +1,4 @@
-import { type ComponentPublicInstance, type Reactive, type Ref, ref } from 'vue';
+import { type ComponentPublicInstance, type Reactive, type Ref, reactive, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput, ElSelect } from 'element-plus';
@@ -6,15 +6,29 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
+import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth-module';
+import type { IUserAddForm } from '../composables';
 import enUS from '../locales/en-US.json';
-import { UserRole } from '../users.constants';
 
 import { UserAddForm } from './index';
-import type { IUserAddFormFields, IUserAddFormProps } from './user-add-form.types';
+import type { IUserAddFormProps } from './user-add-form.types';
 
 const addFormMock = {
-	submit: vi.fn(),
+	model: reactive({
+		username: '',
+		password: '',
+		repeatPassword: '',
+		email: '',
+		firstName: '',
+		lastName: '',
+		role: UsersUserRole.user,
+	}),
+	formEl: ref({
+		clearValidate: vi.fn(),
+	}),
+	submit: vi.fn().mockResolvedValue('saved'),
+	formChanged: ref(false),
 	formResult: ref(FormResult.NONE),
 };
 
@@ -25,7 +39,7 @@ vi.mock('../composables', () => ({
 type UserAddFormInstance = ComponentPublicInstance<IUserAddFormProps> & {
 	usernameFormVisible: Ref<boolean>;
 	passwordFormVisible: Ref<boolean>;
-	userAddForm: Reactive<IUserAddFormFields & { username: string; password: string }>;
+	model: Reactive<IUserAddForm>;
 };
 
 describe('UserAddForm', (): void => {
@@ -71,13 +85,15 @@ describe('UserAddForm', (): void => {
 	it('updates role when selected', async (): Promise<void> => {
 		createWrapper();
 
+		addFormMock.formChanged.value = true;
+
 		const roleSelect = wrapper.findComponent(ElSelect);
 
-		await roleSelect.setValue(UserRole.ADMIN);
+		await roleSelect.setValue(UsersUserRole.admin);
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.userAddForm.role).toBe(UserRole.ADMIN);
+		expect(wrapper.vm.model.role).toBe(UsersUserRole.admin);
 
 		expect(wrapper.emitted('update:remote-form-changed')).toBeTruthy();
 	});
@@ -95,16 +111,16 @@ describe('UserAddForm', (): void => {
 	it('resets form fields', async (): Promise<void> => {
 		createWrapper();
 
-		wrapper.vm.userAddForm.email = 'new@example.com';
+		wrapper.vm.model.email = 'new@example.com';
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.userAddForm.email).toBe('new@example.com');
+		expect(wrapper.vm.model.email).toBe('new@example.com');
 
 		await wrapper.setProps({ remoteFormReset: true });
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.userAddForm.email).toBe('');
+		expect(wrapper.vm.model.email).toBe('');
 	});
 });

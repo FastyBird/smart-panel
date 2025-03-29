@@ -29,7 +29,7 @@ mixin _$DevicesCreateChannelProperty {
       throw _privateConstructorUsedError;
 
   /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
-  List<DevicesCreateChannelPropertyPermission> get permission =>
+  List<DevicesCreateChannelPropertyPermissions> get permissions =>
       throw _privateConstructorUsedError;
 
   /// Data type of the property’s value, e.g., string, integer, or boolean.
@@ -76,7 +76,7 @@ abstract class $DevicesCreateChannelPropertyCopyWith<$Res> {
   $Res call(
       {String id,
       DevicesChannelPropertyCategory category,
-      List<DevicesCreateChannelPropertyPermission> permission,
+      List<DevicesCreateChannelPropertyPermissions> permissions,
       @JsonKey(name: 'data_type') DevicesCreateChannelPropertyDataType dataType,
       String? name,
       String? unit,
@@ -104,7 +104,7 @@ class _$DevicesCreateChannelPropertyCopyWithImpl<$Res,
   $Res call({
     Object? id = null,
     Object? category = null,
-    Object? permission = null,
+    Object? permissions = null,
     Object? dataType = null,
     Object? name = freezed,
     Object? unit = freezed,
@@ -122,10 +122,10 @@ class _$DevicesCreateChannelPropertyCopyWithImpl<$Res,
           ? _value.category
           : category // ignore: cast_nullable_to_non_nullable
               as DevicesChannelPropertyCategory,
-      permission: null == permission
-          ? _value.permission
-          : permission // ignore: cast_nullable_to_non_nullable
-              as List<DevicesCreateChannelPropertyPermission>,
+      permissions: null == permissions
+          ? _value.permissions
+          : permissions // ignore: cast_nullable_to_non_nullable
+              as List<DevicesCreateChannelPropertyPermissions>,
       dataType: null == dataType
           ? _value.dataType
           : dataType // ignore: cast_nullable_to_non_nullable
@@ -170,7 +170,7 @@ abstract class _$$DevicesCreateChannelPropertyImplCopyWith<$Res>
   $Res call(
       {String id,
       DevicesChannelPropertyCategory category,
-      List<DevicesCreateChannelPropertyPermission> permission,
+      List<DevicesCreateChannelPropertyPermissions> permissions,
       @JsonKey(name: 'data_type') DevicesCreateChannelPropertyDataType dataType,
       String? name,
       String? unit,
@@ -197,7 +197,7 @@ class __$$DevicesCreateChannelPropertyImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? category = null,
-    Object? permission = null,
+    Object? permissions = null,
     Object? dataType = null,
     Object? name = freezed,
     Object? unit = freezed,
@@ -215,10 +215,10 @@ class __$$DevicesCreateChannelPropertyImplCopyWithImpl<$Res>
           ? _value.category
           : category // ignore: cast_nullable_to_non_nullable
               as DevicesChannelPropertyCategory,
-      permission: null == permission
-          ? _value._permission
-          : permission // ignore: cast_nullable_to_non_nullable
-              as List<DevicesCreateChannelPropertyPermission>,
+      permissions: null == permissions
+          ? _value._permissions
+          : permissions // ignore: cast_nullable_to_non_nullable
+              as List<DevicesCreateChannelPropertyPermissions>,
       dataType: null == dataType
           ? _value.dataType
           : dataType // ignore: cast_nullable_to_non_nullable
@@ -258,7 +258,7 @@ class _$DevicesCreateChannelPropertyImpl
   const _$DevicesCreateChannelPropertyImpl(
       {required this.id,
       required this.category,
-      required final List<DevicesCreateChannelPropertyPermission> permission,
+      required final List<DevicesCreateChannelPropertyPermissions> permissions,
       @JsonKey(name: 'data_type') required this.dataType,
       this.name,
       this.unit,
@@ -266,7 +266,7 @@ class _$DevicesCreateChannelPropertyImpl
       this.invalid,
       this.step,
       this.value})
-      : _permission = permission,
+      : _permissions = permissions,
         _format = format;
 
   factory _$DevicesCreateChannelPropertyImpl.fromJson(
@@ -282,14 +282,14 @@ class _$DevicesCreateChannelPropertyImpl
   final DevicesChannelPropertyCategory category;
 
   /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
-  final List<DevicesCreateChannelPropertyPermission> _permission;
+  final List<DevicesCreateChannelPropertyPermissions> _permissions;
 
   /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
   @override
-  List<DevicesCreateChannelPropertyPermission> get permission {
-    if (_permission is EqualUnmodifiableListView) return _permission;
+  List<DevicesCreateChannelPropertyPermissions> get permissions {
+    if (_permissions is EqualUnmodifiableListView) return _permissions;
     // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_permission);
+    return EqualUnmodifiableListView(_permissions);
   }
 
   /// Data type of the property’s value, e.g., string, integer, or boolean.
@@ -332,7 +332,7 @@ class _$DevicesCreateChannelPropertyImpl
 
   @override
   String toString() {
-    return 'DevicesCreateChannelProperty(id: $id, category: $category, permission: $permission, dataType: $dataType, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
+    return 'DevicesCreateChannelProperty(id: $id, category: $category, permissions: $permissions, dataType: $dataType, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
   }
 
   @override
@@ -344,7 +344,7 @@ class _$DevicesCreateChannelPropertyImpl
             (identical(other.category, category) ||
                 other.category == category) &&
             const DeepCollectionEquality()
-                .equals(other._permission, _permission) &&
+                .equals(other._permissions, _permissions) &&
             (identical(other.dataType, dataType) ||
                 other.dataType == dataType) &&
             (identical(other.name, name) || other.name == name) &&
@@ -361,7 +361,7 @@ class _$DevicesCreateChannelPropertyImpl
       runtimeType,
       id,
       category,
-      const DeepCollectionEquality().hash(_permission),
+      const DeepCollectionEquality().hash(_permissions),
       dataType,
       name,
       unit,
@@ -393,7 +393,7 @@ abstract class _DevicesCreateChannelProperty
   const factory _DevicesCreateChannelProperty(
       {required final String id,
       required final DevicesChannelPropertyCategory category,
-      required final List<DevicesCreateChannelPropertyPermission> permission,
+      required final List<DevicesCreateChannelPropertyPermissions> permissions,
       @JsonKey(name: 'data_type')
       required final DevicesCreateChannelPropertyDataType dataType,
       final String? name,
@@ -416,7 +416,7 @@ abstract class _DevicesCreateChannelProperty
 
   /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
   @override
-  List<DevicesCreateChannelPropertyPermission> get permission;
+  List<DevicesCreateChannelPropertyPermissions> get permissions;
 
   /// Data type of the property’s value, e.g., string, integer, or boolean.
   @override

@@ -1,4 +1,4 @@
-import { type ComponentPublicInstance, ref } from 'vue';
+import { type ComponentPublicInstance, reactive, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput } from 'element-plus';
@@ -6,21 +6,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
+import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth-module';
-import { useUserEditForm } from '../composables';
+import { useUserUsernameForm } from '../composables';
 import enUS from '../locales/en-US.json';
-import { UserRole } from '../users.constants';
 
 import type { IUsernameEditFormProps } from './username-edit-form.types';
 import UsernameEditForm from './username-edit-form.vue';
 
 const editFormMock = {
-	submit: vi.fn(),
+	model: reactive({
+		username: '',
+	}),
+	formEl: ref({
+		clearValidate: vi.fn(),
+	}),
+	submit: vi.fn().mockResolvedValue('saved'),
 	formResult: ref(FormResult.NONE),
 };
 
 vi.mock('../composables', () => ({
-	useUserEditForm: vi.fn(() => editFormMock),
+	useUserUsernameForm: vi.fn(() => editFormMock),
 }));
 
 type UsernameEditFormInstance = ComponentPublicInstance<IUsernameEditFormProps>;
@@ -34,7 +40,7 @@ describe('UsernameEditForm', (): void => {
 		firstName: 'Admin',
 		lastName: 'User',
 		email: 'admin@example.com',
-		role: UserRole.ADMIN,
+		role: UsersUserRole.admin,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),
@@ -82,17 +88,17 @@ describe('UsernameEditForm', (): void => {
 	});
 
 	it('calls submit when the form is submitted', async (): Promise<void> => {
-		const { submit } = useUserEditForm(mockUser);
+		const { submit } = useUserUsernameForm(mockUser);
 
 		await wrapper.setProps({ remoteFormSubmit: true });
 
 		await flushPromises();
 
-		expect(submit).toHaveBeenCalledWith({ username: 'admin' });
+		expect(submit).toHaveBeenCalled();
 	});
 
 	it('emits `update:remote-form-result` on form result change', async (): Promise<void> => {
-		const { formResult } = useUserEditForm(mockUser);
+		const { formResult } = useUserUsernameForm(mockUser);
 
 		formResult.value = FormResult.OK;
 

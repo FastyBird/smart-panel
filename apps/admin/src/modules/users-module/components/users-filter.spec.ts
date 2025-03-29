@@ -1,13 +1,14 @@
-import { type ComponentPublicInstance } from 'vue';
+import { type ComponentPublicInstance, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import { ElButton, ElInput, ElSelect } from 'element-plus';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
+import { VueWrapper, mount } from '@vue/test-utils';
 
+import { UsersUserRole } from '../../../openapi';
+import type { IUsersFilter } from '../composables';
 import enUS from '../locales/en-US.json';
-import { UserRole } from '../users.constants';
 
 import { UsersFilter } from './index';
 import type { IUsersFilterProps } from './users-filter.types';
@@ -16,6 +17,11 @@ type UsersFilterInstance = ComponentPublicInstance<IUsersFilterProps>;
 
 describe('UsersFilter', (): void => {
 	let wrapper: VueWrapper<UsersFilterInstance>;
+
+	const filters = ref<IUsersFilter>({
+		search: undefined,
+		roles: [],
+	});
 
 	const createWrapper = (props: Partial<IUsersFilterProps> = {}): void => {
 		const i18n = createI18n({
@@ -32,7 +38,8 @@ describe('UsersFilter', (): void => {
 				plugins: [i18n],
 			},
 			props: {
-				filters: { search: '', role: '' },
+				filters: filters.value,
+				filtersActive: false,
 				remoteFormReset: false,
 				...props,
 			},
@@ -54,7 +61,8 @@ describe('UsersFilter', (): void => {
 
 	it('renders correctly with filter', (): void => {
 		createWrapper({
-			filters: { search: 'name', role: '' },
+			filters: { search: 'name', roles: [] },
+			filtersActive: true,
 		});
 
 		expect(wrapper.findComponent(ElInput).exists()).toBe(true);
@@ -77,53 +85,39 @@ describe('UsersFilter', (): void => {
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.emitted('update:filters')).toBeTruthy();
-		expect(wrapper.emitted('update:filters')?.[0]).toEqual([{ search: 'admin', role: '' }]);
+		expect(filters.value.search).toEqual('admin');
+		expect(filters.value.roles).toEqual([]);
 	});
 
 	it('updates role filter', async (): Promise<void> => {
 		createWrapper();
 
+		expect(filters.value.roles).toEqual([]);
+
 		const select = wrapper.findComponent(ElSelect);
 
 		expect(select.exists()).toBe(true);
 
-		await select.setValue(UserRole.ADMIN);
+		await select.setValue([UsersUserRole.admin]);
 		await select.trigger('change');
 
-		select.vm.$emit('change', UserRole.ADMIN);
+		select.vm.$emit('change', [UsersUserRole.admin]);
 
 		await wrapper.vm.$nextTick();
 
-		await flushPromises();
-
-		expect(wrapper.emitted('update:filters')).toBeTruthy();
-		expect(wrapper.emitted('update:filters')?.[0]).toEqual([{ search: '', role: UserRole.ADMIN }]);
+		expect(filters.value.roles).toEqual([UsersUserRole.admin]);
 	});
 
 	it('clears filters when reset button is clicked', async (): Promise<void> => {
 		createWrapper({
-			filters: { search: 'admin', role: UserRole.USER },
+			filters: { search: 'admin', roles: [UsersUserRole.user] },
+			filtersActive: true,
 		});
 
 		await wrapper.findComponent(ElButton).trigger('click');
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.emitted('update:filters')).toBeTruthy();
-		expect(wrapper.emitted('update:filters')?.[0]).toEqual([{ search: '', role: '' }]);
-	});
-
-	it('handles remote form reset', async (): Promise<void> => {
-		createWrapper({ remoteFormReset: false });
-
-		await wrapper.setProps({ remoteFormReset: true });
-
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.emitted('update:remote-form-reset')).toBeTruthy();
-
-		expect(wrapper.emitted('update:filters')).toBeTruthy();
-		expect(wrapper.emitted('update:filters')?.[0]).toEqual([{ search: '', role: '' }]);
+		expect(wrapper.emitted('reset-filters')).toBeTruthy();
 	});
 });

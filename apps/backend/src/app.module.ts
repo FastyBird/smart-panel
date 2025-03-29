@@ -27,6 +27,7 @@ import { UsersModule } from './modules/users/users.module';
 import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
+import { ThirdPartyDevicesPlugin } from './plugins/third-party-devices/third-party-devices.plugin';
 
 @Module({
 	imports: [
@@ -102,6 +103,7 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
 		UsersModule,
 		WeatherModule,
 		WebsocketModule,
+		ThirdPartyDevicesPlugin,
 	],
 })
 export class AppModule {}

@@ -1,0 +1,15 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+
+@include b(view-device) {
+	@include e(channels-list) {
+		:deep(.el-table__inner-wrapper) {
+			&:before {
+				display: none;
+			}
+
+			tbody tr:last-child > td {
+				border-bottom: none;
+			}
+		}
+	}
+}

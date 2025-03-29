@@ -2,7 +2,7 @@
 
 **Channel Category**: `thermostat`
 
-Manages climate control systems, allowing adjustments to heating, cooling, and fan settings.
+Manages climate control systems, allowing adjustments of heating, cooling, and fan settings.
 
 ---
 

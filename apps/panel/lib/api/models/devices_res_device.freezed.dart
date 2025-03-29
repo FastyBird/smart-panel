@@ -35,9 +35,7 @@ mixin _$DevicesResDevice {
 
   /// The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
   DevicesResDeviceMethod get method => throw _privateConstructorUsedError;
-
-  /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
-  DevicesResDeviceDataUnion get data => throw _privateConstructorUsedError;
+  DevicesDevice get data => throw _privateConstructorUsedError;
 
   /// Additional metadata about the request and server performance metrics.
   CommonResMetadata get metadata => throw _privateConstructorUsedError;
@@ -64,10 +62,10 @@ abstract class $DevicesResDeviceCopyWith<$Res> {
       @JsonKey(name: 'request_id') String requestId,
       String path,
       DevicesResDeviceMethod method,
-      DevicesResDeviceDataUnion data,
+      DevicesDevice data,
       CommonResMetadata metadata});
 
-  $DevicesResDeviceDataUnionCopyWith<$Res> get data;
+  $DevicesDeviceCopyWith<$Res> get data;
   $CommonResMetadataCopyWith<$Res> get metadata;
 }
 
@@ -118,7 +116,7 @@ class _$DevicesResDeviceCopyWithImpl<$Res, $Val extends DevicesResDevice>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DevicesResDeviceDataUnion,
+              as DevicesDevice,
       metadata: null == metadata
           ? _value.metadata
           : metadata // ignore: cast_nullable_to_non_nullable
@@ -130,8 +128,8 @@ class _$DevicesResDeviceCopyWithImpl<$Res, $Val extends DevicesResDevice>
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $DevicesResDeviceDataUnionCopyWith<$Res> get data {
-    return $DevicesResDeviceDataUnionCopyWith<$Res>(_value.data, (value) {
+  $DevicesDeviceCopyWith<$Res> get data {
+    return $DevicesDeviceCopyWith<$Res>(_value.data, (value) {
       return _then(_value.copyWith(data: value) as $Val);
     });
   }
@@ -161,11 +159,11 @@ abstract class _$$DevicesResDeviceImplCopyWith<$Res>
       @JsonKey(name: 'request_id') String requestId,
       String path,
       DevicesResDeviceMethod method,
-      DevicesResDeviceDataUnion data,
+      DevicesDevice data,
       CommonResMetadata metadata});
 
   @override
-  $DevicesResDeviceDataUnionCopyWith<$Res> get data;
+  $DevicesDeviceCopyWith<$Res> get data;
   @override
   $CommonResMetadataCopyWith<$Res> get metadata;
 }
@@ -215,7 +213,7 @@ class __$$DevicesResDeviceImplCopyWithImpl<$Res>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DevicesResDeviceDataUnion,
+              as DevicesDevice,
       metadata: null == metadata
           ? _value.metadata
           : metadata // ignore: cast_nullable_to_non_nullable
@@ -259,10 +257,8 @@ class _$DevicesResDeviceImpl implements _DevicesResDevice {
   /// The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
   @override
   final DevicesResDeviceMethod method;
-
-  /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
   @override
-  final DevicesResDeviceDataUnion data;
+  final DevicesDevice data;
 
   /// Additional metadata about the request and server performance metrics.
   @override
@@ -319,7 +315,7 @@ abstract class _DevicesResDevice implements DevicesResDevice {
       @JsonKey(name: 'request_id') required final String requestId,
       required final String path,
       required final DevicesResDeviceMethod method,
-      required final DevicesResDeviceDataUnion data,
+      required final DevicesDevice data,
       required final CommonResMetadata metadata}) = _$DevicesResDeviceImpl;
 
   factory _DevicesResDevice.fromJson(Map<String, dynamic> json) =
@@ -345,10 +341,8 @@ abstract class _DevicesResDevice implements DevicesResDevice {
   /// The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
   @override
   DevicesResDeviceMethod get method;
-
-  /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
   @override
-  DevicesResDeviceDataUnion get data;
+  DevicesDevice get data;
 
   /// Additional metadata about the request and server performance metrics.
   @override

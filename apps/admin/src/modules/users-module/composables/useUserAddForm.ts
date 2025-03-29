@@ -1,14 +1,17 @@
-import { ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import type { FormInstance } from 'element-plus';
+
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { usersStoreKey } from '../store';
+import { UsersUserRole } from '../../../openapi';
+import { type IUser, usersStoreKey } from '../store';
 import { FormResult, type FormResultType } from '../users.constants';
-import { UsersApiException } from '../users.exceptions';
+import { UsersApiException, UsersValidationException } from '../users.exceptions';
 
 import type { IUseUserAddForm, IUserAddForm } from './types';
 
-export const useUserAddForm = (id: string): IUseUserAddForm => {
+export const useUserAddForm = (id: IUser['id']): IUseUserAddForm => {
 	const storesManager = injectStoresManager();
 
 	const usersStore = storesManager.getStore(usersStoreKey);
@@ -21,10 +24,30 @@ export const useUserAddForm = (id: string): IUseUserAddForm => {
 
 	let timer: number;
 
-	const submit = async (model: IUserAddForm): Promise<'added' | 'saved'> => {
+	const model = reactive<IUserAddForm>({
+		username: '',
+		password: '',
+		repeatPassword: '',
+		email: '',
+		firstName: '',
+		lastName: '',
+		role: UsersUserRole.user,
+	});
+
+	const formEl = ref<FormInstance | undefined>(undefined);
+
+	const formChanged = ref<boolean>(false);
+
+	const submit = async (): Promise<'added'> => {
 		formResult.value = FormResult.WORKING;
 
 		const errorMessage = t('usersModule.messages.notCreated', { user: model.username });
+
+		formEl.value!.clearValidate();
+
+		const valid = await formEl.value!.validate();
+
+		if (!valid) throw new UsersValidationException('Form not valid');
 
 		try {
 			await usersStore.add({
@@ -72,7 +95,28 @@ export const useUserAddForm = (id: string): IUseUserAddForm => {
 		formResult.value = FormResult.NONE;
 	};
 
+	watch(model, (val: IUserAddForm): void => {
+		if (val.username !== '') {
+			formChanged.value = true;
+		} else if (val.password !== '') {
+			formChanged.value = true;
+		} else if (val.email !== '') {
+			formChanged.value = true;
+		} else if (val.firstName !== '') {
+			formChanged.value = true;
+		} else if (val.lastName !== '') {
+			formChanged.value = true;
+		} else if (val.role !== UsersUserRole.user) {
+			formChanged.value = true;
+		} else {
+			formChanged.value = false;
+		}
+	});
+
 	return {
+		model,
+		formEl,
+		formChanged,
 		submit,
 		clear,
 		formResult,

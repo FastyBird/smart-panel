@@ -1,3 +1,4 @@
+import type { IUsersFilter } from '../composables';
 import type { IUser } from '../store';
 
 export interface IUsersTableProps {
@@ -6,4 +7,6 @@ export interface IUsersTableProps {
 	sortBy: 'username' | 'firstName' | 'lastName' | 'email' | 'role';
 	sortDir: 'ascending' | 'descending' | null;
 	loading: boolean;
+	filters: IUsersFilter;
+	filtersActive: boolean;
 }

@@ -18,16 +18,6 @@
 			:profile="profile"
 			:layout="Layout.PHONE"
 		/>
-
-		<el-button
-			:loading="remoteFormResult === FormResult.WORKING"
-			:disabled="remoteFormResult === FormResult.WORKING"
-			type="primary"
-			class="w-full mt-5"
-			@click="onSave"
-		>
-			{{ t('authModule.buttons.save.title') }}
-		</el-button>
 	</template>
 </template>
 
@@ -36,7 +26,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 
-import { ElButton, ElCard } from 'element-plus';
+import { ElCard } from 'element-plus';
 
 import { injectStoresManager, useBreakpoints } from '../../../common';
 import type { IUser } from '../../users-module';
@@ -77,10 +67,6 @@ const remoteFormReset = ref<boolean>(props.remoteFormReset);
 const profile = computed<IUser | null>((): IUser | null => {
 	return sessionStore.profile;
 });
-
-const onSave = (): void => {
-	remoteFormSubmit.value = true;
-};
 
 watch(
 	(): boolean => props.remoteFormSubmit,

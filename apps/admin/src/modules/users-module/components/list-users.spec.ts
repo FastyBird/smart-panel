@@ -1,4 +1,4 @@
-import type { ComponentPublicInstance } from 'vue';
+import { type ComponentPublicInstance } from 'vue';
 import { createI18n } from 'vue-i18n';
 
 import { ElPagination } from 'element-plus';
@@ -6,8 +6,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
+import { UsersUserRole } from '../../../openapi';
 import enUS from '../locales/en-US.json';
-import { UserRole } from '../users.constants';
 
 import type { IListUsersProps } from './list-users.types';
 import ListUsers from './list-users.vue';
@@ -15,7 +15,7 @@ import UsersFilter from './users-filter.vue';
 import UsersTable from './users-table.vue';
 
 type ListUsersInstance = ComponentPublicInstance<IListUsersProps> & {
-	innerFilters: { search: string; role: UserRole };
+	innerFilters: { search: string | undefined; roles: UsersUserRole[] };
 };
 
 describe('ListUsers', (): void => {
@@ -25,7 +25,8 @@ describe('ListUsers', (): void => {
 		items: [],
 		allItems: [],
 		totalRows: 0,
-		filters: { search: '', role: null },
+		filters: { search: undefined, roles: [] },
+		filtersActive: false,
 		paginateSize: 10,
 		paginatePage: 1,
 		sortBy: 'username',
@@ -52,6 +53,7 @@ describe('ListUsers', (): void => {
 				allItems: defaultProps.allItems,
 				totalRows: defaultProps.totalRows,
 				filters: defaultProps.filters,
+				filtersActive: defaultProps.filtersActive,
 				paginateSize: defaultProps.paginateSize,
 				paginatePage: defaultProps.paginatePage,
 				sortBy: defaultProps.sortBy as 'username' | 'firstName' | 'lastName' | 'email' | 'role',
@@ -97,20 +99,12 @@ describe('ListUsers', (): void => {
 	});
 
 	it('updates internal filters when v-model:filters changes', async (): Promise<void> => {
-		await wrapper.setProps({ filters: { search: 'admin', role: UserRole.ADMIN } });
+		await wrapper.setProps({ filters: { search: 'admin', roles: [UsersUserRole.admin] } });
 
 		expect(wrapper.vm.innerFilters.search).toBe('admin');
-		expect(wrapper.vm.innerFilters.role).toBe(UserRole.ADMIN);
+		expect(wrapper.vm.innerFilters.roles).toEqual([UsersUserRole.admin]);
 
-		expect(wrapper.findComponent(UsersFilter).props('filters')).toEqual({ search: 'admin', role: UserRole.ADMIN });
-	});
-
-	it('emits "update:filters" when filters change', async (): Promise<void> => {
-		await wrapper.setProps({ filters: { search: 'newSearch', role: UserRole.USER } });
-
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.emitted('update:filters')![0]).toEqual([{ search: 'newSearch', role: UserRole.USER }]);
+		expect(wrapper.findComponent(UsersFilter).props('filters')).toEqual({ search: 'admin', roles: [UsersUserRole.admin] });
 	});
 
 	it('emits "update:sort-by" when sortBy changes', async (): Promise<void> => {

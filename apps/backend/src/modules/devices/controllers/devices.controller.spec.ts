@@ -10,9 +10,9 @@ import { v4 as uuid } from 'uuid';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DeviceCategory } from '../devices.constants';
-import { CreateThirdPartyDeviceDto } from '../dto/create-device.dto';
-import { UpdateThirdPartyDeviceDto } from '../dto/update-device.dto';
-import { ThirdPartyDeviceEntity } from '../entities/devices.entity';
+import { CreateDeviceDto } from '../dto/create-device.dto';
+import { UpdateDeviceDto } from '../dto/update-device.dto';
+import { DeviceEntity } from '../entities/devices.entity';
 import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
@@ -23,13 +23,12 @@ describe('DevicesController', () => {
 	let service: DevicesService;
 	let mapper: DevicesTypeMapperService;
 
-	const mockDevice: ThirdPartyDeviceEntity = {
+	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
-		type: 'third-party',
+		type: 'device',
 		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
-		serviceAddress: 'http://127.0.0.1',
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		controls: [],
@@ -87,18 +86,17 @@ describe('DevicesController', () => {
 		});
 
 		it('should create a new device', async () => {
-			const createDto: CreateThirdPartyDeviceDto = {
-				type: 'third-party',
+			const createDto: CreateDeviceDto = {
+				type: 'device',
 				category: DeviceCategory.GENERIC,
 				name: 'New Device',
-				service_address: 'http://127.0.0.1',
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'third-party',
-				class: ThirdPartyDeviceEntity,
-				createDto: CreateThirdPartyDeviceDto,
-				updateDto: UpdateThirdPartyDeviceDto,
+				type: 'device',
+				class: DeviceEntity,
+				createDto: CreateDeviceDto,
+				updateDto: UpdateDeviceDto,
 			});
 
 			const result = await controller.create({ data: createDto });
@@ -108,16 +106,16 @@ describe('DevicesController', () => {
 		});
 
 		it('should update a device', async () => {
-			const updateDto: UpdateThirdPartyDeviceDto = {
-				type: 'third-party',
+			const updateDto: UpdateDeviceDto = {
+				type: 'device',
 				name: 'Updated Device',
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'third-party',
-				class: ThirdPartyDeviceEntity,
-				createDto: CreateThirdPartyDeviceDto,
-				updateDto: UpdateThirdPartyDeviceDto,
+				type: 'device',
+				class: DeviceEntity,
+				createDto: CreateDeviceDto,
+				updateDto: UpdateDeviceDto,
 			});
 
 			const result = await controller.update(mockDevice.id, { data: updateDto });

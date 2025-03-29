@@ -1,12 +1,5 @@
 import type { IUser } from '../store';
-import type { FormResultType, UserRole } from '../users.constants';
-
-export interface IUserEditFormFields {
-	email?: string | null;
-	firstName?: string | null;
-	lastName?: string | null;
-	role?: UserRole;
-}
+import type { FormResultType } from '../users.constants';
 
 export interface IUserEditFormProps {
 	user: IUser;

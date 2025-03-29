@@ -1,0 +1,717 @@
+{
+  "meta": {
+    "devices": {
+      "list": {
+        "title": "List devices"
+      },
+      "edit": {
+        "title": "Edit device: {device}"
+      },
+      "add": {
+        "title": "Add device"
+      },
+      "detail": {
+        "title": "Device: {device}"
+      }
+    },
+    "channels": {
+      "list": {
+        "title": "List channels"
+      },
+      "edit": {
+        "title": "Edit channel: {channel}"
+      },
+      "add": {
+        "title": "Add channel"
+      },
+      "detail": {
+        "title": "Channel: {channel}"
+      }
+    },
+    "channelsProperties": {
+      "edit": {
+        "title": "Edit channel property: {property}"
+      },
+      "add": {
+        "title": "Add channel property"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "devices": {
+      "list": "devices",
+      "add": "add device",
+      "edit": "edit device",
+      "detail": "device: {device}"
+    },
+    "channels": {
+      "list": "channels",
+      "add": "add channel",
+      "edit": "edit channel",
+      "detail": "channel: {channel}"
+    },
+    "channelsProperties": {
+      "add": "add channel property",
+      "edit": "edit channel property"
+    }
+  },
+  "headings": {
+    "devices": {
+      "list": "Devices",
+      "add": "Add device",
+      "edit": "Edit device",
+      "detail": "Device: {device}",
+      "remove": "Remove device?",
+      "adjustFilters": "Filter devices",
+      "selectPlugin": "Device plugin required"
+    },
+    "channels": {
+      "list": "Channels",
+      "add": "Add channel",
+      "edit": "Edit channel",
+      "detail": "Channel: {channel}",
+      "remove": "Remove channel?",
+      "adjustFilters": "Filter channels"
+    },
+    "channelsProperties": {
+      "add": "Add channel property",
+      "edit": "Edit channel property",
+      "remove": "Remove channel property?",
+      "adjustFilters": "Filter properties"
+    },
+    "misc": {
+      "discard": "Discard changes?"
+    }
+  },
+  "subHeadings": {
+    "devices": {
+      "list": "Manage smart panel devices",
+      "add": "Add new smart panel device",
+      "edit": "Edit smart panel device",
+      "detail": "Manager smart panel device",
+      "adjustFilters": "Adjust display filters"
+    },
+    "channels": {
+      "list": "Manage smart panel devices channels",
+      "add": "Add new smart panel device channel",
+      "edit": "Edit smart panel device channel",
+      "detail": "Manager smart panel device channel",
+      "adjustFilters": "Adjust display filters"
+    },
+    "channelsProperties": {
+      "add": "Add new smart panel channel property",
+      "edit": "Edit smart panel channel property",
+      "adjustFilters": "Adjust display filters"
+    }
+  },
+  "messages": {
+    "devices": {
+      "notFound": "The device you are looking for doesn’t exist or may have been removed.",
+      "confirmRemove": "Are you sure you want to remove device: {device}? This cannot be reversed.",
+      "created": "New device added successfully.",
+      "notCreated": "Something went wrong. Unable to create the device.",
+      "edited": "Changes saved! The device: {device} has been updated.",
+      "notEdited": "Something went wrong. Device update was not successful.",
+      "removed": "The device: {device} was successfully removed.",
+      "removeCanceled": "Device: {device} removal has been canceled.",
+      "notRemoved": "Something went wrong, and the device: {device} was not removed."
+    },
+    "channels": {
+      "notFound": "The channel you are looking for doesn’t exist or may have been removed.",
+      "confirmRemove": "Are you sure you want to remove channel: {channel}? This cannot be reversed.",
+      "created": "New channel added successfully.",
+      "notCreated": "Something went wrong. Unable to create the channel.",
+      "edited": "Changes saved! The channel: {channel} has been updated.",
+      "notEdited": "Something went wrong. Channel update was not successful.",
+      "removed": "The channel: {channel} was successfully removed.",
+      "removeCanceled": "Channel: {channel} removal has been canceled.",
+      "notRemoved": "Something went wrong, and the channel: {channel} was not removed.",
+      "noMoreAllowed": "All required and optional channels are assigned to the device. No others can be added."
+    },
+    "channelsProperties": {
+      "notFound": "The channel property you are looking for doesn’t exist or may have been removed.",
+      "confirmRemove": "Are you sure you want to remove channel property: {property}? This cannot be reversed.",
+      "created": "New channel property added successfully.",
+      "notCreated": "Something went wrong. Unable to create the channel property.",
+      "edited": "Changes saved! The channel property: {property} has been updated.",
+      "notEdited": "Something went wrong. Channel property update was not successful.",
+      "removed": "The channel property: {property} was successfully removed.",
+      "removeCanceled": "Channel property: {property} removal has been canceled.",
+      "notRemoved": "Something went wrong, and the channel property: {property} was not removed.",
+      "noMoreAllowed": "All required and optional properties are assigned to the channel. No others can be added."
+    },
+    "misc": {
+      "requestError": "Something went wrong, please try again later.",
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    }
+  },
+  "texts": {
+    "devices": {
+      "noDevices": "You don't have configured any device",
+      "noFilteredDevices": "No devices found matching the active filter criteria",
+      "loadingDevices": "Loading devices...",
+      "loadingDevice": "Loading device...",
+      "description": {
+        "generic": "",
+        "air_conditioner": "The Air Conditioner device represents a cooling system with additional features for environmental monitoring and energy management.",
+        "air_dehumidifier": "The Air Dehumidifier device represents a system designed to reduce humidity levels in the environment while providing additional monitoring and control capabilities.",
+        "air_humidifier": "The Air Humidifier device represents a system designed to increase humidity levels in the environment while providing additional monitoring and control capabilities.",
+        "air_purifier": "The Air Purifier device represents a system designed to improve indoor air quality by removing contaminants and monitoring environmental conditions.",
+        "alarm": "",
+        "camera": "The Camera device represents a surveillance or monitoring system designed for video and image capturing, with additional features for environmental monitoring and interaction.",
+        "doorbell": "The Doorbell device represents a smart doorbell system that provides video, audio, and additional monitoring features for enhanced home security.",
+        "door": "The Door device represents automated or monitored doors, such as garage doors, entrance doors, or other types of doors, with additional features for security and environmental awareness.",
+        "fan": "The Fan device represents a standalone or integrated fan system with features for speed control, direction adjustment, and energy monitoring.",
+        "heater": "The Heater device represents a heating system designed to control and monitor environmental temperature, with optional features for energy and humidity management.",
+        "lighting": "The Lighting device represents a lighting system designed to provide illumination with optional features for energy tracking, brightness control, and adaptive lighting based on ambient conditions.",
+        "lock": "The Lock device represents an electronic or smart locking system, providing control and monitoring of access points such as doors or gates.",
+        "media": "The Media device represents a multimedia system capable of playing, recording, or managing audio and video content.",
+        "outlet": "The Outlet device represents a power outlet with advanced monitoring and control features, enabling remote operation and energy tracking. It supports single or multiple outlets for flexible power management.",
+        "pump": "The Pump device represents a water or fluid pump with functionality for flow control, monitoring, and energy tracking.",
+        "robot_vacuum": "The Robot Vacuum device represents an autonomous cleaning device with capabilities for energy tracking and operational monitoring.",
+        "sensor": "The Sensor device represents a versatile monitoring unit capable of tracking various environmental and safety parameters.",
+        "speaker": "The Speaker device represents an audio output system capable of producing sound and potentially supporting media playback and input functionality.",
+        "sprinkler": "The Sprinkler device represents an irrigation system designed to control water flow and monitor environmental conditions to optimize watering.",
+        "switcher": "The Switcher device represents a controllable outlet or switch that can toggle the power supply to connected devices and monitor energy usage. It supports multiple outlets for power control.",
+        "television": "The Television device represents a smart TV or similar media device that can be controlled and monitored for its audio and display functionality.",
+        "thermostat": "The Thermostat device represents a climate control system that monitors and adjusts temperature and related environmental factors.",
+        "valve": "The Valve device represents a controllable valve used for managing the flow of liquids or gases in various systems.",
+        "window_covering": "The Window Covering device represents automated window treatments such as blinds, shades, or curtains."
+      },
+      "selectPlugin": "To create a new device, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific device types.",
+      "noChannels": "This device doesn't have any channels yet. Channels define the inputs or outputs of a device. Create a new channel to start interacting with this device.",
+      "channelsCount": "No channels configured | One channel configured | {count} channels configured",
+      "alertsCount": "No alerts detected | One alert detected | {count} alerts detected",
+      "channels": "Channels",
+      "alerts": "Alerts",
+      "status": "Status"
+    },
+    "channels": {
+      "noChannels": "You don't have configured any device channel",
+      "noFilteredChannels": "No channels found matching the active filter criteria",
+      "loadingChannels": "Loading channels...",
+      "loadingChannel": "Loading channel...",
+      "description": {
+        "generic": "",
+        "air_particulate": "Monitors the concentration of particulate matter (e.g., PM2.5 and PM10) in the air, providing insights into air quality and pollution levels.",
+        "alarm": "",
+        "battery": "Reports the status of a device's battery, including level, charging state, and operational health.",
+        "camera": "Provides video and image data streams from surveillance or monitoring cameras. This channel supports configuration and control of camera devices, such as surveillance cameras or babysitting monitors.",
+        "carbon_dioxide": "Monitors CO₂ levels in the environment to track air quality and ventilation efficiency.",
+        "carbon_monoxide": "Detects the presence of carbon monoxide (CO) to ensure safety in enclosed spaces.",
+        "contact": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet.",
+        "cooler": "Controls devices that lower air or liquid temperatures, such as air conditioners or refrigeration systems.",
+        "device_information": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses.",
+        "doorbell": "Represents smart doorbells, providing features such as button press detection and optional camera integration.",
+        "door": "Manages the open/close states of doors, including garage and entry doors.",
+        "electrical_energy": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh).",
+        "electrical_power": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics.",
+        "fan": "Controls fan devices, including speed, oscillation, and modes for air circulation.",
+        "flow": "Monitors the rate of fluid or air flow, typically measured in cubic meters per hour (m³/h).",
+        "heater": "Manages heating devices, allowing control of temperature settings and modes.",
+        "humidity": "Measures the relative humidity in the environment, reported as a percentage.",
+        "illuminance": "Detects ambient light levels, typically measured in lux, to monitor brightness in a space.",
+        "leak": "Identifies the presence of water or other liquids to detect leaks and prevent damage.",
+        "light": "Controls lighting devices, supporting brightness, color temperature, and color adjustments.",
+        "lock": "Manages the locked/unlocked state of physical locks for doors, safes, or other secure areas.",
+        "media_input": "Manages the input sources of multimedia devices like TVs, projectors, or audio receivers.",
+        "media_playback": "Provides playback controls for multimedia devices, excluding volume control (handled by Speaker and Microphone channels).",
+        "microphone": "Represents audio input devices, reporting activity or capturing sound.",
+        "motion": "Detects motion in an area to trigger alerts or automate responses.",
+        "nitrogen_dioxide": "Monitors the concentration of NO₂ in the air, often used in environmental and industrial monitoring.",
+        "occupancy": "Detects the presence of people in a space for automation or energy efficiency purposes.",
+        "outlet": "Controls and monitors electrical outlets.",
+        "ozone": "Measures ozone (O₃) levels in the air, often used in environmental quality assessments.",
+        "pressure": "Reports atmospheric or liquid pressure values, typically measured in pascals (kPa).",
+        "robot_vacuum": "Controls robotic vacuum cleaners, providing commands for start, stop, docking, and monitoring states.",
+        "smoke": "Detects smoke in the environment, triggering alarms or alerts for safety.",
+        "speaker": "Controls speaker devices, including volume, mute state, and audio output modes.",
+        "sulphur_dioxide": "Measures sulphur dioxide (SO₂) levels in the air for environmental monitoring.",
+        "switcher": "Represents binary switches to control devices like lights, fans, or appliances.",
+        "television": "Provides control for TVs, including input source, brightness, and power state.",
+        "temperature": "Measures the current temperature in an environment, reported in degrees Celsius .",
+        "thermostat": "Manages climate control systems, allowing adjustments of heating, cooling, and fan settings.",
+        "valve": "Controls fluid or gas valves, managing open/close states or flow rates.",
+        "volatile_organic_compounds": "Monitors the concentration of VOCs in the air to track pollution or air quality.",
+        "window_covering": "Controls coverings like blinds, curtains, and shutters, including position and tilt adjustments."
+      }
+    },
+    "channelsProperties": {
+      "noProperties": "You don't have configured any channel property",
+      "noFilteredProperties": "No channels properties found matching the active filter criteria",
+      "loadingProperties": "Loading channels properties...",
+      "loadingProperty": "Loading channel property...",
+      "loadingChannels": "Loading channels...",
+      "loadingChannel": "Loading channel...",
+      "dataTypes": {
+        "char": "Signed 8-bit integer (-128 to 127).",
+        "uchar": "Unsigned 8-bit integer (0 to 255).",
+        "short": "Signed 16-bit integer (-32,768 to 32,767).",
+        "ushort": "Unsigned 16-bit integer (0 to 65,535).",
+        "int": "Signed 32-bit integer (-2,147,483,648 to 2,147,483,647).",
+        "uint": "Unsigned 32-bit integer (0 to 4,294,967,295).",
+        "float": "Floating-point number (e.g., 3.14, -0.001).",
+        "bool": "Boolean value: true or false.",
+        "string": "A sequence of characters (e.g., \"hello\").",
+        "enum": "Enumerated value selected from a predefined set.",
+        "unknown": "Unknown or unspecified data type."
+      }
+    },
+    "misc": {
+      "notSet": "Not set",
+      "noValuesProvided": "No values provided"
+    }
+  },
+  "fields": {
+    "devices": {
+      "search": {
+        "placeholder": "Search for device"
+      },
+      "plugin": {
+        "title": "Device plugin",
+        "placeholder": "Select device plugin"
+      },
+      "state": {
+        "title": "State",
+        "placeholder": "Select state"
+      },
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Device id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Device category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select device category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Device name",
+        "validation": {
+          "required": "Please fill in device name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Device description"
+      }
+    },
+    "channels": {
+      "search": {
+        "placeholder": "Search for channel"
+      },
+      "device": {
+        "title": "Device",
+        "placeholder": "Channel device",
+        "description": "About device",
+        "validation": {
+          "required": "Please select channel device"
+        }
+      },
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Channel id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select channel category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel name",
+        "validation": {
+          "required": "Please fill in channel name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Channel description"
+      }
+    },
+    "channelsProperties": {
+      "search": {
+        "placeholder": "Search for channel property"
+      },
+      "channel": {
+        "title": "Channel",
+        "placeholder": "Channel property channel",
+        "description": "About channel",
+        "validation": {
+          "required": "Please select channel property channel"
+        }
+      },
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Channel property id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel property category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select channel property category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel property name"
+      },
+      "permissions": {
+        "title": "Permissions",
+        "placeholder": "Channel property reading & writing permissions",
+        "validation": {
+          "required": "Please select channel property permissions"
+        }
+      },
+      "dataType": {
+        "title": "Data type",
+        "placeholder": "Channel property value data type",
+        "validation": {
+          "required": "Please select channel property data type"
+        }
+      },
+      "unit": {
+        "title": "Unit",
+        "placeholder": "Channel property unit"
+      },
+      "format": {
+        "title": {
+          "enum": "Enum values",
+          "min": "Minimum value",
+          "max": "Maximum value"
+        },
+        "placeholder": {
+          "enum": "List of allowed values",
+          "min": "Minimum allowed value",
+          "max": "Maximum allowed value"
+        },
+        "validation": {
+          "required": {
+            "enum": "Please fill in channel property list of values"
+          }
+        }
+      },
+      "invalid": {
+        "title": "Invalid value",
+        "placeholder": "Channel property invalid value"
+      },
+      "step": {
+        "title": "Step value",
+        "placeholder": "Channel property step value"
+      }
+    }
+  },
+  "table": {
+    "devices": {
+      "columns": {
+        "name": {
+          "title": "Name"
+        },
+        "type": {
+          "title": "Type"
+        },
+        "state": {
+          "title": "State"
+        },
+        "category": {
+          "title": "Category"
+        }
+      }
+    },
+    "channels": {
+      "columns": {
+        "name": {
+          "title": "Name"
+        },
+        "device": {
+          "title": "Device"
+        },
+        "category": {
+          "title": "Category"
+        }
+      }
+    },
+    "channelsProperties": {
+      "columns": {
+        "name": {
+          "title": "Name"
+        },
+        "channel": {
+          "title": "Channel"
+        },
+        "category": {
+          "title": "Category"
+        },
+        "permissions": {
+          "title": "Permissions"
+        },
+        "dataType": {
+          "title": "Data type",
+          "type": {
+            "enum": "Enum value info",
+            "numeric": "Numeric value info"
+          }
+        },
+        "value": {
+          "title": "Value"
+        }
+      }
+    }
+  },
+  "filters": {
+    "devices": {
+      "types": {
+        "title": "Filter by device type"
+      },
+      "states": {
+        "title": "Filter by device state"
+      },
+      "category": {
+        "title": "Filter by device category",
+        "placeholder": "Select one or more"
+      }
+    },
+    "channels": {
+      "category": {
+        "title": "Filter by channel category",
+        "placeholder": "Select one or more"
+      }
+    },
+    "channelsProperties": {
+      "category": {
+        "title": "Filter by property category",
+        "placeholder": "Select one or more"
+      },
+      "dataType": {
+        "title": "Filter by property data type"
+      },
+      "permission": {
+        "title": "Filter by property permission"
+      }
+    }
+  },
+  "buttons": {
+    "add": {
+      "title": "Add"
+    },
+    "edit": {
+      "title": "Edit"
+    },
+    "detail": {
+      "title": "Detail"
+    },
+    "discard": {
+      "title": "Discard"
+    },
+    "cancel": {
+      "title": "Cancel"
+    },
+    "close": {
+      "title": "Close"
+    },
+    "save": {
+      "title": "Save"
+    },
+    "change": {
+      "title": "Change"
+    },
+    "remove": {
+      "title": "Remove"
+    },
+    "resetFilters": {
+      "title": "Reset filters"
+    },
+    "yes": {
+      "title": "Yes"
+    },
+    "no": {
+      "title": "No"
+    },
+    "reset": {
+      "title": "Reset"
+    },
+    "addChannel": {
+      "title": "Add channel"
+    },
+    "addProperty": {
+      "title": "Add property"
+    }
+  },
+  "states": {
+    "online": "Online",
+    "offline": "Offline",
+    "all": "All",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "init": "Initialized",
+    "ready": "Ready",
+    "running": "Running",
+    "sleeping": "Sleeping",
+    "stopped": "Stopped",
+    "lost": "Lost",
+    "alert": "Alert",
+    "unknown": "Unknown"
+  },
+  "permissions": {
+    "ro": "Read only",
+    "rw": "Read & write",
+    "wo": "Write only",
+    "ev": "Event"
+  },
+  "dataTypes": {
+    "char": "Char",
+    "uchar": "Unsigned char",
+    "short": "Short integer",
+    "ushort": "Unsigned short integer",
+    "int": "Integer",
+    "uint": "Unsigned integer",
+    "float": "Float",
+    "bool": "Boolean",
+    "string": "String",
+    "enum": "Enum",
+    "unknown": "Unknown"
+  },
+  "categories": {
+    "devices": {
+      "generic": "Generic",
+      "air_conditioner": "Air conditioner",
+      "air_dehumidifier": "Air dehumidifier",
+      "air_humidifier": "Air humidifier",
+      "air_purifier": "Air purifier",
+      "alarm": "Alarm",
+      "camera": "Camera",
+      "door": "Door",
+      "doorbell": "Doorbell",
+      "fan": "Fan",
+      "heater": "Heater",
+      "lighting": "Lighting",
+      "lock": "Lock",
+      "media": "Media",
+      "outlet": "Outlet",
+      "pump": "Pump",
+      "robot_vacuum": "Robot vacuum",
+      "sensor": "Sensor",
+      "speaker": "Speaker",
+      "sprinkler": "Sprinkler",
+      "switcher": "Switcher",
+      "television": "Television",
+      "thermostat": "Thermostat",
+      "valve": "Valve",
+      "window_covering": "Window covering"
+    },
+    "channels": {
+      "generic": "Generic",
+      "air_particulate": "Air particulate",
+      "alarm": "Alarm",
+      "battery": "Battery",
+      "camera": "Camera",
+      "carbon_dioxide": "Carbon dioxide",
+      "carbon_monoxide": "Carbon monoxide",
+      "contact": "Contact",
+      "cooler": "Cooler",
+      "device_information": "Device information",
+      "door": "Door",
+      "doorbell": "Doorbell",
+      "electrical_energy": "Electrical energy",
+      "electrical_power": "Electrical power",
+      "fan": "Fan",
+      "flow": "Flow",
+      "heater": "Heater",
+      "humidity": "Humidity",
+      "illuminance": "Illuminance",
+      "leak": "Leak",
+      "light": "Light",
+      "lock": "Lock",
+      "media_input": "Media input",
+      "media_playback": "Media playback",
+      "microphone": "Microphone",
+      "motion": "Motion",
+      "nitrogen_dioxide": "Nitrogen dioxide",
+      "occupancy": "Occupancy",
+      "outlet": "Outlet",
+      "ozone": "Ozone",
+      "pressure": "Pressure",
+      "robot_vacuum": "Robot vacuum",
+      "smoke": "Smoke",
+      "speaker": "Speaker",
+      "sulphur_dioxide": "Sulphur dioxide",
+      "switcher": "Switcher",
+      "television": "Television",
+      "temperature": "Temperature",
+      "thermostat": "Thermostat",
+      "valve": "Valve",
+      "volatile_organic_compounds": "Volatile organic compounds",
+      "window_covering": "Window covering"
+    },
+    "channelsProperties": {
+      "generic": "Generic",
+      "active": "Active",
+      "angle": "Angle",
+      "brightness": "Brightness",
+      "color_blue": "Color blue",
+      "color_green": "Color green",
+      "color_red": "Color red",
+      "color_temperature": "Color temperature",
+      "color_white": "Color white",
+      "connection_type": "Connection type",
+      "consumption": "Consumption",
+      "current": "Current",
+      "density": "Density",
+      "detected": "Detected",
+      "direction": "Direction",
+      "distance": "Distance",
+      "duration": "Duration",
+      "event": "Event",
+      "fault": "Fault",
+      "firmware_revision": "Firmware revision",
+      "frequency": "Frequency",
+      "hardware_revision": "Hardware revision",
+      "hue": "Hue",
+      "humidity": "Humidity",
+      "in_use": "In Use",
+      "infrared": "Infrared",
+      "input_source": "Input source",
+      "level": "Level",
+      "link_quality": "Link quality",
+      "locked": "Locked",
+      "manufacturer": "Manufacturer",
+      "measured": "Measured",
+      "model": "Model",
+      "mode": "Mode",
+      "obstruction": "Obstruction",
+      "on": "On",
+      "over_current": "Over current",
+      "over_voltage": "Over voltage",
+      "pan": "Pan",
+      "peak_level": "Peak level",
+      "percentage": "Percentage",
+      "position": "Position",
+      "power": "Power",
+      "rate": "Rate",
+      "remaining": "Remaining",
+      "remote_key": "Remote key",
+      "saturation": "Saturation",
+      "serial_number": "Serial number",
+      "source": "Source",
+      "speed": "Speed",
+      "status": "Status",
+      "swing": "Swing",
+      "tampered": "Tampered",
+      "temperature": "Temperature",
+      "tilt": "Tilt",
+      "track": "Track",
+      "type": "Type",
+      "units": "Units",
+      "voltage": "Voltage",
+      "volume": "Volume",
+      "zoom": "Zoom"
+    }
+  }
+}

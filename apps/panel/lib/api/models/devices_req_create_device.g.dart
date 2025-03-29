@@ -9,8 +9,7 @@ part of 'devices_req_create_device.dart';
 _$DevicesReqCreateDeviceImpl _$$DevicesReqCreateDeviceImplFromJson(
         Map<String, dynamic> json) =>
     _$DevicesReqCreateDeviceImpl(
-      data: DevicesReqCreateDeviceDataUnion.fromJson(
-          json['data'] as Map<String, dynamic>),
+      data: DevicesCreateDevice.fromJson(json['data'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$DevicesReqCreateDeviceImplToJson(

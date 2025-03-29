@@ -32,7 +32,7 @@ mixin _$DevicesChannelProperty {
   String? get name => throw _privateConstructorUsedError;
 
   /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
-  List<DevicesChannelPropertyPermission> get permission =>
+  List<DevicesChannelPropertyPermissions> get permissions =>
       throw _privateConstructorUsedError;
 
   /// Measurement unit associated with the property’s value, if applicable.
@@ -86,7 +86,7 @@ abstract class $DevicesChannelPropertyCopyWith<$Res> {
       {String id,
       DevicesChannelPropertyCategory category,
       String? name,
-      List<DevicesChannelPropertyPermission> permission,
+      List<DevicesChannelPropertyPermissions> permissions,
       String? unit,
       List<dynamic>? format,
       dynamic invalid,
@@ -117,7 +117,7 @@ class _$DevicesChannelPropertyCopyWithImpl<$Res,
     Object? id = null,
     Object? category = null,
     Object? name = freezed,
-    Object? permission = null,
+    Object? permissions = null,
     Object? unit = freezed,
     Object? format = freezed,
     Object? invalid = freezed,
@@ -141,10 +141,10 @@ class _$DevicesChannelPropertyCopyWithImpl<$Res,
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
               as String?,
-      permission: null == permission
-          ? _value.permission
-          : permission // ignore: cast_nullable_to_non_nullable
-              as List<DevicesChannelPropertyPermission>,
+      permissions: null == permissions
+          ? _value.permissions
+          : permissions // ignore: cast_nullable_to_non_nullable
+              as List<DevicesChannelPropertyPermissions>,
       unit: freezed == unit
           ? _value.unit
           : unit // ignore: cast_nullable_to_non_nullable
@@ -198,7 +198,7 @@ abstract class _$$DevicesChannelPropertyImplCopyWith<$Res>
       {String id,
       DevicesChannelPropertyCategory category,
       String? name,
-      List<DevicesChannelPropertyPermission> permission,
+      List<DevicesChannelPropertyPermissions> permissions,
       String? unit,
       List<dynamic>? format,
       dynamic invalid,
@@ -228,7 +228,7 @@ class __$$DevicesChannelPropertyImplCopyWithImpl<$Res>
     Object? id = null,
     Object? category = null,
     Object? name = freezed,
-    Object? permission = null,
+    Object? permissions = null,
     Object? unit = freezed,
     Object? format = freezed,
     Object? invalid = freezed,
@@ -252,10 +252,10 @@ class __$$DevicesChannelPropertyImplCopyWithImpl<$Res>
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
               as String?,
-      permission: null == permission
-          ? _value._permission
-          : permission // ignore: cast_nullable_to_non_nullable
-              as List<DevicesChannelPropertyPermission>,
+      permissions: null == permissions
+          ? _value._permissions
+          : permissions // ignore: cast_nullable_to_non_nullable
+              as List<DevicesChannelPropertyPermissions>,
       unit: freezed == unit
           ? _value.unit
           : unit // ignore: cast_nullable_to_non_nullable
@@ -303,7 +303,7 @@ class _$DevicesChannelPropertyImpl implements _DevicesChannelProperty {
       {required this.id,
       required this.category,
       required this.name,
-      required final List<DevicesChannelPropertyPermission> permission,
+      required final List<DevicesChannelPropertyPermissions> permissions,
       required this.unit,
       required final List<dynamic>? format,
       required this.invalid,
@@ -314,7 +314,7 @@ class _$DevicesChannelPropertyImpl implements _DevicesChannelProperty {
       @JsonKey(name: 'updated_at') required this.updatedAt,
       @JsonKey(name: 'data_type')
       this.dataType = DevicesChannelPropertyDataType.unknown})
-      : _permission = permission,
+      : _permissions = permissions,
         _format = format;
 
   factory _$DevicesChannelPropertyImpl.fromJson(Map<String, dynamic> json) =>
@@ -333,14 +333,14 @@ class _$DevicesChannelPropertyImpl implements _DevicesChannelProperty {
   final String? name;
 
   /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
-  final List<DevicesChannelPropertyPermission> _permission;
+  final List<DevicesChannelPropertyPermissions> _permissions;
 
   /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
   @override
-  List<DevicesChannelPropertyPermission> get permission {
-    if (_permission is EqualUnmodifiableListView) return _permission;
+  List<DevicesChannelPropertyPermissions> get permissions {
+    if (_permissions is EqualUnmodifiableListView) return _permissions;
     // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_permission);
+    return EqualUnmodifiableListView(_permissions);
   }
 
   /// Measurement unit associated with the property’s value, if applicable.
@@ -393,7 +393,7 @@ class _$DevicesChannelPropertyImpl implements _DevicesChannelProperty {
 
   @override
   String toString() {
-    return 'DevicesChannelProperty(id: $id, category: $category, name: $name, permission: $permission, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value, channel: $channel, createdAt: $createdAt, updatedAt: $updatedAt, dataType: $dataType)';
+    return 'DevicesChannelProperty(id: $id, category: $category, name: $name, permissions: $permissions, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value, channel: $channel, createdAt: $createdAt, updatedAt: $updatedAt, dataType: $dataType)';
   }
 
   @override
@@ -406,7 +406,7 @@ class _$DevicesChannelPropertyImpl implements _DevicesChannelProperty {
                 other.category == category) &&
             (identical(other.name, name) || other.name == name) &&
             const DeepCollectionEquality()
-                .equals(other._permission, _permission) &&
+                .equals(other._permissions, _permissions) &&
             (identical(other.unit, unit) || other.unit == unit) &&
             const DeepCollectionEquality().equals(other._format, _format) &&
             const DeepCollectionEquality().equals(other.invalid, invalid) &&
@@ -428,7 +428,7 @@ class _$DevicesChannelPropertyImpl implements _DevicesChannelProperty {
       id,
       category,
       name,
-      const DeepCollectionEquality().hash(_permission),
+      const DeepCollectionEquality().hash(_permissions),
       unit,
       const DeepCollectionEquality().hash(_format),
       const DeepCollectionEquality().hash(invalid),
@@ -461,7 +461,7 @@ abstract class _DevicesChannelProperty implements DevicesChannelProperty {
           {required final String id,
           required final DevicesChannelPropertyCategory category,
           required final String? name,
-          required final List<DevicesChannelPropertyPermission> permission,
+          required final List<DevicesChannelPropertyPermissions> permissions,
           required final String? unit,
           required final List<dynamic>? format,
           required final dynamic invalid,
@@ -491,7 +491,7 @@ abstract class _DevicesChannelProperty implements DevicesChannelProperty {
 
   /// Access level for the property: read-only (ro), read-write (rw), write-only (wo), or event-only (ev).
   @override
-  List<DevicesChannelPropertyPermission> get permission;
+  List<DevicesChannelPropertyPermissions> get permissions;
 
   /// Measurement unit associated with the property’s value, if applicable.
   @override

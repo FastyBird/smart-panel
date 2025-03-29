@@ -1,56 +1,65 @@
 <template>
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<div class="lt-sm:p-5 sm:p-2">
-		<view-header
-			:heading="t('authModule.headings.yourProfile')"
-			:sub-heading="sessionStore.profile?.email || sessionStore.profile?.username"
-		>
-			<template #icon>
-				<user-avatar
-					:size="32"
-					:email="sessionStore.profile?.email"
-				/>
-			</template>
+	<app-bar-heading
+		v-if="!isMDDevice"
+		teleport
+	>
+		<template #prepend>
+			<user-avatar
+				:size="32"
+				:email="sessionStore.profile?.email"
+			/>
+		</template>
 
-			<template #extra>
-				<div class="flex items-center">
-					<el-button
-						:loading="remoteFormResult === FormResult.WORKING"
-						:disabled="remoteFormResult === FormResult.WORKING"
-						type="primary"
-						@click="onSave"
-					>
-						{{ t('authModule.buttons.save.title') }}
-					</el-button>
-				</div>
-			</template>
-		</view-header>
+		<template #title>
+			{{ t('authModule.headings.yourProfile') }}
+		</template>
 
-		<app-bar-heading
-			v-if="!isMDDevice"
-			teleport
-		>
-			<template #prepend>
-				<user-avatar
-					:size="32"
-					:email="sessionStore.profile?.email"
-				/>
-			</template>
+		<template #subtitle>
+			{{ sessionStore.profile?.email || sessionStore.profile?.username }}
+		</template>
+	</app-bar-heading>
 
-			<template #title>
-				{{ t('authModule.headings.yourProfile') }}
-			</template>
+	<app-bar-button
+		v-if="!isMDDevice"
+		:align="AppBarButtonAlign.RIGHT"
+		teleport
+		small
+		@click="onSave"
+	>
+		<span class="uppercase">{{ t('devicesModule.buttons.save.title') }}</span>
+	</app-bar-button>
 
-			<template #subtitle>
-				{{ sessionStore.profile?.email || sessionStore.profile?.username }}
-			</template>
-		</app-bar-heading>
+	<view-header
+		:heading="t('authModule.headings.yourProfile')"
+		:sub-heading="sessionStore.profile?.email || sessionStore.profile?.username"
+	>
+		<template #icon>
+			<user-avatar
+				:size="32"
+				:email="sessionStore.profile?.email"
+			/>
+		</template>
 
+		<template #extra>
+			<div class="flex items-center">
+				<el-button
+					:loading="remoteFormResult === FormResult.WORKING"
+					:disabled="remoteFormResult === FormResult.WORKING"
+					type="primary"
+					@click="onSave"
+				>
+					{{ t('authModule.buttons.save.title') }}
+				</el-button>
+			</div>
+		</template>
+	</view-header>
+
+	<el-scrollbar class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2">
 		<el-tabs
 			v-if="isMDDevice"
 			v-model="activeTab"
-			class="mt-5"
 			@tab-click="onTabClick"
 		>
 			<el-tab-pane
@@ -99,7 +108,7 @@
 			v-model:remote-form-submit="remoteFormSubmit"
 			v-model:remote-form-result="remoteFormResult"
 		/>
-	</div>
+	</el-scrollbar>
 </template>
 
 <script setup lang="ts">
@@ -107,11 +116,20 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { type RouteLocationRaw, type RouteRecordName, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElTabPane, ElTabs, type TabsPaneContext } from 'element-plus';
+import { ElButton, ElIcon, ElScrollbar, ElTabPane, ElTabs, type TabsPaneContext } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, AppBreadcrumbs, UserAvatar, ViewHeader, injectStoresManager, useBreakpoints } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	UserAvatar,
+	ViewHeader,
+	injectStoresManager,
+	useBreakpoints,
+} from '../../../common';
 import { FormResult, RouteNames } from '../auth.constants';
 import { sessionStoreKey } from '../store';
 

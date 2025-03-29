@@ -1,11 +1,11 @@
 <template>
 	<el-form
-		ref="passwordEditFormEl"
-		:model="passwordEditForm"
+		ref="formEl"
+		:model="model"
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="px-5"
+		class="xs:px-2 md:px-5"
 		@submit="submit"
 	>
 		<el-form-item
@@ -13,7 +13,7 @@
 			:prop="['password']"
 		>
 			<el-input
-				v-model="passwordEditForm.password"
+				v-model="model.password"
 				name="password"
 				type="password"
 				show-password
@@ -25,7 +25,7 @@
 			:prop="['repeatPassword']"
 		>
 			<el-input
-				v-model="passwordEditForm.repeatPassword"
+				v-model="model.repeatPassword"
 				name="repeatPassword"
 				type="password"
 				show-password
@@ -35,16 +35,16 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { InternalRuleItem } from 'async-validator';
-import { ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { useUserEditForm } from '../composables';
+import { type IUserPasswordForm, useUserPasswordForm } from '../composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
-import type { IPasswordEditFormFields, IPasswordEditFormProps } from './password-edit-form.types';
+import type { IPasswordEditFormProps } from './password-edit-form.types';
 
 defineOptions({
 	name: 'PasswordEditForm',
@@ -63,14 +63,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { submit, formResult } = useUserEditForm(props.user, {
+const { model, formEl, submit, formResult } = useUserPasswordForm(props.user, {
 	success: t('usersModule.messages.passwordEdited'),
 	error: t('usersModule.messages.passwordNotEdited'),
 });
 
-const passwordEditFormEl = ref<FormInstance | undefined>(undefined);
-
-const rules = reactive<FormRules<IPasswordEditFormFields>>({
+const rules = reactive<FormRules<IUserPasswordForm>>({
 	password: [{ required: true, message: t('usersModule.fields.newPassword.validation.required'), trigger: 'change' }],
 	repeatPassword: [
 		{ required: true, message: t('usersModule.fields.newRepeatPassword.validation.required'), trigger: 'change' },
@@ -78,7 +76,7 @@ const rules = reactive<FormRules<IPasswordEditFormFields>>({
 			validator: (_rule: InternalRuleItem, value: string, callback: (message?: Error) => void): void => {
 				if (value === '') {
 					callback(new Error(t('usersModule.fields.newRepeatPassword.validation.required')));
-				} else if (value !== passwordEditForm.password) {
+				} else if (value !== model.password) {
 					callback(new Error(t('usersModule.fields.newRepeatPassword.validation.different')));
 				} else {
 					callback();
@@ -87,11 +85,6 @@ const rules = reactive<FormRules<IPasswordEditFormFields>>({
 			trigger: 'blur',
 		},
 	],
-});
-
-const passwordEditForm = reactive<IPasswordEditFormFields>({
-	password: '',
-	repeatPassword: '',
 });
 
 watch(
@@ -107,16 +100,8 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			passwordEditFormEl.value!.clearValidate();
-
-			passwordEditFormEl.value!.validate(async (valid: boolean): Promise<void> => {
-				if (!valid) {
-					return;
-				}
-
-				await submit({
-					password: passwordEditForm.password,
-				});
+			submit().catch(() => {
+				// Form is not valid
 			});
 		}
 	}
@@ -128,9 +113,9 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
-			if (!passwordEditFormEl.value) return;
+			if (!formEl.value) return;
 
-			passwordEditFormEl.value.resetFields();
+			formEl.value.resetFields();
 		}
 	}
 );

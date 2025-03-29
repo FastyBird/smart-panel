@@ -45,10 +45,10 @@ export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 	@IsArray()
 	@IsEnum(PermissionType, {
 		each: true,
-		message: '[{"field":"permission","reason":"Each permission must be a valid permission type."}]',
+		message: '[{"field":"permissions","reason":"Each permission must be a valid permission type."}]',
 	})
-	@ArrayNotEmpty({ message: '[{"field":"permission","reason":"Permission array cannot be empty."}]' })
-	permission: PermissionType[];
+	@ArrayNotEmpty({ message: '[{"field":"permissions","reason":"Permissions array cannot be empty."}]' })
+	permissions: PermissionType[];
 
 	@Expose()
 	@IsNotEmpty({

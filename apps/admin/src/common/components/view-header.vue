@@ -1,6 +1,7 @@
 <template>
 	<el-page-header
 		v-if="isMDDevice"
+		class="lt-sm:p-1 sm:p-2 b-b b-b-solid"
 		@back="onBack"
 	>
 		<template #content>

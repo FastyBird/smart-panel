@@ -3,16 +3,14 @@
 		<el-form
 			ref="filterFormEl"
 			:inline="true"
-			:model="filterForm"
-			:class="[ns.b()]"
+			:model="innerFilters"
 			class="grow-1"
 		>
 			<el-input
-				v-model="filterForm.search"
+				v-model="innerFilters.search"
 				:placeholder="t('usersModule.fields.search.placeholder')"
 				class="max-w[280px] p-1"
 				clearable
-				@input="onFilterSearch"
 			>
 				<template #suffix>
 					<el-icon><icon icon="mdi:magnify" /></el-icon>
@@ -22,15 +20,14 @@
 			<el-divider direction="vertical" />
 
 			<el-form-item
-				:label="t('usersModule.fields.role.label')"
-				:class="[ns.e('user-role')]"
-				class="p-1"
+				:label="t('usersModule.fields.role.title')"
+				class="p-1 m-0! w-[200px]"
 			>
 				<el-select
-					v-model="filterForm.role"
+					v-model="innerFilters.roles"
 					:placeholder="t('usersModule.fields.role.placeholder')"
 					clearable
-					@change="onFilterRole"
+					multiple
 				>
 					<el-option
 						v-for="item in roleOptions"
@@ -43,9 +40,10 @@
 		</el-form>
 
 		<el-button
-			v-if="activeFilter"
-			class="px-2!"
-			@click="onResetFilters"
+			v-if="props.filtersActive"
+			plain
+			class="px-2! mt-1 mr-1"
+			@click="emit('reset-filters')"
 		>
 			<icon icon="mdi:filter-off" />
 		</el-button>
@@ -53,108 +51,58 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, type FormInstance, useNamespace } from 'element-plus';
+import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, type FormInstance } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
+import { useVModel } from '@vueuse/core';
 
-import { UserRole } from '../users.constants';
+import { UsersUserRole } from '../../../openapi';
+import type { IUsersFilter } from '../composables';
 
-import type { IUsersFilterFields, IUsersFilterProps } from './users-filter.types';
+import type { IUsersFilterProps } from './users-filter.types';
 
 defineOptions({
 	name: 'UsersFilter',
 });
 
-const props = withDefaults(defineProps<IUsersFilterProps>(), {
-	remoteFormReset: false,
-});
+const props = defineProps<IUsersFilterProps>();
 
 const emit = defineEmits<{
-	(e: 'update:filters', filters: IUsersFilterFields): void;
-	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
+	(e: 'update:filters', filters: IUsersFilter): void;
+	(e: 'reset-filters'): void;
+	(e: 'adjust-list'): void;
 }>();
 
-const ns = useNamespace('users-filter');
 const { t } = useI18n();
 
 const filterFormEl = ref<FormInstance | undefined>(undefined);
 
-const filterForm = reactive<IUsersFilterFields>({ ...props.filters });
+const innerFilters = useVModel(props, 'filters', emit);
 
-const activeFilter = computed<boolean>((): boolean => {
-	if (filterForm.search !== '') {
-		return true;
-	} else if (filterForm.role !== '') {
-		return true;
-	}
-
-	return false;
-});
-
-const roleOptions: { value: UserRole; label: string }[] = [
+const roleOptions: { value: UsersUserRole; label: string }[] = [
 	{
-		value: UserRole.USER,
+		value: UsersUserRole.user,
 		label: t('usersModule.fields.role.options.user'),
 	},
 	{
-		value: UserRole.ADMIN,
+		value: UsersUserRole.admin,
 		label: t('usersModule.fields.role.options.admin'),
 	},
 	{
-		value: UserRole.OWNER,
+		value: UsersUserRole.owner,
 		label: t('usersModule.fields.role.options.owner'),
 	},
 ];
 
-const onFilterSearch = (): void => {
-	emit('update:filters', { ...props.filters, search: filterForm.search });
-};
-
-const onFilterRole = (): void => {
-	emit('update:filters', { ...props.filters, role: filterForm.role });
-};
-
-const onResetFilters = (): void => {
-	if (!filterFormEl.value) return;
-
-	filterFormEl.value.resetFields();
-
-	filterForm.search = '';
-	filterForm.role = '';
-
-	emit('update:filters', { ...props.filters, ...filterForm });
-};
-
 watch(
-	(): boolean => props.remoteFormReset,
-	(val: boolean): void => {
-		emit('update:remote-form-reset', false);
-
-		if (val) {
-			if (!filterFormEl.value) return;
-
-			filterFormEl.value.resetFields();
-
-			filterForm.search = '';
-			filterForm.role = '';
-
-			emit('update:filters', { ...props.filters, ...filterForm });
+	(): string | undefined => innerFilters.value.search,
+	(val: string | undefined) => {
+		if (val === '') {
+			innerFilters.value.search = undefined;
 		}
 	}
 );
-
-watch(
-	(): IUsersFilterFields => props.filters,
-	(val: IUsersFilterFields): void => {
-		filterForm.search = val.search;
-		filterForm.role = val.role;
-	}
-);
 </script>
-
-<style rel="stylesheet/scss" lang="scss" scoped>
-@use 'users-filter.scss';
-</style>

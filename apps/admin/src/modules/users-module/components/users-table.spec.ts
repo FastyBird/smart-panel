@@ -1,14 +1,14 @@
 import { type ComponentPublicInstance } from 'vue';
 import { createI18n } from 'vue-i18n';
 
-import { ElButton, ElButtonGroup, ElTable, ElTableColumn } from 'element-plus';
+import { ElButton, ElTable, ElTableColumn } from 'element-plus';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
+import { UsersUserRole } from '../../../openapi';
 import enUS from '../locales/en-US.json';
 import type { IUser } from '../store';
-import { UserRole } from '../users.constants';
 
 import { UsersTable } from './index';
 import type { IUsersTableProps } from './users-table.types';
@@ -25,7 +25,7 @@ describe('UsersTable', (): void => {
 			firstName: 'Admin',
 			lastName: 'User',
 			email: 'admin@example.com',
-			role: UserRole.ADMIN,
+			role: UsersUserRole.admin,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -37,7 +37,7 @@ describe('UsersTable', (): void => {
 			firstName: 'John',
 			lastName: 'Doe',
 			email: 'john@example.com',
-			role: UserRole.USER,
+			role: UsersUserRole.owner,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -65,6 +65,8 @@ describe('UsersTable', (): void => {
 				sortBy: 'username',
 				sortDir: 'ascending',
 				loading: false,
+				filters: { search: undefined, roles: [] },
+				filtersActive: false,
 				...props,
 			},
 		});
@@ -116,7 +118,7 @@ describe('UsersTable', (): void => {
 	});
 
 	it('displays "no filtered users" message when filtered results are empty', async (): Promise<void> => {
-		createWrapper({ items: [], totalRows: 2 });
+		createWrapper({ items: [], totalRows: 2, filtersActive: true });
 
 		expect(wrapper.text()).toContain('No users found matching the active filter criteria Reset filters');
 	});
@@ -136,10 +138,7 @@ describe('UsersTable', (): void => {
 		const lastCell = firstRow.find('td:last-child');
 		expect(lastCell.exists()).toBe(true);
 
-		const buttonsGroup = lastCell.findComponent(ElButtonGroup);
-		expect(buttonsGroup.exists()).toBe(true);
-
-		const removeButton = buttonsGroup.findAllComponents(ElButton).at(0);
+		const removeButton = lastCell.findAllComponents(ElButton).at(0);
 		expect(removeButton).toBeTruthy();
 
 		await removeButton?.trigger('click');
@@ -163,10 +162,7 @@ describe('UsersTable', (): void => {
 		const lastCell = firstRow.find('td:last-child');
 		expect(lastCell.exists()).toBe(true);
 
-		const buttonsGroup = lastCell.findComponent(ElButtonGroup);
-		expect(buttonsGroup.exists()).toBe(true);
-
-		const removeButton = buttonsGroup.findAllComponents(ElButton).at(1);
+		const removeButton = lastCell.findAllComponents(ElButton).at(1);
 		expect(removeButton).toBeTruthy();
 
 		await removeButton?.trigger('click');

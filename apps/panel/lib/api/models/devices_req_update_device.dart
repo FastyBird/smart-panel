@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'devices_req_update_device_data_union.dart';
+import 'devices_update_device.dart';
 
 part 'devices_req_update_device.freezed.dart';
 part 'devices_req_update_device.g.dart';
@@ -13,7 +13,7 @@ part 'devices_req_update_device.g.dart';
 @Freezed()
 class DevicesReqUpdateDevice with _$DevicesReqUpdateDevice {
   const factory DevicesReqUpdateDevice({
-    required DevicesReqUpdateDeviceDataUnion data,
+    required DevicesUpdateDevice data,
   }) = _DevicesReqUpdateDevice;
   
   factory DevicesReqUpdateDevice.fromJson(Map<String, Object?> json) => _$DevicesReqUpdateDeviceFromJson(json);

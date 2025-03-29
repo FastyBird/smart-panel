@@ -1,18 +1,18 @@
 <template>
 	<el-form
-		ref="userEditFormEl"
-		:model="userEditForm"
+		ref="formEl"
+		:model="model"
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="px-5"
+		class="xs:px-2 md:px-5"
 	>
 		<el-form-item
 			:label="t('usersModule.fields.username.title')"
 			:prop="['username']"
 		>
 			<el-input
-				v-model="userEditForm.username"
+				v-model="model.username"
 				name="username"
 				readonly
 				disabled
@@ -36,7 +36,7 @@
 			:prop="['password']"
 		>
 			<el-input
-				v-model="userEditForm.password"
+				v-model="model.password"
 				name="password"
 				type="password"
 				readonly
@@ -64,7 +64,7 @@
 			:prop="['email']"
 		>
 			<el-input
-				v-model="userEditForm.email"
+				v-model="model.email"
 				:placeholder="t('usersModule.fields.email.placeholder')"
 				name="email"
 			/>
@@ -75,7 +75,7 @@
 			:prop="['firstName']"
 		>
 			<el-input
-				v-model="userEditForm.firstName"
+				v-model="model.firstName"
 				:placeholder="t('usersModule.fields.firstName.placeholder')"
 				name="firstName"
 			/>
@@ -86,7 +86,7 @@
 			:prop="['lastName']"
 		>
 			<el-input
-				v-model="userEditForm.lastName"
+				v-model="model.lastName"
 				:placeholder="t('usersModule.fields.lastName.placeholder')"
 				name="lastName"
 			/>
@@ -95,11 +95,11 @@
 		<el-divider />
 
 		<el-form-item
-			:label="t('usersModule.fields.role.label')"
+			:label="t('usersModule.fields.role.title')"
 			:prop="['role']"
 		>
 			<el-select
-				v-model="userEditForm.role"
+				v-model="model.role"
 				:placeholder="t('usersModule.fields.role.placeholder')"
 				name="role"
 			>
@@ -175,18 +175,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDialog, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormInstance, type FormRules } from 'element-plus';
+import { ElButton, ElDialog, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useUserEditForm } from '../composables';
-import { FormResult, type FormResultType, UserRole } from '../users.constants';
+import { UsersUserRole } from '../../../openapi';
+import { type IUserEditForm, useUserEditForm } from '../composables';
+import { FormResult, type FormResultType } from '../users.constants';
 
 import PasswordEditForm from './password-edit-form.vue';
-import type { IUserEditFormFields, IUserEditFormProps } from './user-edit-form.types';
+import type { IUserEditFormProps } from './user-edit-form.types';
 import UsernameEditForm from './username-edit-form.vue';
 
 defineOptions({
@@ -203,14 +204,12 @@ const emit = defineEmits<{
 	(e: 'update:remote-form-submit', remoteFormSubmit: boolean): void;
 	(e: 'update:remote-form-result', remoteFormResult: FormResultType): void;
 	(e: 'update:remote-form-reset', remoteFormReset: boolean): void;
-	(e: 'update:remote-form-changed', formUpdated: boolean): void;
+	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
 
 const { t } = useI18n();
 
-const { submit, formResult } = useUserEditForm(props.user);
-
-const userEditFormEl = ref<FormInstance | undefined>(undefined);
+const { model, formEl, formChanged, submit, formResult } = useUserEditForm(props.user);
 
 const usernameFormVisible = ref(false);
 
@@ -224,44 +223,21 @@ const remotePasswordFormSubmit = ref<boolean>(false);
 const remotePasswordFormResult = ref<FormResultType>(FormResult.NONE);
 const remotePasswordFormReset = ref<boolean>(false);
 
-const rules = reactive<FormRules<IUserEditFormFields>>({
+const rules = reactive<FormRules<IUserEditForm>>({
 	email: [{ type: 'email', message: t('usersModule.fields.email.validation.email'), trigger: 'change' }],
 });
 
-const userEditForm = reactive<IUserEditFormFields & { username: string; password: string }>({
-	username: props.user.username,
-	password: 'secretpassword',
-	email: props.user.email,
-	firstName: props.user.firstName,
-	lastName: props.user.lastName,
-	role: props.user.role,
-});
-
-const formChanges = computed<boolean>((): boolean => {
-	if (userEditForm.email !== props.user.email) {
-		return true;
-	} else if (userEditForm.firstName !== props.user.firstName) {
-		return true;
-	} else if (userEditForm.lastName !== props.user.lastName) {
-		return true;
-	} else if (userEditForm.role !== props.user.role) {
-		return true;
-	}
-
-	return false;
-});
-
-const roleOptions: { value: UserRole; label: string }[] = [
+const roleOptions: { value: UsersUserRole; label: string }[] = [
 	{
-		value: UserRole.USER,
+		value: UsersUserRole.user,
 		label: t('usersModule.fields.role.options.user'),
 	},
 	{
-		value: UserRole.ADMIN,
+		value: UsersUserRole.admin,
 		label: t('usersModule.fields.role.options.admin'),
 	},
 	{
-		value: UserRole.OWNER,
+		value: UsersUserRole.owner,
 		label: t('usersModule.fields.role.options.owner'),
 	},
 ];
@@ -305,19 +281,8 @@ watch(
 		if (val) {
 			emit('update:remote-form-submit', false);
 
-			userEditFormEl.value!.clearValidate();
-
-			userEditFormEl.value!.validate(async (valid: boolean): Promise<void> => {
-				if (!valid) {
-					return;
-				}
-
-				await submit({
-					email: userEditForm.email,
-					firstName: userEditForm.firstName,
-					lastName: userEditForm.lastName,
-					role: userEditForm.role,
-				});
+			submit().catch(() => {
+				// Form is not valid
 			});
 		}
 	}
@@ -329,15 +294,15 @@ watch(
 		emit('update:remote-form-reset', false);
 
 		if (val) {
-			if (!userEditFormEl.value) return;
+			if (!formEl.value) return;
 
-			userEditFormEl.value.resetFields();
+			formEl.value.resetFields();
 		}
 	}
 );
 
 watch(
-	(): boolean => formChanges.value,
+	(): boolean => formChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
 	}
@@ -358,7 +323,7 @@ watch(
 		if (val === FormResult.OK) {
 			usernameFormVisible.value = false;
 
-			userEditForm.username = props.user.username;
+			model.username = props.user.username;
 		}
 	}
 );

@@ -1,5 +1,7 @@
 <template>
 	<el-table
+		v-loading="props.loading"
+		:element-loading-text="t('usersModule.texts.misc.loadingUsers')"
 		:data="props.items"
 		:default-sort="{ prop: props.sortBy, order: props.sortDir || 'ascending' }"
 		table-layout="fixed"
@@ -10,7 +12,25 @@
 	>
 		<template #empty>
 			<div
-				v-if="noResults && !props.loading"
+				v-if="props.loading"
+				class="h-full w-full leading-normal"
+			>
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child :size="80">
+							<template #primary>
+								<icon icon="mdi:users-group" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:database-refresh" />
+							</template>
+						</icon-with-child>
+					</template>
+				</el-result>
+			</div>
+
+			<div
+				v-else-if="noResults && !props.loading"
 				class="h-full w-full leading-normal"
 			>
 				<el-result class="h-full w-full">
@@ -32,7 +52,7 @@
 			</div>
 
 			<div
-				v-else-if="noFilteredResults && !props.loading"
+				v-else-if="props.filtersActive && !props.loading"
 				class="h-full w-full leading-normal"
 			>
 				<el-result class="h-full w-full">
@@ -54,6 +74,7 @@
 
 						<el-button
 							type="primary"
+							plain
 							class="mt-4"
 							@click="emit('reset-filters')"
 						>
@@ -141,32 +162,55 @@
 			:sort-orders="['ascending', 'descending']"
 		>
 			<template #default="scope">
-				{{ t(`usersModule.role.${scope.row.role}`) }}
+				<el-link
+					:type="innerFilters.roles.includes(scope.row.role) ? 'danger' : undefined"
+					:underline="false"
+					class="font-400!"
+					@click.stop="onFilterBy('role', scope.row.role, !innerFilters.roles.includes(scope.row.role))"
+				>
+					<el-icon class="el-icon--left">
+						<icon
+							v-if="innerFilters.roles.includes(scope.row.role)"
+							icon="mdi:filter-minus"
+						/>
+						<icon
+							v-else
+							icon="mdi:filter-plus"
+						/>
+					</el-icon>
+
+					{{ t(`usersModule.role.${scope.row.role}`) }}
+				</el-link>
 			</template>
 		</el-table-column>
 
 		<el-table-column
-			:width="200"
+			:width="120"
 			align="right"
 		>
 			<template #default="scope">
-				<el-button-group>
-					<el-button
-						size="small"
-						data-test-id="edit-user"
-						@click="emit('edit', scope.row.id)"
-					>
-						{{ t('usersModule.buttons.edit.title') }}
-					</el-button>
-					<el-button
-						size="small"
-						type="danger"
-						data-test-id="remove-user"
-						@click="emit('remove', scope.row.id)"
-					>
-						{{ t('usersModule.buttons.remove.title') }}
-					</el-button>
-				</el-button-group>
+				<el-button
+					size="small"
+					plain
+					data-test-id="edit-user"
+					@click.stop="emit('edit', scope.row.id)"
+				>
+					<template #icon>
+						<icon icon="mdi:pencil" />
+					</template>
+				</el-button>
+				<el-button
+					size="small"
+					type="danger"
+					plain
+					class="ml-1!"
+					data-test-id="remove-user"
+					@click.stop="emit('remove', scope.row.id)"
+				>
+					<template #icon>
+						<icon icon="mdi:trash" />
+					</template>
+				</el-button>
 			</template>
 		</el-table-column>
 	</el-table>
@@ -176,11 +220,14 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElButtonGroup, ElResult, ElTable, ElTableColumn, ElText } from 'element-plus';
+import { ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElText, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
+import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, UserAvatar, useBreakpoints } from '../../../common';
+import { UsersUserRole } from '../../../openapi';
+import type { IUsersFilter } from '../composables';
 import type { IUser } from '../store';
 
 import type { IUsersTableProps } from './users-table.types';
@@ -192,10 +239,12 @@ defineOptions({
 const props = defineProps<IUsersTableProps>();
 
 const emit = defineEmits<{
-	(e: 'edit', id: string): void;
-	(e: 'remove', id: string): void;
+	(e: 'edit', id: IUser['id']): void;
+	(e: 'remove', id: IUser['id']): void;
 	(e: 'reset-filters'): void;
 	(e: 'selected-changes', selected: IUser[]): void;
+	(e: 'update:filters', filters: IUsersFilter): void;
+	(e: 'update:sort-by', by: 'username' | 'firstName' | 'lastName' | 'email' | 'role'): void;
 	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
 }>();
 
@@ -205,9 +254,16 @@ const { isMDDevice } = useBreakpoints();
 
 const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
-const noFilteredResults = computed<boolean>((): boolean => props.totalRows > 0 && props.items.length === 0);
+const innerFilters = useVModel(props, 'filters', emit);
 
-const onSortData = ({ order }: { order: 'ascending' | 'descending' | null }): void => {
+const onSortData = ({
+	prop,
+	order,
+}: {
+	prop: 'username' | 'firstName' | 'lastName' | 'email' | 'role';
+	order: 'ascending' | 'descending' | null;
+}): void => {
+	emit('update:sort-by', prop);
 	emit('update:sort-dir', order);
 };
 
@@ -217,5 +273,19 @@ const onSelectionChange = (selected: IUser[]): void => {
 
 const onRowClick = (row: IUser): void => {
 	emit('edit', row.id);
+};
+
+const onFilterBy = (column: string, data: string, add?: boolean): void => {
+	if (column === 'role') {
+		let filteredRoles = innerFilters.value.roles;
+
+		if (add === true) {
+			filteredRoles.push(data as UsersUserRole);
+		} else {
+			filteredRoles = innerFilters.value.roles.filter((item) => item !== data);
+		}
+
+		innerFilters.value.roles = Array.from(new Set(filteredRoles));
+	}
 };
 </script>

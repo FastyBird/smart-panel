@@ -12,23 +12,20 @@ import { WebsocketModule } from '../websocket/websocket.module';
 
 import { ChannelsController } from './controllers/channels.controller';
 import { ChannelsControlsController } from './controllers/channels.controls.controller';
+import { ChannelsPropertiesController } from './controllers/channels.properties.controller';
 import { DevicesChannelsController } from './controllers/devices.channels.controller';
 import { DevicesChannelsControlsController } from './controllers/devices.channels.controls.controller';
 import { DevicesChannelsPropertiesController } from './controllers/devices.channels.properties.controller';
 import { DevicesController } from './controllers/devices.controller';
 import { DevicesControlsController } from './controllers/devices.controls.controller';
 import { EventHandlerName, EventType, PropertyInfluxDbSchema } from './devices.constants';
-import { CreateThirdPartyDeviceDto } from './dto/create-device.dto';
-import { UpdateThirdPartyDeviceDto } from './dto/update-device.dto';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
 	ChannelPropertyEntity,
 	DeviceControlEntity,
 	DeviceEntity,
-	ThirdPartyDeviceEntity,
 } from './entities/devices.entity';
-import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platform';
 import { ChannelsControlsService } from './services/channels.controls.service';
 import { ChannelsPropertiesService } from './services/channels.properties.service';
 import { ChannelsService } from './services/channels.service';
@@ -53,7 +50,6 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		NestConfigModule,
 		TypeOrmModule.forFeature([
 			DeviceEntity,
-			ThirdPartyDeviceEntity,
 			DeviceControlEntity,
 			ChannelEntity,
 			ChannelControlEntity,
@@ -82,7 +78,6 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		PlatformRegistryService,
 		PropertyValueService,
 		PropertyCommandService,
-		ThirdPartyDevicePlatform,
 	],
 	controllers: [
 		DevicesController,
@@ -92,6 +87,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		DevicesChannelsPropertiesController,
 		ChannelsController,
 		ChannelsControlsController,
+		ChannelsPropertiesController,
 	],
 	exports: [
 		DevicesService,
@@ -109,26 +105,14 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 })
 export class DevicesModule {
 	constructor(
-		private readonly mapper: DevicesTypeMapperService,
 		private readonly eventRegistry: CommandEventRegistryService,
 		private readonly moduleSeeder: DevicesSeederService,
-		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly propertyCommandService: PropertyCommandService,
-		private readonly thirdPartyDevicePlatform: ThirdPartyDevicePlatform,
 		private readonly influxDbService: InfluxDbService,
 		private readonly seedService: SeedService,
 	) {}
 
 	onModuleInit() {
-		this.mapper.registerMapping<ThirdPartyDeviceEntity, CreateThirdPartyDeviceDto, UpdateThirdPartyDeviceDto>({
-			type: 'third-party',
-			class: ThirdPartyDeviceEntity,
-			createDto: CreateThirdPartyDeviceDto,
-			updateDto: UpdateThirdPartyDeviceDto,
-		});
-
-		this.platformRegistryService.register(this.thirdPartyDevicePlatform);
-
 		this.eventRegistry.register(
 			EventType.CHANNEL_PROPERTY_SET,
 			EventHandlerName.INTERNAL_SET_PROPERTY,
