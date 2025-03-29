@@ -148,10 +148,10 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 
 				return data.value;
 			}
-			console.log('call');
+
 			// Updating record on api failed, we need to refresh record
 			await get();
-			console.log('called');
+
 			let errorReason: string | null = 'Failed to update audio config.';
 
 			if (error) {

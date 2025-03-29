@@ -61,10 +61,10 @@ export const useConfigWeatherEditForm = (config: IConfigWeather, messages?: { su
 		try {
 			await configWeatherStore.edit({
 				data: {
-					location: model.location?.trim() === '' ? null : model.location,
+					location: !model.location || model.location?.trim() === '' ? null : model.location,
 					locationType: model.locationType,
 					unit: model.unit,
-					openWeatherApiKey: model.openWeatherApiKey?.trim() === '' ? null : model.openWeatherApiKey,
+					openWeatherApiKey: !model.openWeatherApiKey || model.openWeatherApiKey?.trim() === '' ? null : model.openWeatherApiKey,
 				},
 			});
 		} catch (error: unknown) {
