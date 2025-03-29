@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import { RouteNames } from '../../app.constants';
-import { RouteNames as AuthModuleRouteNames } from '../../modules/auth-module';
+import { RouteNames as AuthModuleRouteNames } from '../../modules/auth';
 
 import enUS from './../../locales/en-US.json';
 import AppNavigation from './app-navigation.vue';

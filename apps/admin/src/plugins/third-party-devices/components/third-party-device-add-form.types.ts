@@ -1,4 +1,4 @@
-import type { FormResultType } from '../../../modules/devices-module';
+import type { FormResultType } from '../../../modules/devices';
 import type { IThirdPartyDevice } from '../store';
 
 export interface IThirdPartyDeviceAddFormProps {

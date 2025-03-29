@@ -25,9 +25,9 @@ import {
 	router,
 } from './common';
 import i18n from './locales';
-import { AuthModule, sessionStoreKey } from './modules/auth-module';
-import { DevicesModule } from './modules/devices-module';
-import { UsersModule } from './modules/users-module';
+import { AuthModule, sessionStoreKey } from './modules/auth';
+import { DevicesModule } from './modules/devices';
+import { UsersModule } from './modules/users';
 import type { paths } from './openapi';
 import { ThirdPartyDevicesPlugin } from './plugins/third-party-devices';
 

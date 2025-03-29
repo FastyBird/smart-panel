@@ -5,7 +5,7 @@ import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { UsersUserRole } from '../../../openapi';
-import { FormResult } from '../../auth-module';
+import { FormResult } from '../../auth';
 import type { UsersStore } from '../store';
 import { UsersApiException } from '../users.exceptions';
 

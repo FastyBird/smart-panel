@@ -2,7 +2,7 @@ import type { Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
-import type { FormResultType } from '../../../modules/devices-module';
+import type { FormResultType } from '../../../modules/devices';
 import { DevicesDeviceCategory } from '../../../openapi';
 import type { IThirdPartyDevice } from '../store';
 

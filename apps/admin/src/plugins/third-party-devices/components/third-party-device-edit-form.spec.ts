@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
-import { FormResult } from '../../../modules/devices-module';
-import { DevicesDeviceCategory } from '../../../openapi.ts';
+import { FormResult } from '../../../modules/devices';
+import { DevicesDeviceCategory } from '../../../openapi';
 import type { IThirdPartyDevice } from '../store';
 
 import ThirdPartyDeviceEditForm from './third-party-device-edit-form.vue';

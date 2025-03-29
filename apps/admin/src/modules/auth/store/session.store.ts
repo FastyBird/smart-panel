@@ -7,7 +7,7 @@ import { jwtDecode } from 'jwt-decode';
 
 import { getErrorReason, useBackend } from '../../../common';
 import type { operations } from '../../../openapi';
-import { type IUser, transformUserResponse } from '../../users-module';
+import { type IUser, transformUserResponse } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthApiException, AuthException } from '../auth.exceptions';
 

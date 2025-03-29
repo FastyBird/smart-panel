@@ -6,7 +6,7 @@ import {
 	DeviceControlCreateReqSchema,
 	DeviceControlResSchema,
 	DeviceSchema,
-} from '../../../modules/devices-module';
+} from '../../../modules/devices';
 import { DevicesDeviceCategory, type components } from '../../../openapi';
 
 type ApiCreateDevice = components['schemas']['DevicesCreateDevice'];

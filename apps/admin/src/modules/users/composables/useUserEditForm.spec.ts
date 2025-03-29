@@ -5,11 +5,11 @@ import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { UsersUserRole } from '../../../openapi';
-import { FormResult } from '../../auth-module';
+import { FormResult } from '../../auth';
 import type { IUser, UsersStore } from '../store';
 import { UsersApiException } from '../users.exceptions';
 
-import { useUserUsernameForm } from './useUserUsernameForm';
+import { useUserEditForm } from './useUserEditForm';
 
 const mockFlash = {
 	success: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-describe('useUserUsernameForm', (): void => {
+describe('useUserEditForm', (): void => {
 	let usersStoreMock: UsersStore;
 	let mockUser: IUser;
 
@@ -75,14 +75,17 @@ describe('useUserUsernameForm', (): void => {
 		(usersStoreMock.save as Mock).mockResolvedValue({});
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserUsernameForm(mockUser);
+		const formHandler = useUserEditForm(mockUser);
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.username = 'username';
+		formHandler.model.email = 'updated@example.com';
+		formHandler.model.firstName = 'John';
+		formHandler.model.lastName = 'Smith';
+		formHandler.model.role = UsersUserRole.admin;
 
 		const result = await formHandler.submit();
 
@@ -91,10 +94,43 @@ describe('useUserUsernameForm', (): void => {
 		expect(usersStoreMock.edit).toHaveBeenCalledWith({
 			id: 'user1',
 			data: {
-				username: 'username',
+				email: 'updated@example.com',
+				firstName: 'John',
+				lastName: 'Smith',
+				role: UsersUserRole.admin,
 			},
 		});
 		expect(usersStoreMock.save).not.toHaveBeenCalled();
+		expect(flashMessageMock.success).toHaveBeenCalledWith(expect.stringContaining('testuser'));
+
+		await flushPromises();
+	});
+
+	it('should successfully save a draft user (added)', async (): Promise<void> => {
+		mockUser.draft = true;
+
+		const flashMessageMock = useFlashMessage();
+		const formHandler = useUserEditForm(mockUser);
+
+		(usersStoreMock.edit as Mock).mockResolvedValue({});
+		(usersStoreMock.save as Mock).mockResolvedValue({});
+
+		formHandler.formEl.value = {
+			clearValidate: vi.fn(),
+			validate: vi.fn().mockResolvedValue(true),
+		} as unknown as FormInstance;
+
+		formHandler.model.email = 'new@example.com';
+		formHandler.model.firstName = 'Jane';
+		formHandler.model.lastName = 'Doe';
+		formHandler.model.role = UsersUserRole.user;
+
+		const result = await formHandler.submit();
+
+		expect(result).toBe('added');
+		expect(formHandler.formResult.value).toBe(FormResult.OK);
+		expect(usersStoreMock.edit).toHaveBeenCalled();
+		expect(usersStoreMock.save).toHaveBeenCalledWith({ id: 'user1' });
 		expect(flashMessageMock.success).toHaveBeenCalledWith(expect.stringContaining('testuser'));
 
 		await flushPromises();
@@ -104,14 +140,17 @@ describe('useUserUsernameForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new UsersApiException('Validation error', 422));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserUsernameForm(mockUser);
+		const formHandler = useUserEditForm(mockUser);
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.username = 'username';
+		formHandler.model.email = 'invalid-email';
+		formHandler.model.firstName = 'John';
+		formHandler.model.lastName = 'Doe';
+		formHandler.model.role = UsersUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(UsersApiException);
 
@@ -125,19 +164,52 @@ describe('useUserUsernameForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new Error('Failed to update user'));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserUsernameForm(mockUser);
+		const formHandler = useUserEditForm(mockUser);
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.username = 'username';
+		formHandler.model.email = 'test@example.com';
+		formHandler.model.firstName = 'John';
+		formHandler.model.lastName = 'Doe';
+		formHandler.model.role = UsersUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
 		expect(formHandler.formResult.value).toBe(FormResult.ERROR);
 		expect(flashMessageMock.error).toHaveBeenCalledWith(expect.stringContaining('testuser'));
+
+		await flushPromises();
+	});
+
+	it('should trim empty optional fields before sending request', async (): Promise<void> => {
+		(usersStoreMock.edit as Mock).mockResolvedValue({});
+
+		const formHandler = useUserEditForm(mockUser);
+
+		formHandler.formEl.value = {
+			clearValidate: vi.fn(),
+			validate: vi.fn().mockResolvedValue(true),
+		} as unknown as FormInstance;
+
+		formHandler.model.email = '';
+		formHandler.model.firstName = '';
+		formHandler.model.lastName = '';
+		formHandler.model.role = UsersUserRole.user;
+
+		await formHandler.submit();
+
+		expect(usersStoreMock.edit).toHaveBeenCalledWith({
+			id: 'user1',
+			data: {
+				email: null,
+				firstName: null,
+				lastName: null,
+				role: UsersUserRole.user,
+			},
+		});
 
 		await flushPromises();
 	});
@@ -149,7 +221,7 @@ describe('useUserUsernameForm', (): void => {
 		};
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserUsernameForm(mockUser, customMessages);
+		const formHandler = useUserEditForm(mockUser, customMessages);
 
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
@@ -158,7 +230,10 @@ describe('useUserUsernameForm', (): void => {
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.username = 'username';
+		formHandler.model.email = 'custom@example.com';
+		formHandler.model.firstName = 'Custom';
+		formHandler.model.lastName = 'User';
+		formHandler.model.role = UsersUserRole.user;
 
 		await formHandler.submit();
 
@@ -166,7 +241,10 @@ describe('useUserUsernameForm', (): void => {
 
 		(usersStoreMock.edit as Mock).mockRejectedValue(new Error());
 
-		formHandler.model.username = 'username';
+		formHandler.model.email = 'custom@example.com';
+		formHandler.model.firstName = 'Custom';
+		formHandler.model.lastName = 'User';
+		formHandler.model.role = UsersUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
@@ -178,14 +256,17 @@ describe('useUserUsernameForm', (): void => {
 	it('should reset form result after timeout', async (): Promise<void> => {
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
-		const formHandler = useUserUsernameForm(mockUser);
+		const formHandler = useUserEditForm(mockUser);
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.username = 'username';
+		formHandler.model.email = 'test@example.com';
+		formHandler.model.firstName = 'John';
+		formHandler.model.lastName = 'Doe';
+		formHandler.model.role = UsersUserRole.user;
 
 		await formHandler.submit();
 

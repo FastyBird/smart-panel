@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { FormResult } from '../../../modules/devices-module';
+import { FormResult } from '../../../modules/devices';
 import { DevicesDeviceCategory } from '../../../openapi';
 
 import { useThirdPartyDeviceAddForm } from './useThirdPartyDeviceAddForm';

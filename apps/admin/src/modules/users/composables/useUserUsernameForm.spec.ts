@@ -5,11 +5,11 @@ import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { UsersUserRole } from '../../../openapi';
-import { FormResult } from '../../auth-module';
+import { FormResult } from '../../auth';
 import type { IUser, UsersStore } from '../store';
 import { UsersApiException } from '../users.exceptions';
 
-import { useUserPasswordForm } from './useUserPasswordForm';
+import { useUserUsernameForm } from './useUserUsernameForm';
 
 const mockFlash = {
 	success: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-describe('useUserPasswordForm', (): void => {
+describe('useUserUsernameForm', (): void => {
 	let usersStoreMock: UsersStore;
 	let mockUser: IUser;
 
@@ -75,14 +75,14 @@ describe('useUserPasswordForm', (): void => {
 		(usersStoreMock.save as Mock).mockResolvedValue({});
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserPasswordForm(mockUser);
+		const formHandler = useUserUsernameForm(mockUser);
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.password = 'secret_password';
+		formHandler.model.username = 'username';
 
 		const result = await formHandler.submit();
 
@@ -91,7 +91,7 @@ describe('useUserPasswordForm', (): void => {
 		expect(usersStoreMock.edit).toHaveBeenCalledWith({
 			id: 'user1',
 			data: {
-				password: 'secret_password',
+				username: 'username',
 			},
 		});
 		expect(usersStoreMock.save).not.toHaveBeenCalled();
@@ -104,14 +104,14 @@ describe('useUserPasswordForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new UsersApiException('Validation error', 422));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserPasswordForm(mockUser);
+		const formHandler = useUserUsernameForm(mockUser);
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.password = 'secret_password';
+		formHandler.model.username = 'username';
 
 		await expect(formHandler.submit()).rejects.toThrow(UsersApiException);
 
@@ -125,14 +125,14 @@ describe('useUserPasswordForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new Error('Failed to update user'));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserPasswordForm(mockUser);
+		const formHandler = useUserUsernameForm(mockUser);
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.password = 'secret_password';
+		formHandler.model.username = 'username';
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
@@ -149,7 +149,7 @@ describe('useUserPasswordForm', (): void => {
 		};
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserPasswordForm(mockUser, customMessages);
+		const formHandler = useUserUsernameForm(mockUser, customMessages);
 
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
@@ -158,7 +158,7 @@ describe('useUserPasswordForm', (): void => {
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.password = 'secret_password';
+		formHandler.model.username = 'username';
 
 		await formHandler.submit();
 
@@ -166,7 +166,7 @@ describe('useUserPasswordForm', (): void => {
 
 		(usersStoreMock.edit as Mock).mockRejectedValue(new Error());
 
-		formHandler.model.password = 'secret_password';
+		formHandler.model.username = 'username';
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
@@ -178,14 +178,14 @@ describe('useUserPasswordForm', (): void => {
 	it('should reset form result after timeout', async (): Promise<void> => {
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
-		const formHandler = useUserPasswordForm(mockUser);
+		const formHandler = useUserUsernameForm(mockUser);
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
 		} as unknown as FormInstance;
 
-		formHandler.model.password = 'secret_password';
+		formHandler.model.username = 'username';
 
 		await formHandler.submit();
 

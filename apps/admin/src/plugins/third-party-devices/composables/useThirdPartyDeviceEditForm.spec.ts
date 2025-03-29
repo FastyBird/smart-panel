@@ -1,7 +1,7 @@
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesValidationException, FormResult } from '../../../modules/devices-module';
+import { DevicesValidationException, FormResult } from '../../../modules/devices';
 import { DevicesDeviceCategory } from '../../../openapi';
 import type { IThirdPartyDevice } from '../store';
 

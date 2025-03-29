@@ -29,7 +29,7 @@ import { useMeta } from 'vue-meta';
 import { ElCard } from 'element-plus';
 
 import { injectStoresManager, useBreakpoints } from '../../../common';
-import type { IUser } from '../../users-module';
+import type { IUser } from '../../users';
 import { FormResult, type FormResultType, Layout } from '../auth.constants';
 import { SettingsPasswordForm } from '../components';
 import { sessionStoreKey } from '../store';

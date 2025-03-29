@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
-import { FormResult } from '../../auth-module';
+import { FormResult } from '../../auth';
 import type { IUserAddForm } from '../composables';
 import enUS from '../locales/en-US.json';
 

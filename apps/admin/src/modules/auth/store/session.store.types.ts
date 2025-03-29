@@ -5,7 +5,7 @@ import type { Store } from 'pinia';
 import { type ZodType, z } from 'zod';
 
 import { UsersUserRole, type components } from '../../../openapi';
-import { type IUser } from '../../users-module';
+import { type IUser } from '../../users';
 import { AccessTokenType } from '../auth.constants';
 
 type ApiLogin = components['schemas']['AuthLogin'];

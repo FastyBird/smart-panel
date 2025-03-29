@@ -1,7 +1,7 @@
 import { type RouteRecordRaw, useRouter } from 'vue-router';
 
 import type { IAppUser } from '../../app.types';
-import { sessionStoreKey } from '../../modules/auth-module';
+import { sessionStoreKey } from '../../modules/auth';
 import { RouterGuards, injectRouterGuard, injectStoresManager } from '../services';
 
 declare type RouteRecord = Omit<RouteRecordRaw, 'children'> & {

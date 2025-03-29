@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Sentry from '@sentry/vue';
 
 import type { IStoresManager } from '../../../../common';
-import type { IUser } from '../../../users-module';
+import type { IUser } from '../../../users';
 import type { SessionStore } from '../../store';
 
 import profileHook from './profile.hook';

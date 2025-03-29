@@ -123,7 +123,7 @@ import { ElIcon, ElMenu, ElMenuItem, ElMenuItemGroup, ElScrollbar, ElSubMenu, us
 
 import { Icon } from '@iconify/vue';
 
-import { RouteNames, sessionStoreKey } from '../../modules/auth-module';
+import { RouteNames, sessionStoreKey } from '../../modules/auth';
 import { useBreakpoints, useMenu } from '../composables';
 import { injectStoresManager } from '../services';
 

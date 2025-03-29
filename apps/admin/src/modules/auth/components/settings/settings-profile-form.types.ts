@@ -1,4 +1,4 @@
-import type { IUser } from '../../../users-module';
+import type { IUser } from '../../../users';
 import type { FormResultType, LayoutType } from '../../auth.constants';
 
 export type SettingsProfileFormFields = {
