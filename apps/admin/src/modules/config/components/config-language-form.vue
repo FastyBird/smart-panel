@@ -15,7 +15,7 @@
 				:placeholder="t('configModule.fields.language.placeholder')"
 				name="language"
 				filterable
-				class="max-w-50"
+				class="md:max-w-50"
 			>
 				<el-option
 					v-for="item in languageOptions"
@@ -35,7 +35,7 @@
 				:placeholder="t('configModule.fields.timezone.placeholder')"
 				name="timezone"
 				filterable
-				class="max-w-50"
+				class="md:max-w-50"
 			>
 				<el-option
 					v-for="item in timezoneOptions"
@@ -55,7 +55,7 @@
 				:placeholder="t('configModule.fields.timeFormat.placeholder')"
 				name="timeFormat"
 				filterable
-				class="max-w-50"
+				class="md:max-w-50"
 			>
 				<el-option
 					v-for="item in timeFormatOptions"

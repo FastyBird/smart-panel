@@ -47,7 +47,7 @@
 				:placeholder="t('configModule.fields.screenLockDuration.placeholder')"
 				name="screenLockDuration"
 				filterable
-				class="max-w-50"
+				class="md:max-w-50"
 			>
 				<el-option
 					v-for="item in screenLockDurationOptions"

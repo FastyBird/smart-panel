@@ -15,7 +15,7 @@
 				:placeholder="t('configModule.fields.locationType.placeholder')"
 				name="locationType"
 				filterable
-				class="max-w-50"
+				class="md:max-w-50"
 			>
 				<el-option
 					v-for="item in locationTypeOptions"
@@ -46,7 +46,7 @@
 				:placeholder="t('configModule.fields.unit.placeholder')"
 				name="unit"
 				filterable
-				class="max-w-50"
+				class="md:max-w-50"
 			>
 				<el-option
 					v-for="item in unitOptions"
