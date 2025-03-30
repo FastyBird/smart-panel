@@ -42,38 +42,36 @@
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<div class="flex flex-col overflow-hidden h-full pt-2">
-		<el-scrollbar class="flex-1 md:pb-[3rem]">
-			<div class="xs:px-2 md:px-5 py-2">
-				<el-form-item
-					:label="t('devicesModule.fields.devices.plugin.title')"
-					label-position="top"
+	<div class="flex flex-col overflow-hidden h-full">
+		<el-scrollbar class="grow-1 p-2 md:px-4">
+			<el-form-item
+				:label="t('devicesModule.fields.devices.plugin.title')"
+				label-position="top"
+			>
+				<el-select
+					v-model="selectedType"
+					:placeholder="t('devicesModule.fields.devices.plugin.placeholder')"
+					name="plugin"
+					filterable
 				>
-					<el-select
-						v-model="selectedType"
-						:placeholder="t('devicesModule.fields.devices.plugin.placeholder')"
-						name="plugin"
-						filterable
-					>
-						<el-option
-							v-for="item in typesOptions"
-							:key="item.value"
-							:label="item.label"
-							:value="item.value"
-						/>
-					</el-select>
-				</el-form-item>
+					<el-option
+						v-for="item in typesOptions"
+						:key="item.value"
+						:label="item.label"
+						:value="item.value"
+					/>
+				</el-select>
+			</el-form-item>
 
-				<el-alert
-					v-if="plugin"
-					:description="plugin.description"
-					:closable="false"
-					show-icon
-					type="info"
-				/>
+			<el-alert
+				v-if="plugin"
+				:description="plugin.description"
+				:closable="false"
+				show-icon
+				type="info"
+			/>
 
-				<el-divider />
-			</div>
+			<el-divider />
 
 			<template v-if="selectedType">
 				<component
@@ -96,23 +94,20 @@
 					:type="selectedType"
 				/>
 			</template>
-			<div
+
+			<el-alert
 				v-else
-				class="xs:px-2 md:px-5"
-			>
-				<el-alert
-					:title="t('devicesModule.headings.devices.selectPlugin')"
-					:description="t('devicesModule.texts.devices.selectPlugin')"
-					:closable="false"
-					show-icon
-					type="info"
-				/>
-			</div>
+				:title="t('devicesModule.headings.devices.selectPlugin')"
+				:description="t('devicesModule.texts.devices.selectPlugin')"
+				:closable="false"
+				show-icon
+				type="info"
+			/>
 		</el-scrollbar>
 
 		<div
 			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 absolute bottom-0 left-0 w-full h-[3rem]"
+			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
 			style="background-color: var(--el-drawer-bg-color)"
 		>
 			<div class="p-2">

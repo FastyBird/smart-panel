@@ -31,6 +31,29 @@ export const useChannelPropertyEditForm = (
 
 	let timer: number;
 
+	let enumValues: string[] = [];
+	let minValue: string = '';
+	let maxValue: string = '';
+
+	if (property.dataType === DevicesChannelPropertyData_type.enum) {
+		enumValues = property.format ? property.format.map((item) => item.toString()) : [];
+	} else if (
+		[
+			DevicesChannelPropertyData_type.char,
+			DevicesChannelPropertyData_type.uchar,
+			DevicesChannelPropertyData_type.short,
+			DevicesChannelPropertyData_type.ushort,
+			DevicesChannelPropertyData_type.int,
+			DevicesChannelPropertyData_type.uint,
+			DevicesChannelPropertyData_type.float,
+		].includes(property.dataType)
+	) {
+		if (Array.isArray(property.format) && property.format.length === 2) {
+			minValue = property.format[0] as string;
+			maxValue = property.format[1] as string;
+		}
+	}
+
 	const channel = computed<IChannel | null>((): IChannel | null => {
 		return channels.value.find((channel) => channel.id === property.channel) ?? null;
 	});
@@ -103,9 +126,9 @@ export const useChannelPropertyEditForm = (
 		format: [],
 		invalid: property.invalid ? property.invalid.toString() : '',
 		step: property.step ? property.step.toString() : '',
-		enumValues: [],
-		minValue: '',
-		maxValue: '',
+		enumValues,
+		minValue,
+		maxValue,
 	});
 
 	const formEl = ref<FormInstance | undefined>(undefined);
@@ -215,7 +238,7 @@ export const useChannelPropertyEditForm = (
 	});
 
 	watch(model, (val: IChannelPropertyEditForm): void => {
-		if (val.name !== property.name) {
+		if (val.name !== (property.name ?? '')) {
 			formChanged.value = true;
 		} else if (val.unit !== '') {
 			formChanged.value = true;

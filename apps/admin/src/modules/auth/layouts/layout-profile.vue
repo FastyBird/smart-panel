@@ -56,59 +56,59 @@
 		</template>
 	</view-header>
 
-	<el-scrollbar class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2">
-		<el-tabs
-			v-if="isMDDevice"
-			v-model="activeTab"
-			@tab-click="onTabClick"
+	<el-tabs
+		v-if="isMDDevice"
+		v-model="activeTab"
+		class="lt-sm:mx-1 sm:mx-2"
+		@tab-click="onTabClick"
+	>
+		<el-tab-pane
+			:label="t('authModule.tabs.general')"
+			:name="'general'"
 		>
-			<el-tab-pane
-				:label="t('authModule.tabs.general')"
-				:name="'general'"
-			>
-				<template #label>
-					<span class="flex flex-row items-center gap-2">
-						<el-icon>
-							<icon icon="mdi:user-edit" />
-						</el-icon>
-						<span>{{ t('authModule.tabs.general') }}</span>
-					</span>
-				</template>
+			<template #label>
+				<span class="flex flex-row items-center gap-2">
+					<el-icon>
+						<icon icon="mdi:user-edit" />
+					</el-icon>
+					<span>{{ t('authModule.tabs.general') }}</span>
+				</span>
+			</template>
 
-				<router-view
-					v-if="route.name === RouteNames.PROFILE_GENERAL"
-					v-model:remote-form-submit="remoteFormSubmit"
-					v-model:remote-form-result="remoteFormResult"
-				/>
-			</el-tab-pane>
+			<router-view
+				v-if="route.name === RouteNames.PROFILE_GENERAL"
+				v-model:remote-form-submit="remoteFormSubmit"
+				v-model:remote-form-result="remoteFormResult"
+			/>
+		</el-tab-pane>
 
-			<el-tab-pane
-				:label="t('authModule.tabs.security')"
-				:name="'security'"
-			>
-				<template #label>
-					<span class="flex flex-row items-center gap-2">
-						<el-icon>
-							<icon icon="mdi:user-lock" />
-						</el-icon>
-						<span>{{ t('authModule.tabs.security') }}</span>
-					</span>
-				</template>
+		<el-tab-pane
+			:label="t('authModule.tabs.security')"
+			:name="'security'"
+		>
+			<template #label>
+				<span class="flex flex-row items-center gap-2">
+					<el-icon>
+						<icon icon="mdi:user-lock" />
+					</el-icon>
+					<span>{{ t('authModule.tabs.security') }}</span>
+				</span>
+			</template>
 
-				<router-view
-					v-if="route.name === RouteNames.PROFILE_SECURITY"
-					v-model:remote-form-submit="remoteFormSubmit"
-					v-model:remote-form-result="remoteFormResult"
-				/>
-			</el-tab-pane>
-		</el-tabs>
+			<router-view
+				v-if="route.name === RouteNames.PROFILE_SECURITY"
+				v-model:remote-form-submit="remoteFormSubmit"
+				v-model:remote-form-result="remoteFormResult"
+			/>
+		</el-tab-pane>
+	</el-tabs>
 
-		<router-view
-			v-if="!isMDDevice"
-			v-model:remote-form-submit="remoteFormSubmit"
-			v-model:remote-form-result="remoteFormResult"
-		/>
-	</el-scrollbar>
+	<router-view
+		v-if="!isMDDevice"
+		v-model:remote-form-submit="remoteFormSubmit"
+		v-model:remote-form-result="remoteFormResult"
+		class="p-2"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -116,7 +116,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { type RouteLocationRaw, type RouteRecordName, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElScrollbar, ElTabPane, ElTabs, type TabsPaneContext } from 'element-plus';
+import { ElButton, ElIcon, ElTabPane, ElTabs, type TabsPaneContext } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

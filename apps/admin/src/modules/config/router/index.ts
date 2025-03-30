@@ -7,6 +7,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 	{
 		path: 'config',
 		name: RouteNames.CONFIG,
+		component: () => import('../layouts/layout-config.vue'),
 		meta: {
 			guards: {
 				authenticated: true,
@@ -16,6 +17,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			icon: 'mdi:cog',
 			menu: true,
 		},
+		redirect: () => ({ name: RouteNames.CONFIG_AUDIO }),
 		children: [
 			{
 				path: 'audio',

@@ -5,7 +5,6 @@
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="xs:px-2 md:px-5"
 	>
 		<div
 			v-loading="loadingChannels"
@@ -138,7 +137,6 @@
 		<el-form-item
 			:label="t('devicesModule.fields.channelsProperties.unit.title')"
 			:prop="['unit']"
-			class="mt-2"
 		>
 			<el-input
 				v-model="model.unit"

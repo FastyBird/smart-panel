@@ -4,7 +4,6 @@
 		:model="model"
 		label-position="top"
 		status-icon
-		class="xs:px-2 md:px-5"
 	>
 		<div
 			v-loading="loadingChannels"
@@ -237,7 +236,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, watch } from 'vue';
+import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputTag, ElOption, ElSelect, vLoading } from 'element-plus';
@@ -270,27 +269,6 @@ const { t } = useI18n();
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
 	useChannelPropertyEditForm(props.property);
 const { channel } = useChannel(props.property.channel);
-
-onBeforeMount((): void => {
-	if (props.property.dataType === DevicesChannelPropertyData_type.enum) {
-		model.enumValues = props.property.format ? props.property.format.map((item) => item.toString()) : [];
-	} else if (
-		[
-			DevicesChannelPropertyData_type.char,
-			DevicesChannelPropertyData_type.uchar,
-			DevicesChannelPropertyData_type.short,
-			DevicesChannelPropertyData_type.ushort,
-			DevicesChannelPropertyData_type.int,
-			DevicesChannelPropertyData_type.uint,
-			DevicesChannelPropertyData_type.float,
-		].includes(props.property.dataType)
-	) {
-		if (Array.isArray(props.property.format) && props.property.format.length === 2) {
-			model.minValue = props.property.format[0] as string;
-			model.maxValue = props.property.format[1] as string;
-		}
-	}
-});
 
 watch(
 	(): FormResultType => formResult.value,

@@ -34,6 +34,53 @@ export const useConfigLanguageEditForm = (config: IConfigLanguage, messages?: { 
 		label: t(`configModule.timeFormats.${value}`),
 	}));
 
+	const timezoneOptions: { value: string; label: string }[] = [
+		{
+			value: 'Africa/Cairo',
+			label: 'Africa/Cairo',
+		},
+		{
+			value: 'Africa/Johannesburg',
+			label: 'Africa/Johannesburg',
+		},
+		{
+			value: 'America/New_York',
+			label: 'America/New_York',
+		},
+		{
+			value: 'America/Los_Angeles',
+			label: 'America/Los_Angeles',
+		},
+		{
+			value: 'Asia/Dubai',
+			label: 'Asia/Dubai',
+		},
+		{
+			value: 'Asia/Tokyo',
+			label: 'Asia/Tokyo',
+		},
+		{
+			value: 'Asia/Kolkata',
+			label: 'Asia/Kolkata',
+		},
+		{
+			value: 'Australia/Sydney',
+			label: 'Australia/Sydney',
+		},
+		{
+			value: 'Europe/London',
+			label: 'Europe/London',
+		},
+		{
+			value: 'Europe/Berlin',
+			label: 'Europe/Berlin',
+		},
+		{
+			value: 'Europe/Prague',
+			label: 'Europe/Prague',
+		},
+	];
+
 	const model = reactive<IConfigLanguageEditForm>({
 		language: config.language,
 		timezone: config.timezone,
@@ -106,6 +153,7 @@ export const useConfigLanguageEditForm = (config: IConfigLanguage, messages?: { 
 
 	return {
 		languageOptions,
+		timezoneOptions,
 		timeFormatOptions,
 		model,
 		formEl,

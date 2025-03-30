@@ -106,88 +106,87 @@
 	</view-header>
 
 	<el-scrollbar
+		v-if="isDeviceRoute || isLGDevice"
 		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
 		:class="[ns.b()]"
 	>
-		<template v-if="isDeviceRoute || isLGDevice">
-			<el-card
-				v-if="device"
-				class="mt-2"
-				body-class="p-0!"
-			>
-				<device-detail :device="device" />
-			</el-card>
-
-			<el-space
-				v-if="sortedChannels"
-				direction="vertical"
-				size="large"
-				class="w-full mt-4 mb-2"
-				:class="[ns.e('channels-list')]"
-				fill
-			>
-				<channel-detail
-					v-for="channel in sortedChannels"
-					:key="channel.id"
-					:channel="channel"
-					@channel-edit="onChannelEdit"
-					@channel-remove="onChannelRemove"
-					@property-add="onPropertyAdd"
-					@property-edit="onPropertyEdit"
-					@property-remove="onPropertyRemove"
-				/>
-			</el-space>
-
-			<el-card
-				v-else
-				class="mt-2"
-				body-class="flex flex-row justify-center"
-			>
-				<el-result class="h-full max-w-[700px]">
-					<template #icon>
-						<icon-with-child :size="80">
-							<template #primary>
-								<icon icon="mdi:chip" />
-							</template>
-							<template #secondary>
-								<icon icon="mdi:timer-sand-empty" />
-							</template>
-						</icon-with-child>
-					</template>
-
-					<template #title>
-						<el-text class="block">
-							{{ t('devicesModule.texts.devices.noChannels') }}
-						</el-text>
-
-						<el-button
-							type="primary"
-							plain
-							class="mt-4"
-							@click="onChannelAdd"
-						>
-							<template #icon>
-								<icon icon="mdi:plus" />
-							</template>
-
-							{{ t('devicesModule.buttons.addChannel.title') }}
-						</el-button>
-					</template>
-				</el-result>
-			</el-card>
-		</template>
-
-		<router-view
-			v-else
-			:key="`${props.id}-${device?.id}`"
-			v-slot="{ Component }"
+		<el-card
+			v-if="device"
+			class="mt-2"
+			body-class="p-0!"
 		>
-			<component
-				:is="Component"
-				:device="device"
+			<device-detail :device="device" />
+		</el-card>
+
+		<el-space
+			v-if="sortedChannels"
+			direction="vertical"
+			size="large"
+			class="w-full mt-4 mb-2"
+			:class="[ns.e('channels-list')]"
+			fill
+		>
+			<channel-detail
+				v-for="channel in sortedChannels"
+				:key="channel.id"
+				:channel="channel"
+				@channel-edit="onChannelEdit"
+				@channel-remove="onChannelRemove"
+				@property-add="onPropertyAdd"
+				@property-edit="onPropertyEdit"
+				@property-remove="onPropertyRemove"
 			/>
-		</router-view>
+		</el-space>
+
+		<el-card
+			v-else
+			class="mt-2"
+			body-class="flex flex-row justify-center"
+		>
+			<el-result class="h-full max-w-[700px]">
+				<template #icon>
+					<icon-with-child :size="80">
+						<template #primary>
+							<icon icon="mdi:chip" />
+						</template>
+						<template #secondary>
+							<icon icon="mdi:timer-sand-empty" />
+						</template>
+					</icon-with-child>
+				</template>
+
+				<template #title>
+					<el-text class="block">
+						{{ t('devicesModule.texts.devices.noChannels') }}
+					</el-text>
+
+					<el-button
+						type="primary"
+						plain
+						class="mt-4"
+						@click="onChannelAdd"
+					>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
+
+						{{ t('devicesModule.buttons.addChannel.title') }}
+					</el-button>
+				</template>
+			</el-result>
+		</el-card>
 	</el-scrollbar>
+
+	<router-view
+		v-else
+		:key="`${props.id}-${device?.id}`"
+		v-slot="{ Component }"
+	>
+		<component
+			:is="Component"
+			:device="device"
+		/>
+	</router-view>
 
 	<el-drawer
 		v-if="isLGDevice"

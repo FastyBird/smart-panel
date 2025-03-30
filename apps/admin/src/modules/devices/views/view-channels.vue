@@ -53,9 +53,11 @@
 		</template>
 	</view-header>
 
-	<el-scrollbar class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2">
+	<el-scrollbar
+		v-if="isChannelsListRoute || isLGDevice"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
+	>
 		<list-channels
-			v-if="isChannelsListRoute || isLGDevice"
 			v-model:filters="filters"
 			v-model:sort-by="sortBy"
 			v-model:sort-dir="sortDir"
@@ -73,15 +75,15 @@
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
 		/>
-
-		<router-view
-			v-else
-			:key="props.id"
-			v-slot="{ Component }"
-		>
-			<component :is="Component" />
-		</router-view>
 	</el-scrollbar>
+
+	<router-view
+		v-else
+		:key="props.id"
+		v-slot="{ Component }"
+	>
+		<component :is="Component" />
+	</router-view>
 
 	<el-drawer
 		v-if="isLGDevice"

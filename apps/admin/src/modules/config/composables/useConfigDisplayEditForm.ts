@@ -23,6 +23,41 @@ export const useConfigDisplayEditForm = (config: IConfigDisplay, messages?: { su
 
 	let timer: number;
 
+	const screenLockDurationOptions: { value: number; label: string }[] = [
+		{
+			value: 15,
+			label: t(`configModule.screenLockDurations.15s`),
+		},
+		{
+			value: 30,
+			label: t(`configModule.screenLockDurations.30s`),
+		},
+		{
+			value: 60,
+			label: t(`configModule.screenLockDurations.60s`),
+		},
+		{
+			value: 120,
+			label: t(`configModule.screenLockDurations.120s`),
+		},
+		{
+			value: 300,
+			label: t(`configModule.screenLockDurations.300s`),
+		},
+		{
+			value: 600,
+			label: t(`configModule.screenLockDurations.600s`),
+		},
+		{
+			value: 1800,
+			label: t(`configModule.screenLockDurations.1800s`),
+		},
+		{
+			value: 0,
+			label: t(`configModule.screenLockDurations.0s`),
+		},
+	];
+
 	const model = reactive<IConfigDisplayEditForm>({
 		darkMode: config.darkMode,
 		brightness: config.brightness,
@@ -98,6 +133,7 @@ export const useConfigDisplayEditForm = (config: IConfigDisplay, messages?: { su
 	});
 
 	return {
+		screenLockDurationOptions,
 		model,
 		formEl,
 		formChanged,

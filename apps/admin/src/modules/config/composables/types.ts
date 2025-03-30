@@ -60,6 +60,7 @@ export interface IUseConfigDisplay {
 }
 
 export interface IUseConfigDisplayEditForm {
+	screenLockDurationOptions: { value: number; label: string }[];
 	model: IConfigDisplayEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -76,6 +77,7 @@ export interface IUseConfigLanguage {
 
 export interface IUseConfigLanguageEditForm {
 	languageOptions: { value: ConfigLanguageLanguage; label: string }[];
+	timezoneOptions: { value: string; label: string }[];
 	timeFormatOptions: { value: ConfigLanguageTime_format; label: string }[];
 	model: IConfigLanguageEditForm;
 	formEl: Ref<FormInstance | undefined>;

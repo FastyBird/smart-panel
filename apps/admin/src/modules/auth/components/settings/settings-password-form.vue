@@ -6,52 +6,42 @@
 		:label-position="props.layout === Layout.PHONE ? 'top' : 'right'"
 		:label-width="180"
 		status-icon
-		class="sm:px-5"
 	>
-		<div class="mb-5">
-			<el-form-item
-				:label="t('authModule.fields.currentPassword.title')"
-				prop="currentPassword"
-				class="mb-2"
-			>
-				<el-input
-					v-model="passwordForm.currentPassword"
-					name="currentPassword"
-					type="password"
-					show-password
-				/>
-			</el-form-item>
-		</div>
+		<el-form-item
+			:label="t('authModule.fields.currentPassword.title')"
+			prop="currentPassword"
+		>
+			<el-input
+				v-model="passwordForm.currentPassword"
+				name="currentPassword"
+				type="password"
+				show-password
+			/>
+		</el-form-item>
 
-		<div class="mb-5">
-			<el-form-item
-				:label="t('authModule.fields.newPassword.title')"
-				prop="newPassword"
-				class="mb-2"
-			>
-				<el-input
-					v-model="passwordForm.newPassword"
-					name="newPassword"
-					type="password"
-					show-password
-				/>
-			</el-form-item>
-		</div>
+		<el-form-item
+			:label="t('authModule.fields.newPassword.title')"
+			prop="newPassword"
+		>
+			<el-input
+				v-model="passwordForm.newPassword"
+				name="newPassword"
+				type="password"
+				show-password
+			/>
+		</el-form-item>
 
-		<div class="mb-5">
-			<el-form-item
-				:label="t('authModule.fields.repeatPassword.title')"
-				prop="repeatPassword"
-				class="mb-2"
-			>
-				<el-input
-					v-model="passwordForm.repeatPassword"
-					name="repeatPassword"
-					type="password"
-					show-password
-				/>
-			</el-form-item>
-		</div>
+		<el-form-item
+			:label="t('authModule.fields.repeatPassword.title')"
+			prop="repeatPassword"
+		>
+			<el-input
+				v-model="passwordForm.repeatPassword"
+				name="repeatPassword"
+				type="password"
+				show-password
+			/>
+		</el-form-item>
 	</el-form>
 </template>
 

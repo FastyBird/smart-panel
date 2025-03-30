@@ -54,7 +54,7 @@ describe('useConfigWeatherEditForm', () => {
 		expect(form.model.location).toBe('Prague');
 		expect(form.model.locationType).toBe(PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name);
 		expect(form.model.unit).toBe(ConfigWeatherUnit.celsius);
-		expect(form.model.openWeatherApiKey).toBe(null);
+		expect(form.model.openWeatherApiKey).toBe('');
 	});
 
 	it('sets formChanged to true when model changes', async () => {
@@ -92,7 +92,7 @@ describe('useConfigWeatherEditForm', () => {
 				location: form.model.location,
 				locationType: form.model.locationType,
 				unit: form.model.unit,
-				openWeatherApiKey: form.model.openWeatherApiKey,
+				openWeatherApiKey: null,
 			},
 		});
 

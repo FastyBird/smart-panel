@@ -22,3 +22,10 @@ export enum FormResult {
 }
 
 export type FormResultType = FormResult.NONE | FormResult.WORKING | FormResult.ERROR | FormResult.OK;
+
+export enum Layout {
+	DEFAULT = 'default',
+	PHONE = 'phone',
+}
+
+export type LayoutType = Layout.DEFAULT | Layout.PHONE;
