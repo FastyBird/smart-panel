@@ -1,7 +1,7 @@
 import type { FormResultType, LayoutType } from '../config.constants';
 import type { IConfigAudio } from '../store';
 
-export type ConfigAudioFormProps = {
+export type IConfigAudioFormProps = {
 	config: IConfigAudio;
 	remoteFormSubmit?: boolean;
 	remoteFormResult?: FormResultType;

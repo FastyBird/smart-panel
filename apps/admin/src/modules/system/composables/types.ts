@@ -13,3 +13,9 @@ export interface IUseThrottleStatus {
 	isLoading: ComputedRef<boolean>;
 	fetchThrottleStatus: () => Promise<void>;
 }
+
+export interface IUseSystemActions {
+	onRestart: () => void;
+	onPowerOff: () => void;
+	onFactoryReset: () => void;
+}

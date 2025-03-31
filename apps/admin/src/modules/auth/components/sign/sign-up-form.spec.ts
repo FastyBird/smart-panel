@@ -1,4 +1,3 @@
-import { createI18n } from 'vue-i18n';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import { ElButton, ElForm, ElFormItem } from 'element-plus';
@@ -9,10 +8,15 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 import { RouteNames as AppRouteNames } from '../../../../app.constants';
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { FormResult, RouteNames } from '../../auth.constants';
-import enUS from '../../locales/en-US.json';
 import type { SessionStore } from '../../store';
 
 import SignUpForm from './sign-up-form.vue';
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 const mockFlash = {
 	error: vi.fn(),
@@ -52,18 +56,9 @@ describe('SignUpForm', (): void => {
 
 		vi.spyOn(router, 'push').mockImplementation(mockRouter.push);
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					authModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(SignUpForm, {
 			global: {
-				plugins: [router, i18n],
+				plugins: [router],
 			},
 			props: {
 				remoteFormResult: FormResult.NONE,

@@ -7,6 +7,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 	{
 		path: 'system',
 		name: RouteNames.SYSTEM,
+		component: () => import('../layouts/layout-system.vue'),
 		meta: {
 			guards: {
 				authenticated: true,
@@ -16,6 +17,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			icon: 'mdi:hammer',
 			menu: true,
 		},
+		redirect: () => ({ name: RouteNames.SYSTEM_INFO }),
 		children: [
 			{
 				path: 'info',
@@ -29,22 +31,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'System information',
 					icon: 'mdi:cellphone-information',
-					menu: true,
-				},
-			},
-			{
-				path: 'throttle',
-				name: RouteNames.THROTTLE_STATUS,
-				component: () => import('../views/view-throttle-status.vue'),
-				props: true,
-				meta: {
-					guards: {
-						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
-					},
-					title: 'Throttle status',
-					icon: 'mdi:list-status',
-					menu: true,
+					menu: false,
 				},
 			},
 		],

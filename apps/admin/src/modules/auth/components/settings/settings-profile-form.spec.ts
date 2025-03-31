@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem } from 'element-plus';
 import { v4 as uuid } from 'uuid';
@@ -10,13 +9,18 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { UsersUserRole } from '../../../../openapi';
 import { FormResult } from '../../auth.constants';
-import enUS from '../../locales/en-US.json';
 import type { SessionStore } from '../../store';
 
 import type { SettingsProfileFormProps } from './settings-profile-form.types';
 import SettingsProfileForm from './settings-profile-form.vue';
 
 type SettingsPasswordFormInstance = ComponentPublicInstance<SettingsProfileFormProps>;
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 const mockFlash = {
 	success: vi.fn(),
@@ -45,19 +49,7 @@ describe('SettingsProfileForm', (): void => {
 			getStore: vi.fn(() => mockSessionStore),
 		});
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					authModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(SettingsProfileForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				profile: {
 					id: userId,
@@ -112,7 +104,7 @@ describe('SettingsProfileForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.success).toHaveBeenCalledWith('Your profile has been updated successfully.');
+		expect(mockFlashMessage.success).toHaveBeenCalledWith('authModule.messages.profileEdited');
 	});
 
 	it('handles errors when profile update fails', async (): Promise<void> => {
@@ -126,6 +118,6 @@ describe('SettingsProfileForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.error).toHaveBeenCalledWith("Your profile couldn't be edited.");
+		expect(mockFlashMessage.error).toHaveBeenCalledWith('authModule.messages.profileNotEdited');
 	});
 });

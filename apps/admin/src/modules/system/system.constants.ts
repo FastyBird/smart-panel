@@ -11,3 +11,10 @@ export const RouteNames = {
 	SYSTEM_INFO: 'system_module-system_info',
 	THROTTLE_STATUS: 'system_module-throttle_status',
 };
+
+export enum Layout {
+	DEFAULT = 'default',
+	PHONE = 'phone',
+}
+
+export type LayoutType = Layout.DEFAULT | Layout.PHONE;

@@ -115,7 +115,6 @@
 	<el-dialog
 		v-model="usernameFormVisible"
 		:title="t('usersModule.headings.changeUsername')"
-		width="500"
 	>
 		<username-edit-form
 			v-model:remote-form-submit="remoteUsernameFormSubmit"
@@ -143,7 +142,6 @@
 	<el-dialog
 		v-model="passwordFormVisible"
 		:title="t('usersModule.headings.changePassword')"
-		width="500"
 	>
 		<password-edit-form
 			v-model:remote-form-submit="remotePasswordFormSubmit"

@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem } from 'element-plus';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,19 +9,24 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigAudioType } from '../../../openapi';
 import type { IConfigAudioEditForm } from '../composables';
 import { FormResult, Layout } from '../config.constants';
-import enUS from '../locales/en-US.json';
 import type { ConfigAudioStore } from '../store';
 
-import type { ConfigAudioFormProps } from './config-audio-form.types';
+import type { IConfigAudioFormProps } from './config-audio-form.types';
 import ConfigAudioForm from './config-audio-form.vue';
 
-type ConfigAudioFormInstance = ComponentPublicInstance<ConfigAudioFormProps> & { model: IConfigAudioEditForm };
+type ConfigAudioFormInstance = ComponentPublicInstance<IConfigAudioFormProps> & { model: IConfigAudioEditForm };
 
 const mockFlash = {
 	success: vi.fn(),
 	error: vi.fn(),
 	exception: vi.fn(),
 };
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 vi.mock('../../../common', () => ({
 	injectStoresManager: vi.fn(),
@@ -43,19 +47,7 @@ describe('ConfigAudioForm', (): void => {
 			getStore: vi.fn(() => mockConfigAudioStore),
 		});
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					configModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(ConfigAudioForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				remoteFormSubmit: false,
 				remoteFormResult: FormResult.NONE,
@@ -94,7 +86,7 @@ describe('ConfigAudioForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.success).toHaveBeenCalledWith('Changes saved! The audio config has been updated.');
+		expect(mockFlashMessage.success).toHaveBeenCalledWith('configModule.messages.configAudio.edited');
 	});
 
 	it('handles submission failure', async (): Promise<void> => {
@@ -112,7 +104,7 @@ describe('ConfigAudioForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.error).toHaveBeenCalledWith('Something went wrong. Audio config update was not successful.');
+		expect(mockFlashMessage.error).toHaveBeenCalledWith('configModule.messages.configAudio.notEdited');
 	});
 
 	it('resets form when remoteFormReset is triggered', async (): Promise<void> => {

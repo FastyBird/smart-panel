@@ -158,21 +158,21 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 	const items = [
 		{
 			label: t('authModule.breadcrumbs.profile'),
-			route: { name: RouteNames.PROFILE },
+			route: router.resolve({ name: RouteNames.PROFILE }),
 		},
 	];
 
 	if (route.name === RouteNames.PROFILE_GENERAL) {
 		items.push({
 			label: t('authModule.breadcrumbs.general'),
-			route: { name: RouteNames.PROFILE_GENERAL },
+			route: router.resolve({ name: RouteNames.PROFILE_GENERAL }),
 		});
 	}
 
 	if (route.name === RouteNames.PROFILE_SECURITY) {
 		items.push({
 			label: t('authModule.breadcrumbs.security'),
-			route: { name: RouteNames.PROFILE_SECURITY },
+			route: router.resolve({ name: RouteNames.PROFILE_SECURITY }),
 		});
 	}
 

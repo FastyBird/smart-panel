@@ -1,7 +1,7 @@
 import type { FormResultType, LayoutType } from '../config.constants';
 import type { IConfigWeather } from '../store';
 
-export type ConfigWeatherFormProps = {
+export type IConfigWeatherFormProps = {
 	config: IConfigWeather;
 	remoteFormSubmit?: boolean;
 	remoteFormResult?: FormResultType;

@@ -1,19 +1,23 @@
 import { type ComponentPublicInstance, ref } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElButton, ElInput, ElSelect } from 'element-plus';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
 import type { IUsersFilter } from '../composables';
-import enUS from '../locales/en-US.json';
 
 import { UsersFilter } from './index';
 import type { IUsersFilterProps } from './users-filter.types';
 
 type UsersFilterInstance = ComponentPublicInstance<IUsersFilterProps>;
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 describe('UsersFilter', (): void => {
 	let wrapper: VueWrapper<UsersFilterInstance>;
@@ -24,19 +28,7 @@ describe('UsersFilter', (): void => {
 	});
 
 	const createWrapper = (props: Partial<IUsersFilterProps> = {}): void => {
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					usersModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(UsersFilter, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				filters: filters.value,
 				filtersActive: false,

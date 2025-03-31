@@ -83,13 +83,13 @@ import { Icon } from '@iconify/vue';
 import { useConfigDisplayEditForm } from '../composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
-import type { ConfigDisplayFormProps } from './config-display-form.types';
+import type { IConfigDisplayFormProps } from './config-display-form.types';
 
 defineOptions({
 	name: 'ConfigDisplayForm',
 });
 
-const props = withDefaults(defineProps<ConfigDisplayFormProps>(), {
+const props = withDefaults(defineProps<IConfigDisplayFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,

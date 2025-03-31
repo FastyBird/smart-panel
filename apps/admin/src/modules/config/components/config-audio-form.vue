@@ -67,13 +67,13 @@ import { ElForm, ElFormItem, ElSlider, ElSwitch } from 'element-plus';
 import { useConfigAudioEditForm } from '../composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
-import type { ConfigAudioFormProps } from './config-audio-form.types';
+import type { IConfigAudioFormProps } from './config-audio-form.types';
 
 defineOptions({
 	name: 'ConfigAudioForm',
 });
 
-const props = withDefaults(defineProps<ConfigAudioFormProps>(), {
+const props = withDefaults(defineProps<IConfigAudioFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,

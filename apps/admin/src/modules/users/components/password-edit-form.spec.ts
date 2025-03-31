@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance, reactive, ref } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput } from 'element-plus';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,10 +8,15 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
 import { useUserPasswordForm } from '../composables';
-import enUS from '../locales/en-US.json';
 
 import { PasswordEditForm } from './index';
 import type { IPasswordEditFormProps } from './password-edit-form.types';
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 const editFormMock = {
 	model: reactive({
@@ -48,19 +52,7 @@ describe('PasswordEditForm', (): void => {
 	};
 
 	const createWrapper = (props: Partial<IPasswordEditFormProps> = {}): void => {
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					usersModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(PasswordEditForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				user: mockUser,
 				remoteFormResult: FormResult.NONE,

@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem } from 'element-plus';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,19 +9,24 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigDisplayType } from '../../../openapi';
 import type { IConfigDisplayEditForm } from '../composables';
 import { FormResult, Layout } from '../config.constants';
-import enUS from '../locales/en-US.json';
 import type { ConfigDisplayStore } from '../store';
 
-import type { ConfigDisplayFormProps } from './config-display-form.types';
+import type { IConfigDisplayFormProps } from './config-display-form.types';
 import ConfigDisplayForm from './config-display-form.vue';
 
-type ConfigDisplayFormInstance = ComponentPublicInstance<ConfigDisplayFormProps> & { model: IConfigDisplayEditForm };
+type ConfigDisplayFormInstance = ComponentPublicInstance<IConfigDisplayFormProps> & { model: IConfigDisplayEditForm };
 
 const mockFlash = {
 	success: vi.fn(),
 	error: vi.fn(),
 	exception: vi.fn(),
 };
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 vi.mock('../../../common', () => ({
 	injectStoresManager: vi.fn(),
@@ -43,19 +47,7 @@ describe('ConfigDisplayForm', (): void => {
 			getStore: vi.fn(() => mockConfigDisplayStore),
 		});
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					configModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(ConfigDisplayForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				remoteFormSubmit: false,
 				remoteFormResult: FormResult.NONE,
@@ -95,7 +87,7 @@ describe('ConfigDisplayForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.success).toHaveBeenCalledWith('Changes saved! The display config has been updated.');
+		expect(mockFlashMessage.success).toHaveBeenCalledWith('configModule.messages.configDisplay.edited');
 	});
 
 	it('handles submission failure', async (): Promise<void> => {
@@ -114,7 +106,7 @@ describe('ConfigDisplayForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.error).toHaveBeenCalledWith('Something went wrong. Display config update was not successful.');
+		expect(mockFlashMessage.error).toHaveBeenCalledWith('configModule.messages.configDisplay.notEdited');
 	});
 
 	it('resets form when remoteFormReset is triggered', async (): Promise<void> => {

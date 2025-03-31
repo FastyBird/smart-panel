@@ -178,35 +178,35 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 	const items = [
 		{
 			label: t('configModule.breadcrumbs.config'),
-			route: { name: RouteNames.CONFIG },
+			route: router.resolve({ name: RouteNames.CONFIG }),
 		},
 	];
 
 	if (route.name === RouteNames.CONFIG_AUDIO) {
 		items.push({
 			label: t('configModule.breadcrumbs.configAudio'),
-			route: { name: RouteNames.CONFIG_AUDIO },
+			route: router.resolve({ name: RouteNames.CONFIG_AUDIO }),
 		});
 	}
 
 	if (route.name === RouteNames.CONFIG_DISPLAY) {
 		items.push({
 			label: t('configModule.breadcrumbs.configDisplay'),
-			route: { name: RouteNames.CONFIG_DISPLAY },
+			route: router.resolve({ name: RouteNames.CONFIG_DISPLAY }),
 		});
 	}
 
 	if (route.name === RouteNames.CONFIG_LANGUAGE) {
 		items.push({
 			label: t('configModule.breadcrumbs.configLanguage'),
-			route: { name: RouteNames.CONFIG_LANGUAGE },
+			route: router.resolve({ name: RouteNames.CONFIG_LANGUAGE }),
 		});
 	}
 
 	if (route.name === RouteNames.CONFIG_WEATHER) {
 		items.push({
 			label: t('configModule.breadcrumbs.configWeather'),
-			route: { name: RouteNames.CONFIG_WEATHER },
+			route: router.resolve({ name: RouteNames.CONFIG_WEATHER }),
 		});
 	}
 

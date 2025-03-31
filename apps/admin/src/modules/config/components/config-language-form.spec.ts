@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem } from 'element-plus';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,19 +9,24 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigLanguageLanguage, ConfigLanguageTime_format, ConfigLanguageType } from '../../../openapi';
 import type { IConfigLanguageEditForm } from '../composables';
 import { FormResult, Layout } from '../config.constants';
-import enUS from '../locales/en-US.json';
 import type { ConfigLanguageStore } from '../store';
 
-import type { ConfigLanguageFormProps } from './config-language-form.types';
+import type { IConfigLanguageFormProps } from './config-language-form.types';
 import ConfigLanguageForm from './config-language-form.vue';
 
-type ConfigLanguageFormInstance = ComponentPublicInstance<ConfigLanguageFormProps> & { model: IConfigLanguageEditForm };
+type ConfigLanguageFormInstance = ComponentPublicInstance<IConfigLanguageFormProps> & { model: IConfigLanguageEditForm };
 
 const mockFlash = {
 	success: vi.fn(),
 	error: vi.fn(),
 	exception: vi.fn(),
 };
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 vi.mock('../../../common', () => ({
 	injectStoresManager: vi.fn(),
@@ -43,19 +47,7 @@ describe('ConfigLanguageForm', (): void => {
 			getStore: vi.fn(() => mockConfigLanguageStore),
 		});
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					configModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(ConfigLanguageForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				remoteFormSubmit: false,
 				remoteFormResult: FormResult.NONE,
@@ -94,7 +86,7 @@ describe('ConfigLanguageForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.success).toHaveBeenCalledWith('Changes saved! The language config has been updated.');
+		expect(mockFlashMessage.success).toHaveBeenCalledWith('configModule.messages.configLanguage.edited');
 	});
 
 	it('handles submission failure', async (): Promise<void> => {
@@ -113,7 +105,7 @@ describe('ConfigLanguageForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.error).toHaveBeenCalledWith('Something went wrong. Language config update was not successful.');
+		expect(mockFlashMessage.error).toHaveBeenCalledWith('configModule.messages.configLanguage.notEdited');
 	});
 
 	it('resets form when remoteFormReset is triggered', async (): Promise<void> => {

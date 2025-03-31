@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance, type Reactive, type Ref, reactive, ref } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput, ElSelect } from 'element-plus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,10 +8,15 @@ import { VueWrapper, mount } from '@vue/test-utils';
 import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
 import type { IUserAddForm } from '../composables';
-import enUS from '../locales/en-US.json';
 
 import { UserAddForm } from './index';
 import type { IUserAddFormProps } from './user-add-form.types';
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 const addFormMock = {
 	model: reactive({
@@ -46,19 +50,7 @@ describe('UserAddForm', (): void => {
 	let wrapper: VueWrapper<UserAddFormInstance>;
 
 	const createWrapper = (props: Partial<IUserAddFormProps> = {}): void => {
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					usersModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(UserAddForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				id: 'user1',
 				remoteFormResult: FormResult.NONE,

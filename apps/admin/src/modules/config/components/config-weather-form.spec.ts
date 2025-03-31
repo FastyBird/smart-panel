@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem } from 'element-plus';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,19 +9,24 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigWeatherType, ConfigWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
 import type { IConfigWeatherEditForm } from '../composables';
 import { FormResult, Layout } from '../config.constants';
-import enUS from '../locales/en-US.json';
 import type { ConfigWeatherStore } from '../store';
 
-import type { ConfigWeatherFormProps } from './config-weather-form.types';
+import type { IConfigWeatherFormProps } from './config-weather-form.types';
 import ConfigWeatherForm from './config-weather-form.vue';
 
-type ConfigWeatherFormInstance = ComponentPublicInstance<ConfigWeatherFormProps> & { model: IConfigWeatherEditForm };
+type ConfigWeatherFormInstance = ComponentPublicInstance<IConfigWeatherFormProps> & { model: IConfigWeatherEditForm };
 
 const mockFlash = {
 	success: vi.fn(),
 	error: vi.fn(),
 	exception: vi.fn(),
 };
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 vi.mock('../../../common', () => ({
 	injectStoresManager: vi.fn(),
@@ -43,19 +47,7 @@ describe('ConfigWeatherForm', (): void => {
 			getStore: vi.fn(() => mockConfigWeatherStore),
 		});
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					configModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(ConfigWeatherForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				remoteFormSubmit: false,
 				remoteFormResult: FormResult.NONE,
@@ -95,7 +87,7 @@ describe('ConfigWeatherForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.success).toHaveBeenCalledWith('Changes saved! The weather config has been updated.');
+		expect(mockFlashMessage.success).toHaveBeenCalledWith('configModule.messages.configWeather.edited');
 	});
 
 	it('handles submission failure', async (): Promise<void> => {
@@ -114,7 +106,7 @@ describe('ConfigWeatherForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.error).toHaveBeenCalledWith('Something went wrong. Weather config update was not successful.');
+		expect(mockFlashMessage.error).toHaveBeenCalledWith('configModule.messages.configWeather.notEdited');
 	});
 
 	it('resets form when remoteFormReset is triggered', async (): Promise<void> => {

@@ -79,13 +79,13 @@ import { ElForm, ElFormItem, ElInput, ElOption, ElSelect } from 'element-plus';
 import { useConfigWeatherEditForm } from '../composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
-import type { ConfigWeatherFormProps } from './config-weather-form.types';
+import type { IConfigWeatherFormProps } from './config-weather-form.types';
 
 defineOptions({
 	name: 'ConfigWeatherForm',
 });
 
-const props = withDefaults(defineProps<ConfigWeatherFormProps>(), {
+const props = withDefaults(defineProps<IConfigWeatherFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,

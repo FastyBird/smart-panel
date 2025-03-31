@@ -77,13 +77,13 @@ import { ElForm, ElFormItem, ElOption, ElSelect } from 'element-plus';
 import { useConfigLanguageEditForm } from '../composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
-import type { ConfigLanguageFormProps } from './config-language-form.types';
+import type { IConfigLanguageFormProps } from './config-language-form.types';
 
 defineOptions({
 	name: 'ConfigLanguageForm',
 });
 
-const props = withDefaults(defineProps<ConfigLanguageFormProps>(), {
+const props = withDefaults(defineProps<IConfigLanguageFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
