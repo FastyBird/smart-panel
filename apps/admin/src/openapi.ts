@@ -1993,6 +1993,7 @@ export interface components {
             /**
              * Format: date-time
              * @description The timestamp when the user was updated.
+             * @default null
              * @example 2025-01-25T12:00:00Z
              */
             updated_at: string | null;
@@ -3631,18 +3632,25 @@ export interface components {
              */
             readonly id: string;
             /**
+             * @description Discriminator for the page type
+             * @example cards
+             */
+            readonly type: string;
+            /**
              * @description The title of the dashboard page, displayed in the UI.
              * @example Cards Dashboard
              */
             title: string;
             /**
              * @description The icon representing the dashboard page.
+             * @default null
              * @example icon-name
              */
             icon: string | null;
             /**
              * Format: int32
              * @description The display order of the dashboard page in the navigation or list.
+             * @default 0
              * @example 1
              */
             order: number;
@@ -3655,6 +3663,7 @@ export interface components {
             /**
              * Format: date-time
              * @description The timestamp when the dashboard page was last updated.
+             * @default null
              * @example 2025-01-25T13:00:00Z
              */
             readonly updated_at: string | null;
@@ -3663,18 +3672,17 @@ export interface components {
          * Cards Page
          * @description A cards page dashboard type, displaying an overview with associated cards.
          */
-        DashboardCardsPage: components["schemas"]["DashboardPageBase"] & {
-            /**
-             * @description Indicates that this is a cards dashboard page.
-             * @default cards
-             * @example cards
-             * @constant
-             */
-            readonly type: "cards";
+        DashboardCardsPage: Omit<components["schemas"]["DashboardPageBase"], "type"> & {
             /** @description A list of cards associated with the page. */
             cards: components["schemas"]["DashboardCard"][];
             /** @description A list of data sources associated with the page. */
             data_source: components["schemas"]["DashboardPageDeviceChannelDataSource"][];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardCardsPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3686,18 +3694,17 @@ export interface components {
          * Tiles Page
          * @description A tiles page dashboard type, displaying a grid of customizable tiles.
          */
-        DashboardTilesPage: components["schemas"]["DashboardPageBase"] & {
-            /**
-             * @description Indicates that this is a tiles dashboard page.
-             * @default tiles
-             * @example tiles
-             * @constant
-             */
-            readonly type: "tiles";
+        DashboardTilesPage: Omit<components["schemas"]["DashboardPageBase"], "type"> & {
             /** @description A list of tiles associated with the tiles page. */
-            tiles: (components["schemas"]["DashboardPageDeviceTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"])[];
+            tiles: (components["schemas"]["DashboardPageDevicePreviewTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"])[];
             /** @description A list of data sources associated with the tiles page. */
             data_source: components["schemas"]["DashboardPageDeviceChannelDataSource"][];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardTilesPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3709,14 +3716,7 @@ export interface components {
          * Device Page
          * @description A dashboard page type associated with a specific device.
          */
-        DashboardDevicePage: components["schemas"]["DashboardPageBase"] & {
-            /**
-             * @description Indicates that this is a device-specific dashboard page.
-             * @default device
-             * @example device
-             * @constant
-             */
-            readonly type: "device";
+        DashboardDeviceDetailPage: Omit<components["schemas"]["DashboardPageBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -3728,7 +3728,13 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardDevicePageType;
+            type: DashboardDeviceDetailPageType;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardDeviceDetailPageType;
         };
         /**
          * Card
@@ -3755,6 +3761,7 @@ export interface components {
             /**
              * Format: int32
              * @description Defines the position of the card relative to others on the dashboard page.
+             * @default 0
              * @example 1
              */
             order: number;
@@ -3765,7 +3772,7 @@ export interface components {
              */
             page: string;
             /** @description A list of tiles associated with the dashboard card, representing widgets or functional components. */
-            tiles: (components["schemas"]["DashboardCardDeviceTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"])[];
+            tiles: (components["schemas"]["DashboardCardDevicePreviewTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"])[];
             /** @description A list of data sources used by the card, typically for real-time updates. */
             data_source: components["schemas"]["DashboardCardDeviceChannelDataSource"][];
             /**
@@ -3777,6 +3784,7 @@ export interface components {
             /**
              * Format: date-time
              * @description The timestamp when the dashboard card was last updated.
+             * @default null
              * @example 2025-01-25T13:00:00Z
              */
             readonly updated_at: string | null;
@@ -3792,6 +3800,8 @@ export interface components {
              * @example 9f807d44-bd0f-4f5e-b409-3d048efa03d8
              */
             readonly id: string;
+            /** @description Discriminator for the tile type */
+            type: string;
             /**
              * Format: int32
              * @description The row position of the tile in the grid.
@@ -3818,21 +3828,6 @@ export interface components {
              * @example 2
              */
             col_span: number;
-        } & ({
-            /**
-             * Format: uuid
-             * @description The unique identifier of the page to which this tile belongs.
-             * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
-             */
-            page: string;
-        } | {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the card to which this tile belongs.
-             * @example 7943c740-52b6-4e18-a136-cf39061ac869
-             */
-            card: string;
-        }) & {
             /** @description A list of data sources used by the tile, typically for real-time updates. */
             data_source: components["schemas"]["DashboardTileDeviceChannelDataSource"][];
             /**
@@ -3844,6 +3839,7 @@ export interface components {
             /**
              * Format: date-time
              * @description The timestamp when the dashboard tile was last updated.
+             * @default null
              * @example 2025-01-25T13:00:00Z
              */
             readonly updated_at: string | null;
@@ -3852,14 +3848,7 @@ export interface components {
          * Device Tile
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardDeviceTile: components["schemas"]["DashboardTileBase"] & {
-            /**
-             * @description Indicates that this is a device-specific tile.
-             * @default device
-             * @example device
-             * @constant
-             */
-            readonly type: "device";
+        DashboardDevicePreviewTile: Omit<components["schemas"]["DashboardTileBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -3871,12 +3860,18 @@ export interface components {
              * @example icon-name
              */
             icon: string | null;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardDevicePreviewTileType;
         };
         /**
          * Device Tile On Page
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardPageDeviceTile: components["schemas"]["DashboardDeviceTile"] & {
+        DashboardPageDevicePreviewTile: Omit<components["schemas"]["DashboardDevicePreviewTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated page.
@@ -3888,13 +3883,13 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardDevicePageType;
+            type: DashboardDevicePreviewTileType;
         };
         /**
          * Device Tile On Card
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardCardDeviceTile: components["schemas"]["DashboardDeviceTile"] & {
+        DashboardCardDevicePreviewTile: Omit<components["schemas"]["DashboardDevicePreviewTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated card.
@@ -3906,26 +3901,24 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardDevicePageType;
+            type: DashboardDevicePreviewTileType;
         };
         /**
          * Time Tile
          * @description A dashboard tile displaying a clock.
          */
-        DashboardTimeTile: components["schemas"]["DashboardTileBase"] & {
+        DashboardTimeTile: Omit<components["schemas"]["DashboardTileBase"], "type"> & {
             /**
-             * @description Indicates that this is a clock tile.
-             * @default clock
-             * @example clock
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            readonly type: "clock";
+            type: DashboardTimeTileType;
         };
         /**
          * Device Tile On Page
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardPageTimeTile: components["schemas"]["DashboardTimeTile"] & {
+        DashboardPageTimeTile: Omit<components["schemas"]["DashboardTimeTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated page.
@@ -3937,13 +3930,13 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageTimeTileType;
+            type: DashboardTimeTileType;
         };
         /**
          * Device Tile On Card
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardCardTimeTile: components["schemas"]["DashboardTimeTile"] & {
+        DashboardCardTimeTile: Omit<components["schemas"]["DashboardTimeTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated card.
@@ -3955,26 +3948,24 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageTimeTileType;
+            type: DashboardTimeTileType;
         };
         /**
          * Day Weather Tile
          * @description A dashboard tile displaying the weather for a specific day.
          */
-        DashboardDayWeatherTile: components["schemas"]["DashboardTileBase"] & {
+        DashboardDayWeatherTile: Omit<components["schemas"]["DashboardTileBase"], "type"> & {
             /**
-             * @description Indicates that this is a day weather tile.
-             * @default weather-day
-             * @example weather-day
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            readonly type: "weather-day";
+            type: DashboardDayWeatherTileType;
         };
         /**
          * Device Tile On Page
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardPageDayWeatherTile: components["schemas"]["DashboardDayWeatherTile"] & {
+        DashboardPageDayWeatherTile: Omit<components["schemas"]["DashboardDayWeatherTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated page.
@@ -3986,13 +3977,13 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDayWeatherTileType;
+            type: DashboardDayWeatherTileType;
         };
         /**
          * Device Tile On Card
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardCardDayWeatherTile: components["schemas"]["DashboardDayWeatherTile"] & {
+        DashboardCardDayWeatherTile: Omit<components["schemas"]["DashboardDayWeatherTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated card.
@@ -4004,26 +3995,24 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDayWeatherTileType;
+            type: DashboardDayWeatherTileType;
         };
         /**
          * Forecast Weather Tile
          * @description A dashboard tile displaying a weather forecast.
          */
-        DashboardForecastWeatherTile: components["schemas"]["DashboardTileBase"] & {
+        DashboardForecastWeatherTile: Omit<components["schemas"]["DashboardTileBase"], "type"> & {
             /**
-             * @description Indicates that this is a weather forecast tile.
-             * @default weather-forecast
-             * @example weather-forecast
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            readonly type: "weather-forecast";
+            type: DashboardForecastWeatherTileType;
         };
         /**
          * Device Tile On Page
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardPageForecastWeatherTile: components["schemas"]["DashboardForecastWeatherTile"] & {
+        DashboardPageForecastWeatherTile: Omit<components["schemas"]["DashboardForecastWeatherTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated page.
@@ -4035,13 +4024,13 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageForecastWeatherTileType;
+            type: DashboardForecastWeatherTileType;
         };
         /**
          * Device Tile On Card
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardCardForecastWeatherTile: components["schemas"]["DashboardForecastWeatherTile"] & {
+        DashboardCardForecastWeatherTile: Omit<components["schemas"]["DashboardForecastWeatherTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated card.
@@ -4053,7 +4042,7 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageForecastWeatherTileType;
+            type: DashboardForecastWeatherTileType;
         };
         /**
          * Data Source
@@ -4066,28 +4055,8 @@ export interface components {
              * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
              */
             readonly id: string;
-        } & ({
-            /**
-             * Format: uuid
-             * @description The unique identifier of the page to which this data source belongs.
-             * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
-             */
-            page: string;
-        } | {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the card to which this data source belongs.
-             * @example 7943c740-52b6-4e18-a136-cf39061ac869
-             */
-            card: string;
-        } | {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the tile to which this data source belongs.
-             * @example 9f807d44-bd0f-4f5e-b409-3d048efa03d8
-             */
-            tile: string;
-        }) & {
+            /** @description Discriminator for the data source type */
+            type: string;
             /**
              * Format: date-time
              * @description The timestamp when the data source was created.
@@ -4097,6 +4066,7 @@ export interface components {
             /**
              * Format: date-time
              * @description The timestamp when the data source was last updated.
+             * @default null
              * @example 2025-01-25T13:00:00Z
              */
             readonly updated_at: string | null;
@@ -4105,14 +4075,7 @@ export interface components {
          * Device Channel Data Source
          * @description A data source linked to a specific device channel and property.
          */
-        DashboardDeviceChannelDataSource: components["schemas"]["DashboardDataSourceBase"] & {
-            /**
-             * @description Indicates that this data source is linked to a device channel.
-             * @default device-channel
-             * @example device-channel
-             * @constant
-             */
-            readonly type: "device-channel";
+        DashboardDeviceChannelDataSource: Omit<components["schemas"]["DashboardDataSourceBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4137,12 +4100,18 @@ export interface components {
              * @example icon-name
              */
             icon: string | null;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardDeviceChannelDataSourceType;
         };
         /**
          * Device Channel Data Source
          * @description A data source linked to a specific device channel and property.
          */
-        DashboardPageDeviceChannelDataSource: components["schemas"]["DashboardDeviceChannelDataSource"] & {
+        DashboardPageDeviceChannelDataSource: Omit<components["schemas"]["DashboardDeviceChannelDataSource"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated page.
@@ -4154,13 +4123,13 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDeviceChannelDataSourceType;
+            type: DashboardDeviceChannelDataSourceType;
         };
         /**
          * Device Channel Data Source
          * @description A data source linked to a specific device channel and property.
          */
-        DashboardCardDeviceChannelDataSource: components["schemas"]["DashboardDeviceChannelDataSource"] & {
+        DashboardCardDeviceChannelDataSource: Omit<components["schemas"]["DashboardDeviceChannelDataSource"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated card.
@@ -4172,16 +4141,16 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDeviceChannelDataSourceType;
+            type: DashboardDeviceChannelDataSourceType;
         };
         /**
          * Device Channel Data Source
          * @description A data source linked to a specific device channel and property.
          */
-        DashboardTileDeviceChannelDataSource: components["schemas"]["DashboardDeviceChannelDataSource"] & {
+        DashboardTileDeviceChannelDataSource: Omit<components["schemas"]["DashboardDeviceChannelDataSource"], "type"> & {
             /**
              * Format: uuid
-             * @description The unique identifier of the associated card.
+             * @description The unique identifier of the associated tile.
              * @example 9f807d44-bd0f-4f5e-b409-3d048efa03d8
              */
             tile: string;
@@ -4190,7 +4159,7 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDeviceChannelDataSourceType;
+            type: DashboardDeviceChannelDataSourceType;
         };
         /**
          * Create Page
@@ -4203,6 +4172,8 @@ export interface components {
              * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
              */
             id?: string;
+            /** @description Discriminator for the page type */
+            type: string;
             /**
              * @description The title of the dashboard page.
              * @example My Dashboard
@@ -4210,32 +4181,33 @@ export interface components {
             title: string;
             /**
              * @description The icon associated with the dashboard page.
+             * @default null
              * @example icon-name
              */
             icon?: string | null;
             /**
              * Format: int32
              * @description The position of the page in the dashboard’s list.
+             * @default 0
              * @example 1
              */
-            order: number;
+            order?: number;
         };
         /**
          * Create Cards Page
          * @description The schema for creating a cards dashboard page.
          */
-        DashboardCreateCardsPage: components["schemas"]["DashboardCreatePageBase"] & {
-            /**
-             * @description Indicates that this is a cards dashboard page.
-             * @default cards
-             * @example cards
-             * @constant
-             */
-            type: "cards";
+        DashboardCreateCardsPage: Omit<components["schemas"]["DashboardCreatePageBase"], "type"> & {
             /** @description A list of cards associated with the page. */
             cards?: components["schemas"]["DashboardCreateCard"][];
             /** @description A list of data sources associated with the page. */
             data_source?: components["schemas"]["DashboardCreateDeviceChannelDataSource"][];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardCardsPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4247,18 +4219,17 @@ export interface components {
          * Create Tiles Page
          * @description The schema for creating a tiles dashboard page.
          */
-        DashboardCreateTilesPage: components["schemas"]["DashboardCreatePageBase"] & {
-            /**
-             * @description Indicates that this is a tiles dashboard page.
-             * @default tiles
-             * @example tiles
-             * @constant
-             */
-            type: "tiles";
+        DashboardCreateTilesPage: Omit<components["schemas"]["DashboardCreatePageBase"], "type"> & {
             /** @description A list of tiles associated with the tiles page. */
-            tiles?: (components["schemas"]["DashboardCreateDeviceTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"])[];
+            tiles?: (components["schemas"]["DashboardCreateDevicePreviewTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"])[];
             /** @description A list of data sources associated with the tiles page. */
             data_source?: components["schemas"]["DashboardCreateDeviceChannelDataSource"][];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardTilesPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4270,14 +4241,7 @@ export interface components {
          * Create Device Page
          * @description The schema for creating a device dashboard page.
          */
-        DashboardCreateDevicePage: components["schemas"]["DashboardCreatePageBase"] & {
-            /**
-             * @description Indicates that this is a device-specific dashboard page.
-             * @default device
-             * @example device
-             * @constant
-             */
-            type: "device";
+        DashboardCreateDeviceDetailPage: Omit<components["schemas"]["DashboardCreatePageBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4289,7 +4253,13 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardDevicePageType;
+            type: DashboardDeviceDetailPageType;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardDeviceDetailPageType;
         };
         /**
          * Create Card
@@ -4320,7 +4290,7 @@ export interface components {
              */
             order?: number;
             /** @description A list of tiles associated with the dashboard card, representing widgets or functional components. */
-            tiles?: (components["schemas"]["DashboardCreateDeviceTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"])[];
+            tiles?: (components["schemas"]["DashboardCreateDevicePreviewTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"])[];
             /** @description A list of data sources used by the card, typically for real-time updates. */
             data_source?: components["schemas"]["DashboardCreateDeviceChannelDataSource"][];
         };
@@ -4335,6 +4305,8 @@ export interface components {
              * @example 9f807d44-bd0f-4f5e-b409-3d048efa03d8
              */
             id?: string;
+            /** @description Discriminator for the tile type */
+            type: string;
             /**
              * Format: int32
              * @description The row position of the tile in the grid.
@@ -4350,12 +4322,14 @@ export interface components {
             /**
              * Format: int32
              * @description The number of rows the tile spans in the grid.
+             * @default 0
              * @example 1
              */
             row_span?: number;
             /**
              * Format: int32
              * @description The number of columns the tile spans in the grid.
+             * @default 0
              * @example 2
              */
             col_span?: number;
@@ -4366,14 +4340,7 @@ export interface components {
          * Create Device Tile
          * @description Schema for creating a dashboard tile representing a device.
          */
-        DashboardCreateDeviceTile: components["schemas"]["DashboardCreateTileBase"] & {
-            /**
-             * @description Specifies the type of tile as a device-specific tile.
-             * @default device
-             * @example device
-             * @constant
-             */
-            type: "device";
+        DashboardCreateDevicePreviewTile: Omit<components["schemas"]["DashboardCreateTileBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4390,68 +4357,68 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardDevicePageType;
+            type: DashboardDevicePreviewTileType;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardDevicePreviewTileType;
         };
         /**
          * Create Time Tile
          * @description Schema for creating a dashboard tile representing a clock.
          */
-        DashboardCreateTimeTile: components["schemas"]["DashboardCreateTileBase"] & {
+        DashboardCreateTimeTile: Omit<components["schemas"]["DashboardCreateTileBase"], "type"> & {
             /**
-             * @description Specifies the type of tile as a clock.
-             * @default clock
-             * @example clock
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            type: "clock";
+            type: DashboardTimeTileType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageTimeTileType;
+            type: DashboardTimeTileType;
         };
         /**
          * Create Day Weather Tile
          * @description Schema for creating a dashboard tile representing day weather.
          */
-        DashboardCreateDayWeatherTile: components["schemas"]["DashboardCreateTileBase"] & {
+        DashboardCreateDayWeatherTile: Omit<components["schemas"]["DashboardCreateTileBase"], "type"> & {
             /**
-             * @description Specifies the type of tile as a day weather tile.
-             * @default weather-day
-             * @example weather-day
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            type: "weather-day";
+            type: DashboardDayWeatherTileType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDayWeatherTileType;
+            type: DashboardDayWeatherTileType;
         };
         /**
          * Create Forecast Weather Tile
          * @description Schema for creating a dashboard tile representing weather forecast.
          */
-        DashboardCreateForecastWeatherTile: components["schemas"]["DashboardCreateTileBase"] & {
+        DashboardCreateForecastWeatherTile: Omit<components["schemas"]["DashboardCreateTileBase"], "type"> & {
             /**
-             * @description Specifies the type of tile as a weather forecast tile.
-             * @default weather-forecast
-             * @example weather-forecast
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            type: "weather-forecast";
+            type: DashboardForecastWeatherTileType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageForecastWeatherTileType;
+            type: DashboardForecastWeatherTileType;
         };
         /**
          * Create Data Source
-         * @description Base schema for creating a data source used in a dashboard tile.
+         * @description Base schema for creating a data source.
          */
         DashboardCreateDataSourceBase: {
             /**
@@ -4460,19 +4427,14 @@ export interface components {
              * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
              */
             id?: string;
+            /** @description Discriminator for the data source type */
+            type: string;
         };
         /**
          * Create Device Channel Data Source
          * @description Schema for creating a data source linked to a device channel and property.
          */
-        DashboardCreateDeviceChannelDataSource: components["schemas"]["DashboardCreateDataSourceBase"] & {
-            /**
-             * @description Specifies the type of data source as linked to a device channel.
-             * @default device-channel
-             * @example device-channel
-             * @constant
-             */
-            type: "device-channel";
+        DashboardCreateDeviceChannelDataSource: Omit<components["schemas"]["DashboardCreateDataSourceBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4501,13 +4463,15 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDeviceChannelDataSourceType;
+            type: DashboardDeviceChannelDataSourceType;
         };
         /**
          * Update Page
          * @description Base schema for updating a dashboard page.
          */
         DashboardUpdatePageBase: {
+            /** @description Discriminator for the page type */
+            type: string;
             /**
              * @description The title of the page.
              * @example My Updated Dashboard
@@ -4529,14 +4493,12 @@ export interface components {
          * Update Cards Page
          * @description Schema for updating a cards page in the dashboard.
          */
-        DashboardUpdateCardsPage: components["schemas"]["DashboardUpdatePageBase"] & {
+        DashboardUpdateCardsPage: Omit<components["schemas"]["DashboardUpdatePageBase"], "type"> & {
             /**
-             * @description Indicates that this is a cards dashboard page.
-             * @default cards
-             * @example cards
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            type: "cards";
+            type: DashboardCardsPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4548,14 +4510,12 @@ export interface components {
          * Update Tiles Page
          * @description Schema for updating a tiles page in the dashboard.
          */
-        DashboardUpdateTilesPage: components["schemas"]["DashboardUpdatePageBase"] & {
+        DashboardUpdateTilesPage: Omit<components["schemas"]["DashboardUpdatePageBase"], "type"> & {
             /**
-             * @description Indicates that this is a tiles dashboard page.
-             * @default tiles
-             * @example tiles
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            type: "tiles";
+            type: DashboardTilesPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4567,14 +4527,7 @@ export interface components {
          * Update Device Page
          * @description Schema for updating a device page in the dashboard.
          */
-        DashboardUpdateDevicePage: components["schemas"]["DashboardUpdatePageBase"] & {
-            /**
-             * @description Indicates that this is a tiles dashboard page.
-             * @default device
-             * @example device
-             * @constant
-             */
-            type: "device";
+        DashboardUpdateDeviceDetailPage: Omit<components["schemas"]["DashboardUpdatePageBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4586,7 +4539,13 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardDevicePageType;
+            type: DashboardDeviceDetailPageType;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardDeviceDetailPageType;
         };
         /**
          * Update Card
@@ -4616,6 +4575,8 @@ export interface components {
          * @description Base schema for updating a tile in the dashboard.
          */
         DashboardUpdateTileBase: {
+            /** @description Discriminator for the tile type */
+            type: string;
             /**
              * Format: int32
              * @description The row position of the tile in the grid.
@@ -4645,14 +4606,7 @@ export interface components {
          * Update Device Tile
          * @description Schema for updating a device tile in the dashboard.
          */
-        DashboardUpdateDeviceTile: components["schemas"]["DashboardUpdateTileBase"] & {
-            /**
-             * @description Indicates that this is a device-specific dashboard tile.
-             * @default device
-             * @example device
-             * @constant
-             */
-            type: "device";
+        DashboardUpdateDevicePreviewTile: Omit<components["schemas"]["DashboardUpdateTileBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4669,64 +4623,64 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardDevicePageType;
+            type: DashboardDevicePreviewTileType;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardDevicePreviewTileType;
         };
         /**
          * Update Time Tile
          * @description Schema for updating a time tile (clock) in the dashboard.
          */
-        DashboardUpdateTimeTile: components["schemas"]["DashboardUpdateTileBase"] & {
+        DashboardUpdateTimeTile: Omit<components["schemas"]["DashboardUpdateTileBase"], "type"> & {
             /**
-             * @description Specifies the type of tile as a clock.
-             * @default clock
-             * @example clock
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            type: "clock";
+            type: DashboardTimeTileType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageTimeTileType;
+            type: DashboardTimeTileType;
         };
         /**
          * Update Day Weather Tile
          * @description Schema for updating a day weather tile in the dashboard.
          */
-        DashboardUpdateDayWeatherTile: components["schemas"]["DashboardUpdateTileBase"] & {
+        DashboardUpdateDayWeatherTile: Omit<components["schemas"]["DashboardUpdateTileBase"], "type"> & {
             /**
-             * @description Specifies the type of tile as a day weather tile.
-             * @default weather-day
-             * @example weather-day
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            type: "weather-day";
+            type: DashboardDayWeatherTileType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDayWeatherTileType;
+            type: DashboardDayWeatherTileType;
         };
         /**
          * Update Forecast Weather Tile
          * @description Schema for updating a forecast weather tile in the dashboard.
          */
-        DashboardUpdateForecastWeatherTile: components["schemas"]["DashboardUpdateTileBase"] & {
+        DashboardUpdateForecastWeatherTile: Omit<components["schemas"]["DashboardUpdateTileBase"], "type"> & {
             /**
-             * @description Specifies the type of tile as a weather forecast tile.
-             * @default weather-forecast
-             * @example weather-forecast
-             * @constant
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            type: "weather-forecast";
+            type: DashboardForecastWeatherTileType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageForecastWeatherTileType;
+            type: DashboardForecastWeatherTileType;
         };
         /**
          * Update Data Source Base
@@ -4734,24 +4688,16 @@ export interface components {
          */
         DashboardUpdateDataSourceBase: {
             /**
-             * Format: uuid
-             * @description The unique identifier of the associated tile.
-             * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
+             * @description Specifies the type of data source.
+             * @example device-channel
              */
-            tile?: string;
+            type: string;
         };
         /**
          * Update Device Channel Data Source
          * @description Schema for updating a device channel data source in the dashboard.
          */
-        DashboardUpdateDeviceChannelDataSource: components["schemas"]["DashboardUpdateDataSourceBase"] & {
-            /**
-             * @description Specifies the type of data source as linked to a device channel.
-             * @default device-channel
-             * @example device-channel
-             * @constant
-             */
-            type: "device-channel";
+        DashboardUpdateDeviceChannelDataSource: Omit<components["schemas"]["DashboardUpdateDataSourceBase"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4780,14 +4726,20 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: DashboardPageDeviceChannelDataSourceType;
+            type: DashboardDeviceChannelDataSourceType;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: DashboardDeviceChannelDataSourceType;
         };
         /**
          * Create Page Request
          * @description Request schema for creating new page.
          */
         DashboardReqCreatePage: {
-            data: components["schemas"]["DashboardCreateCardsPage"] | components["schemas"]["DashboardCreateTilesPage"] | components["schemas"]["DashboardCreateDevicePage"];
+            data: components["schemas"]["DashboardCreateCardsPage"] | components["schemas"]["DashboardCreateTilesPage"] | components["schemas"]["DashboardCreateDeviceDetailPage"];
         };
         /**
          * Create Page Card Request
@@ -4801,34 +4753,20 @@ export interface components {
          * @description Request schema for creating new page tile.
          */
         DashboardReqCreatePageTile: {
-            data: components["schemas"]["DashboardCreateDeviceTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"];
+            data: components["schemas"]["DashboardCreateDevicePreviewTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"];
         };
         /**
          * Create Card Tile Request
          * @description Request schema for creating new card tile.
          */
         DashboardReqCreateCardTile: {
-            data: components["schemas"]["DashboardCreateDeviceTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"];
+            data: components["schemas"]["DashboardCreateDevicePreviewTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"];
         };
         /**
-         * Create Page Data Source Request
-         * @description Request schema for creating new page data source.
+         * Create Data Source Request
+         * @description Request schema for creating new data source.
          */
-        DashboardReqCreatePageDataSource: {
-            data: components["schemas"]["DashboardCreateDeviceChannelDataSource"];
-        };
-        /**
-         * Create Card Data Source Request
-         * @description Request schema for creating new card data source.
-         */
-        DashboardReqCreateCardDataSource: {
-            data: components["schemas"]["DashboardCreateDeviceChannelDataSource"];
-        };
-        /**
-         * Create Tile Data Source Request
-         * @description Request schema for creating new tile data source.
-         */
-        DashboardReqCreateTileDataSource: {
+        DashboardReqCreateDataSource: {
             data: components["schemas"]["DashboardCreateDeviceChannelDataSource"];
         };
         /**
@@ -4836,7 +4774,7 @@ export interface components {
          * @description Request schema for updating an existing page.
          */
         DashboardReqUpdatePage: {
-            data: components["schemas"]["DashboardUpdateCardsPage"] | components["schemas"]["DashboardUpdateTilesPage"] | components["schemas"]["DashboardUpdateDevicePage"];
+            data: components["schemas"]["DashboardUpdateCardsPage"] | components["schemas"]["DashboardUpdateTilesPage"] | components["schemas"]["DashboardUpdateDeviceDetailPage"];
         };
         /**
          * Update Card Request
@@ -4850,7 +4788,7 @@ export interface components {
          * @description Request schema for updating an existing tile.
          */
         DashboardReqUpdateTile: {
-            data: components["schemas"]["DashboardUpdateDeviceTile"] | components["schemas"]["DashboardUpdateTimeTile"] | components["schemas"]["DashboardUpdateDayWeatherTile"] | components["schemas"]["DashboardUpdateForecastWeatherTile"];
+            data: components["schemas"]["DashboardUpdateDevicePreviewTile"] | components["schemas"]["DashboardUpdateTimeTile"] | components["schemas"]["DashboardUpdateDayWeatherTile"] | components["schemas"]["DashboardUpdateForecastWeatherTile"];
         };
         /**
          * Update Data Source Request
@@ -4893,7 +4831,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardCardsPage"] | components["schemas"]["DashboardTilesPage"] | components["schemas"]["DashboardDevicePage"];
+            data: components["schemas"]["DashboardCardsPage"] | components["schemas"]["DashboardTilesPage"] | components["schemas"]["DashboardDeviceDetailPage"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -4931,7 +4869,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: (components["schemas"]["DashboardCardsPage"] | components["schemas"]["DashboardTilesPage"] | components["schemas"]["DashboardDevicePage"])[];
+            data: (components["schemas"]["DashboardCardsPage"] | components["schemas"]["DashboardTilesPage"] | components["schemas"]["DashboardDeviceDetailPage"])[];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -5045,7 +4983,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardCardDeviceTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"];
+            data: components["schemas"]["DashboardCardDevicePreviewTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -5083,7 +5021,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: (components["schemas"]["DashboardCardDeviceTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"])[];
+            data: (components["schemas"]["DashboardCardDevicePreviewTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"])[];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -5273,7 +5211,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardPageDeviceTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"];
+            data: components["schemas"]["DashboardPageDevicePreviewTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -5311,7 +5249,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: (components["schemas"]["DashboardPageDeviceTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"])[];
+            data: (components["schemas"]["DashboardPageDevicePreviewTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"])[];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -6619,12 +6557,12 @@ export type SchemaDevicesThirdPartyErrorCode = components['schemas']['DevicesThi
 export type SchemaDashboardPageBase = components['schemas']['DashboardPageBase'];
 export type SchemaDashboardCardsPage = components['schemas']['DashboardCardsPage'];
 export type SchemaDashboardTilesPage = components['schemas']['DashboardTilesPage'];
-export type SchemaDashboardDevicePage = components['schemas']['DashboardDevicePage'];
+export type SchemaDashboardDeviceDetailPage = components['schemas']['DashboardDeviceDetailPage'];
 export type SchemaDashboardCard = components['schemas']['DashboardCard'];
 export type SchemaDashboardTileBase = components['schemas']['DashboardTileBase'];
-export type SchemaDashboardDeviceTile = components['schemas']['DashboardDeviceTile'];
-export type SchemaDashboardPageDeviceTile = components['schemas']['DashboardPageDeviceTile'];
-export type SchemaDashboardCardDeviceTile = components['schemas']['DashboardCardDeviceTile'];
+export type SchemaDashboardDevicePreviewTile = components['schemas']['DashboardDevicePreviewTile'];
+export type SchemaDashboardPageDevicePreviewTile = components['schemas']['DashboardPageDevicePreviewTile'];
+export type SchemaDashboardCardDevicePreviewTile = components['schemas']['DashboardCardDevicePreviewTile'];
 export type SchemaDashboardTimeTile = components['schemas']['DashboardTimeTile'];
 export type SchemaDashboardPageTimeTile = components['schemas']['DashboardPageTimeTile'];
 export type SchemaDashboardCardTimeTile = components['schemas']['DashboardCardTimeTile'];
@@ -6642,10 +6580,10 @@ export type SchemaDashboardTileDeviceChannelDataSource = components['schemas']['
 export type SchemaDashboardCreatePageBase = components['schemas']['DashboardCreatePageBase'];
 export type SchemaDashboardCreateCardsPage = components['schemas']['DashboardCreateCardsPage'];
 export type SchemaDashboardCreateTilesPage = components['schemas']['DashboardCreateTilesPage'];
-export type SchemaDashboardCreateDevicePage = components['schemas']['DashboardCreateDevicePage'];
+export type SchemaDashboardCreateDeviceDetailPage = components['schemas']['DashboardCreateDeviceDetailPage'];
 export type SchemaDashboardCreateCard = components['schemas']['DashboardCreateCard'];
 export type SchemaDashboardCreateTileBase = components['schemas']['DashboardCreateTileBase'];
-export type SchemaDashboardCreateDeviceTile = components['schemas']['DashboardCreateDeviceTile'];
+export type SchemaDashboardCreateDevicePreviewTile = components['schemas']['DashboardCreateDevicePreviewTile'];
 export type SchemaDashboardCreateTimeTile = components['schemas']['DashboardCreateTimeTile'];
 export type SchemaDashboardCreateDayWeatherTile = components['schemas']['DashboardCreateDayWeatherTile'];
 export type SchemaDashboardCreateForecastWeatherTile = components['schemas']['DashboardCreateForecastWeatherTile'];
@@ -6654,10 +6592,10 @@ export type SchemaDashboardCreateDeviceChannelDataSource = components['schemas']
 export type SchemaDashboardUpdatePageBase = components['schemas']['DashboardUpdatePageBase'];
 export type SchemaDashboardUpdateCardsPage = components['schemas']['DashboardUpdateCardsPage'];
 export type SchemaDashboardUpdateTilesPage = components['schemas']['DashboardUpdateTilesPage'];
-export type SchemaDashboardUpdateDevicePage = components['schemas']['DashboardUpdateDevicePage'];
+export type SchemaDashboardUpdateDeviceDetailPage = components['schemas']['DashboardUpdateDeviceDetailPage'];
 export type SchemaDashboardUpdateCard = components['schemas']['DashboardUpdateCard'];
 export type SchemaDashboardUpdateTileBase = components['schemas']['DashboardUpdateTileBase'];
-export type SchemaDashboardUpdateDeviceTile = components['schemas']['DashboardUpdateDeviceTile'];
+export type SchemaDashboardUpdateDevicePreviewTile = components['schemas']['DashboardUpdateDevicePreviewTile'];
 export type SchemaDashboardUpdateTimeTile = components['schemas']['DashboardUpdateTimeTile'];
 export type SchemaDashboardUpdateDayWeatherTile = components['schemas']['DashboardUpdateDayWeatherTile'];
 export type SchemaDashboardUpdateForecastWeatherTile = components['schemas']['DashboardUpdateForecastWeatherTile'];
@@ -6667,9 +6605,7 @@ export type SchemaDashboardReqCreatePage = components['schemas']['DashboardReqCr
 export type SchemaDashboardReqCreatePageCard = components['schemas']['DashboardReqCreatePageCard'];
 export type SchemaDashboardReqCreatePageTile = components['schemas']['DashboardReqCreatePageTile'];
 export type SchemaDashboardReqCreateCardTile = components['schemas']['DashboardReqCreateCardTile'];
-export type SchemaDashboardReqCreatePageDataSource = components['schemas']['DashboardReqCreatePageDataSource'];
-export type SchemaDashboardReqCreateCardDataSource = components['schemas']['DashboardReqCreateCardDataSource'];
-export type SchemaDashboardReqCreateTileDataSource = components['schemas']['DashboardReqCreateTileDataSource'];
+export type SchemaDashboardReqCreateDataSource = components['schemas']['DashboardReqCreateDataSource'];
 export type SchemaDashboardReqUpdatePage = components['schemas']['DashboardReqUpdatePage'];
 export type SchemaDashboardReqUpdateCard = components['schemas']['DashboardReqUpdateCard'];
 export type SchemaDashboardReqUpdateTile = components['schemas']['DashboardReqUpdateTile'];
@@ -8463,7 +8399,7 @@ export interface operations {
         /** @description The payload schema used for creating a new page data source. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DashboardReqCreatePageDataSource"];
+                "application/json": components["schemas"]["DashboardReqCreateDataSource"];
             };
         };
         responses: {
@@ -8813,7 +8749,7 @@ export interface operations {
         /** @description The payload schema used for creating a new tile data source. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DashboardReqCreateTileDataSource"];
+                "application/json": components["schemas"]["DashboardReqCreateDataSource"];
             };
         };
         responses: {
@@ -9383,7 +9319,7 @@ export interface operations {
         /** @description The payload schema used for creating a new card data source. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DashboardReqCreateTileDataSource"];
+                "application/json": components["schemas"]["DashboardReqCreateDataSource"];
             };
         };
         responses: {
@@ -9593,7 +9529,7 @@ export interface operations {
         /** @description The payload schema used for creating a new card data source. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DashboardReqCreateCardDataSource"];
+                "application/json": components["schemas"]["DashboardReqCreateDataSource"];
             };
         };
         responses: {
@@ -10253,18 +10189,21 @@ export enum DashboardCardsPageType {
 export enum DashboardTilesPageType {
     tiles = "tiles"
 }
-export enum DashboardDevicePageType {
-    device = "device"
+export enum DashboardDeviceDetailPageType {
+    device_detail = "device-detail"
 }
-export enum DashboardPageTimeTileType {
+export enum DashboardDevicePreviewTileType {
+    device_preview = "device-preview"
+}
+export enum DashboardTimeTileType {
     clock = "clock"
 }
-export enum DashboardPageDayWeatherTileType {
+export enum DashboardDayWeatherTileType {
     weather_day = "weather-day"
 }
-export enum DashboardPageForecastWeatherTileType {
+export enum DashboardForecastWeatherTileType {
     weather_forecast = "weather-forecast"
 }
-export enum DashboardPageDeviceChannelDataSourceType {
+export enum DashboardDeviceChannelDataSourceType {
     device_channel = "device-channel"
 }
