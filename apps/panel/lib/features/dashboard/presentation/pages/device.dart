@@ -12,7 +12,7 @@ import 'package:provider/provider.dart';
 class DevicePage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final DevicePageModel page;
+  final DeviceDetailPageModel page;
 
   DevicePage({super.key, required this.page});
 

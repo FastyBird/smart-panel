@@ -24,6 +24,9 @@ mixin _$DashboardDataSourceBase {
   /// A unique identifier for the data source.
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the data source type
+  String get type => throw _privateConstructorUsedError;
+
   /// The timestamp when the data source was created.
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -50,6 +53,7 @@ abstract class $DashboardDataSourceBaseCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt});
 }
@@ -71,6 +75,7 @@ class _$DashboardDataSourceBaseCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
   }) {
@@ -78,6 +83,10 @@ class _$DashboardDataSourceBaseCopyWithImpl<$Res,
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       createdAt: null == createdAt
           ? _value.createdAt
@@ -102,6 +111,7 @@ abstract class _$$DashboardDataSourceBaseImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt});
 }
@@ -122,6 +132,7 @@ class __$$DashboardDataSourceBaseImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
   }) {
@@ -129,6 +140,10 @@ class __$$DashboardDataSourceBaseImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       createdAt: null == createdAt
           ? _value.createdAt
@@ -147,6 +162,7 @@ class __$$DashboardDataSourceBaseImplCopyWithImpl<$Res>
 class _$DashboardDataSourceBaseImpl implements _DashboardDataSourceBase {
   const _$DashboardDataSourceBaseImpl(
       {required this.id,
+      required this.type,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt});
 
@@ -156,6 +172,10 @@ class _$DashboardDataSourceBaseImpl implements _DashboardDataSourceBase {
   /// A unique identifier for the data source.
   @override
   final String id;
+
+  /// Discriminator for the data source type
+  @override
+  final String type;
 
   /// The timestamp when the data source was created.
   @override
@@ -169,7 +189,7 @@ class _$DashboardDataSourceBaseImpl implements _DashboardDataSourceBase {
 
   @override
   String toString() {
-    return 'DashboardDataSourceBase(id: $id, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'DashboardDataSourceBase(id: $id, type: $type, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -178,6 +198,7 @@ class _$DashboardDataSourceBaseImpl implements _DashboardDataSourceBase {
         (other.runtimeType == runtimeType &&
             other is _$DashboardDataSourceBaseImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -186,7 +207,7 @@ class _$DashboardDataSourceBaseImpl implements _DashboardDataSourceBase {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, createdAt, updatedAt);
+  int get hashCode => Object.hash(runtimeType, id, type, createdAt, updatedAt);
 
   /// Create a copy of DashboardDataSourceBase
   /// with the given fields replaced by the non-null parameter values.
@@ -208,6 +229,7 @@ class _$DashboardDataSourceBaseImpl implements _DashboardDataSourceBase {
 abstract class _DashboardDataSourceBase implements DashboardDataSourceBase {
   const factory _DashboardDataSourceBase(
           {required final String id,
+          required final String type,
           @JsonKey(name: 'created_at') required final DateTime createdAt,
           @JsonKey(name: 'updated_at') required final DateTime? updatedAt}) =
       _$DashboardDataSourceBaseImpl;
@@ -218,6 +240,10 @@ abstract class _DashboardDataSourceBase implements DashboardDataSourceBase {
   /// A unique identifier for the data source.
   @override
   String get id;
+
+  /// Discriminator for the data source type
+  @override
+  String get type;
 
   /// The timestamp when the data source was created.
   @override

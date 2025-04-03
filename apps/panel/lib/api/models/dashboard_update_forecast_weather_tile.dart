@@ -11,6 +11,9 @@ part 'dashboard_update_forecast_weather_tile.g.dart';
 @Freezed()
 class DashboardUpdateForecastWeatherTile with _$DashboardUpdateForecastWeatherTile {
   const factory DashboardUpdateForecastWeatherTile({
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -24,10 +27,6 @@ class DashboardUpdateForecastWeatherTile with _$DashboardUpdateForecastWeatherTi
     /// The number of columns the tile spans in the grid.
     @JsonKey(name: 'col_span')
     required int colSpan,
-
-    /// Specifies the type of tile as a weather forecast tile.
-    @Default('weather-forecast')
-    String type,
   }) = _DashboardUpdateForecastWeatherTile;
   
   factory DashboardUpdateForecastWeatherTile.fromJson(Map<String, Object?> json) => _$DashboardUpdateForecastWeatherTileFromJson(json);

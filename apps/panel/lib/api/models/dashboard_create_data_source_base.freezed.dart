@@ -24,6 +24,9 @@ mixin _$DashboardCreateDataSourceBase {
   /// Unique identifier for the data source (optional during creation).
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the data source type
+  String get type => throw _privateConstructorUsedError;
+
   /// Serializes this DashboardCreateDataSourceBase to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -42,7 +45,7 @@ abstract class $DashboardCreateDataSourceBaseCopyWith<$Res> {
       _$DashboardCreateDataSourceBaseCopyWithImpl<$Res,
           DashboardCreateDataSourceBase>;
   @useResult
-  $Res call({String id});
+  $Res call({String id, String type});
 }
 
 /// @nodoc
@@ -62,11 +65,16 @@ class _$DashboardCreateDataSourceBaseCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
     ) as $Val);
   }
@@ -81,7 +89,7 @@ abstract class _$$DashboardCreateDataSourceBaseImplCopyWith<$Res>
       __$$DashboardCreateDataSourceBaseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String id});
+  $Res call({String id, String type});
 }
 
 /// @nodoc
@@ -100,11 +108,16 @@ class __$$DashboardCreateDataSourceBaseImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
   }) {
     return _then(_$DashboardCreateDataSourceBaseImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -114,7 +127,8 @@ class __$$DashboardCreateDataSourceBaseImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$DashboardCreateDataSourceBaseImpl
     implements _DashboardCreateDataSourceBase {
-  const _$DashboardCreateDataSourceBaseImpl({required this.id});
+  const _$DashboardCreateDataSourceBaseImpl(
+      {required this.id, required this.type});
 
   factory _$DashboardCreateDataSourceBaseImpl.fromJson(
           Map<String, dynamic> json) =>
@@ -124,9 +138,13 @@ class _$DashboardCreateDataSourceBaseImpl
   @override
   final String id;
 
+  /// Discriminator for the data source type
+  @override
+  final String type;
+
   @override
   String toString() {
-    return 'DashboardCreateDataSourceBase(id: $id)';
+    return 'DashboardCreateDataSourceBase(id: $id, type: $type)';
   }
 
   @override
@@ -134,12 +152,13 @@ class _$DashboardCreateDataSourceBaseImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardCreateDataSourceBaseImpl &&
-            (identical(other.id, id) || other.id == id));
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id);
+  int get hashCode => Object.hash(runtimeType, id, type);
 
   /// Create a copy of DashboardCreateDataSourceBase
   /// with the given fields replaced by the non-null parameter values.
@@ -161,8 +180,9 @@ class _$DashboardCreateDataSourceBaseImpl
 
 abstract class _DashboardCreateDataSourceBase
     implements DashboardCreateDataSourceBase {
-  const factory _DashboardCreateDataSourceBase({required final String id}) =
-      _$DashboardCreateDataSourceBaseImpl;
+  const factory _DashboardCreateDataSourceBase(
+      {required final String id,
+      required final String type}) = _$DashboardCreateDataSourceBaseImpl;
 
   factory _DashboardCreateDataSourceBase.fromJson(Map<String, dynamic> json) =
       _$DashboardCreateDataSourceBaseImpl.fromJson;
@@ -170,6 +190,10 @@ abstract class _DashboardCreateDataSourceBase
   /// Unique identifier for the data source (optional during creation).
   @override
   String get id;
+
+  /// Discriminator for the data source type
+  @override
+  String get type;
 
   /// Create a copy of DashboardCreateDataSourceBase
   /// with the given fields replaced by the non-null parameter values.

@@ -5,11 +5,11 @@ import type { components } from '../../../openapi';
 
 import { CreateDeviceChannelDataSourceDto } from './create-data-source.dto';
 
-type ReqCreateTileDataSource = components['schemas']['DashboardReqCreateTileDataSource'];
+type ReqCreateDataSource = components['schemas']['DashboardReqCreateDataSource'];
 
 export class CreateTileDeviceChannelDataSourceDto extends CreateDeviceChannelDataSourceDto {}
 
-export class ReqCreateTileDataSourceDto implements ReqCreateTileDataSource {
+export class ReqCreateTileDataSourceDto implements ReqCreateDataSource {
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateTileDeviceChannelDataSourceDto)

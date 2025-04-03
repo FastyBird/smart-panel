@@ -11,8 +11,8 @@ part 'dashboard_req_update_data_source_data_union.g.dart';
 sealed class DashboardReqUpdateDataSourceDataUnion with _$DashboardReqUpdateDataSourceDataUnion {
   @FreezedUnionValue('device-channel')
   const factory DashboardReqUpdateDataSourceDataUnion.deviceChannel({
-    /// The unique identifier of the associated tile.
-    required String tile,
+    /// Specifies the type of data source.
+    required String type,
 
     /// The unique identifier of the associated device.
     required String device,
@@ -25,10 +25,6 @@ sealed class DashboardReqUpdateDataSourceDataUnion with _$DashboardReqUpdateData
 
     /// The icon representing the data source.
     String? icon,
-
-    /// Specifies the type of data source as linked to a device channel.
-    @Default('device-channel')
-    String type,
   }) = DashboardReqUpdateDataSourceDataUnionDeviceChannel;
 
   

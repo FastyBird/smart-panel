@@ -21,6 +21,9 @@ DashboardUpdatePageBase _$DashboardUpdatePageBaseFromJson(
 
 /// @nodoc
 mixin _$DashboardUpdatePageBase {
+  /// Discriminator for the page type
+  String get type => throw _privateConstructorUsedError;
+
   /// The title of the page.
   String get title => throw _privateConstructorUsedError;
 
@@ -46,7 +49,7 @@ abstract class $DashboardUpdatePageBaseCopyWith<$Res> {
           $Res Function(DashboardUpdatePageBase) then) =
       _$DashboardUpdatePageBaseCopyWithImpl<$Res, DashboardUpdatePageBase>;
   @useResult
-  $Res call({String title, int order, String? icon});
+  $Res call({String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -65,11 +68,16 @@ class _$DashboardUpdatePageBaseCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? title = null,
     Object? order = null,
     Object? icon = freezed,
   }) {
     return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -95,7 +103,7 @@ abstract class _$$DashboardUpdatePageBaseImplCopyWith<$Res>
       __$$DashboardUpdatePageBaseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String title, int order, String? icon});
+  $Res call({String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -113,11 +121,16 @@ class __$$DashboardUpdatePageBaseImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? title = null,
     Object? order = null,
     Object? icon = freezed,
   }) {
     return _then(_$DashboardUpdatePageBaseImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -138,10 +151,17 @@ class __$$DashboardUpdatePageBaseImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$DashboardUpdatePageBaseImpl implements _DashboardUpdatePageBase {
   const _$DashboardUpdatePageBaseImpl(
-      {required this.title, required this.order, this.icon});
+      {required this.type,
+      required this.title,
+      required this.order,
+      this.icon});
 
   factory _$DashboardUpdatePageBaseImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardUpdatePageBaseImplFromJson(json);
+
+  /// Discriminator for the page type
+  @override
+  final String type;
 
   /// The title of the page.
   @override
@@ -157,7 +177,7 @@ class _$DashboardUpdatePageBaseImpl implements _DashboardUpdatePageBase {
 
   @override
   String toString() {
-    return 'DashboardUpdatePageBase(title: $title, order: $order, icon: $icon)';
+    return 'DashboardUpdatePageBase(type: $type, title: $title, order: $order, icon: $icon)';
   }
 
   @override
@@ -165,6 +185,7 @@ class _$DashboardUpdatePageBaseImpl implements _DashboardUpdatePageBase {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardUpdatePageBaseImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
             (identical(other.icon, icon) || other.icon == icon));
@@ -172,7 +193,7 @@ class _$DashboardUpdatePageBaseImpl implements _DashboardUpdatePageBase {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, title, order, icon);
+  int get hashCode => Object.hash(runtimeType, type, title, order, icon);
 
   /// Create a copy of DashboardUpdatePageBase
   /// with the given fields replaced by the non-null parameter values.
@@ -193,12 +214,17 @@ class _$DashboardUpdatePageBaseImpl implements _DashboardUpdatePageBase {
 
 abstract class _DashboardUpdatePageBase implements DashboardUpdatePageBase {
   const factory _DashboardUpdatePageBase(
-      {required final String title,
+      {required final String type,
+      required final String title,
       required final int order,
       final String? icon}) = _$DashboardUpdatePageBaseImpl;
 
   factory _DashboardUpdatePageBase.fromJson(Map<String, dynamic> json) =
       _$DashboardUpdatePageBaseImpl.fromJson;
+
+  /// Discriminator for the page type
+  @override
+  String get type;
 
   /// The title of the page.
   @override

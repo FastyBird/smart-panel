@@ -10,9 +10,9 @@ _$DashboardResPageDataUnionCardsImpl
     _$$DashboardResPageDataUnionCardsImplFromJson(Map<String, dynamic> json) =>
         _$DashboardResPageDataUnionCardsImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           title: json['title'] as String,
           icon: json['icon'] as String?,
-          order: (json['order'] as num).toInt(),
           createdAt: DateTime.parse(json['created_at'] as String),
           updatedAt: json['updated_at'] == null
               ? null
@@ -24,30 +24,30 @@ _$DashboardResPageDataUnionCardsImpl
               .map((e) => DashboardCardsPageDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'cards',
+          order: (json['order'] as num?)?.toInt() ?? 0,
         );
 
 Map<String, dynamic> _$$DashboardResPageDataUnionCardsImplToJson(
         _$DashboardResPageDataUnionCardsImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'title': instance.title,
       'icon': instance.icon,
-      'order': instance.order,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
       'cards': instance.cards,
       'data_source': instance.dataSource,
-      'type': instance.type,
+      'order': instance.order,
     };
 
 _$DashboardResPageDataUnionTilesImpl
     _$$DashboardResPageDataUnionTilesImplFromJson(Map<String, dynamic> json) =>
         _$DashboardResPageDataUnionTilesImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           title: json['title'] as String,
           icon: json['icon'] as String?,
-          order: (json['order'] as num).toInt(),
           createdAt: DateTime.parse(json['created_at'] as String),
           updatedAt: json['updated_at'] == null
               ? null
@@ -60,47 +60,48 @@ _$DashboardResPageDataUnionTilesImpl
               .map((e) => DashboardTilesPageDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'tiles',
+          order: (json['order'] as num?)?.toInt() ?? 0,
         );
 
 Map<String, dynamic> _$$DashboardResPageDataUnionTilesImplToJson(
         _$DashboardResPageDataUnionTilesImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'title': instance.title,
       'icon': instance.icon,
-      'order': instance.order,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
       'tiles': instance.tiles,
       'data_source': instance.dataSource,
-      'type': instance.type,
+      'order': instance.order,
     };
 
-_$DashboardResPageDataUnionDeviceImpl
-    _$$DashboardResPageDataUnionDeviceImplFromJson(Map<String, dynamic> json) =>
-        _$DashboardResPageDataUnionDeviceImpl(
+_$DashboardResPageDataUnionDeviceDetailImpl
+    _$$DashboardResPageDataUnionDeviceDetailImplFromJson(
+            Map<String, dynamic> json) =>
+        _$DashboardResPageDataUnionDeviceDetailImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           title: json['title'] as String,
           icon: json['icon'] as String?,
-          order: (json['order'] as num).toInt(),
           createdAt: DateTime.parse(json['created_at'] as String),
           updatedAt: json['updated_at'] == null
               ? null
               : DateTime.parse(json['updated_at'] as String),
           device: json['device'] as String,
-          type: json['type'] as String? ?? 'device',
+          order: (json['order'] as num?)?.toInt() ?? 0,
         );
 
-Map<String, dynamic> _$$DashboardResPageDataUnionDeviceImplToJson(
-        _$DashboardResPageDataUnionDeviceImpl instance) =>
+Map<String, dynamic> _$$DashboardResPageDataUnionDeviceDetailImplToJson(
+        _$DashboardResPageDataUnionDeviceDetailImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'title': instance.title,
       'icon': instance.icon,
-      'order': instance.order,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
       'device': instance.device,
-      'type': instance.type,
+      'order': instance.order,
     };

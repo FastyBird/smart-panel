@@ -11,6 +11,9 @@ part 'dashboard_update_time_tile.g.dart';
 @Freezed()
 class DashboardUpdateTimeTile with _$DashboardUpdateTimeTile {
   const factory DashboardUpdateTimeTile({
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -24,10 +27,6 @@ class DashboardUpdateTimeTile with _$DashboardUpdateTimeTile {
     /// The number of columns the tile spans in the grid.
     @JsonKey(name: 'col_span')
     required int colSpan,
-
-    /// Specifies the type of tile as a clock.
-    @Default('clock')
-    String type,
   }) = _DashboardUpdateTimeTile;
   
   factory DashboardUpdateTimeTile.fromJson(Map<String, Object?> json) => _$DashboardUpdateTimeTileFromJson(json);

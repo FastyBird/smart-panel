@@ -24,11 +24,19 @@ mixin _$DashboardCreateTileBase {
   /// Unique identifier for the dashboard tile (optional during creation).
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the tile type
+  String get type => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
   /// The column position of the tile in the grid.
   int get col => throw _privateConstructorUsedError;
+
+  /// A list of data sources used by the tile, typically for real-time updates.
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateTileBaseDataSourceUnion> get dataSource =>
+      throw _privateConstructorUsedError;
 
   /// The number of rows the tile spans in the grid.
   @JsonKey(name: 'row_span')
@@ -37,11 +45,6 @@ mixin _$DashboardCreateTileBase {
   /// The number of columns the tile spans in the grid.
   @JsonKey(name: 'col_span')
   int get colSpan => throw _privateConstructorUsedError;
-
-  /// A list of data sources used by the tile, typically for real-time updates.
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource =>
-      throw _privateConstructorUsedError;
 
   /// Serializes this DashboardCreateTileBase to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -61,12 +64,13 @@ abstract class $DashboardCreateTileBaseCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
-      @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
       @JsonKey(name: 'data_source')
-      List<DashboardCreateTileBaseDataSourceUnion> dataSource});
+      List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'row_span') int rowSpan,
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -86,16 +90,21 @@ class _$DashboardCreateTileBaseCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
+    Object? dataSource = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? dataSource = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -105,6 +114,10 @@ class _$DashboardCreateTileBaseCopyWithImpl<$Res,
           ? _value.col
           : col // ignore: cast_nullable_to_non_nullable
               as int,
+      dataSource: null == dataSource
+          ? _value.dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateTileBaseDataSourceUnion>,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -113,10 +126,6 @@ class _$DashboardCreateTileBaseCopyWithImpl<$Res,
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      dataSource: null == dataSource
-          ? _value.dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
     ) as $Val);
   }
 }
@@ -132,12 +141,13 @@ abstract class _$$DashboardCreateTileBaseImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
-      @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
       @JsonKey(name: 'data_source')
-      List<DashboardCreateTileBaseDataSourceUnion> dataSource});
+      List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'row_span') int rowSpan,
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -156,16 +166,21 @@ class __$$DashboardCreateTileBaseImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
+    Object? dataSource = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? dataSource = null,
   }) {
     return _then(_$DashboardCreateTileBaseImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -175,6 +190,10 @@ class __$$DashboardCreateTileBaseImplCopyWithImpl<$Res>
           ? _value.col
           : col // ignore: cast_nullable_to_non_nullable
               as int,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateTileBaseDataSourceUnion>,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -183,10 +202,6 @@ class __$$DashboardCreateTileBaseImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      dataSource: null == dataSource
-          ? _value._dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
     ));
   }
 }
@@ -196,12 +211,13 @@ class __$$DashboardCreateTileBaseImplCopyWithImpl<$Res>
 class _$DashboardCreateTileBaseImpl implements _DashboardCreateTileBase {
   const _$DashboardCreateTileBaseImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
-      @JsonKey(name: 'row_span') required this.rowSpan,
-      @JsonKey(name: 'col_span') required this.colSpan,
       @JsonKey(name: 'data_source')
-      required final List<DashboardCreateTileBaseDataSourceUnion> dataSource})
+      required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'row_span') this.rowSpan = 0,
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardCreateTileBaseImpl.fromJson(Map<String, dynamic> json) =>
@@ -211,6 +227,10 @@ class _$DashboardCreateTileBaseImpl implements _DashboardCreateTileBase {
   @override
   final String id;
 
+  /// Discriminator for the tile type
+  @override
+  final String type;
+
   /// The row position of the tile in the grid.
   @override
   final int row;
@@ -218,16 +238,6 @@ class _$DashboardCreateTileBaseImpl implements _DashboardCreateTileBase {
   /// The column position of the tile in the grid.
   @override
   final int col;
-
-  /// The number of rows the tile spans in the grid.
-  @override
-  @JsonKey(name: 'row_span')
-  final int rowSpan;
-
-  /// The number of columns the tile spans in the grid.
-  @override
-  @JsonKey(name: 'col_span')
-  final int colSpan;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   final List<DashboardCreateTileBaseDataSourceUnion> _dataSource;
@@ -241,9 +251,19 @@ class _$DashboardCreateTileBaseImpl implements _DashboardCreateTileBase {
     return EqualUnmodifiableListView(_dataSource);
   }
 
+  /// The number of rows the tile spans in the grid.
+  @override
+  @JsonKey(name: 'row_span')
+  final int rowSpan;
+
+  /// The number of columns the tile spans in the grid.
+  @override
+  @JsonKey(name: 'col_span')
+  final int colSpan;
+
   @override
   String toString() {
-    return 'DashboardCreateTileBase(id: $id, row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan, dataSource: $dataSource)';
+    return 'DashboardCreateTileBase(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -252,18 +272,19 @@ class _$DashboardCreateTileBaseImpl implements _DashboardCreateTileBase {
         (other.runtimeType == runtimeType &&
             other is _$DashboardCreateTileBaseImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
-            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             const DeepCollectionEquality()
-                .equals(other._dataSource, _dataSource));
+                .equals(other._dataSource, _dataSource) &&
+            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, row, col, rowSpan, colSpan,
-      const DeepCollectionEquality().hash(_dataSource));
+  int get hashCode => Object.hash(runtimeType, id, type, row, col,
+      const DeepCollectionEquality().hash(_dataSource), rowSpan, colSpan);
 
   /// Create a copy of DashboardCreateTileBase
   /// with the given fields replaced by the non-null parameter values.
@@ -285,13 +306,14 @@ class _$DashboardCreateTileBaseImpl implements _DashboardCreateTileBase {
 abstract class _DashboardCreateTileBase implements DashboardCreateTileBase {
   const factory _DashboardCreateTileBase(
       {required final String id,
+      required final String type,
       required final int row,
       required final int col,
-      @JsonKey(name: 'row_span') required final int rowSpan,
-      @JsonKey(name: 'col_span') required final int colSpan,
       @JsonKey(name: 'data_source')
-      required final List<DashboardCreateTileBaseDataSourceUnion>
-          dataSource}) = _$DashboardCreateTileBaseImpl;
+      required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'row_span') final int rowSpan,
+      @JsonKey(name: 'col_span')
+      final int colSpan}) = _$DashboardCreateTileBaseImpl;
 
   factory _DashboardCreateTileBase.fromJson(Map<String, dynamic> json) =
       _$DashboardCreateTileBaseImpl.fromJson;
@@ -300,6 +322,10 @@ abstract class _DashboardCreateTileBase implements DashboardCreateTileBase {
   @override
   String get id;
 
+  /// Discriminator for the tile type
+  @override
+  String get type;
+
   /// The row position of the tile in the grid.
   @override
   int get row;
@@ -307,6 +333,11 @@ abstract class _DashboardCreateTileBase implements DashboardCreateTileBase {
   /// The column position of the tile in the grid.
   @override
   int get col;
+
+  /// A list of data sources used by the tile, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
 
   /// The number of rows the tile spans in the grid.
   @override
@@ -317,11 +348,6 @@ abstract class _DashboardCreateTileBase implements DashboardCreateTileBase {
   @override
   @JsonKey(name: 'col_span')
   int get colSpan;
-
-  /// A list of data sources used by the tile, typically for real-time updates.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
 
   /// Create a copy of DashboardCreateTileBase
   /// with the given fields replaced by the non-null parameter values.

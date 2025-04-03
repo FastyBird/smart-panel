@@ -11,15 +11,14 @@ part 'dashboard_update_tiles_page.g.dart';
 @Freezed()
 class DashboardUpdateTilesPage with _$DashboardUpdateTilesPage {
   const factory DashboardUpdateTilesPage({
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the page.
     required String title,
 
     /// The display order of the page.
     required int order,
-
-    /// Indicates that this is a tiles dashboard page.
-    @Default('tiles')
-    String type,
 
     /// The icon associated with the page.
     String? icon,

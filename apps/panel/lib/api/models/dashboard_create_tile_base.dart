@@ -16,23 +16,28 @@ class DashboardCreateTileBase with _$DashboardCreateTileBase {
     /// Unique identifier for the dashboard tile (optional during creation).
     required String id,
 
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
     /// The column position of the tile in the grid.
     required int col,
 
-    /// The number of rows the tile spans in the grid.
-    @JsonKey(name: 'row_span')
-    required int rowSpan,
-
-    /// The number of columns the tile spans in the grid.
-    @JsonKey(name: 'col_span')
-    required int colSpan,
-
     /// A list of data sources used by the tile, typically for real-time updates.
     @JsonKey(name: 'data_source')
     required List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+
+    /// The number of rows the tile spans in the grid.
+    @JsonKey(name: 'row_span')
+    @Default(0)
+    int rowSpan,
+
+    /// The number of columns the tile spans in the grid.
+    @JsonKey(name: 'col_span')
+    @Default(0)
+    int colSpan,
   }) = _DashboardCreateTileBase;
   
   factory DashboardCreateTileBase.fromJson(Map<String, Object?> json) => _$DashboardCreateTileBaseFromJson(json);

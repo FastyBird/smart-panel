@@ -30,7 +30,7 @@ import {
 	CardEntity,
 	CardsPageEntity,
 	DeviceChannelDataSourceEntity,
-	DeviceTileEntity,
+	DevicePreviewTileEntity,
 } from '../entities/dashboard.entity';
 import { CardsService } from '../services/cards.service';
 import { DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
@@ -129,9 +129,9 @@ describe('PagesCardsTilesDataSourceController', () => {
 		updatedAt: new Date(),
 	};
 
-	const mockDeviceTile: DeviceTileEntity = {
+	const mockDeviceTile: DevicePreviewTileEntity = {
 		id: uuid().toString(),
-		type: 'device',
+		type: 'device-preview',
 		page: mockCardsPage.id,
 		card: mockCard.id,
 		device: null,

@@ -21,8 +21,8 @@ DashboardUpdateDataSourceBase _$DashboardUpdateDataSourceBaseFromJson(
 
 /// @nodoc
 mixin _$DashboardUpdateDataSourceBase {
-  /// The unique identifier of the associated tile.
-  String get tile => throw _privateConstructorUsedError;
+  /// Specifies the type of data source.
+  String get type => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardUpdateDataSourceBase to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -42,7 +42,7 @@ abstract class $DashboardUpdateDataSourceBaseCopyWith<$Res> {
       _$DashboardUpdateDataSourceBaseCopyWithImpl<$Res,
           DashboardUpdateDataSourceBase>;
   @useResult
-  $Res call({String tile});
+  $Res call({String type});
 }
 
 /// @nodoc
@@ -61,12 +61,12 @@ class _$DashboardUpdateDataSourceBaseCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? tile = null,
+    Object? type = null,
   }) {
     return _then(_value.copyWith(
-      tile: null == tile
-          ? _value.tile
-          : tile // ignore: cast_nullable_to_non_nullable
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
     ) as $Val);
   }
@@ -81,7 +81,7 @@ abstract class _$$DashboardUpdateDataSourceBaseImplCopyWith<$Res>
       __$$DashboardUpdateDataSourceBaseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String tile});
+  $Res call({String type});
 }
 
 /// @nodoc
@@ -99,12 +99,12 @@ class __$$DashboardUpdateDataSourceBaseImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? tile = null,
+    Object? type = null,
   }) {
     return _then(_$DashboardUpdateDataSourceBaseImpl(
-      tile: null == tile
-          ? _value.tile
-          : tile // ignore: cast_nullable_to_non_nullable
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -114,19 +114,19 @@ class __$$DashboardUpdateDataSourceBaseImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$DashboardUpdateDataSourceBaseImpl
     implements _DashboardUpdateDataSourceBase {
-  const _$DashboardUpdateDataSourceBaseImpl({required this.tile});
+  const _$DashboardUpdateDataSourceBaseImpl({required this.type});
 
   factory _$DashboardUpdateDataSourceBaseImpl.fromJson(
           Map<String, dynamic> json) =>
       _$$DashboardUpdateDataSourceBaseImplFromJson(json);
 
-  /// The unique identifier of the associated tile.
+  /// Specifies the type of data source.
   @override
-  final String tile;
+  final String type;
 
   @override
   String toString() {
-    return 'DashboardUpdateDataSourceBase(tile: $tile)';
+    return 'DashboardUpdateDataSourceBase(type: $type)';
   }
 
   @override
@@ -134,12 +134,12 @@ class _$DashboardUpdateDataSourceBaseImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardUpdateDataSourceBaseImpl &&
-            (identical(other.tile, tile) || other.tile == tile));
+            (identical(other.type, type) || other.type == type));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, tile);
+  int get hashCode => Object.hash(runtimeType, type);
 
   /// Create a copy of DashboardUpdateDataSourceBase
   /// with the given fields replaced by the non-null parameter values.
@@ -161,15 +161,15 @@ class _$DashboardUpdateDataSourceBaseImpl
 
 abstract class _DashboardUpdateDataSourceBase
     implements DashboardUpdateDataSourceBase {
-  const factory _DashboardUpdateDataSourceBase({required final String tile}) =
+  const factory _DashboardUpdateDataSourceBase({required final String type}) =
       _$DashboardUpdateDataSourceBaseImpl;
 
   factory _DashboardUpdateDataSourceBase.fromJson(Map<String, dynamic> json) =
       _$DashboardUpdateDataSourceBaseImpl.fromJson;
 
-  /// The unique identifier of the associated tile.
+  /// Specifies the type of data source.
   @override
-  String get tile;
+  String get type;
 
   /// Create a copy of DashboardUpdateDataSourceBase
   /// with the given fields replaced by the non-null parameter values.

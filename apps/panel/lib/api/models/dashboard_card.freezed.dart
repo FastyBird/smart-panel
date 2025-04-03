@@ -29,9 +29,6 @@ mixin _$DashboardCard {
   /// The icon representing the dashboard card.
   String? get icon => throw _privateConstructorUsedError;
 
-  /// Defines the position of the card relative to others on the dashboard page.
-  int get order => throw _privateConstructorUsedError;
-
   /// The unique identifier of the page this card belongs to.
   String get page => throw _privateConstructorUsedError;
 
@@ -50,6 +47,9 @@ mixin _$DashboardCard {
   /// The timestamp when the dashboard card was last updated.
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
+
+  /// Defines the position of the card relative to others on the dashboard page.
+  int get order => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardCard to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -71,13 +71,13 @@ abstract class $DashboardCardCopyWith<$Res> {
       {String id,
       String title,
       String? icon,
-      int order,
       String page,
       List<DashboardCardTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       List<DashboardCardDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt});
+      @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      int order});
 }
 
 /// @nodoc
@@ -98,12 +98,12 @@ class _$DashboardCardCopyWithImpl<$Res, $Val extends DashboardCard>
     Object? id = null,
     Object? title = null,
     Object? icon = freezed,
-    Object? order = null,
     Object? page = null,
     Object? tiles = null,
     Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? order = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -118,10 +118,6 @@ class _$DashboardCardCopyWithImpl<$Res, $Val extends DashboardCard>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       page: null == page
           ? _value.page
           : page // ignore: cast_nullable_to_non_nullable
@@ -142,6 +138,10 @@ class _$DashboardCardCopyWithImpl<$Res, $Val extends DashboardCard>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
     ) as $Val);
   }
 }
@@ -158,13 +158,13 @@ abstract class _$$DashboardCardImplCopyWith<$Res>
       {String id,
       String title,
       String? icon,
-      int order,
       String page,
       List<DashboardCardTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       List<DashboardCardDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt});
+      @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      int order});
 }
 
 /// @nodoc
@@ -183,12 +183,12 @@ class __$$DashboardCardImplCopyWithImpl<$Res>
     Object? id = null,
     Object? title = null,
     Object? icon = freezed,
-    Object? order = null,
     Object? page = null,
     Object? tiles = null,
     Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? order = null,
   }) {
     return _then(_$DashboardCardImpl(
       id: null == id
@@ -203,10 +203,6 @@ class __$$DashboardCardImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       page: null == page
           ? _value.page
           : page // ignore: cast_nullable_to_non_nullable
@@ -227,6 +223,10 @@ class __$$DashboardCardImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -238,13 +238,13 @@ class _$DashboardCardImpl implements _DashboardCard {
       {required this.id,
       required this.title,
       required this.icon,
-      required this.order,
       required this.page,
       required final List<DashboardCardTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       required final List<DashboardCardDataSourceUnion> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
-      @JsonKey(name: 'updated_at') required this.updatedAt})
+      @JsonKey(name: 'updated_at') required this.updatedAt,
+      this.order = 0})
       : _tiles = tiles,
         _dataSource = dataSource;
 
@@ -262,10 +262,6 @@ class _$DashboardCardImpl implements _DashboardCard {
   /// The icon representing the dashboard card.
   @override
   final String? icon;
-
-  /// Defines the position of the card relative to others on the dashboard page.
-  @override
-  final int order;
 
   /// The unique identifier of the page this card belongs to.
   @override
@@ -304,9 +300,14 @@ class _$DashboardCardImpl implements _DashboardCard {
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
+  /// Defines the position of the card relative to others on the dashboard page.
+  @override
+  @JsonKey()
+  final int order;
+
   @override
   String toString() {
-    return 'DashboardCard(id: $id, title: $title, icon: $icon, order: $order, page: $page, tiles: $tiles, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'DashboardCard(id: $id, title: $title, icon: $icon, page: $page, tiles: $tiles, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, order: $order)';
   }
 
   @override
@@ -317,7 +318,6 @@ class _$DashboardCardImpl implements _DashboardCard {
             (identical(other.id, id) || other.id == id) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.order, order) || other.order == order) &&
             (identical(other.page, page) || other.page == page) &&
             const DeepCollectionEquality().equals(other._tiles, _tiles) &&
             const DeepCollectionEquality()
@@ -325,7 +325,8 @@ class _$DashboardCardImpl implements _DashboardCard {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.order, order) || other.order == order));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -335,12 +336,12 @@ class _$DashboardCardImpl implements _DashboardCard {
       id,
       title,
       icon,
-      order,
       page,
       const DeepCollectionEquality().hash(_tiles),
       const DeepCollectionEquality().hash(_dataSource),
       createdAt,
-      updatedAt);
+      updatedAt,
+      order);
 
   /// Create a copy of DashboardCard
   /// with the given fields replaced by the non-null parameter values.
@@ -360,17 +361,16 @@ class _$DashboardCardImpl implements _DashboardCard {
 
 abstract class _DashboardCard implements DashboardCard {
   const factory _DashboardCard(
-          {required final String id,
-          required final String title,
-          required final String? icon,
-          required final int order,
-          required final String page,
-          required final List<DashboardCardTilesUnion> tiles,
-          @JsonKey(name: 'data_source')
-          required final List<DashboardCardDataSourceUnion> dataSource,
-          @JsonKey(name: 'created_at') required final DateTime createdAt,
-          @JsonKey(name: 'updated_at') required final DateTime? updatedAt}) =
-      _$DashboardCardImpl;
+      {required final String id,
+      required final String title,
+      required final String? icon,
+      required final String page,
+      required final List<DashboardCardTilesUnion> tiles,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardCardDataSourceUnion> dataSource,
+      @JsonKey(name: 'created_at') required final DateTime createdAt,
+      @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+      final int order}) = _$DashboardCardImpl;
 
   factory _DashboardCard.fromJson(Map<String, dynamic> json) =
       _$DashboardCardImpl.fromJson;
@@ -386,10 +386,6 @@ abstract class _DashboardCard implements DashboardCard {
   /// The icon representing the dashboard card.
   @override
   String? get icon;
-
-  /// Defines the position of the card relative to others on the dashboard page.
-  @override
-  int get order;
 
   /// The unique identifier of the page this card belongs to.
   @override
@@ -413,6 +409,10 @@ abstract class _DashboardCard implements DashboardCard {
   @override
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
+
+  /// Defines the position of the card relative to others on the dashboard page.
+  @override
+  int get order;
 
   /// Create a copy of DashboardCard
   /// with the given fields replaced by the non-null parameter values.

@@ -24,7 +24,7 @@ import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateCardDto } from '../dto/create-card.dto';
 import { UpdateCardDto } from '../dto/update-card.dto';
-import { CardEntity, CardsPageEntity, DevicePageEntity } from '../entities/dashboard.entity';
+import { CardEntity, CardsPageEntity, DeviceDetailPageEntity } from '../entities/dashboard.entity';
 
 import { CardsService } from './cards.service';
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
@@ -67,9 +67,9 @@ describe('CardsService', () => {
 		mockValue: 'Some value',
 	};
 
-	const mockDevicePage: DevicePageEntity = {
+	const mockDevicePage: DeviceDetailPageEntity = {
 		id: uuid().toString(),
-		type: 'device',
+		type: 'device-detail',
 		title: 'Device detail',
 		order: 0,
 		device: mockDevice.id,

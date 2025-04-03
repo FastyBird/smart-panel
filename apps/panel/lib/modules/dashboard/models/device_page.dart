@@ -3,10 +3,10 @@ import 'package:fastybird_smart_panel/modules/dashboard/models/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:material_symbols_icons/get.dart';
 
-class DevicePageModel extends PageModel {
+class DeviceDetailPageModel extends PageModel {
   final String _device;
 
-  DevicePageModel({
+  DeviceDetailPageModel({
     required String device,
     required super.id,
     required super.title,
@@ -16,13 +16,13 @@ class DevicePageModel extends PageModel {
     super.updatedAt,
   })  : _device = UuidUtils.validateUuid(device),
         super(
-          type: PageType.device,
+          type: PageType.deviceDetail,
         );
 
   String get device => _device;
 
-  factory DevicePageModel.fromJson(Map<String, dynamic> json) {
-    return DevicePageModel(
+  factory DeviceDetailPageModel.fromJson(Map<String, dynamic> json) {
+    return DeviceDetailPageModel(
       device: UuidUtils.validateUuid(json['device']),
       id: UuidUtils.validateUuid(json['id']),
       title: json['title'],

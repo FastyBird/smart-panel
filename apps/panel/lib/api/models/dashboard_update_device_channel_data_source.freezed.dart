@@ -22,8 +22,8 @@ DashboardUpdateDeviceChannelDataSource
 
 /// @nodoc
 mixin _$DashboardUpdateDeviceChannelDataSource {
-  /// The unique identifier of the associated tile.
-  String get tile => throw _privateConstructorUsedError;
+  /// Specifies the type of data source.
+  String get type => throw _privateConstructorUsedError;
 
   /// The unique identifier of the associated device.
   String get device => throw _privateConstructorUsedError;
@@ -36,9 +36,6 @@ mixin _$DashboardUpdateDeviceChannelDataSource {
 
   /// The icon representing the data source.
   String? get icon => throw _privateConstructorUsedError;
-
-  /// Specifies the type of data source as linked to a device channel.
-  String get type => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardUpdateDeviceChannelDataSource to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -60,12 +57,11 @@ abstract class $DashboardUpdateDeviceChannelDataSourceCopyWith<$Res> {
           DashboardUpdateDeviceChannelDataSource>;
   @useResult
   $Res call(
-      {String tile,
+      {String type,
       String device,
       String channel,
       String property,
-      String? icon,
-      String type});
+      String? icon});
 }
 
 /// @nodoc
@@ -84,17 +80,16 @@ class _$DashboardUpdateDeviceChannelDataSourceCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? tile = null,
+    Object? type = null,
     Object? device = null,
     Object? channel = null,
     Object? property = null,
     Object? icon = freezed,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
-      tile: null == tile
-          ? _value.tile
-          : tile // ignore: cast_nullable_to_non_nullable
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       device: null == device
           ? _value.device
@@ -112,10 +107,6 @@ class _$DashboardUpdateDeviceChannelDataSourceCopyWithImpl<$Res,
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -130,12 +121,11 @@ abstract class _$$DashboardUpdateDeviceChannelDataSourceImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {String tile,
+      {String type,
       String device,
       String channel,
       String property,
-      String? icon,
-      String type});
+      String? icon});
 }
 
 /// @nodoc
@@ -153,17 +143,16 @@ class __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? tile = null,
+    Object? type = null,
     Object? device = null,
     Object? channel = null,
     Object? property = null,
     Object? icon = freezed,
-    Object? type = null,
   }) {
     return _then(_$DashboardUpdateDeviceChannelDataSourceImpl(
-      tile: null == tile
-          ? _value.tile
-          : tile // ignore: cast_nullable_to_non_nullable
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       device: null == device
           ? _value.device
@@ -181,10 +170,6 @@ class __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -194,20 +179,19 @@ class __$$DashboardUpdateDeviceChannelDataSourceImplCopyWithImpl<$Res>
 class _$DashboardUpdateDeviceChannelDataSourceImpl
     implements _DashboardUpdateDeviceChannelDataSource {
   const _$DashboardUpdateDeviceChannelDataSourceImpl(
-      {required this.tile,
+      {required this.type,
       required this.device,
       required this.channel,
       required this.property,
-      this.icon,
-      this.type = 'device-channel'});
+      this.icon});
 
   factory _$DashboardUpdateDeviceChannelDataSourceImpl.fromJson(
           Map<String, dynamic> json) =>
       _$$DashboardUpdateDeviceChannelDataSourceImplFromJson(json);
 
-  /// The unique identifier of the associated tile.
+  /// Specifies the type of data source.
   @override
-  final String tile;
+  final String type;
 
   /// The unique identifier of the associated device.
   @override
@@ -225,14 +209,9 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
   @override
   final String? icon;
 
-  /// Specifies the type of data source as linked to a device channel.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardUpdateDeviceChannelDataSource(tile: $tile, device: $device, channel: $channel, property: $property, icon: $icon, type: $type)';
+    return 'DashboardUpdateDeviceChannelDataSource(type: $type, device: $device, channel: $channel, property: $property, icon: $icon)';
   }
 
   @override
@@ -240,19 +219,18 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardUpdateDeviceChannelDataSourceImpl &&
-            (identical(other.tile, tile) || other.tile == tile) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.device, device) || other.device == device) &&
             (identical(other.channel, channel) || other.channel == channel) &&
             (identical(other.property, property) ||
                 other.property == property) &&
-            (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.icon, icon) || other.icon == icon));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, tile, device, channel, property, icon, type);
+      Object.hash(runtimeType, type, device, channel, property, icon);
 
   /// Create a copy of DashboardUpdateDeviceChannelDataSource
   /// with the given fields replaced by the non-null parameter values.
@@ -276,20 +254,19 @@ class _$DashboardUpdateDeviceChannelDataSourceImpl
 abstract class _DashboardUpdateDeviceChannelDataSource
     implements DashboardUpdateDeviceChannelDataSource {
   const factory _DashboardUpdateDeviceChannelDataSource(
-      {required final String tile,
+      {required final String type,
       required final String device,
       required final String channel,
       required final String property,
-      final String? icon,
-      final String type}) = _$DashboardUpdateDeviceChannelDataSourceImpl;
+      final String? icon}) = _$DashboardUpdateDeviceChannelDataSourceImpl;
 
   factory _DashboardUpdateDeviceChannelDataSource.fromJson(
           Map<String, dynamic> json) =
       _$DashboardUpdateDeviceChannelDataSourceImpl.fromJson;
 
-  /// The unique identifier of the associated tile.
+  /// Specifies the type of data source.
   @override
-  String get tile;
+  String get type;
 
   /// The unique identifier of the associated device.
   @override
@@ -306,10 +283,6 @@ abstract class _DashboardUpdateDeviceChannelDataSource
   /// The icon representing the data source.
   @override
   String? get icon;
-
-  /// Specifies the type of data source as linked to a device channel.
-  @override
-  String get type;
 
   /// Create a copy of DashboardUpdateDeviceChannelDataSource
   /// with the given fields replaced by the non-null parameter values.

@@ -1,0 +1,281 @@
+// coverage:ignore-file
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint
+// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+
+part of 'dashboard_update_device_detail_page.dart';
+
+// **************************************************************************
+// FreezedGenerator
+// **************************************************************************
+
+T _$identity<T>(T value) => value;
+
+final _privateConstructorUsedError = UnsupportedError(
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+
+DashboardUpdateDeviceDetailPage _$DashboardUpdateDeviceDetailPageFromJson(
+    Map<String, dynamic> json) {
+  return _DashboardUpdateDeviceDetailPage.fromJson(json);
+}
+
+/// @nodoc
+mixin _$DashboardUpdateDeviceDetailPage {
+  /// Discriminator for the page type
+  String get type => throw _privateConstructorUsedError;
+
+  /// The title of the page.
+  String get title => throw _privateConstructorUsedError;
+
+  /// The display order of the page.
+  int get order => throw _privateConstructorUsedError;
+
+  /// The unique identifier of the associated device.
+  String get device => throw _privateConstructorUsedError;
+
+  /// The icon associated with the page.
+  String? get icon => throw _privateConstructorUsedError;
+
+  /// Serializes this DashboardUpdateDeviceDetailPage to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of DashboardUpdateDeviceDetailPage
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $DashboardUpdateDeviceDetailPageCopyWith<DashboardUpdateDeviceDetailPage>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $DashboardUpdateDeviceDetailPageCopyWith<$Res> {
+  factory $DashboardUpdateDeviceDetailPageCopyWith(
+          DashboardUpdateDeviceDetailPage value,
+          $Res Function(DashboardUpdateDeviceDetailPage) then) =
+      _$DashboardUpdateDeviceDetailPageCopyWithImpl<$Res,
+          DashboardUpdateDeviceDetailPage>;
+  @useResult
+  $Res call(
+      {String type, String title, int order, String device, String? icon});
+}
+
+/// @nodoc
+class _$DashboardUpdateDeviceDetailPageCopyWithImpl<$Res,
+        $Val extends DashboardUpdateDeviceDetailPage>
+    implements $DashboardUpdateDeviceDetailPageCopyWith<$Res> {
+  _$DashboardUpdateDeviceDetailPageCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of DashboardUpdateDeviceDetailPage
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? type = null,
+    Object? title = null,
+    Object? order = null,
+    Object? device = null,
+    Object? icon = freezed,
+  }) {
+    return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      title: null == title
+          ? _value.title
+          : title // ignore: cast_nullable_to_non_nullable
+              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
+      device: null == device
+          ? _value.device
+          : device // ignore: cast_nullable_to_non_nullable
+              as String,
+      icon: freezed == icon
+          ? _value.icon
+          : icon // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$DashboardUpdateDeviceDetailPageImplCopyWith<$Res>
+    implements $DashboardUpdateDeviceDetailPageCopyWith<$Res> {
+  factory _$$DashboardUpdateDeviceDetailPageImplCopyWith(
+          _$DashboardUpdateDeviceDetailPageImpl value,
+          $Res Function(_$DashboardUpdateDeviceDetailPageImpl) then) =
+      __$$DashboardUpdateDeviceDetailPageImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {String type, String title, int order, String device, String? icon});
+}
+
+/// @nodoc
+class __$$DashboardUpdateDeviceDetailPageImplCopyWithImpl<$Res>
+    extends _$DashboardUpdateDeviceDetailPageCopyWithImpl<$Res,
+        _$DashboardUpdateDeviceDetailPageImpl>
+    implements _$$DashboardUpdateDeviceDetailPageImplCopyWith<$Res> {
+  __$$DashboardUpdateDeviceDetailPageImplCopyWithImpl(
+      _$DashboardUpdateDeviceDetailPageImpl _value,
+      $Res Function(_$DashboardUpdateDeviceDetailPageImpl) _then)
+      : super(_value, _then);
+
+  /// Create a copy of DashboardUpdateDeviceDetailPage
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? type = null,
+    Object? title = null,
+    Object? order = null,
+    Object? device = null,
+    Object? icon = freezed,
+  }) {
+    return _then(_$DashboardUpdateDeviceDetailPageImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      title: null == title
+          ? _value.title
+          : title // ignore: cast_nullable_to_non_nullable
+              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
+      device: null == device
+          ? _value.device
+          : device // ignore: cast_nullable_to_non_nullable
+              as String,
+      icon: freezed == icon
+          ? _value.icon
+          : icon // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$DashboardUpdateDeviceDetailPageImpl
+    implements _DashboardUpdateDeviceDetailPage {
+  const _$DashboardUpdateDeviceDetailPageImpl(
+      {required this.type,
+      required this.title,
+      required this.order,
+      required this.device,
+      this.icon});
+
+  factory _$DashboardUpdateDeviceDetailPageImpl.fromJson(
+          Map<String, dynamic> json) =>
+      _$$DashboardUpdateDeviceDetailPageImplFromJson(json);
+
+  /// Discriminator for the page type
+  @override
+  final String type;
+
+  /// The title of the page.
+  @override
+  final String title;
+
+  /// The display order of the page.
+  @override
+  final int order;
+
+  /// The unique identifier of the associated device.
+  @override
+  final String device;
+
+  /// The icon associated with the page.
+  @override
+  final String? icon;
+
+  @override
+  String toString() {
+    return 'DashboardUpdateDeviceDetailPage(type: $type, title: $title, order: $order, device: $device, icon: $icon)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$DashboardUpdateDeviceDetailPageImpl &&
+            (identical(other.type, type) || other.type == type) &&
+            (identical(other.title, title) || other.title == title) &&
+            (identical(other.order, order) || other.order == order) &&
+            (identical(other.device, device) || other.device == device) &&
+            (identical(other.icon, icon) || other.icon == icon));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, type, title, order, device, icon);
+
+  /// Create a copy of DashboardUpdateDeviceDetailPage
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$DashboardUpdateDeviceDetailPageImplCopyWith<
+          _$DashboardUpdateDeviceDetailPageImpl>
+      get copyWith => __$$DashboardUpdateDeviceDetailPageImplCopyWithImpl<
+          _$DashboardUpdateDeviceDetailPageImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$DashboardUpdateDeviceDetailPageImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _DashboardUpdateDeviceDetailPage
+    implements DashboardUpdateDeviceDetailPage {
+  const factory _DashboardUpdateDeviceDetailPage(
+      {required final String type,
+      required final String title,
+      required final int order,
+      required final String device,
+      final String? icon}) = _$DashboardUpdateDeviceDetailPageImpl;
+
+  factory _DashboardUpdateDeviceDetailPage.fromJson(Map<String, dynamic> json) =
+      _$DashboardUpdateDeviceDetailPageImpl.fromJson;
+
+  /// Discriminator for the page type
+  @override
+  String get type;
+
+  /// The title of the page.
+  @override
+  String get title;
+
+  /// The display order of the page.
+  @override
+  int get order;
+
+  /// The unique identifier of the associated device.
+  @override
+  String get device;
+
+  /// The icon associated with the page.
+  @override
+  String? get icon;
+
+  /// Create a copy of DashboardUpdateDeviceDetailPage
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$DashboardUpdateDeviceDetailPageImplCopyWith<
+          _$DashboardUpdateDeviceDetailPageImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}

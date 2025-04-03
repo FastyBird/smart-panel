@@ -9,8 +9,11 @@ part 'dashboard_req_update_tile_data_union.g.dart';
 
 @Freezed(unionKey: 'type')
 sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUnion {
-  @FreezedUnionValue('device')
-  const factory DashboardReqUpdateTileDataUnion.device({
+  @FreezedUnionValue('device-preview')
+  const factory DashboardReqUpdateTileDataUnion.devicePreview({
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -30,14 +33,13 @@ sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUn
 
     /// The icon representing the tile.
     String? icon,
-
-    /// Indicates that this is a device-specific dashboard tile.
-    @Default('device')
-    String type,
-  }) = DashboardReqUpdateTileDataUnionDevice;
+  }) = DashboardReqUpdateTileDataUnionDevicePreview;
 
   @FreezedUnionValue('clock')
   const factory DashboardReqUpdateTileDataUnion.clock({
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -51,14 +53,13 @@ sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUn
     /// The number of columns the tile spans in the grid.
     @JsonKey(name: 'col_span')
     required int colSpan,
-
-    /// Specifies the type of tile as a clock.
-    @Default('clock')
-    String type,
   }) = DashboardReqUpdateTileDataUnionClock;
 
   @FreezedUnionValue('weather-day')
   const factory DashboardReqUpdateTileDataUnion.weatherDay({
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -72,14 +73,13 @@ sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUn
     /// The number of columns the tile spans in the grid.
     @JsonKey(name: 'col_span')
     required int colSpan,
-
-    /// Specifies the type of tile as a day weather tile.
-    @Default('weather-day')
-    String type,
   }) = DashboardReqUpdateTileDataUnionWeatherDay;
 
   @FreezedUnionValue('weather-forecast')
   const factory DashboardReqUpdateTileDataUnion.weatherForecast({
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -93,10 +93,6 @@ sealed class DashboardReqUpdateTileDataUnion with _$DashboardReqUpdateTileDataUn
     /// The number of columns the tile spans in the grid.
     @JsonKey(name: 'col_span')
     required int colSpan,
-
-    /// Specifies the type of tile as a weather forecast tile.
-    @Default('weather-forecast')
-    String type,
   }) = DashboardReqUpdateTileDataUnionWeatherForecast;
 
   

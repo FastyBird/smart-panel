@@ -24,7 +24,7 @@ import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateTimeTileDto } from '../dto/create-tile.dto';
 import { UpdateTimeTileDto } from '../dto/update-tile.dto';
-import { DevicePageEntity, TileEntity, TilesPageEntity, TimeTileEntity } from '../entities/dashboard.entity';
+import { DeviceDetailPageEntity, TileEntity, TilesPageEntity, TimeTileEntity } from '../entities/dashboard.entity';
 
 import { CardsService } from './cards.service';
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
@@ -68,7 +68,7 @@ describe('TilesService', () => {
 		mockValue: 'Some value',
 	};
 
-	const mockDevicePage: DevicePageEntity = {
+	const mockDevicePage: DeviceDetailPageEntity = {
 		id: uuid().toString(),
 		type: 'device',
 		title: 'Device detail',

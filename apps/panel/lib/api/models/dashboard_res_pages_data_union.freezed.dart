@@ -21,8 +21,8 @@ DashboardResPagesDataUnion _$DashboardResPagesDataUnionFromJson(
       return DashboardResPagesDataUnionCards.fromJson(json);
     case 'tiles':
       return DashboardResPagesDataUnionTiles.fromJson(json);
-    case 'device':
-      return DashboardResPagesDataUnionDevice.fromJson(json);
+    case 'device-detail':
+      return DashboardResPagesDataUnionDeviceDetail.fromJson(json);
 
     default:
       throw CheckedFromJsonException(json, 'type', 'DashboardResPagesDataUnion',
@@ -35,14 +35,14 @@ mixin _$DashboardResPagesDataUnion {
   /// A unique identifier for the dashboard page.
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the page type
+  String get type => throw _privateConstructorUsedError;
+
   /// The title of the dashboard page, displayed in the UI.
   String get title => throw _privateConstructorUsedError;
 
   /// The icon representing the dashboard page.
   String? get icon => throw _privateConstructorUsedError;
-
-  /// The display order of the dashboard page in the navigation or list.
-  int get order => throw _privateConstructorUsedError;
 
   /// The timestamp when the dashboard page was created.
   @JsonKey(name: 'created_at')
@@ -52,120 +52,120 @@ mixin _$DashboardResPagesDataUnion {
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
-  /// Indicates that this is a cards dashboard page.
-  String get type => throw _privateConstructorUsedError;
+  /// The display order of the dashboard page in the navigation or list.
+  int get order => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)
+            int order)
         cards,
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)
+            int order)
         tiles,
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)
-        device,
+            int order)
+        deviceDetail,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         cards,
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         tiles,
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)?
-        device,
+            int order)?
+        deviceDetail,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         cards,
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         tiles,
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)?
-        device,
+            int order)?
+        deviceDetail,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -173,21 +173,24 @@ mixin _$DashboardResPagesDataUnion {
   TResult map<TResult extends Object?>({
     required TResult Function(DashboardResPagesDataUnionCards value) cards,
     required TResult Function(DashboardResPagesDataUnionTiles value) tiles,
-    required TResult Function(DashboardResPagesDataUnionDevice value) device,
+    required TResult Function(DashboardResPagesDataUnionDeviceDetail value)
+        deviceDetail,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DashboardResPagesDataUnionCards value)? cards,
     TResult? Function(DashboardResPagesDataUnionTiles value)? tiles,
-    TResult? Function(DashboardResPagesDataUnionDevice value)? device,
+    TResult? Function(DashboardResPagesDataUnionDeviceDetail value)?
+        deviceDetail,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DashboardResPagesDataUnionCards value)? cards,
     TResult Function(DashboardResPagesDataUnionTiles value)? tiles,
-    TResult Function(DashboardResPagesDataUnionDevice value)? device,
+    TResult Function(DashboardResPagesDataUnionDeviceDetail value)?
+        deviceDetail,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -211,12 +214,12 @@ abstract class $DashboardResPagesDataUnionCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       String title,
       String? icon,
-      int order,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
-      String type});
+      int order});
 }
 
 /// @nodoc
@@ -236,17 +239,21 @@ class _$DashboardResPagesDataUnionCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
     Object? icon = freezed,
-    Object? order = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
-    Object? type = null,
+    Object? order = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
           ? _value.title
@@ -256,10 +263,6 @@ class _$DashboardResPagesDataUnionCopyWithImpl<$Res,
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -268,10 +271,10 @@ class _$DashboardResPagesDataUnionCopyWithImpl<$Res,
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
     ) as $Val);
   }
 }
@@ -287,15 +290,15 @@ abstract class _$$DashboardResPagesDataUnionCardsImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       String title,
       String? icon,
-      int order,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       List<DashboardCard> cards,
       @JsonKey(name: 'data_source')
       List<DashboardCardsPageDataSourceUnion> dataSource,
-      String type});
+      int order});
 }
 
 /// @nodoc
@@ -314,19 +317,23 @@ class __$$DashboardResPagesDataUnionCardsImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
     Object? icon = freezed,
-    Object? order = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? cards = null,
     Object? dataSource = null,
-    Object? type = null,
+    Object? order = null,
   }) {
     return _then(_$DashboardResPagesDataUnionCardsImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
           ? _value.title
@@ -336,10 +343,6 @@ class __$$DashboardResPagesDataUnionCardsImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -356,10 +359,10 @@ class __$$DashboardResPagesDataUnionCardsImplCopyWithImpl<$Res>
           ? _value._dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
               as List<DashboardCardsPageDataSourceUnion>,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -370,15 +373,15 @@ class _$DashboardResPagesDataUnionCardsImpl
     implements DashboardResPagesDataUnionCards {
   const _$DashboardResPagesDataUnionCardsImpl(
       {required this.id,
+      required this.type,
       required this.title,
       required this.icon,
-      required this.order,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required final List<DashboardCard> cards,
       @JsonKey(name: 'data_source')
       required final List<DashboardCardsPageDataSourceUnion> dataSource,
-      this.type = 'cards'})
+      this.order = 0})
       : _cards = cards,
         _dataSource = dataSource;
 
@@ -390,6 +393,10 @@ class _$DashboardResPagesDataUnionCardsImpl
   @override
   final String id;
 
+  /// Discriminator for the page type
+  @override
+  final String type;
+
   /// The title of the dashboard page, displayed in the UI.
   @override
   final String title;
@@ -397,10 +404,6 @@ class _$DashboardResPagesDataUnionCardsImpl
   /// The icon representing the dashboard page.
   @override
   final String? icon;
-
-  /// The display order of the dashboard page in the navigation or list.
-  @override
-  final int order;
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -435,14 +438,14 @@ class _$DashboardResPagesDataUnionCardsImpl
     return EqualUnmodifiableListView(_dataSource);
   }
 
-  /// Indicates that this is a cards dashboard page.
+  /// The display order of the dashboard page in the navigation or list.
   @override
   @JsonKey()
-  final String type;
+  final int order;
 
   @override
   String toString() {
-    return 'DashboardResPagesDataUnion.cards(id: $id, title: $title, icon: $icon, order: $order, createdAt: $createdAt, updatedAt: $updatedAt, cards: $cards, dataSource: $dataSource, type: $type)';
+    return 'DashboardResPagesDataUnion.cards(id: $id, type: $type, title: $title, icon: $icon, createdAt: $createdAt, updatedAt: $updatedAt, cards: $cards, dataSource: $dataSource, order: $order)';
   }
 
   @override
@@ -451,9 +454,9 @@ class _$DashboardResPagesDataUnionCardsImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardResPagesDataUnionCardsImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.order, order) || other.order == order) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -461,7 +464,7 @@ class _$DashboardResPagesDataUnionCardsImpl
             const DeepCollectionEquality().equals(other._cards, _cards) &&
             const DeepCollectionEquality()
                 .equals(other._dataSource, _dataSource) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.order, order) || other.order == order));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -469,14 +472,14 @@ class _$DashboardResPagesDataUnionCardsImpl
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       title,
       icon,
-      order,
       createdAt,
       updatedAt,
       const DeepCollectionEquality().hash(_cards),
       const DeepCollectionEquality().hash(_dataSource),
-      type);
+      order);
 
   /// Create a copy of DashboardResPagesDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -493,41 +496,41 @@ class _$DashboardResPagesDataUnionCardsImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)
+            int order)
         cards,
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)
+            int order)
         tiles,
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)
-        device,
+            int order)
+        deviceDetail,
   }) {
-    return cards(id, title, icon, order, createdAt, updatedAt, this.cards,
-        dataSource, type);
+    return cards(id, type, title, icon, createdAt, updatedAt, this.cards,
+        dataSource, order);
   }
 
   @override
@@ -535,41 +538,41 @@ class _$DashboardResPagesDataUnionCardsImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         cards,
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         tiles,
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)?
-        device,
+            int order)?
+        deviceDetail,
   }) {
-    return cards?.call(id, title, icon, order, createdAt, updatedAt, this.cards,
-        dataSource, type);
+    return cards?.call(id, type, title, icon, createdAt, updatedAt, this.cards,
+        dataSource, order);
   }
 
   @override
@@ -577,43 +580,43 @@ class _$DashboardResPagesDataUnionCardsImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         cards,
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         tiles,
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)?
-        device,
+            int order)?
+        deviceDetail,
     required TResult orElse(),
   }) {
     if (cards != null) {
-      return cards(id, title, icon, order, createdAt, updatedAt, this.cards,
-          dataSource, type);
+      return cards(id, type, title, icon, createdAt, updatedAt, this.cards,
+          dataSource, order);
     }
     return orElse();
   }
@@ -623,7 +626,8 @@ class _$DashboardResPagesDataUnionCardsImpl
   TResult map<TResult extends Object?>({
     required TResult Function(DashboardResPagesDataUnionCards value) cards,
     required TResult Function(DashboardResPagesDataUnionTiles value) tiles,
-    required TResult Function(DashboardResPagesDataUnionDevice value) device,
+    required TResult Function(DashboardResPagesDataUnionDeviceDetail value)
+        deviceDetail,
   }) {
     return cards(this);
   }
@@ -633,7 +637,8 @@ class _$DashboardResPagesDataUnionCardsImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DashboardResPagesDataUnionCards value)? cards,
     TResult? Function(DashboardResPagesDataUnionTiles value)? tiles,
-    TResult? Function(DashboardResPagesDataUnionDevice value)? device,
+    TResult? Function(DashboardResPagesDataUnionDeviceDetail value)?
+        deviceDetail,
   }) {
     return cards?.call(this);
   }
@@ -643,7 +648,8 @@ class _$DashboardResPagesDataUnionCardsImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DashboardResPagesDataUnionCards value)? cards,
     TResult Function(DashboardResPagesDataUnionTiles value)? tiles,
-    TResult Function(DashboardResPagesDataUnionDevice value)? device,
+    TResult Function(DashboardResPagesDataUnionDeviceDetail value)?
+        deviceDetail,
     required TResult orElse(),
   }) {
     if (cards != null) {
@@ -664,15 +670,15 @@ abstract class DashboardResPagesDataUnionCards
     implements DashboardResPagesDataUnion {
   const factory DashboardResPagesDataUnionCards(
       {required final String id,
+      required final String type,
       required final String title,
       required final String? icon,
-      required final int order,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       required final List<DashboardCard> cards,
       @JsonKey(name: 'data_source')
       required final List<DashboardCardsPageDataSourceUnion> dataSource,
-      final String type}) = _$DashboardResPagesDataUnionCardsImpl;
+      final int order}) = _$DashboardResPagesDataUnionCardsImpl;
 
   factory DashboardResPagesDataUnionCards.fromJson(Map<String, dynamic> json) =
       _$DashboardResPagesDataUnionCardsImpl.fromJson;
@@ -681,6 +687,10 @@ abstract class DashboardResPagesDataUnionCards
   @override
   String get id;
 
+  /// Discriminator for the page type
+  @override
+  String get type;
+
   /// The title of the dashboard page, displayed in the UI.
   @override
   String get title;
@@ -688,10 +698,6 @@ abstract class DashboardResPagesDataUnionCards
   /// The icon representing the dashboard page.
   @override
   String? get icon;
-
-  /// The display order of the dashboard page in the navigation or list.
-  @override
-  int get order;
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -710,9 +716,9 @@ abstract class DashboardResPagesDataUnionCards
   @JsonKey(name: 'data_source')
   List<DashboardCardsPageDataSourceUnion> get dataSource;
 
-  /// Indicates that this is a cards dashboard page.
+  /// The display order of the dashboard page in the navigation or list.
   @override
-  String get type;
+  int get order;
 
   /// Create a copy of DashboardResPagesDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -734,15 +740,15 @@ abstract class _$$DashboardResPagesDataUnionTilesImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       String title,
       String? icon,
-      int order,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       List<DashboardTilesPageTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       List<DashboardTilesPageDataSourceUnion> dataSource,
-      String type});
+      int order});
 }
 
 /// @nodoc
@@ -761,19 +767,23 @@ class __$$DashboardResPagesDataUnionTilesImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
     Object? icon = freezed,
-    Object? order = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? tiles = null,
     Object? dataSource = null,
-    Object? type = null,
+    Object? order = null,
   }) {
     return _then(_$DashboardResPagesDataUnionTilesImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
           ? _value.title
@@ -783,10 +793,6 @@ class __$$DashboardResPagesDataUnionTilesImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -803,10 +809,10 @@ class __$$DashboardResPagesDataUnionTilesImplCopyWithImpl<$Res>
           ? _value._dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
               as List<DashboardTilesPageDataSourceUnion>,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -817,15 +823,15 @@ class _$DashboardResPagesDataUnionTilesImpl
     implements DashboardResPagesDataUnionTiles {
   const _$DashboardResPagesDataUnionTilesImpl(
       {required this.id,
+      required this.type,
       required this.title,
       required this.icon,
-      required this.order,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required final List<DashboardTilesPageTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       required final List<DashboardTilesPageDataSourceUnion> dataSource,
-      this.type = 'tiles'})
+      this.order = 0})
       : _tiles = tiles,
         _dataSource = dataSource;
 
@@ -837,6 +843,10 @@ class _$DashboardResPagesDataUnionTilesImpl
   @override
   final String id;
 
+  /// Discriminator for the page type
+  @override
+  final String type;
+
   /// The title of the dashboard page, displayed in the UI.
   @override
   final String title;
@@ -844,10 +854,6 @@ class _$DashboardResPagesDataUnionTilesImpl
   /// The icon representing the dashboard page.
   @override
   final String? icon;
-
-  /// The display order of the dashboard page in the navigation or list.
-  @override
-  final int order;
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -882,14 +888,14 @@ class _$DashboardResPagesDataUnionTilesImpl
     return EqualUnmodifiableListView(_dataSource);
   }
 
-  /// Indicates that this is a tiles dashboard page.
+  /// The display order of the dashboard page in the navigation or list.
   @override
   @JsonKey()
-  final String type;
+  final int order;
 
   @override
   String toString() {
-    return 'DashboardResPagesDataUnion.tiles(id: $id, title: $title, icon: $icon, order: $order, createdAt: $createdAt, updatedAt: $updatedAt, tiles: $tiles, dataSource: $dataSource, type: $type)';
+    return 'DashboardResPagesDataUnion.tiles(id: $id, type: $type, title: $title, icon: $icon, createdAt: $createdAt, updatedAt: $updatedAt, tiles: $tiles, dataSource: $dataSource, order: $order)';
   }
 
   @override
@@ -898,9 +904,9 @@ class _$DashboardResPagesDataUnionTilesImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardResPagesDataUnionTilesImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.order, order) || other.order == order) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -908,7 +914,7 @@ class _$DashboardResPagesDataUnionTilesImpl
             const DeepCollectionEquality().equals(other._tiles, _tiles) &&
             const DeepCollectionEquality()
                 .equals(other._dataSource, _dataSource) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.order, order) || other.order == order));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -916,14 +922,14 @@ class _$DashboardResPagesDataUnionTilesImpl
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       title,
       icon,
-      order,
       createdAt,
       updatedAt,
       const DeepCollectionEquality().hash(_tiles),
       const DeepCollectionEquality().hash(_dataSource),
-      type);
+      order);
 
   /// Create a copy of DashboardResPagesDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -940,41 +946,41 @@ class _$DashboardResPagesDataUnionTilesImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)
+            int order)
         cards,
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)
+            int order)
         tiles,
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)
-        device,
+            int order)
+        deviceDetail,
   }) {
-    return tiles(id, title, icon, order, createdAt, updatedAt, this.tiles,
-        dataSource, type);
+    return tiles(id, type, title, icon, createdAt, updatedAt, this.tiles,
+        dataSource, order);
   }
 
   @override
@@ -982,41 +988,41 @@ class _$DashboardResPagesDataUnionTilesImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         cards,
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         tiles,
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)?
-        device,
+            int order)?
+        deviceDetail,
   }) {
-    return tiles?.call(id, title, icon, order, createdAt, updatedAt, this.tiles,
-        dataSource, type);
+    return tiles?.call(id, type, title, icon, createdAt, updatedAt, this.tiles,
+        dataSource, order);
   }
 
   @override
@@ -1024,43 +1030,43 @@ class _$DashboardResPagesDataUnionTilesImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         cards,
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         tiles,
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)?
-        device,
+            int order)?
+        deviceDetail,
     required TResult orElse(),
   }) {
     if (tiles != null) {
-      return tiles(id, title, icon, order, createdAt, updatedAt, this.tiles,
-          dataSource, type);
+      return tiles(id, type, title, icon, createdAt, updatedAt, this.tiles,
+          dataSource, order);
     }
     return orElse();
   }
@@ -1070,7 +1076,8 @@ class _$DashboardResPagesDataUnionTilesImpl
   TResult map<TResult extends Object?>({
     required TResult Function(DashboardResPagesDataUnionCards value) cards,
     required TResult Function(DashboardResPagesDataUnionTiles value) tiles,
-    required TResult Function(DashboardResPagesDataUnionDevice value) device,
+    required TResult Function(DashboardResPagesDataUnionDeviceDetail value)
+        deviceDetail,
   }) {
     return tiles(this);
   }
@@ -1080,7 +1087,8 @@ class _$DashboardResPagesDataUnionTilesImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DashboardResPagesDataUnionCards value)? cards,
     TResult? Function(DashboardResPagesDataUnionTiles value)? tiles,
-    TResult? Function(DashboardResPagesDataUnionDevice value)? device,
+    TResult? Function(DashboardResPagesDataUnionDeviceDetail value)?
+        deviceDetail,
   }) {
     return tiles?.call(this);
   }
@@ -1090,7 +1098,8 @@ class _$DashboardResPagesDataUnionTilesImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DashboardResPagesDataUnionCards value)? cards,
     TResult Function(DashboardResPagesDataUnionTiles value)? tiles,
-    TResult Function(DashboardResPagesDataUnionDevice value)? device,
+    TResult Function(DashboardResPagesDataUnionDeviceDetail value)?
+        deviceDetail,
     required TResult orElse(),
   }) {
     if (tiles != null) {
@@ -1111,15 +1120,15 @@ abstract class DashboardResPagesDataUnionTiles
     implements DashboardResPagesDataUnion {
   const factory DashboardResPagesDataUnionTiles(
       {required final String id,
+      required final String type,
       required final String title,
       required final String? icon,
-      required final int order,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       required final List<DashboardTilesPageTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       required final List<DashboardTilesPageDataSourceUnion> dataSource,
-      final String type}) = _$DashboardResPagesDataUnionTilesImpl;
+      final int order}) = _$DashboardResPagesDataUnionTilesImpl;
 
   factory DashboardResPagesDataUnionTiles.fromJson(Map<String, dynamic> json) =
       _$DashboardResPagesDataUnionTilesImpl.fromJson;
@@ -1128,6 +1137,10 @@ abstract class DashboardResPagesDataUnionTiles
   @override
   String get id;
 
+  /// Discriminator for the page type
+  @override
+  String get type;
+
   /// The title of the dashboard page, displayed in the UI.
   @override
   String get title;
@@ -1135,10 +1148,6 @@ abstract class DashboardResPagesDataUnionTiles
   /// The icon representing the dashboard page.
   @override
   String? get icon;
-
-  /// The display order of the dashboard page in the navigation or list.
-  @override
-  int get order;
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -1157,9 +1166,9 @@ abstract class DashboardResPagesDataUnionTiles
   @JsonKey(name: 'data_source')
   List<DashboardTilesPageDataSourceUnion> get dataSource;
 
-  /// Indicates that this is a tiles dashboard page.
+  /// The display order of the dashboard page in the navigation or list.
   @override
-  String get type;
+  int get order;
 
   /// Create a copy of DashboardResPagesDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -1171,33 +1180,33 @@ abstract class DashboardResPagesDataUnionTiles
 }
 
 /// @nodoc
-abstract class _$$DashboardResPagesDataUnionDeviceImplCopyWith<$Res>
+abstract class _$$DashboardResPagesDataUnionDeviceDetailImplCopyWith<$Res>
     implements $DashboardResPagesDataUnionCopyWith<$Res> {
-  factory _$$DashboardResPagesDataUnionDeviceImplCopyWith(
-          _$DashboardResPagesDataUnionDeviceImpl value,
-          $Res Function(_$DashboardResPagesDataUnionDeviceImpl) then) =
-      __$$DashboardResPagesDataUnionDeviceImplCopyWithImpl<$Res>;
+  factory _$$DashboardResPagesDataUnionDeviceDetailImplCopyWith(
+          _$DashboardResPagesDataUnionDeviceDetailImpl value,
+          $Res Function(_$DashboardResPagesDataUnionDeviceDetailImpl) then) =
+      __$$DashboardResPagesDataUnionDeviceDetailImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
       {String id,
+      String type,
       String title,
       String? icon,
-      int order,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
-      String type});
+      int order});
 }
 
 /// @nodoc
-class __$$DashboardResPagesDataUnionDeviceImplCopyWithImpl<$Res>
+class __$$DashboardResPagesDataUnionDeviceDetailImplCopyWithImpl<$Res>
     extends _$DashboardResPagesDataUnionCopyWithImpl<$Res,
-        _$DashboardResPagesDataUnionDeviceImpl>
-    implements _$$DashboardResPagesDataUnionDeviceImplCopyWith<$Res> {
-  __$$DashboardResPagesDataUnionDeviceImplCopyWithImpl(
-      _$DashboardResPagesDataUnionDeviceImpl _value,
-      $Res Function(_$DashboardResPagesDataUnionDeviceImpl) _then)
+        _$DashboardResPagesDataUnionDeviceDetailImpl>
+    implements _$$DashboardResPagesDataUnionDeviceDetailImplCopyWith<$Res> {
+  __$$DashboardResPagesDataUnionDeviceDetailImplCopyWithImpl(
+      _$DashboardResPagesDataUnionDeviceDetailImpl _value,
+      $Res Function(_$DashboardResPagesDataUnionDeviceDetailImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardResPagesDataUnion
@@ -1206,18 +1215,22 @@ class __$$DashboardResPagesDataUnionDeviceImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
     Object? icon = freezed,
-    Object? order = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
-    Object? type = null,
+    Object? order = null,
   }) {
-    return _then(_$DashboardResPagesDataUnionDeviceImpl(
+    return _then(_$DashboardResPagesDataUnionDeviceDetailImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
           ? _value.title
@@ -1227,10 +1240,6 @@ class __$$DashboardResPagesDataUnionDeviceImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -1243,35 +1252,39 @@ class __$$DashboardResPagesDataUnionDeviceImplCopyWithImpl<$Res>
           ? _value.device
           : device // ignore: cast_nullable_to_non_nullable
               as String,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardResPagesDataUnionDeviceImpl
-    implements DashboardResPagesDataUnionDevice {
-  const _$DashboardResPagesDataUnionDeviceImpl(
+class _$DashboardResPagesDataUnionDeviceDetailImpl
+    implements DashboardResPagesDataUnionDeviceDetail {
+  const _$DashboardResPagesDataUnionDeviceDetailImpl(
       {required this.id,
+      required this.type,
       required this.title,
       required this.icon,
-      required this.order,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.device,
-      this.type = 'device'});
+      this.order = 0});
 
-  factory _$DashboardResPagesDataUnionDeviceImpl.fromJson(
+  factory _$DashboardResPagesDataUnionDeviceDetailImpl.fromJson(
           Map<String, dynamic> json) =>
-      _$$DashboardResPagesDataUnionDeviceImplFromJson(json);
+      _$$DashboardResPagesDataUnionDeviceDetailImplFromJson(json);
 
   /// A unique identifier for the dashboard page.
   @override
   final String id;
+
+  /// Discriminator for the page type
+  @override
+  final String type;
 
   /// The title of the dashboard page, displayed in the UI.
   @override
@@ -1280,10 +1293,6 @@ class _$DashboardResPagesDataUnionDeviceImpl
   /// The icon representing the dashboard page.
   @override
   final String? icon;
-
-  /// The display order of the dashboard page in the navigation or list.
-  @override
-  final int order;
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -1299,88 +1308,89 @@ class _$DashboardResPagesDataUnionDeviceImpl
   @override
   final String device;
 
-  /// Indicates that this is a device-specific dashboard page.
+  /// The display order of the dashboard page in the navigation or list.
   @override
   @JsonKey()
-  final String type;
+  final int order;
 
   @override
   String toString() {
-    return 'DashboardResPagesDataUnion.device(id: $id, title: $title, icon: $icon, order: $order, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, type: $type)';
+    return 'DashboardResPagesDataUnion.deviceDetail(id: $id, type: $type, title: $title, icon: $icon, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, order: $order)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardResPagesDataUnionDeviceImpl &&
+            other is _$DashboardResPagesDataUnionDeviceDetailImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.order, order) || other.order == order) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
             (identical(other.device, device) || other.device == device) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.order, order) || other.order == order));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
-      runtimeType, id, title, icon, order, createdAt, updatedAt, device, type);
+      runtimeType, id, type, title, icon, createdAt, updatedAt, device, order);
 
   /// Create a copy of DashboardResPagesDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardResPagesDataUnionDeviceImplCopyWith<
-          _$DashboardResPagesDataUnionDeviceImpl>
-      get copyWith => __$$DashboardResPagesDataUnionDeviceImplCopyWithImpl<
-          _$DashboardResPagesDataUnionDeviceImpl>(this, _$identity);
+  _$$DashboardResPagesDataUnionDeviceDetailImplCopyWith<
+          _$DashboardResPagesDataUnionDeviceDetailImpl>
+      get copyWith =>
+          __$$DashboardResPagesDataUnionDeviceDetailImplCopyWithImpl<
+              _$DashboardResPagesDataUnionDeviceDetailImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)
+            int order)
         cards,
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)
+            int order)
         tiles,
     required TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)
-        device,
+            int order)
+        deviceDetail,
   }) {
-    return device(
-        id, title, icon, order, createdAt, updatedAt, this.device, type);
+    return deviceDetail(
+        id, type, title, icon, createdAt, updatedAt, device, order);
   }
 
   @override
@@ -1388,41 +1398,41 @@ class _$DashboardResPagesDataUnionDeviceImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         cards,
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         tiles,
     TResult? Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)?
-        device,
+            int order)?
+        deviceDetail,
   }) {
-    return device?.call(
-        id, title, icon, order, createdAt, updatedAt, this.device, type);
+    return deviceDetail?.call(
+        id, type, title, icon, createdAt, updatedAt, device, order);
   }
 
   @override
@@ -1430,43 +1440,43 @@ class _$DashboardResPagesDataUnionDeviceImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardCard> cards,
             @JsonKey(name: 'data_source')
             List<DashboardCardsPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         cards,
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             List<DashboardTilesPageTilesUnion> tiles,
             @JsonKey(name: 'data_source')
             List<DashboardTilesPageDataSourceUnion> dataSource,
-            String type)?
+            int order)?
         tiles,
     TResult Function(
             String id,
+            String type,
             String title,
             String? icon,
-            int order,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
-            String type)?
-        device,
+            int order)?
+        deviceDetail,
     required TResult orElse(),
   }) {
-    if (device != null) {
-      return device(
-          id, title, icon, order, createdAt, updatedAt, this.device, type);
+    if (deviceDetail != null) {
+      return deviceDetail(
+          id, type, title, icon, createdAt, updatedAt, device, order);
     }
     return orElse();
   }
@@ -1476,9 +1486,10 @@ class _$DashboardResPagesDataUnionDeviceImpl
   TResult map<TResult extends Object?>({
     required TResult Function(DashboardResPagesDataUnionCards value) cards,
     required TResult Function(DashboardResPagesDataUnionTiles value) tiles,
-    required TResult Function(DashboardResPagesDataUnionDevice value) device,
+    required TResult Function(DashboardResPagesDataUnionDeviceDetail value)
+        deviceDetail,
   }) {
-    return device(this);
+    return deviceDetail(this);
   }
 
   @override
@@ -1486,9 +1497,10 @@ class _$DashboardResPagesDataUnionDeviceImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DashboardResPagesDataUnionCards value)? cards,
     TResult? Function(DashboardResPagesDataUnionTiles value)? tiles,
-    TResult? Function(DashboardResPagesDataUnionDevice value)? device,
+    TResult? Function(DashboardResPagesDataUnionDeviceDetail value)?
+        deviceDetail,
   }) {
-    return device?.call(this);
+    return deviceDetail?.call(this);
   }
 
   @override
@@ -1496,41 +1508,47 @@ class _$DashboardResPagesDataUnionDeviceImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DashboardResPagesDataUnionCards value)? cards,
     TResult Function(DashboardResPagesDataUnionTiles value)? tiles,
-    TResult Function(DashboardResPagesDataUnionDevice value)? device,
+    TResult Function(DashboardResPagesDataUnionDeviceDetail value)?
+        deviceDetail,
     required TResult orElse(),
   }) {
-    if (device != null) {
-      return device(this);
+    if (deviceDetail != null) {
+      return deviceDetail(this);
     }
     return orElse();
   }
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardResPagesDataUnionDeviceImplToJson(
+    return _$$DashboardResPagesDataUnionDeviceDetailImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardResPagesDataUnionDevice
+abstract class DashboardResPagesDataUnionDeviceDetail
     implements DashboardResPagesDataUnion {
-  const factory DashboardResPagesDataUnionDevice(
+  const factory DashboardResPagesDataUnionDeviceDetail(
       {required final String id,
+      required final String type,
       required final String title,
       required final String? icon,
-      required final int order,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       required final String device,
-      final String type}) = _$DashboardResPagesDataUnionDeviceImpl;
+      final int order}) = _$DashboardResPagesDataUnionDeviceDetailImpl;
 
-  factory DashboardResPagesDataUnionDevice.fromJson(Map<String, dynamic> json) =
-      _$DashboardResPagesDataUnionDeviceImpl.fromJson;
+  factory DashboardResPagesDataUnionDeviceDetail.fromJson(
+          Map<String, dynamic> json) =
+      _$DashboardResPagesDataUnionDeviceDetailImpl.fromJson;
 
   /// A unique identifier for the dashboard page.
   @override
   String get id;
+
+  /// Discriminator for the page type
+  @override
+  String get type;
 
   /// The title of the dashboard page, displayed in the UI.
   @override
@@ -1539,10 +1557,6 @@ abstract class DashboardResPagesDataUnionDevice
   /// The icon representing the dashboard page.
   @override
   String? get icon;
-
-  /// The display order of the dashboard page in the navigation or list.
-  @override
-  int get order;
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -1557,15 +1571,15 @@ abstract class DashboardResPagesDataUnionDevice
   /// The unique identifier of the associated device.
   String get device;
 
-  /// Indicates that this is a device-specific dashboard page.
+  /// The display order of the dashboard page in the navigation or list.
   @override
-  String get type;
+  int get order;
 
   /// Create a copy of DashboardResPagesDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardResPagesDataUnionDeviceImplCopyWith<
-          _$DashboardResPagesDataUnionDeviceImpl>
+  _$$DashboardResPagesDataUnionDeviceDetailImplCopyWith<
+          _$DashboardResPagesDataUnionDeviceDetailImpl>
       get copyWith => throw _privateConstructorUsedError;
 }

@@ -17,8 +17,8 @@ final _privateConstructorUsedError = UnsupportedError(
 DashboardTilesPageTilesUnion _$DashboardTilesPageTilesUnionFromJson(
     Map<String, dynamic> json) {
   switch (json['type']) {
-    case 'device':
-      return DashboardTilesPageTilesUnionDevice.fromJson(json);
+    case 'device-preview':
+      return DashboardTilesPageTilesUnionDevicePreview.fromJson(json);
     case 'clock':
       return DashboardTilesPageTilesUnionClock.fromJson(json);
     case 'weather-day':
@@ -39,6 +39,9 @@ DashboardTilesPageTilesUnion _$DashboardTilesPageTilesUnionFromJson(
 mixin _$DashboardTilesPageTilesUnion {
   /// A unique identifier for the dashboard tile.
   String get id => throw _privateConstructorUsedError;
+
+  /// Discriminator for the tile type
+  String get type => throw _privateConstructorUsedError;
 
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
@@ -69,13 +72,11 @@ mixin _$DashboardTilesPageTilesUnion {
   /// The number of columns the tile spans.
   @JsonKey(name: 'col_span')
   int get colSpan => throw _privateConstructorUsedError;
-
-  /// Indicates that this is a device-specific tile.
-  String get type => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -86,11 +87,11 @@ mixin _$DashboardTilesPageTilesUnion {
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
-        device,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -99,11 +100,11 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -112,11 +113,11 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -125,8 +126,7 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) =>
       throw _privateConstructorUsedError;
@@ -134,6 +134,7 @@ mixin _$DashboardTilesPageTilesUnion {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -144,11 +145,11 @@ mixin _$DashboardTilesPageTilesUnion {
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -157,11 +158,11 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -170,11 +171,11 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -183,8 +184,7 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) =>
       throw _privateConstructorUsedError;
@@ -192,6 +192,7 @@ mixin _$DashboardTilesPageTilesUnion {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -202,11 +203,11 @@ mixin _$DashboardTilesPageTilesUnion {
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -215,11 +216,11 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -228,11 +229,11 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -241,15 +242,15 @@ mixin _$DashboardTilesPageTilesUnion {
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardTilesPageTilesUnionDevice value) device,
+    required TResult Function(DashboardTilesPageTilesUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardTilesPageTilesUnionClock value) clock,
     required TResult Function(DashboardTilesPageTilesUnionWeatherDay value)
         weatherDay,
@@ -259,7 +260,8 @@ mixin _$DashboardTilesPageTilesUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult? Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult? Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult? Function(DashboardTilesPageTilesUnionWeatherForecast value)?
@@ -268,7 +270,8 @@ mixin _$DashboardTilesPageTilesUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult Function(DashboardTilesPageTilesUnionWeatherForecast value)?
@@ -297,6 +300,7 @@ abstract class $DashboardTilesPageTilesUnionCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -305,8 +309,7 @@ abstract class $DashboardTilesPageTilesUnionCopyWith<$Res> {
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String page,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -326,6 +329,7 @@ class _$DashboardTilesPageTilesUnionCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -334,12 +338,15 @@ class _$DashboardTilesPageTilesUnionCopyWithImpl<$Res,
     Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -373,25 +380,22 @@ class _$DashboardTilesPageTilesUnionCopyWithImpl<$Res,
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
 
 /// @nodoc
-abstract class _$$DashboardTilesPageTilesUnionDeviceImplCopyWith<$Res>
+abstract class _$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWith<$Res>
     implements $DashboardTilesPageTilesUnionCopyWith<$Res> {
-  factory _$$DashboardTilesPageTilesUnionDeviceImplCopyWith(
-          _$DashboardTilesPageTilesUnionDeviceImpl value,
-          $Res Function(_$DashboardTilesPageTilesUnionDeviceImpl) then) =
-      __$$DashboardTilesPageTilesUnionDeviceImplCopyWithImpl<$Res>;
+  factory _$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWith(
+          _$DashboardTilesPageTilesUnionDevicePreviewImpl value,
+          $Res Function(_$DashboardTilesPageTilesUnionDevicePreviewImpl) then) =
+      __$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -402,18 +406,17 @@ abstract class _$$DashboardTilesPageTilesUnionDeviceImplCopyWith<$Res>
       String? icon,
       String page,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
-class __$$DashboardTilesPageTilesUnionDeviceImplCopyWithImpl<$Res>
+class __$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWithImpl<$Res>
     extends _$DashboardTilesPageTilesUnionCopyWithImpl<$Res,
-        _$DashboardTilesPageTilesUnionDeviceImpl>
-    implements _$$DashboardTilesPageTilesUnionDeviceImplCopyWith<$Res> {
-  __$$DashboardTilesPageTilesUnionDeviceImplCopyWithImpl(
-      _$DashboardTilesPageTilesUnionDeviceImpl _value,
-      $Res Function(_$DashboardTilesPageTilesUnionDeviceImpl) _then)
+        _$DashboardTilesPageTilesUnionDevicePreviewImpl>
+    implements _$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWith<$Res> {
+  __$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWithImpl(
+      _$DashboardTilesPageTilesUnionDevicePreviewImpl _value,
+      $Res Function(_$DashboardTilesPageTilesUnionDevicePreviewImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardTilesPageTilesUnion
@@ -422,6 +425,7 @@ class __$$DashboardTilesPageTilesUnionDeviceImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -432,12 +436,15 @@ class __$$DashboardTilesPageTilesUnionDeviceImplCopyWithImpl<$Res>
     Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
-    return _then(_$DashboardTilesPageTilesUnionDeviceImpl(
+    return _then(_$DashboardTilesPageTilesUnionDevicePreviewImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -479,20 +486,17 @@ class __$$DashboardTilesPageTilesUnionDeviceImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardTilesPageTilesUnionDeviceImpl
-    implements DashboardTilesPageTilesUnionDevice {
-  const _$DashboardTilesPageTilesUnionDeviceImpl(
+class _$DashboardTilesPageTilesUnionDevicePreviewImpl
+    implements DashboardTilesPageTilesUnionDevicePreview {
+  const _$DashboardTilesPageTilesUnionDevicePreviewImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
@@ -503,17 +507,20 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
       required this.icon,
       required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
-      @JsonKey(name: 'col_span') this.colSpan = 0,
-      this.type = 'device'})
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
-  factory _$DashboardTilesPageTilesUnionDeviceImpl.fromJson(
+  factory _$DashboardTilesPageTilesUnionDevicePreviewImpl.fromJson(
           Map<String, dynamic> json) =>
-      _$$DashboardTilesPageTilesUnionDeviceImplFromJson(json);
+      _$$DashboardTilesPageTilesUnionDevicePreviewImplFromJson(json);
 
   /// A unique identifier for the dashboard tile.
   @override
   final String id;
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -567,22 +574,18 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
   @JsonKey(name: 'col_span')
   final int colSpan;
 
-  /// Indicates that this is a device-specific tile.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardTilesPageTilesUnion.device(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, icon: $icon, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardTilesPageTilesUnion.devicePreview(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, icon: $icon, page: $page, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardTilesPageTilesUnionDeviceImpl &&
+            other is _$DashboardTilesPageTilesUnionDevicePreviewImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -595,8 +598,7 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             (identical(other.icon, icon) || other.icon == icon) &&
             (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -604,6 +606,7 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
@@ -613,24 +616,26 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
       icon,
       page,
       rowSpan,
-      colSpan,
-      type);
+      colSpan);
 
   /// Create a copy of DashboardTilesPageTilesUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardTilesPageTilesUnionDeviceImplCopyWith<
-          _$DashboardTilesPageTilesUnionDeviceImpl>
-      get copyWith => __$$DashboardTilesPageTilesUnionDeviceImplCopyWithImpl<
-          _$DashboardTilesPageTilesUnionDeviceImpl>(this, _$identity);
+  _$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWith<
+          _$DashboardTilesPageTilesUnionDevicePreviewImpl>
+      get copyWith =>
+          __$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWithImpl<
+                  _$DashboardTilesPageTilesUnionDevicePreviewImpl>(
+              this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -641,11 +646,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
-        device,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -654,11 +659,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -667,11 +672,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -680,12 +685,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) {
-    return device(id, row, col, dataSource, createdAt, updatedAt, this.device,
-        icon, page, rowSpan, colSpan, type);
+    return devicePreview(id, type, row, col, dataSource, createdAt, updatedAt,
+        device, icon, page, rowSpan, colSpan);
   }
 
   @override
@@ -693,6 +697,7 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -703,11 +708,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -716,11 +721,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -729,11 +734,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -742,12 +747,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) {
-    return device?.call(id, row, col, dataSource, createdAt, updatedAt,
-        this.device, icon, page, rowSpan, colSpan, type);
+    return devicePreview?.call(id, type, row, col, dataSource, createdAt,
+        updatedAt, device, icon, page, rowSpan, colSpan);
   }
 
   @override
@@ -755,6 +759,7 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -765,11 +770,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -778,11 +783,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -791,11 +796,11 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -804,14 +809,13 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) {
-    if (device != null) {
-      return device(id, row, col, dataSource, createdAt, updatedAt, this.device,
-          icon, page, rowSpan, colSpan, type);
+    if (devicePreview != null) {
+      return devicePreview(id, type, row, col, dataSource, createdAt, updatedAt,
+          device, icon, page, rowSpan, colSpan);
     }
     return orElse();
   }
@@ -819,76 +823,84 @@ class _$DashboardTilesPageTilesUnionDeviceImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardTilesPageTilesUnionDevice value) device,
+    required TResult Function(DashboardTilesPageTilesUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardTilesPageTilesUnionClock value) clock,
     required TResult Function(DashboardTilesPageTilesUnionWeatherDay value)
         weatherDay,
     required TResult Function(DashboardTilesPageTilesUnionWeatherForecast value)
         weatherForecast,
   }) {
-    return device(this);
+    return devicePreview(this);
   }
 
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult? Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult? Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult? Function(DashboardTilesPageTilesUnionWeatherForecast value)?
         weatherForecast,
   }) {
-    return device?.call(this);
+    return devicePreview?.call(this);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult Function(DashboardTilesPageTilesUnionWeatherForecast value)?
         weatherForecast,
     required TResult orElse(),
   }) {
-    if (device != null) {
-      return device(this);
+    if (devicePreview != null) {
+      return devicePreview(this);
     }
     return orElse();
   }
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardTilesPageTilesUnionDeviceImplToJson(
+    return _$$DashboardTilesPageTilesUnionDevicePreviewImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardTilesPageTilesUnionDevice
+abstract class DashboardTilesPageTilesUnionDevicePreview
     implements DashboardTilesPageTilesUnion {
-  const factory DashboardTilesPageTilesUnionDevice(
-      {required final String id,
-      required final int row,
-      required final int col,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
-      @JsonKey(name: 'created_at') required final DateTime createdAt,
-      @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-      required final String device,
-      required final String? icon,
-      required final String page,
-      @JsonKey(name: 'row_span') final int rowSpan,
-      @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardTilesPageTilesUnionDeviceImpl;
+  const factory DashboardTilesPageTilesUnionDevicePreview(
+          {required final String id,
+          required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'data_source')
+          required final List<DashboardTileBaseDataSourceUnion> dataSource,
+          @JsonKey(name: 'created_at') required final DateTime createdAt,
+          @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+          required final String device,
+          required final String? icon,
+          required final String page,
+          @JsonKey(name: 'row_span') final int rowSpan,
+          @JsonKey(name: 'col_span') final int colSpan}) =
+      _$DashboardTilesPageTilesUnionDevicePreviewImpl;
 
-  factory DashboardTilesPageTilesUnionDevice.fromJson(
+  factory DashboardTilesPageTilesUnionDevicePreview.fromJson(
           Map<String, dynamic> json) =
-      _$DashboardTilesPageTilesUnionDeviceImpl.fromJson;
+      _$DashboardTilesPageTilesUnionDevicePreviewImpl.fromJson;
 
   /// A unique identifier for the dashboard tile.
   @override
   String get id;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override
@@ -933,16 +945,12 @@ abstract class DashboardTilesPageTilesUnionDevice
   @JsonKey(name: 'col_span')
   int get colSpan;
 
-  /// Indicates that this is a device-specific tile.
-  @override
-  String get type;
-
   /// Create a copy of DashboardTilesPageTilesUnion
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardTilesPageTilesUnionDeviceImplCopyWith<
-          _$DashboardTilesPageTilesUnionDeviceImpl>
+  _$$DashboardTilesPageTilesUnionDevicePreviewImplCopyWith<
+          _$DashboardTilesPageTilesUnionDevicePreviewImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
@@ -957,6 +965,7 @@ abstract class _$$DashboardTilesPageTilesUnionClockImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -965,8 +974,7 @@ abstract class _$$DashboardTilesPageTilesUnionClockImplCopyWith<$Res>
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String page,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -985,6 +993,7 @@ class __$$DashboardTilesPageTilesUnionClockImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -993,12 +1002,15 @@ class __$$DashboardTilesPageTilesUnionClockImplCopyWithImpl<$Res>
     Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardTilesPageTilesUnionClockImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -1032,10 +1044,6 @@ class __$$DashboardTilesPageTilesUnionClockImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -1046,6 +1054,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
     implements DashboardTilesPageTilesUnionClock {
   const _$DashboardTilesPageTilesUnionClockImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
@@ -1054,8 +1063,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
-      @JsonKey(name: 'col_span') this.colSpan = 0,
-      this.type = 'clock'})
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardTilesPageTilesUnionClockImpl.fromJson(
@@ -1065,6 +1073,10 @@ class _$DashboardTilesPageTilesUnionClockImpl
   /// A unique identifier for the dashboard tile.
   @override
   final String id;
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -1110,14 +1122,9 @@ class _$DashboardTilesPageTilesUnionClockImpl
   @JsonKey(name: 'col_span')
   final int colSpan;
 
-  /// Indicates that this is a clock tile.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardTilesPageTilesUnion.clock(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardTilesPageTilesUnion.clock(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -1126,6 +1133,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardTilesPageTilesUnionClockImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -1136,8 +1144,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
                 other.updatedAt == updatedAt) &&
             (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1145,6 +1152,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
@@ -1152,8 +1160,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
       updatedAt,
       page,
       rowSpan,
-      colSpan,
-      type);
+      colSpan);
 
   /// Create a copy of DashboardTilesPageTilesUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -1170,6 +1177,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1180,11 +1188,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
-        device,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1193,11 +1201,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1206,11 +1214,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1219,12 +1227,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) {
-    return clock(id, row, col, dataSource, createdAt, updatedAt, page, rowSpan,
-        colSpan, type);
+    return clock(id, type, row, col, dataSource, createdAt, updatedAt, page,
+        rowSpan, colSpan);
   }
 
   @override
@@ -1232,6 +1239,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1242,11 +1250,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1255,11 +1263,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1268,11 +1276,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1281,12 +1289,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) {
-    return clock?.call(id, row, col, dataSource, createdAt, updatedAt, page,
-        rowSpan, colSpan, type);
+    return clock?.call(id, type, row, col, dataSource, createdAt, updatedAt,
+        page, rowSpan, colSpan);
   }
 
   @override
@@ -1294,6 +1301,7 @@ class _$DashboardTilesPageTilesUnionClockImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1304,11 +1312,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1317,11 +1325,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1330,11 +1338,11 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1343,14 +1351,13 @@ class _$DashboardTilesPageTilesUnionClockImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) {
     if (clock != null) {
-      return clock(id, row, col, dataSource, createdAt, updatedAt, page,
-          rowSpan, colSpan, type);
+      return clock(id, type, row, col, dataSource, createdAt, updatedAt, page,
+          rowSpan, colSpan);
     }
     return orElse();
   }
@@ -1358,7 +1365,8 @@ class _$DashboardTilesPageTilesUnionClockImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardTilesPageTilesUnionDevice value) device,
+    required TResult Function(DashboardTilesPageTilesUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardTilesPageTilesUnionClock value) clock,
     required TResult Function(DashboardTilesPageTilesUnionWeatherDay value)
         weatherDay,
@@ -1371,7 +1379,8 @@ class _$DashboardTilesPageTilesUnionClockImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult? Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult? Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult? Function(DashboardTilesPageTilesUnionWeatherForecast value)?
@@ -1383,7 +1392,8 @@ class _$DashboardTilesPageTilesUnionClockImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult Function(DashboardTilesPageTilesUnionWeatherForecast value)?
@@ -1407,17 +1417,18 @@ class _$DashboardTilesPageTilesUnionClockImpl
 abstract class DashboardTilesPageTilesUnionClock
     implements DashboardTilesPageTilesUnion {
   const factory DashboardTilesPageTilesUnionClock(
-      {required final String id,
-      required final int row,
-      required final int col,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
-      @JsonKey(name: 'created_at') required final DateTime createdAt,
-      @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-      required final String page,
-      @JsonKey(name: 'row_span') final int rowSpan,
-      @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardTilesPageTilesUnionClockImpl;
+          {required final String id,
+          required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'data_source')
+          required final List<DashboardTileBaseDataSourceUnion> dataSource,
+          @JsonKey(name: 'created_at') required final DateTime createdAt,
+          @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+          required final String page,
+          @JsonKey(name: 'row_span') final int rowSpan,
+          @JsonKey(name: 'col_span') final int colSpan}) =
+      _$DashboardTilesPageTilesUnionClockImpl;
 
   factory DashboardTilesPageTilesUnionClock.fromJson(
           Map<String, dynamic> json) =
@@ -1426,6 +1437,10 @@ abstract class DashboardTilesPageTilesUnionClock
   /// A unique identifier for the dashboard tile.
   @override
   String get id;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override
@@ -1464,10 +1479,6 @@ abstract class DashboardTilesPageTilesUnionClock
   @JsonKey(name: 'col_span')
   int get colSpan;
 
-  /// Indicates that this is a clock tile.
-  @override
-  String get type;
-
   /// Create a copy of DashboardTilesPageTilesUnion
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -1488,6 +1499,7 @@ abstract class _$$DashboardTilesPageTilesUnionWeatherDayImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -1496,8 +1508,7 @@ abstract class _$$DashboardTilesPageTilesUnionWeatherDayImplCopyWith<$Res>
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String page,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -1516,6 +1527,7 @@ class __$$DashboardTilesPageTilesUnionWeatherDayImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -1524,12 +1536,15 @@ class __$$DashboardTilesPageTilesUnionWeatherDayImplCopyWithImpl<$Res>
     Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardTilesPageTilesUnionWeatherDayImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -1563,10 +1578,6 @@ class __$$DashboardTilesPageTilesUnionWeatherDayImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -1577,6 +1588,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
     implements DashboardTilesPageTilesUnionWeatherDay {
   const _$DashboardTilesPageTilesUnionWeatherDayImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
@@ -1585,8 +1597,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
-      @JsonKey(name: 'col_span') this.colSpan = 0,
-      this.type = 'weather-day'})
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardTilesPageTilesUnionWeatherDayImpl.fromJson(
@@ -1596,6 +1607,10 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   /// A unique identifier for the dashboard tile.
   @override
   final String id;
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -1641,14 +1656,9 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   @JsonKey(name: 'col_span')
   final int colSpan;
 
-  /// Indicates that this is a day weather tile.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardTilesPageTilesUnion.weatherDay(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardTilesPageTilesUnion.weatherDay(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -1657,6 +1667,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardTilesPageTilesUnionWeatherDayImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -1667,8 +1678,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
                 other.updatedAt == updatedAt) &&
             (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1676,6 +1686,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
@@ -1683,8 +1694,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
       updatedAt,
       page,
       rowSpan,
-      colSpan,
-      type);
+      colSpan);
 
   /// Create a copy of DashboardTilesPageTilesUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -1702,6 +1712,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1712,11 +1723,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
-        device,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1725,11 +1736,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1738,11 +1749,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1751,12 +1762,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) {
-    return weatherDay(id, row, col, dataSource, createdAt, updatedAt, page,
-        rowSpan, colSpan, type);
+    return weatherDay(id, type, row, col, dataSource, createdAt, updatedAt,
+        page, rowSpan, colSpan);
   }
 
   @override
@@ -1764,6 +1774,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1774,11 +1785,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1787,11 +1798,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1800,11 +1811,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1813,12 +1824,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) {
-    return weatherDay?.call(id, row, col, dataSource, createdAt, updatedAt,
-        page, rowSpan, colSpan, type);
+    return weatherDay?.call(id, type, row, col, dataSource, createdAt,
+        updatedAt, page, rowSpan, colSpan);
   }
 
   @override
@@ -1826,6 +1836,7 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1836,11 +1847,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1849,11 +1860,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1862,11 +1873,11 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -1875,14 +1886,13 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) {
     if (weatherDay != null) {
-      return weatherDay(id, row, col, dataSource, createdAt, updatedAt, page,
-          rowSpan, colSpan, type);
+      return weatherDay(id, type, row, col, dataSource, createdAt, updatedAt,
+          page, rowSpan, colSpan);
     }
     return orElse();
   }
@@ -1890,7 +1900,8 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardTilesPageTilesUnionDevice value) device,
+    required TResult Function(DashboardTilesPageTilesUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardTilesPageTilesUnionClock value) clock,
     required TResult Function(DashboardTilesPageTilesUnionWeatherDay value)
         weatherDay,
@@ -1903,7 +1914,8 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult? Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult? Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult? Function(DashboardTilesPageTilesUnionWeatherForecast value)?
@@ -1915,7 +1927,8 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult Function(DashboardTilesPageTilesUnionWeatherForecast value)?
@@ -1939,17 +1952,18 @@ class _$DashboardTilesPageTilesUnionWeatherDayImpl
 abstract class DashboardTilesPageTilesUnionWeatherDay
     implements DashboardTilesPageTilesUnion {
   const factory DashboardTilesPageTilesUnionWeatherDay(
-      {required final String id,
-      required final int row,
-      required final int col,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
-      @JsonKey(name: 'created_at') required final DateTime createdAt,
-      @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-      required final String page,
-      @JsonKey(name: 'row_span') final int rowSpan,
-      @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardTilesPageTilesUnionWeatherDayImpl;
+          {required final String id,
+          required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'data_source')
+          required final List<DashboardTileBaseDataSourceUnion> dataSource,
+          @JsonKey(name: 'created_at') required final DateTime createdAt,
+          @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+          required final String page,
+          @JsonKey(name: 'row_span') final int rowSpan,
+          @JsonKey(name: 'col_span') final int colSpan}) =
+      _$DashboardTilesPageTilesUnionWeatherDayImpl;
 
   factory DashboardTilesPageTilesUnionWeatherDay.fromJson(
           Map<String, dynamic> json) =
@@ -1958,6 +1972,10 @@ abstract class DashboardTilesPageTilesUnionWeatherDay
   /// A unique identifier for the dashboard tile.
   @override
   String get id;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override
@@ -1996,10 +2014,6 @@ abstract class DashboardTilesPageTilesUnionWeatherDay
   @JsonKey(name: 'col_span')
   int get colSpan;
 
-  /// Indicates that this is a day weather tile.
-  @override
-  String get type;
-
   /// Create a copy of DashboardTilesPageTilesUnion
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -2021,6 +2035,7 @@ abstract class _$$DashboardTilesPageTilesUnionWeatherForecastImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -2029,8 +2044,7 @@ abstract class _$$DashboardTilesPageTilesUnionWeatherForecastImplCopyWith<$Res>
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String page,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -2050,6 +2064,7 @@ class __$$DashboardTilesPageTilesUnionWeatherForecastImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -2058,12 +2073,15 @@ class __$$DashboardTilesPageTilesUnionWeatherForecastImplCopyWithImpl<$Res>
     Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardTilesPageTilesUnionWeatherForecastImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -2097,10 +2115,6 @@ class __$$DashboardTilesPageTilesUnionWeatherForecastImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -2111,6 +2125,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
     implements DashboardTilesPageTilesUnionWeatherForecast {
   const _$DashboardTilesPageTilesUnionWeatherForecastImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
@@ -2119,8 +2134,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
-      @JsonKey(name: 'col_span') this.colSpan = 0,
-      this.type = 'weather-forecast'})
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardTilesPageTilesUnionWeatherForecastImpl.fromJson(
@@ -2130,6 +2144,10 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   /// A unique identifier for the dashboard tile.
   @override
   final String id;
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -2175,14 +2193,9 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   @JsonKey(name: 'col_span')
   final int colSpan;
 
-  /// Indicates that this is a weather forecast tile.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardTilesPageTilesUnion.weatherForecast(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardTilesPageTilesUnion.weatherForecast(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -2191,6 +2204,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardTilesPageTilesUnionWeatherForecastImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -2201,8 +2215,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
                 other.updatedAt == updatedAt) &&
             (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2210,6 +2223,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
@@ -2217,8 +2231,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
       updatedAt,
       page,
       rowSpan,
-      colSpan,
-      type);
+      colSpan);
 
   /// Create a copy of DashboardTilesPageTilesUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -2237,6 +2250,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2247,11 +2261,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
-        device,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2260,11 +2274,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2273,11 +2287,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2286,12 +2300,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) {
-    return weatherForecast(id, row, col, dataSource, createdAt, updatedAt, page,
-        rowSpan, colSpan, type);
+    return weatherForecast(id, type, row, col, dataSource, createdAt, updatedAt,
+        page, rowSpan, colSpan);
   }
 
   @override
@@ -2299,6 +2312,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2309,11 +2323,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2322,11 +2336,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2335,11 +2349,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2348,12 +2362,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) {
-    return weatherForecast?.call(id, row, col, dataSource, createdAt, updatedAt,
-        page, rowSpan, colSpan, type);
+    return weatherForecast?.call(id, type, row, col, dataSource, createdAt,
+        updatedAt, page, rowSpan, colSpan);
   }
 
   @override
@@ -2361,6 +2374,7 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2371,11 +2385,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             String? icon,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
-        device,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2384,11 +2398,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2397,11 +2411,11 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
             @JsonKey(name: 'data_source')
@@ -2410,14 +2424,13 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String page,
             @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
-            String type)?
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) {
     if (weatherForecast != null) {
-      return weatherForecast(id, row, col, dataSource, createdAt, updatedAt,
-          page, rowSpan, colSpan, type);
+      return weatherForecast(id, type, row, col, dataSource, createdAt,
+          updatedAt, page, rowSpan, colSpan);
     }
     return orElse();
   }
@@ -2425,7 +2438,8 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardTilesPageTilesUnionDevice value) device,
+    required TResult Function(DashboardTilesPageTilesUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardTilesPageTilesUnionClock value) clock,
     required TResult Function(DashboardTilesPageTilesUnionWeatherDay value)
         weatherDay,
@@ -2438,7 +2452,8 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult? Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult? Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult? Function(DashboardTilesPageTilesUnionWeatherForecast value)?
@@ -2450,7 +2465,8 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardTilesPageTilesUnionDevice value)? device,
+    TResult Function(DashboardTilesPageTilesUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardTilesPageTilesUnionClock value)? clock,
     TResult Function(DashboardTilesPageTilesUnionWeatherDay value)? weatherDay,
     TResult Function(DashboardTilesPageTilesUnionWeatherForecast value)?
@@ -2474,17 +2490,18 @@ class _$DashboardTilesPageTilesUnionWeatherForecastImpl
 abstract class DashboardTilesPageTilesUnionWeatherForecast
     implements DashboardTilesPageTilesUnion {
   const factory DashboardTilesPageTilesUnionWeatherForecast(
-      {required final String id,
-      required final int row,
-      required final int col,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
-      @JsonKey(name: 'created_at') required final DateTime createdAt,
-      @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-      required final String page,
-      @JsonKey(name: 'row_span') final int rowSpan,
-      @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardTilesPageTilesUnionWeatherForecastImpl;
+          {required final String id,
+          required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'data_source')
+          required final List<DashboardTileBaseDataSourceUnion> dataSource,
+          @JsonKey(name: 'created_at') required final DateTime createdAt,
+          @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+          required final String page,
+          @JsonKey(name: 'row_span') final int rowSpan,
+          @JsonKey(name: 'col_span') final int colSpan}) =
+      _$DashboardTilesPageTilesUnionWeatherForecastImpl;
 
   factory DashboardTilesPageTilesUnionWeatherForecast.fromJson(
           Map<String, dynamic> json) =
@@ -2493,6 +2510,10 @@ abstract class DashboardTilesPageTilesUnionWeatherForecast
   /// A unique identifier for the dashboard tile.
   @override
   String get id;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override
@@ -2530,10 +2551,6 @@ abstract class DashboardTilesPageTilesUnionWeatherForecast
   @override
   @JsonKey(name: 'col_span')
   int get colSpan;
-
-  /// Indicates that this is a weather forecast tile.
-  @override
-  String get type;
 
   /// Create a copy of DashboardTilesPageTilesUnion
   /// with the given fields replaced by the non-null parameter values.

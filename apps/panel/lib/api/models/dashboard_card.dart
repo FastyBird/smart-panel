@@ -23,9 +23,6 @@ class DashboardCard with _$DashboardCard {
     /// The icon representing the dashboard card.
     required String? icon,
 
-    /// Defines the position of the card relative to others on the dashboard page.
-    required int order,
-
     /// The unique identifier of the page this card belongs to.
     required String page,
 
@@ -43,6 +40,10 @@ class DashboardCard with _$DashboardCard {
     /// The timestamp when the dashboard card was last updated.
     @JsonKey(name: 'updated_at')
     required DateTime? updatedAt,
+
+    /// Defines the position of the card relative to others on the dashboard page.
+    @Default(0)
+    int order,
   }) = _DashboardCard;
   
   factory DashboardCard.fromJson(Map<String, Object?> json) => _$DashboardCardFromJson(json);

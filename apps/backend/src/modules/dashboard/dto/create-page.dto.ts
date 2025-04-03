@@ -26,7 +26,7 @@ type ReqCreatePage = components['schemas']['DashboardReqCreatePage'];
 type CreatePageBase = components['schemas']['DashboardCreatePageBase'];
 type CreateCardsPage = components['schemas']['DashboardCreateCardsPage'];
 type CreateTilesPage = components['schemas']['DashboardCreateTilesPage'];
-type CreateDevicePage = components['schemas']['DashboardCreateDevicePage'];
+type CreateDeviceDetailPage = components['schemas']['DashboardCreateDeviceDetailPage'];
 
 const determinePageDto = (obj: unknown): new () => object => {
 	if (
@@ -42,8 +42,8 @@ const determinePageDto = (obj: unknown): new () => object => {
 				return CreateCardsPageDto;
 			case 'tiles':
 				return CreateTilesPageDto;
-			case 'device':
-				return CreateDevicePageDto;
+			case 'device-detail':
+				return CreateDeviceDetailPageDto;
 			default:
 				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
 		}
@@ -108,8 +108,8 @@ export class CreateTilesPageDto extends CreatePageDto implements CreateTilesPage
 	)[];
 }
 
-export class CreateDevicePageDto extends CreatePageDto implements CreateDevicePage {
-	readonly type: 'device';
+export class CreateDeviceDetailPageDto extends CreatePageDto implements CreateDeviceDetailPage {
+	readonly type: 'device-detail';
 
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
@@ -121,5 +121,5 @@ export class ReqCreatePageDto implements ReqCreatePage {
 	@Expose()
 	@ValidateNested()
 	@Type((options) => determinePageDto(options?.object ?? {}))
-	data: CreateCardsPageDto | CreateTilesPageDto | CreateDevicePageDto;
+	data: CreateCardsPageDto | CreateTilesPageDto | CreateDeviceDetailPageDto;
 }

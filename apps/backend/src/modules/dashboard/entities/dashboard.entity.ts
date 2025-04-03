@@ -140,7 +140,7 @@ export class TilesPageEntity extends PageEntity {
 }
 
 @ChildEntity()
-export class DevicePageEntity extends PageEntity {
+export class DeviceDetailPageEntity extends PageEntity {
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
@@ -156,7 +156,7 @@ export class DevicePageEntity extends PageEntity {
 
 	@Expose()
 	get type(): string {
-		return 'device';
+		return 'device-detail';
 	}
 }
 
@@ -344,7 +344,7 @@ export abstract class TileEntity extends BaseEntity {
 }
 
 @ChildEntity()
-export class DeviceTileEntity extends TileEntity {
+export class DevicePreviewTileEntity extends TileEntity {
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
@@ -366,7 +366,7 @@ export class DeviceTileEntity extends TileEntity {
 
 	@Expose()
 	get type(): string {
-		return 'device';
+		return 'device-preview';
 	}
 }
 

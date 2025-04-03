@@ -17,7 +17,7 @@ import { ValidateTileDataSources } from '../validators/tile-data-source-type-con
 import { CreateDeviceChannelDataSourceDto } from './create-data-source.dto';
 
 type CreateTileBase = components['schemas']['DashboardCreateTileBase'];
-type CreateDeviceTile = components['schemas']['DashboardCreateDeviceTile'];
+type CreateDevicePreviewTile = components['schemas']['DashboardCreateDevicePreviewTile'];
 type CreateTimeTile = components['schemas']['DashboardCreateTimeTile'];
 type CreateDayWeatherTile = components['schemas']['DashboardCreateDayWeatherTile'];
 type CreateForecastWeatherTile = components['schemas']['DashboardCreateForecastWeatherTile'];
@@ -73,8 +73,8 @@ export abstract class CreateTileDto implements CreateTileBase {
 	col_span?: number;
 }
 
-export class CreateDeviceTileDto extends CreateTileDto implements CreateDeviceTile {
-	readonly type: 'device';
+export class CreateDevicePreviewTileDto extends CreateTileDto implements CreateDevicePreviewTile {
+	readonly type: 'device-preview';
 
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })

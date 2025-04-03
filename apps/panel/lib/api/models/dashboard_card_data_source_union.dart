@@ -14,6 +14,9 @@ sealed class DashboardCardDataSourceUnion with _$DashboardCardDataSourceUnion {
     /// A unique identifier for the data source.
     required String id,
 
+    /// Discriminator for the data source type
+    required String type,
+
     /// The timestamp when the data source was created.
     @JsonKey(name: 'created_at')
     required DateTime createdAt,
@@ -36,10 +39,6 @@ sealed class DashboardCardDataSourceUnion with _$DashboardCardDataSourceUnion {
 
     /// The unique identifier of the associated card.
     required String card,
-
-    /// Indicates that this data source is linked to a device channel.
-    @Default('device-channel')
-    String type,
   }) = DashboardCardDataSourceUnionDeviceChannel;
 
   

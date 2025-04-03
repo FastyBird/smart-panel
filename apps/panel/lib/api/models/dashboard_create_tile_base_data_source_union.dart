@@ -14,6 +14,9 @@ sealed class DashboardCreateTileBaseDataSourceUnion with _$DashboardCreateTileBa
     /// Unique identifier for the data source (optional during creation).
     required String id,
 
+    /// Discriminator for the data source type
+    required String type,
+
     /// The unique identifier of the associated device.
     required String device,
 
@@ -25,10 +28,6 @@ sealed class DashboardCreateTileBaseDataSourceUnion with _$DashboardCreateTileBa
 
     /// The icon representing the data source.
     String? icon,
-
-    /// Specifies the type of data source as linked to a device channel.
-    @Default('device-channel')
-    String type,
   }) = DashboardCreateTileBaseDataSourceUnionDeviceChannel;
 
   

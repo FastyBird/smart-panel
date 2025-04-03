@@ -11,10 +11,13 @@ part 'dashboard_tiles_page_tiles_union.g.dart';
 
 @Freezed(unionKey: 'type')
 sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
-  @FreezedUnionValue('device')
-  const factory DashboardTilesPageTilesUnion.device({
+  @FreezedUnionValue('device-preview')
+  const factory DashboardTilesPageTilesUnion.devicePreview({
     /// A unique identifier for the dashboard tile.
     required String id,
+
+    /// Discriminator for the tile type
+    required String type,
 
     /// The row position of the tile in the grid.
     required int row,
@@ -52,16 +55,15 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     @JsonKey(name: 'col_span')
     @Default(0)
     int colSpan,
-
-    /// Indicates that this is a device-specific tile.
-    @Default('device')
-    String type,
-  }) = DashboardTilesPageTilesUnionDevice;
+  }) = DashboardTilesPageTilesUnionDevicePreview;
 
   @FreezedUnionValue('clock')
   const factory DashboardTilesPageTilesUnion.clock({
     /// A unique identifier for the dashboard tile.
     required String id,
+
+    /// Discriminator for the tile type
+    required String type,
 
     /// The row position of the tile in the grid.
     required int row,
@@ -93,10 +95,6 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     @JsonKey(name: 'col_span')
     @Default(0)
     int colSpan,
-
-    /// Indicates that this is a clock tile.
-    @Default('clock')
-    String type,
   }) = DashboardTilesPageTilesUnionClock;
 
   @FreezedUnionValue('weather-day')
@@ -104,6 +102,9 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     /// A unique identifier for the dashboard tile.
     required String id,
 
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -134,10 +135,6 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     @JsonKey(name: 'col_span')
     @Default(0)
     int colSpan,
-
-    /// Indicates that this is a day weather tile.
-    @Default('weather-day')
-    String type,
   }) = DashboardTilesPageTilesUnionWeatherDay;
 
   @FreezedUnionValue('weather-forecast')
@@ -145,6 +142,9 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     /// A unique identifier for the dashboard tile.
     required String id,
 
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -175,10 +175,6 @@ sealed class DashboardTilesPageTilesUnion with _$DashboardTilesPageTilesUnion {
     @JsonKey(name: 'col_span')
     @Default(0)
     int colSpan,
-
-    /// Indicates that this is a weather forecast tile.
-    @Default('weather-forecast')
-    String type,
   }) = DashboardTilesPageTilesUnionWeatherForecast;
 
   

@@ -11,15 +11,14 @@ part 'dashboard_update_cards_page.g.dart';
 @Freezed()
 class DashboardUpdateCardsPage with _$DashboardUpdateCardsPage {
   const factory DashboardUpdateCardsPage({
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the page.
     required String title,
 
     /// The display order of the page.
     required int order,
-
-    /// Indicates that this is a cards dashboard page.
-    @Default('cards')
-    String type,
 
     /// The icon associated with the page.
     String? icon,

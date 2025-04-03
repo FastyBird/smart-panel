@@ -10,6 +10,7 @@ _$DashboardTileBaseImpl _$$DashboardTileBaseImplFromJson(
         Map<String, dynamic> json) =>
     _$DashboardTileBaseImpl(
       id: json['id'] as String,
+      type: json['type'] as String,
       row: (json['row'] as num).toInt(),
       col: (json['col'] as num).toInt(),
       dataSource: (json['data_source'] as List<dynamic>)
@@ -28,6 +29,7 @@ Map<String, dynamic> _$$DashboardTileBaseImplToJson(
         _$DashboardTileBaseImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'row': instance.row,
       'col': instance.col,
       'data_source': instance.dataSource,

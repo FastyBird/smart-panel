@@ -10,7 +10,7 @@ export interface TileTypeMapping<
 	TCreateDTO extends CreateTileDto,
 	TUpdateDTO extends UpdateTileDto,
 > {
-	type: string; // e.g., 'device', 'clock'
+	type: string; // e.g., 'device-preview', 'clock'
 	class: new (...args: any[]) => TTile; // Constructor for the tile class
 	createDto: new (...args: any[]) => TCreateDTO; // Constructor for the Create DTO
 	updateDto: new (...args: any[]) => TUpdateDTO; // Constructor for the Update DTO

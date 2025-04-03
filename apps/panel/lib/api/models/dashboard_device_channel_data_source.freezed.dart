@@ -24,6 +24,9 @@ mixin _$DashboardDeviceChannelDataSource {
   /// A unique identifier for the data source.
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the data source type
+  String get type => throw _privateConstructorUsedError;
+
   /// The timestamp when the data source was created.
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -43,9 +46,6 @@ mixin _$DashboardDeviceChannelDataSource {
 
   /// The icon representing the data source.
   String? get icon => throw _privateConstructorUsedError;
-
-  /// Indicates that this data source is linked to a device channel.
-  String get type => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardDeviceChannelDataSource to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -67,13 +67,13 @@ abstract class $DashboardDeviceChannelDataSourceCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
       String channel,
       String property,
-      String? icon,
-      String type});
+      String? icon});
 }
 
 /// @nodoc
@@ -93,18 +93,22 @@ class _$DashboardDeviceChannelDataSourceCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
     Object? channel = null,
     Object? property = null,
     Object? icon = freezed,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       createdAt: null == createdAt
           ? _value.createdAt
@@ -130,10 +134,6 @@ class _$DashboardDeviceChannelDataSourceCopyWithImpl<$Res,
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -149,13 +149,13 @@ abstract class _$$DashboardDeviceChannelDataSourceImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
       String channel,
       String property,
-      String? icon,
-      String type});
+      String? icon});
 }
 
 /// @nodoc
@@ -174,18 +174,22 @@ class __$$DashboardDeviceChannelDataSourceImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
     Object? channel = null,
     Object? property = null,
     Object? icon = freezed,
-    Object? type = null,
   }) {
     return _then(_$DashboardDeviceChannelDataSourceImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       createdAt: null == createdAt
           ? _value.createdAt
@@ -211,10 +215,6 @@ class __$$DashboardDeviceChannelDataSourceImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -225,13 +225,13 @@ class _$DashboardDeviceChannelDataSourceImpl
     implements _DashboardDeviceChannelDataSource {
   const _$DashboardDeviceChannelDataSourceImpl(
       {required this.id,
+      required this.type,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.device,
       required this.channel,
       required this.property,
-      required this.icon,
-      this.type = 'device-channel'});
+      required this.icon});
 
   factory _$DashboardDeviceChannelDataSourceImpl.fromJson(
           Map<String, dynamic> json) =>
@@ -240,6 +240,10 @@ class _$DashboardDeviceChannelDataSourceImpl
   /// A unique identifier for the data source.
   @override
   final String id;
+
+  /// Discriminator for the data source type
+  @override
+  final String type;
 
   /// The timestamp when the data source was created.
   @override
@@ -267,14 +271,9 @@ class _$DashboardDeviceChannelDataSourceImpl
   @override
   final String? icon;
 
-  /// Indicates that this data source is linked to a device channel.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardDeviceChannelDataSource(id: $id, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, channel: $channel, property: $property, icon: $icon, type: $type)';
+    return 'DashboardDeviceChannelDataSource(id: $id, type: $type, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, channel: $channel, property: $property, icon: $icon)';
   }
 
   @override
@@ -283,6 +282,7 @@ class _$DashboardDeviceChannelDataSourceImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardDeviceChannelDataSourceImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -291,14 +291,13 @@ class _$DashboardDeviceChannelDataSourceImpl
             (identical(other.channel, channel) || other.channel == channel) &&
             (identical(other.property, property) ||
                 other.property == property) &&
-            (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.icon, icon) || other.icon == icon));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, createdAt, updatedAt, device,
-      channel, property, icon, type);
+  int get hashCode => Object.hash(runtimeType, id, type, createdAt, updatedAt,
+      device, channel, property, icon);
 
   /// Create a copy of DashboardDeviceChannelDataSource
   /// with the given fields replaced by the non-null parameter values.
@@ -322,13 +321,13 @@ abstract class _DashboardDeviceChannelDataSource
     implements DashboardDeviceChannelDataSource {
   const factory _DashboardDeviceChannelDataSource(
       {required final String id,
+      required final String type,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       required final String device,
       required final String channel,
       required final String property,
-      required final String? icon,
-      final String type}) = _$DashboardDeviceChannelDataSourceImpl;
+      required final String? icon}) = _$DashboardDeviceChannelDataSourceImpl;
 
   factory _DashboardDeviceChannelDataSource.fromJson(
           Map<String, dynamic> json) =
@@ -337,6 +336,10 @@ abstract class _DashboardDeviceChannelDataSource
   /// A unique identifier for the data source.
   @override
   String get id;
+
+  /// Discriminator for the data source type
+  @override
+  String get type;
 
   /// The timestamp when the data source was created.
   @override
@@ -363,10 +366,6 @@ abstract class _DashboardDeviceChannelDataSource
   /// The icon representing the data source.
   @override
   String? get icon;
-
-  /// Indicates that this data source is linked to a device channel.
-  @override
-  String get type;
 
   /// Create a copy of DashboardDeviceChannelDataSource
   /// with the given fields replaced by the non-null parameter values.

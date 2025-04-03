@@ -6,64 +6,65 @@ part of 'dashboard_create_tiles_page_tiles_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardCreateTilesPageTilesUnionDeviceImpl
-    _$$DashboardCreateTilesPageTilesUnionDeviceImplFromJson(
+_$DashboardCreateTilesPageTilesUnionDevicePreviewImpl
+    _$$DashboardCreateTilesPageTilesUnionDevicePreviewImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardCreateTilesPageTilesUnionDeviceImpl(
+        _$DashboardCreateTilesPageTilesUnionDevicePreviewImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
-          rowSpan: (json['row_span'] as num).toInt(),
-          colSpan: (json['col_span'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
               .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
           device: json['device'] as String,
           icon: json['icon'] as String?,
-          type: json['type'] as String? ?? 'device',
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
         );
 
-Map<String, dynamic> _$$DashboardCreateTilesPageTilesUnionDeviceImplToJson(
-        _$DashboardCreateTilesPageTilesUnionDeviceImpl instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'row': instance.row,
-      'col': instance.col,
-      'row_span': instance.rowSpan,
-      'col_span': instance.colSpan,
-      'data_source': instance.dataSource,
-      'device': instance.device,
-      'icon': instance.icon,
-      'type': instance.type,
-    };
+Map<String, dynamic>
+    _$$DashboardCreateTilesPageTilesUnionDevicePreviewImplToJson(
+            _$DashboardCreateTilesPageTilesUnionDevicePreviewImpl instance) =>
+        <String, dynamic>{
+          'id': instance.id,
+          'type': instance.type,
+          'row': instance.row,
+          'col': instance.col,
+          'data_source': instance.dataSource,
+          'device': instance.device,
+          'icon': instance.icon,
+          'row_span': instance.rowSpan,
+          'col_span': instance.colSpan,
+        };
 
 _$DashboardCreateTilesPageTilesUnionClockImpl
     _$$DashboardCreateTilesPageTilesUnionClockImplFromJson(
             Map<String, dynamic> json) =>
         _$DashboardCreateTilesPageTilesUnionClockImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
-          rowSpan: (json['row_span'] as num).toInt(),
-          colSpan: (json['col_span'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
               .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'clock',
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
         );
 
 Map<String, dynamic> _$$DashboardCreateTilesPageTilesUnionClockImplToJson(
         _$DashboardCreateTilesPageTilesUnionClockImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'row': instance.row,
       'col': instance.col,
+      'data_source': instance.dataSource,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
-      'data_source': instance.dataSource,
-      'type': instance.type,
     };
 
 _$DashboardCreateTilesPageTilesUnionWeatherDayImpl
@@ -71,27 +72,27 @@ _$DashboardCreateTilesPageTilesUnionWeatherDayImpl
             Map<String, dynamic> json) =>
         _$DashboardCreateTilesPageTilesUnionWeatherDayImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
-          rowSpan: (json['row_span'] as num).toInt(),
-          colSpan: (json['col_span'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
               .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'weather-day',
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
         );
 
 Map<String, dynamic> _$$DashboardCreateTilesPageTilesUnionWeatherDayImplToJson(
         _$DashboardCreateTilesPageTilesUnionWeatherDayImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'row': instance.row,
       'col': instance.col,
+      'data_source': instance.dataSource,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
-      'data_source': instance.dataSource,
-      'type': instance.type,
     };
 
 _$DashboardCreateTilesPageTilesUnionWeatherForecastImpl
@@ -99,15 +100,15 @@ _$DashboardCreateTilesPageTilesUnionWeatherForecastImpl
             Map<String, dynamic> json) =>
         _$DashboardCreateTilesPageTilesUnionWeatherForecastImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
-          rowSpan: (json['row_span'] as num).toInt(),
-          colSpan: (json['col_span'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
               .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'weather-forecast',
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
         );
 
 Map<String, dynamic>
@@ -115,10 +116,10 @@ Map<String, dynamic>
             _$DashboardCreateTilesPageTilesUnionWeatherForecastImpl instance) =>
         <String, dynamic>{
           'id': instance.id,
+          'type': instance.type,
           'row': instance.row,
           'col': instance.col,
+          'data_source': instance.dataSource,
           'row_span': instance.rowSpan,
           'col_span': instance.colSpan,
-          'data_source': instance.dataSource,
-          'type': instance.type,
         };

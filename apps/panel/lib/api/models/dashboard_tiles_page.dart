@@ -17,14 +17,14 @@ class DashboardTilesPage with _$DashboardTilesPage {
     /// A unique identifier for the dashboard page.
     required String id,
 
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the dashboard page, displayed in the UI.
     required String title,
 
     /// The icon representing the dashboard page.
     required String? icon,
-
-    /// The display order of the dashboard page in the navigation or list.
-    required int order,
 
     /// The timestamp when the dashboard page was created.
     @JsonKey(name: 'created_at')
@@ -41,9 +41,9 @@ class DashboardTilesPage with _$DashboardTilesPage {
     @JsonKey(name: 'data_source')
     required List<DashboardTilesPageDataSourceUnion> dataSource,
 
-    /// Indicates that this is a tiles dashboard page.
-    @Default('tiles')
-    String type,
+    /// The display order of the dashboard page in the navigation or list.
+    @Default(0)
+    int order,
   }) = _DashboardTilesPage;
   
   factory DashboardTilesPage.fromJson(Map<String, Object?> json) => _$DashboardTilesPageFromJson(json);

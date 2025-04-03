@@ -10,18 +10,18 @@ _$DashboardReqUpdatePageDataUnionCardsImpl
     _$$DashboardReqUpdatePageDataUnionCardsImplFromJson(
             Map<String, dynamic> json) =>
         _$DashboardReqUpdatePageDataUnionCardsImpl(
+          type: json['type'] as String,
           title: json['title'] as String,
           order: (json['order'] as num).toInt(),
-          type: json['type'] as String? ?? 'cards',
           icon: json['icon'] as String?,
         );
 
 Map<String, dynamic> _$$DashboardReqUpdatePageDataUnionCardsImplToJson(
         _$DashboardReqUpdatePageDataUnionCardsImpl instance) =>
     <String, dynamic>{
+      'type': instance.type,
       'title': instance.title,
       'order': instance.order,
-      'type': instance.type,
       'icon': instance.icon,
     };
 
@@ -29,38 +29,38 @@ _$DashboardReqUpdatePageDataUnionTilesImpl
     _$$DashboardReqUpdatePageDataUnionTilesImplFromJson(
             Map<String, dynamic> json) =>
         _$DashboardReqUpdatePageDataUnionTilesImpl(
+          type: json['type'] as String,
           title: json['title'] as String,
           order: (json['order'] as num).toInt(),
-          type: json['type'] as String? ?? 'tiles',
           icon: json['icon'] as String?,
         );
 
 Map<String, dynamic> _$$DashboardReqUpdatePageDataUnionTilesImplToJson(
         _$DashboardReqUpdatePageDataUnionTilesImpl instance) =>
     <String, dynamic>{
+      'type': instance.type,
       'title': instance.title,
       'order': instance.order,
-      'type': instance.type,
       'icon': instance.icon,
     };
 
-_$DashboardReqUpdatePageDataUnionDeviceImpl
-    _$$DashboardReqUpdatePageDataUnionDeviceImplFromJson(
+_$DashboardReqUpdatePageDataUnionDeviceDetailImpl
+    _$$DashboardReqUpdatePageDataUnionDeviceDetailImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardReqUpdatePageDataUnionDeviceImpl(
+        _$DashboardReqUpdatePageDataUnionDeviceDetailImpl(
+          type: json['type'] as String,
           title: json['title'] as String,
           order: (json['order'] as num).toInt(),
           device: json['device'] as String,
-          type: json['type'] as String? ?? 'device',
           icon: json['icon'] as String?,
         );
 
-Map<String, dynamic> _$$DashboardReqUpdatePageDataUnionDeviceImplToJson(
-        _$DashboardReqUpdatePageDataUnionDeviceImpl instance) =>
+Map<String, dynamic> _$$DashboardReqUpdatePageDataUnionDeviceDetailImplToJson(
+        _$DashboardReqUpdatePageDataUnionDeviceDetailImpl instance) =>
     <String, dynamic>{
+      'type': instance.type,
       'title': instance.title,
       'order': instance.order,
       'device': instance.device,
-      'type': instance.type,
       'icon': instance.icon,
     };

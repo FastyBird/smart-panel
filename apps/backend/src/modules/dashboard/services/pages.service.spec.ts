@@ -21,9 +21,9 @@ import { DeviceCategory } from '../../devices/devices.constants';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException } from '../dashboard.exceptions';
-import { CreateDevicePageDto, CreateTilesPageDto } from '../dto/create-page.dto';
+import { CreateDeviceDetailPageDto, CreateTilesPageDto } from '../dto/create-page.dto';
 import { UpdateTilesPageDto } from '../dto/update-page.dto';
-import { DevicePageEntity, PageEntity, TilesPageEntity } from '../entities/dashboard.entity';
+import { DeviceDetailPageEntity, PageEntity, TilesPageEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
 import { PagesTypeMapperService } from './pages-type-mapper.service';
@@ -64,9 +64,9 @@ describe('PagesService', () => {
 		mockValue: 'Some value',
 	};
 
-	const mockDevicePage: DevicePageEntity = {
+	const mockDevicePage: DeviceDetailPageEntity = {
 		id: uuid().toString(),
-		type: 'device',
+		type: 'device-detail',
 		title: 'Device detail',
 		order: 0,
 		device: mockDevice.id,
@@ -168,11 +168,11 @@ describe('PagesService', () => {
 
 			jest
 				.spyOn(repository, 'find')
-				.mockResolvedValue(mockPages.map((entity) => plainToInstance(DevicePageEntity, entity)));
+				.mockResolvedValue(mockPages.map((entity) => plainToInstance(DeviceDetailPageEntity, entity)));
 
 			const result = await service.findAll();
 
-			expect(result).toEqual(mockPages.map((entity) => plainToInstance(DevicePageEntity, entity)));
+			expect(result).toEqual(mockPages.map((entity) => plainToInstance(DeviceDetailPageEntity, entity)));
 			expect(repository.find).toHaveBeenCalledWith({
 				relations: expect.arrayContaining([
 					'tiles',
@@ -188,11 +188,11 @@ describe('PagesService', () => {
 
 	describe('findOne', () => {
 		it('should return a page by ID', async () => {
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(DevicePageEntity, mockDevicePage));
+			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(DeviceDetailPageEntity, mockDevicePage));
 
 			const result = await service.findOne(mockDevicePage.id);
 
-			expect(result).toEqual(plainToInstance(DevicePageEntity, mockDevicePage));
+			expect(result).toEqual(plainToInstance(DeviceDetailPageEntity, mockDevicePage));
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockDevicePage.id },
 				relations: expect.arrayContaining([
@@ -302,11 +302,11 @@ describe('PagesService', () => {
 		});
 
 		it('should throw validation exception for invalid data', async () => {
-			const createDto: Partial<CreateDevicePageDto> = {
+			const createDto: Partial<CreateDeviceDetailPageDto> = {
 				title: 'New page',
 			};
 
-			await expect(service.create(createDto as CreateDevicePageDto)).rejects.toThrow(DashboardException);
+			await expect(service.create(createDto as CreateDeviceDetailPageDto)).rejects.toThrow(DashboardException);
 		});
 	});
 
@@ -398,7 +398,7 @@ describe('PagesService', () => {
 
 	describe('remove', () => {
 		it('should delete a page', async () => {
-			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(DevicePageEntity, mockDevicePage));
+			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(DeviceDetailPageEntity, mockDevicePage));
 			jest.spyOn(repository, 'remove').mockResolvedValue(mockDevicePage);
 
 			await service.remove(mockDevicePage.id);

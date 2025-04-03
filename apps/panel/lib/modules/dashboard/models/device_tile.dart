@@ -4,12 +4,12 @@ import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/get.dart';
 
-abstract class DeviceTileModel extends TileModel {
+abstract class DevicePreviewTileModel extends TileModel {
   final String _device;
 
   final IconData? _icon;
 
-  DeviceTileModel({
+  DevicePreviewTileModel({
     required String device,
     required IconData? icon,
     required super.id,
@@ -24,7 +24,7 @@ abstract class DeviceTileModel extends TileModel {
   })  : _device = UuidUtils.validateUuid(device),
         _icon = icon,
         super(
-          type: TileType.device,
+          type: TileType.devicePreview,
         );
 
   String get device => _device;
@@ -32,8 +32,8 @@ abstract class DeviceTileModel extends TileModel {
   IconData? get icon => _icon;
 }
 
-class PageDeviceTileModel extends DeviceTileModel {
-  PageDeviceTileModel({
+class PageDevicePreviewTileModel extends DevicePreviewTileModel {
+  PageDevicePreviewTileModel({
     required super.device,
     super.icon,
     required super.id,
@@ -47,7 +47,7 @@ class PageDeviceTileModel extends DeviceTileModel {
     super.updatedAt,
   });
 
-  factory PageDeviceTileModel.fromJson(Map<String, dynamic> json) {
+  factory PageDevicePreviewTileModel.fromJson(Map<String, dynamic> json) {
     List<String> dataSources = [];
 
     if (json['data_source'] is List) {
@@ -61,7 +61,7 @@ class PageDeviceTileModel extends DeviceTileModel {
       }
     }
 
-    return PageDeviceTileModel(
+    return PageDevicePreviewTileModel(
       id: UuidUtils.validateUuid(json['id']),
       parent: UuidUtils.validateUuid(json['page']),
       dataSource: UuidUtils.validateUuidList(dataSources),
@@ -86,8 +86,8 @@ class PageDeviceTileModel extends DeviceTileModel {
   }
 }
 
-class CardDeviceTileModel extends DeviceTileModel {
-  CardDeviceTileModel({
+class CardDevicePreviewTileModel extends DevicePreviewTileModel {
+  CardDevicePreviewTileModel({
     required super.device,
     super.icon,
     required super.id,
@@ -101,7 +101,7 @@ class CardDeviceTileModel extends DeviceTileModel {
     super.updatedAt,
   });
 
-  factory CardDeviceTileModel.fromJson(Map<String, dynamic> json) {
+  factory CardDevicePreviewTileModel.fromJson(Map<String, dynamic> json) {
     List<String> dataSources = [];
 
     if (json['data_source'] is List) {
@@ -115,7 +115,7 @@ class CardDeviceTileModel extends DeviceTileModel {
       }
     }
 
-    return CardDeviceTileModel(
+    return CardDevicePreviewTileModel(
       id: UuidUtils.validateUuid(json['id']),
       parent: UuidUtils.validateUuid(json['card']),
       dataSource: UuidUtils.validateUuidList(dataSources),
