@@ -3734,7 +3734,7 @@ export interface components {
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            type: "device-preview";
+            type: "device-detail";
         };
         /**
          * Card
