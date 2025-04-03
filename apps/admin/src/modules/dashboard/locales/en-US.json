@@ -1,1 +1,27 @@
-{}
+{
+  "headings": {
+    "pages": {
+      "remove": "Remove page?"
+    }
+  },
+  "messages": {
+    "pages": {
+      "removed": "The page: {page} was successfully removed.",
+      "removeCanceled": "Page: {page} removal has been canceled.",
+      "notRemoved": "Something went wrong, and the page: {page} was not removed."
+    }
+  },
+  "texts": {
+    "pages": {
+      "confirmRemove": "Are you sure you want to remove page: {page}? This cannot be reversed."
+    }
+  },
+  "buttons": {
+    "yes": {
+      "title": "Yes"
+    },
+    "no": {
+      "title": "No"
+    }
+  }
+}
