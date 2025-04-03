@@ -171,7 +171,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channels.add'),
-				route: router.resolve({ name: RouteNames.DEVICE_ADD_CHANEL, params: { id: props.device?.id } }),
+				route: router.resolve({ name: RouteNames.DEVICE_ADD_CHANNEL, params: { id: props.device?.id } }),
 			});
 		} else {
 			items.push({
@@ -244,7 +244,7 @@ watch(
 		if (val === FormResult.OK) {
 			if (isDeviceDetailRoute.value) {
 				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.DEVICE_EDIT_CHANEL, params: { id: props.device?.id, channelId: newChannelId } });
+					router.replace({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { id: props.device?.id, channelId: newChannelId } });
 				} else {
 					router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id, channelId: newChannelId } });
 				}

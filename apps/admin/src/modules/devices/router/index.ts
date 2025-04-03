@@ -79,7 +79,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'channel/add',
-				name: RouteNames.DEVICE_ADD_CHANEL,
+				name: RouteNames.DEVICE_ADD_CHANNEL,
 				component: () => import('../views/view-channel-add.vue'),
 				props: false,
 				meta: {
@@ -93,7 +93,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'channel/:channelId',
-				name: RouteNames.DEVICE_EDIT_CHANEL,
+				name: RouteNames.DEVICE_EDIT_CHANNEL,
 				component: () => import('../views/view-channel-edit.vue'),
 				props: (route) => ({ id: route.params.channelId }),
 				meta: {
@@ -107,7 +107,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'channel/:channelId/property/add',
-				name: RouteNames.DEVICE_CHANEL_ADD_PROPERTY,
+				name: RouteNames.DEVICE_CHANNEL_ADD_PROPERTY,
 				component: () => import('../views/view-channel-property-add.vue'),
 				props: (route) => ({ channelId: route.params.channelId }),
 				meta: {
@@ -121,7 +121,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'channel/:channelId/property/:propertyId',
-				name: RouteNames.DEVICE_CHANEL_EDIT_PROPERTY,
+				name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 				component: () => import('../views/view-channel-property-edit.vue'),
 				props: (route) => ({ id: route.params.propertyId, channelId: route.params.channelId }),
 				meta: {

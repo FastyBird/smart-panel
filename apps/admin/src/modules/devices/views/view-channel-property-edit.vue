@@ -199,12 +199,12 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channels.edit', { channel: channel.value?.name }),
-				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANEL, params: { channelId: props.channelId, id: props.device?.id } }),
+				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { channelId: props.channelId, id: props.device?.id } }),
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channelsProperties.edit'),
 				route: router.resolve({
-					name: RouteNames.DEVICE_CHANEL_EDIT_PROPERTY,
+					name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 					params: { propertyId: props.id, channelId: props.channelId, id: props.device?.id },
 				}),
 			});

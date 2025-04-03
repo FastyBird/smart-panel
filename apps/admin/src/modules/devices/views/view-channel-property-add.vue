@@ -197,12 +197,12 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channels.edit', { channel: channel.value?.name }),
-				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANEL, params: { channelId: props.channelId, id: props.device?.id } }),
+				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { channelId: props.channelId, id: props.device?.id } }),
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channelsProperties.add'),
 				route: router.resolve({
-					name: RouteNames.DEVICE_CHANEL_ADD_PROPERTY,
+					name: RouteNames.DEVICE_CHANNEL_ADD_PROPERTY,
 					params: { channelId: props.channelId, id: props.device?.id },
 				}),
 			});
@@ -348,12 +348,12 @@ watch(
 			} else if (isDeviceDetailRoute.value) {
 				if (isLGDevice.value) {
 					router.replace({
-						name: RouteNames.DEVICE_CHANEL_EDIT_PROPERTY,
+						name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 						params: { id: channel.value?.device, channelId: props.channelId, propertyId: newPropertyId },
 					});
 				} else {
 					router.push({
-						name: RouteNames.DEVICE_CHANEL_EDIT_PROPERTY,
+						name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 						params: { id: channel.value?.device, channelId: props.channelId, propertyId: newPropertyId },
 					});
 				}

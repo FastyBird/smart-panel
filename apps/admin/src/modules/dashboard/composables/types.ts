@@ -1,10 +1,48 @@
 import type { ComputedRef, Ref } from 'vue';
 
-import type { IPage } from '../store';
+import type { ICard, IPage } from '../store';
+
+export interface ICardsFilter {
+	search: string | undefined;
+	pages: IPage['id'][];
+}
 
 export interface IPagesFilter {
 	search: string | undefined;
 	types: string[];
+}
+
+export interface IUseCard {
+	card: ComputedRef<ICard | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchCard: () => Promise<void>;
+}
+
+export interface IUseCards {
+	cards: ComputedRef<ICard[]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchCards: () => Promise<void>;
+}
+
+export interface IUseCardsDataSource {
+	cards: ComputedRef<ICard[]>;
+	cardsPaginated: ComputedRef<ICard[]>;
+	totalRows: ComputedRef<number>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchCards: () => Promise<void>;
+	filters: Ref<ICardsFilter>;
+	filtersActive: ComputedRef<boolean>;
+	paginateSize: Ref<number>;
+	paginatePage: Ref<number>;
+	sortBy: Ref<'title' | 'order'>;
+	sortDir: Ref<'ascending' | 'descending' | null>;
+	resetFilter: () => void;
+}
+
+export interface IUseCardsActions {
+	remove: (id: ICard['id']) => Promise<void>;
 }
 
 export interface IUsePage {
