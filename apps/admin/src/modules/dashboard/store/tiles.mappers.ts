@@ -1,13 +1,9 @@
 import { DashboardException } from '../dashboard.exceptions';
 
 import {
-	CardDayWeatherTileResSchema,
 	CardDayWeatherTileSchema,
-	CardDevicePreviewTileResSchema,
 	CardDevicePreviewTileSchema,
-	CardForecastWeatherTileResSchema,
 	CardForecastWeatherTileSchema,
-	CardTimeTileResSchema,
 	CardTimeTileSchema,
 	DayWeatherTileCreateReqSchema,
 	DayWeatherTileUpdateReqSchema,
@@ -16,13 +12,9 @@ import {
 	ForecastWeatherTileCreateReqSchema,
 	ForecastWeatherTileUpdateReqSchema,
 	type ITilesEntitiesSchemas,
-	PageDayWeatherTileResSchema,
 	PageDayWeatherTileSchema,
-	PageDevicePreviewTileResSchema,
 	PageDevicePreviewTileSchema,
-	PageForecastWeatherTileResSchema,
 	PageForecastWeatherTileSchema,
-	PageTimeTileResSchema,
 	PageTimeTileSchema,
 	type TileParentType,
 	TimeTileCreateReqSchema,

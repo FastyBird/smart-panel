@@ -2,16 +2,13 @@ import { DashboardException } from '../dashboard.exceptions';
 
 import {
 	CardsPageCreateReqSchema,
-	CardsPageResSchema,
 	CardsPageSchema,
 	CardsPageUpdateReqSchema,
 	DeviceDetailPageCreateReqSchema,
-	DeviceDetailPageResSchema,
 	DeviceDetailPageSchema,
 	DeviceDetailPageUpdateReqSchema,
 	type IPagesEntitiesSchemas,
 	TilesPageCreateReqSchema,
-	TilesPageResSchema,
 	TilesPageSchema,
 	TilesPageUpdateReqSchema,
 } from './pages.store.types';
