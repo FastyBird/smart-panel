@@ -1,0 +1,174 @@
+{
+  "meta": {
+    "config": {
+      "title": "Config"
+    },
+    "configAudio": {
+      "title": "Audio config"
+    },
+    "configDisplay": {
+      "title": "Display config"
+    },
+    "configLanguage": {
+      "title": "Language config"
+    },
+    "configWeather": {
+      "title": "Weather config"
+    }
+  },
+  "breadcrumbs": {
+    "config": "config",
+    "configAudio": "audio config",
+    "configDisplay": "display config",
+    "configLanguage": "language config",
+    "configWeather": "weather config"
+  },
+  "headings": {
+    "config": "Configuration"
+  },
+  "subHeadings": {
+    "config": "Smart panel configuration"
+  },
+  "tabs": {
+    "configAudio": "Audio config",
+    "configDisplay": "Display config",
+    "configLanguage": "Language config",
+    "configWeather": "Weather config"
+  },
+  "messages": {
+    "configAudio": {
+      "edited": "Changes saved! The audio config has been updated.",
+      "notEdited": "Something went wrong. Audio config update was not successful."
+    },
+    "configDisplay": {
+      "edited": "Changes saved! The display config has been updated.",
+      "notEdited": "Something went wrong. Display config update was not successful."
+    },
+    "configLanguage": {
+      "edited": "Changes saved! The language config has been updated.",
+      "notEdited": "Something went wrong. Language config update was not successful."
+    },
+    "configWeather": {
+      "edited": "Changes saved! The weather config has been updated.",
+      "notEdited": "Something went wrong. Weather config update was not successful."
+    }
+  },
+  "texts": {
+    "loadingAudioConfig": "Loading audio config...",
+    "loadingDisplayConfig": "Loading display config...",
+    "loadingLanguageConfig": "Loading language config...",
+    "loadingWeatherConfig": "Loading weather config..."
+  },
+  "fields": {
+    "speaker": {
+      "title": "Speaker",
+      "placeholder": "Enable or disable the speaker",
+      "values": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      }
+    },
+    "speakerVolume": {
+      "title": "Speaker volume"
+    },
+    "microphone": {
+      "title": "Microphone",
+      "placeholder": "Enable or disable the microphone",
+      "values": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      }
+    },
+    "microphoneVolume": {
+      "title": "Microphone volume"
+    },
+    "darkMode": {
+      "title": "Theme mode",
+      "placeholder": "Choose between light or dark mode",
+      "values": {
+        "dark": "Dark",
+        "light": "Light"
+      }
+    },
+    "brightness": {
+      "title": "Brightness"
+    },
+    "screenLockDuration": {
+      "title": "Screen lock",
+      "placeholder": "Set screen lock delay duration",
+      "values": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      }
+    },
+    "screenSaver": {
+      "title": "Screen Saver",
+      "placeholder": "Enable or disable the screen saver",
+      "values": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      }
+    },
+    "language": {
+      "title": "Language",
+      "placeholder": "Select your preferred language"
+    },
+    "timezone": {
+      "title": "Timezone",
+      "placeholder": "Select your timezone"
+    },
+    "timeFormat": {
+      "title": "Time format",
+      "placeholder": "Select your preferred time format"
+    },
+    "locationType": {
+      "title": "Weather location type",
+      "placeholder": "Select how the weather is loaded"
+    },
+    "location": {
+      "title": "Weather location",
+      "placeholder": "Select how the weather is loaded"
+    },
+    "unit": {
+      "title": "Temperature unit",
+      "placeholder": "Select temperature unit"
+    },
+    "openWeatherApiKey": {
+      "title": "Open weather API key",
+      "placeholder": "Your Open weather service API key for accessing weather data"
+    }
+  },
+  "buttons": {
+    "save": {
+      "title": "Save"
+    }
+  },
+  "languages": {
+    "en_US": "English",
+    "cs_CZ": "Česky"
+  },
+  "timeFormats": {
+    "12h": "12 hour format",
+    "24h": "24 hour format"
+  },
+  "locationTypes": {
+    "lat_lon": "Lat & Lon coordinates",
+    "city_name": "City name",
+    "city_id": "OpenWeather City ID",
+    "zip_code": "ZIP code"
+  },
+  "weatherUnits": {
+    "celsius": "Celsius",
+    "fahrenheit": "Fahrenheit"
+  },
+  "screenLockDurations": {
+    "15s": "15s",
+    "30s": "30s",
+    "60s": "1min",
+    "120s": "2min",
+    "300s": "5min",
+    "600s": "10min",
+    "1800s": "30min",
+    "0s": "Never"
+  }
+}

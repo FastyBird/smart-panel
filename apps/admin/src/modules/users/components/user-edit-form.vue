@@ -5,7 +5,6 @@
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="xs:px-2 md:px-5"
 	>
 		<el-form-item
 			:label="t('usersModule.fields.username.title')"
@@ -116,7 +115,6 @@
 	<el-dialog
 		v-model="usernameFormVisible"
 		:title="t('usersModule.headings.changeUsername')"
-		width="500"
 	>
 		<username-edit-form
 			v-model:remote-form-submit="remoteUsernameFormSubmit"
@@ -126,27 +124,24 @@
 			class="mt-4"
 		/>
 		<template #footer>
-			<div class="dialog-footer">
-				<el-button
-					link
-					@click="onCloseUsername"
-				>
-					{{ t('usersModule.buttons.cancel.title') }}
-				</el-button>
-				<el-button
-					type="primary"
-					@click="onSubmitUsername"
-				>
-					{{ t('usersModule.buttons.change.title') }}
-				</el-button>
-			</div>
+			<el-button
+				link
+				@click="onCloseUsername"
+			>
+				{{ t('usersModule.buttons.cancel.title') }}
+			</el-button>
+			<el-button
+				type="primary"
+				@click="onSubmitUsername"
+			>
+				{{ t('usersModule.buttons.change.title') }}
+			</el-button>
 		</template>
 	</el-dialog>
 
 	<el-dialog
 		v-model="passwordFormVisible"
 		:title="t('usersModule.headings.changePassword')"
-		width="500"
 	>
 		<password-edit-form
 			v-model:remote-form-submit="remotePasswordFormSubmit"
@@ -156,20 +151,18 @@
 			class="mt-4"
 		/>
 		<template #footer>
-			<div class="dialog-footer">
-				<el-button
-					link
-					@click="onClosePassword"
-				>
-					{{ t('usersModule.buttons.cancel.title') }}
-				</el-button>
-				<el-button
-					type="primary"
-					@click="onSubmitPassword"
-				>
-					{{ t('usersModule.buttons.change.title') }}
-				</el-button>
-			</div>
+			<el-button
+				link
+				@click="onClosePassword"
+			>
+				{{ t('usersModule.buttons.cancel.title') }}
+			</el-button>
+			<el-button
+				type="primary"
+				@click="onSubmitPassword"
+			>
+				{{ t('usersModule.buttons.change.title') }}
+			</el-button>
 		</template>
 	</el-dialog>
 </template>

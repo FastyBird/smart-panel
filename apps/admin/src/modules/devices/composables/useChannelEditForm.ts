@@ -110,7 +110,7 @@ export const useChannelEditForm = (channel: IChannel, messages?: { success?: str
 				id: channel.id,
 				data: {
 					name: model.name,
-					description: model.description,
+					description: model.description?.trim() === '' ? null : model.description,
 				},
 			});
 

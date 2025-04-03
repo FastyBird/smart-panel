@@ -26,7 +26,9 @@ import {
 } from './common';
 import i18n from './locales';
 import { AuthModule, sessionStoreKey } from './modules/auth';
+import { ConfigModule } from './modules/config';
 import { DevicesModule } from './modules/devices';
+import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import type { paths } from './openapi';
 import { ThirdPartyDevicesPlugin } from './plugins/third-party-devices';
@@ -74,6 +76,8 @@ const moduleOptions: IModuleOptions = {
 	i18n,
 };
 
+app.use(SystemModule, moduleOptions);
+app.use(ConfigModule, moduleOptions);
 app.use(DevicesModule, moduleOptions);
 app.use(UsersModule, moduleOptions);
 app.use(AuthModule, moduleOptions);

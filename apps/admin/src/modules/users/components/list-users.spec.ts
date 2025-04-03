@@ -1,13 +1,11 @@
 import { type ComponentPublicInstance } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElPagination } from 'element-plus';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
-import enUS from '../locales/en-US.json';
 
 import type { IListUsersProps } from './list-users.types';
 import ListUsers from './list-users.vue';
@@ -17,6 +15,12 @@ import UsersTable from './users-table.vue';
 type ListUsersInstance = ComponentPublicInstance<IListUsersProps> & {
 	innerFilters: { search: string | undefined; roles: UsersUserRole[] };
 };
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 describe('ListUsers', (): void => {
 	let wrapper: VueWrapper<ListUsersInstance>;
@@ -35,19 +39,7 @@ describe('ListUsers', (): void => {
 	};
 
 	beforeEach((): void => {
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					usersModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(ListUsers, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				items: defaultProps.items,
 				allItems: defaultProps.allItems,

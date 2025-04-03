@@ -45,11 +45,11 @@
 	<div
 		v-loading="isLoadingChannel || channel === null"
 		:element-loading-text="t('devicesModule.texts.channels.loadingChannel')"
-		class="flex flex-col overflow-hidden h-full pt-2"
+		class="flex flex-col overflow-hidden h-full"
 	>
 		<el-scrollbar
 			v-if="channel !== null"
-			class="flex-1 md:pb-[3rem]"
+			class="grow-1 p-2 md:px-4"
 		>
 			<channel-property-add-form
 				:id="newPropertyId"
@@ -63,7 +63,7 @@
 
 		<div
 			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 absolute bottom-0 left-0 w-full h-[3rem]"
+			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
 			style="background-color: var(--el-drawer-bg-color)"
 		>
 			<div class="p-2">

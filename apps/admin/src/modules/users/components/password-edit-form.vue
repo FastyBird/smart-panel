@@ -5,7 +5,6 @@
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="xs:px-2 md:px-5"
 		@submit="submit"
 	>
 		<el-form-item

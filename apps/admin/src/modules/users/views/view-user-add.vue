@@ -42,8 +42,8 @@
 
 	<app-breadcrumbs :items="breadcrumbs" />
 
-	<div class="flex flex-col overflow-hidden h-full pt-2">
-		<el-scrollbar class="flex-1 md:pb-[3rem]">
+	<div class="flex flex-col overflow-hidden h-full">
+		<el-scrollbar class="grow-1 p-2 md:px-4">
 			<user-add-form
 				:id="newUserId"
 				v-model:remote-form-submit="remoteFormSubmit"
@@ -55,7 +55,7 @@
 
 		<div
 			v-if="isMDDevice"
-			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 absolute bottom-0 left-0 w-full h-[3rem]"
+			class="flex flex-row gap-2 justify-end items-center b-t b-t-solid shadow-top z-10 w-full h-[3rem]"
 			style="background-color: var(--el-drawer-bg-color)"
 		>
 			<div class="p-2">

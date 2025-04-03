@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem } from 'element-plus';
 import { v4 as uuid } from 'uuid';
@@ -10,13 +9,18 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { UsersUserRole } from '../../../../openapi';
 import { FormResult, Layout } from '../../auth.constants';
-import enUS from '../../locales/en-US.json';
 import type { SessionStore } from '../../store';
 
 import type { SettingsPasswordFormFields, SettingsPasswordFormProps } from './settings-password-form.types';
 import SettingsPasswordForm from './settings-password-form.vue';
 
 type SettingsPasswordFormInstance = ComponentPublicInstance<SettingsPasswordFormProps> & { passwordForm: SettingsPasswordFormFields };
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 const mockFlash = {
 	success: vi.fn(),
@@ -43,19 +47,7 @@ describe('SettingsPasswordForm', (): void => {
 			getStore: vi.fn(() => mockSessionStore),
 		});
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					authModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(SettingsPasswordForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				remoteFormSubmit: false,
 				remoteFormResult: FormResult.NONE,
@@ -100,7 +92,7 @@ describe('SettingsPasswordForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.success).toHaveBeenCalledWith('Your password has been updated successfully.');
+		expect(mockFlashMessage.success).toHaveBeenCalledWith('authModule.messages.passwordEdited');
 	});
 
 	it('handles submission failure', async (): Promise<void> => {
@@ -119,7 +111,7 @@ describe('SettingsPasswordForm', (): void => {
 
 		const mockFlashMessage = useFlashMessage();
 
-		expect(mockFlashMessage.error).toHaveBeenCalledWith("Your password couldn't be changed.");
+		expect(mockFlashMessage.error).toHaveBeenCalledWith('authModule.messages.passwordNotEdited');
 	});
 
 	it('resets form when remoteFormReset is triggered', async (): Promise<void> => {

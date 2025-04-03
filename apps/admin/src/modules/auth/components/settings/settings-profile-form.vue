@@ -6,46 +6,36 @@
 		:label-position="props.layout === Layout.PHONE ? 'top' : 'right'"
 		:label-width="180"
 		status-icon
-		class="sm:px-5"
 	>
-		<div class="mb-5">
-			<el-form-item
-				:label="t('authModule.fields.email.title')"
-				prop="email"
-				class="mb-2"
-			>
-				<el-input
-					v-model="profileForm.email"
-					name="email"
-				/>
-			</el-form-item>
-		</div>
+		<el-form-item
+			:label="t('authModule.fields.email.title')"
+			prop="email"
+		>
+			<el-input
+				v-model="profileForm.email"
+				name="email"
+			/>
+		</el-form-item>
 
-		<div class="mb-5">
-			<el-form-item
-				:label="t('authModule.fields.firstName.title')"
-				prop="firstName"
-				class="mb-2"
-			>
-				<el-input
-					v-model="profileForm.firstName"
-					name="firstName"
-				/>
-			</el-form-item>
-		</div>
+		<el-form-item
+			:label="t('authModule.fields.firstName.title')"
+			prop="firstName"
+		>
+			<el-input
+				v-model="profileForm.firstName"
+				name="firstName"
+			/>
+		</el-form-item>
 
-		<div class="mb-5">
-			<el-form-item
-				:label="t('authModule.fields.lastName.title')"
-				prop="lastName"
-				class="mb-2"
-			>
-				<el-input
-					v-model="profileForm.lastName"
-					name="lastName"
-				/>
-			</el-form-item>
-		</div>
+		<el-form-item
+			:label="t('authModule.fields.lastName.title')"
+			prop="lastName"
+		>
+			<el-input
+				v-model="profileForm.lastName"
+				name="lastName"
+			/>
+		</el-form-item>
 	</el-form>
 </template>
 

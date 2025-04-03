@@ -64,7 +64,7 @@ export const useDeviceEditForm = (device: IDevice, messages?: { success?: string
 				id: device.id,
 				data: {
 					name: model.name,
-					description: model.description,
+					description: model.description?.trim() === '' ? null : model.description,
 				},
 			});
 

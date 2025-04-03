@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance, computed } from 'vue';
-import { createI18n } from 'vue-i18n';
 import { type Router, createMemoryHistory, createRouter } from 'vue-router';
 
 import { ElButton, ElTabPane, ElTabs } from 'element-plus';
@@ -9,11 +8,16 @@ import { VueWrapper, mount } from '@vue/test-utils';
 
 import { RouteNames as AppRouteNames } from '../../../app.constants';
 import { RouteNames } from '../auth.constants';
-import enUS from '../locales/en-US.json';
 
 import LayoutProfile from './layout-profile.vue';
 
 type LayoutProfileInstance = ComponentPublicInstance<{ activeTab: string; remoteFormSubmit: boolean }>;
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 vi.mock('../../../common', () => ({
 	AppBarHeading: { template: '<div data-test-id="app-bar-heading"></div>' },
@@ -37,26 +41,17 @@ describe('LayoutProfile.vue', (): void => {
 	beforeEach(async (): Promise<void> => {
 		vi.clearAllMocks();
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					authModule: enUS,
-				},
-			},
-		});
-
 		router = createRouter({
 			history: createMemoryHistory(),
 			routes: [
 				{ path: '/', name: AppRouteNames.ROOT, component: { template: '<div>Home</div>' } },
 				{
 					path: '/profile',
-					name: 'profile',
+					name: RouteNames.PROFILE,
 					component: { template: '<div><div id="breadcrumbs-target"></div> <router-view /></div>' },
 					children: [
-						{ path: '/profile/general', name: RouteNames.PROFILE_GENERAL, component: { template: '<div>General</div>' } },
-						{ path: '/profile/security', name: RouteNames.PROFILE_SECURITY, component: { template: '<div>Security</div>' } },
+						{ path: 'general', name: RouteNames.PROFILE_GENERAL, component: { template: '<div>General</div>' } },
+						{ path: 'security', name: RouteNames.PROFILE_SECURITY, component: { template: '<div>Security</div>' } },
 					],
 				},
 			],
@@ -66,7 +61,7 @@ describe('LayoutProfile.vue', (): void => {
 
 		wrapper = mount(LayoutProfile, {
 			global: {
-				plugins: [i18n, router],
+				plugins: [router],
 			},
 		}) as VueWrapper<LayoutProfileInstance>;
 

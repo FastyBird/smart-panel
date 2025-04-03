@@ -1,5 +1,4 @@
 import { computed } from 'vue';
-import { createI18n } from 'vue-i18n';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import { ElCard, ElIcon, ElLink } from 'element-plus';
@@ -10,9 +9,14 @@ import { VueWrapper, mount } from '@vue/test-utils';
 import { RouteNames as AppRouteNames } from '../../../app.constants';
 import { type IUseBreakpoints, useBreakpoints } from '../../../common';
 import { RouteNames } from '../auth.constants';
-import enUS from '../locales/en-US.json';
 
 import LayoutSign from './layout-sign.vue';
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 const isMDDevice = computed(() => true);
 
@@ -29,15 +33,6 @@ describe('LayoutSign', (): void => {
 	beforeEach((): void => {
 		vi.clearAllMocks();
 
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					authModule: enUS,
-				},
-			},
-		});
-
 		router = createRouter({
 			history: createWebHistory(),
 			routes: [
@@ -49,7 +44,7 @@ describe('LayoutSign', (): void => {
 
 		wrapper = mount(LayoutSign, {
 			global: {
-				plugins: [i18n, router],
+				plugins: [router],
 			},
 		});
 	});
@@ -61,13 +56,13 @@ describe('LayoutSign', (): void => {
 	it('displays the sign-in heading when on the sign-in page', async (): Promise<void> => {
 		await router.push({ name: RouteNames.SIGN_IN });
 
-		expect(wrapper.find('[data-test-id="sign-heading"]').text()).toContain('Sign in');
+		expect(wrapper.find('[data-test-id="sign-heading"]').text()).toContain('authModule.headings.signIn');
 	});
 
 	it('displays the sign-up heading when on the sign-up page', async (): Promise<void> => {
 		await router.push({ name: RouteNames.SIGN_UP });
 
-		expect(wrapper.find('[data-test-id="sign-heading"]').text()).toContain('Sign up');
+		expect(wrapper.find('[data-test-id="sign-heading"]').text()).toContain('authModule.headings.signUp');
 	});
 
 	it('should show social media links with correct icons', (): void => {

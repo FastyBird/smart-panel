@@ -36,8 +36,8 @@ const defaultSemaphore: IDevicesControlsStateSemaphore = {
 	deleting: [],
 };
 
-export const useDevicesControls = defineStore<'devices-module_devices-controls', DevicesControlsStoreSetup>(
-	'devices-module_devices-controls',
+export const useDevicesControls = defineStore<'devices_module-devices_controls', DevicesControlsStoreSetup>(
+	'devices_module-devices_controls',
 	(): DevicesControlsStoreSetup => {
 		const backend = useBackend();
 

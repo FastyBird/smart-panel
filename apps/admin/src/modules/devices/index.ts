@@ -10,6 +10,7 @@ import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSc
 // Module
 export { DevicesModule };
 
+export * from './composables';
 export * from './store';
 export * from './devices.constants';
 export * from './devices.exceptions';

@@ -1,0 +1,179 @@
+import { ref } from 'vue';
+
+import { type Pinia, type Store, defineStore } from 'pinia';
+
+import { isUndefined, omitBy } from 'lodash';
+
+import { getErrorReason, useBackend } from '../../../common';
+import { ConfigWeatherType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { CONFIG_MODULE_PREFIX } from '../config.constants';
+import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
+
+import {
+	ConfigWeatherEditActionPayloadSchema,
+	ConfigWeatherSchema,
+	type ConfigWeatherStoreSetup,
+	type IConfigWeather,
+	type IConfigWeatherEditActionPayload,
+	type IConfigWeatherSetActionPayload,
+	type IConfigWeatherStateSemaphore,
+	type IConfigWeatherStoreActions,
+	type IConfigWeatherStoreState,
+} from './config-weather.store.types';
+import { transformConfigWeatherResponse, transformConfigWeatherUpdateRequest } from './config-weather.transformers';
+
+const defaultSemaphore: IConfigWeatherStateSemaphore = {
+	getting: false,
+	updating: false,
+};
+
+export const useConfigWeather = defineStore<'config-module_config_weather', ConfigWeatherStoreSetup>(
+	'config-module_config_weather',
+	(): ConfigWeatherStoreSetup => {
+		const backend = useBackend();
+
+		const semaphore = ref<IConfigWeatherStateSemaphore>(defaultSemaphore);
+
+		const firstLoad = ref<boolean>(false);
+
+		const data = ref<IConfigWeather | null>(null);
+
+		const firstLoadFinished = (): boolean => firstLoad.value;
+
+		const getting = (): boolean => semaphore.value.getting;
+
+		let pendingGetPromises: Promise<IConfigWeather> | null = null;
+
+		const set = (payload: IConfigWeatherSetActionPayload): IConfigWeather => {
+			const parsedConfigWeather = ConfigWeatherSchema.safeParse({ ...payload.data, type: ConfigWeatherType.weather });
+
+			if (!parsedConfigWeather.success) {
+				throw new ConfigValidationException('Failed to insert weather config.');
+			}
+
+			data.value = data.value ?? null;
+
+			return (data.value = parsedConfigWeather.data);
+		};
+
+		const get = async (): Promise<IConfigWeather> => {
+			if (pendingGetPromises) {
+				return pendingGetPromises;
+			}
+
+			const fetchPromise = (async (): Promise<IConfigWeather> => {
+				if (semaphore.value.getting) {
+					throw new ConfigApiException('Already getting weather config.');
+				}
+
+				semaphore.value.getting = true;
+
+				const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
+					params: {
+						path: {
+							section: PathsConfigModuleConfigSectionParametersParametersPathSection.weather,
+						},
+					},
+				});
+
+				const { data: responseData, error, response } = apiResponse;
+
+				semaphore.value.getting = false;
+
+				if (typeof responseData !== 'undefined') {
+					data.value = transformConfigWeatherResponse(responseData.data);
+
+					return data.value;
+				}
+
+				let errorReason: string | null = 'Failed to fetch weather config.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
+				}
+
+				throw new ConfigApiException(errorReason, response.status);
+			})();
+
+			pendingGetPromises = fetchPromise;
+
+			try {
+				return await fetchPromise;
+			} finally {
+				pendingGetPromises = null;
+			}
+		};
+
+		const edit = async (payload: IConfigWeatherEditActionPayload): Promise<IConfigWeather> => {
+			const parsedPayload = ConfigWeatherEditActionPayloadSchema.safeParse(payload);
+
+			if (!parsedPayload.success) {
+				throw new ConfigValidationException('Failed to edit weather config.');
+			}
+
+			if (semaphore.value.updating) {
+				throw new ConfigException('Weather config is already being updated.');
+			}
+
+			const parsedEditedConfig = ConfigWeatherSchema.safeParse({
+				...data.value,
+				...omitBy(parsedPayload.data.data, isUndefined),
+			});
+
+			if (!parsedEditedConfig.success) {
+				throw new ConfigValidationException('Failed to edit weather config.');
+			}
+
+			semaphore.value.updating = true;
+
+			data.value = parsedEditedConfig.data;
+
+			const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
+				params: {
+					path: {
+						section: PathsConfigModuleConfigSectionParametersParametersPathSection.weather,
+					},
+				},
+				body: {
+					data: transformConfigWeatherUpdateRequest(parsedEditedConfig.data),
+				},
+			});
+
+			const { data: responseData, error, response } = apiResponse;
+
+			semaphore.value.updating = false;
+
+			if (typeof responseData !== 'undefined') {
+				data.value = transformConfigWeatherResponse(responseData.data);
+
+				return data.value;
+			}
+
+			// Updating record on api failed, we need to refresh record
+			await get();
+
+			let errorReason: string | null = 'Failed to update weather config.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
+			}
+
+			throw new ConfigApiException(errorReason, response.status);
+		};
+
+		return {
+			semaphore,
+			firstLoad,
+			data,
+			firstLoadFinished,
+			getting,
+			set,
+			get,
+			edit,
+		};
+	}
+);
+
+export const registerConfigWeatherStore = (pinia: Pinia): Store<string, IConfigWeatherStoreState, object, IConfigWeatherStoreActions> => {
+	return useConfigWeather(pinia);
+};

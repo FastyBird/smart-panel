@@ -1,19 +1,23 @@
 import { type ComponentPublicInstance } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElButton, ElTable, ElTableColumn } from 'element-plus';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
-import enUS from '../locales/en-US.json';
 import type { IUser } from '../store';
 
 import { UsersTable } from './index';
 import type { IUsersTableProps } from './users-table.types';
 
 type UsersTableInstance = ComponentPublicInstance<IUsersTableProps>;
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 describe('UsersTable', (): void => {
 	let wrapper: VueWrapper<UsersTableInstance>;
@@ -46,19 +50,7 @@ describe('UsersTable', (): void => {
 	];
 
 	const createWrapper = (props: Partial<IUsersTableProps> = {}): void => {
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					usersModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(UsersTable, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				items: usersMock,
 				totalRows: usersMock.length,
@@ -114,13 +106,13 @@ describe('UsersTable', (): void => {
 	it('displays "no users" message when table is empty', async (): Promise<void> => {
 		createWrapper({ items: [], totalRows: 0 });
 
-		expect(wrapper.text()).toContain("You don't have configured any user");
+		expect(wrapper.text()).toContain('usersModule.texts.misc.noUsers');
 	});
 
 	it('displays "no filtered users" message when filtered results are empty', async (): Promise<void> => {
 		createWrapper({ items: [], totalRows: 2, filtersActive: true });
 
-		expect(wrapper.text()).toContain('No users found matching the active filter criteria Reset filters');
+		expect(wrapper.text()).toContain('usersModule.texts.misc.noFilteredUsers usersModule.buttons.resetFilters.title');
 	});
 
 	it('handles edit button click', async (): Promise<void> => {

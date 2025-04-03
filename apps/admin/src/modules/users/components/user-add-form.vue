@@ -5,7 +5,6 @@
 		:rules="rules"
 		label-position="top"
 		status-icon
-		class="xs:px-2 md:px-5"
 	>
 		<el-form-item
 			:label="t('usersModule.fields.username.title')"

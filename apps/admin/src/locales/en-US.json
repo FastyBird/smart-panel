@@ -19,6 +19,9 @@
     },
     "breadcrumbs": {
       "homepage": "homepage"
+    },
+    "value": {
+      "notAvailable": "N/A"
     }
   }
 }

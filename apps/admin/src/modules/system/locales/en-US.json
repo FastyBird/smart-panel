@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "system": {
+      "title": "System"
+    },
+    "systemInfo": {
+      "title": "System info"
+    }
+  },
+  "breadcrumbs": {
+    "system": "system",
+    "systemInfo": "info"
+  },
+  "headings": {
+    "system": "System",
+    "about": "About application",
+    "manageSystem": "Manage system",
+    "restart": "Restart",
+    "powerOff": "Power Off",
+    "factoryReset": "Factory reset"
+  },
+  "subHeadings": {
+    "system": "Smart panel system status information"
+  },
+  "messages": {
+    "confirmRestart": "Are you sure you want to restart the device? This action will temporarily interrupt functionality.",
+    "confirmPowerOff": "Are you sure you want to power off the device? It will need to be manually turned on again.",
+    "confirmFactoryReset": "Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible."
+  },
+  "texts": {
+    "loadingSystemInfo": "Loading system information...",
+    "restartDevice": "Restart the device to apply changes or resolve issues.",
+    "powerOffDevice": "Power off the device completely.",
+    "factoryResetDevice": "Restore the device to its original factory settings.",
+    "about": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities."
+  },
+  "buttons": {
+    "about": {
+      "title": "About application"
+    },
+    "manage": {
+      "title": "Manage system"
+    },
+    "yes": {
+      "title": "Yes"
+    },
+    "no": {
+      "title": "No"
+    }
+  },
+  "systemInfo": {
+    "cpuLoad": "CPU load",
+    "memoryUsage": "Memory usage",
+    "cpuTemperature": "CPU temperature",
+    "gpuTemperature": "GPU temperature",
+    "osPlatform": "Platform",
+    "osDistro": "Distribution",
+    "osRelease": "Version",
+    "uptime": "System uptime",
+    "networkInterface": "Network interface",
+    "ip4Address": "IP address",
+    "ip6Address": "IPv6 address",
+    "macAddress": "MAC address",
+    "resolutionX": "Max width",
+    "resolutionY": "Max height",
+    "currentResolutionX": "Current width",
+    "currentResolutionY": "Current height",
+    "undervoltage": "Undervoltage detected",
+    "frequencyCapping": "Frequency capped",
+    "throttling": "CPU throttling active",
+    "softTempLimit": "Soft temperature limit reached"
+  },
+  "states": {
+    "ok": "Everything ok",
+    "error": "Problem detected"
+  }
+}

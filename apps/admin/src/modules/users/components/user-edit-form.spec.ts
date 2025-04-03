@@ -1,5 +1,4 @@
 import { type ComponentPublicInstance, type Reactive, type Ref, reactive, ref } from 'vue';
-import { createI18n } from 'vue-i18n';
 
 import { ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElSelect } from 'element-plus';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,10 +8,15 @@ import { VueWrapper, mount } from '@vue/test-utils';
 import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
 import type { IUserEditForm } from '../composables';
-import enUS from '../locales/en-US.json';
 
 import type { IUserEditFormProps } from './user-edit-form.types';
 import UserEditForm from './user-edit-form.vue';
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
 
 const editFormMock = {
 	model: reactive({
@@ -81,19 +85,7 @@ describe('UserEditForm', (): void => {
 	};
 
 	const createWrapper = (props: Partial<IUserEditFormProps> = {}): void => {
-		const i18n = createI18n({
-			locale: 'en',
-			messages: {
-				en: {
-					usersModule: enUS,
-				},
-			},
-		});
-
 		wrapper = mount(UserEditForm, {
-			global: {
-				plugins: [i18n],
-			},
 			props: {
 				user: mockUser,
 				remoteFormResult: FormResult.NONE,
