@@ -51,7 +51,6 @@ type ApiPageForecastWeatherTile = components['schemas']['DashboardPageForecastWe
 
 export const TileBaseSchema = z.object({
 	id: ItemIdSchema,
-	parent: z.enum(['page', 'card']),
 	type: z.string().trim().nonempty(),
 	draft: z.boolean().default(false),
 	row: z.number(),
@@ -479,14 +478,14 @@ export const PageDevicePreviewTileResSchema: ZodType<ApiPageDevicePreviewTile> =
 		type: z.nativeEnum(DashboardDevicePreviewTileType),
 	})
 );
-export type IPageDevicePreviewTileResSchema = z.infer<typeof PageDevicePreviewTileResSchema>;
+export type IPageDevicePreviewTileRes = z.infer<typeof PageDevicePreviewTileResSchema>;
 
 export const CardDevicePreviewTileResSchema: ZodType<ApiCardDevicePreviewTile> = DevicePreviewTileResSchema.and(
 	z.object({
 		card: z.string().uuid(),
 	})
 );
-export type ICardDevicePreviewTileResSchema = z.infer<typeof CardDevicePreviewTileResSchema>;
+export type ICardDevicePreviewTileRes = z.infer<typeof CardDevicePreviewTileResSchema>;
 
 export const TimeTileResSchema: ZodType<ApiTimeTile> = TileResSchema.and(
 	z.object({
@@ -500,14 +499,14 @@ export const PageTimeTileResSchema: ZodType<ApiPageTimeTile> = TimeTileResSchema
 		page: z.string().uuid(),
 	})
 );
-export type IPageTimeTileResSchema = z.infer<typeof PageTimeTileResSchema>;
+export type IPageTimeTileRes = z.infer<typeof PageTimeTileResSchema>;
 
 export const CardTimeTileResSchema: ZodType<ApiCardTimeTile> = TimeTileResSchema.and(
 	z.object({
 		card: z.string().uuid(),
 	})
 );
-export type ICardTimeTileResSchema = z.infer<typeof CardTimeTileResSchema>;
+export type ICardTimeTileRes = z.infer<typeof CardTimeTileResSchema>;
 
 export const DayWeatherTileResSchema: ZodType<ApiDayWeatherTile> = TileResSchema.and(
 	z.object({
@@ -521,14 +520,14 @@ export const PageDayWeatherTileResSchema: ZodType<ApiPageDayWeatherTile> = DayWe
 		page: z.string().uuid(),
 	})
 );
-export type IPageDayWeatherTileResSchema = z.infer<typeof PageDayWeatherTileResSchema>;
+export type IPageDayWeatherTileRes = z.infer<typeof PageDayWeatherTileResSchema>;
 
 export const CardDayWeatherTileResSchema: ZodType<ApiCardDayWeatherTile> = DayWeatherTileResSchema.and(
 	z.object({
 		card: z.string().uuid(),
 	})
 );
-export type ICardDayWeatherTileResSchema = z.infer<typeof CardDayWeatherTileResSchema>;
+export type ICardDayWeatherTileRes = z.infer<typeof CardDayWeatherTileResSchema>;
 
 export const ForecastWeatherTileResSchema: ZodType<ApiForecastWeatherTile> = TileResSchema.and(
 	z.object({
@@ -542,26 +541,18 @@ export const PageForecastWeatherTileResSchema: ZodType<ApiPageForecastWeatherTil
 		page: z.string().uuid(),
 	})
 );
-export type IPageForecastWeatherTileResSchema = z.infer<typeof PageForecastWeatherTileResSchema>;
+export type IPageForecastWeatherTileRes = z.infer<typeof PageForecastWeatherTileResSchema>;
 
 export const CardForecastWeatherTileResSchema: ZodType<ApiCardForecastWeatherTile> = ForecastWeatherTileResSchema.and(
 	z.object({
 		card: z.string().uuid(),
 	})
 );
-export type ICardForecastWeatherTileResSchema = z.infer<typeof CardForecastWeatherTileResSchema>;
+export type ICardForecastWeatherTileRes = z.infer<typeof CardForecastWeatherTileResSchema>;
 
-export type IPageTileResSchema =
-	| IPageDevicePreviewTileResSchema
-	| IPageTimeTileResSchema
-	| IPageDayWeatherTileResSchema
-	| IPageForecastWeatherTileResSchema;
+export type IPageTileRes = IPageDevicePreviewTileRes | IPageTimeTileRes | IPageDayWeatherTileRes | IPageForecastWeatherTileRes;
 
-export type ICardTileResSchema =
-	| ICardDevicePreviewTileResSchema
-	| ICardTimeTileResSchema
-	| ICardDayWeatherTileResSchema
-	| ICardForecastWeatherTileResSchema;
+export type ICardTileRes = ICardDevicePreviewTileRes | ICardTimeTileRes | ICardDayWeatherTileRes | ICardForecastWeatherTileRes;
 
 // STORE
 export type TilesStore = Store<string, ITilesStoreState, object, ITilesStoreActions>;
@@ -578,5 +569,4 @@ export type ITilesEntitiesSchemas = {
 	tile: typeof TileBaseSchema;
 	createTileReq: typeof TileCreateBaseReqSchema;
 	updateTileReq: typeof TileUpdateBaseReqSchema;
-	tileRes: typeof TileResSchema;
 };

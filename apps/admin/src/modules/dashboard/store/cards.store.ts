@@ -30,7 +30,7 @@ import {
 import { transformCardCreateRequest, transformCardResponse, transformCardUpdateRequest } from './cards.transformers';
 import type { ICardDeviceChannelDataSourceRes } from './dataSources.store.types';
 import {
-	type ICardTileResSchema,
+	type ICardTileRes,
 	dataSourcesStoreKey,
 	getDataSourcesSchemas,
 	getTilesSchemas,
@@ -506,7 +506,7 @@ export const useCards = defineStore<'dashboard_module-cards', CardsStoreSetup>('
 		dataSourcesStore.firstLoad.push(card.id);
 	};
 
-	const insertTilesRelations = (card: ICard, tiles: ICardTileResSchema[]): void => {
+	const insertTilesRelations = (card: ICard, tiles: ICardTileRes[]): void => {
 		const tilesStore = storesManager.getStore(tilesStoreKey);
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 

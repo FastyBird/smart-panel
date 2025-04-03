@@ -31,7 +31,6 @@ type ApiTileDeviceChannelDataSource = components['schemas']['DashboardTileDevice
 export const DataSourceBaseSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
-	parent: z.enum(['page', 'card', 'tile']),
 	draft: z.boolean().default(false),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
@@ -394,7 +393,8 @@ export const DeviceChannelDataSourceCreateReqSchema: ZodType<ApiCreateDeviceChan
 			.string()
 			.trim()
 			.transform((val) => (val === '' ? null : val))
-			.nullable(),
+			.nullable()
+			.optional(),
 	})
 );
 export type IDeviceChannelDataSourceCreateReq = z.infer<typeof DeviceChannelDataSourceCreateReqSchema>;
@@ -441,7 +441,7 @@ export const DeviceChannelDataSourceResSchema: ZodType<ApiDeviceChannelDataSourc
 		icon: z.string().nullable(),
 	})
 );
-export type IDeviceChannelDataSourceResSchema = z.infer<typeof DeviceChannelDataSourceResSchema>;
+export type IDeviceChannelDataSourceRes = z.infer<typeof DeviceChannelDataSourceResSchema>;
 
 export const PageDeviceChannelDataSourceResSchema: ZodType<ApiPageDeviceChannelDataSource> = DeviceChannelDataSourceResSchema.and(
 	z.object({
@@ -480,5 +480,4 @@ export type IDataSourcesEntitiesSchemas = {
 	dataSource: typeof DataSourceBaseSchema;
 	createDataSourceReq: typeof DataSourceCreateBaseReqSchema;
 	updateDataSourceReq: typeof DataSourceUpdateBaseReqSchema;
-	dataSourceRes: typeof DataSourceResSchema;
 };

@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useUuid } from '../../../common';
 import type { operations } from '../../../openapi';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
@@ -82,6 +82,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 	'dashboard_module-data_sources',
 	(): DataSourcesStoreSetup => {
 		const backend = useBackend();
+		const { validate: validateUuid } = useUuid();
 
 		const semaphore = ref<IDataSourcesStateSemaphore>(defaultSemaphore);
 
@@ -96,7 +97,21 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 		const fetching = (parentId: IPage['id'] | ICard['id'] | ITile['id']): boolean => semaphore.value.fetching.items.includes(parentId);
 
 		const findAll = <T extends keyof DataSourceParentTypeMap>(parent: T): DataSourceParentTypeMap[T][] => {
-			return Object.values(data.value).filter((dataSource) => 'parent' in dataSource && dataSource.parent === parent) as DataSourceParentTypeMap[T][];
+			if (parent === 'page') {
+				return Object.values(data.value).filter(
+					(dataSource) => 'page' in dataSource && typeof dataSource.page === 'string' && validateUuid(dataSource.page)
+				) as DataSourceParentTypeMap[T][];
+			} else if (parent === 'card') {
+				return Object.values(data.value).filter(
+					(dataSource) => 'card' in dataSource && typeof dataSource.card === 'string' && validateUuid(dataSource.card)
+				) as DataSourceParentTypeMap[T][];
+			} else if (parent === 'tile') {
+				return Object.values(data.value).filter(
+					(dataSource) => 'tile' in dataSource && typeof dataSource.tile === 'string' && validateUuid(dataSource.tile)
+				) as DataSourceParentTypeMap[T][];
+			}
+
+			return [];
 		};
 
 		const findForParent = <T extends keyof DataSourceParentTypeMap>(
@@ -115,9 +130,21 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			}) as DataSourceParentTypeMap[T][];
 
 		const findById = <T extends keyof DataSourceParentTypeMap>(parent: T, id: IDataSourceBase['id']): DataSourceParentTypeMap[T] | null => {
-			return (id in data.value && 'parent' in data.value[id] && data.value[id].parent === parent ? data.value[id] : null) as
-				| DataSourceParentTypeMap[T]
-				| null;
+			const item = (id in data.value ? data.value[id] : null) as DataSourceParentTypeMap[T] | null;
+
+			if (item === null) {
+				return null;
+			}
+
+			if (parent === 'page') {
+				return 'page' in item && typeof item.page === 'string' && validateUuid(item.page) ? item : null;
+			} else if (parent === 'card') {
+				return 'card' in item && typeof item.card === 'string' && validateUuid(item.card) ? item : null;
+			} else if (parent === 'tile') {
+				return 'tile' in item && typeof item.tile === 'string' && validateUuid(item.tile) ? item : null;
+			}
+
+			return null;
 		};
 
 		const pendingGetPromises: {

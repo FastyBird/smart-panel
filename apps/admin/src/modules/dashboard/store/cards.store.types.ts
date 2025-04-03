@@ -62,17 +62,19 @@ export type ICardsStateSemaphore = z.infer<typeof CardsStateSemaphoreSchema>;
 export const CardsSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	pageId: ItemIdSchema,
-	data: z.object({
-		title: z.string().trim().nonempty(),
-		icon: z
-			.string()
-			.trim()
-			.transform((val) => (val === '' ? null : val))
-			.nullable()
-			.default(null)
-			.optional(),
-		order: z.number().default(0),
-	}),
+	data: z
+		.object({
+			title: z.string().trim().nonempty(),
+			icon: z
+				.string()
+				.trim()
+				.transform((val) => (val === '' ? null : val))
+				.nullable()
+				.default(null)
+				.optional(),
+			order: z.number().default(0),
+		})
+		.passthrough(),
 });
 export type ICardsSetActionPayload = z.infer<typeof CardsSetActionPayloadSchema>;
 

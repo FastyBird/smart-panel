@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, snakeToCamel, useBackend } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useUuid } from '../../../common';
 import type { operations } from '../../../openapi';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
@@ -18,6 +18,7 @@ import {
 	getDataSourcesSchemas,
 	getTilesSchemas,
 	transformDataSourceResponse,
+	transformTileResponse,
 } from './index';
 import type { IPage } from './pages.store.types';
 import type {
@@ -74,6 +75,7 @@ const defaultSemaphore: ITilesStateSemaphore = {
 
 export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('dashboard_module-tiles', (): TilesStoreSetup => {
 	const backend = useBackend();
+	const { validate: validateUuid } = useUuid();
 
 	const storesManager = injectStoresManager();
 
@@ -90,7 +92,17 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 	const fetching = (parentId: IPage['id'] | ICard['id']): boolean => semaphore.value.fetching.items.includes(parentId);
 
 	const findAll = <T extends keyof TileParentTypeMap>(parent: T): TileParentTypeMap[T][] => {
-		return Object.values(data.value).filter((tile) => tile.parent === parent) as TileParentTypeMap[T][];
+		if (parent === 'page') {
+			return Object.values(data.value).filter(
+				(tile) => 'page' in tile && typeof tile.page === 'string' && validateUuid(tile.page)
+			) as TileParentTypeMap[T][];
+		} else if (parent === 'card') {
+			return Object.values(data.value).filter(
+				(tile) => 'card' in tile && typeof tile.card === 'string' && validateUuid(tile.card)
+			) as TileParentTypeMap[T][];
+		}
+
+		return [];
 	};
 
 	const findForParent = <T extends keyof TileParentTypeMap>(parent: T, parentId: IPage['id'] | ICard['id']): TileParentTypeMap[T][] =>
@@ -104,7 +116,19 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		}) as TileParentTypeMap[T][];
 
 	const findById = <T extends keyof TileParentTypeMap>(parent: T, id: ITileBase['id']): TileParentTypeMap[T] | null => {
-		return (id in data.value && data.value[id].parent === parent ? data.value[id] : null) as TileParentTypeMap[T] | null;
+		const item = (id in data.value ? data.value[id] : null) as TileParentTypeMap[T] | null;
+
+		if (item === null) {
+			return null;
+		}
+
+		if (parent === 'page') {
+			return 'page' in item && typeof item.page === 'string' && validateUuid(item.page) ? item : null;
+		} else if (parent === 'card') {
+			return 'card' in item && typeof item.card === 'string' && validateUuid(item.card) ? item : null;
+		}
+
+		return null;
 	};
 
 	const pendingGetPromises: {
@@ -261,21 +285,17 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			if (typeof responseData !== 'undefined') {
 				const parentSchemas = getTilesSchemas(payload.parent, responseData.data.type);
 
-				const parsed = parentSchemas.tile.safeParse(snakeToCamel(responseData.data));
+				const transformed = transformTileResponse({ ...responseData.data, parent: payload.parent }, parentSchemas.tile);
 
-				if (!parsed.success) {
-					throw new DashboardValidationException('Failed to validate received tile data.');
-				}
-
-				data.value[parsed.data.id] = parsed.data;
+				data.value[transformed.id] = transformed;
 
 				if (is.card(payload)) {
-					insertDataSourceRelations(payload.pageId, payload.cardId, parsed.data, responseData.data.data_source);
+					insertDataSourceRelations(payload.pageId, payload.cardId, transformed, responseData.data.data_source);
 				} else {
-					insertDataSourceRelations(payload.pageId, undefined, parsed.data, responseData.data.data_source);
+					insertDataSourceRelations(payload.pageId, undefined, transformed, responseData.data.data_source);
 				}
 
-				return parsed.data as TileParentTypeMap[T];
+				return transformed as TileParentTypeMap[T];
 			}
 
 			let errorReason: string | null = 'Failed to fetch tile.';
@@ -383,19 +403,15 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 					responseData.data.map((tile) => {
 						const parentSchemas = getTilesSchemas(payload.parent, tile.type);
 
-						const parsed = parentSchemas.tile.safeParse(snakeToCamel(tile));
-
-						if (!parsed.success) {
-							throw new DashboardValidationException('Failed to validate received tile data.');
-						}
+						const transformed = transformTileResponse({ ...tile, parent: payload.parent }, parentSchemas.tile);
 
 						if (is.card(payload)) {
-							insertDataSourceRelations(payload.pageId, payload.cardId, parsed.data, tile.data_source);
+							insertDataSourceRelations(payload.pageId, payload.cardId, transformed, tile.data_source);
 						} else {
-							insertDataSourceRelations(payload.pageId, undefined, parsed.data, tile.data_source);
+							insertDataSourceRelations(payload.pageId, undefined, transformed, tile.data_source);
 						}
 
-						return [parsed.data.id, parsed.data];
+						return [transformed.id, transformed];
 					})
 				);
 
@@ -517,21 +533,17 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewTile.data.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const parsed = parentSchemas.tile.safeParse(snakeToCamel(responseData.data));
+				const transformed = transformTileResponse({ ...responseData.data, parent: payload.parent }, parentSchemas.tile);
 
-				if (!parsed.success) {
-					throw new DashboardValidationException('Failed to validate received tile data.');
-				}
-
-				data.value[parsed.data.id] = parsed.data;
+				data.value[transformed.id] = transformed;
 
 				if (is.card(payload)) {
-					insertDataSourceRelations(payload.pageId, payload.cardId, parsed.data, responseData.data.data_source);
+					insertDataSourceRelations(payload.pageId, payload.cardId, transformed, responseData.data.data_source);
 				} else {
-					insertDataSourceRelations(payload.pageId, undefined, parsed.data, responseData.data.data_source);
+					insertDataSourceRelations(payload.pageId, undefined, transformed, responseData.data.data_source);
 				}
 
-				return parsed.data as TileParentTypeMap[T];
+				return transformed as TileParentTypeMap[T];
 			}
 
 			// Record could not be created on api, we have to remove it from database
@@ -626,21 +638,17 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const parsed = parentSchemas.tile.safeParse(snakeToCamel(responseData.data));
+				const transformed = transformTileResponse({ ...responseData.data, parent: payload.parent }, parentSchemas.tile);
 
-				if (!parsed.success) {
-					throw new DashboardValidationException('Failed to validate received tile data.');
-				}
-
-				data.value[parsed.data.id] = parsed.data;
+				data.value[transformed.id] = transformed;
 
 				if (is.card(payload)) {
-					insertDataSourceRelations(payload.pageId, payload.cardId, parsed.data, responseData.data.data_source);
+					insertDataSourceRelations(payload.pageId, payload.cardId, transformed, responseData.data.data_source);
 				} else {
-					insertDataSourceRelations(payload.pageId, undefined, parsed.data, responseData.data.data_source);
+					insertDataSourceRelations(payload.pageId, undefined, transformed, responseData.data.data_source);
 				}
 
-				return parsed.data as TileParentTypeMap[T];
+				return transformed as TileParentTypeMap[T];
 			}
 
 			// Updating record on api failed, we need to refresh record
@@ -717,21 +725,17 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const parsed = parentSchemas.tile.safeParse(snakeToCamel(responseData.data));
+			const transformed = transformTileResponse({ ...responseData.data, parent: payload.parent }, parentSchemas.tile);
 
-			if (!parsed.success) {
-				throw new DashboardValidationException('Failed to validate received tile data.');
-			}
-
-			data.value[parsed.data.id] = parsed.data;
+			data.value[transformed.id] = transformed;
 
 			if (is.card(payload)) {
-				insertDataSourceRelations(payload.pageId, payload.cardId, parsed.data, responseData.data.data_source);
+				insertDataSourceRelations(payload.pageId, payload.cardId, transformed, responseData.data.data_source);
 			} else {
-				insertDataSourceRelations(payload.pageId, undefined, parsed.data, responseData.data.data_source);
+				insertDataSourceRelations(payload.pageId, undefined, transformed, responseData.data.data_source);
 			}
 
-			return parsed.data as TileParentTypeMap[T];
+			return transformed as TileParentTypeMap[T];
 		}
 
 		let errorReason: string | null = 'Failed to create tile.';

@@ -1,15 +1,12 @@
 import { DashboardException } from '../dashboard.exceptions';
 
 import {
-	CardDeviceChannelDataSourceResSchema,
 	CardDeviceChannelDataSourceSchema,
 	type DataSourceParentType,
 	DeviceChannelDataSourceCreateReqSchema,
 	DeviceChannelDataSourceUpdateReqSchema,
 	type IDataSourcesEntitiesSchemas,
-	PageDeviceChannelDataSourceResSchema,
 	PageDeviceChannelDataSourceSchema,
-	TileDeviceChannelDataSourceResSchema,
 	TileDeviceChannelDataSourceSchema,
 } from './dataSources.store.types';
 
@@ -19,7 +16,6 @@ const schemas: Record<DataSourceParentType, Record<string, IDataSourcesEntitiesS
 			dataSource: PageDeviceChannelDataSourceSchema,
 			createDataSourceReq: DeviceChannelDataSourceCreateReqSchema,
 			updateDataSourceReq: DeviceChannelDataSourceUpdateReqSchema,
-			dataSourceRes: PageDeviceChannelDataSourceResSchema,
 		},
 	},
 	card: {
@@ -27,7 +23,6 @@ const schemas: Record<DataSourceParentType, Record<string, IDataSourcesEntitiesS
 			dataSource: CardDeviceChannelDataSourceSchema,
 			createDataSourceReq: DeviceChannelDataSourceCreateReqSchema,
 			updateDataSourceReq: DeviceChannelDataSourceUpdateReqSchema,
-			dataSourceRes: CardDeviceChannelDataSourceResSchema,
 		},
 	},
 	tile: {
@@ -35,7 +30,6 @@ const schemas: Record<DataSourceParentType, Record<string, IDataSourcesEntitiesS
 			dataSource: TileDeviceChannelDataSourceSchema,
 			createDataSourceReq: DeviceChannelDataSourceCreateReqSchema,
 			updateDataSourceReq: DeviceChannelDataSourceUpdateReqSchema,
-			dataSourceRes: TileDeviceChannelDataSourceResSchema,
 		},
 	},
 };

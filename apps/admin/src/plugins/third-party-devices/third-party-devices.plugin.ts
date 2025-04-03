@@ -8,7 +8,7 @@ import { DEVICES_MODULE_NAME, type IPluginsComponents, type IPluginsSchemas } fr
 
 import { ThirdPartyDeviceAddForm, ThirdPartyDeviceEditForm } from './components';
 import enUS from './locales/en-US.json';
-import { ThirdPartyDeviceCreateReqSchema, ThirdPartyDeviceResSchema, ThirdPartyDeviceSchema, ThirdPartyDeviceUpdateReqSchema } from './store';
+import { ThirdPartyDeviceCreateReqSchema, ThirdPartyDeviceSchema, ThirdPartyDeviceUpdateReqSchema } from './store';
 
 export const thirdPartyDevicesPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol('FB-Plugin-ThirdPartyDevices');
 
@@ -41,7 +41,6 @@ export default {
 				deviceSchema: ThirdPartyDeviceSchema,
 				deviceCreateReqSchema: ThirdPartyDeviceCreateReqSchema,
 				deviceUpdateReqSchema: ThirdPartyDeviceUpdateReqSchema,
-				deviceResSchema: ThirdPartyDeviceResSchema,
 			},
 			modules: [DEVICES_MODULE_NAME],
 			isCore: true,

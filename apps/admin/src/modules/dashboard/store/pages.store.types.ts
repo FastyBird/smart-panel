@@ -292,7 +292,7 @@ export const CardsPageResSchema: ZodType<ApiCardsPage> = PageResSchema.and(
 		data_source: z.array(PageDeviceChannelDataSourceResSchema),
 	})
 );
-export type ICardsPageResSchema = z.infer<typeof CardsPageResSchema>;
+export type ICardsPageRes = z.infer<typeof CardsPageResSchema>;
 
 export const TilesPageResSchema: ZodType<ApiTilesPage> = PageResSchema.and(
 	z.object({
@@ -301,7 +301,7 @@ export const TilesPageResSchema: ZodType<ApiTilesPage> = PageResSchema.and(
 		data_source: z.array(PageDeviceChannelDataSourceResSchema),
 	})
 );
-export type ITilesPageResSchema = z.infer<typeof TilesPageResSchema>;
+export type ITilesPageRes = z.infer<typeof TilesPageResSchema>;
 
 export const DeviceDetailPageResSchema: ZodType<ApiDeviceDetailPage> = PageResSchema.and(
 	z.object({
@@ -309,7 +309,7 @@ export const DeviceDetailPageResSchema: ZodType<ApiDeviceDetailPage> = PageResSc
 		device: z.string().uuid(),
 	})
 );
-export type IDeviceDetailPageResSchema = z.infer<typeof DeviceDetailPageResSchema>;
+export type IDeviceDetailPageRes = z.infer<typeof DeviceDetailPageResSchema>;
 
 // STORE
 export type PagesStore = Store<string, IPagesStoreState, object, IPagesStoreActions>;
@@ -319,5 +319,4 @@ export type IPagesEntitiesSchemas = {
 	page: typeof PageBaseSchema;
 	createPageReq: typeof PageCreateBaseReqSchema;
 	updatePageReq: typeof PageUpdateBaseReqSchema;
-	pageRes: typeof PageResSchema;
 };

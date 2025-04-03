@@ -5,7 +5,7 @@ import type { ComponentOptionsMixin, DefineComponent } from 'vue';
 
 import { type IDeviceAddFormProps, type IDeviceEditFormProps, deviceAddFormEmits, deviceEditFormEmits } from './components';
 import DevicesModule from './devices.module';
-import { DeviceCreateReqSchema, DeviceResSchema, DeviceSchema, DeviceUpdateReqSchema } from './store';
+import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './store';
 
 // Module
 export { DevicesModule };
@@ -24,5 +24,4 @@ export type IPluginsSchemas = {
 	deviceSchema?: typeof DeviceSchema;
 	deviceCreateReqSchema?: typeof DeviceCreateReqSchema;
 	deviceUpdateReqSchema?: typeof DeviceUpdateReqSchema;
-	deviceResSchema?: typeof DeviceResSchema;
 };

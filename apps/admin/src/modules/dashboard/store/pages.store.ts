@@ -12,7 +12,7 @@ import { DashboardApiException, DashboardException, DashboardValidationException
 import {
 	type ICardRes,
 	type IPageDeviceChannelDataSourceRes,
-	type IPageTileResSchema,
+	type IPageTileRes,
 	cardsStoreKey,
 	dataSourcesStoreKey,
 	getDataSourcesSchemas,
@@ -606,7 +606,7 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 		cardsStore.firstLoad.push(page.id);
 	};
 
-	const insertTilesRelations = (page: IPageBase, tiles: IPageTileResSchema[]): void => {
+	const insertTilesRelations = (page: IPageBase, tiles: IPageTileRes[]): void => {
 		const tilesStore = storesManager.getStore(tilesStoreKey);
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 

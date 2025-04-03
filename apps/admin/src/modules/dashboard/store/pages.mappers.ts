@@ -21,19 +21,16 @@ const schemas: Record<string, IPagesEntitiesSchemas> = {
 		page: CardsPageSchema,
 		createPageReq: CardsPageCreateReqSchema,
 		updatePageReq: CardsPageUpdateReqSchema,
-		pageRes: CardsPageResSchema,
 	},
 	['tiles']: {
 		page: TilesPageSchema,
 		createPageReq: TilesPageCreateReqSchema,
 		updatePageReq: TilesPageUpdateReqSchema,
-		pageRes: TilesPageResSchema,
 	},
 	['device-detail']: {
 		page: DeviceDetailPageSchema,
 		createPageReq: DeviceDetailPageCreateReqSchema,
 		updatePageReq: DeviceDetailPageUpdateReqSchema,
-		pageRes: DeviceDetailPageResSchema,
 	},
 };
 
