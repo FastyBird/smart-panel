@@ -7,5 +7,9 @@ export * from './usePages';
 export * from './usePagesDataSource';
 export * from './usePagesActions';
 export * from './usePageIcon';
+export * from './useTile';
+export * from './useTiles';
+export * from './useTilesDataSource';
+export * from './useTilesActions';
 
 export * from './types';

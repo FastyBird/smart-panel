@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 
-import type { ICard, IPage } from '../store';
+import type { ICard, IPage, ITile, TileParentTypeMap } from '../store';
 
 export interface ICardsFilter {
 	search: string | undefined;
@@ -8,6 +8,11 @@ export interface ICardsFilter {
 }
 
 export interface IPagesFilter {
+	search: string | undefined;
+	types: string[];
+}
+
+export interface ITilesFilter {
 	search: string | undefined;
 	types: string[];
 }
@@ -80,4 +85,37 @@ export interface IUsePagesActions {
 
 export interface IUsePageIcon {
 	icon: ComputedRef<string>;
+}
+
+export interface IUseTile<T extends keyof TileParentTypeMap> {
+	tile: ComputedRef<TileParentTypeMap[T] | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchTile: () => Promise<void>;
+}
+
+export interface IUseTiles<T extends keyof TileParentTypeMap> {
+	tiles: ComputedRef<TileParentTypeMap[T][]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchTiles: () => Promise<void>;
+}
+
+export interface IUseTilesDataSource<T extends keyof TileParentTypeMap> {
+	tiles: ComputedRef<TileParentTypeMap[T][]>;
+	tilesPaginated: ComputedRef<TileParentTypeMap[T][]>;
+	totalRows: ComputedRef<number>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchTiles: () => Promise<void>;
+	filters: Ref<ITilesFilter>;
+	filtersActive: ComputedRef<boolean>;
+	paginateSize: Ref<number>;
+	paginatePage: Ref<number>;
+	sortBy: Ref<'row' | 'col' | 'type'>;
+	sortDir: Ref<'ascending' | 'descending' | null>;
+	resetFilter: () => void;
+}
+
+export interface IUseTilesActions {
+	remove: (id: ITile['id']) => Promise<void>;
 }

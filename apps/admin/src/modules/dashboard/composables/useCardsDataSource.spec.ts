@@ -64,7 +64,7 @@ describe('useCardsDataSource', () => {
 			findAll: vi.fn(() => mockCards),
 			fetch: vi.fn(),
 			semaphore: ref({ fetching: { items: [] } }),
-			firstLoad: ref(['all']),
+			firstLoad: ref([]),
 		};
 
 		(injectStoresManager as unknown as ReturnType<typeof vi.fn>).mockReturnValue({

@@ -53,8 +53,10 @@ export const useChannelsPropertiesDataSource = ({ channelId }: IUseChannelsPrope
 		return orderBy<IChannelProperty>(
 			propertiesStore
 				.findAll()
-				.filter((channel) => !channelId || channel.channel === channelId)
-				.filter((channel) => !channel.draft && (!filters.value.search || channel.name?.toLowerCase().includes(filters.value.search.toLowerCase()))),
+				.filter((property) => !channelId || property.channel === channelId)
+				.filter(
+					(property) => !property.draft && (!filters.value.search || property.name?.toLowerCase().includes(filters.value.search.toLowerCase()))
+				),
 			[(property: IChannelProperty) => property[sortBy.value as keyof IChannelProperty] ?? ''],
 			[sortDir.value === 'ascending' ? 'asc' : 'desc']
 		);
@@ -91,8 +93,8 @@ export const useChannelsPropertiesDataSource = ({ channelId }: IUseChannelsPrope
 		() =>
 			propertiesStore
 				.findAll()
-				.filter((channel) => !channelId || channel.channel === channelId)
-				.filter((channel) => !channel.draft).length
+				.filter((property) => !channelId || property.channel === channelId)
+				.filter((property) => !property.draft).length
 	);
 
 	const resetFilter = (): void => {

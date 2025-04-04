@@ -1,0 +1,62 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import { DashboardException } from '../dashboard.exceptions';
+import type { TileParentType } from '../store';
+
+import { useTilesActions } from './useTilesActions';
+
+const mockProperty = { id: '2', page: 'page-2' };
+
+const mockFindById = vi.fn((_parent: TileParentType, id: string) => {
+	if (id === '1') return null;
+	if (id === '2') return mockProperty;
+	return null;
+});
+
+const mockRemove = vi.fn();
+
+const mockSuccess = vi.fn();
+const mockError = vi.fn();
+const mockInfo = vi.fn();
+
+vi.mock('element-plus', () => ({
+	ElMessageBox: {
+		confirm: vi.fn().mockResolvedValue(undefined),
+	},
+}));
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({
+		t: (key: string) => key,
+	}),
+}));
+
+vi.mock('../../../common', () => ({
+	injectStoresManager: () => ({
+		getStore: () => ({
+			findById: mockFindById,
+			remove: mockRemove,
+		}),
+	}),
+	useFlashMessage: () => ({
+		success: mockSuccess,
+		error: mockError,
+		info: mockInfo,
+	}),
+}));
+
+describe('useTilesActions', () => {
+	it('throws error if property is not found', async () => {
+		const { remove } = useTilesActions({ parent: 'page', pageId: 'page-1' });
+
+		await expect(remove('1')).rejects.toThrow(DashboardException);
+	});
+
+	it('calls remove when confirmed', async () => {
+		const { remove } = useTilesActions({ parent: 'page', pageId: 'page-2' });
+
+		await remove('2');
+
+		expect(mockRemove).toHaveBeenCalledWith({ id: '2', parent: 'page', pageId: 'page-2' });
+	});
+});

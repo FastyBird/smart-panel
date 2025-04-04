@@ -19,7 +19,7 @@ export const useChannelsProperties = ({ channelId }: IUseChannelsPropertiesProps
 	const { firstLoad, semaphore } = storeToRefs(propertiesStore);
 
 	const properties = computed<IChannelProperty[]>((): IChannelProperty[] => {
-		return propertiesStore.findAll().filter((channel) => !channelId || channel.channel === channelId);
+		return propertiesStore.findAll().filter((property) => !channelId || property.channel === channelId);
 	});
 
 	const fetchProperties = async (): Promise<void> => {
