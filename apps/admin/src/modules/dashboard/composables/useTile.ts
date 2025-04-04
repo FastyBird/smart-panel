@@ -32,9 +32,9 @@ export const useTile = <T extends keyof TileParentTypeMap>(props: IUseTileProps 
 
 	const storesManager = injectStoresManager();
 
-	const propertiesStore = storesManager.getStore(tilesStoreKey);
+	const tilesStore = storesManager.getStore(tilesStoreKey);
 
-	const { data, semaphore } = storeToRefs(propertiesStore);
+	const { data, semaphore } = storeToRefs(tilesStore);
 
 	const tile = computed<TileParentTypeMap[T] | null>((): TileParentTypeMap[T] | null => {
 		if (id === null) {
@@ -52,9 +52,9 @@ export const useTile = <T extends keyof TileParentTypeMap>(props: IUseTileProps 
 		}
 
 		if (is.card(props)) {
-			await propertiesStore.get({ id, parent: props.parent, pageId: props.pageId, cardId: props.cardId });
+			await tilesStore.get({ id, parent: props.parent, pageId: props.pageId, cardId: props.cardId });
 		} else {
-			await propertiesStore.get({ id, parent: props.parent, pageId: props.pageId });
+			await tilesStore.get({ id, parent: props.parent, pageId: props.pageId });
 		}
 	};
 

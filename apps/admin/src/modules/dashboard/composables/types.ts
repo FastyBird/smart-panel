@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 
-import type { ICard, IPage, ITile, TileParentTypeMap } from '../store';
+import type { DataSourceParentTypeMap, ICard, IDataSource, IPage, ITile, TileParentTypeMap } from '../store';
 
 export interface ICardsFilter {
 	search: string | undefined;
@@ -13,6 +13,11 @@ export interface IPagesFilter {
 }
 
 export interface ITilesFilter {
+	search: string | undefined;
+	types: string[];
+}
+
+export interface IDataSourcesFilter {
 	search: string | undefined;
 	types: string[];
 }
@@ -118,4 +123,37 @@ export interface IUseTilesDataSource<T extends keyof TileParentTypeMap> {
 
 export interface IUseTilesActions {
 	remove: (id: ITile['id']) => Promise<void>;
+}
+
+export interface IUseDataSource<T extends keyof DataSourceParentTypeMap> {
+	dataSource: ComputedRef<DataSourceParentTypeMap[T] | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchDataSource: () => Promise<void>;
+}
+
+export interface IUseDataSources<T extends keyof DataSourceParentTypeMap> {
+	dataSources: ComputedRef<DataSourceParentTypeMap[T][]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchDataSources: () => Promise<void>;
+}
+
+export interface IUseDataSourcesDataSource<T extends keyof DataSourceParentTypeMap> {
+	dataSources: ComputedRef<DataSourceParentTypeMap[T][]>;
+	dataSourcesPaginated: ComputedRef<DataSourceParentTypeMap[T][]>;
+	totalRows: ComputedRef<number>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchDataSources: () => Promise<void>;
+	filters: Ref<IDataSourcesFilter>;
+	filtersActive: ComputedRef<boolean>;
+	paginateSize: Ref<number>;
+	paginatePage: Ref<number>;
+	sortBy: Ref<'type'>;
+	sortDir: Ref<'ascending' | 'descending' | null>;
+	resetFilter: () => void;
+}
+
+export interface IUseDataSourcesActions {
+	remove: (id: IDataSource['id']) => Promise<void>;
 }

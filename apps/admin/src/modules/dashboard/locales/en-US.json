@@ -3,8 +3,14 @@
     "pages": {
       "remove": "Remove page?"
     },
-    "card": {
+    "cards": {
       "remove": "Remove card?"
+    },
+    "tiles": {
+      "remove": "Remove tile?"
+    },
+    "dataSources": {
+      "remove": "Remove data source?"
     }
   },
   "messages": {
@@ -13,18 +19,34 @@
       "removeCanceled": "Page: {page} removal has been canceled.",
       "notRemoved": "Something went wrong, and the page: {page} was not removed."
     },
-    "card": {
+    "cards": {
       "removed": "The card: {card} was successfully removed.",
       "removeCanceled": "Card: {card} removal has been canceled.",
       "notRemoved": "Something went wrong, and the card: {card} was not removed."
+    },
+    "tiles": {
+      "removed": "The tile was successfully removed.",
+      "removeCanceled": "Tile removal has been canceled.",
+      "notRemoved": "Something tile wrong, and the tile was not removed."
+    },
+    "dataSources": {
+      "removed": "The data source was successfully removed.",
+      "removeCanceled": "Data sources removal has been canceled.",
+      "notRemoved": "Something went wrong, and the data sources was not removed."
     }
   },
   "texts": {
     "pages": {
       "confirmRemove": "Are you sure you want to remove page: {page}? This cannot be reversed."
     },
-    "card": {
+    "cards": {
       "confirmRemove": "Are you sure you want to remove card: {card}? This cannot be reversed."
+    },
+    "tiles": {
+      "confirmRemove": "Are you sure you want to remove tile? This cannot be reversed."
+    },
+    "dataSources": {
+      "confirmRemove": "Are you sure you want to remove data source? This cannot be reversed."
     }
   },
   "buttons": {

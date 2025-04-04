@@ -11,5 +11,9 @@ export * from './useTile';
 export * from './useTiles';
 export * from './useTilesDataSource';
 export * from './useTilesActions';
+export * from './useDataSource';
+export * from './useDataSources';
+export * from './useDataSourcesDataSource';
+export * from './useDataSourcesActions';
 
 export * from './types';

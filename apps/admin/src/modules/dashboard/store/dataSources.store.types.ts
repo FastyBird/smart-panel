@@ -53,6 +53,8 @@ export const DeviceChannelDataSourceSchema = DataSourceBaseSchema.extend({
 });
 export type IDeviceChannelDataSource = z.infer<typeof DeviceChannelDataSourceSchema>;
 
+export type IDataSource = IDeviceChannelDataSource;
+
 export const PageDeviceChannelDataSourceSchema = DeviceChannelDataSourceSchema.extend({
 	page: ItemIdSchema,
 });

@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardException } from '../dashboard.exceptions';
-import type { TileParentType } from '../store';
+import type { DataSourceParentType } from '../store';
 
-import { useTilesActions } from './useTilesActions';
+import { useDataSourcesActions } from './useDataSourcesActions';
 
-const mockTile = { id: '2', page: 'page-2' };
+const mockDataSources = { id: '2', page: 'page-2' };
 
-const mockFindById = vi.fn((_parent: TileParentType, id: string) => {
+const mockFindById = vi.fn((_parent: DataSourceParentType, id: string) => {
 	if (id === '1') return null;
-	if (id === '2') return mockTile;
+	if (id === '2') return mockDataSources;
 	return null;
 });
 
@@ -45,15 +45,15 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
-describe('useTilesActions', () => {
-	it('throws error if tile is not found', async () => {
-		const { remove } = useTilesActions({ parent: 'page', pageId: 'page-1' });
+describe('useDataSourcesActions', () => {
+	it('throws error if data sources is not found', async () => {
+		const { remove } = useDataSourcesActions({ parent: 'page', pageId: 'page-1' });
 
 		await expect(remove('1')).rejects.toThrow(DashboardException);
 	});
 
 	it('calls remove when confirmed', async () => {
-		const { remove } = useTilesActions({ parent: 'page', pageId: 'page-2' });
+		const { remove } = useDataSourcesActions({ parent: 'page', pageId: 'page-2' });
 
 		await remove('2');
 
