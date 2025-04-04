@@ -80,7 +80,7 @@ describe('PasswordEditForm', (): void => {
 	});
 
 	it('calls submit when the form is submitted', async (): Promise<void> => {
-		const { submit } = useUserPasswordForm(mockUser);
+		const { submit } = useUserPasswordForm({ user: mockUser });
 
 		const form = wrapper.findComponent(ElForm);
 
@@ -102,7 +102,7 @@ describe('PasswordEditForm', (): void => {
 	});
 
 	it('submits the form when valid', async (): Promise<void> => {
-		const { submit } = useUserPasswordForm(mockUser);
+		const { submit } = useUserPasswordForm({ user: mockUser });
 
 		const form = wrapper.findComponent(ElForm);
 

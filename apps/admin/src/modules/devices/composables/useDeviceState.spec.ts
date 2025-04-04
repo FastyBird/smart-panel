@@ -60,7 +60,7 @@ describe('useDeviceState', () => {
 	it('returns UNKNOWN if no channel is found', () => {
 		findForDevice.mockReturnValue([]);
 
-		const { state } = useDeviceState({ id: deviceId } as IDevice);
+		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
 		expect(state.value).toBe(ConnectionState.UNKNOWN);
 	});
@@ -69,7 +69,7 @@ describe('useDeviceState', () => {
 		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
 		findForChannel.mockReturnValue([]);
 
-		const { state } = useDeviceState({ id: deviceId } as IDevice);
+		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
 		expect(state.value).toBe(ConnectionState.UNKNOWN);
 	});
@@ -78,7 +78,7 @@ describe('useDeviceState', () => {
 		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
 		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesChannelPropertyCategory.status, value: 'invalid_status' }]);
 
-		const { state } = useDeviceState({ id: deviceId } as IDevice);
+		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
 		expect(state.value).toBe(ConnectionState.UNKNOWN);
 	});
@@ -87,7 +87,7 @@ describe('useDeviceState', () => {
 		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
 		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesChannelPropertyCategory.status, value: ConnectionState.CONNECTED }]);
 
-		const { state } = useDeviceState({ id: deviceId } as IDevice);
+		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
 		expect(state.value).toBe(ConnectionState.CONNECTED);
 	});
@@ -96,7 +96,7 @@ describe('useDeviceState', () => {
 		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
 		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesChannelPropertyCategory.status, value: ConnectionState.READY }]);
 
-		const { isReady } = useDeviceState({ id: deviceId } as IDevice);
+		const { isReady } = useDeviceState({ device: { id: deviceId } as IDevice });
 
 		expect(isReady.value).toBe(true);
 	});
@@ -105,7 +105,7 @@ describe('useDeviceState', () => {
 		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
 		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesChannelPropertyCategory.status, value: ConnectionState.DISCONNECTED }]);
 
-		const { isReady } = useDeviceState({ id: deviceId } as IDevice);
+		const { isReady } = useDeviceState({ device: { id: deviceId } as IDevice });
 
 		expect(isReady.value).toBe(false);
 	});

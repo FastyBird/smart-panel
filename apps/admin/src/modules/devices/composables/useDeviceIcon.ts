@@ -5,7 +5,11 @@ import { type IDevice, devicesStoreKey } from '../store';
 
 import type { IUseDeviceIcon } from './types';
 
-export function useDeviceIcon(id: IDevice['id']): IUseDeviceIcon {
+interface IUseDeviceIconProps {
+	id: IDevice['id'];
+}
+
+export const useDeviceIcon = ({ id }: IUseDeviceIconProps): IUseDeviceIcon => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
@@ -22,4 +26,4 @@ export function useDeviceIcon(id: IDevice['id']): IUseDeviceIcon {
 	return {
 		icon,
 	};
-}
+};

@@ -144,10 +144,10 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { devices } = useDevices();
-const { categoriesOptions, devicesOptions, model, formEl, formChanged, submit, formResult, loadingDevices } = useChannelAddForm(
-	props.id,
-	props.device?.id
-);
+const { categoriesOptions, devicesOptions, model, formEl, formChanged, submit, formResult, loadingDevices } = useChannelAddForm({
+	id: props.id,
+	deviceId: props.device?.id,
+});
 
 const rules = reactive<FormRules<IChannelAddForm>>({
 	device: [{ required: true, message: t('devicesModule.fields.channels.device.validation.required'), trigger: 'change' }],

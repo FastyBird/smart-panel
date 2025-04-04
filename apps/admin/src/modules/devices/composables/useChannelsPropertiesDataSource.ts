@@ -18,7 +18,11 @@ export const defaultChannelsPropertiesFilter: IChannelsPropertiesFilter = {
 	dataTypes: [],
 };
 
-export const useChannelsPropertiesDataSource = (channelId: IChannel['id']): IUseChannelsPropertiesDataSource => {
+interface IUseChannelsPropertiesDataSourceProps {
+	channelId: IChannel['id'];
+}
+
+export const useChannelsPropertiesDataSource = ({ channelId }: IUseChannelsPropertiesDataSourceProps): IUseChannelsPropertiesDataSource => {
 	const storesManager = injectStoresManager();
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);

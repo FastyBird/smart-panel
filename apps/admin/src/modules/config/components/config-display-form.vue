@@ -105,7 +105,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { screenLockDurationOptions, model, formEl, formChanged, submit, formResult } = useConfigDisplayEditForm(props.config);
+const { screenLockDurationOptions, model, formEl, formChanged, submit, formResult } = useConfigDisplayEditForm({ config: props.config });
 
 watch(
 	(): FormResultType => formResult.value,

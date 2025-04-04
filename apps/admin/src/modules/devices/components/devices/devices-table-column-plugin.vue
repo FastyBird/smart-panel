@@ -42,5 +42,5 @@ const emit = defineEmits<{
 	(e: 'filter-by', value: IPlugin['type'], add: boolean): void;
 }>();
 
-const { plugin } = usePlugin(props.device.type);
+const { plugin } = usePlugin({ type: props.device.type });
 </script>

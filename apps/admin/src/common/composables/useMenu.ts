@@ -74,9 +74,9 @@ const findRoute = (search: string, routes: { [key: string]: RouteRecord }): bool
 	return false;
 };
 
-export function useMenu(): {
+export const useMenu = (): {
 	mainMenuItems: { [key: string]: RouteRecord };
-} {
+} => {
 	const router = useRouter();
 
 	const storesManager = injectStoresManager();
@@ -94,4 +94,4 @@ export function useMenu(): {
 	return {
 		mainMenuItems: routesTree,
 	};
-}
+};

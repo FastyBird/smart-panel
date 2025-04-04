@@ -62,7 +62,7 @@ describe('useChannel', () => {
 	});
 
 	it('should return a channel by ID', () => {
-		const { channel } = useChannel(fakeId);
+		const { channel } = useChannel({ id: fakeId });
 
 		expect(channel.value).toEqual(data[fakeId]);
 	});
@@ -70,7 +70,7 @@ describe('useChannel', () => {
 	it('should indicate loading when fetching item by ID', () => {
 		semaphore.value.fetching.item.push(fakeId);
 
-		const { isLoading } = useChannel(fakeId);
+		const { isLoading } = useChannel({ id: fakeId });
 
 		expect(isLoading.value).toBe(true);
 	});
@@ -78,7 +78,7 @@ describe('useChannel', () => {
 	it('should indicate loading when item not found and fetching all', () => {
 		semaphore.value.fetching.items.push('all');
 
-		const { isLoading } = useChannel('nonexistent');
+		const { isLoading } = useChannel({ id: 'nonexistent' });
 
 		expect(isLoading.value).toBe(true);
 	});
@@ -86,7 +86,7 @@ describe('useChannel', () => {
 	it('should not call fetch if item is a draft', async () => {
 		data[fakeId].draft = true;
 
-		const { fetchChannel } = useChannel(fakeId);
+		const { fetchChannel } = useChannel({ id: fakeId });
 
 		await fetchChannel();
 
@@ -96,7 +96,7 @@ describe('useChannel', () => {
 	it('should call fetch if item is not a draft', async () => {
 		data[fakeId].draft = false;
 
-		const { fetchChannel } = useChannel(fakeId);
+		const { fetchChannel } = useChannel({ id: fakeId });
 
 		await fetchChannel();
 

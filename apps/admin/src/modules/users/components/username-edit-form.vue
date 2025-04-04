@@ -47,9 +47,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, submit, formResult } = useUserUsernameForm(props.user, {
-	success: t('usersModule.messages.usernameEdited'),
-	error: t('usersModule.messages.usernameNotEdited'),
+const { model, formEl, submit, formResult } = useUserUsernameForm({
+	user: props.user,
+	messages: {
+		success: t('usersModule.messages.usernameEdited'),
+		error: t('usersModule.messages.usernameNotEdited'),
+	},
 });
 
 const rules = reactive<FormRules<IUserUsernameForm>>({

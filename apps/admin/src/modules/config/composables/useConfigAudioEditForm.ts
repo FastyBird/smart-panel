@@ -10,7 +10,12 @@ import { type IConfigAudio, configAudioStoreKey } from '../store';
 
 import type { IConfigAudioEditForm, IUseConfigAudioEditForm } from './types';
 
-export const useConfigAudioEditForm = (config: IConfigAudio, messages?: { success?: string; error?: string }): IUseConfigAudioEditForm => {
+interface IUseAudioEditFormProps {
+	config: IConfigAudio;
+	messages?: { success?: string; error?: string };
+}
+
+export const useConfigAudioEditForm = ({ config, messages }: IUseAudioEditFormProps): IUseConfigAudioEditForm => {
 	const storesManager = injectStoresManager();
 
 	const configAudioStore = storesManager.getStore(configAudioStoreKey);

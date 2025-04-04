@@ -304,9 +304,9 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { device, isLoading, fetchDevice } = useDevice(props.id);
-const { canAddAnotherChannel } = useDeviceSpecification(props.id);
-const { channels, fetchChannels } = useChannels(props.id);
+const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
+const { canAddAnotherChannel } = useDeviceSpecification({ id: props.id });
+const { channels, fetchChannels } = useChannels({ deviceId: props.id });
 const channelsActions = useChannelsActions();
 const channelsPropertiesActions = useChannelsPropertiesActions();
 

@@ -49,7 +49,7 @@ describe('useConfigDisplayEditForm', () => {
 	});
 
 	it('initializes model with config data', () => {
-		const form = useConfigDisplayEditForm(mockConfig);
+		const form = useConfigDisplayEditForm({ config: mockConfig });
 
 		expect(form.model.darkMode).toBe(true);
 		expect(form.model.brightness).toBe(80);
@@ -58,7 +58,7 @@ describe('useConfigDisplayEditForm', () => {
 	});
 
 	it('sets formChanged to true when model changes', async () => {
-		const form = useConfigDisplayEditForm(mockConfig);
+		const form = useConfigDisplayEditForm({ config: mockConfig });
 
 		form.model.darkMode = false;
 		await Promise.resolve();
@@ -67,7 +67,7 @@ describe('useConfigDisplayEditForm', () => {
 	});
 
 	it('throws if form is invalid', async () => {
-		const form = useConfigDisplayEditForm(mockConfig);
+		const form = useConfigDisplayEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -78,7 +78,7 @@ describe('useConfigDisplayEditForm', () => {
 	});
 
 	it('submits and edits successfully', async () => {
-		const form = useConfigDisplayEditForm(mockConfig);
+		const form = useConfigDisplayEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -103,8 +103,11 @@ describe('useConfigDisplayEditForm', () => {
 	it('handles edit failure with custom message', async () => {
 		mockEdit.mockRejectedValueOnce(new ConfigApiException('API error', 500));
 
-		const form = useConfigDisplayEditForm(mockConfig, {
-			error: 'Something went wrong!',
+		const form = useConfigDisplayEditForm({
+			config: mockConfig,
+			messages: {
+				error: 'Something went wrong!',
+			},
 		});
 
 		form.formEl.value = {

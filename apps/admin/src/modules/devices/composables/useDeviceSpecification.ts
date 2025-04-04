@@ -8,7 +8,11 @@ import { type IDevice, channelsStoreKey, devicesStoreKey } from '../store';
 
 import type { IUseDeviceSpecification } from './types';
 
-export const useDeviceSpecification = (id: IDevice['id']): IUseDeviceSpecification => {
+interface IUseDeviceSpecificationProps {
+	id: IDevice['id'];
+}
+
+export const useDeviceSpecification = ({ id }: IUseDeviceSpecificationProps): IUseDeviceSpecification => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);

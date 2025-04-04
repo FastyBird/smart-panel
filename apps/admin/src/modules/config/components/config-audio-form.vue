@@ -89,7 +89,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = useConfigAudioEditForm(props.config);
+const { model, formEl, formChanged, submit, formResult } = useConfigAudioEditForm({ config: props.config });
 
 watch(
 	(): FormResultType => formResult.value,

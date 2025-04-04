@@ -67,13 +67,13 @@ describe('useCards', () => {
 	});
 
 	it('returns only cards for a specific page', () => {
-		const { cards } = useCards(pageId);
+		const { cards } = useCards({ pageId });
 
 		expect(cards.value).toEqual([{ id: 'card-1', page: pageId }]);
 	});
 
 	it('calls fetchCards correctly', async () => {
-		const { fetchCards } = useCards(pageId);
+		const { fetchCards } = useCards({ pageId });
 
 		await fetchCards();
 
@@ -83,7 +83,7 @@ describe('useCards', () => {
 	it('indicates loading when fetching includes pageId', () => {
 		semaphore.value.fetching.items.push(pageId);
 
-		const { areLoading } = useCards(pageId);
+		const { areLoading } = useCards({ pageId });
 
 		expect(areLoading.value).toBe(true);
 	});
@@ -91,7 +91,7 @@ describe('useCards', () => {
 	it('does not indicate loading after firstLoad includes pageId', () => {
 		firstLoad.value.push(pageId);
 
-		const { areLoading } = useCards(pageId);
+		const { areLoading } = useCards({ pageId });
 
 		expect(areLoading.value).toBe(false);
 	});
@@ -99,13 +99,13 @@ describe('useCards', () => {
 	it('returns loaded = true when firstLoad includes pageId', () => {
 		firstLoad.value.push(pageId);
 
-		const { loaded } = useCards(pageId);
+		const { loaded } = useCards({ pageId });
 
 		expect(loaded.value).toBe(true);
 	});
 
 	it('returns loaded = false when firstLoad does not include pageId', () => {
-		const { loaded } = useCards(pageId);
+		const { loaded } = useCards({ pageId });
 
 		expect(loaded.value).toBe(false);
 	});

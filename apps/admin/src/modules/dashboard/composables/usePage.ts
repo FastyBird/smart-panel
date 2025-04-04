@@ -7,7 +7,11 @@ import { type IPage, pagesStoreKey } from '../store';
 
 import type { IUsePage } from './types';
 
-export const usePage = (id: IPage['id']): IUsePage => {
+interface IUsePageProps {
+	id: IPage['id'];
+}
+
+export const usePage = ({ id }: IUsePageProps): IUsePage => {
 	const storesManager = injectStoresManager();
 
 	const pagesStore = storesManager.getStore(pagesStoreKey);

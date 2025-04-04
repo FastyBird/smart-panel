@@ -7,7 +7,11 @@ import { type IDevice, channelsPropertiesStoreKey, channelsStoreKey } from '../s
 
 import type { IUseDeviceState } from './types';
 
-export function useDeviceState(device: IDevice): IUseDeviceState {
+interface IUseDeviceStateProps {
+	device: IDevice;
+}
+
+export const useDeviceState = ({ device }: IUseDeviceStateProps): IUseDeviceState => {
 	const storesManager = injectStoresManager();
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
@@ -43,4 +47,4 @@ export function useDeviceState(device: IDevice): IUseDeviceState {
 		state,
 		isReady,
 	};
-}
+};

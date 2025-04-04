@@ -44,5 +44,5 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { state } = useDeviceState(props.device);
+const { state } = useDeviceState({ device: props.device });
 </script>

@@ -22,5 +22,5 @@ defineOptions({
 
 const props = defineProps<IChannelsPropertiesTableColumnIconProps>();
 
-const { icon: iconName } = useChannelPropertyIcon(props.property.id);
+const { icon: iconName } = useChannelPropertyIcon({ id: props.property.id });
 </script>

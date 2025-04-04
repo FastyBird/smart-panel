@@ -3,7 +3,7 @@ import { SystemValidationException } from '../system.exceptions';
 
 import { type ISystemInfo, type ISystemInfoRes, SystemInfoSchema } from './system-info.store.types';
 
-export function transformSystemInfoResponse(response: ISystemInfoRes): ISystemInfo {
+export const transformSystemInfoResponse = (response: ISystemInfoRes): ISystemInfo => {
 	const parsed = SystemInfoSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
@@ -11,4 +11,4 @@ export function transformSystemInfoResponse(response: ISystemInfoRes): ISystemIn
 	}
 
 	return parsed.data;
-}
+};

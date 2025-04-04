@@ -101,7 +101,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { locationTypeOptions, unitOptions, model, formEl, formChanged, submit, formResult } = useConfigWeatherEditForm(props.config);
+const { locationTypeOptions, unitOptions, model, formEl, formChanged, submit, formResult } = useConfigWeatherEditForm({ config: props.config });
 
 watch(
 	(): FormResultType => formResult.value,

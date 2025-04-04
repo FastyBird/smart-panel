@@ -64,7 +64,7 @@ describe('useCard', () => {
 	});
 
 	it('should return a card by ID', () => {
-		const { card } = useCard(fakeCardId, fakePageId);
+		const { card } = useCard({ id: fakeCardId, pageId: fakePageId });
 
 		expect(card.value).toEqual(data[fakeCardId]);
 	});
@@ -72,7 +72,7 @@ describe('useCard', () => {
 	it('should indicate loading when fetching item by ID', () => {
 		semaphore.value.fetching.item.push(fakeCardId);
 
-		const { isLoading } = useCard(fakeCardId, fakePageId);
+		const { isLoading } = useCard({ id: fakeCardId, pageId: fakePageId });
 
 		expect(isLoading.value).toBe(true);
 	});
@@ -80,7 +80,7 @@ describe('useCard', () => {
 	it('should indicate loading when item not found and fetching for page', () => {
 		semaphore.value.fetching.items.push(fakePageId);
 
-		const { isLoading } = useCard('nonexistent', fakePageId);
+		const { isLoading } = useCard({ id: 'nonexistent', pageId: fakePageId });
 
 		expect(isLoading.value).toBe(true);
 	});
@@ -88,7 +88,7 @@ describe('useCard', () => {
 	it('should not call fetch if item is a draft', async () => {
 		data[fakeCardId].draft = true;
 
-		const { fetchCard } = useCard(fakeCardId, fakePageId);
+		const { fetchCard } = useCard({ id: fakeCardId, pageId: fakePageId });
 
 		await fetchCard();
 
@@ -98,7 +98,7 @@ describe('useCard', () => {
 	it('should call fetch if item is not a draft', async () => {
 		data[fakeCardId].draft = false;
 
-		const { fetchCard } = useCard(fakeCardId, fakePageId);
+		const { fetchCard } = useCard({ id: fakeCardId, pageId: fakePageId });
 
 		await fetchCard();
 

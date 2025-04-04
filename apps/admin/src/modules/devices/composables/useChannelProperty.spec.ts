@@ -64,19 +64,19 @@ describe('useChannelProperty', () => {
 	});
 
 	it('should return the correct property by ID', () => {
-		const { property } = useChannelProperty(channelId, propertyId);
+		const { property } = useChannelProperty({ channelId, id: propertyId });
 
 		expect(property.value).toEqual(data[propertyId]);
 	});
 
 	it('should return null if property ID is not found', () => {
-		const { property } = useChannelProperty(channelId, 'nonexistent');
+		const { property } = useChannelProperty({ channelId, id: 'nonexistent' });
 
 		expect(property.value).toBeNull();
 	});
 
 	it('should call get() only if property is not a draft', async () => {
-		const { fetchProperty } = useChannelProperty(channelId, propertyId);
+		const { fetchProperty } = useChannelProperty({ channelId, id: propertyId });
 
 		await fetchProperty();
 
@@ -86,7 +86,7 @@ describe('useChannelProperty', () => {
 	it('should not call get() if property is a draft', async () => {
 		data[propertyId].draft = true;
 
-		const { fetchProperty } = useChannelProperty(channelId, propertyId);
+		const { fetchProperty } = useChannelProperty({ channelId, id: propertyId });
 
 		await fetchProperty();
 
@@ -96,13 +96,13 @@ describe('useChannelProperty', () => {
 	it('should return isLoading = true if fetching item includes ID', () => {
 		semaphore.value.fetching.item.push(propertyId);
 
-		const { isLoading } = useChannelProperty(channelId, propertyId);
+		const { isLoading } = useChannelProperty({ channelId, id: propertyId });
 
 		expect(isLoading.value).toBe(true);
 	});
 
 	it('should return isLoading = false if property is already loaded', () => {
-		const { isLoading } = useChannelProperty(channelId, propertyId);
+		const { isLoading } = useChannelProperty({ channelId, id: propertyId });
 
 		expect(isLoading.value).toBe(false);
 	});
@@ -110,13 +110,13 @@ describe('useChannelProperty', () => {
 	it('should return isLoading = true if items include channelId or "all"', () => {
 		semaphore.value.fetching.items.push(channelId);
 
-		const { isLoading } = useChannelProperty(channelId, 'nonexistent');
+		const { isLoading } = useChannelProperty({ channelId, id: 'nonexistent' });
 
 		expect(isLoading.value).toBe(true);
 
 		semaphore.value.fetching.items = ['all'];
 
-		const { isLoading: isLoadingAll } = useChannelProperty(channelId, 'nonexistent');
+		const { isLoading: isLoadingAll } = useChannelProperty({ channelId, id: 'nonexistent' });
 
 		expect(isLoadingAll.value).toBe(true);
 	});

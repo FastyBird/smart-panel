@@ -80,7 +80,7 @@ describe('UsernameEditForm', (): void => {
 	});
 
 	it('calls submit when the form is submitted', async (): Promise<void> => {
-		const { submit } = useUserUsernameForm(mockUser);
+		const { submit } = useUserUsernameForm({ user: mockUser });
 
 		await wrapper.setProps({ remoteFormSubmit: true });
 
@@ -90,7 +90,7 @@ describe('UsernameEditForm', (): void => {
 	});
 
 	it('emits `update:remote-form-result` on form result change', async (): Promise<void> => {
-		const { formResult } = useUserUsernameForm(mockUser);
+		const { formResult } = useUserUsernameForm({ user: mockUser });
 
 		formResult.value = FormResult.OK;
 

@@ -263,7 +263,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
-	useChannelPropertyAddForm(props.id, props.channel?.id);
+	useChannelPropertyAddForm({ id: props.id, channelId: props.channel?.id });
 
 const rules = reactive<FormRules<IChannelPropertyAddForm>>({
 	channel: [{ required: true, message: t('devicesModule.fields.channelsProperties.channel.validation.required'), trigger: 'change' }],

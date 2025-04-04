@@ -32,7 +32,7 @@ describe('useDeviceAddForm', () => {
 	let form: ReturnType<typeof useDeviceAddForm>;
 
 	beforeEach(() => {
-		form = useDeviceAddForm('device-123', 'test-plugin');
+		form = useDeviceAddForm({ id: 'device-123', type: 'test-plugin' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),

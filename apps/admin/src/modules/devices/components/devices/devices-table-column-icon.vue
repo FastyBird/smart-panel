@@ -22,5 +22,5 @@ defineOptions({
 
 const props = defineProps<IDevicesTableColumnIconProps>();
 
-const { icon: iconName } = useDeviceIcon(props.device.id);
+const { icon: iconName } = useDeviceIcon({ id: props.device.id });
 </script>

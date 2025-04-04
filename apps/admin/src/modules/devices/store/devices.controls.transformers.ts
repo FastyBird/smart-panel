@@ -9,7 +9,7 @@ import {
 	type IDevicesControlsAddActionPayload,
 } from './devices.controls.store.types';
 
-export function transformDeviceControlResponse(response: IDeviceControlRes): IDeviceControl {
+export const transformDeviceControlResponse = (response: IDeviceControlRes): IDeviceControl => {
 	const parsedDeviceControl = DeviceControlSchema.safeParse({
 		id: response.id,
 		device: response.device,
@@ -23,11 +23,11 @@ export function transformDeviceControlResponse(response: IDeviceControlRes): IDe
 	}
 
 	return parsedDeviceControl.data;
-}
+};
 
-export function transformDeviceControlCreateRequest(
+export const transformDeviceControlCreateRequest = (
 	control: IDevicesControlsAddActionPayload['data'] & { id?: string; device: string }
-): IDeviceControlCreateReq {
+): IDeviceControlCreateReq => {
 	const parsedRequest = DeviceControlCreateReqSchema.safeParse({
 		id: control.id,
 		device: control.device,
@@ -39,4 +39,4 @@ export function transformDeviceControlCreateRequest(
 	}
 
 	return parsedRequest.data;
-}
+};

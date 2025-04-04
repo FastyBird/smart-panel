@@ -7,7 +7,12 @@ import { type ICard, type IPage, cardsStoreKey } from '../store';
 
 import type { IUseCard } from './types';
 
-export const useCard = (id: ICard['id'], pageId: IPage['id']): IUseCard => {
+interface IUseCardProps {
+	id: ICard['id'];
+	pageId: IPage['id'];
+}
+
+export const useCard = ({ id, pageId }: IUseCardProps): IUseCard => {
 	const storesManager = injectStoresManager();
 
 	const cardsStore = storesManager.getStore(cardsStoreKey);

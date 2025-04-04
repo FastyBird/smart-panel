@@ -163,8 +163,8 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { device, isLoading, fetchDevice } = useDevice(props.id);
-const { icon: deviceIcon } = useDeviceIcon(props.id);
+const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
+const { icon: deviceIcon } = useDeviceIcon({ id: props.id });
 
 if (!validateUuid(props.id)) {
 	throw new Error('Device identifier is not valid');

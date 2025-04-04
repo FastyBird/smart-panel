@@ -13,7 +13,12 @@ import { type IChannel, type IDevice, channelsStoreKey } from '../store';
 import type { IChannelAddForm, IUseChannelAddForm } from './types';
 import { useDevices } from './useDevices';
 
-export const useChannelAddForm = (id: IChannel['id'], deviceId?: IDevice['id']): IUseChannelAddForm => {
+interface IUseChannelAddFormProps {
+	id: IChannel['id'];
+	deviceId?: IDevice['id'];
+}
+
+export const useChannelAddForm = ({ id, deviceId }: IUseChannelAddFormProps): IUseChannelAddForm => {
 	const storesManager = injectStoresManager();
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);

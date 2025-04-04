@@ -3,7 +3,7 @@ import { SystemValidationException } from '../system.exceptions';
 
 import { type IThrottleStatus, type IThrottleStatusRes, ThrottleStatusSchema } from './throttle-status.store.types';
 
-export function transformThrottleStatusResponse(response: IThrottleStatusRes): IThrottleStatus {
+export const transformThrottleStatusResponse = (response: IThrottleStatusRes): IThrottleStatus => {
 	const parsed = ThrottleStatusSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
@@ -11,4 +11,4 @@ export function transformThrottleStatusResponse(response: IThrottleStatusRes): I
 	}
 
 	return parsed.data;
-}
+};

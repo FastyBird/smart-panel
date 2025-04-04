@@ -267,8 +267,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
-	useChannelPropertyEditForm(props.property);
-const { channel } = useChannel(props.property.channel);
+	useChannelPropertyEditForm({ property: props.property });
+const { channel } = useChannel({ id: props.property.channel });
 
 watch(
 	(): FormResultType => formResult.value,

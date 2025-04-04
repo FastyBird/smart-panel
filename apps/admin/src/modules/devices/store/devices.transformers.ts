@@ -13,7 +13,7 @@ import {
 	type IDevicesEditActionPayload,
 } from './devices.store.types';
 
-export function transformDeviceResponse(response: IDeviceRes, schema: typeof DeviceSchema): IDevice {
+export const transformDeviceResponse = (response: IDeviceRes, schema: typeof DeviceSchema): IDevice => {
 	const parsedDevice = schema.safeParse(snakeToCamel(response));
 
 	if (!parsedDevice.success) {
@@ -21,12 +21,12 @@ export function transformDeviceResponse(response: IDeviceRes, schema: typeof Dev
 	}
 
 	return parsedDevice.data;
-}
+};
 
-export function transformDeviceCreateRequest(
+export const transformDeviceCreateRequest = (
 	device: IDevicesAddActionPayload['data'] & { id?: string },
 	schema: typeof DeviceCreateReqSchema
-): IDeviceCreateReq {
+): IDeviceCreateReq => {
 	const parsedRequest = schema.safeParse(camelToSnake(device));
 
 	if (!parsedRequest.success) {
@@ -34,13 +34,13 @@ export function transformDeviceCreateRequest(
 	}
 
 	return parsedRequest.data;
-}
+};
 
-export function transformDeviceUpdateRequest(
+export const transformDeviceUpdateRequest = (
 	device: IDevicesEditActionPayload['data'],
 	type: string,
 	schema: typeof DeviceUpdateReqSchema
-): IDeviceUpdateReq {
+): IDeviceUpdateReq => {
 	const parsedRequest = schema.safeParse(camelToSnake(device));
 
 	if (!parsedRequest.success) {
@@ -48,4 +48,4 @@ export function transformDeviceUpdateRequest(
 	}
 
 	return parsedRequest.data;
-}
+};

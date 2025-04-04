@@ -49,7 +49,7 @@ describe('useDeviceSpecification', () => {
 	it('should return true for canAddAnotherChannel when device is null', () => {
 		mockDevicesStore.findById.mockReturnValue(null);
 
-		const { canAddAnotherChannel } = useDeviceSpecification(deviceId);
+		const { canAddAnotherChannel } = useDeviceSpecification({ id: deviceId });
 
 		expect(canAddAnotherChannel.value).toBe(true);
 	});
@@ -62,7 +62,7 @@ describe('useDeviceSpecification', () => {
 
 		mockChannelsStore.findForDevice.mockReturnValue([{ id: '1', category: DevicesChannelCategory.light }]);
 
-		const { canAddAnotherChannel } = useDeviceSpecification(deviceId);
+		const { canAddAnotherChannel } = useDeviceSpecification({ id: deviceId });
 
 		expect(canAddAnotherChannel.value).toBe(true); // electrical_power etc. still available
 	});
@@ -78,7 +78,7 @@ describe('useDeviceSpecification', () => {
 			{ id: '2', category: DevicesChannelCategory.alarm },
 		]);
 
-		const { canAddAnotherChannel } = useDeviceSpecification(deviceId);
+		const { canAddAnotherChannel } = useDeviceSpecification({ id: deviceId });
 
 		expect(canAddAnotherChannel.value).toBe(false);
 	});
@@ -91,7 +91,7 @@ describe('useDeviceSpecification', () => {
 
 		mockChannelsStore.findForDevice.mockReturnValue([{ id: '1', category: DevicesChannelCategory.device_information }]);
 
-		const { canAddAnotherChannel } = useDeviceSpecification(deviceId);
+		const { canAddAnotherChannel } = useDeviceSpecification({ id: deviceId });
 
 		expect(canAddAnotherChannel.value).toBe(true); // `sensor` has `multiple` allowed
 	});
@@ -99,7 +99,7 @@ describe('useDeviceSpecification', () => {
 	it('should throw if device not found for missingRequiredChannels', () => {
 		mockDevicesStore.findById.mockReturnValue(null);
 
-		const { missingRequiredChannels } = useDeviceSpecification(deviceId);
+		const { missingRequiredChannels } = useDeviceSpecification({ id: deviceId });
 
 		expect(() => missingRequiredChannels.value).toThrow(DevicesException);
 	});
@@ -112,7 +112,7 @@ describe('useDeviceSpecification', () => {
 
 		mockChannelsStore.findForDevice.mockReturnValue([{ id: '1', category: DevicesChannelCategory.device_information }]);
 
-		const { missingRequiredChannels } = useDeviceSpecification(deviceId);
+		const { missingRequiredChannels } = useDeviceSpecification({ id: deviceId });
 
 		expect(missingRequiredChannels.value).toContain(DevicesChannelCategory.light);
 	});

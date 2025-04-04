@@ -16,7 +16,13 @@ export const defaultChannelsFilter: IChannelsFilter = {
 	categories: [],
 };
 
-export const useChannelsDataSource = (deviceId?: IDevice['id']): IUseChannelsDataSource => {
+interface IUseChannelsDataSourceProps {
+	deviceId?: IDevice['id'];
+}
+
+export const useChannelsDataSource = (props: IUseChannelsDataSourceProps = {}): IUseChannelsDataSource => {
+	const { deviceId } = props;
+
 	const storesManager = injectStoresManager();
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);

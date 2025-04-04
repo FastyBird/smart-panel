@@ -110,10 +110,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { properties, totalRows, sortBy, sortDir, filters, filtersActive, fetchProperties, areLoading, resetFilter } = useChannelsPropertiesDataSource(
-	props.channel.id
-);
-const { canAddAnotherProperty } = useChannelSpecification(props.channel.id);
+const { properties, totalRows, sortBy, sortDir, filters, filtersActive, fetchProperties, areLoading, resetFilter } = useChannelsPropertiesDataSource({
+	channelId: props.channel.id,
+});
+const { canAddAnotherProperty } = useChannelSpecification({ id: props.channel.id });
 
 const onResetFilters = (): void => {
 	resetFilter();

@@ -7,7 +7,11 @@ import { type IChannel, type IChannelProperty, channelsPropertiesStoreKey } from
 
 import type { IUseChannelsProperties } from './types';
 
-export const useChannelsProperties = (channelId: IChannel['id']): IUseChannelsProperties => {
+interface IUseChannelsPropertiesProps {
+	channelId: IChannel['id'];
+}
+
+export const useChannelsProperties = ({ channelId }: IUseChannelsPropertiesProps): IUseChannelsProperties => {
 	const storesManager = injectStoresManager();
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);

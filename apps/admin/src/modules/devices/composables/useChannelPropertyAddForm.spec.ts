@@ -43,7 +43,7 @@ describe('useChannelPropertyAddForm', () => {
 	let form: ReturnType<typeof useChannelPropertyAddForm>;
 
 	beforeEach(() => {
-		form = useChannelPropertyAddForm('property-123', 'channel-123');
+		form = useChannelPropertyAddForm({ id: 'property-123', channelId: 'channel-123' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),

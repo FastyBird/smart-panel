@@ -4,7 +4,7 @@ import { useDark, useToggle } from '@vueuse/core';
 
 import type { IUseDarkMode } from './types';
 
-export function useDarkMode(): IUseDarkMode {
+export const useDarkMode = (): IUseDarkMode => {
 	const darkMode = useDark({
 		storageKey: 'fb-theme-appearance',
 	});
@@ -19,4 +19,4 @@ export function useDarkMode(): IUseDarkMode {
 		isDark,
 		toggleDark,
 	};
-}
+};

@@ -58,7 +58,7 @@ describe('useUserAddForm', (): void => {
 		(usersStoreMock.add as Mock).mockResolvedValue({});
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -86,7 +86,7 @@ describe('useUserAddForm', (): void => {
 		(usersStoreMock.add as Mock).mockRejectedValue(new UsersApiException('Validation error', 422));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -113,7 +113,7 @@ describe('useUserAddForm', (): void => {
 		(usersStoreMock.add as Mock).mockRejectedValue(new Error('Failed to add user'));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -139,7 +139,7 @@ describe('useUserAddForm', (): void => {
 	it('should trim empty optional fields before sending the request', async (): Promise<void> => {
 		(usersStoreMock.add as Mock).mockResolvedValue({});
 
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -175,7 +175,7 @@ describe('useUserAddForm', (): void => {
 	it('should reset form result after timeout', async (): Promise<void> => {
 		(usersStoreMock.add as Mock).mockResolvedValue({});
 
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),

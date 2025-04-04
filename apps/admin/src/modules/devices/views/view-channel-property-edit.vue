@@ -153,9 +153,9 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel(props.channelId);
-const { property, isLoading, fetchProperty } = useChannelProperty(props.channelId, props.id);
-const { icon: propertyIcon } = useChannelPropertyIcon(props.id);
+const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel({ id: props.channelId });
+const { property, isLoading, fetchProperty } = useChannelProperty({ channelId: props.channelId, id: props.id });
+const { icon: propertyIcon } = useChannelPropertyIcon({ id: props.id });
 
 if (!validateUuid(props.channelId)) {
 	throw new Error('Channel identifier is not valid');

@@ -42,7 +42,7 @@ const emit = defineEmits<{
 	(e: 'filter-by', value: IDevice['id'], add: boolean): void;
 }>();
 
-const { device, fetchDevice } = useDevice(props.channel.device);
+const { device, fetchDevice } = useDevice({ id: props.channel.device });
 
 onMounted((): void => {
 	fetchDevice().catch(() => {

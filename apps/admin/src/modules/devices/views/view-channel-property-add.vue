@@ -156,8 +156,8 @@ const newPropertyId = uuidGenerate();
 
 const flashMessage = useFlashMessage();
 
-const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel(props.channelId);
-const { canAddAnotherProperty } = useChannelSpecification(props.channelId);
+const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel({ id: props.channelId });
+const { canAddAnotherProperty } = useChannelSpecification({ id: props.channelId });
 
 if (!validateUuid(props.channelId)) {
 	throw new Error('Channel identifier is not valid');

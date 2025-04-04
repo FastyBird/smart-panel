@@ -49,7 +49,7 @@ describe('useConfigWeatherEditForm', () => {
 	});
 
 	it('initializes model with config data', () => {
-		const form = useConfigWeatherEditForm(mockConfig);
+		const form = useConfigWeatherEditForm({ config: mockConfig });
 
 		expect(form.model.location).toBe('Prague');
 		expect(form.model.locationType).toBe(PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name);
@@ -58,7 +58,7 @@ describe('useConfigWeatherEditForm', () => {
 	});
 
 	it('sets formChanged to true when model changes', async () => {
-		const form = useConfigWeatherEditForm(mockConfig);
+		const form = useConfigWeatherEditForm({ config: mockConfig });
 
 		form.model.unit = ConfigWeatherUnit.fahrenheit;
 		await Promise.resolve();
@@ -67,7 +67,7 @@ describe('useConfigWeatherEditForm', () => {
 	});
 
 	it('throws if form is invalid', async () => {
-		const form = useConfigWeatherEditForm(mockConfig);
+		const form = useConfigWeatherEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -78,7 +78,7 @@ describe('useConfigWeatherEditForm', () => {
 	});
 
 	it('submits and edits successfully', async () => {
-		const form = useConfigWeatherEditForm(mockConfig);
+		const form = useConfigWeatherEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -103,8 +103,11 @@ describe('useConfigWeatherEditForm', () => {
 	it('handles edit failure with custom message', async () => {
 		mockEdit.mockRejectedValueOnce(new ConfigApiException('API error', 500));
 
-		const form = useConfigWeatherEditForm(mockConfig, {
-			error: 'Something went wrong!',
+		const form = useConfigWeatherEditForm({
+			config: mockConfig,
+			messages: {
+				error: 'Something went wrong!',
+			},
 		});
 
 		form.formEl.value = {

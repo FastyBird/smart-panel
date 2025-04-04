@@ -10,7 +10,11 @@ import type { IThirdPartyDevice } from '../store';
 
 import type { IThirdPartyDeviceAddForm, IUseThirdPartyDeviceAddForm } from './types';
 
-export const useThirdPartyDeviceAddForm = (id: IThirdPartyDevice['id']): IUseThirdPartyDeviceAddForm => {
+interface IUseThirdPartyDeviceAddFormProps {
+	id: IThirdPartyDevice['id'];
+}
+
+export const useThirdPartyDeviceAddForm = ({ id }: IUseThirdPartyDeviceAddFormProps): IUseThirdPartyDeviceAddForm => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);

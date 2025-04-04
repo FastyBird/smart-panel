@@ -51,13 +51,13 @@ describe('useChannelSpecification', () => {
 	});
 
 	it('allows adding another property if optional categories remain', () => {
-		const { canAddAnotherProperty } = useChannelSpecification('channel-1');
+		const { canAddAnotherProperty } = useChannelSpecification({ id: 'channel-1' });
 
 		expect(canAddAnotherProperty.value).toBe(true); // hue not present
 	});
 
 	it('disallows adding property if all allowed are already assigned', () => {
-		const { canAddAnotherProperty } = useChannelSpecification('channel-1');
+		const { canAddAnotherProperty } = useChannelSpecification({ id: 'channel-1' });
 
 		expect(canAddAnotherProperty.value).toBe(true);
 	});
@@ -65,7 +65,7 @@ describe('useChannelSpecification', () => {
 	it('returns missing required properties', () => {
 		mockProperties = [{ id: 'prop-1', channel: 'channel-1', category: DevicesChannelPropertyCategory.color_temperature } as IChannelProperty];
 
-		const { missingRequiredProperties } = useChannelSpecification('channel-1');
+		const { missingRequiredProperties } = useChannelSpecification({ id: 'channel-1' });
 
 		expect(missingRequiredProperties.value).toEqual([DevicesChannelPropertyCategory.on]);
 	});
@@ -73,7 +73,7 @@ describe('useChannelSpecification', () => {
 	it('throws error when channel does not exist', () => {
 		mockChannels = [];
 
-		const { missingRequiredProperties } = useChannelSpecification('channel-1');
+		const { missingRequiredProperties } = useChannelSpecification({ id: 'channel-1' });
 
 		expect(() => missingRequiredProperties.value).toThrow(DevicesException);
 	});

@@ -14,7 +14,9 @@ import type { IConfigDisplayRes } from './config-display.store.types';
 import type { IConfigLanguageRes } from './config-language.store.types';
 import type { IConfigWeatherRes } from './config-weather.store.types';
 
-export function transformConfigAudioResponse(response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes): IConfigAudio {
+export const transformConfigAudioResponse = (
+	response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes
+): IConfigAudio => {
 	const parsed = ConfigAudioSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
@@ -22,9 +24,9 @@ export function transformConfigAudioResponse(response: IConfigAudioRes | IConfig
 	}
 
 	return parsed.data;
-}
+};
 
-export function transformConfigAudioUpdateRequest(config: IConfigAudioEditActionPayload['data']): IConfigAudioUpdateReq {
+export const transformConfigAudioUpdateRequest = (config: IConfigAudioEditActionPayload['data']): IConfigAudioUpdateReq => {
 	const parsedRequest = ConfigAudioUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigAudioType.audio });
 
 	if (!parsedRequest.success) {
@@ -32,4 +34,4 @@ export function transformConfigAudioUpdateRequest(config: IConfigAudioEditAction
 	}
 
 	return parsedRequest.data;
-}
+};

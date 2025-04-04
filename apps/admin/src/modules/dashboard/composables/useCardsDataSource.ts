@@ -15,7 +15,11 @@ export const defaultCardsFilter: ICardsFilter = {
 	pages: [],
 };
 
-export const useCardsDataSource = (pageId: IPage['id']): IUseCardsDataSource => {
+interface IUseCardsDataSourceProps {
+	pageId: IPage['id'];
+}
+
+export const useCardsDataSource = ({ pageId }: IUseCardsDataSourceProps): IUseCardsDataSource => {
 	const storesManager = injectStoresManager();
 
 	const cardsStore = storesManager.getStore(cardsStoreKey);

@@ -63,19 +63,19 @@ describe('usePage', () => {
 	});
 
 	it('should return the correct page by ID', () => {
-		const { page } = usePage(pageId);
+		const { page } = usePage({ id: pageId });
 
 		expect(page.value).toEqual(data[pageId]);
 	});
 
 	it('should return null if page ID is not found', () => {
-		const { page } = usePage('nonexistent');
+		const { page } = usePage({ id: 'nonexistent' });
 
 		expect(page.value).toBeNull();
 	});
 
 	it('should call get() only if page is not a draft', async () => {
-		const { fetchPage } = usePage(pageId);
+		const { fetchPage } = usePage({ id: pageId });
 
 		await fetchPage();
 
@@ -85,7 +85,7 @@ describe('usePage', () => {
 	it('should not call get() if page is a draft', async () => {
 		data[pageId].draft = true;
 
-		const { fetchPage } = usePage(pageId);
+		const { fetchPage } = usePage({ id: pageId });
 
 		await fetchPage();
 
@@ -95,13 +95,13 @@ describe('usePage', () => {
 	it('should return isLoading = true if fetching by ID', () => {
 		semaphore.value.fetching.item.push(pageId);
 
-		const { isLoading } = usePage(pageId);
+		const { isLoading } = usePage({ id: pageId });
 
 		expect(isLoading.value).toBe(true);
 	});
 
 	it('should return isLoading = false if page is already loaded', () => {
-		const { isLoading } = usePage(pageId);
+		const { isLoading } = usePage({ id: pageId });
 
 		expect(isLoading.value).toBe(false);
 	});
@@ -109,7 +109,7 @@ describe('usePage', () => {
 	it('should return isLoading = true if page is missing and items are loading', () => {
 		semaphore.value.fetching.items.push('all');
 
-		const { isLoading } = usePage('unknown');
+		const { isLoading } = usePage({ id: 'nonexistent' });
 
 		expect(isLoading.value).toBeTruthy();
 	});
