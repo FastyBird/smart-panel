@@ -11,8 +11,8 @@ _$DashboardReqCreatePageDataUnionCardsImpl
             Map<String, dynamic> json) =>
         _$DashboardReqCreatePageDataUnionCardsImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           title: json['title'] as String,
-          order: (json['order'] as num).toInt(),
           cards: (json['cards'] as List<dynamic>)
               .map((e) =>
                   DashboardCreateCard.fromJson(e as Map<String, dynamic>))
@@ -21,7 +21,7 @@ _$DashboardReqCreatePageDataUnionCardsImpl
               .map((e) => DashboardCreateCardsPageDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'cards',
+          order: (json['order'] as num?)?.toInt() ?? 0,
           icon: json['icon'] as String?,
         );
 
@@ -29,11 +29,11 @@ Map<String, dynamic> _$$DashboardReqCreatePageDataUnionCardsImplToJson(
         _$DashboardReqCreatePageDataUnionCardsImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'title': instance.title,
-      'order': instance.order,
       'cards': instance.cards,
       'data_source': instance.dataSource,
-      'type': instance.type,
+      'order': instance.order,
       'icon': instance.icon,
     };
 
@@ -42,8 +42,8 @@ _$DashboardReqCreatePageDataUnionTilesImpl
             Map<String, dynamic> json) =>
         _$DashboardReqCreatePageDataUnionTilesImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           title: json['title'] as String,
-          order: (json['order'] as num).toInt(),
           tiles: (json['tiles'] as List<dynamic>)
               .map((e) => DashboardCreateTilesPageTilesUnion.fromJson(
                   e as Map<String, dynamic>))
@@ -52,7 +52,7 @@ _$DashboardReqCreatePageDataUnionTilesImpl
               .map((e) => DashboardCreateTilesPageDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'tiles',
+          order: (json['order'] as num?)?.toInt() ?? 0,
           icon: json['icon'] as String?,
         );
 
@@ -60,33 +60,33 @@ Map<String, dynamic> _$$DashboardReqCreatePageDataUnionTilesImplToJson(
         _$DashboardReqCreatePageDataUnionTilesImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'title': instance.title,
-      'order': instance.order,
       'tiles': instance.tiles,
       'data_source': instance.dataSource,
-      'type': instance.type,
+      'order': instance.order,
       'icon': instance.icon,
     };
 
-_$DashboardReqCreatePageDataUnionDeviceImpl
-    _$$DashboardReqCreatePageDataUnionDeviceImplFromJson(
+_$DashboardReqCreatePageDataUnionDeviceDetailImpl
+    _$$DashboardReqCreatePageDataUnionDeviceDetailImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardReqCreatePageDataUnionDeviceImpl(
+        _$DashboardReqCreatePageDataUnionDeviceDetailImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           title: json['title'] as String,
-          order: (json['order'] as num).toInt(),
           device: json['device'] as String,
-          type: json['type'] as String? ?? 'device',
+          order: (json['order'] as num?)?.toInt() ?? 0,
           icon: json['icon'] as String?,
         );
 
-Map<String, dynamic> _$$DashboardReqCreatePageDataUnionDeviceImplToJson(
-        _$DashboardReqCreatePageDataUnionDeviceImpl instance) =>
+Map<String, dynamic> _$$DashboardReqCreatePageDataUnionDeviceDetailImplToJson(
+        _$DashboardReqCreatePageDataUnionDeviceDetailImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'title': instance.title,
-      'order': instance.order,
-      'device': instance.device,
       'type': instance.type,
+      'title': instance.title,
+      'device': instance.device,
+      'order': instance.order,
       'icon': instance.icon,
     };

@@ -21,14 +21,14 @@ DashboardUpdateTilesPage _$DashboardUpdateTilesPageFromJson(
 
 /// @nodoc
 mixin _$DashboardUpdateTilesPage {
+  /// Discriminator for the page type
+  String get type => throw _privateConstructorUsedError;
+
   /// The title of the page.
   String get title => throw _privateConstructorUsedError;
 
   /// The display order of the page.
   int get order => throw _privateConstructorUsedError;
-
-  /// Indicates that this is a tiles dashboard page.
-  String get type => throw _privateConstructorUsedError;
 
   /// The icon associated with the page.
   String? get icon => throw _privateConstructorUsedError;
@@ -49,7 +49,7 @@ abstract class $DashboardUpdateTilesPageCopyWith<$Res> {
           $Res Function(DashboardUpdateTilesPage) then) =
       _$DashboardUpdateTilesPageCopyWithImpl<$Res, DashboardUpdateTilesPage>;
   @useResult
-  $Res call({String title, int order, String type, String? icon});
+  $Res call({String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -68,12 +68,16 @@ class _$DashboardUpdateTilesPageCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? title = null,
     Object? order = null,
-    Object? type = null,
     Object? icon = freezed,
   }) {
     return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -82,10 +86,6 @@ class _$DashboardUpdateTilesPageCopyWithImpl<$Res,
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
       icon: freezed == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
@@ -103,7 +103,7 @@ abstract class _$$DashboardUpdateTilesPageImplCopyWith<$Res>
       __$$DashboardUpdateTilesPageImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String title, int order, String type, String? icon});
+  $Res call({String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -121,12 +121,16 @@ class __$$DashboardUpdateTilesPageImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? title = null,
     Object? order = null,
-    Object? type = null,
     Object? icon = freezed,
   }) {
     return _then(_$DashboardUpdateTilesPageImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -135,10 +139,6 @@ class __$$DashboardUpdateTilesPageImplCopyWithImpl<$Res>
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
       icon: freezed == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
@@ -151,13 +151,17 @@ class __$$DashboardUpdateTilesPageImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$DashboardUpdateTilesPageImpl implements _DashboardUpdateTilesPage {
   const _$DashboardUpdateTilesPageImpl(
-      {required this.title,
+      {required this.type,
+      required this.title,
       required this.order,
-      this.type = 'tiles',
       this.icon});
 
   factory _$DashboardUpdateTilesPageImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardUpdateTilesPageImplFromJson(json);
+
+  /// Discriminator for the page type
+  @override
+  final String type;
 
   /// The title of the page.
   @override
@@ -167,18 +171,13 @@ class _$DashboardUpdateTilesPageImpl implements _DashboardUpdateTilesPage {
   @override
   final int order;
 
-  /// Indicates that this is a tiles dashboard page.
-  @override
-  @JsonKey()
-  final String type;
-
   /// The icon associated with the page.
   @override
   final String? icon;
 
   @override
   String toString() {
-    return 'DashboardUpdateTilesPage(title: $title, order: $order, type: $type, icon: $icon)';
+    return 'DashboardUpdateTilesPage(type: $type, title: $title, order: $order, icon: $icon)';
   }
 
   @override
@@ -186,15 +185,15 @@ class _$DashboardUpdateTilesPageImpl implements _DashboardUpdateTilesPage {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardUpdateTilesPageImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
-            (identical(other.type, type) || other.type == type) &&
             (identical(other.icon, icon) || other.icon == icon));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, title, order, type, icon);
+  int get hashCode => Object.hash(runtimeType, type, title, order, icon);
 
   /// Create a copy of DashboardUpdateTilesPage
   /// with the given fields replaced by the non-null parameter values.
@@ -215,13 +214,17 @@ class _$DashboardUpdateTilesPageImpl implements _DashboardUpdateTilesPage {
 
 abstract class _DashboardUpdateTilesPage implements DashboardUpdateTilesPage {
   const factory _DashboardUpdateTilesPage(
-      {required final String title,
+      {required final String type,
+      required final String title,
       required final int order,
-      final String type,
       final String? icon}) = _$DashboardUpdateTilesPageImpl;
 
   factory _DashboardUpdateTilesPage.fromJson(Map<String, dynamic> json) =
       _$DashboardUpdateTilesPageImpl.fromJson;
+
+  /// Discriminator for the page type
+  @override
+  String get type;
 
   /// The title of the page.
   @override
@@ -230,10 +233,6 @@ abstract class _DashboardUpdateTilesPage implements DashboardUpdateTilesPage {
   /// The display order of the page.
   @override
   int get order;
-
-  /// Indicates that this is a tiles dashboard page.
-  @override
-  String get type;
 
   /// The icon associated with the page.
   @override

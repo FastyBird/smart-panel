@@ -25,6 +25,9 @@ mixin _$DashboardCreateTilesPageDataSourceUnion {
   /// Unique identifier for the data source (optional during creation).
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the data source type
+  String get type => throw _privateConstructorUsedError;
+
   /// The unique identifier of the associated device.
   String get device => throw _privateConstructorUsedError;
 
@@ -36,27 +39,24 @@ mixin _$DashboardCreateTilesPageDataSourceUnion {
 
   /// The icon representing the data source.
   String? get icon => throw _privateConstructorUsedError;
-
-  /// Specifies the type of data source as linked to a device channel.
-  String get type => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String id, String device, String channel,
-            String property, String? icon, String type)
+    required TResult Function(String id, String type, String device,
+            String channel, String property, String? icon)
         deviceChannel,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String id, String device, String channel, String property,
-            String? icon, String type)?
+    TResult? Function(String id, String type, String device, String channel,
+            String property, String? icon)?
         deviceChannel,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String id, String device, String channel, String property,
-            String? icon, String type)?
+    TResult Function(String id, String type, String device, String channel,
+            String property, String? icon)?
         deviceChannel,
     required TResult orElse(),
   }) =>
@@ -105,11 +105,11 @@ abstract class $DashboardCreateTilesPageDataSourceUnionCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       String device,
       String channel,
       String property,
-      String? icon,
-      String type});
+      String? icon});
 }
 
 /// @nodoc
@@ -130,16 +130,20 @@ class _$DashboardCreateTilesPageDataSourceUnionCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? device = null,
     Object? channel = null,
     Object? property = null,
     Object? icon = freezed,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       device: null == device
           ? _value.device
@@ -157,10 +161,6 @@ class _$DashboardCreateTilesPageDataSourceUnionCopyWithImpl<$Res,
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -179,11 +179,11 @@ abstract class _$$DashboardCreateTilesPageDataSourceUnionDeviceChannelImplCopyWi
   @useResult
   $Res call(
       {String id,
+      String type,
       String device,
       String channel,
       String property,
-      String? icon,
-      String type});
+      String? icon});
 }
 
 /// @nodoc
@@ -206,16 +206,20 @@ class __$$DashboardCreateTilesPageDataSourceUnionDeviceChannelImplCopyWithImpl<
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? device = null,
     Object? channel = null,
     Object? property = null,
     Object? icon = freezed,
-    Object? type = null,
   }) {
     return _then(_$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       device: null == device
           ? _value.device
@@ -233,10 +237,6 @@ class __$$DashboardCreateTilesPageDataSourceUnionDeviceChannelImplCopyWithImpl<
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -247,11 +247,11 @@ class _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl
     implements DashboardCreateTilesPageDataSourceUnionDeviceChannel {
   const _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl(
       {required this.id,
+      required this.type,
       required this.device,
       required this.channel,
       required this.property,
-      this.icon,
-      this.type = 'device-channel'});
+      this.icon});
 
   factory _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl.fromJson(
           Map<String, dynamic> json) =>
@@ -260,6 +260,10 @@ class _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl
   /// Unique identifier for the data source (optional during creation).
   @override
   final String id;
+
+  /// Discriminator for the data source type
+  @override
+  final String type;
 
   /// The unique identifier of the associated device.
   @override
@@ -277,14 +281,9 @@ class _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl
   @override
   final String? icon;
 
-  /// Specifies the type of data source as linked to a device channel.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardCreateTilesPageDataSourceUnion.deviceChannel(id: $id, device: $device, channel: $channel, property: $property, icon: $icon, type: $type)';
+    return 'DashboardCreateTilesPageDataSourceUnion.deviceChannel(id: $id, type: $type, device: $device, channel: $channel, property: $property, icon: $icon)';
   }
 
   @override
@@ -294,18 +293,18 @@ class _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl
             other
                 is _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.device, device) || other.device == device) &&
             (identical(other.channel, channel) || other.channel == channel) &&
             (identical(other.property, property) ||
                 other.property == property) &&
-            (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.icon, icon) || other.icon == icon));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, id, device, channel, property, icon, type);
+      Object.hash(runtimeType, id, type, device, channel, property, icon);
 
   /// Create a copy of DashboardCreateTilesPageDataSourceUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -322,33 +321,33 @@ class _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String id, String device, String channel,
-            String property, String? icon, String type)
+    required TResult Function(String id, String type, String device,
+            String channel, String property, String? icon)
         deviceChannel,
   }) {
-    return deviceChannel(id, device, channel, property, icon, type);
+    return deviceChannel(id, type, device, channel, property, icon);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String id, String device, String channel, String property,
-            String? icon, String type)?
+    TResult? Function(String id, String type, String device, String channel,
+            String property, String? icon)?
         deviceChannel,
   }) {
-    return deviceChannel?.call(id, device, channel, property, icon, type);
+    return deviceChannel?.call(id, type, device, channel, property, icon);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String id, String device, String channel, String property,
-            String? icon, String type)?
+    TResult Function(String id, String type, String device, String channel,
+            String property, String? icon)?
         deviceChannel,
     required TResult orElse(),
   }) {
     if (deviceChannel != null) {
-      return deviceChannel(id, device, channel, property, icon, type);
+      return deviceChannel(id, type, device, channel, property, icon);
     }
     return orElse();
   }
@@ -399,11 +398,11 @@ abstract class DashboardCreateTilesPageDataSourceUnionDeviceChannel
     implements DashboardCreateTilesPageDataSourceUnion {
   const factory DashboardCreateTilesPageDataSourceUnionDeviceChannel(
           {required final String id,
+          required final String type,
           required final String device,
           required final String channel,
           required final String property,
-          final String? icon,
-          final String type}) =
+          final String? icon}) =
       _$DashboardCreateTilesPageDataSourceUnionDeviceChannelImpl;
 
   factory DashboardCreateTilesPageDataSourceUnionDeviceChannel.fromJson(
@@ -413,6 +412,10 @@ abstract class DashboardCreateTilesPageDataSourceUnionDeviceChannel
   /// Unique identifier for the data source (optional during creation).
   @override
   String get id;
+
+  /// Discriminator for the data source type
+  @override
+  String get type;
 
   /// The unique identifier of the associated device.
   @override
@@ -429,10 +432,6 @@ abstract class DashboardCreateTilesPageDataSourceUnionDeviceChannel
   /// The icon representing the data source.
   @override
   String? get icon;
-
-  /// Specifies the type of data source as linked to a device channel.
-  @override
-  String get type;
 
   /// Create a copy of DashboardCreateTilesPageDataSourceUnion
   /// with the given fields replaced by the non-null parameter values.

@@ -21,6 +21,9 @@ DashboardUpdateTileBase _$DashboardUpdateTileBaseFromJson(
 
 /// @nodoc
 mixin _$DashboardUpdateTileBase {
+  /// Discriminator for the tile type
+  String get type => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
@@ -52,7 +55,8 @@ abstract class $DashboardUpdateTileBaseCopyWith<$Res> {
       _$DashboardUpdateTileBaseCopyWithImpl<$Res, DashboardUpdateTileBase>;
   @useResult
   $Res call(
-      {int row,
+      {String type,
+      int row,
       int col,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan});
@@ -74,12 +78,17 @@ class _$DashboardUpdateTileBaseCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? rowSpan = null,
     Object? colSpan = null,
   }) {
     return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       row: null == row
           ? _value.row
           : row // ignore: cast_nullable_to_non_nullable
@@ -110,7 +119,8 @@ abstract class _$$DashboardUpdateTileBaseImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {int row,
+      {String type,
+      int row,
       int col,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan});
@@ -131,12 +141,17 @@ class __$$DashboardUpdateTileBaseImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? rowSpan = null,
     Object? colSpan = null,
   }) {
     return _then(_$DashboardUpdateTileBaseImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       row: null == row
           ? _value.row
           : row // ignore: cast_nullable_to_non_nullable
@@ -161,13 +176,18 @@ class __$$DashboardUpdateTileBaseImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$DashboardUpdateTileBaseImpl implements _DashboardUpdateTileBase {
   const _$DashboardUpdateTileBaseImpl(
-      {required this.row,
+      {required this.type,
+      required this.row,
       required this.col,
       @JsonKey(name: 'row_span') required this.rowSpan,
       @JsonKey(name: 'col_span') required this.colSpan});
 
   factory _$DashboardUpdateTileBaseImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardUpdateTileBaseImplFromJson(json);
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -189,7 +209,7 @@ class _$DashboardUpdateTileBaseImpl implements _DashboardUpdateTileBase {
 
   @override
   String toString() {
-    return 'DashboardUpdateTileBase(row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan)';
+    return 'DashboardUpdateTileBase(type: $type, row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -197,6 +217,7 @@ class _$DashboardUpdateTileBaseImpl implements _DashboardUpdateTileBase {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardUpdateTileBaseImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
@@ -205,7 +226,8 @@ class _$DashboardUpdateTileBaseImpl implements _DashboardUpdateTileBase {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, row, col, rowSpan, colSpan);
+  int get hashCode =>
+      Object.hash(runtimeType, type, row, col, rowSpan, colSpan);
 
   /// Create a copy of DashboardUpdateTileBase
   /// with the given fields replaced by the non-null parameter values.
@@ -226,7 +248,8 @@ class _$DashboardUpdateTileBaseImpl implements _DashboardUpdateTileBase {
 
 abstract class _DashboardUpdateTileBase implements DashboardUpdateTileBase {
   const factory _DashboardUpdateTileBase(
-          {required final int row,
+          {required final String type,
+          required final int row,
           required final int col,
           @JsonKey(name: 'row_span') required final int rowSpan,
           @JsonKey(name: 'col_span') required final int colSpan}) =
@@ -234,6 +257,10 @@ abstract class _DashboardUpdateTileBase implements DashboardUpdateTileBase {
 
   factory _DashboardUpdateTileBase.fromJson(Map<String, dynamic> json) =
       _$DashboardUpdateTileBaseImpl.fromJson;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override

@@ -16,6 +16,9 @@ class DashboardTileBase with _$DashboardTileBase {
     /// A unique identifier for the dashboard tile.
     required String id,
 
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 

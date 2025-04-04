@@ -12,7 +12,7 @@ import {
 	type IChannelsPropertiesEditActionPayload,
 } from './channels.properties.store.types';
 
-export function transformChannelPropertyResponse(response: IChannelPropertyRes): IChannelProperty {
+export const transformChannelPropertyResponse = (response: IChannelPropertyRes): IChannelProperty => {
 	const parsedProperty = ChannelPropertySchema.safeParse({
 		id: response.id,
 		channel: response.channel,
@@ -34,11 +34,11 @@ export function transformChannelPropertyResponse(response: IChannelPropertyRes):
 	}
 
 	return parsedProperty.data;
-}
+};
 
-export function transformChannelPropertyCreateRequest(
+export const transformChannelPropertyCreateRequest = (
 	property: IChannelsPropertiesAddActionPayload['data'] & { id?: string; channel: string }
-): IChannelPropertyCreateReq {
+): IChannelPropertyCreateReq => {
 	const parsedRequest = ChannelPropertyCreateReqSchema.safeParse({
 		id: property.id,
 		category: property.category,
@@ -57,9 +57,9 @@ export function transformChannelPropertyCreateRequest(
 	}
 
 	return parsedRequest.data;
-}
+};
 
-export function transformChannelPropertyUpdateRequest(property: IChannelsPropertiesEditActionPayload['data']): IChannelPropertyUpdateReq {
+export const transformChannelPropertyUpdateRequest = (property: IChannelsPropertiesEditActionPayload['data']): IChannelPropertyUpdateReq => {
 	const parsedRequest = ChannelPropertyUpdateReqSchema.safeParse({
 		name: property.name,
 		unit: property.unit,
@@ -74,4 +74,4 @@ export function transformChannelPropertyUpdateRequest(property: IChannelsPropert
 	}
 
 	return parsedRequest.data;
-}
+};

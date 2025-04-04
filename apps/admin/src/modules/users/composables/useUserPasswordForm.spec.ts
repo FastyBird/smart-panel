@@ -75,7 +75,7 @@ describe('useUserPasswordForm', (): void => {
 		(usersStoreMock.save as Mock).mockResolvedValue({});
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserPasswordForm(mockUser);
+		const formHandler = useUserPasswordForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -104,7 +104,7 @@ describe('useUserPasswordForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new UsersApiException('Validation error', 422));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserPasswordForm(mockUser);
+		const formHandler = useUserPasswordForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -125,7 +125,7 @@ describe('useUserPasswordForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new Error('Failed to update user'));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserPasswordForm(mockUser);
+		const formHandler = useUserPasswordForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -149,7 +149,7 @@ describe('useUserPasswordForm', (): void => {
 		};
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserPasswordForm(mockUser, customMessages);
+		const formHandler = useUserPasswordForm({ user: mockUser, messages: customMessages });
 
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
@@ -178,7 +178,7 @@ describe('useUserPasswordForm', (): void => {
 	it('should reset form result after timeout', async (): Promise<void> => {
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
-		const formHandler = useUserPasswordForm(mockUser);
+		const formHandler = useUserPasswordForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),

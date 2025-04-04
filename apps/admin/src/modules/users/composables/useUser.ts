@@ -7,7 +7,11 @@ import { type IUser, usersStoreKey } from '../store';
 
 import type { IUseUser } from './types';
 
-export const useUser = (id: IUser['id']): IUseUser => {
+interface IUseUserProps {
+	id: IUser['id'];
+}
+
+export const useUser = ({ id }: IUseUserProps): IUseUser => {
 	const storesManager = injectStoresManager();
 
 	const usersStore = storesManager.getStore(usersStoreKey);

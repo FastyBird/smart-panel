@@ -150,7 +150,7 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { user, isLoading, fetchUser } = useUser(props.id);
+const { user, isLoading, fetchUser } = useUser({ id: props.id });
 
 if (!validateUuid(props.id)) {
 	throw new Error('User identifier is not valid');

@@ -11,8 +11,8 @@ Map<String, PageModel Function(Map<String, dynamic>)> pageModelMappers = {
   PageType.tiles.value: (data) {
     return TilesPageModel.fromJson(data);
   },
-  PageType.device.value: (data) {
-    return DevicePageModel.fromJson(data);
+  PageType.deviceDetail.value: (data) {
+    return DeviceDetailPageModel.fromJson(data);
   },
 };
 

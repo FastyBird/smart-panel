@@ -23,6 +23,9 @@ mixin _$DashboardTileBase {
   /// A unique identifier for the dashboard tile.
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the tile type
+  String get type => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
@@ -68,6 +71,7 @@ abstract class $DashboardTileBaseCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -94,6 +98,7 @@ class _$DashboardTileBaseCopyWithImpl<$Res, $Val extends DashboardTileBase>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -106,6 +111,10 @@ class _$DashboardTileBaseCopyWithImpl<$Res, $Val extends DashboardTileBase>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -149,6 +158,7 @@ abstract class _$$DashboardTileBaseImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -173,6 +183,7 @@ class __$$DashboardTileBaseImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -185,6 +196,10 @@ class __$$DashboardTileBaseImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -223,6 +238,7 @@ class __$$DashboardTileBaseImplCopyWithImpl<$Res>
 class _$DashboardTileBaseImpl implements _DashboardTileBase {
   const _$DashboardTileBaseImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
@@ -239,6 +255,10 @@ class _$DashboardTileBaseImpl implements _DashboardTileBase {
   /// A unique identifier for the dashboard tile.
   @override
   final String id;
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -282,7 +302,7 @@ class _$DashboardTileBaseImpl implements _DashboardTileBase {
 
   @override
   String toString() {
-    return 'DashboardTileBase(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan)';
+    return 'DashboardTileBase(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -291,6 +311,7 @@ class _$DashboardTileBaseImpl implements _DashboardTileBase {
         (other.runtimeType == runtimeType &&
             other is _$DashboardTileBaseImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -308,6 +329,7 @@ class _$DashboardTileBaseImpl implements _DashboardTileBase {
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
@@ -336,6 +358,7 @@ class _$DashboardTileBaseImpl implements _DashboardTileBase {
 abstract class _DashboardTileBase implements DashboardTileBase {
   const factory _DashboardTileBase(
       {required final String id,
+      required final String type,
       required final int row,
       required final int col,
       @JsonKey(name: 'data_source')
@@ -351,6 +374,10 @@ abstract class _DashboardTileBase implements DashboardTileBase {
   /// A unique identifier for the dashboard tile.
   @override
   String get id;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override

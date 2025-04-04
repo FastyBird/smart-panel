@@ -18,8 +18,8 @@ Map<String, TileModel Function(Map<String, dynamic>)> pageTileModelMappers = {
   TileType.scene.value: (data) {
     return PageSceneTileModel.fromJson(data);
   },
-  TileType.device.value: (data) {
-    return PageDeviceTileModel.fromJson(data);
+  TileType.devicePreview.value: (data) {
+    return PageDevicePreviewTileModel.fromJson(data);
   },
 };
 
@@ -48,8 +48,8 @@ Map<String, TileModel Function(Map<String, dynamic>)> cardTileModelMappers = {
   TileType.scene.value: (data) {
     return CardSceneTileModel.fromJson(data);
   },
-  TileType.device.value: (data) {
-    return CardDeviceTileModel.fromJson(data);
+  TileType.devicePreview.value: (data) {
+    return CardDevicePreviewTileModel.fromJson(data);
   },
 };
 

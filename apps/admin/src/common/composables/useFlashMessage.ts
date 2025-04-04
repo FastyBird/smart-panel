@@ -2,7 +2,7 @@ import { ElNotification } from 'element-plus';
 
 import type { IUseFlashMessage } from './types';
 
-export function useFlashMessage(): IUseFlashMessage {
+export const useFlashMessage = (): IUseFlashMessage => {
 	const success = (message: string): void => {
 		ElNotification.success(message);
 	};
@@ -25,4 +25,4 @@ export function useFlashMessage(): IUseFlashMessage {
 		error,
 		exception,
 	};
-}
+};

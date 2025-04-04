@@ -88,7 +88,7 @@ describe('useChannelsDataSource', () => {
 	});
 
 	it('returns only channels for deviceId if passed', () => {
-		const { channels } = useChannelsDataSource('device-1');
+		const { channels } = useChannelsDataSource({ deviceId: 'device-1' });
 		expect(channels.value.length).toBe(1);
 		expect(channels.value[0].id).toBe('1');
 	});
@@ -133,13 +133,13 @@ describe('useChannelsDataSource', () => {
 
 	it('sets areLoading true if fetching includes deviceId', () => {
 		mockStore.semaphore.value.fetching.items = ['device-1'];
-		const { areLoading } = useChannelsDataSource('device-1');
+		const { areLoading } = useChannelsDataSource({ deviceId: 'device-1' });
 		expect(areLoading.value).toBe(true);
 	});
 
 	it('sets loaded true if firstLoad includes deviceId', () => {
 		mockStore.firstLoad.value = ['device-1'];
-		const { loaded } = useChannelsDataSource('device-1');
+		const { loaded } = useChannelsDataSource({ deviceId: 'device-1' });
 		expect(loaded.value).toBe(true);
 	});
 

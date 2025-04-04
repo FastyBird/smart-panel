@@ -24,6 +24,9 @@ mixin _$DashboardForecastWeatherTile {
   /// A unique identifier for the dashboard tile.
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the tile type
+  String get type => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
@@ -51,9 +54,6 @@ mixin _$DashboardForecastWeatherTile {
   @JsonKey(name: 'col_span')
   int get colSpan => throw _privateConstructorUsedError;
 
-  /// Indicates that this is a weather forecast tile.
-  String get type => throw _privateConstructorUsedError;
-
   /// Serializes this DashboardForecastWeatherTile to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -74,6 +74,7 @@ abstract class $DashboardForecastWeatherTileCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -81,8 +82,7 @@ abstract class $DashboardForecastWeatherTileCopyWith<$Res> {
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -102,6 +102,7 @@ class _$DashboardForecastWeatherTileCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -109,12 +110,15 @@ class _$DashboardForecastWeatherTileCopyWithImpl<$Res,
     Object? updatedAt = freezed,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -144,10 +148,6 @@ class _$DashboardForecastWeatherTileCopyWithImpl<$Res,
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -163,6 +163,7 @@ abstract class _$$DashboardForecastWeatherTileImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -170,8 +171,7 @@ abstract class _$$DashboardForecastWeatherTileImplCopyWith<$Res>
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -190,6 +190,7 @@ class __$$DashboardForecastWeatherTileImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -197,12 +198,15 @@ class __$$DashboardForecastWeatherTileImplCopyWithImpl<$Res>
     Object? updatedAt = freezed,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardForecastWeatherTileImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -232,10 +236,6 @@ class __$$DashboardForecastWeatherTileImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -246,6 +246,7 @@ class _$DashboardForecastWeatherTileImpl
     implements _DashboardForecastWeatherTile {
   const _$DashboardForecastWeatherTileImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
@@ -253,8 +254,7 @@ class _$DashboardForecastWeatherTileImpl
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
-      @JsonKey(name: 'col_span') this.colSpan = 0,
-      this.type = 'weather-forecast'})
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardForecastWeatherTileImpl.fromJson(
@@ -264,6 +264,10 @@ class _$DashboardForecastWeatherTileImpl
   /// A unique identifier for the dashboard tile.
   @override
   final String id;
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -305,14 +309,9 @@ class _$DashboardForecastWeatherTileImpl
   @JsonKey(name: 'col_span')
   final int colSpan;
 
-  /// Indicates that this is a weather forecast tile.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardForecastWeatherTile(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardForecastWeatherTile(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -321,6 +320,7 @@ class _$DashboardForecastWeatherTileImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardForecastWeatherTileImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -330,8 +330,7 @@ class _$DashboardForecastWeatherTileImpl
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -339,14 +338,14 @@ class _$DashboardForecastWeatherTileImpl
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
       createdAt,
       updatedAt,
       rowSpan,
-      colSpan,
-      type);
+      colSpan);
 
   /// Create a copy of DashboardForecastWeatherTile
   /// with the given fields replaced by the non-null parameter values.
@@ -369,16 +368,17 @@ class _$DashboardForecastWeatherTileImpl
 abstract class _DashboardForecastWeatherTile
     implements DashboardForecastWeatherTile {
   const factory _DashboardForecastWeatherTile(
-      {required final String id,
-      required final int row,
-      required final int col,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
-      @JsonKey(name: 'created_at') required final DateTime createdAt,
-      @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-      @JsonKey(name: 'row_span') final int rowSpan,
-      @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardForecastWeatherTileImpl;
+          {required final String id,
+          required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'data_source')
+          required final List<DashboardTileBaseDataSourceUnion> dataSource,
+          @JsonKey(name: 'created_at') required final DateTime createdAt,
+          @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+          @JsonKey(name: 'row_span') final int rowSpan,
+          @JsonKey(name: 'col_span') final int colSpan}) =
+      _$DashboardForecastWeatherTileImpl;
 
   factory _DashboardForecastWeatherTile.fromJson(Map<String, dynamic> json) =
       _$DashboardForecastWeatherTileImpl.fromJson;
@@ -386,6 +386,10 @@ abstract class _DashboardForecastWeatherTile
   /// A unique identifier for the dashboard tile.
   @override
   String get id;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override
@@ -419,10 +423,6 @@ abstract class _DashboardForecastWeatherTile
   @override
   @JsonKey(name: 'col_span')
   int get colSpan;
-
-  /// Indicates that this is a weather forecast tile.
-  @override
-  String get type;
 
   /// Create a copy of DashboardForecastWeatherTile
   /// with the given fields replaced by the non-null parameter values.

@@ -11,7 +11,12 @@ import { type IDevice, devicesStoreKey } from '../store';
 
 import type { IDeviceEditForm, IUseDeviceEditForm } from './types';
 
-export const useDeviceEditForm = (device: IDevice, messages?: { success?: string; error?: string }): IUseDeviceEditForm => {
+interface IUseDeviceEditFormProps {
+	device: IDevice;
+	messages?: { success?: string; error?: string };
+}
+
+export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps): IUseDeviceEditForm => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);

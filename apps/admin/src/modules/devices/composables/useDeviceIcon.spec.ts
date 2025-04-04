@@ -42,7 +42,7 @@ describe('useDeviceIcon', () => {
 	it('returns default icon if no category is found', () => {
 		findById.mockReturnValue({ id: deviceId });
 
-		const { icon } = useDeviceIcon(deviceId);
+		const { icon } = useDeviceIcon({ id: deviceId });
 
 		expect(icon.value).toBe('mdi:power-plug');
 	});
@@ -50,7 +50,7 @@ describe('useDeviceIcon', () => {
 	it('returns default icon if device is null', () => {
 		findById.mockReturnValue(null);
 
-		const { icon } = useDeviceIcon(deviceId);
+		const { icon } = useDeviceIcon({ id: deviceId });
 
 		expect(icon.value).toBe('mdi:power-plug');
 	});
@@ -58,7 +58,7 @@ describe('useDeviceIcon', () => {
 	it('returns default icon for unknown category', () => {
 		findById.mockReturnValue({ id: deviceId, category: 'unknown' });
 
-		const { icon } = useDeviceIcon(deviceId);
+		const { icon } = useDeviceIcon({ id: deviceId });
 
 		expect(icon.value).toBe('mdi:power-plug');
 	});

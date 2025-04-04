@@ -11,6 +11,7 @@ _$DashboardPageForecastWeatherTileImpl
             Map<String, dynamic> json) =>
         _$DashboardPageForecastWeatherTileImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
@@ -24,13 +25,13 @@ _$DashboardPageForecastWeatherTileImpl
           page: json['page'] as String,
           rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
           colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
-          type: json['type'] as String? ?? 'weather-forecast',
         );
 
 Map<String, dynamic> _$$DashboardPageForecastWeatherTileImplToJson(
         _$DashboardPageForecastWeatherTileImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'row': instance.row,
       'col': instance.col,
       'data_source': instance.dataSource,
@@ -39,5 +40,4 @@ Map<String, dynamic> _$$DashboardPageForecastWeatherTileImplToJson(
       'page': instance.page,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
-      'type': instance.type,
     };

@@ -11,6 +11,9 @@ part 'dashboard_update_page_base.g.dart';
 @Freezed()
 class DashboardUpdatePageBase with _$DashboardUpdatePageBase {
   const factory DashboardUpdatePageBase({
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the page.
     required String title,
 

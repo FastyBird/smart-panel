@@ -21,8 +21,8 @@ DashboardReqUpdatePageDataUnion _$DashboardReqUpdatePageDataUnionFromJson(
       return DashboardReqUpdatePageDataUnionCards.fromJson(json);
     case 'tiles':
       return DashboardReqUpdatePageDataUnionTiles.fromJson(json);
-    case 'device':
-      return DashboardReqUpdatePageDataUnionDevice.fromJson(json);
+    case 'device-detail':
+      return DashboardReqUpdatePageDataUnionDeviceDetail.fromJson(json);
 
     default:
       throw CheckedFromJsonException(
@@ -35,48 +35,48 @@ DashboardReqUpdatePageDataUnion _$DashboardReqUpdatePageDataUnionFromJson(
 
 /// @nodoc
 mixin _$DashboardReqUpdatePageDataUnion {
+  /// Discriminator for the page type
+  String get type => throw _privateConstructorUsedError;
+
   /// The title of the page.
   String get title => throw _privateConstructorUsedError;
 
   /// The display order of the page.
   int get order => throw _privateConstructorUsedError;
 
-  /// Indicates that this is a cards dashboard page.
-  String get type => throw _privateConstructorUsedError;
-
   /// The icon associated with the page.
   String? get icon => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
-            String title, int order, String type, String? icon)
+            String type, String title, int order, String? icon)
         cards,
     required TResult Function(
-            String title, int order, String type, String? icon)
+            String type, String title, int order, String? icon)
         tiles,
     required TResult Function(
-            String title, int order, String device, String type, String? icon)
-        device,
+            String type, String title, int order, String device, String? icon)
+        deviceDetail,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String title, int order, String type, String? icon)?
+    TResult? Function(String type, String title, int order, String? icon)?
         cards,
-    TResult? Function(String title, int order, String type, String? icon)?
+    TResult? Function(String type, String title, int order, String? icon)?
         tiles,
     TResult? Function(
-            String title, int order, String device, String type, String? icon)?
-        device,
+            String type, String title, int order, String device, String? icon)?
+        deviceDetail,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String title, int order, String type, String? icon)? cards,
-    TResult Function(String title, int order, String type, String? icon)? tiles,
+    TResult Function(String type, String title, int order, String? icon)? cards,
+    TResult Function(String type, String title, int order, String? icon)? tiles,
     TResult Function(
-            String title, int order, String device, String type, String? icon)?
-        device,
+            String type, String title, int order, String device, String? icon)?
+        deviceDetail,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -84,22 +84,24 @@ mixin _$DashboardReqUpdatePageDataUnion {
   TResult map<TResult extends Object?>({
     required TResult Function(DashboardReqUpdatePageDataUnionCards value) cards,
     required TResult Function(DashboardReqUpdatePageDataUnionTiles value) tiles,
-    required TResult Function(DashboardReqUpdatePageDataUnionDevice value)
-        device,
+    required TResult Function(DashboardReqUpdatePageDataUnionDeviceDetail value)
+        deviceDetail,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DashboardReqUpdatePageDataUnionCards value)? cards,
     TResult? Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
-    TResult? Function(DashboardReqUpdatePageDataUnionDevice value)? device,
+    TResult? Function(DashboardReqUpdatePageDataUnionDeviceDetail value)?
+        deviceDetail,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DashboardReqUpdatePageDataUnionCards value)? cards,
     TResult Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
-    TResult Function(DashboardReqUpdatePageDataUnionDevice value)? device,
+    TResult Function(DashboardReqUpdatePageDataUnionDeviceDetail value)?
+        deviceDetail,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -122,7 +124,7 @@ abstract class $DashboardReqUpdatePageDataUnionCopyWith<$Res> {
       _$DashboardReqUpdatePageDataUnionCopyWithImpl<$Res,
           DashboardReqUpdatePageDataUnion>;
   @useResult
-  $Res call({String title, int order, String type, String? icon});
+  $Res call({String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -141,12 +143,16 @@ class _$DashboardReqUpdatePageDataUnionCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? title = null,
     Object? order = null,
-    Object? type = null,
     Object? icon = freezed,
   }) {
     return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -155,10 +161,6 @@ class _$DashboardReqUpdatePageDataUnionCopyWithImpl<$Res,
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
       icon: freezed == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
@@ -176,7 +178,7 @@ abstract class _$$DashboardReqUpdatePageDataUnionCardsImplCopyWith<$Res>
       __$$DashboardReqUpdatePageDataUnionCardsImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String title, int order, String type, String? icon});
+  $Res call({String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -194,12 +196,16 @@ class __$$DashboardReqUpdatePageDataUnionCardsImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? title = null,
     Object? order = null,
-    Object? type = null,
     Object? icon = freezed,
   }) {
     return _then(_$DashboardReqUpdatePageDataUnionCardsImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -208,10 +214,6 @@ class __$$DashboardReqUpdatePageDataUnionCardsImplCopyWithImpl<$Res>
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
       icon: freezed == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
@@ -225,14 +227,18 @@ class __$$DashboardReqUpdatePageDataUnionCardsImplCopyWithImpl<$Res>
 class _$DashboardReqUpdatePageDataUnionCardsImpl
     implements DashboardReqUpdatePageDataUnionCards {
   const _$DashboardReqUpdatePageDataUnionCardsImpl(
-      {required this.title,
+      {required this.type,
+      required this.title,
       required this.order,
-      this.type = 'cards',
       this.icon});
 
   factory _$DashboardReqUpdatePageDataUnionCardsImpl.fromJson(
           Map<String, dynamic> json) =>
       _$$DashboardReqUpdatePageDataUnionCardsImplFromJson(json);
+
+  /// Discriminator for the page type
+  @override
+  final String type;
 
   /// The title of the page.
   @override
@@ -242,18 +248,13 @@ class _$DashboardReqUpdatePageDataUnionCardsImpl
   @override
   final int order;
 
-  /// Indicates that this is a cards dashboard page.
-  @override
-  @JsonKey()
-  final String type;
-
   /// The icon associated with the page.
   @override
   final String? icon;
 
   @override
   String toString() {
-    return 'DashboardReqUpdatePageDataUnion.cards(title: $title, order: $order, type: $type, icon: $icon)';
+    return 'DashboardReqUpdatePageDataUnion.cards(type: $type, title: $title, order: $order, icon: $icon)';
   }
 
   @override
@@ -261,15 +262,15 @@ class _$DashboardReqUpdatePageDataUnionCardsImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardReqUpdatePageDataUnionCardsImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
-            (identical(other.type, type) || other.type == type) &&
             (identical(other.icon, icon) || other.icon == icon));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, title, order, type, icon);
+  int get hashCode => Object.hash(runtimeType, type, title, order, icon);
 
   /// Create a copy of DashboardReqUpdatePageDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -285,44 +286,44 @@ class _$DashboardReqUpdatePageDataUnionCardsImpl
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
-            String title, int order, String type, String? icon)
+            String type, String title, int order, String? icon)
         cards,
     required TResult Function(
-            String title, int order, String type, String? icon)
+            String type, String title, int order, String? icon)
         tiles,
     required TResult Function(
-            String title, int order, String device, String type, String? icon)
-        device,
+            String type, String title, int order, String device, String? icon)
+        deviceDetail,
   }) {
-    return cards(title, order, type, icon);
+    return cards(type, title, order, icon);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String title, int order, String type, String? icon)?
+    TResult? Function(String type, String title, int order, String? icon)?
         cards,
-    TResult? Function(String title, int order, String type, String? icon)?
+    TResult? Function(String type, String title, int order, String? icon)?
         tiles,
     TResult? Function(
-            String title, int order, String device, String type, String? icon)?
-        device,
+            String type, String title, int order, String device, String? icon)?
+        deviceDetail,
   }) {
-    return cards?.call(title, order, type, icon);
+    return cards?.call(type, title, order, icon);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String title, int order, String type, String? icon)? cards,
-    TResult Function(String title, int order, String type, String? icon)? tiles,
+    TResult Function(String type, String title, int order, String? icon)? cards,
+    TResult Function(String type, String title, int order, String? icon)? tiles,
     TResult Function(
-            String title, int order, String device, String type, String? icon)?
-        device,
+            String type, String title, int order, String device, String? icon)?
+        deviceDetail,
     required TResult orElse(),
   }) {
     if (cards != null) {
-      return cards(title, order, type, icon);
+      return cards(type, title, order, icon);
     }
     return orElse();
   }
@@ -332,8 +333,8 @@ class _$DashboardReqUpdatePageDataUnionCardsImpl
   TResult map<TResult extends Object?>({
     required TResult Function(DashboardReqUpdatePageDataUnionCards value) cards,
     required TResult Function(DashboardReqUpdatePageDataUnionTiles value) tiles,
-    required TResult Function(DashboardReqUpdatePageDataUnionDevice value)
-        device,
+    required TResult Function(DashboardReqUpdatePageDataUnionDeviceDetail value)
+        deviceDetail,
   }) {
     return cards(this);
   }
@@ -343,7 +344,8 @@ class _$DashboardReqUpdatePageDataUnionCardsImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DashboardReqUpdatePageDataUnionCards value)? cards,
     TResult? Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
-    TResult? Function(DashboardReqUpdatePageDataUnionDevice value)? device,
+    TResult? Function(DashboardReqUpdatePageDataUnionDeviceDetail value)?
+        deviceDetail,
   }) {
     return cards?.call(this);
   }
@@ -353,7 +355,8 @@ class _$DashboardReqUpdatePageDataUnionCardsImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DashboardReqUpdatePageDataUnionCards value)? cards,
     TResult Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
-    TResult Function(DashboardReqUpdatePageDataUnionDevice value)? device,
+    TResult Function(DashboardReqUpdatePageDataUnionDeviceDetail value)?
+        deviceDetail,
     required TResult orElse(),
   }) {
     if (cards != null) {
@@ -373,14 +376,18 @@ class _$DashboardReqUpdatePageDataUnionCardsImpl
 abstract class DashboardReqUpdatePageDataUnionCards
     implements DashboardReqUpdatePageDataUnion {
   const factory DashboardReqUpdatePageDataUnionCards(
-      {required final String title,
+      {required final String type,
+      required final String title,
       required final int order,
-      final String type,
       final String? icon}) = _$DashboardReqUpdatePageDataUnionCardsImpl;
 
   factory DashboardReqUpdatePageDataUnionCards.fromJson(
           Map<String, dynamic> json) =
       _$DashboardReqUpdatePageDataUnionCardsImpl.fromJson;
+
+  /// Discriminator for the page type
+  @override
+  String get type;
 
   /// The title of the page.
   @override
@@ -389,10 +396,6 @@ abstract class DashboardReqUpdatePageDataUnionCards
   /// The display order of the page.
   @override
   int get order;
-
-  /// Indicates that this is a cards dashboard page.
-  @override
-  String get type;
 
   /// The icon associated with the page.
   @override
@@ -416,7 +419,7 @@ abstract class _$$DashboardReqUpdatePageDataUnionTilesImplCopyWith<$Res>
       __$$DashboardReqUpdatePageDataUnionTilesImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String title, int order, String type, String? icon});
+  $Res call({String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -434,12 +437,16 @@ class __$$DashboardReqUpdatePageDataUnionTilesImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? title = null,
     Object? order = null,
-    Object? type = null,
     Object? icon = freezed,
   }) {
     return _then(_$DashboardReqUpdatePageDataUnionTilesImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -448,10 +455,6 @@ class __$$DashboardReqUpdatePageDataUnionTilesImplCopyWithImpl<$Res>
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
       icon: freezed == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
@@ -465,14 +468,18 @@ class __$$DashboardReqUpdatePageDataUnionTilesImplCopyWithImpl<$Res>
 class _$DashboardReqUpdatePageDataUnionTilesImpl
     implements DashboardReqUpdatePageDataUnionTiles {
   const _$DashboardReqUpdatePageDataUnionTilesImpl(
-      {required this.title,
+      {required this.type,
+      required this.title,
       required this.order,
-      this.type = 'tiles',
       this.icon});
 
   factory _$DashboardReqUpdatePageDataUnionTilesImpl.fromJson(
           Map<String, dynamic> json) =>
       _$$DashboardReqUpdatePageDataUnionTilesImplFromJson(json);
+
+  /// Discriminator for the page type
+  @override
+  final String type;
 
   /// The title of the page.
   @override
@@ -482,18 +489,13 @@ class _$DashboardReqUpdatePageDataUnionTilesImpl
   @override
   final int order;
 
-  /// Indicates that this is a tiles dashboard page.
-  @override
-  @JsonKey()
-  final String type;
-
   /// The icon associated with the page.
   @override
   final String? icon;
 
   @override
   String toString() {
-    return 'DashboardReqUpdatePageDataUnion.tiles(title: $title, order: $order, type: $type, icon: $icon)';
+    return 'DashboardReqUpdatePageDataUnion.tiles(type: $type, title: $title, order: $order, icon: $icon)';
   }
 
   @override
@@ -501,15 +503,15 @@ class _$DashboardReqUpdatePageDataUnionTilesImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardReqUpdatePageDataUnionTilesImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
-            (identical(other.type, type) || other.type == type) &&
             (identical(other.icon, icon) || other.icon == icon));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, title, order, type, icon);
+  int get hashCode => Object.hash(runtimeType, type, title, order, icon);
 
   /// Create a copy of DashboardReqUpdatePageDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -525,44 +527,44 @@ class _$DashboardReqUpdatePageDataUnionTilesImpl
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
-            String title, int order, String type, String? icon)
+            String type, String title, int order, String? icon)
         cards,
     required TResult Function(
-            String title, int order, String type, String? icon)
+            String type, String title, int order, String? icon)
         tiles,
     required TResult Function(
-            String title, int order, String device, String type, String? icon)
-        device,
+            String type, String title, int order, String device, String? icon)
+        deviceDetail,
   }) {
-    return tiles(title, order, type, icon);
+    return tiles(type, title, order, icon);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String title, int order, String type, String? icon)?
+    TResult? Function(String type, String title, int order, String? icon)?
         cards,
-    TResult? Function(String title, int order, String type, String? icon)?
+    TResult? Function(String type, String title, int order, String? icon)?
         tiles,
     TResult? Function(
-            String title, int order, String device, String type, String? icon)?
-        device,
+            String type, String title, int order, String device, String? icon)?
+        deviceDetail,
   }) {
-    return tiles?.call(title, order, type, icon);
+    return tiles?.call(type, title, order, icon);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String title, int order, String type, String? icon)? cards,
-    TResult Function(String title, int order, String type, String? icon)? tiles,
+    TResult Function(String type, String title, int order, String? icon)? cards,
+    TResult Function(String type, String title, int order, String? icon)? tiles,
     TResult Function(
-            String title, int order, String device, String type, String? icon)?
-        device,
+            String type, String title, int order, String device, String? icon)?
+        deviceDetail,
     required TResult orElse(),
   }) {
     if (tiles != null) {
-      return tiles(title, order, type, icon);
+      return tiles(type, title, order, icon);
     }
     return orElse();
   }
@@ -572,8 +574,8 @@ class _$DashboardReqUpdatePageDataUnionTilesImpl
   TResult map<TResult extends Object?>({
     required TResult Function(DashboardReqUpdatePageDataUnionCards value) cards,
     required TResult Function(DashboardReqUpdatePageDataUnionTiles value) tiles,
-    required TResult Function(DashboardReqUpdatePageDataUnionDevice value)
-        device,
+    required TResult Function(DashboardReqUpdatePageDataUnionDeviceDetail value)
+        deviceDetail,
   }) {
     return tiles(this);
   }
@@ -583,7 +585,8 @@ class _$DashboardReqUpdatePageDataUnionTilesImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DashboardReqUpdatePageDataUnionCards value)? cards,
     TResult? Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
-    TResult? Function(DashboardReqUpdatePageDataUnionDevice value)? device,
+    TResult? Function(DashboardReqUpdatePageDataUnionDeviceDetail value)?
+        deviceDetail,
   }) {
     return tiles?.call(this);
   }
@@ -593,7 +596,8 @@ class _$DashboardReqUpdatePageDataUnionTilesImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DashboardReqUpdatePageDataUnionCards value)? cards,
     TResult Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
-    TResult Function(DashboardReqUpdatePageDataUnionDevice value)? device,
+    TResult Function(DashboardReqUpdatePageDataUnionDeviceDetail value)?
+        deviceDetail,
     required TResult orElse(),
   }) {
     if (tiles != null) {
@@ -613,14 +617,18 @@ class _$DashboardReqUpdatePageDataUnionTilesImpl
 abstract class DashboardReqUpdatePageDataUnionTiles
     implements DashboardReqUpdatePageDataUnion {
   const factory DashboardReqUpdatePageDataUnionTiles(
-      {required final String title,
+      {required final String type,
+      required final String title,
       required final int order,
-      final String type,
       final String? icon}) = _$DashboardReqUpdatePageDataUnionTilesImpl;
 
   factory DashboardReqUpdatePageDataUnionTiles.fromJson(
           Map<String, dynamic> json) =
       _$DashboardReqUpdatePageDataUnionTilesImpl.fromJson;
+
+  /// Discriminator for the page type
+  @override
+  String get type;
 
   /// The title of the page.
   @override
@@ -629,10 +637,6 @@ abstract class DashboardReqUpdatePageDataUnionTiles
   /// The display order of the page.
   @override
   int get order;
-
-  /// Indicates that this is a tiles dashboard page.
-  @override
-  String get type;
 
   /// The icon associated with the page.
   @override
@@ -648,26 +652,28 @@ abstract class DashboardReqUpdatePageDataUnionTiles
 }
 
 /// @nodoc
-abstract class _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith<$Res>
+abstract class _$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWith<$Res>
     implements $DashboardReqUpdatePageDataUnionCopyWith<$Res> {
-  factory _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith(
-          _$DashboardReqUpdatePageDataUnionDeviceImpl value,
-          $Res Function(_$DashboardReqUpdatePageDataUnionDeviceImpl) then) =
-      __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<$Res>;
+  factory _$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWith(
+          _$DashboardReqUpdatePageDataUnionDeviceDetailImpl value,
+          $Res Function(_$DashboardReqUpdatePageDataUnionDeviceDetailImpl)
+              then) =
+      __$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call(
-      {String title, int order, String device, String type, String? icon});
+      {String type, String title, int order, String device, String? icon});
 }
 
 /// @nodoc
-class __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<$Res>
+class __$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWithImpl<$Res>
     extends _$DashboardReqUpdatePageDataUnionCopyWithImpl<$Res,
-        _$DashboardReqUpdatePageDataUnionDeviceImpl>
-    implements _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith<$Res> {
-  __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl(
-      _$DashboardReqUpdatePageDataUnionDeviceImpl _value,
-      $Res Function(_$DashboardReqUpdatePageDataUnionDeviceImpl) _then)
+        _$DashboardReqUpdatePageDataUnionDeviceDetailImpl>
+    implements
+        _$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWith<$Res> {
+  __$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWithImpl(
+      _$DashboardReqUpdatePageDataUnionDeviceDetailImpl _value,
+      $Res Function(_$DashboardReqUpdatePageDataUnionDeviceDetailImpl) _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardReqUpdatePageDataUnion
@@ -675,13 +681,17 @@ class __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? title = null,
     Object? order = null,
     Object? device = null,
-    Object? type = null,
     Object? icon = freezed,
   }) {
-    return _then(_$DashboardReqUpdatePageDataUnionDeviceImpl(
+    return _then(_$DashboardReqUpdatePageDataUnionDeviceDetailImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
@@ -694,10 +704,6 @@ class __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<$Res>
           ? _value.device
           : device // ignore: cast_nullable_to_non_nullable
               as String,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
       icon: freezed == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
@@ -708,18 +714,22 @@ class __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardReqUpdatePageDataUnionDeviceImpl
-    implements DashboardReqUpdatePageDataUnionDevice {
-  const _$DashboardReqUpdatePageDataUnionDeviceImpl(
-      {required this.title,
+class _$DashboardReqUpdatePageDataUnionDeviceDetailImpl
+    implements DashboardReqUpdatePageDataUnionDeviceDetail {
+  const _$DashboardReqUpdatePageDataUnionDeviceDetailImpl(
+      {required this.type,
+      required this.title,
       required this.order,
       required this.device,
-      this.type = 'device',
       this.icon});
 
-  factory _$DashboardReqUpdatePageDataUnionDeviceImpl.fromJson(
+  factory _$DashboardReqUpdatePageDataUnionDeviceDetailImpl.fromJson(
           Map<String, dynamic> json) =>
-      _$$DashboardReqUpdatePageDataUnionDeviceImplFromJson(json);
+      _$$DashboardReqUpdatePageDataUnionDeviceDetailImplFromJson(json);
+
+  /// Discriminator for the page type
+  @override
+  final String type;
 
   /// The title of the page.
   @override
@@ -733,89 +743,86 @@ class _$DashboardReqUpdatePageDataUnionDeviceImpl
   @override
   final String device;
 
-  /// Indicates that this is a tiles dashboard page.
-  @override
-  @JsonKey()
-  final String type;
-
   /// The icon associated with the page.
   @override
   final String? icon;
 
   @override
   String toString() {
-    return 'DashboardReqUpdatePageDataUnion.device(title: $title, order: $order, device: $device, type: $type, icon: $icon)';
+    return 'DashboardReqUpdatePageDataUnion.deviceDetail(type: $type, title: $title, order: $order, device: $device, icon: $icon)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardReqUpdatePageDataUnionDeviceImpl &&
+            other is _$DashboardReqUpdatePageDataUnionDeviceDetailImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
             (identical(other.device, device) || other.device == device) &&
-            (identical(other.type, type) || other.type == type) &&
             (identical(other.icon, icon) || other.icon == icon));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, title, order, device, type, icon);
+      Object.hash(runtimeType, type, title, order, device, icon);
 
   /// Create a copy of DashboardReqUpdatePageDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith<
-          _$DashboardReqUpdatePageDataUnionDeviceImpl>
-      get copyWith => __$$DashboardReqUpdatePageDataUnionDeviceImplCopyWithImpl<
-          _$DashboardReqUpdatePageDataUnionDeviceImpl>(this, _$identity);
+  _$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWith<
+          _$DashboardReqUpdatePageDataUnionDeviceDetailImpl>
+      get copyWith =>
+          __$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWithImpl<
+                  _$DashboardReqUpdatePageDataUnionDeviceDetailImpl>(
+              this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
-            String title, int order, String type, String? icon)
+            String type, String title, int order, String? icon)
         cards,
     required TResult Function(
-            String title, int order, String type, String? icon)
+            String type, String title, int order, String? icon)
         tiles,
     required TResult Function(
-            String title, int order, String device, String type, String? icon)
-        device,
+            String type, String title, int order, String device, String? icon)
+        deviceDetail,
   }) {
-    return device(title, order, this.device, type, icon);
+    return deviceDetail(type, title, order, device, icon);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String title, int order, String type, String? icon)?
+    TResult? Function(String type, String title, int order, String? icon)?
         cards,
-    TResult? Function(String title, int order, String type, String? icon)?
+    TResult? Function(String type, String title, int order, String? icon)?
         tiles,
     TResult? Function(
-            String title, int order, String device, String type, String? icon)?
-        device,
+            String type, String title, int order, String device, String? icon)?
+        deviceDetail,
   }) {
-    return device?.call(title, order, this.device, type, icon);
+    return deviceDetail?.call(type, title, order, device, icon);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String title, int order, String type, String? icon)? cards,
-    TResult Function(String title, int order, String type, String? icon)? tiles,
+    TResult Function(String type, String title, int order, String? icon)? cards,
+    TResult Function(String type, String title, int order, String? icon)? tiles,
     TResult Function(
-            String title, int order, String device, String type, String? icon)?
-        device,
+            String type, String title, int order, String device, String? icon)?
+        deviceDetail,
     required TResult orElse(),
   }) {
-    if (device != null) {
-      return device(title, order, this.device, type, icon);
+    if (deviceDetail != null) {
+      return deviceDetail(type, title, order, device, icon);
     }
     return orElse();
   }
@@ -825,10 +832,10 @@ class _$DashboardReqUpdatePageDataUnionDeviceImpl
   TResult map<TResult extends Object?>({
     required TResult Function(DashboardReqUpdatePageDataUnionCards value) cards,
     required TResult Function(DashboardReqUpdatePageDataUnionTiles value) tiles,
-    required TResult Function(DashboardReqUpdatePageDataUnionDevice value)
-        device,
+    required TResult Function(DashboardReqUpdatePageDataUnionDeviceDetail value)
+        deviceDetail,
   }) {
-    return device(this);
+    return deviceDetail(this);
   }
 
   @override
@@ -836,9 +843,10 @@ class _$DashboardReqUpdatePageDataUnionDeviceImpl
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DashboardReqUpdatePageDataUnionCards value)? cards,
     TResult? Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
-    TResult? Function(DashboardReqUpdatePageDataUnionDevice value)? device,
+    TResult? Function(DashboardReqUpdatePageDataUnionDeviceDetail value)?
+        deviceDetail,
   }) {
-    return device?.call(this);
+    return deviceDetail?.call(this);
   }
 
   @override
@@ -846,35 +854,40 @@ class _$DashboardReqUpdatePageDataUnionDeviceImpl
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DashboardReqUpdatePageDataUnionCards value)? cards,
     TResult Function(DashboardReqUpdatePageDataUnionTiles value)? tiles,
-    TResult Function(DashboardReqUpdatePageDataUnionDevice value)? device,
+    TResult Function(DashboardReqUpdatePageDataUnionDeviceDetail value)?
+        deviceDetail,
     required TResult orElse(),
   }) {
-    if (device != null) {
-      return device(this);
+    if (deviceDetail != null) {
+      return deviceDetail(this);
     }
     return orElse();
   }
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardReqUpdatePageDataUnionDeviceImplToJson(
+    return _$$DashboardReqUpdatePageDataUnionDeviceDetailImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardReqUpdatePageDataUnionDevice
+abstract class DashboardReqUpdatePageDataUnionDeviceDetail
     implements DashboardReqUpdatePageDataUnion {
-  const factory DashboardReqUpdatePageDataUnionDevice(
-      {required final String title,
+  const factory DashboardReqUpdatePageDataUnionDeviceDetail(
+      {required final String type,
+      required final String title,
       required final int order,
       required final String device,
-      final String type,
-      final String? icon}) = _$DashboardReqUpdatePageDataUnionDeviceImpl;
+      final String? icon}) = _$DashboardReqUpdatePageDataUnionDeviceDetailImpl;
 
-  factory DashboardReqUpdatePageDataUnionDevice.fromJson(
+  factory DashboardReqUpdatePageDataUnionDeviceDetail.fromJson(
           Map<String, dynamic> json) =
-      _$DashboardReqUpdatePageDataUnionDeviceImpl.fromJson;
+      _$DashboardReqUpdatePageDataUnionDeviceDetailImpl.fromJson;
+
+  /// Discriminator for the page type
+  @override
+  String get type;
 
   /// The title of the page.
   @override
@@ -887,10 +900,6 @@ abstract class DashboardReqUpdatePageDataUnionDevice
   /// The unique identifier of the associated device.
   String get device;
 
-  /// Indicates that this is a tiles dashboard page.
-  @override
-  String get type;
-
   /// The icon associated with the page.
   @override
   String? get icon;
@@ -899,7 +908,7 @@ abstract class DashboardReqUpdatePageDataUnionDevice
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardReqUpdatePageDataUnionDeviceImplCopyWith<
-          _$DashboardReqUpdatePageDataUnionDeviceImpl>
+  _$$DashboardReqUpdatePageDataUnionDeviceDetailImplCopyWith<
+          _$DashboardReqUpdatePageDataUnionDeviceDetailImpl>
       get copyWith => throw _privateConstructorUsedError;
 }

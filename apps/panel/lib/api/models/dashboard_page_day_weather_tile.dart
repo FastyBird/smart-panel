@@ -16,6 +16,9 @@ class DashboardPageDayWeatherTile with _$DashboardPageDayWeatherTile {
     /// A unique identifier for the dashboard tile.
     required String id,
 
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -46,10 +49,6 @@ class DashboardPageDayWeatherTile with _$DashboardPageDayWeatherTile {
     @JsonKey(name: 'col_span')
     @Default(0)
     int colSpan,
-
-    /// Indicates that this is a day weather tile.
-    @Default('weather-day')
-    String type,
   }) = _DashboardPageDayWeatherTile;
   
   factory DashboardPageDayWeatherTile.fromJson(Map<String, Object?> json) => _$DashboardPageDayWeatherTileFromJson(json);

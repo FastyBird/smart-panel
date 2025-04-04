@@ -11,7 +11,12 @@ import { type IConfigLanguage, configLanguageStoreKey } from '../store';
 
 import type { IConfigLanguageEditForm, IUseConfigLanguageEditForm } from './types';
 
-export const useConfigLanguageEditForm = (config: IConfigLanguage, messages?: { success?: string; error?: string }): IUseConfigLanguageEditForm => {
+interface IUseLanguageEditFormProps {
+	config: IConfigLanguage;
+	messages?: { success?: string; error?: string };
+}
+
+export const useConfigLanguageEditForm = ({ config, messages }: IUseLanguageEditFormProps): IUseConfigLanguageEditForm => {
 	const storesManager = injectStoresManager();
 
 	const configLanguageStore = storesManager.getStore(configLanguageStoreKey);

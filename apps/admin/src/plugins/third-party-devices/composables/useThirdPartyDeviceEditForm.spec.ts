@@ -53,7 +53,7 @@ describe('useThirdPartyDeviceEditForm', () => {
 	});
 
 	it('initializes model with device data', () => {
-		const form = useThirdPartyDeviceEditForm(mockDevice);
+		const form = useThirdPartyDeviceEditForm({ device: mockDevice });
 
 		expect(form.model.id).toBe(mockDevice.id);
 		expect(form.model.name).toBe(mockDevice.name);
@@ -61,7 +61,7 @@ describe('useThirdPartyDeviceEditForm', () => {
 	});
 
 	it('sets formChanged to true if name or description is edited', async () => {
-		const form = useThirdPartyDeviceEditForm(mockDevice);
+		const form = useThirdPartyDeviceEditForm({ device: mockDevice });
 
 		form.model.name = 'Updated';
 		await Promise.resolve();
@@ -70,7 +70,7 @@ describe('useThirdPartyDeviceEditForm', () => {
 	});
 
 	it('throws validation error if form is invalid', async () => {
-		const form = useThirdPartyDeviceEditForm(mockDevice);
+		const form = useThirdPartyDeviceEditForm({ device: mockDevice });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -81,7 +81,7 @@ describe('useThirdPartyDeviceEditForm', () => {
 	});
 
 	it('submits and saves if device is a draft', async () => {
-		const form = useThirdPartyDeviceEditForm(mockDevice);
+		const form = useThirdPartyDeviceEditForm({ device: mockDevice });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -105,7 +105,7 @@ describe('useThirdPartyDeviceEditForm', () => {
 
 	it('submits and edits if device is not a draft', async () => {
 		const device = { ...mockDevice, draft: false };
-		const form = useThirdPartyDeviceEditForm(device);
+		const form = useThirdPartyDeviceEditForm({ device });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),

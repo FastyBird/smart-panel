@@ -24,6 +24,9 @@ mixin _$DashboardPageTimeTile {
   /// A unique identifier for the dashboard tile.
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the tile type
+  String get type => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
@@ -54,9 +57,6 @@ mixin _$DashboardPageTimeTile {
   @JsonKey(name: 'col_span')
   int get colSpan => throw _privateConstructorUsedError;
 
-  /// Indicates that this is a clock tile.
-  String get type => throw _privateConstructorUsedError;
-
   /// Serializes this DashboardPageTimeTile to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -75,6 +75,7 @@ abstract class $DashboardPageTimeTileCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -83,8 +84,7 @@ abstract class $DashboardPageTimeTileCopyWith<$Res> {
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String page,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -104,6 +104,7 @@ class _$DashboardPageTimeTileCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -112,12 +113,15 @@ class _$DashboardPageTimeTileCopyWithImpl<$Res,
     Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -151,10 +155,6 @@ class _$DashboardPageTimeTileCopyWithImpl<$Res,
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -170,6 +170,7 @@ abstract class _$$DashboardPageTimeTileImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
       @JsonKey(name: 'data_source')
@@ -178,8 +179,7 @@ abstract class _$$DashboardPageTimeTileImplCopyWith<$Res>
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String page,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -197,6 +197,7 @@ class __$$DashboardPageTimeTileImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -205,12 +206,15 @@ class __$$DashboardPageTimeTileImplCopyWithImpl<$Res>
     Object? page = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardPageTimeTileImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -244,10 +248,6 @@ class __$$DashboardPageTimeTileImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -257,6 +257,7 @@ class __$$DashboardPageTimeTileImplCopyWithImpl<$Res>
 class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
   const _$DashboardPageTimeTileImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
@@ -265,8 +266,7 @@ class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.page,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
-      @JsonKey(name: 'col_span') this.colSpan = 0,
-      this.type = 'clock'})
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardPageTimeTileImpl.fromJson(Map<String, dynamic> json) =>
@@ -275,6 +275,10 @@ class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
   /// A unique identifier for the dashboard tile.
   @override
   final String id;
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -320,14 +324,9 @@ class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
   @JsonKey(name: 'col_span')
   final int colSpan;
 
-  /// Indicates that this is a clock tile.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardPageTimeTile(id: $id, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardPageTimeTile(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, page: $page, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -336,6 +335,7 @@ class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
         (other.runtimeType == runtimeType &&
             other is _$DashboardPageTimeTileImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -346,8 +346,7 @@ class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
                 other.updatedAt == updatedAt) &&
             (identical(other.page, page) || other.page == page) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -355,6 +354,7 @@ class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
@@ -362,8 +362,7 @@ class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
       updatedAt,
       page,
       rowSpan,
-      colSpan,
-      type);
+      colSpan);
 
   /// Create a copy of DashboardPageTimeTile
   /// with the given fields replaced by the non-null parameter values.
@@ -384,17 +383,18 @@ class _$DashboardPageTimeTileImpl implements _DashboardPageTimeTile {
 
 abstract class _DashboardPageTimeTile implements DashboardPageTimeTile {
   const factory _DashboardPageTimeTile(
-      {required final String id,
-      required final int row,
-      required final int col,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
-      @JsonKey(name: 'created_at') required final DateTime createdAt,
-      @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-      required final String page,
-      @JsonKey(name: 'row_span') final int rowSpan,
-      @JsonKey(name: 'col_span') final int colSpan,
-      final String type}) = _$DashboardPageTimeTileImpl;
+          {required final String id,
+          required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'data_source')
+          required final List<DashboardTileBaseDataSourceUnion> dataSource,
+          @JsonKey(name: 'created_at') required final DateTime createdAt,
+          @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+          required final String page,
+          @JsonKey(name: 'row_span') final int rowSpan,
+          @JsonKey(name: 'col_span') final int colSpan}) =
+      _$DashboardPageTimeTileImpl;
 
   factory _DashboardPageTimeTile.fromJson(Map<String, dynamic> json) =
       _$DashboardPageTimeTileImpl.fromJson;
@@ -402,6 +402,10 @@ abstract class _DashboardPageTimeTile implements DashboardPageTimeTile {
   /// A unique identifier for the dashboard tile.
   @override
   String get id;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override
@@ -439,10 +443,6 @@ abstract class _DashboardPageTimeTile implements DashboardPageTimeTile {
   @override
   @JsonKey(name: 'col_span')
   int get colSpan;
-
-  /// Indicates that this is a clock tile.
-  @override
-  String get type;
 
   /// Create a copy of DashboardPageTimeTile
   /// with the given fields replaced by the non-null parameter values.

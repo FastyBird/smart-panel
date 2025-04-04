@@ -16,6 +16,9 @@ class DashboardTimeTile with _$DashboardTimeTile {
     /// A unique identifier for the dashboard tile.
     required String id,
 
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -43,10 +46,6 @@ class DashboardTimeTile with _$DashboardTimeTile {
     @JsonKey(name: 'col_span')
     @Default(0)
     int colSpan,
-
-    /// Indicates that this is a clock tile.
-    @Default('clock')
-    String type,
   }) = _DashboardTimeTile;
   
   factory DashboardTimeTile.fromJson(Map<String, Object?> json) => _$DashboardTimeTileFromJson(json);

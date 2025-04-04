@@ -48,7 +48,7 @@ describe('useConfigLanguageEditForm', () => {
 	});
 
 	it('initializes model with config data', () => {
-		const form = useConfigLanguageEditForm(mockConfig);
+		const form = useConfigLanguageEditForm({ config: mockConfig });
 
 		expect(form.model.language).toBe(ConfigLanguageLanguage.en_US);
 		expect(form.model.timezone).toBe('Europe/Prague');
@@ -56,7 +56,7 @@ describe('useConfigLanguageEditForm', () => {
 	});
 
 	it('sets formChanged to true when model changes', async () => {
-		const form = useConfigLanguageEditForm(mockConfig);
+		const form = useConfigLanguageEditForm({ config: mockConfig });
 
 		form.model.language = ConfigLanguageLanguage.cs_CZ;
 		await Promise.resolve();
@@ -65,7 +65,7 @@ describe('useConfigLanguageEditForm', () => {
 	});
 
 	it('throws if form is invalid', async () => {
-		const form = useConfigLanguageEditForm(mockConfig);
+		const form = useConfigLanguageEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -76,7 +76,7 @@ describe('useConfigLanguageEditForm', () => {
 	});
 
 	it('submits and edits successfully', async () => {
-		const form = useConfigLanguageEditForm(mockConfig);
+		const form = useConfigLanguageEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -100,8 +100,11 @@ describe('useConfigLanguageEditForm', () => {
 	it('handles edit failure with custom message', async () => {
 		mockEdit.mockRejectedValueOnce(new ConfigApiException('API error', 500));
 
-		const form = useConfigLanguageEditForm(mockConfig, {
-			error: 'Something went wrong!',
+		const form = useConfigLanguageEditForm({
+			config: mockConfig,
+			messages: {
+				error: 'Something went wrong!',
+			},
 		});
 
 		form.formEl.value = {

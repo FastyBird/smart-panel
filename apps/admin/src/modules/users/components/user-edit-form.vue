@@ -202,7 +202,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = useUserEditForm(props.user);
+const { model, formEl, formChanged, submit, formResult } = useUserEditForm({ user: props.user });
 
 const usernameFormVisible = ref(false);
 

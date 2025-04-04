@@ -11,8 +11,8 @@ part 'dashboard_update_device_channel_data_source.g.dart';
 @Freezed()
 class DashboardUpdateDeviceChannelDataSource with _$DashboardUpdateDeviceChannelDataSource {
   const factory DashboardUpdateDeviceChannelDataSource({
-    /// The unique identifier of the associated tile.
-    required String tile,
+    /// Specifies the type of data source.
+    required String type,
 
     /// The unique identifier of the associated device.
     required String device,
@@ -25,10 +25,6 @@ class DashboardUpdateDeviceChannelDataSource with _$DashboardUpdateDeviceChannel
 
     /// The icon representing the data source.
     String? icon,
-
-    /// Specifies the type of data source as linked to a device channel.
-    @Default('device-channel')
-    String type,
   }) = _DashboardUpdateDeviceChannelDataSource;
   
   factory DashboardUpdateDeviceChannelDataSource.fromJson(Map<String, Object?> json) => _$DashboardUpdateDeviceChannelDataSourceFromJson(json);

@@ -17,11 +17,11 @@ class DashboardCreateTilesPage with _$DashboardCreateTilesPage {
     /// The unique identifier for the dashboard page (optional during creation).
     required String id,
 
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the dashboard page.
     required String title,
-
-    /// The position of the page in the dashboard’s list.
-    required int order,
 
     /// A list of tiles associated with the tiles page.
     required List<DashboardCreateTilesPageTilesUnion> tiles,
@@ -30,9 +30,9 @@ class DashboardCreateTilesPage with _$DashboardCreateTilesPage {
     @JsonKey(name: 'data_source')
     required List<DashboardCreateTilesPageDataSourceUnion> dataSource,
 
-    /// Indicates that this is a tiles dashboard page.
-    @Default('tiles')
-    String type,
+    /// The position of the page in the dashboard’s list.
+    @Default(0)
+    int order,
 
     /// The icon associated with the dashboard page.
     String? icon,

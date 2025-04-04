@@ -6,7 +6,7 @@ import { ValidateDeviceExists } from '../validators/device-exists-constraint.val
 
 type ReqUpdateTile = components['schemas']['DashboardReqUpdateTile'];
 type UpdateTileBase = components['schemas']['DashboardUpdateTileBase'];
-type UpdateDeviceTile = components['schemas']['DashboardUpdateDeviceTile'];
+type UpdateDevicePreviewTile = components['schemas']['DashboardUpdateDevicePreviewTile'];
 type UpdateTimeTile = components['schemas']['DashboardUpdateTimeTile'];
 type UpdateDayWeatherTile = components['schemas']['DashboardUpdateDayWeatherTile'];
 type UpdateForecastWeatherTile = components['schemas']['DashboardUpdateForecastWeatherTile'];
@@ -21,8 +21,8 @@ const determineTileDto = (obj: unknown): new () => object => {
 		'type' in obj.data
 	) {
 		switch ((obj.data as { type: string }).type) {
-			case 'device':
-				return UpdateDeviceTileDto;
+			case 'device-preview':
+				return UpdateDevicePreviewTileDto;
 			case 'clock':
 				return UpdateTimeTileDto;
 			case 'weather-day':
@@ -80,8 +80,8 @@ export abstract class UpdateTileDto implements UpdateTileBase {
 	page?: string;
 }
 
-export class UpdateDeviceTileDto extends UpdateTileDto implements UpdateDeviceTile {
-	readonly type: 'device';
+export class UpdateDevicePreviewTileDto extends UpdateTileDto implements UpdateDevicePreviewTile {
+	readonly type: 'device-preview';
 
 	@Expose()
 	@IsOptional()
@@ -113,5 +113,5 @@ export class ReqUpdateTileDto implements ReqUpdateTile {
 	@Expose()
 	@ValidateNested()
 	@Type((options) => determineTileDto(options?.object ?? {}))
-	data: UpdateDeviceTileDto | UpdateTimeTileDto | UpdateDayWeatherTileDto | UpdateForecastWeatherTileDto;
+	data: UpdateDevicePreviewTileDto | UpdateTimeTileDto | UpdateDayWeatherTileDto | UpdateForecastWeatherTileDto;
 }

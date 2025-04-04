@@ -10,7 +10,12 @@ import { UsersApiException, UsersValidationException } from '../users.exceptions
 
 import type { IUseUserUsernameForm, IUserUsernameForm } from './types';
 
-export const useUserUsernameForm = (user: IUser, messages?: { success?: string; error?: string }): IUseUserUsernameForm => {
+interface IUseUserUsernameFormProps {
+	user: IUser;
+	messages?: { success?: string; error?: string };
+}
+
+export const useUserUsernameForm = ({ user, messages }: IUseUserUsernameFormProps): IUseUserUsernameForm => {
 	const storesManager = injectStoresManager();
 
 	const usersStore = storesManager.getStore(usersStoreKey);

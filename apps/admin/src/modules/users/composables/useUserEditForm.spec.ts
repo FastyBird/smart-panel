@@ -75,7 +75,7 @@ describe('useUserEditForm', (): void => {
 		(usersStoreMock.save as Mock).mockResolvedValue({});
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -110,7 +110,7 @@ describe('useUserEditForm', (): void => {
 		mockUser.draft = true;
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 		(usersStoreMock.save as Mock).mockResolvedValue({});
@@ -140,7 +140,7 @@ describe('useUserEditForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new UsersApiException('Validation error', 422));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -164,7 +164,7 @@ describe('useUserEditForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new Error('Failed to update user'));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -187,7 +187,7 @@ describe('useUserEditForm', (): void => {
 	it('should trim empty optional fields before sending request', async (): Promise<void> => {
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -221,7 +221,7 @@ describe('useUserEditForm', (): void => {
 		};
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser, customMessages);
+		const formHandler = useUserEditForm({ user: mockUser, messages: customMessages });
 
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
@@ -256,7 +256,7 @@ describe('useUserEditForm', (): void => {
 	it('should reset form result after timeout', async (): Promise<void> => {
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),

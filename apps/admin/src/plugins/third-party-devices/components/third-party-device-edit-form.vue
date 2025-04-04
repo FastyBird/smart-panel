@@ -121,7 +121,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useThirdPartyDeviceEditForm(props.device as IThirdPartyDevice);
+const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useThirdPartyDeviceEditForm({
+	device: props.device as IThirdPartyDevice,
+});
 
 const rules = reactive<FormRules<IThirdPartyDeviceEditForm>>({
 	name: [{ required: true, message: t('thirdPartyDevicesPlugin.fields.devices.name.validation.required'), trigger: 'change' }],

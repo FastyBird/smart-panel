@@ -6,36 +6,36 @@ part of 'dashboard_create_card_tiles_union.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DashboardCreateCardTilesUnionDeviceImpl
-    _$$DashboardCreateCardTilesUnionDeviceImplFromJson(
+_$DashboardCreateCardTilesUnionDevicePreviewImpl
+    _$$DashboardCreateCardTilesUnionDevicePreviewImplFromJson(
             Map<String, dynamic> json) =>
-        _$DashboardCreateCardTilesUnionDeviceImpl(
+        _$DashboardCreateCardTilesUnionDevicePreviewImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
-          rowSpan: (json['row_span'] as num).toInt(),
-          colSpan: (json['col_span'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
               .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
           device: json['device'] as String,
           icon: json['icon'] as String?,
-          type: json['type'] as String? ?? 'device',
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
         );
 
-Map<String, dynamic> _$$DashboardCreateCardTilesUnionDeviceImplToJson(
-        _$DashboardCreateCardTilesUnionDeviceImpl instance) =>
+Map<String, dynamic> _$$DashboardCreateCardTilesUnionDevicePreviewImplToJson(
+        _$DashboardCreateCardTilesUnionDevicePreviewImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'row': instance.row,
       'col': instance.col,
-      'row_span': instance.rowSpan,
-      'col_span': instance.colSpan,
       'data_source': instance.dataSource,
       'device': instance.device,
       'icon': instance.icon,
-      'type': instance.type,
+      'row_span': instance.rowSpan,
+      'col_span': instance.colSpan,
     };
 
 _$DashboardCreateCardTilesUnionClockImpl
@@ -43,27 +43,27 @@ _$DashboardCreateCardTilesUnionClockImpl
             Map<String, dynamic> json) =>
         _$DashboardCreateCardTilesUnionClockImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
-          rowSpan: (json['row_span'] as num).toInt(),
-          colSpan: (json['col_span'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
               .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'clock',
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
         );
 
 Map<String, dynamic> _$$DashboardCreateCardTilesUnionClockImplToJson(
         _$DashboardCreateCardTilesUnionClockImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'row': instance.row,
       'col': instance.col,
+      'data_source': instance.dataSource,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
-      'data_source': instance.dataSource,
-      'type': instance.type,
     };
 
 _$DashboardCreateCardTilesUnionWeatherDayImpl
@@ -71,27 +71,27 @@ _$DashboardCreateCardTilesUnionWeatherDayImpl
             Map<String, dynamic> json) =>
         _$DashboardCreateCardTilesUnionWeatherDayImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
-          rowSpan: (json['row_span'] as num).toInt(),
-          colSpan: (json['col_span'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
               .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'weather-day',
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
         );
 
 Map<String, dynamic> _$$DashboardCreateCardTilesUnionWeatherDayImplToJson(
         _$DashboardCreateCardTilesUnionWeatherDayImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'row': instance.row,
       'col': instance.col,
+      'data_source': instance.dataSource,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
-      'data_source': instance.dataSource,
-      'type': instance.type,
     };
 
 _$DashboardCreateCardTilesUnionWeatherForecastImpl
@@ -99,25 +99,25 @@ _$DashboardCreateCardTilesUnionWeatherForecastImpl
             Map<String, dynamic> json) =>
         _$DashboardCreateCardTilesUnionWeatherForecastImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
-          rowSpan: (json['row_span'] as num).toInt(),
-          colSpan: (json['col_span'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
               .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
                   e as Map<String, dynamic>))
               .toList(),
-          type: json['type'] as String? ?? 'weather-forecast',
+          rowSpan: (json['row_span'] as num?)?.toInt() ?? 0,
+          colSpan: (json['col_span'] as num?)?.toInt() ?? 0,
         );
 
 Map<String, dynamic> _$$DashboardCreateCardTilesUnionWeatherForecastImplToJson(
         _$DashboardCreateCardTilesUnionWeatherForecastImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'row': instance.row,
       'col': instance.col,
+      'data_source': instance.dataSource,
       'row_span': instance.rowSpan,
       'col_span': instance.colSpan,
-      'data_source': instance.dataSource,
-      'type': instance.type,
     };

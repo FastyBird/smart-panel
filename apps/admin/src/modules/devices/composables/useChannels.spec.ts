@@ -73,13 +73,13 @@ describe('useChannels', () => {
 	});
 
 	it('returns only channels for a specific device', () => {
-		const { channels } = useChannels(deviceId);
+		const { channels } = useChannels({ deviceId });
 
 		expect(channels.value).toEqual([{ id: 'channel-1', device: deviceId }]);
 	});
 
 	it('calls fetchChannels correctly', async () => {
-		const { fetchChannels } = useChannels(deviceId);
+		const { fetchChannels } = useChannels({ deviceId });
 
 		await fetchChannels();
 
@@ -89,7 +89,7 @@ describe('useChannels', () => {
 	it('indicates loading when fetching includes deviceId', () => {
 		semaphore.value.fetching.items.push(deviceId);
 
-		const { areLoading } = useChannels(deviceId);
+		const { areLoading } = useChannels({ deviceId });
 
 		expect(areLoading.value).toBe(true);
 	});
@@ -97,7 +97,7 @@ describe('useChannels', () => {
 	it('does not indicate loading after firstLoad includes deviceId', () => {
 		firstLoad.value.push(deviceId);
 
-		const { areLoading } = useChannels(deviceId);
+		const { areLoading } = useChannels({ deviceId });
 
 		expect(areLoading.value).toBe(false);
 	});
@@ -105,13 +105,13 @@ describe('useChannels', () => {
 	it('returns loaded = true when firstLoad includes deviceId', () => {
 		firstLoad.value.push(deviceId);
 
-		const { loaded } = useChannels(deviceId);
+		const { loaded } = useChannels({ deviceId });
 
 		expect(loaded.value).toBe(true);
 	});
 
 	it('returns loaded = false when firstLoad does not include deviceId', () => {
-		const { loaded } = useChannels(deviceId);
+		const { loaded } = useChannels({ deviceId });
 
 		expect(loaded.value).toBe(false);
 	});

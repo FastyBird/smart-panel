@@ -9,11 +9,11 @@ part of 'dashboard_update_data_source_base.dart';
 _$DashboardUpdateDataSourceBaseImpl
     _$$DashboardUpdateDataSourceBaseImplFromJson(Map<String, dynamic> json) =>
         _$DashboardUpdateDataSourceBaseImpl(
-          tile: json['tile'] as String,
+          type: json['type'] as String,
         );
 
 Map<String, dynamic> _$$DashboardUpdateDataSourceBaseImplToJson(
         _$DashboardUpdateDataSourceBaseImpl instance) =>
     <String, dynamic>{
-      'tile': instance.tile,
+      'type': instance.type,
     };

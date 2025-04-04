@@ -24,6 +24,9 @@ mixin _$DashboardResPageDataSourceDataUnion {
   /// A unique identifier for the data source.
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the data source type
+  String get type => throw _privateConstructorUsedError;
+
   /// The timestamp when the data source was created.
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -46,21 +49,18 @@ mixin _$DashboardResPageDataSourceDataUnion {
 
   /// The unique identifier of the associated page.
   String get page => throw _privateConstructorUsedError;
-
-  /// Indicates that this data source is linked to a device channel.
-  String get type => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String channel,
             String property,
             String? icon,
-            String page,
-            String type)
+            String page)
         deviceChannel,
   }) =>
       throw _privateConstructorUsedError;
@@ -68,14 +68,14 @@ mixin _$DashboardResPageDataSourceDataUnion {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String channel,
             String property,
             String? icon,
-            String page,
-            String type)?
+            String page)?
         deviceChannel,
   }) =>
       throw _privateConstructorUsedError;
@@ -83,14 +83,14 @@ mixin _$DashboardResPageDataSourceDataUnion {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String channel,
             String property,
             String? icon,
-            String page,
-            String type)?
+            String page)?
         deviceChannel,
     required TResult orElse(),
   }) =>
@@ -137,14 +137,14 @@ abstract class $DashboardResPageDataSourceDataUnionCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
       String channel,
       String property,
       String? icon,
-      String page,
-      String type});
+      String page});
 }
 
 /// @nodoc
@@ -164,6 +164,7 @@ class _$DashboardResPageDataSourceDataUnionCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
@@ -171,12 +172,15 @@ class _$DashboardResPageDataSourceDataUnionCopyWithImpl<$Res,
     Object? property = null,
     Object? icon = freezed,
     Object? page = null,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       createdAt: null == createdAt
           ? _value.createdAt
@@ -206,10 +210,6 @@ class _$DashboardResPageDataSourceDataUnionCopyWithImpl<$Res,
           ? _value.page
           : page // ignore: cast_nullable_to_non_nullable
               as String,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -227,14 +227,14 @@ abstract class _$$DashboardResPageDataSourceDataUnionDeviceChannelImplCopyWith<
   @useResult
   $Res call(
       {String id,
+      String type,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
       String channel,
       String property,
       String? icon,
-      String page,
-      String type});
+      String page});
 }
 
 /// @nodoc
@@ -255,6 +255,7 @@ class __$$DashboardResPageDataSourceDataUnionDeviceChannelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
@@ -262,12 +263,15 @@ class __$$DashboardResPageDataSourceDataUnionDeviceChannelImplCopyWithImpl<$Res>
     Object? property = null,
     Object? icon = freezed,
     Object? page = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardResPageDataSourceDataUnionDeviceChannelImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       createdAt: null == createdAt
           ? _value.createdAt
@@ -297,10 +301,6 @@ class __$$DashboardResPageDataSourceDataUnionDeviceChannelImplCopyWithImpl<$Res>
           ? _value.page
           : page // ignore: cast_nullable_to_non_nullable
               as String,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -311,14 +311,14 @@ class _$DashboardResPageDataSourceDataUnionDeviceChannelImpl
     implements DashboardResPageDataSourceDataUnionDeviceChannel {
   const _$DashboardResPageDataSourceDataUnionDeviceChannelImpl(
       {required this.id,
+      required this.type,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.device,
       required this.channel,
       required this.property,
       required this.icon,
-      required this.page,
-      this.type = 'device-channel'});
+      required this.page});
 
   factory _$DashboardResPageDataSourceDataUnionDeviceChannelImpl.fromJson(
           Map<String, dynamic> json) =>
@@ -327,6 +327,10 @@ class _$DashboardResPageDataSourceDataUnionDeviceChannelImpl
   /// A unique identifier for the data source.
   @override
   final String id;
+
+  /// Discriminator for the data source type
+  @override
+  final String type;
 
   /// The timestamp when the data source was created.
   @override
@@ -358,14 +362,9 @@ class _$DashboardResPageDataSourceDataUnionDeviceChannelImpl
   @override
   final String page;
 
-  /// Indicates that this data source is linked to a device channel.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardResPageDataSourceDataUnion.deviceChannel(id: $id, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, channel: $channel, property: $property, icon: $icon, page: $page, type: $type)';
+    return 'DashboardResPageDataSourceDataUnion.deviceChannel(id: $id, type: $type, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, channel: $channel, property: $property, icon: $icon, page: $page)';
   }
 
   @override
@@ -374,6 +373,7 @@ class _$DashboardResPageDataSourceDataUnionDeviceChannelImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardResPageDataSourceDataUnionDeviceChannelImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -383,14 +383,13 @@ class _$DashboardResPageDataSourceDataUnionDeviceChannelImpl
             (identical(other.property, property) ||
                 other.property == property) &&
             (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.page, page) || other.page == page) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.page, page) || other.page == page));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, createdAt, updatedAt, device,
-      channel, property, icon, page, type);
+  int get hashCode => Object.hash(runtimeType, id, type, createdAt, updatedAt,
+      device, channel, property, icon, page);
 
   /// Create a copy of DashboardResPageDataSourceDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -409,18 +408,18 @@ class _$DashboardResPageDataSourceDataUnionDeviceChannelImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String channel,
             String property,
             String? icon,
-            String page,
-            String type)
+            String page)
         deviceChannel,
   }) {
     return deviceChannel(
-        id, createdAt, updatedAt, device, channel, property, icon, page, type);
+        id, type, createdAt, updatedAt, device, channel, property, icon, page);
   }
 
   @override
@@ -428,18 +427,18 @@ class _$DashboardResPageDataSourceDataUnionDeviceChannelImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String channel,
             String property,
             String? icon,
-            String page,
-            String type)?
+            String page)?
         deviceChannel,
   }) {
     return deviceChannel?.call(
-        id, createdAt, updatedAt, device, channel, property, icon, page, type);
+        id, type, createdAt, updatedAt, device, channel, property, icon, page);
   }
 
   @override
@@ -447,20 +446,20 @@ class _$DashboardResPageDataSourceDataUnionDeviceChannelImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             @JsonKey(name: 'created_at') DateTime createdAt,
             @JsonKey(name: 'updated_at') DateTime? updatedAt,
             String device,
             String channel,
             String property,
             String? icon,
-            String page,
-            String type)?
+            String page)?
         deviceChannel,
     required TResult orElse(),
   }) {
     if (deviceChannel != null) {
-      return deviceChannel(id, createdAt, updatedAt, device, channel, property,
-          icon, page, type);
+      return deviceChannel(id, type, createdAt, updatedAt, device, channel,
+          property, icon, page);
     }
     return orElse();
   }
@@ -509,14 +508,14 @@ abstract class DashboardResPageDataSourceDataUnionDeviceChannel
     implements DashboardResPageDataSourceDataUnion {
   const factory DashboardResPageDataSourceDataUnionDeviceChannel(
           {required final String id,
+          required final String type,
           @JsonKey(name: 'created_at') required final DateTime createdAt,
           @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
           required final String device,
           required final String channel,
           required final String property,
           required final String? icon,
-          required final String page,
-          final String type}) =
+          required final String page}) =
       _$DashboardResPageDataSourceDataUnionDeviceChannelImpl;
 
   factory DashboardResPageDataSourceDataUnionDeviceChannel.fromJson(
@@ -526,6 +525,10 @@ abstract class DashboardResPageDataSourceDataUnionDeviceChannel
   /// A unique identifier for the data source.
   @override
   String get id;
+
+  /// Discriminator for the data source type
+  @override
+  String get type;
 
   /// The timestamp when the data source was created.
   @override
@@ -556,10 +559,6 @@ abstract class DashboardResPageDataSourceDataUnionDeviceChannel
   /// The unique identifier of the associated page.
   @override
   String get page;
-
-  /// Indicates that this data source is linked to a device channel.
-  @override
-  String get type;
 
   /// Create a copy of DashboardResPageDataSourceDataUnion
   /// with the given fields replaced by the non-null parameter values.

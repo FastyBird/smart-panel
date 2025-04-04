@@ -11,8 +11,8 @@ part 'dashboard_update_data_source_base.g.dart';
 @Freezed()
 class DashboardUpdateDataSourceBase with _$DashboardUpdateDataSourceBase {
   const factory DashboardUpdateDataSourceBase({
-    /// The unique identifier of the associated tile.
-    required String tile,
+    /// Specifies the type of data source.
+    required String type,
   }) = _DashboardUpdateDataSourceBase;
   
   factory DashboardUpdateDataSourceBase.fromJson(Map<String, Object?> json) => _$DashboardUpdateDataSourceBaseFromJson(json);

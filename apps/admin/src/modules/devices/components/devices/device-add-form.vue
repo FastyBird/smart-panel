@@ -106,7 +106,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm(props.id, props.type);
+const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm({ id: props.id, type: props.type });
 
 const rules = reactive<FormRules<IDeviceAddForm>>({
 	category: [{ required: true, message: t('devicesModule.fields.devices.category.validation.required'), trigger: 'change' }],

@@ -13,10 +13,12 @@ import { type IChannel, type IChannelProperty, channelsPropertiesStoreKey } from
 import type { IChannelPropertyEditForm, IUseChannelPropertyEditForm } from './types';
 import { useChannels } from './useChannels';
 
-export const useChannelPropertyEditForm = (
-	property: IChannelProperty,
-	messages?: { success?: string; error?: string }
-): IUseChannelPropertyEditForm => {
+interface IUseChannelPropertyEditFormProps {
+	property: IChannelProperty;
+	messages?: { success?: string; error?: string };
+}
+
+export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPropertyEditFormProps): IUseChannelPropertyEditForm => {
 	const storesManager = injectStoresManager();
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);

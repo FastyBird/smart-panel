@@ -11,7 +11,12 @@ import { type IDevice, devicesStoreKey } from '../store';
 
 import type { IDeviceAddForm, IUseDeviceAddForm } from './types';
 
-export const useDeviceAddForm = (id: IDevice['id'], type: IPlugin['type']): IUseDeviceAddForm => {
+interface IUseDeviceAddFormProps {
+	id: IDevice['id'];
+	type: IPlugin['type'];
+}
+
+export const useDeviceAddForm = ({ id, type }: IUseDeviceAddFormProps): IUseDeviceAddForm => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);

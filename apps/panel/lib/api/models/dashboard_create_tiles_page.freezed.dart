@@ -24,11 +24,11 @@ mixin _$DashboardCreateTilesPage {
   /// The unique identifier for the dashboard page (optional during creation).
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the page type
+  String get type => throw _privateConstructorUsedError;
+
   /// The title of the dashboard page.
   String get title => throw _privateConstructorUsedError;
-
-  /// The position of the page in the dashboard’s list.
-  int get order => throw _privateConstructorUsedError;
 
   /// A list of tiles associated with the tiles page.
   List<DashboardCreateTilesPageTilesUnion> get tiles =>
@@ -39,8 +39,8 @@ mixin _$DashboardCreateTilesPage {
   List<DashboardCreateTilesPageDataSourceUnion> get dataSource =>
       throw _privateConstructorUsedError;
 
-  /// Indicates that this is a tiles dashboard page.
-  String get type => throw _privateConstructorUsedError;
+  /// The position of the page in the dashboard’s list.
+  int get order => throw _privateConstructorUsedError;
 
   /// The icon associated with the dashboard page.
   String? get icon => throw _privateConstructorUsedError;
@@ -63,12 +63,12 @@ abstract class $DashboardCreateTilesPageCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       String title,
-      int order,
       List<DashboardCreateTilesPageTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       List<DashboardCreateTilesPageDataSourceUnion> dataSource,
-      String type,
+      int order,
       String? icon});
 }
 
@@ -89,11 +89,11 @@ class _$DashboardCreateTilesPageCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
-    Object? order = null,
     Object? tiles = null,
     Object? dataSource = null,
-    Object? type = null,
+    Object? order = null,
     Object? icon = freezed,
   }) {
     return _then(_value.copyWith(
@@ -101,14 +101,14 @@ class _$DashboardCreateTilesPageCopyWithImpl<$Res,
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       tiles: null == tiles
           ? _value.tiles
           : tiles // ignore: cast_nullable_to_non_nullable
@@ -117,10 +117,10 @@ class _$DashboardCreateTilesPageCopyWithImpl<$Res,
           ? _value.dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
               as List<DashboardCreateTilesPageDataSourceUnion>,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
       icon: freezed == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
@@ -140,12 +140,12 @@ abstract class _$$DashboardCreateTilesPageImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       String title,
-      int order,
       List<DashboardCreateTilesPageTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       List<DashboardCreateTilesPageDataSourceUnion> dataSource,
-      String type,
+      int order,
       String? icon});
 }
 
@@ -165,11 +165,11 @@ class __$$DashboardCreateTilesPageImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
-    Object? order = null,
     Object? tiles = null,
     Object? dataSource = null,
-    Object? type = null,
+    Object? order = null,
     Object? icon = freezed,
   }) {
     return _then(_$DashboardCreateTilesPageImpl(
@@ -177,14 +177,14 @@ class __$$DashboardCreateTilesPageImplCopyWithImpl<$Res>
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       title: null == title
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       tiles: null == tiles
           ? _value._tiles
           : tiles // ignore: cast_nullable_to_non_nullable
@@ -193,10 +193,10 @@ class __$$DashboardCreateTilesPageImplCopyWithImpl<$Res>
           ? _value._dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
               as List<DashboardCreateTilesPageDataSourceUnion>,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
       icon: freezed == icon
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
@@ -210,12 +210,12 @@ class __$$DashboardCreateTilesPageImplCopyWithImpl<$Res>
 class _$DashboardCreateTilesPageImpl implements _DashboardCreateTilesPage {
   const _$DashboardCreateTilesPageImpl(
       {required this.id,
+      required this.type,
       required this.title,
-      required this.order,
       required final List<DashboardCreateTilesPageTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTilesPageDataSourceUnion> dataSource,
-      this.type = 'tiles',
+      this.order = 0,
       this.icon})
       : _tiles = tiles,
         _dataSource = dataSource;
@@ -227,13 +227,13 @@ class _$DashboardCreateTilesPageImpl implements _DashboardCreateTilesPage {
   @override
   final String id;
 
+  /// Discriminator for the page type
+  @override
+  final String type;
+
   /// The title of the dashboard page.
   @override
   final String title;
-
-  /// The position of the page in the dashboard’s list.
-  @override
-  final int order;
 
   /// A list of tiles associated with the tiles page.
   final List<DashboardCreateTilesPageTilesUnion> _tiles;
@@ -258,10 +258,10 @@ class _$DashboardCreateTilesPageImpl implements _DashboardCreateTilesPage {
     return EqualUnmodifiableListView(_dataSource);
   }
 
-  /// Indicates that this is a tiles dashboard page.
+  /// The position of the page in the dashboard’s list.
   @override
   @JsonKey()
-  final String type;
+  final int order;
 
   /// The icon associated with the dashboard page.
   @override
@@ -269,7 +269,7 @@ class _$DashboardCreateTilesPageImpl implements _DashboardCreateTilesPage {
 
   @override
   String toString() {
-    return 'DashboardCreateTilesPage(id: $id, title: $title, order: $order, tiles: $tiles, dataSource: $dataSource, type: $type, icon: $icon)';
+    return 'DashboardCreateTilesPage(id: $id, type: $type, title: $title, tiles: $tiles, dataSource: $dataSource, order: $order, icon: $icon)';
   }
 
   @override
@@ -278,12 +278,12 @@ class _$DashboardCreateTilesPageImpl implements _DashboardCreateTilesPage {
         (other.runtimeType == runtimeType &&
             other is _$DashboardCreateTilesPageImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
-            (identical(other.order, order) || other.order == order) &&
             const DeepCollectionEquality().equals(other._tiles, _tiles) &&
             const DeepCollectionEquality()
                 .equals(other._dataSource, _dataSource) &&
-            (identical(other.type, type) || other.type == type) &&
+            (identical(other.order, order) || other.order == order) &&
             (identical(other.icon, icon) || other.icon == icon));
   }
 
@@ -292,11 +292,11 @@ class _$DashboardCreateTilesPageImpl implements _DashboardCreateTilesPage {
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       title,
-      order,
       const DeepCollectionEquality().hash(_tiles),
       const DeepCollectionEquality().hash(_dataSource),
-      type,
+      order,
       icon);
 
   /// Create a copy of DashboardCreateTilesPage
@@ -319,12 +319,12 @@ class _$DashboardCreateTilesPageImpl implements _DashboardCreateTilesPage {
 abstract class _DashboardCreateTilesPage implements DashboardCreateTilesPage {
   const factory _DashboardCreateTilesPage(
       {required final String id,
+      required final String type,
       required final String title,
-      required final int order,
       required final List<DashboardCreateTilesPageTilesUnion> tiles,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTilesPageDataSourceUnion> dataSource,
-      final String type,
+      final int order,
       final String? icon}) = _$DashboardCreateTilesPageImpl;
 
   factory _DashboardCreateTilesPage.fromJson(Map<String, dynamic> json) =
@@ -334,13 +334,13 @@ abstract class _DashboardCreateTilesPage implements DashboardCreateTilesPage {
   @override
   String get id;
 
+  /// Discriminator for the page type
+  @override
+  String get type;
+
   /// The title of the dashboard page.
   @override
   String get title;
-
-  /// The position of the page in the dashboard’s list.
-  @override
-  int get order;
 
   /// A list of tiles associated with the tiles page.
   @override
@@ -351,9 +351,9 @@ abstract class _DashboardCreateTilesPage implements DashboardCreateTilesPage {
   @JsonKey(name: 'data_source')
   List<DashboardCreateTilesPageDataSourceUnion> get dataSource;
 
-  /// Indicates that this is a tiles dashboard page.
+  /// The position of the page in the dashboard’s list.
   @override
-  String get type;
+  int get order;
 
   /// The icon associated with the dashboard page.
   @override

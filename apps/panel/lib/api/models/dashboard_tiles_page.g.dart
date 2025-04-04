@@ -10,9 +10,9 @@ _$DashboardTilesPageImpl _$$DashboardTilesPageImplFromJson(
         Map<String, dynamic> json) =>
     _$DashboardTilesPageImpl(
       id: json['id'] as String,
+      type: json['type'] as String,
       title: json['title'] as String,
       icon: json['icon'] as String?,
-      order: (json['order'] as num).toInt(),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] == null
           ? null
@@ -25,19 +25,19 @@ _$DashboardTilesPageImpl _$$DashboardTilesPageImplFromJson(
           .map((e) => DashboardTilesPageDataSourceUnion.fromJson(
               e as Map<String, dynamic>))
           .toList(),
-      type: json['type'] as String? ?? 'tiles',
+      order: (json['order'] as num?)?.toInt() ?? 0,
     );
 
 Map<String, dynamic> _$$DashboardTilesPageImplToJson(
         _$DashboardTilesPageImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'title': instance.title,
       'icon': instance.icon,
-      'order': instance.order,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
       'tiles': instance.tiles,
       'data_source': instance.dataSource,
-      'type': instance.type,
+      'order': instance.order,
     };

@@ -11,7 +11,6 @@ _$DashboardCardImpl _$$DashboardCardImplFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       title: json['title'] as String,
       icon: json['icon'] as String?,
-      order: (json['order'] as num).toInt(),
       page: json['page'] as String,
       tiles: (json['tiles'] as List<dynamic>)
           .map((e) =>
@@ -25,6 +24,7 @@ _$DashboardCardImpl _$$DashboardCardImplFromJson(Map<String, dynamic> json) =>
       updatedAt: json['updated_at'] == null
           ? null
           : DateTime.parse(json['updated_at'] as String),
+      order: (json['order'] as num?)?.toInt() ?? 0,
     );
 
 Map<String, dynamic> _$$DashboardCardImplToJson(_$DashboardCardImpl instance) =>
@@ -32,10 +32,10 @@ Map<String, dynamic> _$$DashboardCardImplToJson(_$DashboardCardImpl instance) =>
       'id': instance.id,
       'title': instance.title,
       'icon': instance.icon,
-      'order': instance.order,
       'page': instance.page,
       'tiles': instance.tiles,
       'data_source': instance.dataSource,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
+      'order': instance.order,
     };

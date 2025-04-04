@@ -8,7 +8,7 @@ type ReqUpdatePage = components['schemas']['DashboardReqUpdatePage'];
 type UpdatePageBase = components['schemas']['DashboardUpdatePageBase'];
 type UpdateCardsPage = components['schemas']['DashboardUpdateCardsPage'];
 type UpdateTilesPage = components['schemas']['DashboardUpdateTilesPage'];
-type UpdateDevicePage = components['schemas']['DashboardUpdateDevicePage'];
+type UpdateDeviceDetailPage = components['schemas']['DashboardUpdateDeviceDetailPage'];
 
 const determinePageDto = (obj: unknown): new () => object => {
 	if (
@@ -24,8 +24,8 @@ const determinePageDto = (obj: unknown): new () => object => {
 				return UpdateCardsPageDto;
 			case 'tiles':
 				return UpdateTilesPageDto;
-			case 'device':
-				return UpdateDevicePageDto;
+			case 'device-detail':
+				return UpdateDeviceDetailPageDto;
 			default:
 				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
 		}
@@ -69,8 +69,8 @@ export class UpdateTilesPageDto extends UpdatePageDto implements UpdateTilesPage
 	readonly type: 'tiles';
 }
 
-export class UpdateDevicePageDto extends UpdatePageDto implements UpdateDevicePage {
-	readonly type: 'device';
+export class UpdateDeviceDetailPageDto extends UpdatePageDto implements UpdateDeviceDetailPage {
+	readonly type: 'device-detail';
 
 	@Expose()
 	@IsOptional()
@@ -83,5 +83,5 @@ export class ReqUpdatePageDto implements ReqUpdatePage {
 	@Expose()
 	@ValidateNested()
 	@Type((options) => determinePageDto(options?.object ?? {}))
-	data: UpdateCardsPageDto | UpdateTilesPageDto | UpdateDevicePageDto;
+	data: UpdateCardsPageDto | UpdateTilesPageDto | UpdateDeviceDetailPageDto;
 }

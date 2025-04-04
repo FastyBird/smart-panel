@@ -214,8 +214,8 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { channel, isLoading, fetchChannel } = useChannel(props.id);
-const { canAddAnotherProperty } = useChannelSpecification(props.id);
+const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
+const { canAddAnotherProperty } = useChannelSpecification({ id: props.id });
 const {
 	properties,
 	propertiesPaginated,
@@ -229,7 +229,7 @@ const {
 	areLoading,
 	fetchProperties,
 	resetFilter,
-} = useChannelsPropertiesDataSource(props.id);
+} = useChannelsPropertiesDataSource({ channelId: props.id });
 const propertiesActions = useChannelsPropertiesActions();
 
 if (!validateUuid(props.id)) {

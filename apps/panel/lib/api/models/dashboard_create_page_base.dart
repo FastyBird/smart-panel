@@ -14,11 +14,15 @@ class DashboardCreatePageBase with _$DashboardCreatePageBase {
     /// The unique identifier for the dashboard page (optional during creation).
     required String id,
 
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the dashboard page.
     required String title,
 
     /// The position of the page in the dashboard’s list.
-    required int order,
+    @Default(0)
+    int order,
 
     /// The icon associated with the dashboard page.
     String? icon,

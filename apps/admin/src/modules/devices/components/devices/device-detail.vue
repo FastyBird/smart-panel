@@ -87,8 +87,8 @@ const props = defineProps<IDeviceDetailProps>();
 
 const { t } = useI18n();
 
-const { state: deviceState } = useDeviceState(props.device);
-const { channels } = useChannels(props.device.id);
+const { state: deviceState } = useDeviceState({ device: props.device });
+const { channels } = useChannels({ deviceId: props.device.id });
 
 const alerts: string[] = [];
 

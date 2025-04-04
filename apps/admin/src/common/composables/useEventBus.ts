@@ -4,7 +4,7 @@ import { type Events, injectEventBus } from '../services';
 
 import type { IUseEventBus } from './types';
 
-export function useEventBus(): IUseEventBus {
+export const useEventBus = (): IUseEventBus => {
 	const eventBus = injectEventBus();
 
 	const register = <Key extends keyof Events>(event: Key, listener: Handler<Events[Key]>): void => {
@@ -25,4 +25,4 @@ export function useEventBus(): IUseEventBus {
 		unregister,
 		emit,
 	};
-}
+};

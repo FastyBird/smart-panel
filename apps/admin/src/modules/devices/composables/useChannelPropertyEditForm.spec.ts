@@ -70,7 +70,7 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('initializes model from property', () => {
-		const form = useChannelPropertyEditForm(mockProperty);
+		const form = useChannelPropertyEditForm({ property: mockProperty });
 
 		expect(form.model.id).toBe(mockProperty.id);
 		expect(form.model.channel).toBe(mockProperty.channel);
@@ -78,7 +78,7 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('detects form changes', async () => {
-		const form = useChannelPropertyEditForm(mockProperty);
+		const form = useChannelPropertyEditForm({ property: mockProperty });
 
 		form.model.name = 'Changed';
 		await Promise.resolve();
@@ -87,7 +87,7 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('throws on invalid form', async () => {
-		const form = useChannelPropertyEditForm(mockProperty);
+		const form = useChannelPropertyEditForm({ property: mockProperty });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(false),
@@ -97,7 +97,7 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('submits and saves when draft', async () => {
-		const form = useChannelPropertyEditForm(mockProperty);
+		const form = useChannelPropertyEditForm({ property: mockProperty });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -113,7 +113,7 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('submits and edits when not draft', async () => {
-		const form = useChannelPropertyEditForm({ ...mockProperty, draft: false });
+		const form = useChannelPropertyEditForm({ property: { ...mockProperty, draft: false } });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),

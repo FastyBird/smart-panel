@@ -11,6 +11,7 @@ _$DashboardTilesPageDataSourceUnionDeviceChannelImpl
             Map<String, dynamic> json) =>
         _$DashboardTilesPageDataSourceUnionDeviceChannelImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           createdAt: DateTime.parse(json['created_at'] as String),
           updatedAt: json['updated_at'] == null
               ? null
@@ -20,7 +21,6 @@ _$DashboardTilesPageDataSourceUnionDeviceChannelImpl
           property: json['property'] as String,
           icon: json['icon'] as String?,
           page: json['page'] as String,
-          type: json['type'] as String? ?? 'device-channel',
         );
 
 Map<String, dynamic>
@@ -28,6 +28,7 @@ Map<String, dynamic>
             _$DashboardTilesPageDataSourceUnionDeviceChannelImpl instance) =>
         <String, dynamic>{
           'id': instance.id,
+          'type': instance.type,
           'created_at': instance.createdAt.toIso8601String(),
           'updated_at': instance.updatedAt?.toIso8601String(),
           'device': instance.device,
@@ -35,5 +36,4 @@ Map<String, dynamic>
           'property': instance.property,
           'icon': instance.icon,
           'page': instance.page,
-          'type': instance.type,
         };

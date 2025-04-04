@@ -32,7 +32,7 @@ describe('useUser', (): void => {
 	});
 
 	it('should return null when id is null', (): void => {
-		const { user } = useUser('');
+		const { user } = useUser({ id: '' });
 
 		expect(user.value).toBeNull();
 	});
@@ -42,13 +42,13 @@ describe('useUser', (): void => {
 
 		(usersStoreMock.data as unknown as Ref<{ [key: IUser['id']]: IUser }>).value = { user1: userData as IUser };
 
-		const { user } = useUser('user1');
+		const { user } = useUser({ id: 'user1' });
 
 		expect(user.value).toEqual(userData);
 	});
 
 	it('should call get() when user is missing', async (): Promise<void> => {
-		const { fetchUser } = useUser('user1');
+		const { fetchUser } = useUser({ id: 'user1' });
 
 		await fetchUser();
 
@@ -58,7 +58,7 @@ describe('useUser', (): void => {
 	it('should not call get() when user is a draft', async (): Promise<void> => {
 		(usersStoreMock.data as unknown as Ref<{ [key: IUser['id']]: IUser }>).value = { user1: { id: 'user1', draft: true } as IUser };
 
-		const { fetchUser } = useUser('user1');
+		const { fetchUser } = useUser({ id: 'user1' });
 
 		await fetchUser();
 
@@ -73,7 +73,7 @@ describe('useUser', (): void => {
 			},
 		} as unknown as IUsersStateSemaphore;
 
-		const { isLoading } = useUser('user1');
+		const { isLoading } = useUser({ id: 'user1' });
 
 		expect(isLoading.value).toBe(true);
 	});
@@ -81,7 +81,7 @@ describe('useUser', (): void => {
 	it('should return isLoading as false when user exists in store', (): void => {
 		(usersStoreMock.data as unknown as Ref<{ [key: IUser['id']]: IUser }>).value = { user1: { id: 'user1' } as IUser };
 
-		const { isLoading } = useUser('user1');
+		const { isLoading } = useUser({ id: 'user1' });
 
 		expect(isLoading.value).toBe(false);
 	});
@@ -94,7 +94,7 @@ describe('useUser', (): void => {
 			},
 		} as unknown as IUsersStateSemaphore;
 
-		const { isLoading } = useUser('user1');
+		const { isLoading } = useUser({ id: 'user1' });
 
 		expect(isLoading.value).toBe(false);
 	});

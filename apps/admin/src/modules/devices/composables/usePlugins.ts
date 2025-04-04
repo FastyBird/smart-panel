@@ -5,7 +5,7 @@ import { DEVICES_MODULE_NAME, type IPluginsComponents, type IPluginsSchemas } fr
 
 import type { IUsePlugins } from './types';
 
-export function usePlugins(): IUsePlugins {
+export const usePlugins = (): IUsePlugins => {
 	const pluginsManager = injectPluginsManager();
 
 	const plugins = computed<IPlugin<IPluginsComponents, IPluginsSchemas>[]>((): IPlugin<IPluginsComponents, IPluginsSchemas>[] => {
@@ -30,4 +30,4 @@ export function usePlugins(): IUsePlugins {
 		options,
 		getByType,
 	};
-}
+};

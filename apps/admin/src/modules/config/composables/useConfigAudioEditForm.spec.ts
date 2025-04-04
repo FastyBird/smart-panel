@@ -49,7 +49,7 @@ describe('useConfigAudioEditForm', () => {
 	});
 
 	it('initializes model with config data', () => {
-		const form = useConfigAudioEditForm(mockConfig);
+		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		expect(form.model.speaker).toBe(true);
 		expect(form.model.speakerVolume).toBe(80);
@@ -58,7 +58,7 @@ describe('useConfigAudioEditForm', () => {
 	});
 
 	it('sets formChanged to true when model changes', async () => {
-		const form = useConfigAudioEditForm(mockConfig);
+		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		form.model.speaker = false;
 		await Promise.resolve();
@@ -67,7 +67,7 @@ describe('useConfigAudioEditForm', () => {
 	});
 
 	it('throws if form is invalid', async () => {
-		const form = useConfigAudioEditForm(mockConfig);
+		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -78,7 +78,7 @@ describe('useConfigAudioEditForm', () => {
 	});
 
 	it('submits and edits successfully', async () => {
-		const form = useConfigAudioEditForm(mockConfig);
+		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -103,8 +103,11 @@ describe('useConfigAudioEditForm', () => {
 	it('handles edit failure with custom message', async () => {
 		mockEdit.mockRejectedValueOnce(new ConfigApiException('API error', 500));
 
-		const form = useConfigAudioEditForm(mockConfig, {
-			error: 'Something went wrong!',
+		const form = useConfigAudioEditForm({
+			config: mockConfig,
+			messages: {
+				error: 'Something went wrong!',
+			},
 		});
 
 		form.formEl.value = {

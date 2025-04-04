@@ -24,6 +24,9 @@ mixin _$DashboardCreatePageBase {
   /// The unique identifier for the dashboard page (optional during creation).
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the page type
+  String get type => throw _privateConstructorUsedError;
+
   /// The title of the dashboard page.
   String get title => throw _privateConstructorUsedError;
 
@@ -49,7 +52,7 @@ abstract class $DashboardCreatePageBaseCopyWith<$Res> {
           $Res Function(DashboardCreatePageBase) then) =
       _$DashboardCreatePageBaseCopyWithImpl<$Res, DashboardCreatePageBase>;
   @useResult
-  $Res call({String id, String title, int order, String? icon});
+  $Res call({String id, String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -69,6 +72,7 @@ class _$DashboardCreatePageBaseCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
     Object? order = null,
     Object? icon = freezed,
@@ -77,6 +81,10 @@ class _$DashboardCreatePageBaseCopyWithImpl<$Res,
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
           ? _value.title
@@ -103,7 +111,7 @@ abstract class _$$DashboardCreatePageBaseImplCopyWith<$Res>
       __$$DashboardCreatePageBaseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String id, String title, int order, String? icon});
+  $Res call({String id, String type, String title, int order, String? icon});
 }
 
 /// @nodoc
@@ -122,6 +130,7 @@ class __$$DashboardCreatePageBaseImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
     Object? order = null,
     Object? icon = freezed,
@@ -130,6 +139,10 @@ class __$$DashboardCreatePageBaseImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
           ? _value.title
@@ -151,7 +164,11 @@ class __$$DashboardCreatePageBaseImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$DashboardCreatePageBaseImpl implements _DashboardCreatePageBase {
   const _$DashboardCreatePageBaseImpl(
-      {required this.id, required this.title, required this.order, this.icon});
+      {required this.id,
+      required this.type,
+      required this.title,
+      this.order = 0,
+      this.icon});
 
   factory _$DashboardCreatePageBaseImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardCreatePageBaseImplFromJson(json);
@@ -160,12 +177,17 @@ class _$DashboardCreatePageBaseImpl implements _DashboardCreatePageBase {
   @override
   final String id;
 
+  /// Discriminator for the page type
+  @override
+  final String type;
+
   /// The title of the dashboard page.
   @override
   final String title;
 
   /// The position of the page in the dashboard’s list.
   @override
+  @JsonKey()
   final int order;
 
   /// The icon associated with the dashboard page.
@@ -174,7 +196,7 @@ class _$DashboardCreatePageBaseImpl implements _DashboardCreatePageBase {
 
   @override
   String toString() {
-    return 'DashboardCreatePageBase(id: $id, title: $title, order: $order, icon: $icon)';
+    return 'DashboardCreatePageBase(id: $id, type: $type, title: $title, order: $order, icon: $icon)';
   }
 
   @override
@@ -183,6 +205,7 @@ class _$DashboardCreatePageBaseImpl implements _DashboardCreatePageBase {
         (other.runtimeType == runtimeType &&
             other is _$DashboardCreatePageBaseImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.order, order) || other.order == order) &&
             (identical(other.icon, icon) || other.icon == icon));
@@ -190,7 +213,7 @@ class _$DashboardCreatePageBaseImpl implements _DashboardCreatePageBase {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, title, order, icon);
+  int get hashCode => Object.hash(runtimeType, id, type, title, order, icon);
 
   /// Create a copy of DashboardCreatePageBase
   /// with the given fields replaced by the non-null parameter values.
@@ -212,8 +235,9 @@ class _$DashboardCreatePageBaseImpl implements _DashboardCreatePageBase {
 abstract class _DashboardCreatePageBase implements DashboardCreatePageBase {
   const factory _DashboardCreatePageBase(
       {required final String id,
+      required final String type,
       required final String title,
-      required final int order,
+      final int order,
       final String? icon}) = _$DashboardCreatePageBaseImpl;
 
   factory _DashboardCreatePageBase.fromJson(Map<String, dynamic> json) =
@@ -222,6 +246,10 @@ abstract class _DashboardCreatePageBase implements DashboardCreatePageBase {
   /// The unique identifier for the dashboard page (optional during creation).
   @override
   String get id;
+
+  /// Discriminator for the page type
+  @override
+  String get type;
 
   /// The title of the dashboard page.
   @override

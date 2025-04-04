@@ -13,18 +13,18 @@ import { PagesDataSourceController } from './controllers/pages.data-source.contr
 import { PagesTilesController } from './controllers/pages.tiles.controller';
 import { PagesTilesDataSourceController } from './controllers/pages.tiles.data-source.controller';
 import { CreateDeviceChannelDataSourceDto } from './dto/create-data-source.dto';
-import { CreateCardsPageDto, CreateDevicePageDto, CreateTilesPageDto } from './dto/create-page.dto';
+import { CreateCardsPageDto, CreateDeviceDetailPageDto, CreateTilesPageDto } from './dto/create-page.dto';
 import {
 	CreateDayWeatherTileDto,
-	CreateDeviceTileDto,
+	CreateDevicePreviewTileDto,
 	CreateForecastWeatherTileDto,
 	CreateTimeTileDto,
 } from './dto/create-tile.dto';
 import { UpdateDeviceChannelDataSourceDto } from './dto/update-data-source.dto';
-import { UpdateCardsPageDto, UpdateDevicePageDto, UpdateTilesPageDto } from './dto/update-page.dto';
+import { UpdateCardsPageDto, UpdateDeviceDetailPageDto, UpdateTilesPageDto } from './dto/update-page.dto';
 import {
 	UpdateDayWeatherTileDto,
-	UpdateDeviceTileDto,
+	UpdateDevicePreviewTileDto,
 	UpdateForecastWeatherTileDto,
 	UpdateTimeTileDto,
 } from './dto/update-tile.dto';
@@ -34,8 +34,8 @@ import {
 	DataSourceEntity,
 	DayWeatherTileEntity,
 	DeviceChannelDataSourceEntity,
-	DevicePageEntity,
-	DeviceTileEntity,
+	DeviceDetailPageEntity,
+	DevicePreviewTileEntity,
 	ForecastWeatherTileEntity,
 	PageEntity,
 	TileEntity,
@@ -63,10 +63,10 @@ import { TileDataSourceTypeConstraintValidator } from './validators/tile-data-so
 			PageEntity,
 			CardsPageEntity,
 			TilesPageEntity,
-			DevicePageEntity,
+			DeviceDetailPageEntity,
 			CardEntity,
 			TileEntity,
-			DeviceTileEntity,
+			DevicePreviewTileEntity,
 			TimeTileEntity,
 			DayWeatherTileEntity,
 			ForecastWeatherTileEntity,
@@ -133,19 +133,19 @@ export class DashboardModule {
 			createDto: CreateTilesPageDto,
 			updateDto: UpdateTilesPageDto,
 		});
-		this.pageMapper.registerMapping<DevicePageEntity, CreateDevicePageDto, UpdateDevicePageDto>({
-			type: 'device',
-			class: DevicePageEntity,
-			createDto: CreateDevicePageDto,
-			updateDto: UpdateDevicePageDto,
+		this.pageMapper.registerMapping<DeviceDetailPageEntity, CreateDeviceDetailPageDto, UpdateDeviceDetailPageDto>({
+			type: 'device-detail',
+			class: DeviceDetailPageEntity,
+			createDto: CreateDeviceDetailPageDto,
+			updateDto: UpdateDeviceDetailPageDto,
 		});
 
 		// Tiles
-		this.tileMapper.registerMapping<DeviceTileEntity, CreateDeviceTileDto, UpdateDeviceTileDto>({
-			type: 'device',
-			class: DeviceTileEntity,
-			createDto: CreateDeviceTileDto,
-			updateDto: UpdateDeviceTileDto,
+		this.tileMapper.registerMapping<DevicePreviewTileEntity, CreateDevicePreviewTileDto, UpdateDevicePreviewTileDto>({
+			type: 'device-preview',
+			class: DevicePreviewTileEntity,
+			createDto: CreateDevicePreviewTileDto,
+			updateDto: UpdateDevicePreviewTileDto,
 		});
 		this.tileMapper.registerMapping<TimeTileEntity, CreateTimeTileDto, UpdateTimeTileDto>({
 			type: 'clock',

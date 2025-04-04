@@ -12,7 +12,7 @@ import {
 	type IChannelsEditActionPayload,
 } from './channels.store.types';
 
-export function transformChannelResponse(response: IChannelRes): IChannel {
+export const transformChannelResponse = (response: IChannelRes): IChannel => {
 	const parsedChannel = ChannelSchema.safeParse({
 		id: response.id,
 		device: response.device,
@@ -30,9 +30,9 @@ export function transformChannelResponse(response: IChannelRes): IChannel {
 	}
 
 	return parsedChannel.data;
-}
+};
 
-export function transformChannelCreateRequest(channel: IChannelsAddActionPayload['data'] & { id?: string; device: string }): IChannelCreateReq {
+export const transformChannelCreateRequest = (channel: IChannelsAddActionPayload['data'] & { id?: string; device: string }): IChannelCreateReq => {
 	const parsedRequest = ChannelCreateReqSchema.safeParse({
 		id: channel.id,
 		device: channel.device,
@@ -46,9 +46,9 @@ export function transformChannelCreateRequest(channel: IChannelsAddActionPayload
 	}
 
 	return parsedRequest.data;
-}
+};
 
-export function transformChannelUpdateRequest(channel: IChannelsEditActionPayload['data']): IChannelUpdateReq {
+export const transformChannelUpdateRequest = (channel: IChannelsEditActionPayload['data']): IChannelUpdateReq => {
 	const parsedRequest = ChannelUpdateReqSchema.safeParse({
 		name: channel.name,
 		description: channel.description,
@@ -59,4 +59,4 @@ export function transformChannelUpdateRequest(channel: IChannelsEditActionPayloa
 	}
 
 	return parsedRequest.data;
-}
+};

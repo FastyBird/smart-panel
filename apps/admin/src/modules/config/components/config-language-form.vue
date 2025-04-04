@@ -99,9 +99,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { languageOptions, timezoneOptions, timeFormatOptions, model, formEl, formChanged, submit, formResult } = useConfigLanguageEditForm(
-	props.config
-);
+const { languageOptions, timezoneOptions, timeFormatOptions, model, formEl, formChanged, submit, formResult } = useConfigLanguageEditForm({
+	config: props.config,
+});
 
 watch(
 	(): FormResultType => formResult.value,

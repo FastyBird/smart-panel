@@ -67,19 +67,19 @@ describe('useChannelsProperties', () => {
 	});
 
 	it('should return all properties if no channelId is provided', () => {
-		const { properties } = useChannelsProperties(undefined as unknown as string);
+		const { properties } = useChannelsProperties({ channelId: undefined as unknown as string });
 
 		expect(properties.value).toHaveLength(2);
 	});
 
 	it('should return only properties matching the channel ID', () => {
-		const { properties } = useChannelsProperties(channelId);
+		const { properties } = useChannelsProperties({ channelId });
 
 		expect(properties.value).toEqual([{ id: 'property-1', channel: channelId }]);
 	});
 
 	it('should call fetchProperties', async () => {
-		const { fetchProperties } = useChannelsProperties(channelId);
+		const { fetchProperties } = useChannelsProperties({ channelId });
 
 		await fetchProperties();
 
@@ -89,7 +89,7 @@ describe('useChannelsProperties', () => {
 	it('should return areLoading = true if fetching includes channelId', () => {
 		semaphore.value.fetching.items.push(channelId);
 
-		const { areLoading } = useChannelsProperties(channelId);
+		const { areLoading } = useChannelsProperties({ channelId });
 
 		expect(areLoading.value).toBe(true);
 	});
@@ -97,7 +97,7 @@ describe('useChannelsProperties', () => {
 	it('should return areLoading = false if firstLoad includes channelId', () => {
 		firstLoad.value.push(channelId);
 
-		const { areLoading } = useChannelsProperties(channelId);
+		const { areLoading } = useChannelsProperties({ channelId });
 
 		expect(areLoading.value).toBe(false);
 	});
@@ -105,13 +105,13 @@ describe('useChannelsProperties', () => {
 	it('should return loaded = true if firstLoad includes channelId', () => {
 		firstLoad.value.push(channelId);
 
-		const { loaded } = useChannelsProperties(channelId);
+		const { loaded } = useChannelsProperties({ channelId });
 
 		expect(loaded.value).toBe(true);
 	});
 
 	it('should return loaded = false if firstLoad does not include channelId', () => {
-		const { loaded } = useChannelsProperties(channelId);
+		const { loaded } = useChannelsProperties({ channelId });
 
 		expect(loaded.value).toBe(false);
 	});

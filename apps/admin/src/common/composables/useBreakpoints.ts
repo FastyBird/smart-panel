@@ -6,7 +6,7 @@ import type { IUseBreakpoints } from './types';
 
 const breakpoints = vueUseBreakpoints(breakpointsBootstrapV5);
 
-export function useBreakpoints(): IUseBreakpoints {
+export const useBreakpoints = (): IUseBreakpoints => {
 	const isXSDevice = computed<boolean>((): boolean => breakpoints.xs.value);
 	const isSMDevice = computed<boolean>((): boolean => breakpoints.sm.value);
 	const isMDDevice = computed<boolean>((): boolean => breakpoints.md.value);
@@ -22,4 +22,4 @@ export function useBreakpoints(): IUseBreakpoints {
 		isXLDevice,
 		isXXLDevice,
 	};
-}
+};

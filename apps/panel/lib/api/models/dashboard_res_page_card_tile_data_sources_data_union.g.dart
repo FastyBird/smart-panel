@@ -11,6 +11,7 @@ _$DashboardResPageCardTileDataSourcesDataUnionDeviceChannelImpl
             Map<String, dynamic> json) =>
         _$DashboardResPageCardTileDataSourcesDataUnionDeviceChannelImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           createdAt: DateTime.parse(json['created_at'] as String),
           updatedAt: json['updated_at'] == null
               ? null
@@ -20,7 +21,6 @@ _$DashboardResPageCardTileDataSourcesDataUnionDeviceChannelImpl
           property: json['property'] as String,
           icon: json['icon'] as String?,
           tile: json['tile'] as String,
-          type: json['type'] as String? ?? 'device-channel',
         );
 
 Map<String, dynamic>
@@ -29,6 +29,7 @@ Map<String, dynamic>
                 instance) =>
         <String, dynamic>{
           'id': instance.id,
+          'type': instance.type,
           'created_at': instance.createdAt.toIso8601String(),
           'updated_at': instance.updatedAt?.toIso8601String(),
           'device': instance.device,
@@ -36,5 +37,4 @@ Map<String, dynamic>
           'property': instance.property,
           'icon': instance.icon,
           'tile': instance.tile,
-          'type': instance.type,
         };

@@ -5,7 +5,7 @@ import type { components } from '../../../openapi';
 
 import {
 	CreateDayWeatherTileDto,
-	CreateDeviceTileDto,
+	CreateDevicePreviewTileDto,
 	CreateForecastWeatherTileDto,
 	CreateTimeTileDto,
 } from './create-tile.dto';
@@ -22,7 +22,7 @@ const determineTileDto = (obj: unknown): new () => object => {
 		'type' in obj.data
 	) {
 		switch ((obj.data as { type: string }).type) {
-			case 'device':
+			case 'device-preview':
 				return CreatePageDeviceTileDto;
 			case 'clock':
 				return CreatePageTimeTileDto;
@@ -37,7 +37,7 @@ const determineTileDto = (obj: unknown): new () => object => {
 	throw new Error('Invalid object format for determining tile DTO');
 };
 
-export class CreatePageDeviceTileDto extends CreateDeviceTileDto {}
+export class CreatePageDeviceTileDto extends CreateDevicePreviewTileDto {}
 
 export class CreatePageTimeTileDto extends CreateTimeTileDto {}
 

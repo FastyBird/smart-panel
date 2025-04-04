@@ -11,15 +11,14 @@ part 'dashboard_req_update_page_data_union.g.dart';
 sealed class DashboardReqUpdatePageDataUnion with _$DashboardReqUpdatePageDataUnion {
   @FreezedUnionValue('cards')
   const factory DashboardReqUpdatePageDataUnion.cards({
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the page.
     required String title,
 
     /// The display order of the page.
     required int order,
-
-    /// Indicates that this is a cards dashboard page.
-    @Default('cards')
-    String type,
 
     /// The icon associated with the page.
     String? icon,
@@ -27,22 +26,24 @@ sealed class DashboardReqUpdatePageDataUnion with _$DashboardReqUpdatePageDataUn
 
   @FreezedUnionValue('tiles')
   const factory DashboardReqUpdatePageDataUnion.tiles({
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the page.
     required String title,
 
     /// The display order of the page.
     required int order,
 
-    /// Indicates that this is a tiles dashboard page.
-    @Default('tiles')
-    String type,
-
     /// The icon associated with the page.
     String? icon,
   }) = DashboardReqUpdatePageDataUnionTiles;
 
-  @FreezedUnionValue('device')
-  const factory DashboardReqUpdatePageDataUnion.device({
+  @FreezedUnionValue('device-detail')
+  const factory DashboardReqUpdatePageDataUnion.deviceDetail({
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the page.
     required String title,
 
@@ -52,13 +53,9 @@ sealed class DashboardReqUpdatePageDataUnion with _$DashboardReqUpdatePageDataUn
     /// The unique identifier of the associated device.
     required String device,
 
-    /// Indicates that this is a tiles dashboard page.
-    @Default('device')
-    String type,
-
     /// The icon associated with the page.
     String? icon,
-  }) = DashboardReqUpdatePageDataUnionDevice;
+  }) = DashboardReqUpdatePageDataUnionDeviceDetail;
 
   
   factory DashboardReqUpdatePageDataUnion.fromJson(Map<String, Object?> json) => _$DashboardReqUpdatePageDataUnionFromJson(json);

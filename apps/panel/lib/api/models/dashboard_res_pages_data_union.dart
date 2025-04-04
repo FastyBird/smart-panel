@@ -19,14 +19,14 @@ sealed class DashboardResPagesDataUnion with _$DashboardResPagesDataUnion {
     /// A unique identifier for the dashboard page.
     required String id,
 
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the dashboard page, displayed in the UI.
     required String title,
 
     /// The icon representing the dashboard page.
     required String? icon,
-
-    /// The display order of the dashboard page in the navigation or list.
-    required int order,
 
     /// The timestamp when the dashboard page was created.
     @JsonKey(name: 'created_at')
@@ -43,9 +43,9 @@ sealed class DashboardResPagesDataUnion with _$DashboardResPagesDataUnion {
     @JsonKey(name: 'data_source')
     required List<DashboardCardsPageDataSourceUnion> dataSource,
 
-    /// Indicates that this is a cards dashboard page.
-    @Default('cards')
-    String type,
+    /// The display order of the dashboard page in the navigation or list.
+    @Default(0)
+    int order,
   }) = DashboardResPagesDataUnionCards;
 
   @FreezedUnionValue('tiles')
@@ -53,14 +53,14 @@ sealed class DashboardResPagesDataUnion with _$DashboardResPagesDataUnion {
     /// A unique identifier for the dashboard page.
     required String id,
 
+    /// Discriminator for the page type
+    required String type,
+
     /// The title of the dashboard page, displayed in the UI.
     required String title,
 
     /// The icon representing the dashboard page.
     required String? icon,
-
-    /// The display order of the dashboard page in the navigation or list.
-    required int order,
 
     /// The timestamp when the dashboard page was created.
     @JsonKey(name: 'created_at')
@@ -77,24 +77,24 @@ sealed class DashboardResPagesDataUnion with _$DashboardResPagesDataUnion {
     @JsonKey(name: 'data_source')
     required List<DashboardTilesPageDataSourceUnion> dataSource,
 
-    /// Indicates that this is a tiles dashboard page.
-    @Default('tiles')
-    String type,
+    /// The display order of the dashboard page in the navigation or list.
+    @Default(0)
+    int order,
   }) = DashboardResPagesDataUnionTiles;
 
-  @FreezedUnionValue('device')
-  const factory DashboardResPagesDataUnion.device({
+  @FreezedUnionValue('device-detail')
+  const factory DashboardResPagesDataUnion.deviceDetail({
     /// A unique identifier for the dashboard page.
     required String id,
+
+    /// Discriminator for the page type
+    required String type,
 
     /// The title of the dashboard page, displayed in the UI.
     required String title,
 
     /// The icon representing the dashboard page.
     required String? icon,
-
-    /// The display order of the dashboard page in the navigation or list.
-    required int order,
 
     /// The timestamp when the dashboard page was created.
     @JsonKey(name: 'created_at')
@@ -107,10 +107,10 @@ sealed class DashboardResPagesDataUnion with _$DashboardResPagesDataUnion {
     /// The unique identifier of the associated device.
     required String device,
 
-    /// Indicates that this is a device-specific dashboard page.
-    @Default('device')
-    String type,
-  }) = DashboardResPagesDataUnionDevice;
+    /// The display order of the dashboard page in the navigation or list.
+    @Default(0)
+    int order,
+  }) = DashboardResPagesDataUnionDeviceDetail;
 
   
   factory DashboardResPagesDataUnion.fromJson(Map<String, Object?> json) => _$DashboardResPagesDataUnionFromJson(json);

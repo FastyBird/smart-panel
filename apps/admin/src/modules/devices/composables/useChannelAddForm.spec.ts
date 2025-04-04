@@ -43,7 +43,7 @@ describe('useChannelAddForm', () => {
 	let form: ReturnType<typeof useChannelAddForm>;
 
 	beforeEach(() => {
-		form = useChannelAddForm('channel-123', 'device-123');
+		form = useChannelAddForm({ id: 'channel-123', deviceId: 'device-123' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),

@@ -194,7 +194,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
   Future<HttpResponse<DashboardResPageDataSource>>
       createDashboardModulePageDataSource({
     required String pageId,
-    DashboardReqCreatePageDataSource? body,
+    DashboardReqCreateDataSource? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -503,7 +503,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
       createDashboardModulePageTileDataSource({
     required String pageId,
     required String tileId,
-    DashboardReqCreateTileDataSource? body,
+    DashboardReqCreateDataSource? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -979,7 +979,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
     required String pageId,
     required String cardId,
     required String tileId,
-    DashboardReqCreateTileDataSource? body,
+    DashboardReqCreateDataSource? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -1147,7 +1147,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
       createDashboardModulePageCardDataSource({
     required String pageId,
     required String cardId,
-    DashboardReqCreateCardDataSource? body,
+    DashboardReqCreateDataSource? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};

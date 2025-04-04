@@ -3995,8 +3995,7 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPages"
-                },
-                "examples": {}
+                }
               }
             },
             "description": "A list of pages successfully retrieved. Each page includes its metadata (ID and title), associated tiles and data sources."
@@ -4089,7 +4088,7 @@
                                   "icon": "icon-name"
                                 }
                               ],
-                              "type": "device",
+                              "type": "device-preview",
                               "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
                               "icon": "icon-name"
                             }
@@ -4210,18 +4209,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqUpdatePage"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "type": "cards",
-                      "title": "My Updated Dashboard",
-                      "icon": "icon-name",
-                      "order": 1
-                    }
-                  }
-                }
               }
             }
           },
@@ -4407,7 +4394,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreatePageDataSource"
+                "$ref": "#/components/schemas/DashboardReqCreateDataSource"
               },
               "examples": {
                 "Example 1": {
@@ -4646,50 +4633,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageTiles"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles",
-                      "method": "GET",
-                      "data": [
-                        {
-                          "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                          "row": 1,
-                          "col": 1,
-                          "row_span": 2,
-                          "col_span": 2,
-                          "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                          "data_source": [
-                            {
-                              "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                              "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                              "created_at": "2025-01-25T12:00:00Z",
-                              "updated_at": "2025-01-25T13:00:00Z",
-                              "type": "device-channel",
-                              "device": "234e5678-a89b-22d3-c456-426614174133",
-                              "channel": "345e6789-b89c-32d4-d567-526715184244",
-                              "property": "456e7890-c89d-42d5-e678-626816194355",
-                              "icon": "icon-name"
-                            }
-                          ],
-                          "created_at": "2025-01-25T12:00:00Z",
-                          "updated_at": "2025-01-25T13:00:00Z",
-                          "type": "device",
-                          "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -4727,48 +4670,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageTile"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles",
-                      "method": "POST",
-                      "data": {
-                        "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "row": 1,
-                        "col": 1,
-                        "row_span": 2,
-                        "col_span": 2,
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device",
-                        "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -4799,32 +4700,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqCreatePageTile"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                      "row": 1,
-                      "col": 2,
-                      "row_span": 1,
-                      "col_span": 2,
-                      "data_source": [
-                        {
-                          "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                          "type": "device-channel",
-                          "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                          "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                          "property": "3d988def-559f-498c-a804-5111aba2df66",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "type": "device",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
               }
             }
           },
@@ -4861,48 +4736,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageTile"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                      "method": "GET",
-                      "data": {
-                        "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "row": 1,
-                        "col": 1,
-                        "row_span": 2,
-                        "col_span": 2,
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device",
-                        "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -4940,48 +4773,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardResPageTile"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                      "method": "PATCH",
-                      "data": {
-                        "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "row": 1,
-                        "col": 1,
-                        "row_span": 2,
-                        "col_span": 2,
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "data_source": [
-                          {
-                            "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                            "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                            "created_at": "2025-01-25T12:00:00Z",
-                            "updated_at": "2025-01-25T13:00:00Z",
-                            "type": "device-channel",
-                            "device": "234e5678-a89b-22d3-c456-426614174133",
-                            "channel": "345e6789-b89c-32d4-d567-526715184244",
-                            "property": "456e7890-c89d-42d5-e678-626816194355",
-                            "icon": "icon-name"
-                          }
-                        ],
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device",
-                        "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
                 }
               }
             },
@@ -5003,21 +4794,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqUpdateTile"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "type": "device",
-                      "row": 1,
-                      "col": 2,
-                      "row_span": 1,
-                      "col_span": 2,
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
               }
             }
           },
@@ -5206,7 +4982,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreateTileDataSource"
+                "$ref": "#/components/schemas/DashboardReqCreateDataSource"
               },
               "examples": {
                 "Example 1": {
@@ -5517,50 +5293,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqCreatePageCard"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                      "title": "Mood lights",
-                      "icon": "icon-name",
-                      "order": 1,
-                      "tiles": [
-                        {
-                          "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                          "row": 1,
-                          "col": 2,
-                          "row_span": 1,
-                          "col_span": 2,
-                          "data_source": [
-                            {
-                              "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                              "type": "device-channel",
-                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                              "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                              "property": "3d988def-559f-498c-a804-5111aba2df66",
-                              "icon": "icon-name"
-                            }
-                          ],
-                          "type": "device",
-                          "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "data_source": [
-                        {
-                          "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                          "type": "device-channel",
-                          "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                          "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                          "property": "3d988def-559f-498c-a804-5111aba2df66",
-                          "icon": "icon-name"
-                        }
-                      ]
-                    }
-                  }
-                }
               }
             }
           },
@@ -5799,32 +5531,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqCreateCardTile"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                      "row": 1,
-                      "col": 2,
-                      "row_span": 1,
-                      "col_span": 2,
-                      "data_source": [
-                        {
-                          "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                          "type": "device-channel",
-                          "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                          "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                          "property": "3d988def-559f-498c-a804-5111aba2df66",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "type": "device",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
               }
             }
           },
@@ -5922,21 +5628,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqUpdateTile"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "type": "device",
-                      "row": 1,
-                      "col": 2,
-                      "row_span": 1,
-                      "col_span": 2,
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
               }
             }
           },
@@ -6127,7 +5818,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreateTileDataSource"
+                "$ref": "#/components/schemas/DashboardReqCreateDataSource"
               },
               "examples": {
                 "Example 1": {
@@ -6497,7 +6188,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreateCardDataSource"
+                "$ref": "#/components/schemas/DashboardReqCreateDataSource"
               },
               "examples": {
                 "Example 1": {
@@ -8584,7 +8275,9 @@
             "nullable": true,
             "format": "date-time",
             "description": "The timestamp when the user was updated.",
-            "example": "2025-01-25T12:00:00Z"
+            "default": null,
+            "example": "2025-01-25T12:00:00Z",
+            "readonly": true
           }
         },
         "examples": [
@@ -11682,6 +11375,7 @@
         "type": "object",
         "required": [
           "id",
+          "type",
           "title",
           "icon",
           "order",
@@ -11696,6 +11390,12 @@
             "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
             "readOnly": true
           },
+          "type": {
+            "type": "string",
+            "description": "Discriminator for the page type",
+            "example": "cards",
+            "readOnly": true
+          },
           "title": {
             "type": "string",
             "description": "The title of the dashboard page, displayed in the UI.",
@@ -11705,6 +11405,7 @@
             "type": "string",
             "nullable": true,
             "description": "The icon representing the dashboard page.",
+            "default": null,
             "example": "icon-name"
           },
           "order": {
@@ -11713,6 +11414,7 @@
             "minimum": 0,
             "multipleOf": 1,
             "description": "The display order of the dashboard page in the navigation or list.",
+            "default": 0,
             "example": 1
           },
           "created_at": {
@@ -11727,8 +11429,17 @@
             "nullable": true,
             "format": "date-time",
             "description": "The timestamp when the dashboard page was last updated.",
+            "default": null,
             "example": "2025-01-25T13:00:00Z",
             "readOnly": true
+          }
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "cards": "#/components/schemas/DashboardCardsPage",
+            "tiles": "#/components/schemas/DashboardTilesPage",
+            "device-detail": "#/components/schemas/DashboardDeviceDetailPage"
           }
         }
       },
@@ -11742,19 +11453,10 @@
           {
             "type": "object",
             "required": [
-              "type",
               "cards",
               "data_source"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "cards",
-                "description": "Indicates that this is a cards dashboard page.",
-                "default": "cards",
-                "example": "cards",
-                "readOnly": true
-              },
               "cards": {
                 "type": "array",
                 "description": "A list of cards associated with the page.",
@@ -11793,26 +11495,17 @@
           {
             "type": "object",
             "required": [
-              "type",
               "tiles",
               "data_source"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "tiles",
-                "description": "Indicates that this is a tiles dashboard page.",
-                "default": "tiles",
-                "example": "tiles",
-                "readOnly": true
-              },
               "tiles": {
                 "type": "array",
                 "description": "A list of tiles associated with the tiles page.",
                 "items": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/DashboardPageDeviceTile"
+                      "$ref": "#/components/schemas/DashboardPageDevicePreviewTile"
                     },
                     {
                       "$ref": "#/components/schemas/DashboardPageTimeTile"
@@ -11827,7 +11520,7 @@
                   "discriminator": {
                     "propertyName": "type",
                     "mapping": {
-                      "device": "#/components/schemas/DashboardPageDeviceTile",
+                      "device-preview": "#/components/schemas/DashboardPageDevicePreviewTile",
                       "clock": "#/components/schemas/DashboardPageTimeTile",
                       "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
                       "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"
@@ -11875,7 +11568,7 @@
                 "data_source": [
                   {
                     "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                    "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
+                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
                     "created_at": "2025-01-25T12:00:00Z",
                     "updated_at": "2025-01-25T13:00:00Z",
                     "type": "device-channel",
@@ -11887,7 +11580,7 @@
                 ],
                 "created_at": "2025-01-25T12:00:00Z",
                 "updated_at": "2025-01-25T13:00:00Z",
-                "type": "device",
+                "type": "device-preview",
                 "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
                 "icon": "icon-name"
               }
@@ -11908,7 +11601,7 @@
           }
         ]
       },
-      "DashboardDevicePage": {
+      "DashboardDeviceDetailPage": {
         "title": "Device Page",
         "description": "A dashboard page type associated with a specific device.",
         "allOf": [
@@ -11918,18 +11611,9 @@
           {
             "type": "object",
             "required": [
-              "type",
               "device"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device",
-                "description": "Indicates that this is a device-specific dashboard page.",
-                "default": "device",
-                "example": "device",
-                "readOnly": true
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -11979,6 +11663,7 @@
             "type": "integer",
             "format": "int32",
             "description": "Defines the position of the card relative to others on the dashboard page.",
+            "default": 0,
             "multipleOf": 1,
             "example": 1,
             "minimum": 0
@@ -11994,7 +11679,7 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardCardDeviceTile"
+                  "$ref": "#/components/schemas/DashboardCardDevicePreviewTile"
                 },
                 {
                   "$ref": "#/components/schemas/DashboardCardTimeTile"
@@ -12009,7 +11694,7 @@
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device": "#/components/schemas/DashboardCardDeviceTile",
+                  "device-preview": "#/components/schemas/DashboardCardDevicePreviewTile",
                   "clock": "#/components/schemas/DashboardCardTimeTile",
                   "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
                   "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
@@ -12047,6 +11732,7 @@
             "nullable": true,
             "format": "date-time",
             "description": "The timestamp when the dashboard card was last updated.",
+            "default": null,
             "example": "2025-01-25T13:00:00Z",
             "readOnly": true
           }
@@ -12055,137 +11741,109 @@
       "DashboardTileBase": {
         "title": "Tile",
         "description": "The base schema for all dashboard tiles, containing common properties such as position, dimensions, and associated page and data sources.",
-        "allOf": [
-          {
-            "type": "object",
-            "required": [
-              "id",
-              "row",
-              "col",
-              "row_span",
-              "col_span"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid",
-                "description": "A unique identifier for the dashboard tile.",
-                "example": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                "readOnly": true
-              },
-              "row": {
-                "type": "integer",
-                "format": "int32",
-                "minimum": 1,
-                "multipleOf": 1,
-                "description": "The row position of the tile in the grid.",
-                "example": 1
-              },
-              "col": {
-                "type": "integer",
-                "format": "int32",
-                "minimum": 1,
-                "multipleOf": 1,
-                "description": "The column position of the tile in the grid.",
-                "example": 1
-              },
-              "row_span": {
-                "type": "integer",
-                "format": "int32",
-                "minimum": 0,
-                "multipleOf": 1,
-                "description": "The number of rows the tile spans.",
-                "default": 0,
-                "example": 2
-              },
-              "col_span": {
-                "type": "integer",
-                "format": "int32",
-                "minimum": 0,
-                "multipleOf": 1,
-                "description": "The number of columns the tile spans.",
-                "default": 0,
-                "example": 2
-              }
-            }
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "row",
+          "col",
+          "row_span",
+          "col_span",
+          "data_source",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier for the dashboard tile.",
+            "example": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
+            "readOnly": true
           },
-          {
-            "oneOf": [
-              {
-                "type": "object",
-                "required": [
-                  "page"
-                ],
-                "properties": {
-                  "page": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "The unique identifier of the page to which this tile belongs.",
-                    "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
-                  }
+          "type": {
+            "type": "string",
+            "description": "Discriminator for the tile type"
+          },
+          "row": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "multipleOf": 1,
+            "description": "The row position of the tile in the grid.",
+            "example": 1
+          },
+          "col": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1,
+            "multipleOf": 1,
+            "description": "The column position of the tile in the grid.",
+            "example": 1
+          },
+          "row_span": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "multipleOf": 1,
+            "description": "The number of rows the tile spans.",
+            "default": 0,
+            "example": 2
+          },
+          "col_span": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0,
+            "multipleOf": 1,
+            "description": "The number of columns the tile spans.",
+            "default": 0,
+            "example": 2
+          },
+          "data_source": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
                 }
-              },
-              {
-                "type": "object",
-                "required": [
-                  "card"
-                ],
-                "properties": {
-                  "card": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "The unique identifier of the card to which this tile belongs.",
-                    "example": "7943c740-52b6-4e18-a136-cf39061ac869"
-                  }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
                 }
               }
-            ]
+            },
+            "description": "A list of data sources used by the tile, typically for real-time updates."
           },
-          {
-            "type": "object",
-            "required": [
-              "data_source",
-              "created_at",
-              "updated_at"
-            ],
-            "properties": {
-              "data_source": {
-                "type": "array",
-                "items": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-                    }
-                  ],
-                  "discriminator": {
-                    "propertyName": "type",
-                    "mapping": {
-                      "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-                    }
-                  }
-                },
-                "description": "A list of data sources used by the tile, typically for real-time updates."
-              },
-              "created_at": {
-                "type": "string",
-                "format": "date-time",
-                "description": "The timestamp when the dashboard tile was created.",
-                "example": "2025-01-25T12:00:00Z",
-                "readOnly": true
-              },
-              "updated_at": {
-                "type": "string",
-                "nullable": true,
-                "format": "date-time",
-                "description": "The timestamp when the dashboard tile was last updated.",
-                "example": "2025-01-25T13:00:00Z",
-                "readOnly": true
-              }
-            }
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when the dashboard tile was created.",
+            "example": "2025-01-25T12:00:00Z",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "The timestamp when the dashboard tile was last updated.",
+            "default": null,
+            "example": "2025-01-25T13:00:00Z",
+            "readOnly": true
           }
-        ]
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "device-preview": "#/components/schemas/DashboardDevicePreviewTile",
+            "clock": "#/components/schemas/DashboardTimeTile",
+            "weather-day": "#/components/schemas/DashboardDayWeatherTile",
+            "weather-forecast": "#/components/schemas/DashboardForecastWeatherTile"
+          }
+        }
       },
-      "DashboardDeviceTile": {
+      "DashboardDevicePreviewTile": {
         "title": "Device Tile",
         "description": "A dashboard tile associated with a specific device.",
         "allOf": [
@@ -12195,19 +11853,10 @@
           {
             "type": "object",
             "required": [
-              "type",
               "device",
               "icon"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device",
-                "description": "Indicates that this is a device-specific tile.",
-                "default": "device",
-                "example": "device",
-                "readOnly": true
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -12224,12 +11873,12 @@
           }
         ]
       },
-      "DashboardPageDeviceTile": {
+      "DashboardPageDevicePreviewTile": {
         "title": "Device Tile On Page",
         "description": "A dashboard tile associated with a specific device.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardDeviceTile"
+            "$ref": "#/components/schemas/DashboardDevicePreviewTile"
           },
           {
             "type": "object",
@@ -12247,12 +11896,12 @@
           }
         ]
       },
-      "DashboardCardDeviceTile": {
+      "DashboardCardDevicePreviewTile": {
         "title": "Device Tile On Card",
         "description": "A dashboard tile associated with a specific device.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardDeviceTile"
+            "$ref": "#/components/schemas/DashboardDevicePreviewTile"
           },
           {
             "type": "object",
@@ -12276,22 +11925,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "clock",
-                "description": "Indicates that this is a clock tile.",
-                "default": "clock",
-                "example": "clock",
-                "readOnly": true
-              }
-            }
           }
         ]
       },
@@ -12347,22 +11980,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "weather-day",
-                "description": "Indicates that this is a day weather tile.",
-                "default": "weather-day",
-                "example": "weather-day",
-                "readOnly": true
-              }
-            }
           }
         ]
       },
@@ -12418,22 +12035,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "weather-forecast",
-                "description": "Indicates that this is a weather forecast tile.",
-                "default": "weather-forecast",
-                "example": "weather-forecast",
-                "readOnly": true
-              }
-            }
           }
         ]
       },
@@ -12486,93 +12087,48 @@
       "DashboardDataSourceBase": {
         "title": "Data Source",
         "description": "The base schema for all dashboard data sources, containing common attributes such as the associated tile and timestamps.",
-        "allOf": [
-          {
-            "type": "object",
-            "required": [
-              "id"
-            ],
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid",
-                "description": "A unique identifier for the data source.",
-                "example": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                "readOnly": true
-              }
-            }
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier for the data source.",
+            "example": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+            "readOnly": true
           },
-          {
-            "oneOf": [
-              {
-                "type": "object",
-                "required": [
-                  "page"
-                ],
-                "properties": {
-                  "page": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "The unique identifier of the page to which this data source belongs.",
-                    "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
-                  }
-                }
-              },
-              {
-                "type": "object",
-                "required": [
-                  "card"
-                ],
-                "properties": {
-                  "card": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "The unique identifier of the card to which this data source belongs.",
-                    "example": "7943c740-52b6-4e18-a136-cf39061ac869"
-                  }
-                }
-              },
-              {
-                "type": "object",
-                "required": [
-                  "tile"
-                ],
-                "properties": {
-                  "tile": {
-                    "type": "string",
-                    "format": "uuid",
-                    "description": "The unique identifier of the tile to which this data source belongs.",
-                    "example": "9f807d44-bd0f-4f5e-b409-3d048efa03d8"
-                  }
-                }
-              }
-            ]
+          "type": {
+            "type": "string",
+            "description": "Discriminator for the data source type"
           },
-          {
-            "type": "object",
-            "required": [
-              "created_at",
-              "updated_at"
-            ],
-            "properties": {
-              "created_at": {
-                "type": "string",
-                "format": "date-time",
-                "description": "The timestamp when the data source was created.",
-                "example": "2025-01-25T12:00:00Z",
-                "readOnly": true
-              },
-              "updated_at": {
-                "type": "string",
-                "nullable": true,
-                "format": "date-time",
-                "description": "The timestamp when the data source was last updated.",
-                "example": "2025-01-25T13:00:00Z",
-                "readOnly": true
-              }
-            }
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when the data source was created.",
+            "example": "2025-01-25T12:00:00Z",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "The timestamp when the data source was last updated.",
+            "default": null,
+            "example": "2025-01-25T13:00:00Z",
+            "readOnly": true
           }
-        ]
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "device-channel": "#/components/schemas/DashboardDeviceChannelDataSource"
+          }
+        }
       },
       "DashboardDeviceChannelDataSource": {
         "title": "Device Channel Data Source",
@@ -12584,21 +12140,12 @@
           {
             "type": "object",
             "required": [
-              "type",
               "device",
               "channel",
               "property",
               "icon"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device-channel",
-                "description": "Indicates that this data source is linked to a device channel.",
-                "default": "device-channel",
-                "example": "device-channel",
-                "readOnly": true
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -12690,7 +12237,7 @@
               "tile": {
                 "type": "string",
                 "format": "uuid",
-                "description": "The unique identifier of the associated card.",
+                "description": "The unique identifier of the associated tile.",
                 "example": "9f807d44-bd0f-4f5e-b409-3d048efa03d8"
               }
             }
@@ -12703,7 +12250,7 @@
         "type": "object",
         "required": [
           "title",
-          "order"
+          "type"
         ],
         "properties": {
           "id": {
@@ -12711,6 +12258,10 @@
             "format": "uuid",
             "description": "The unique identifier for the dashboard page (optional during creation).",
             "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
+          },
+          "type": {
+            "type": "string",
+            "description": "Discriminator for the page type"
           },
           "title": {
             "type": "string",
@@ -12721,6 +12272,7 @@
             "type": "string",
             "nullable": true,
             "description": "The icon associated with the dashboard page.",
+            "default": null,
             "example": "icon-name"
           },
           "order": {
@@ -12729,7 +12281,16 @@
             "minimum": 0,
             "multipleOf": 1,
             "description": "The position of the page in the dashboard’s list.",
+            "default": 0,
             "example": 1
+          }
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "cards": "#/components/schemas/DashboardCreateCardsPage",
+            "tiles": "#/components/schemas/DashboardCreateTilesPage",
+            "device-detail": "#/components/schemas/DashboardCreateDeviceDetailPage"
           }
         }
       },
@@ -12742,17 +12303,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "type"
-            ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "cards",
-                "description": "Indicates that this is a cards dashboard page.",
-                "default": "cards",
-                "example": "cards"
-              },
               "cards": {
                 "type": "array",
                 "items": {
@@ -12790,23 +12341,13 @@
           },
           {
             "type": "object",
-            "required": [
-              "type"
-            ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "tiles",
-                "description": "Indicates that this is a tiles dashboard page.",
-                "default": "tiles",
-                "example": "tiles"
-              },
               "tiles": {
                 "type": "array",
                 "items": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/DashboardCreateDeviceTile"
+                      "$ref": "#/components/schemas/DashboardCreateDevicePreviewTile"
                     },
                     {
                       "$ref": "#/components/schemas/DashboardCreateTimeTile"
@@ -12821,7 +12362,7 @@
                   "discriminator": {
                     "propertyName": "type",
                     "mapping": {
-                      "device": "#/components/schemas/DashboardCreateDeviceTile",
+                      "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
                       "clock": "#/components/schemas/DashboardCreateTimeTile",
                       "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
                       "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
@@ -12851,7 +12392,7 @@
           }
         ]
       },
-      "DashboardCreateDevicePage": {
+      "DashboardCreateDeviceDetailPage": {
         "title": "Create Device Page",
         "description": "The schema for creating a device dashboard page.",
         "allOf": [
@@ -12861,17 +12402,9 @@
           {
             "type": "object",
             "required": [
-              "type",
               "device"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device",
-                "description": "Indicates that this is a device-specific dashboard page.",
-                "default": "device",
-                "example": "device"
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -12921,7 +12454,7 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardCreateDeviceTile"
+                  "$ref": "#/components/schemas/DashboardCreateDevicePreviewTile"
                 },
                 {
                   "$ref": "#/components/schemas/DashboardCreateTimeTile"
@@ -12936,7 +12469,7 @@
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device": "#/components/schemas/DashboardCreateDeviceTile",
+                  "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
                   "clock": "#/components/schemas/DashboardCreateTimeTile",
                   "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
                   "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
@@ -12969,6 +12502,7 @@
         "description": "Base schema for creating a dashboard tile, containing shared attributes such as position and size.",
         "type": "object",
         "required": [
+          "type",
           "row",
           "col"
         ],
@@ -12978,6 +12512,10 @@
             "format": "uuid",
             "description": "Unique identifier for the dashboard tile (optional during creation).",
             "example": "9f807d44-bd0f-4f5e-b409-3d048efa03d8"
+          },
+          "type": {
+            "type": "string",
+            "description": "Discriminator for the tile type"
           },
           "row": {
             "type": "integer",
@@ -13001,6 +12539,7 @@
             "minimum": 0,
             "multipleOf": 1,
             "description": "The number of rows the tile spans in the grid.",
+            "default": 0,
             "example": 1
           },
           "col_span": {
@@ -13009,6 +12548,7 @@
             "minimum": 0,
             "multipleOf": 1,
             "description": "The number of columns the tile spans in the grid.",
+            "default": 0,
             "example": 2
           },
           "data_source": {
@@ -13028,9 +12568,18 @@
             },
             "description": "A list of data sources used by the tile, typically for real-time updates."
           }
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
+            "clock": "#/components/schemas/DashboardCreateTimeTile",
+            "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
+            "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
+          }
         }
       },
-      "DashboardCreateDeviceTile": {
+      "DashboardCreateDevicePreviewTile": {
         "title": "Create Device Tile",
         "description": "Schema for creating a dashboard tile representing a device.",
         "allOf": [
@@ -13040,17 +12589,9 @@
           {
             "type": "object",
             "required": [
-              "type",
               "device"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device",
-                "description": "Specifies the type of tile as a device-specific tile.",
-                "default": "device",
-                "example": "device"
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -13073,21 +12614,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardCreateTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "clock",
-                "description": "Specifies the type of tile as a clock.",
-                "default": "clock",
-                "example": "clock"
-              }
-            }
           }
         ]
       },
@@ -13097,21 +12623,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardCreateTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "weather-day",
-                "description": "Specifies the type of tile as a day weather tile.",
-                "default": "weather-day",
-                "example": "weather-day"
-              }
-            }
           }
         ]
       },
@@ -13121,34 +12632,32 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardCreateTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "weather-forecast",
-                "description": "Specifies the type of tile as a weather forecast tile.",
-                "default": "weather-forecast",
-                "example": "weather-forecast"
-              }
-            }
           }
         ]
       },
       "DashboardCreateDataSourceBase": {
         "title": "Create Data Source",
-        "description": "Base schema for creating a data source used in a dashboard tile.",
+        "description": "Base schema for creating a data source.",
         "type": "object",
+        "required": [
+          "type"
+        ],
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid",
             "description": "Unique identifier for the data source (optional during creation).",
             "example": "dbf838d6-5c5b-4c8e-b189-952038b9020c"
+          },
+          "type": {
+            "type": "string",
+            "description": "Discriminator for the data source type"
+          }
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "device-channel": "#/components/schemas/DashboardCreateDataSourceBase"
           }
         }
       },
@@ -13162,19 +12671,11 @@
           {
             "type": "object",
             "required": [
-              "type",
               "device",
               "channel",
               "property"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device-channel",
-                "description": "Specifies the type of data source as linked to a device channel.",
-                "default": "device-channel",
-                "example": "device-channel"
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -13207,7 +12708,14 @@
         "title": "Update Page",
         "description": "Base schema for updating a dashboard page.",
         "type": "object",
+        "required": [
+          "type"
+        ],
         "properties": {
+          "type": {
+            "type": "string",
+            "description": "Discriminator for the page type"
+          },
           "title": {
             "type": "string",
             "description": "The title of the page.",
@@ -13227,6 +12735,14 @@
             "description": "The display order of the page.",
             "example": 1
           }
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "cards": "#/components/schemas/DashboardUpdateCardsPage",
+            "tiles": "#/components/schemas/DashboardUpdateTilesPage",
+            "device-detail": "#/components/schemas/DashboardUpdateDeviceDetailPage"
+          }
         }
       },
       "DashboardUpdateCardsPage": {
@@ -13235,21 +12751,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardUpdatePageBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "cards",
-                "description": "Indicates that this is a cards dashboard page.",
-                "default": "cards",
-                "example": "cards"
-              }
-            }
           }
         ]
       },
@@ -13259,25 +12760,10 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardUpdatePageBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "tiles",
-                "description": "Indicates that this is a tiles dashboard page.",
-                "default": "tiles",
-                "example": "tiles"
-              }
-            }
           }
         ]
       },
-      "DashboardUpdateDevicePage": {
+      "DashboardUpdateDeviceDetailPage": {
         "title": "Update Device Page",
         "description": "Schema for updating a device page in the dashboard.",
         "allOf": [
@@ -13286,17 +12772,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "type"
-            ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device",
-                "description": "Indicates that this is a tiles dashboard page.",
-                "default": "device",
-                "example": "device"
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -13338,7 +12814,14 @@
         "title": "Update Tile",
         "description": "Base schema for updating a tile in the dashboard.",
         "type": "object",
+        "required": [
+          "type"
+        ],
         "properties": {
+          "type": {
+            "type": "string",
+            "description": "Discriminator for the tile type"
+          },
           "row": {
             "type": "integer",
             "format": "int32",
@@ -13371,9 +12854,18 @@
             "description": "The number of columns the tile spans in the grid.",
             "example": 2
           }
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "device-preview": "#/components/schemas/DashboardUpdateDevicePreviewTile",
+            "clock": "#/components/schemas/DashboardUpdateTimeTile",
+            "weather-day": "#/components/schemas/DashboardUpdateDayWeatherTile",
+            "weather-forecast": "#/components/schemas/DashboardUpdateForecastWeatherTile"
+          }
         }
       },
-      "DashboardUpdateDeviceTile": {
+      "DashboardUpdateDevicePreviewTile": {
         "title": "Update Device Tile",
         "description": "Schema for updating a device tile in the dashboard.",
         "allOf": [
@@ -13382,17 +12874,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "type"
-            ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device",
-                "description": "Indicates that this is a device-specific dashboard tile.",
-                "default": "device",
-                "example": "device"
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -13415,21 +12897,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardUpdateTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "clock",
-                "description": "Specifies the type of tile as a clock.",
-                "default": "clock",
-                "example": "clock"
-              }
-            }
           }
         ]
       },
@@ -13439,21 +12906,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardUpdateTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "weather-day",
-                "description": "Specifies the type of tile as a day weather tile.",
-                "default": "weather-day",
-                "example": "weather-day"
-              }
-            }
           }
         ]
       },
@@ -13463,21 +12915,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardUpdateTileBase"
-          },
-          {
-            "type": "object",
-            "required": [
-              "type"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "weather-forecast",
-                "description": "Specifies the type of tile as a weather forecast tile.",
-                "default": "weather-forecast",
-                "example": "weather-forecast"
-              }
-            }
           }
         ]
       },
@@ -13485,12 +12922,20 @@
         "title": "Update Data Source Base",
         "description": "Base schema for updating a data source in the dashboard.",
         "type": "object",
+        "required": [
+          "type"
+        ],
         "properties": {
-          "tile": {
+          "type": {
             "type": "string",
-            "format": "uuid",
-            "description": "The unique identifier of the associated tile.",
-            "example": "dbf838d6-5c5b-4c8e-b189-952038b9020c"
+            "description": "Specifies the type of data source.",
+            "example": "device-channel"
+          }
+        },
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "device-channel": "#/components/schemas/DashboardUpdateDeviceChannelDataSource"
           }
         }
       },
@@ -13503,17 +12948,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "type"
-            ],
             "properties": {
-              "type": {
-                "type": "string",
-                "const": "device-channel",
-                "description": "Specifies the type of data source as linked to a device channel.",
-                "default": "device-channel",
-                "example": "device-channel"
-              },
               "device": {
                 "type": "string",
                 "format": "uuid",
@@ -13559,7 +12994,7 @@
                 "$ref": "#/components/schemas/DashboardCreateTilesPage"
               },
               {
-                "$ref": "#/components/schemas/DashboardCreateDevicePage"
+                "$ref": "#/components/schemas/DashboardCreateDeviceDetailPage"
               }
             ],
             "discriminator": {
@@ -13567,7 +13002,7 @@
               "mapping": {
                 "cards": "#/components/schemas/DashboardCreateCardsPage",
                 "tiles": "#/components/schemas/DashboardCreateTilesPage",
-                "device": "#/components/schemas/DashboardCreateDevicePage"
+                "device-detail": "#/components/schemas/DashboardCreateDeviceDetailPage"
               }
             }
           }
@@ -13597,7 +13032,7 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardCreateDeviceTile"
+                "$ref": "#/components/schemas/DashboardCreateDevicePreviewTile"
               },
               {
                 "$ref": "#/components/schemas/DashboardCreateTimeTile"
@@ -13612,7 +13047,7 @@
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device": "#/components/schemas/DashboardCreateDeviceTile",
+                "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
                 "clock": "#/components/schemas/DashboardCreateTimeTile",
                 "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
                 "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
@@ -13632,7 +13067,7 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardCreateDeviceTile"
+                "$ref": "#/components/schemas/DashboardCreateDevicePreviewTile"
               },
               {
                 "$ref": "#/components/schemas/DashboardCreateTimeTile"
@@ -13647,7 +13082,7 @@
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device": "#/components/schemas/DashboardCreateDeviceTile",
+                "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
                 "clock": "#/components/schemas/DashboardCreateTimeTile",
                 "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
                 "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
@@ -13656,55 +13091,9 @@
           }
         }
       },
-      "DashboardReqCreatePageDataSource": {
-        "title": "Create Page Data Source Request",
-        "description": "Request schema for creating new page data source.",
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-channel": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-              }
-            }
-          }
-        }
-      },
-      "DashboardReqCreateCardDataSource": {
-        "title": "Create Card Data Source Request",
-        "description": "Request schema for creating new card data source.",
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-channel": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-              }
-            }
-          }
-        }
-      },
-      "DashboardReqCreateTileDataSource": {
-        "title": "Create Tile Data Source Request",
-        "description": "Request schema for creating new tile data source.",
+      "DashboardReqCreateDataSource": {
+        "title": "Create Data Source Request",
+        "description": "Request schema for creating new data source.",
         "type": "object",
         "required": [
           "data"
@@ -13742,7 +13131,7 @@
                 "$ref": "#/components/schemas/DashboardUpdateTilesPage"
               },
               {
-                "$ref": "#/components/schemas/DashboardUpdateDevicePage"
+                "$ref": "#/components/schemas/DashboardUpdateDeviceDetailPage"
               }
             ],
             "discriminator": {
@@ -13750,7 +13139,7 @@
               "mapping": {
                 "cards": "#/components/schemas/DashboardUpdateCardsPage",
                 "tiles": "#/components/schemas/DashboardUpdateTilesPage",
-                "device": "#/components/schemas/DashboardUpdateDevicePage"
+                "device-detail": "#/components/schemas/DashboardUpdateDeviceDetailPage"
               }
             }
           }
@@ -13780,7 +13169,7 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardUpdateDeviceTile"
+                "$ref": "#/components/schemas/DashboardUpdateDevicePreviewTile"
               },
               {
                 "$ref": "#/components/schemas/DashboardUpdateTimeTile"
@@ -13795,7 +13184,7 @@
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device": "#/components/schemas/DashboardUpdateDeviceTile",
+                "device-preview": "#/components/schemas/DashboardUpdateDevicePreviewTile",
                 "clock": "#/components/schemas/DashboardUpdateTimeTile",
                 "weather-day": "#/components/schemas/DashboardUpdateDayWeatherTile",
                 "weather-forecast": "#/components/schemas/DashboardUpdateForecastWeatherTile"
@@ -13888,7 +13277,7 @@
                 "$ref": "#/components/schemas/DashboardTilesPage"
               },
               {
-                "$ref": "#/components/schemas/DashboardDevicePage"
+                "$ref": "#/components/schemas/DashboardDeviceDetailPage"
               }
             ],
             "discriminator": {
@@ -13896,7 +13285,7 @@
               "mapping": {
                 "cards": "#/components/schemas/DashboardCardsPage",
                 "tiles": "#/components/schemas/DashboardTilesPage",
-                "device": "#/components/schemas/DashboardDevicePage"
+                "device-detail": "#/components/schemas/DashboardDeviceDetailPage"
               }
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
@@ -13970,7 +13359,7 @@
                   "$ref": "#/components/schemas/DashboardTilesPage"
                 },
                 {
-                  "$ref": "#/components/schemas/DashboardDevicePage"
+                  "$ref": "#/components/schemas/DashboardDeviceDetailPage"
                 }
               ],
               "discriminator": {
@@ -13978,7 +13367,7 @@
                 "mapping": {
                   "cards": "#/components/schemas/DashboardCardsPage",
                   "tiles": "#/components/schemas/DashboardTilesPage",
-                  "device": "#/components/schemas/DashboardDevicePage"
+                  "device-detail": "#/components/schemas/DashboardDeviceDetailPage"
                 }
               }
             },
@@ -14172,7 +13561,7 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardCardDeviceTile"
+                "$ref": "#/components/schemas/DashboardCardDevicePreviewTile"
               },
               {
                 "$ref": "#/components/schemas/DashboardCardTimeTile"
@@ -14187,7 +13576,7 @@
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device": "#/components/schemas/DashboardCardDeviceTile",
+                "device-preview": "#/components/schemas/DashboardCardDevicePreviewTile",
                 "clock": "#/components/schemas/DashboardCardTimeTile",
                 "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
                 "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
@@ -14258,7 +13647,7 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardCardDeviceTile"
+                  "$ref": "#/components/schemas/DashboardCardDevicePreviewTile"
                 },
                 {
                   "$ref": "#/components/schemas/DashboardCardTimeTile"
@@ -14273,7 +13662,7 @@
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device": "#/components/schemas/DashboardCardDeviceTile",
+                  "device-preview": "#/components/schemas/DashboardCardDevicePreviewTile",
                   "clock": "#/components/schemas/DashboardCardTimeTile",
                   "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
                   "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
@@ -14637,7 +14026,7 @@
           "data": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/DashboardPageDeviceTile"
+                "$ref": "#/components/schemas/DashboardPageDevicePreviewTile"
               },
               {
                 "$ref": "#/components/schemas/DashboardPageTimeTile"
@@ -14652,7 +14041,7 @@
             "discriminator": {
               "propertyName": "type",
               "mapping": {
-                "device": "#/components/schemas/DashboardPageDeviceTile",
+                "device-preview": "#/components/schemas/DashboardPageDevicePreviewTile",
                 "clock": "#/components/schemas/DashboardPageTimeTile",
                 "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
                 "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"
@@ -14723,7 +14112,7 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/components/schemas/DashboardPageDeviceTile"
+                  "$ref": "#/components/schemas/DashboardPageDevicePreviewTile"
                 },
                 {
                   "$ref": "#/components/schemas/DashboardPageTimeTile"
@@ -14738,7 +14127,7 @@
               "discriminator": {
                 "propertyName": "type",
                 "mapping": {
-                  "device": "#/components/schemas/DashboardPageDeviceTile",
+                  "device-preview": "#/components/schemas/DashboardPageDevicePreviewTile",
                   "clock": "#/components/schemas/DashboardPageTimeTile",
                   "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
                   "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"

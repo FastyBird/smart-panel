@@ -14,9 +14,9 @@ import {
 } from './config-language.store.types';
 import type { IConfigWeatherRes } from './config-weather.store.types';
 
-export function transformConfigLanguageResponse(
+export const transformConfigLanguageResponse = (
 	response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes
-): IConfigLanguage {
+): IConfigLanguage => {
 	const parsed = ConfigLanguageSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
@@ -24,9 +24,9 @@ export function transformConfigLanguageResponse(
 	}
 
 	return parsed.data;
-}
+};
 
-export function transformConfigLanguageUpdateRequest(config: IConfigLanguageEditActionPayload['data']): IConfigLanguageUpdateReq {
+export const transformConfigLanguageUpdateRequest = (config: IConfigLanguageEditActionPayload['data']): IConfigLanguageUpdateReq => {
 	const parsedRequest = ConfigLanguageUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigLanguageType.language });
 
 	if (!parsedRequest.success) {
@@ -34,4 +34,4 @@ export function transformConfigLanguageUpdateRequest(config: IConfigLanguageEdit
 	}
 
 	return parsedRequest.data;
-}
+};

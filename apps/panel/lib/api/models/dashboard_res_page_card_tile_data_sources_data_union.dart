@@ -14,6 +14,9 @@ sealed class DashboardResPageCardTileDataSourcesDataUnion with _$DashboardResPag
     /// A unique identifier for the data source.
     required String id,
 
+    /// Discriminator for the data source type
+    required String type,
+
     /// The timestamp when the data source was created.
     @JsonKey(name: 'created_at')
     required DateTime createdAt,
@@ -34,12 +37,8 @@ sealed class DashboardResPageCardTileDataSourcesDataUnion with _$DashboardResPag
     /// The icon representing the data source.
     required String? icon,
 
-    /// The unique identifier of the associated card.
+    /// The unique identifier of the associated tile.
     required String tile,
-
-    /// Indicates that this data source is linked to a device channel.
-    @Default('device-channel')
-    String type,
   }) = DashboardResPageCardTileDataSourcesDataUnionDeviceChannel;
 
   

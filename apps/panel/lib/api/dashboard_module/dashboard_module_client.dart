@@ -5,13 +5,11 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
-import '../models/dashboard_req_create_card_data_source.dart';
 import '../models/dashboard_req_create_card_tile.dart';
+import '../models/dashboard_req_create_data_source.dart';
 import '../models/dashboard_req_create_page.dart';
 import '../models/dashboard_req_create_page_card.dart';
-import '../models/dashboard_req_create_page_data_source.dart';
 import '../models/dashboard_req_create_page_tile.dart';
-import '../models/dashboard_req_create_tile_data_source.dart';
 import '../models/dashboard_req_update_card.dart';
 import '../models/dashboard_req_update_data_source.dart';
 import '../models/dashboard_req_update_page.dart';
@@ -102,7 +100,7 @@ abstract class DashboardModuleClient {
   @POST('/dashboard-module/pages/{pageId}/data-source')
   Future<HttpResponse<DashboardResPageDataSource>> createDashboardModulePageDataSource({
     @Path('pageId') required String pageId,
-    @Body() DashboardReqCreatePageDataSource? body,
+    @Body() DashboardReqCreateDataSource? body,
   });
 
   /// Retrieve details of a specific data source for a page.
@@ -230,7 +228,7 @@ abstract class DashboardModuleClient {
   Future<HttpResponse<DashboardResPageTileDataSource>> createDashboardModulePageTileDataSource({
     @Path('pageId') required String pageId,
     @Path('tileId') required String tileId,
-    @Body() DashboardReqCreateTileDataSource? body,
+    @Body() DashboardReqCreateDataSource? body,
   });
 
   /// Retrieve details of a specific data source for a page’s tile.
@@ -449,7 +447,7 @@ abstract class DashboardModuleClient {
     @Path('pageId') required String pageId,
     @Path('cardId') required String cardId,
     @Path('tileId') required String tileId,
-    @Body() DashboardReqCreateTileDataSource? body,
+    @Body() DashboardReqCreateDataSource? body,
   });
 
   /// Retrieve details of a specific data source for a card’s tile.
@@ -534,7 +532,7 @@ abstract class DashboardModuleClient {
   Future<HttpResponse<DashboardResPageCardDataSource>> createDashboardModulePageCardDataSource({
     @Path('pageId') required String pageId,
     @Path('cardId') required String cardId,
-    @Body() DashboardReqCreateCardDataSource? body,
+    @Body() DashboardReqCreateDataSource? body,
   });
 
   /// Retrieve details of a specific data source for a card.

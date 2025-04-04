@@ -129,7 +129,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = useUserAddForm(props.id);
+const { model, formEl, formChanged, submit, formResult } = useUserAddForm({ id: props.id });
 
 const rules = reactive<FormRules<IUserAddForm>>({
 	username: [{ required: true, message: t('usersModule.fields.username.validation.required'), trigger: 'change' }],

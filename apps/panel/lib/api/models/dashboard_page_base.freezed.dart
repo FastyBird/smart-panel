@@ -23,14 +23,14 @@ mixin _$DashboardPageBase {
   /// A unique identifier for the dashboard page.
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the page type
+  String get type => throw _privateConstructorUsedError;
+
   /// The title of the dashboard page, displayed in the UI.
   String get title => throw _privateConstructorUsedError;
 
   /// The icon representing the dashboard page.
   String? get icon => throw _privateConstructorUsedError;
-
-  /// The display order of the dashboard page in the navigation or list.
-  int get order => throw _privateConstructorUsedError;
 
   /// The timestamp when the dashboard page was created.
   @JsonKey(name: 'created_at')
@@ -39,6 +39,9 @@ mixin _$DashboardPageBase {
   /// The timestamp when the dashboard page was last updated.
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
+
+  /// The display order of the dashboard page in the navigation or list.
+  int get order => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardPageBase to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -58,11 +61,12 @@ abstract class $DashboardPageBaseCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       String title,
       String? icon,
-      int order,
       @JsonKey(name: 'created_at') DateTime createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt});
+      @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      int order});
 }
 
 /// @nodoc
@@ -81,16 +85,21 @@ class _$DashboardPageBaseCopyWithImpl<$Res, $Val extends DashboardPageBase>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
     Object? icon = freezed,
-    Object? order = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? order = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
           ? _value.title
@@ -100,10 +109,6 @@ class _$DashboardPageBaseCopyWithImpl<$Res, $Val extends DashboardPageBase>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -112,6 +117,10 @@ class _$DashboardPageBaseCopyWithImpl<$Res, $Val extends DashboardPageBase>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
     ) as $Val);
   }
 }
@@ -126,11 +135,12 @@ abstract class _$$DashboardPageBaseImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       String title,
       String? icon,
-      int order,
       @JsonKey(name: 'created_at') DateTime createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt});
+      @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      int order});
 }
 
 /// @nodoc
@@ -147,16 +157,21 @@ class __$$DashboardPageBaseImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? title = null,
     Object? icon = freezed,
-    Object? order = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
+    Object? order = null,
   }) {
     return _then(_$DashboardPageBaseImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
           ? _value.title
@@ -166,10 +181,6 @@ class __$$DashboardPageBaseImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      order: null == order
-          ? _value.order
-          : order // ignore: cast_nullable_to_non_nullable
-              as int,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -178,6 +189,10 @@ class __$$DashboardPageBaseImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      order: null == order
+          ? _value.order
+          : order // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
@@ -187,11 +202,12 @@ class __$$DashboardPageBaseImplCopyWithImpl<$Res>
 class _$DashboardPageBaseImpl implements _DashboardPageBase {
   const _$DashboardPageBaseImpl(
       {required this.id,
+      required this.type,
       required this.title,
       required this.icon,
-      required this.order,
       @JsonKey(name: 'created_at') required this.createdAt,
-      @JsonKey(name: 'updated_at') required this.updatedAt});
+      @JsonKey(name: 'updated_at') required this.updatedAt,
+      this.order = 0});
 
   factory _$DashboardPageBaseImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardPageBaseImplFromJson(json);
@@ -200,6 +216,10 @@ class _$DashboardPageBaseImpl implements _DashboardPageBase {
   @override
   final String id;
 
+  /// Discriminator for the page type
+  @override
+  final String type;
+
   /// The title of the dashboard page, displayed in the UI.
   @override
   final String title;
@@ -207,10 +227,6 @@ class _$DashboardPageBaseImpl implements _DashboardPageBase {
   /// The icon representing the dashboard page.
   @override
   final String? icon;
-
-  /// The display order of the dashboard page in the navigation or list.
-  @override
-  final int order;
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -222,9 +238,14 @@ class _$DashboardPageBaseImpl implements _DashboardPageBase {
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
+  /// The display order of the dashboard page in the navigation or list.
+  @override
+  @JsonKey()
+  final int order;
+
   @override
   String toString() {
-    return 'DashboardPageBase(id: $id, title: $title, icon: $icon, order: $order, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'DashboardPageBase(id: $id, type: $type, title: $title, icon: $icon, createdAt: $createdAt, updatedAt: $updatedAt, order: $order)';
   }
 
   @override
@@ -233,19 +254,20 @@ class _$DashboardPageBaseImpl implements _DashboardPageBase {
         (other.runtimeType == runtimeType &&
             other is _$DashboardPageBaseImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.order, order) || other.order == order) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.order, order) || other.order == order));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, title, icon, order, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      runtimeType, id, type, title, icon, createdAt, updatedAt, order);
 
   /// Create a copy of DashboardPageBase
   /// with the given fields replaced by the non-null parameter values.
@@ -266,13 +288,13 @@ class _$DashboardPageBaseImpl implements _DashboardPageBase {
 
 abstract class _DashboardPageBase implements DashboardPageBase {
   const factory _DashboardPageBase(
-          {required final String id,
-          required final String title,
-          required final String? icon,
-          required final int order,
-          @JsonKey(name: 'created_at') required final DateTime createdAt,
-          @JsonKey(name: 'updated_at') required final DateTime? updatedAt}) =
-      _$DashboardPageBaseImpl;
+      {required final String id,
+      required final String type,
+      required final String title,
+      required final String? icon,
+      @JsonKey(name: 'created_at') required final DateTime createdAt,
+      @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
+      final int order}) = _$DashboardPageBaseImpl;
 
   factory _DashboardPageBase.fromJson(Map<String, dynamic> json) =
       _$DashboardPageBaseImpl.fromJson;
@@ -281,6 +303,10 @@ abstract class _DashboardPageBase implements DashboardPageBase {
   @override
   String get id;
 
+  /// Discriminator for the page type
+  @override
+  String get type;
+
   /// The title of the dashboard page, displayed in the UI.
   @override
   String get title;
@@ -288,10 +314,6 @@ abstract class _DashboardPageBase implements DashboardPageBase {
   /// The icon representing the dashboard page.
   @override
   String? get icon;
-
-  /// The display order of the dashboard page in the navigation or list.
-  @override
-  int get order;
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -302,6 +324,10 @@ abstract class _DashboardPageBase implements DashboardPageBase {
   @override
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
+
+  /// The display order of the dashboard page in the navigation or list.
+  @override
+  int get order;
 
   /// Create a copy of DashboardPageBase
   /// with the given fields replaced by the non-null parameter values.

@@ -5,7 +5,11 @@ import { type IChannel, channelsStoreKey } from '../store';
 
 import type { IUseChannelIcon } from './types';
 
-export function useChannelIcon(id: IChannel['id']): IUseChannelIcon {
+interface IUseChannelIconProps {
+	id: IChannel['id'];
+}
+
+export const useChannelIcon = ({ id }: IUseChannelIconProps): IUseChannelIcon => {
 	const storesManager = injectStoresManager();
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
@@ -22,4 +26,4 @@ export function useChannelIcon(id: IChannel['id']): IUseChannelIcon {
 	return {
 		icon,
 	};
-}
+};

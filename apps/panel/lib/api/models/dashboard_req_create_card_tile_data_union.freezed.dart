@@ -17,8 +17,8 @@ final _privateConstructorUsedError = UnsupportedError(
 DashboardReqCreateCardTileDataUnion
     _$DashboardReqCreateCardTileDataUnionFromJson(Map<String, dynamic> json) {
   switch (json['type']) {
-    case 'device':
-      return DashboardReqCreateCardTileDataUnionDevice.fromJson(json);
+    case 'device-preview':
+      return DashboardReqCreateCardTileDataUnionDevicePreview.fromJson(json);
     case 'clock':
       return DashboardReqCreateCardTileDataUnionClock.fromJson(json);
     case 'weather-day':
@@ -40,11 +40,19 @@ mixin _$DashboardReqCreateCardTileDataUnion {
   /// Unique identifier for the dashboard tile (optional during creation).
   String get id => throw _privateConstructorUsedError;
 
+  /// Discriminator for the tile type
+  String get type => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
   /// The column position of the tile in the grid.
   int get col => throw _privateConstructorUsedError;
+
+  /// A list of data sources used by the tile, typically for real-time updates.
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateTileBaseDataSourceUnion> get dataSource =>
+      throw _privateConstructorUsedError;
 
   /// The number of rows the tile spans in the grid.
   @JsonKey(name: 'row_span')
@@ -53,57 +61,49 @@ mixin _$DashboardReqCreateCardTileDataUnion {
   /// The number of columns the tile spans in the grid.
   @JsonKey(name: 'col_span')
   int get colSpan => throw _privateConstructorUsedError;
-
-  /// A list of data sources used by the tile, typically for real-time updates.
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource =>
-      throw _privateConstructorUsedError;
-
-  /// Specifies the type of tile as a device-specific tile.
-  String get type => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) =>
       throw _privateConstructorUsedError;
@@ -111,45 +111,45 @@ mixin _$DashboardReqCreateCardTileDataUnion {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) =>
       throw _privateConstructorUsedError;
@@ -157,53 +157,54 @@ mixin _$DashboardReqCreateCardTileDataUnion {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardReqCreateCardTileDataUnionDevice value)
-        device,
+    required TResult Function(
+            DashboardReqCreateCardTileDataUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardReqCreateCardTileDataUnionClock value)
         clock,
     required TResult Function(
@@ -216,7 +217,8 @@ mixin _$DashboardReqCreateCardTileDataUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult? Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult? Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -226,7 +228,8 @@ mixin _$DashboardReqCreateCardTileDataUnion {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -257,13 +260,13 @@ abstract class $DashboardReqCreateCardTileDataUnionCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
-      @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
       @JsonKey(name: 'data_source')
       List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      String type});
+      @JsonKey(name: 'row_span') int rowSpan,
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -283,17 +286,21 @@ class _$DashboardReqCreateCardTileDataUnionCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
+    Object? dataSource = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? dataSource = null,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -303,6 +310,10 @@ class _$DashboardReqCreateCardTileDataUnionCopyWithImpl<$Res,
           ? _value.col
           : col // ignore: cast_nullable_to_non_nullable
               as int,
+      dataSource: null == dataSource
+          ? _value.dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateTileBaseDataSourceUnion>,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -311,48 +322,44 @@ class _$DashboardReqCreateCardTileDataUnionCopyWithImpl<$Res,
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      dataSource: null == dataSource
-          ? _value.dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
 
 /// @nodoc
-abstract class _$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWith<$Res>
-    implements $DashboardReqCreateCardTileDataUnionCopyWith<$Res> {
-  factory _$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWith(
-          _$DashboardReqCreateCardTileDataUnionDeviceImpl value,
-          $Res Function(_$DashboardReqCreateCardTileDataUnionDeviceImpl) then) =
-      __$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWithImpl<$Res>;
+abstract class _$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWith<
+    $Res> implements $DashboardReqCreateCardTileDataUnionCopyWith<$Res> {
+  factory _$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWith(
+          _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl value,
+          $Res Function(_$DashboardReqCreateCardTileDataUnionDevicePreviewImpl)
+              then) =
+      __$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWithImpl<
+          $Res>;
   @override
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
-      @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
       @JsonKey(name: 'data_source')
       List<DashboardCreateTileBaseDataSourceUnion> dataSource,
       String device,
       String? icon,
-      String type});
+      @JsonKey(name: 'row_span') int rowSpan,
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
-class __$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWithImpl<$Res>
+class __$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWithImpl<$Res>
     extends _$DashboardReqCreateCardTileDataUnionCopyWithImpl<$Res,
-        _$DashboardReqCreateCardTileDataUnionDeviceImpl>
-    implements _$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWith<$Res> {
-  __$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWithImpl(
-      _$DashboardReqCreateCardTileDataUnionDeviceImpl _value,
-      $Res Function(_$DashboardReqCreateCardTileDataUnionDeviceImpl) _then)
+        _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl>
+    implements
+        _$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWith<$Res> {
+  __$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWithImpl(
+      _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl _value,
+      $Res Function(_$DashboardReqCreateCardTileDataUnionDevicePreviewImpl)
+          _then)
       : super(_value, _then);
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
@@ -361,19 +368,23 @@ class __$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
-    Object? rowSpan = null,
-    Object? colSpan = null,
     Object? dataSource = null,
     Object? device = null,
     Object? icon = freezed,
-    Object? type = null,
+    Object? rowSpan = null,
+    Object? colSpan = null,
   }) {
-    return _then(_$DashboardReqCreateCardTileDataUnionDeviceImpl(
+    return _then(_$DashboardReqCreateCardTileDataUnionDevicePreviewImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -382,14 +393,6 @@ class __$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWithImpl<$Res>
       col: null == col
           ? _value.col
           : col // ignore: cast_nullable_to_non_nullable
-              as int,
-      rowSpan: null == rowSpan
-          ? _value.rowSpan
-          : rowSpan // ignore: cast_nullable_to_non_nullable
-              as int,
-      colSpan: null == colSpan
-          ? _value.colSpan
-          : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
       dataSource: null == dataSource
           ? _value._dataSource
@@ -403,38 +406,46 @@ class __$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
+      rowSpan: null == rowSpan
+          ? _value.rowSpan
+          : rowSpan // ignore: cast_nullable_to_non_nullable
+              as int,
+      colSpan: null == colSpan
+          ? _value.colSpan
+          : colSpan // ignore: cast_nullable_to_non_nullable
+              as int,
     ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
-class _$DashboardReqCreateCardTileDataUnionDeviceImpl
-    implements DashboardReqCreateCardTileDataUnionDevice {
-  const _$DashboardReqCreateCardTileDataUnionDeviceImpl(
+class _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl
+    implements DashboardReqCreateCardTileDataUnionDevicePreview {
+  const _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
-      @JsonKey(name: 'row_span') required this.rowSpan,
-      @JsonKey(name: 'col_span') required this.colSpan,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
       required this.device,
       this.icon,
-      this.type = 'device'})
+      @JsonKey(name: 'row_span') this.rowSpan = 0,
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
-  factory _$DashboardReqCreateCardTileDataUnionDeviceImpl.fromJson(
+  factory _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl.fromJson(
           Map<String, dynamic> json) =>
-      _$$DashboardReqCreateCardTileDataUnionDeviceImplFromJson(json);
+      _$$DashboardReqCreateCardTileDataUnionDevicePreviewImplFromJson(json);
 
   /// Unique identifier for the dashboard tile (optional during creation).
   @override
   final String id;
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -443,16 +454,6 @@ class _$DashboardReqCreateCardTileDataUnionDeviceImpl
   /// The column position of the tile in the grid.
   @override
   final int col;
-
-  /// The number of rows the tile spans in the grid.
-  @override
-  @JsonKey(name: 'row_span')
-  final int rowSpan;
-
-  /// The number of columns the tile spans in the grid.
-  @override
-  @JsonKey(name: 'col_span')
-  final int colSpan;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   final List<DashboardCreateTileBaseDataSourceUnion> _dataSource;
@@ -474,48 +475,62 @@ class _$DashboardReqCreateCardTileDataUnionDeviceImpl
   @override
   final String? icon;
 
-  /// Specifies the type of tile as a device-specific tile.
+  /// The number of rows the tile spans in the grid.
   @override
-  @JsonKey()
-  final String type;
+  @JsonKey(name: 'row_span')
+  final int rowSpan;
+
+  /// The number of columns the tile spans in the grid.
+  @override
+  @JsonKey(name: 'col_span')
+  final int colSpan;
 
   @override
   String toString() {
-    return 'DashboardReqCreateCardTileDataUnion.device(id: $id, row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan, dataSource: $dataSource, device: $device, icon: $icon, type: $type)';
+    return 'DashboardReqCreateCardTileDataUnion.devicePreview(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, device: $device, icon: $icon, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DashboardReqCreateCardTileDataUnionDeviceImpl &&
+            other is _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
-            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             const DeepCollectionEquality()
                 .equals(other._dataSource, _dataSource) &&
             (identical(other.device, device) || other.device == device) &&
             (identical(other.icon, icon) || other.icon == icon) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, row, col, rowSpan, colSpan,
-      const DeepCollectionEquality().hash(_dataSource), device, icon, type);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      type,
+      row,
+      col,
+      const DeepCollectionEquality().hash(_dataSource),
+      device,
+      icon,
+      rowSpan,
+      colSpan);
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWith<
-          _$DashboardReqCreateCardTileDataUnionDeviceImpl>
+  _$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWith<
+          _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl>
       get copyWith =>
-          __$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWithImpl<
-                  _$DashboardReqCreateCardTileDataUnionDeviceImpl>(
+          __$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWithImpl<
+                  _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl>(
               this, _$identity);
 
   @override
@@ -523,49 +538,49 @@ class _$DashboardReqCreateCardTileDataUnionDeviceImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) {
-    return device(
-        id, row, col, rowSpan, colSpan, dataSource, this.device, icon, type);
+    return devicePreview(
+        id, type, row, col, dataSource, device, icon, rowSpan, colSpan);
   }
 
   @override
@@ -573,49 +588,49 @@ class _$DashboardReqCreateCardTileDataUnionDeviceImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) {
-    return device?.call(
-        id, row, col, rowSpan, colSpan, dataSource, this.device, icon, type);
+    return devicePreview?.call(
+        id, type, row, col, dataSource, device, icon, rowSpan, colSpan);
   }
 
   @override
@@ -623,51 +638,51 @@ class _$DashboardReqCreateCardTileDataUnionDeviceImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) {
-    if (device != null) {
-      return device(
-          id, row, col, rowSpan, colSpan, dataSource, this.device, icon, type);
+    if (devicePreview != null) {
+      return devicePreview(
+          id, type, row, col, dataSource, device, icon, rowSpan, colSpan);
     }
     return orElse();
   }
@@ -675,8 +690,9 @@ class _$DashboardReqCreateCardTileDataUnionDeviceImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardReqCreateCardTileDataUnionDevice value)
-        device,
+    required TResult Function(
+            DashboardReqCreateCardTileDataUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardReqCreateCardTileDataUnionClock value)
         clock,
     required TResult Function(
@@ -686,26 +702,28 @@ class _$DashboardReqCreateCardTileDataUnionDeviceImpl
             DashboardReqCreateCardTileDataUnionWeatherForecast value)
         weatherForecast,
   }) {
-    return device(this);
+    return devicePreview(this);
   }
 
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult? Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult? Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
     TResult? Function(DashboardReqCreateCardTileDataUnionWeatherForecast value)?
         weatherForecast,
   }) {
-    return device?.call(this);
+    return devicePreview?.call(this);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -713,41 +731,47 @@ class _$DashboardReqCreateCardTileDataUnionDeviceImpl
         weatherForecast,
     required TResult orElse(),
   }) {
-    if (device != null) {
-      return device(this);
+    if (devicePreview != null) {
+      return devicePreview(this);
     }
     return orElse();
   }
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$DashboardReqCreateCardTileDataUnionDeviceImplToJson(
+    return _$$DashboardReqCreateCardTileDataUnionDevicePreviewImplToJson(
       this,
     );
   }
 }
 
-abstract class DashboardReqCreateCardTileDataUnionDevice
+abstract class DashboardReqCreateCardTileDataUnionDevicePreview
     implements DashboardReqCreateCardTileDataUnion {
-  const factory DashboardReqCreateCardTileDataUnionDevice(
+  const factory DashboardReqCreateCardTileDataUnionDevicePreview(
       {required final String id,
+      required final String type,
       required final int row,
       required final int col,
-      @JsonKey(name: 'row_span') required final int rowSpan,
-      @JsonKey(name: 'col_span') required final int colSpan,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
       required final String device,
       final String? icon,
-      final String type}) = _$DashboardReqCreateCardTileDataUnionDeviceImpl;
+      @JsonKey(name: 'row_span') final int rowSpan,
+      @JsonKey(name: 'col_span')
+      final int
+          colSpan}) = _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl;
 
-  factory DashboardReqCreateCardTileDataUnionDevice.fromJson(
+  factory DashboardReqCreateCardTileDataUnionDevicePreview.fromJson(
           Map<String, dynamic> json) =
-      _$DashboardReqCreateCardTileDataUnionDeviceImpl.fromJson;
+      _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl.fromJson;
 
   /// Unique identifier for the dashboard tile (optional during creation).
   @override
   String get id;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override
@@ -756,16 +780,6 @@ abstract class DashboardReqCreateCardTileDataUnionDevice
   /// The column position of the tile in the grid.
   @override
   int get col;
-
-  /// The number of rows the tile spans in the grid.
-  @override
-  @JsonKey(name: 'row_span')
-  int get rowSpan;
-
-  /// The number of columns the tile spans in the grid.
-  @override
-  @JsonKey(name: 'col_span')
-  int get colSpan;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
@@ -778,16 +792,22 @@ abstract class DashboardReqCreateCardTileDataUnionDevice
   /// The icon representing the tile.
   String? get icon;
 
-  /// Specifies the type of tile as a device-specific tile.
+  /// The number of rows the tile spans in the grid.
   @override
-  String get type;
+  @JsonKey(name: 'row_span')
+  int get rowSpan;
+
+  /// The number of columns the tile spans in the grid.
+  @override
+  @JsonKey(name: 'col_span')
+  int get colSpan;
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$DashboardReqCreateCardTileDataUnionDeviceImplCopyWith<
-          _$DashboardReqCreateCardTileDataUnionDeviceImpl>
+  _$$DashboardReqCreateCardTileDataUnionDevicePreviewImplCopyWith<
+          _$DashboardReqCreateCardTileDataUnionDevicePreviewImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
@@ -802,13 +822,13 @@ abstract class _$$DashboardReqCreateCardTileDataUnionClockImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
-      @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
       @JsonKey(name: 'data_source')
       List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      String type});
+      @JsonKey(name: 'row_span') int rowSpan,
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -827,17 +847,21 @@ class __$$DashboardReqCreateCardTileDataUnionClockImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
+    Object? dataSource = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? dataSource = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardReqCreateCardTileDataUnionClockImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -847,6 +871,10 @@ class __$$DashboardReqCreateCardTileDataUnionClockImplCopyWithImpl<$Res>
           ? _value.col
           : col // ignore: cast_nullable_to_non_nullable
               as int,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateTileBaseDataSourceUnion>,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -855,14 +883,6 @@ class __$$DashboardReqCreateCardTileDataUnionClockImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      dataSource: null == dataSource
-          ? _value._dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -873,13 +893,13 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
     implements DashboardReqCreateCardTileDataUnionClock {
   const _$DashboardReqCreateCardTileDataUnionClockImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
-      @JsonKey(name: 'row_span') required this.rowSpan,
-      @JsonKey(name: 'col_span') required this.colSpan,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      this.type = 'clock'})
+      @JsonKey(name: 'row_span') this.rowSpan = 0,
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardReqCreateCardTileDataUnionClockImpl.fromJson(
@@ -890,6 +910,10 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
   @override
   final String id;
 
+  /// Discriminator for the tile type
+  @override
+  final String type;
+
   /// The row position of the tile in the grid.
   @override
   final int row;
@@ -897,16 +921,6 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
   /// The column position of the tile in the grid.
   @override
   final int col;
-
-  /// The number of rows the tile spans in the grid.
-  @override
-  @JsonKey(name: 'row_span')
-  final int rowSpan;
-
-  /// The number of columns the tile spans in the grid.
-  @override
-  @JsonKey(name: 'col_span')
-  final int colSpan;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   final List<DashboardCreateTileBaseDataSourceUnion> _dataSource;
@@ -920,14 +934,19 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
     return EqualUnmodifiableListView(_dataSource);
   }
 
-  /// Specifies the type of tile as a clock.
+  /// The number of rows the tile spans in the grid.
   @override
-  @JsonKey()
-  final String type;
+  @JsonKey(name: 'row_span')
+  final int rowSpan;
+
+  /// The number of columns the tile spans in the grid.
+  @override
+  @JsonKey(name: 'col_span')
+  final int colSpan;
 
   @override
   String toString() {
-    return 'DashboardReqCreateCardTileDataUnion.clock(id: $id, row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan, dataSource: $dataSource, type: $type)';
+    return 'DashboardReqCreateCardTileDataUnion.clock(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -936,19 +955,19 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardReqCreateCardTileDataUnionClockImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
-            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             const DeepCollectionEquality()
                 .equals(other._dataSource, _dataSource) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, row, col, rowSpan, colSpan,
-      const DeepCollectionEquality().hash(_dataSource), type);
+  int get hashCode => Object.hash(runtimeType, id, type, row, col,
+      const DeepCollectionEquality().hash(_dataSource), rowSpan, colSpan);
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -966,48 +985,48 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) {
-    return clock(id, row, col, rowSpan, colSpan, dataSource, type);
+    return clock(id, type, row, col, dataSource, rowSpan, colSpan);
   }
 
   @override
@@ -1015,48 +1034,48 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) {
-    return clock?.call(id, row, col, rowSpan, colSpan, dataSource, type);
+    return clock?.call(id, type, row, col, dataSource, rowSpan, colSpan);
   }
 
   @override
@@ -1064,50 +1083,50 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) {
     if (clock != null) {
-      return clock(id, row, col, rowSpan, colSpan, dataSource, type);
+      return clock(id, type, row, col, dataSource, rowSpan, colSpan);
     }
     return orElse();
   }
@@ -1115,8 +1134,9 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardReqCreateCardTileDataUnionDevice value)
-        device,
+    required TResult Function(
+            DashboardReqCreateCardTileDataUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardReqCreateCardTileDataUnionClock value)
         clock,
     required TResult Function(
@@ -1132,7 +1152,8 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult? Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult? Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -1145,7 +1166,8 @@ class _$DashboardReqCreateCardTileDataUnionClockImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -1171,13 +1193,14 @@ abstract class DashboardReqCreateCardTileDataUnionClock
     implements DashboardReqCreateCardTileDataUnion {
   const factory DashboardReqCreateCardTileDataUnionClock(
       {required final String id,
+      required final String type,
       required final int row,
       required final int col,
-      @JsonKey(name: 'row_span') required final int rowSpan,
-      @JsonKey(name: 'col_span') required final int colSpan,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      final String type}) = _$DashboardReqCreateCardTileDataUnionClockImpl;
+      @JsonKey(name: 'row_span') final int rowSpan,
+      @JsonKey(name: 'col_span')
+      final int colSpan}) = _$DashboardReqCreateCardTileDataUnionClockImpl;
 
   factory DashboardReqCreateCardTileDataUnionClock.fromJson(
           Map<String, dynamic> json) =
@@ -1187,6 +1210,10 @@ abstract class DashboardReqCreateCardTileDataUnionClock
   @override
   String get id;
 
+  /// Discriminator for the tile type
+  @override
+  String get type;
+
   /// The row position of the tile in the grid.
   @override
   int get row;
@@ -1194,6 +1221,11 @@ abstract class DashboardReqCreateCardTileDataUnionClock
   /// The column position of the tile in the grid.
   @override
   int get col;
+
+  /// A list of data sources used by the tile, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
 
   /// The number of rows the tile spans in the grid.
   @override
@@ -1204,15 +1236,6 @@ abstract class DashboardReqCreateCardTileDataUnionClock
   @override
   @JsonKey(name: 'col_span')
   int get colSpan;
-
-  /// A list of data sources used by the tile, typically for real-time updates.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
-
-  /// Specifies the type of tile as a clock.
-  @override
-  String get type;
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -1235,13 +1258,13 @@ abstract class _$$DashboardReqCreateCardTileDataUnionWeatherDayImplCopyWith<
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
-      @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
       @JsonKey(name: 'data_source')
       List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      String type});
+      @JsonKey(name: 'row_span') int rowSpan,
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -1261,17 +1284,21 @@ class __$$DashboardReqCreateCardTileDataUnionWeatherDayImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
+    Object? dataSource = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? dataSource = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardReqCreateCardTileDataUnionWeatherDayImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -1281,6 +1308,10 @@ class __$$DashboardReqCreateCardTileDataUnionWeatherDayImplCopyWithImpl<$Res>
           ? _value.col
           : col // ignore: cast_nullable_to_non_nullable
               as int,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateTileBaseDataSourceUnion>,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -1289,14 +1320,6 @@ class __$$DashboardReqCreateCardTileDataUnionWeatherDayImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      dataSource: null == dataSource
-          ? _value._dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -1307,13 +1330,13 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
     implements DashboardReqCreateCardTileDataUnionWeatherDay {
   const _$DashboardReqCreateCardTileDataUnionWeatherDayImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
-      @JsonKey(name: 'row_span') required this.rowSpan,
-      @JsonKey(name: 'col_span') required this.colSpan,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      this.type = 'weather-day'})
+      @JsonKey(name: 'row_span') this.rowSpan = 0,
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardReqCreateCardTileDataUnionWeatherDayImpl.fromJson(
@@ -1324,6 +1347,10 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
   @override
   final String id;
 
+  /// Discriminator for the tile type
+  @override
+  final String type;
+
   /// The row position of the tile in the grid.
   @override
   final int row;
@@ -1331,16 +1358,6 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
   /// The column position of the tile in the grid.
   @override
   final int col;
-
-  /// The number of rows the tile spans in the grid.
-  @override
-  @JsonKey(name: 'row_span')
-  final int rowSpan;
-
-  /// The number of columns the tile spans in the grid.
-  @override
-  @JsonKey(name: 'col_span')
-  final int colSpan;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   final List<DashboardCreateTileBaseDataSourceUnion> _dataSource;
@@ -1354,14 +1371,19 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
     return EqualUnmodifiableListView(_dataSource);
   }
 
-  /// Specifies the type of tile as a day weather tile.
+  /// The number of rows the tile spans in the grid.
   @override
-  @JsonKey()
-  final String type;
+  @JsonKey(name: 'row_span')
+  final int rowSpan;
+
+  /// The number of columns the tile spans in the grid.
+  @override
+  @JsonKey(name: 'col_span')
+  final int colSpan;
 
   @override
   String toString() {
-    return 'DashboardReqCreateCardTileDataUnion.weatherDay(id: $id, row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan, dataSource: $dataSource, type: $type)';
+    return 'DashboardReqCreateCardTileDataUnion.weatherDay(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -1370,19 +1392,19 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardReqCreateCardTileDataUnionWeatherDayImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
-            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             const DeepCollectionEquality()
                 .equals(other._dataSource, _dataSource) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, row, col, rowSpan, colSpan,
-      const DeepCollectionEquality().hash(_dataSource), type);
+  int get hashCode => Object.hash(runtimeType, id, type, row, col,
+      const DeepCollectionEquality().hash(_dataSource), rowSpan, colSpan);
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -1401,48 +1423,48 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) {
-    return weatherDay(id, row, col, rowSpan, colSpan, dataSource, type);
+    return weatherDay(id, type, row, col, dataSource, rowSpan, colSpan);
   }
 
   @override
@@ -1450,48 +1472,48 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) {
-    return weatherDay?.call(id, row, col, rowSpan, colSpan, dataSource, type);
+    return weatherDay?.call(id, type, row, col, dataSource, rowSpan, colSpan);
   }
 
   @override
@@ -1499,50 +1521,50 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) {
     if (weatherDay != null) {
-      return weatherDay(id, row, col, rowSpan, colSpan, dataSource, type);
+      return weatherDay(id, type, row, col, dataSource, rowSpan, colSpan);
     }
     return orElse();
   }
@@ -1550,8 +1572,9 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardReqCreateCardTileDataUnionDevice value)
-        device,
+    required TResult Function(
+            DashboardReqCreateCardTileDataUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardReqCreateCardTileDataUnionClock value)
         clock,
     required TResult Function(
@@ -1567,7 +1590,8 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult? Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult? Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -1580,7 +1604,8 @@ class _$DashboardReqCreateCardTileDataUnionWeatherDayImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -1606,13 +1631,14 @@ abstract class DashboardReqCreateCardTileDataUnionWeatherDay
     implements DashboardReqCreateCardTileDataUnion {
   const factory DashboardReqCreateCardTileDataUnionWeatherDay(
       {required final String id,
+      required final String type,
       required final int row,
       required final int col,
-      @JsonKey(name: 'row_span') required final int rowSpan,
-      @JsonKey(name: 'col_span') required final int colSpan,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      final String type}) = _$DashboardReqCreateCardTileDataUnionWeatherDayImpl;
+      @JsonKey(name: 'row_span') final int rowSpan,
+      @JsonKey(name: 'col_span')
+      final int colSpan}) = _$DashboardReqCreateCardTileDataUnionWeatherDayImpl;
 
   factory DashboardReqCreateCardTileDataUnionWeatherDay.fromJson(
           Map<String, dynamic> json) =
@@ -1622,6 +1648,10 @@ abstract class DashboardReqCreateCardTileDataUnionWeatherDay
   @override
   String get id;
 
+  /// Discriminator for the tile type
+  @override
+  String get type;
+
   /// The row position of the tile in the grid.
   @override
   int get row;
@@ -1629,6 +1659,11 @@ abstract class DashboardReqCreateCardTileDataUnionWeatherDay
   /// The column position of the tile in the grid.
   @override
   int get col;
+
+  /// A list of data sources used by the tile, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
 
   /// The number of rows the tile spans in the grid.
   @override
@@ -1639,15 +1674,6 @@ abstract class DashboardReqCreateCardTileDataUnionWeatherDay
   @override
   @JsonKey(name: 'col_span')
   int get colSpan;
-
-  /// A list of data sources used by the tile, typically for real-time updates.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
-
-  /// Specifies the type of tile as a day weather tile.
-  @override
-  String get type;
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -1672,13 +1698,13 @@ abstract class _$$DashboardReqCreateCardTileDataUnionWeatherForecastImplCopyWith
   @useResult
   $Res call(
       {String id,
+      String type,
       int row,
       int col,
-      @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
       @JsonKey(name: 'data_source')
       List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      String type});
+      @JsonKey(name: 'row_span') int rowSpan,
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -1701,17 +1727,21 @@ class __$$DashboardReqCreateCardTileDataUnionWeatherForecastImplCopyWithImpl<
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? row = null,
     Object? col = null,
+    Object? dataSource = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? dataSource = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardReqCreateCardTileDataUnionWeatherForecastImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       row: null == row
           ? _value.row
@@ -1721,6 +1751,10 @@ class __$$DashboardReqCreateCardTileDataUnionWeatherForecastImplCopyWithImpl<
           ? _value.col
           : col // ignore: cast_nullable_to_non_nullable
               as int,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateTileBaseDataSourceUnion>,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -1729,14 +1763,6 @@ class __$$DashboardReqCreateCardTileDataUnionWeatherForecastImplCopyWithImpl<
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      dataSource: null == dataSource
-          ? _value._dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -1747,13 +1773,13 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
     implements DashboardReqCreateCardTileDataUnionWeatherForecast {
   const _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl(
       {required this.id,
+      required this.type,
       required this.row,
       required this.col,
-      @JsonKey(name: 'row_span') required this.rowSpan,
-      @JsonKey(name: 'col_span') required this.colSpan,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      this.type = 'weather-forecast'})
+      @JsonKey(name: 'row_span') this.rowSpan = 0,
+      @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
 
   factory _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl.fromJson(
@@ -1764,6 +1790,10 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
   @override
   final String id;
 
+  /// Discriminator for the tile type
+  @override
+  final String type;
+
   /// The row position of the tile in the grid.
   @override
   final int row;
@@ -1771,16 +1801,6 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
   /// The column position of the tile in the grid.
   @override
   final int col;
-
-  /// The number of rows the tile spans in the grid.
-  @override
-  @JsonKey(name: 'row_span')
-  final int rowSpan;
-
-  /// The number of columns the tile spans in the grid.
-  @override
-  @JsonKey(name: 'col_span')
-  final int colSpan;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   final List<DashboardCreateTileBaseDataSourceUnion> _dataSource;
@@ -1794,14 +1814,19 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
     return EqualUnmodifiableListView(_dataSource);
   }
 
-  /// Specifies the type of tile as a weather forecast tile.
+  /// The number of rows the tile spans in the grid.
   @override
-  @JsonKey()
-  final String type;
+  @JsonKey(name: 'row_span')
+  final int rowSpan;
+
+  /// The number of columns the tile spans in the grid.
+  @override
+  @JsonKey(name: 'col_span')
+  final int colSpan;
 
   @override
   String toString() {
-    return 'DashboardReqCreateCardTileDataUnion.weatherForecast(id: $id, row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan, dataSource: $dataSource, type: $type)';
+    return 'DashboardReqCreateCardTileDataUnion.weatherForecast(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -1810,19 +1835,19 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
         (other.runtimeType == runtimeType &&
             other is _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
-            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
             const DeepCollectionEquality()
                 .equals(other._dataSource, _dataSource) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, row, col, rowSpan, colSpan,
-      const DeepCollectionEquality().hash(_dataSource), type);
+  int get hashCode => Object.hash(runtimeType, id, type, row, col,
+      const DeepCollectionEquality().hash(_dataSource), rowSpan, colSpan);
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
   /// with the given fields replaced by the non-null parameter values.
@@ -1841,48 +1866,48 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
   TResult when<TResult extends Object?>({
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
+        devicePreview,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         clock,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherDay,
     required TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)
         weatherForecast,
   }) {
-    return weatherForecast(id, row, col, rowSpan, colSpan, dataSource, type);
+    return weatherForecast(id, type, row, col, dataSource, rowSpan, colSpan);
   }
 
   @override
@@ -1890,49 +1915,49 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult? Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
   }) {
     return weatherForecast?.call(
-        id, row, col, rowSpan, colSpan, dataSource, type);
+        id, type, row, col, dataSource, rowSpan, colSpan);
   }
 
   @override
@@ -1940,50 +1965,50 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
             String device,
             String? icon,
-            String type)?
-        device,
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
+        devicePreview,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         clock,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherDay,
     TResult Function(
             String id,
+            String type,
             int row,
             int col,
-            @JsonKey(name: 'row_span') int rowSpan,
-            @JsonKey(name: 'col_span') int colSpan,
             @JsonKey(name: 'data_source')
             List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-            String type)?
+            @JsonKey(name: 'row_span') int rowSpan,
+            @JsonKey(name: 'col_span') int colSpan)?
         weatherForecast,
     required TResult orElse(),
   }) {
     if (weatherForecast != null) {
-      return weatherForecast(id, row, col, rowSpan, colSpan, dataSource, type);
+      return weatherForecast(id, type, row, col, dataSource, rowSpan, colSpan);
     }
     return orElse();
   }
@@ -1991,8 +2016,9 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DashboardReqCreateCardTileDataUnionDevice value)
-        device,
+    required TResult Function(
+            DashboardReqCreateCardTileDataUnionDevicePreview value)
+        devicePreview,
     required TResult Function(DashboardReqCreateCardTileDataUnionClock value)
         clock,
     required TResult Function(
@@ -2008,7 +2034,8 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult? Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult? Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult? Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -2021,7 +2048,8 @@ class _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DashboardReqCreateCardTileDataUnionDevice value)? device,
+    TResult Function(DashboardReqCreateCardTileDataUnionDevicePreview value)?
+        devicePreview,
     TResult Function(DashboardReqCreateCardTileDataUnionClock value)? clock,
     TResult Function(DashboardReqCreateCardTileDataUnionWeatherDay value)?
         weatherDay,
@@ -2047,14 +2075,15 @@ abstract class DashboardReqCreateCardTileDataUnionWeatherForecast
     implements DashboardReqCreateCardTileDataUnion {
   const factory DashboardReqCreateCardTileDataUnionWeatherForecast(
       {required final String id,
+      required final String type,
       required final int row,
       required final int col,
-      @JsonKey(name: 'row_span') required final int rowSpan,
-      @JsonKey(name: 'col_span') required final int colSpan,
       @JsonKey(name: 'data_source')
       required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      final String
-          type}) = _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl;
+      @JsonKey(name: 'row_span') final int rowSpan,
+      @JsonKey(name: 'col_span')
+      final int
+          colSpan}) = _$DashboardReqCreateCardTileDataUnionWeatherForecastImpl;
 
   factory DashboardReqCreateCardTileDataUnionWeatherForecast.fromJson(
           Map<String, dynamic> json) =
@@ -2064,6 +2093,10 @@ abstract class DashboardReqCreateCardTileDataUnionWeatherForecast
   @override
   String get id;
 
+  /// Discriminator for the tile type
+  @override
+  String get type;
+
   /// The row position of the tile in the grid.
   @override
   int get row;
@@ -2071,6 +2104,11 @@ abstract class DashboardReqCreateCardTileDataUnionWeatherForecast
   /// The column position of the tile in the grid.
   @override
   int get col;
+
+  /// A list of data sources used by the tile, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
 
   /// The number of rows the tile spans in the grid.
   @override
@@ -2081,15 +2119,6 @@ abstract class DashboardReqCreateCardTileDataUnionWeatherForecast
   @override
   @JsonKey(name: 'col_span')
   int get colSpan;
-
-  /// A list of data sources used by the tile, typically for real-time updates.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
-
-  /// Specifies the type of tile as a weather forecast tile.
-  @override
-  String get type;
 
   /// Create a copy of DashboardReqCreateCardTileDataUnion
   /// with the given fields replaced by the non-null parameter values.

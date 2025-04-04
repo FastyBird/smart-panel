@@ -9,7 +9,7 @@ import {
 	type IChannelsControlsAddActionPayload,
 } from './channels.controls.store.types';
 
-export function transformChannelControlResponse(response: IChannelControlRes): IChannelControl {
+export const transformChannelControlResponse = (response: IChannelControlRes): IChannelControl => {
 	const parsedChannelControl = ChannelControlSchema.safeParse({
 		id: response.id,
 		channel: response.channel,
@@ -23,11 +23,11 @@ export function transformChannelControlResponse(response: IChannelControlRes): I
 	}
 
 	return parsedChannelControl.data;
-}
+};
 
-export function transformChannelControlCreateRequest(
+export const transformChannelControlCreateRequest = (
 	control: IChannelsControlsAddActionPayload['data'] & { id?: string; channel: string }
-): IChannelControlCreateReq {
+): IChannelControlCreateReq => {
 	const parsedRequest = ChannelControlCreateReqSchema.safeParse({
 		id: control.id,
 		channel: control.channel,
@@ -39,4 +39,4 @@ export function transformChannelControlCreateRequest(
 	}
 
 	return parsedRequest.data;
-}
+};

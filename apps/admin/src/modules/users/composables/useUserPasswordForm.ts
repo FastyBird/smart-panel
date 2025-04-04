@@ -10,7 +10,12 @@ import { UsersApiException, UsersValidationException } from '../users.exceptions
 
 import type { IUseUserPasswordForm, IUserPasswordForm } from './types';
 
-export const useUserPasswordForm = (user: IUser, messages?: { success?: string; error?: string }): IUseUserPasswordForm => {
+interface IUseUserPasswordFormProps {
+	user: IUser;
+	messages?: { success?: string; error?: string };
+}
+
+export const useUserPasswordForm = ({ user, messages }: IUseUserPasswordFormProps): IUseUserPasswordForm => {
 	const storesManager = injectStoresManager();
 
 	const usersStore = storesManager.getStore(usersStoreKey);

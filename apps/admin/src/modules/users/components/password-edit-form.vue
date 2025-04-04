@@ -62,9 +62,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, submit, formResult } = useUserPasswordForm(props.user, {
-	success: t('usersModule.messages.passwordEdited'),
-	error: t('usersModule.messages.passwordNotEdited'),
+const { model, formEl, submit, formResult } = useUserPasswordForm({
+	user: props.user,
+	messages: {
+		success: t('usersModule.messages.passwordEdited'),
+		error: t('usersModule.messages.passwordNotEdited'),
+	},
 });
 
 const rules = reactive<FormRules<IUserPasswordForm>>({

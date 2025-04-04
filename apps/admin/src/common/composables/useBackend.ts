@@ -4,7 +4,7 @@ import { injectBackendClient } from '../services';
 
 import type { IUseBackend } from './types';
 
-export function useBackend(): IUseBackend {
+export const useBackend = (): IUseBackend => {
 	const client = injectBackendClient();
 
 	const pendingRequests = ref<number>(0);
@@ -13,4 +13,4 @@ export function useBackend(): IUseBackend {
 		pendingRequests,
 		client,
 	};
-}
+};

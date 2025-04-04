@@ -151,8 +151,8 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { channel, isLoading, fetchChannel } = useChannel(props.id);
-const { icon: channelIcon } = useChannelIcon(props.id);
+const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
+const { icon: channelIcon } = useChannelIcon({ id: props.id });
 
 if (!validateUuid(props.id)) {
 	throw new Error('Channel identifier is not valid');
@@ -192,7 +192,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channels.edit', { channel: channel.value?.name }),
-				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANEL, params: { channelId: props.id, id: props.device?.id } }),
+				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { channelId: props.id, id: props.device?.id } }),
 			});
 		} else {
 			items.push({

@@ -14,9 +14,9 @@ import {
 import type { IConfigLanguageRes } from './config-language.store.types';
 import type { IConfigWeatherRes } from './config-weather.store.types';
 
-export function transformConfigDisplayResponse(
+export const transformConfigDisplayResponse = (
 	response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes
-): IConfigDisplay {
+): IConfigDisplay => {
 	const parsed = ConfigDisplaySchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
@@ -24,9 +24,9 @@ export function transformConfigDisplayResponse(
 	}
 
 	return parsed.data;
-}
+};
 
-export function transformConfigDisplayUpdateRequest(config: IConfigDisplayEditActionPayload['data']): IConfigDisplayUpdateReq {
+export const transformConfigDisplayUpdateRequest = (config: IConfigDisplayEditActionPayload['data']): IConfigDisplayUpdateReq => {
 	const parsedRequest = ConfigDisplayUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigDisplayType.display });
 
 	if (!parsedRequest.success) {
@@ -34,4 +34,4 @@ export function transformConfigDisplayUpdateRequest(config: IConfigDisplayEditAc
 	}
 
 	return parsedRequest.data;
-}
+};

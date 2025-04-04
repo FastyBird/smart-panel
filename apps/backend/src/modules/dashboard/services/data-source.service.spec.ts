@@ -37,7 +37,7 @@ import { UpdateDeviceChannelDataSourceDto } from '../dto/update-data-source.dto'
 import {
 	DataSourceEntity,
 	DeviceChannelDataSourceEntity,
-	DeviceTileEntity,
+	DevicePreviewTileEntity,
 	TilesPageEntity,
 } from '../entities/dashboard.entity';
 import { ChannelPropertyExistsConstraintValidator } from '../validators/channel-property-exists-constraint.validator';
@@ -128,9 +128,9 @@ describe('DataSourceService', () => {
 		updatedAt: new Date(),
 	};
 
-	const mockDeviceTile: DeviceTileEntity = {
+	const mockDeviceTile: DevicePreviewTileEntity = {
 		id: uuid().toString(),
-		type: 'device',
+		type: 'device-preview',
 		page: mockTilesPage.id,
 		card: null,
 		device: mockDevice.id,
@@ -280,7 +280,9 @@ describe('DataSourceService', () => {
 			const mockDataSources: DataSourceEntity[] = [mockDeviceChannelDataSource];
 
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-			jest.spyOn(tilesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(DeviceTileEntity, mockDeviceTile));
+			jest
+				.spyOn(tilesService, 'getOneOrThrow')
+				.mockResolvedValue(plainToInstance(DevicePreviewTileEntity, mockDeviceTile));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
@@ -310,7 +312,9 @@ describe('DataSourceService', () => {
 	describe('findOne', () => {
 		it('should return a tile by ID', async () => {
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-			jest.spyOn(tilesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(DeviceTileEntity, mockDeviceTile));
+			jest
+				.spyOn(tilesService, 'getOneOrThrow')
+				.mockResolvedValue(plainToInstance(DevicePreviewTileEntity, mockDeviceTile));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
@@ -344,7 +348,9 @@ describe('DataSourceService', () => {
 			const dataSourceId = uuid().toString();
 
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-			jest.spyOn(tilesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(DeviceTileEntity, mockDeviceTile));
+			jest
+				.spyOn(tilesService, 'getOneOrThrow')
+				.mockResolvedValue(plainToInstance(DevicePreviewTileEntity, mockDeviceTile));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
@@ -401,7 +407,9 @@ describe('DataSourceService', () => {
 			};
 
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-			jest.spyOn(tilesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(DeviceTileEntity, mockDeviceTile));
+			jest
+				.spyOn(tilesService, 'getOneOrThrow')
+				.mockResolvedValue(plainToInstance(DevicePreviewTileEntity, mockDeviceTile));
 			jest.spyOn(devicesService, 'findOne').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
 			jest.spyOn(channelsService, 'findOne').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
 			jest
@@ -451,7 +459,9 @@ describe('DataSourceService', () => {
 			};
 
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-			jest.spyOn(tilesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(DeviceTileEntity, mockDeviceTile));
+			jest
+				.spyOn(tilesService, 'getOneOrThrow')
+				.mockResolvedValue(plainToInstance(DevicePreviewTileEntity, mockDeviceTile));
 
 			await expect(
 				dataSourceService.create(createDto as CreateDeviceChannelDataSourceDto, { tileId: mockDeviceTile.id }),
@@ -493,7 +503,9 @@ describe('DataSourceService', () => {
 			};
 
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-			jest.spyOn(tilesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(DeviceTileEntity, mockDeviceTile));
+			jest
+				.spyOn(tilesService, 'getOneOrThrow')
+				.mockResolvedValue(plainToInstance(DevicePreviewTileEntity, mockDeviceTile));
 			jest.spyOn(devicesService, 'findOne').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
 			jest.spyOn(channelsService, 'findOne').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
 			jest
@@ -535,7 +547,9 @@ describe('DataSourceService', () => {
 	describe('remove', () => {
 		it('should remove a data source', async () => {
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-			jest.spyOn(tilesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(DeviceTileEntity, mockDeviceTile));
+			jest
+				.spyOn(tilesService, 'getOneOrThrow')
+				.mockResolvedValue(plainToInstance(DevicePreviewTileEntity, mockDeviceTile));
 			jest
 				.spyOn(dataSourceService, 'findOne')
 				.mockResolvedValue(plainToInstance(DeviceChannelDataSourceEntity, mockDeviceChannelDataSource));

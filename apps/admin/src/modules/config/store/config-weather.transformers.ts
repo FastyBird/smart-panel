@@ -14,9 +14,9 @@ import {
 	type IConfigWeatherUpdateReq,
 } from './config-weather.store.types';
 
-export function transformConfigWeatherResponse(
+export const transformConfigWeatherResponse = (
 	response: IConfigAudioRes | IConfigDisplayRes | IConfigLanguageRes | IConfigWeatherRes
-): IConfigWeather {
+): IConfigWeather => {
 	const parsed = ConfigWeatherSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
@@ -24,9 +24,9 @@ export function transformConfigWeatherResponse(
 	}
 
 	return parsed.data;
-}
+};
 
-export function transformConfigWeatherUpdateRequest(config: IConfigWeatherEditActionPayload['data']): IConfigWeatherUpdateReq {
+export const transformConfigWeatherUpdateRequest = (config: IConfigWeatherEditActionPayload['data']): IConfigWeatherUpdateReq => {
 	const parsedRequest = ConfigWeatherUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigWeatherType.weather });
 
 	if (!parsedRequest.success) {
@@ -34,4 +34,4 @@ export function transformConfigWeatherUpdateRequest(config: IConfigWeatherEditAc
 	}
 
 	return parsedRequest.data;
-}
+};

@@ -26,7 +26,7 @@ import { ChannelsService } from '../../devices/services/channels.service';
 import { DevicesService } from '../../devices/services/devices.service';
 import { CreateDeviceChannelDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDeviceChannelDataSourceDto } from '../dto/update-data-source.dto';
-import { DeviceChannelDataSourceEntity, DeviceTileEntity, TilesPageEntity } from '../entities/dashboard.entity';
+import { DeviceChannelDataSourceEntity, DevicePreviewTileEntity, TilesPageEntity } from '../entities/dashboard.entity';
 import { DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
 import { DataSourceService } from '../services/data-source.service';
 import { PagesService } from '../services/pages.service';
@@ -110,9 +110,9 @@ describe('PagesTilesDataSourceController', () => {
 		updatedAt: new Date(),
 	};
 
-	const mockDeviceTile: DeviceTileEntity = {
+	const mockDeviceTile: DevicePreviewTileEntity = {
 		id: uuid().toString(),
-		type: 'device',
+		type: 'device-preview',
 		page: mockTilesPage.id,
 		card: null,
 		device: mockDevice.id,

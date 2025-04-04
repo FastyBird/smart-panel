@@ -21,6 +21,9 @@ DashboardUpdateDayWeatherTile _$DashboardUpdateDayWeatherTileFromJson(
 
 /// @nodoc
 mixin _$DashboardUpdateDayWeatherTile {
+  /// Discriminator for the tile type
+  String get type => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
@@ -34,9 +37,6 @@ mixin _$DashboardUpdateDayWeatherTile {
   /// The number of columns the tile spans in the grid.
   @JsonKey(name: 'col_span')
   int get colSpan => throw _privateConstructorUsedError;
-
-  /// Specifies the type of tile as a day weather tile.
-  String get type => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardUpdateDayWeatherTile to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -57,11 +57,11 @@ abstract class $DashboardUpdateDayWeatherTileCopyWith<$Res> {
           DashboardUpdateDayWeatherTile>;
   @useResult
   $Res call(
-      {int row,
+      {String type,
+      int row,
       int col,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -80,13 +80,17 @@ class _$DashboardUpdateDayWeatherTileCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       row: null == row
           ? _value.row
           : row // ignore: cast_nullable_to_non_nullable
@@ -103,10 +107,6 @@ class _$DashboardUpdateDayWeatherTileCopyWithImpl<$Res,
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -121,11 +121,11 @@ abstract class _$$DashboardUpdateDayWeatherTileImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {int row,
+      {String type,
+      int row,
       int col,
       @JsonKey(name: 'row_span') int rowSpan,
-      @JsonKey(name: 'col_span') int colSpan,
-      String type});
+      @JsonKey(name: 'col_span') int colSpan});
 }
 
 /// @nodoc
@@ -143,13 +143,17 @@ class __$$DashboardUpdateDayWeatherTileImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? row = null,
     Object? col = null,
     Object? rowSpan = null,
     Object? colSpan = null,
-    Object? type = null,
   }) {
     return _then(_$DashboardUpdateDayWeatherTileImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       row: null == row
           ? _value.row
           : row // ignore: cast_nullable_to_non_nullable
@@ -166,10 +170,6 @@ class __$$DashboardUpdateDayWeatherTileImplCopyWithImpl<$Res>
           ? _value.colSpan
           : colSpan // ignore: cast_nullable_to_non_nullable
               as int,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -179,15 +179,19 @@ class __$$DashboardUpdateDayWeatherTileImplCopyWithImpl<$Res>
 class _$DashboardUpdateDayWeatherTileImpl
     implements _DashboardUpdateDayWeatherTile {
   const _$DashboardUpdateDayWeatherTileImpl(
-      {required this.row,
+      {required this.type,
+      required this.row,
       required this.col,
       @JsonKey(name: 'row_span') required this.rowSpan,
-      @JsonKey(name: 'col_span') required this.colSpan,
-      this.type = 'weather-day'});
+      @JsonKey(name: 'col_span') required this.colSpan});
 
   factory _$DashboardUpdateDayWeatherTileImpl.fromJson(
           Map<String, dynamic> json) =>
       _$$DashboardUpdateDayWeatherTileImplFromJson(json);
+
+  /// Discriminator for the tile type
+  @override
+  final String type;
 
   /// The row position of the tile in the grid.
   @override
@@ -207,14 +211,9 @@ class _$DashboardUpdateDayWeatherTileImpl
   @JsonKey(name: 'col_span')
   final int colSpan;
 
-  /// Specifies the type of tile as a day weather tile.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DashboardUpdateDayWeatherTile(row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan, type: $type)';
+    return 'DashboardUpdateDayWeatherTile(type: $type, row: $row, col: $col, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -222,17 +221,17 @@ class _$DashboardUpdateDayWeatherTileImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardUpdateDayWeatherTileImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             (identical(other.rowSpan, rowSpan) || other.rowSpan == rowSpan) &&
-            (identical(other.colSpan, colSpan) || other.colSpan == colSpan) &&
-            (identical(other.type, type) || other.type == type));
+            (identical(other.colSpan, colSpan) || other.colSpan == colSpan));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode =>
-      Object.hash(runtimeType, row, col, rowSpan, colSpan, type);
+      Object.hash(runtimeType, type, row, col, rowSpan, colSpan);
 
   /// Create a copy of DashboardUpdateDayWeatherTile
   /// with the given fields replaced by the non-null parameter values.
@@ -255,14 +254,19 @@ class _$DashboardUpdateDayWeatherTileImpl
 abstract class _DashboardUpdateDayWeatherTile
     implements DashboardUpdateDayWeatherTile {
   const factory _DashboardUpdateDayWeatherTile(
-      {required final int row,
-      required final int col,
-      @JsonKey(name: 'row_span') required final int rowSpan,
-      @JsonKey(name: 'col_span') required final int colSpan,
-      final String type}) = _$DashboardUpdateDayWeatherTileImpl;
+          {required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'row_span') required final int rowSpan,
+          @JsonKey(name: 'col_span') required final int colSpan}) =
+      _$DashboardUpdateDayWeatherTileImpl;
 
   factory _DashboardUpdateDayWeatherTile.fromJson(Map<String, dynamic> json) =
       _$DashboardUpdateDayWeatherTileImpl.fromJson;
+
+  /// Discriminator for the tile type
+  @override
+  String get type;
 
   /// The row position of the tile in the grid.
   @override
@@ -281,10 +285,6 @@ abstract class _DashboardUpdateDayWeatherTile
   @override
   @JsonKey(name: 'col_span')
   int get colSpan;
-
-  /// Specifies the type of tile as a day weather tile.
-  @override
-  String get type;
 
   /// Create a copy of DashboardUpdateDayWeatherTile
   /// with the given fields replaced by the non-null parameter values.

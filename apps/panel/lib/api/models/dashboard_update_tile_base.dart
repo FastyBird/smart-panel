@@ -11,6 +11,9 @@ part 'dashboard_update_tile_base.g.dart';
 @Freezed()
 class DashboardUpdateTileBase with _$DashboardUpdateTileBase {
   const factory DashboardUpdateTileBase({
+    /// Discriminator for the tile type
+    required String type,
+
     /// The row position of the tile in the grid.
     required int row,
 

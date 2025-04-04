@@ -1,8 +1,7 @@
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/cards.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/device.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/tiles.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/cards_page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/device_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
@@ -15,8 +14,8 @@ Map<String, Widget Function(PageModel)> pageWidgetMappers = {
   PageType.tiles.value: (model) {
     return TilesPage(page: model as TilesPageModel);
   },
-  PageType.device.value: (model) {
-    return DevicePage(page: model as DevicePageModel);
+  PageType.deviceDetail.value: (model) {
+    return DeviceDetailPage(model.id);
   },
 };
 

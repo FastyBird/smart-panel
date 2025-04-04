@@ -5,7 +5,7 @@ enum TileType {
   weatherDay('weather-day'),
   weatherForecast('weather-forecast'),
   scene('scene'),
-  device('device');
+  devicePreview('device-preview');
 
   final String value;
 
@@ -41,7 +41,7 @@ enum DataSourceType {
 enum PageType {
   tiles('tiles'),
   cards('cards'),
-  device('device');
+  deviceDetail('device-detail');
 
   final String value;
 

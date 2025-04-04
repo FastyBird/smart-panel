@@ -7,7 +7,11 @@ import { type IChannel, type IChannelProperty, channelsPropertiesStoreKey } from
 
 import type { IUseChannelsProperties } from './types';
 
-export const useChannelsProperties = (channelId: IChannel['id']): IUseChannelsProperties => {
+interface IUseChannelsPropertiesProps {
+	channelId: IChannel['id'];
+}
+
+export const useChannelsProperties = ({ channelId }: IUseChannelsPropertiesProps): IUseChannelsProperties => {
 	const storesManager = injectStoresManager();
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
@@ -15,7 +19,7 @@ export const useChannelsProperties = (channelId: IChannel['id']): IUseChannelsPr
 	const { firstLoad, semaphore } = storeToRefs(propertiesStore);
 
 	const properties = computed<IChannelProperty[]>((): IChannelProperty[] => {
-		return propertiesStore.findAll().filter((channel) => !channelId || channel.channel === channelId);
+		return propertiesStore.findAll().filter((property) => !channelId || property.channel === channelId);
 	});
 
 	const fetchProperties = async (): Promise<void> => {

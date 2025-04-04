@@ -1,3 +1,16 @@
+/**
+ * ⚠️ Note:
+ * Some OpenAPI types are explicitly extended with additional properties like `page`, `card`, and `tile`
+ * (e.g., `& { page: string; card: string; tile: string }`) in order to match the structure of the TypeORM entities.
+ *
+ * This is required because our entity models use table inheritance and shared base properties, so the
+ * relations (even if optional or unused in the given type) are present and validated.
+ *
+ * These extra props do not exist in the OpenAPI spec itself, but are necessary for validation and
+ * compatibility with class-transformer + class-validator during test synchronization.
+ *
+ * Please keep this in mind when updating entity fields or OpenAPI schemas.
+ */
 import { plainToInstance } from 'class-transformer';
 import { Expose } from 'class-transformer';
 import { validateSync } from 'class-validator';
@@ -11,8 +24,8 @@ import {
 	DataSourceEntity,
 	DayWeatherTileEntity,
 	DeviceChannelDataSourceEntity,
-	DevicePageEntity,
-	DeviceTileEntity,
+	DeviceDetailPageEntity,
+	DevicePreviewTileEntity,
 	ForecastWeatherTileEntity,
 	PageEntity,
 	TileEntity,
@@ -23,9 +36,9 @@ import {
 type Page = components['schemas']['DashboardPageBase'];
 type CardsPage = components['schemas']['DashboardCardsPage'];
 type TilesPage = components['schemas']['DashboardTilesPage'];
-type DevicePage = components['schemas']['DashboardDevicePage'];
+type DeviceDetailPage = components['schemas']['DashboardDeviceDetailPage'];
 type Tile = components['schemas']['DashboardTileBase'];
-type DeviceTile = components['schemas']['DashboardDeviceTile'];
+type DevicePreviewTile = components['schemas']['DashboardDevicePreviewTile'];
 type TimeTile = components['schemas']['DashboardTimeTile'];
 type DayWeatherTile = components['schemas']['DashboardDayWeatherTile'];
 type ForecastWeatherTile = components['schemas']['DashboardForecastWeatherTile'];
@@ -76,6 +89,7 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	test('PageEntity matches DashboardPage', () => {
 		const openApiModel: Page = {
 			id: uuid().toString(),
+			type: 'page',
 			title: 'Cards Dashboard',
 			icon: 'cards-icon',
 			order: 1,
@@ -151,10 +165,10 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('DevicePageEntity matches DashboardDevicePage', () => {
-		const openApiModel: DevicePage = {
+	test('DeviceDetailPageEntity matches DashboardDeviceDetailPage', () => {
+		const openApiModel: DeviceDetailPage = {
 			id: uuid().toString(),
-			type: 'device',
+			type: 'device-detail',
 			title: 'Device Dashboard',
 			icon: 'device-icon',
 			order: 1,
@@ -163,7 +177,7 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(DevicePageEntity, openApiModel, {
+		const entityInstance = plainToInstance(DeviceDetailPageEntity, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
@@ -178,10 +192,9 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	});
 
 	test('TileEntity matches DashboardTile', () => {
-		const openApiModel: Tile = {
+		const openApiModel: Tile & { page: string; card: string } = {
 			id: uuid().toString(),
-			page: uuid().toString(),
-			card: uuid().toString(),
+			type: 'tile',
 			row: 1,
 			col: 0,
 			row_span: 2,
@@ -189,6 +202,8 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			page: uuid().toString(),
+			card: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(TileBaseEntity, openApiModel, {
@@ -205,12 +220,10 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('DeviceTileEntity matches DashboardDeviceTile', () => {
-		const openApiModel: DeviceTile = {
+	test('DevicePreviewTileEntity matches DashboardDevicePreviewTile', () => {
+		const openApiModel: DevicePreviewTile & { page: string; card: string } = {
 			id: uuid().toString(),
-			type: 'device',
-			page: uuid().toString(),
-			card: uuid().toString(),
+			type: 'device-preview',
 			device: uuid().toString(),
 			row: 1,
 			col: 0,
@@ -220,9 +233,11 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			page: uuid().toString(),
+			card: uuid().toString(),
 		};
 
-		const entityInstance = plainToInstance(DeviceTileEntity, openApiModel, {
+		const entityInstance = plainToInstance(DevicePreviewTileEntity, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
@@ -237,11 +252,9 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	});
 
 	test('TimeTileEntity matches DashboardTimeTile', () => {
-		const openApiModel: TimeTile = {
+		const openApiModel: TimeTile & { page: string; card: string } = {
 			id: uuid().toString(),
 			type: 'clock',
-			page: uuid().toString(),
-			card: uuid().toString(),
 			row: 1,
 			col: 0,
 			row_span: 2,
@@ -249,6 +262,8 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			page: uuid().toString(),
+			card: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(TimeTileEntity, openApiModel, {
@@ -266,11 +281,9 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	});
 
 	test('DayWeatherTileEntity matches DashboardDayWeatherTile', () => {
-		const openApiModel: DayWeatherTile = {
+		const openApiModel: DayWeatherTile & { page: string; card: string } = {
 			id: uuid().toString(),
 			type: 'weather-day',
-			page: uuid().toString(),
-			card: uuid().toString(),
 			row: 1,
 			col: 0,
 			row_span: 2,
@@ -278,6 +291,8 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			page: uuid().toString(),
+			card: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(DayWeatherTileEntity, openApiModel, {
@@ -295,11 +310,9 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	});
 
 	test('ForecastWeatherTileEntity matches DashboardForecastWeatherTile', () => {
-		const openApiModel: ForecastWeatherTile = {
+		const openApiModel: ForecastWeatherTile & { page: string; card: string } = {
 			id: uuid().toString(),
 			type: 'weather-forecast',
-			page: uuid().toString(),
-			card: uuid().toString(),
 			row: 1,
 			col: 0,
 			row_span: 2,
@@ -307,6 +320,8 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			page: uuid().toString(),
+			card: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(ForecastWeatherTileEntity, openApiModel, {
@@ -324,13 +339,14 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	});
 
 	test('DataSourceEntity matches DashboardDataSource', () => {
-		const openApiModel: DataSource = {
+		const openApiModel: DataSource & { page: string; tile: string; card: string } = {
 			id: uuid().toString(),
+			type: 'data-source',
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
 			page: uuid().toString(),
 			tile: uuid().toString(),
 			card: uuid().toString(),
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
 		};
 
 		const entityInstance = plainToInstance(DataSourceBaseEntity, openApiModel, {
@@ -348,18 +364,18 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 	});
 
 	test('DeviceChannelDataSourceEntity matches DashboardDeviceChannelDataSource', () => {
-		const openApiModel: DeviceChannelDataSource = {
+		const openApiModel: DeviceChannelDataSource & { page: string; tile: string; card: string } = {
 			id: uuid().toString(),
 			type: 'device-channel',
-			page: uuid().toString(),
-			tile: uuid().toString(),
-			card: uuid().toString(),
 			device: uuid().toString(),
 			channel: uuid().toString(),
 			property: uuid().toString(),
 			icon: 'icon',
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			page: uuid().toString(),
+			tile: uuid().toString(),
+			card: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(DeviceChannelDataSourceEntity, openApiModel, {

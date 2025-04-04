@@ -34,5 +34,5 @@ const props = defineProps<IDeviceDetailDescriptionProps>();
 
 const { t } = useI18n();
 
-const { properties } = useChannelsProperties(props.channel.id);
+const { properties } = useChannelsProperties({ channelId: props.channel.id });
 </script>

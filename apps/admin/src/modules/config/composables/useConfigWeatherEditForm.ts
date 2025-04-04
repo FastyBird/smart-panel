@@ -11,7 +11,12 @@ import { type IConfigWeather, configWeatherStoreKey } from '../store';
 
 import type { IConfigWeatherEditForm, IUseConfigWeatherEditForm } from './types';
 
-export const useConfigWeatherEditForm = (config: IConfigWeather, messages?: { success?: string; error?: string }): IUseConfigWeatherEditForm => {
+interface IUseLanguageEditFormProps {
+	config: IConfigWeather;
+	messages?: { success?: string; error?: string };
+}
+
+export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditFormProps): IUseConfigWeatherEditForm => {
 	const storesManager = injectStoresManager();
 
 	const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
