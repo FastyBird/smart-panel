@@ -125,19 +125,6 @@ const { mainMenuItems } = useMenu();
 
 const accountManager = injectAccountManager();
 
-const userMenuItems = [
-	{
-		title: t('application.userMenu.profileGeneralSettings'),
-		icon: 'mdi:user-edit',
-		route: 'auth_module-profile_general',
-	},
-	{
-		title: t('application.userMenu.profileSecuritySettings'),
-		icon: 'mdi:user-lock',
-		route: 'auth_module-profile_security',
-	},
-];
-
 const activeIndex = computed<string | undefined>((): string | undefined => {
 	for (const name of Object.keys(mainMenuItems)) {
 		if (route.matched.find((matched) => matched.name === name) !== undefined) {

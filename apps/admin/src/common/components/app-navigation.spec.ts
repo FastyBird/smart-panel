@@ -1,4 +1,4 @@
-import { computed, nextTick, ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { createRouter, createWebHistory } from 'vue-router';
 

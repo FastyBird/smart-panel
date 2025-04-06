@@ -42,6 +42,7 @@
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
     "lint:styles": "stylelint 'src/**/*.scss'",
+    "lint:deps": "npx madge --circular src --extensions ts,tsx --ts-config tsconfig.json",
     "pretty": "pnpm pretty:write && pnpm pretty:check",
     "pretty:check": "prettier \"src/**/*.{ts,scss,vue}\" --check",
     "pretty:write": "prettier \"src/**/*.{ts,scss,vue}\" --write",
@@ -51,8 +52,7 @@
     "test:cov:watch": "vitest --watch --coverage",
     "test:e2e": "playwright test",
     "type-check": "vue-tsc --build",
-    "generate:openapi": "openapi-typescript ../../spec/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false",
-    "circular": "npx madge --circular src --extensions ts,tsx --ts-config tsconfig.json"
+    "generate:openapi": "openapi-typescript ../../spec/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false"
   },
   "dependencies": {
     "@iconify/vue": "^4.3",

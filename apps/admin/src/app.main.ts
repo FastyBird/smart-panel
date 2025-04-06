@@ -9,7 +9,7 @@ import 'nprogress/nprogress.css';
 import createClient from 'openapi-fetch';
 import 'virtual:uno.css';
 
-import { RouteNames } from './app.constants.ts';
+import { RouteNames } from './app.constants';
 import AppMain from './app.main.vue';
 import type { IModuleOptions } from './app.types';
 import './assets/styles/base.scss';
