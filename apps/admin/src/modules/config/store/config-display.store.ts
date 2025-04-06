@@ -9,16 +9,15 @@ import { ConfigDisplayType, PathsConfigModuleConfigSectionParametersParametersPa
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
-import {
-	ConfigDisplayEditActionPayloadSchema,
-	ConfigDisplaySchema,
-	type ConfigDisplayStoreSetup,
-	type IConfigDisplay,
-	type IConfigDisplayEditActionPayload,
-	type IConfigDisplaySetActionPayload,
-	type IConfigDisplayStateSemaphore,
-	type IConfigDisplayStoreActions,
-	type IConfigDisplayStoreState,
+import { ConfigDisplayEditActionPayloadSchema, ConfigDisplaySchema } from './config-display.store.schemas';
+import type {
+	ConfigDisplayStoreSetup,
+	IConfigDisplay,
+	IConfigDisplayEditActionPayload,
+	IConfigDisplaySetActionPayload,
+	IConfigDisplayStateSemaphore,
+	IConfigDisplayStoreActions,
+	IConfigDisplayStoreState,
 } from './config-display.store.types';
 import { transformConfigDisplayResponse, transformConfigDisplayUpdateRequest } from './config-display.transformers';
 

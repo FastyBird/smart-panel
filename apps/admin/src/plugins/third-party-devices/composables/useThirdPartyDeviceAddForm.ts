@@ -6,7 +6,7 @@ import type { FormInstance } from 'element-plus';
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesApiException, DevicesValidationException, FormResult, type FormResultType, devicesStoreKey } from '../../../modules/devices';
 import { DevicesDeviceCategory } from '../../../openapi';
-import type { IThirdPartyDevice } from '../store';
+import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import type { IThirdPartyDeviceAddForm, IUseThirdPartyDeviceAddForm } from './types';
 

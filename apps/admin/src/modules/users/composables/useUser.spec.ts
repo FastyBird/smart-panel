@@ -3,7 +3,7 @@ import { type Ref, ref } from 'vue';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { IUser, IUsersStateSemaphore, UsersStore } from '../store';
+import type { IUser, IUsersStateSemaphore, UsersStore } from '../store/users.store.types';
 
 import { useUser } from './useUser';
 

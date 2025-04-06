@@ -4,7 +4,10 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DashboardApiException, DashboardException } from '../dashboard.exceptions';
-import { type ICard, type IPage, type ITile, type TileParentTypeMap, tilesStoreKey } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import { tilesStoreKey } from '../store/keys';
+import type { IPage } from '../store/pages.store.types';
+import type { ITile, TileParentTypeMap } from '../store/tiles.store.types';
 
 import type { IUseTilesActions } from './types';
 

@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { IDeviceDetailPage, IPage, ITilesPage } from '../store';
+import type { IDeviceDetailPage, IPage, ITilesPage } from '../store/pages.store.types';
 
 import { defaultPagesFilter, usePagesDataSource } from './usePagesDataSource';
 

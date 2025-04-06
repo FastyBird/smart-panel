@@ -1,17 +1,15 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	type ITileBase,
-	type ITileCreateBaseReq,
-	type ITileRes,
-	type ITileUpdateBaseReq,
-	type ITilesAddActionPayload,
-	type ITilesEditActionPayload,
-	TileBaseSchema,
-	TileCreateBaseReqSchema,
-	type TileParentType,
-	TileUpdateBaseReqSchema,
+import { TileBaseSchema, TileCreateBaseReqSchema, TileUpdateBaseReqSchema } from './tiles.store.schemas';
+import type {
+	ITileBase,
+	ITileCreateBaseReq,
+	ITileRes,
+	ITileUpdateBaseReq,
+	ITilesAddActionPayload,
+	ITilesEditActionPayload,
+	TileParentType,
 } from './tiles.store.types';
 
 export const transformTileResponse = <T extends ITileBase = ITileBase>(

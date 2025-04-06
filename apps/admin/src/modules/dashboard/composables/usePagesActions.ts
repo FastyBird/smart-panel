@@ -4,7 +4,8 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DashboardApiException, DashboardException } from '../dashboard.exceptions';
-import { type IPage, pagesStoreKey } from '../store';
+import { pagesStoreKey } from '../store/keys';
+import type { IPage } from '../store/pages.store.types';
 
 import type { IUsePagesActions } from './types';
 

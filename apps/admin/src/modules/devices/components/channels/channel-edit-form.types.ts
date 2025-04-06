@@ -1,5 +1,5 @@
 import type { FormResultType } from '../../devices.constants';
-import type { IChannel } from '../../store';
+import type { IChannel } from '../../store/channels.store.types';
 
 export interface IChannelEditFormProps {
 	channel: IChannel;

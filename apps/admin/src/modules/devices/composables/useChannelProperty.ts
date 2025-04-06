@@ -3,7 +3,9 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IChannel, type IChannelProperty, channelsPropertiesStoreKey } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import { channelsPropertiesStoreKey } from '../store/keys';
 
 import type { IUseChannelProperty } from './types';
 

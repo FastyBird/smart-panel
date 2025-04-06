@@ -6,7 +6,8 @@ import { cloneDeep, isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager } from '../../../common';
-import { type IDevice, devicesStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { devicesStoreKey } from '../store/keys';
 
 import type { IDevicesFilter, IUseDevicesDataSource } from './types';
 

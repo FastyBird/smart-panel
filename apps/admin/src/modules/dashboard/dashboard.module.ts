@@ -9,16 +9,11 @@ import { injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
-import {
-	cardsStoreKey,
-	dataSourcesStoreKey,
-	pagesStoreKey,
-	registerCardsStore,
-	registerDataSourcesStore,
-	registerPagesStore,
-	registerTilesStore,
-	tilesStoreKey,
-} from './store';
+import { registerCardsStore } from './store/cards.store';
+import { registerDataSourcesStore } from './store/dataSources.store';
+import { cardsStoreKey, dataSourcesStoreKey, pagesStoreKey, tilesStoreKey } from './store/keys';
+import { registerPagesStore } from './store/pages.store';
+import { registerTilesStore } from './store/tiles.store';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {

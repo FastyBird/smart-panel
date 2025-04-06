@@ -17,8 +17,8 @@ import { useMeta } from 'vue-meta';
 
 import { vLoading } from 'element-plus';
 
-import { SystemInfoDetail } from '../components';
-import { useSystemInfo, useThrottleStatus } from '../composables';
+import { SystemInfoDetail } from '../components/components';
+import { useSystemInfo, useThrottleStatus } from '../composables/composables';
 import { SystemException } from '../system.exceptions';
 
 defineOptions({

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardException } from '../dashboard.exceptions';
-import type { DataSourceParentType } from '../store';
+import type { DataSourceParentType } from '../store/dataSources.store.types';
 
 import { useDataSourcesActions } from './useDataSourcesActions';
 

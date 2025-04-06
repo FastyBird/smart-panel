@@ -9,16 +9,15 @@ import { ConfigWeatherType, PathsConfigModuleConfigSectionParametersParametersPa
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
-import {
-	ConfigWeatherEditActionPayloadSchema,
-	ConfigWeatherSchema,
-	type ConfigWeatherStoreSetup,
-	type IConfigWeather,
-	type IConfigWeatherEditActionPayload,
-	type IConfigWeatherSetActionPayload,
-	type IConfigWeatherStateSemaphore,
-	type IConfigWeatherStoreActions,
-	type IConfigWeatherStoreState,
+import { ConfigWeatherEditActionPayloadSchema, ConfigWeatherSchema } from './config-weather.store.schemas';
+import type {
+	ConfigWeatherStoreSetup,
+	IConfigWeather,
+	IConfigWeatherEditActionPayload,
+	IConfigWeatherSetActionPayload,
+	IConfigWeatherStateSemaphore,
+	IConfigWeatherStoreActions,
+	IConfigWeatherStoreState,
 } from './config-weather.store.types';
 import { transformConfigWeatherResponse, transformConfigWeatherUpdateRequest } from './config-weather.transformers';
 

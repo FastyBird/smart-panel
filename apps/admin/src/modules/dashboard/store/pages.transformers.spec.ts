@@ -4,14 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { DashboardDeviceDetailPageType } from '../../../openapi';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	DeviceDetailPageCreateReqSchema,
-	DeviceDetailPageSchema,
-	DeviceDetailPageUpdateReqSchema,
-	type IDeviceDetailPageRes,
-	type IPagesAddActionPayload,
-	type IPagesEditActionPayload,
-} from './pages.store.types';
+import { DeviceDetailPageCreateReqSchema, DeviceDetailPageSchema, DeviceDetailPageUpdateReqSchema } from './pages.store.schemas';
+import type { IDeviceDetailPageRes, IPagesAddActionPayload, IPagesEditActionPayload } from './pages.store.types';
 import { transformPageCreateRequest, transformPageResponse, transformPageUpdateRequest } from './pages.transformers';
 
 const pageId = uuid();

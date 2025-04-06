@@ -25,7 +25,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { type IUserUsernameForm, useUserUsernameForm } from '../composables';
+import { type IUserUsernameForm, useUserUsernameForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
 import type { IUsernameEditFormProps } from './username-edit-form.types';

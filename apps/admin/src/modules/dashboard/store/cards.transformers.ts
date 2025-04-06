@@ -1,17 +1,8 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	CardCreateReqSchema,
-	CardSchema,
-	CardUpdateReqSchema,
-	type ICard,
-	type ICardCreateReq,
-	type ICardRes,
-	type ICardUpdateReq,
-	type ICardsAddActionPayload,
-	type ICardsEditActionPayload,
-} from './cards.store.types';
+import { CardCreateReqSchema, CardSchema, CardUpdateReqSchema } from './cards.store.schemas';
+import type { ICard, ICardCreateReq, ICardRes, ICardUpdateReq, ICardsAddActionPayload, ICardsEditActionPayload } from './cards.store.types';
 
 export const transformCardResponse = (response: ICardRes): ICard => {
 	const parsedCard = CardSchema.safeParse(snakeToCamel(response));

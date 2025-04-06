@@ -1,5 +1,5 @@
 import type { FormResultType, LayoutType } from '../config.constants';
-import type { IConfigDisplay } from '../store';
+import type { IConfigDisplay } from '../store/config-display.store.types';
 
 export type IConfigDisplayFormProps = {
 	config: IConfigDisplay;

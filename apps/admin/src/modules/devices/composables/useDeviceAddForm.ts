@@ -7,7 +7,8 @@ import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../com
 import { DevicesDeviceCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
-import { type IDevice, devicesStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { devicesStoreKey } from '../store/keys';
 
 import type { IDeviceAddForm, IUseDeviceAddForm } from './types';
 

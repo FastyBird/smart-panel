@@ -27,7 +27,7 @@ import { ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useDeviceState } from '../../composables';
+import { useDeviceState } from '../../composables/composables';
 import type { ConnectionState } from '../../devices.constants';
 
 import type { IDevicesTableColumnStateProps } from './devices-table-column-state.types';

@@ -9,16 +9,15 @@ import { ConfigLanguageType, PathsConfigModuleConfigSectionParametersParametersP
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
-import {
-	ConfigLanguageEditActionPayloadSchema,
-	ConfigLanguageSchema,
-	type ConfigLanguageStoreSetup,
-	type IConfigLanguage,
-	type IConfigLanguageEditActionPayload,
-	type IConfigLanguageSetActionPayload,
-	type IConfigLanguageStateSemaphore,
-	type IConfigLanguageStoreActions,
-	type IConfigLanguageStoreState,
+import { ConfigLanguageEditActionPayloadSchema, ConfigLanguageSchema } from './config-language.store.schemas';
+import type {
+	ConfigLanguageStoreSetup,
+	IConfigLanguage,
+	IConfigLanguageEditActionPayload,
+	IConfigLanguageSetActionPayload,
+	IConfigLanguageStateSemaphore,
+	IConfigLanguageStoreActions,
+	IConfigLanguageStoreState,
 } from './config-language.store.types';
 import { transformConfigLanguageResponse, transformConfigLanguageUpdateRequest } from './config-language.transformers';
 

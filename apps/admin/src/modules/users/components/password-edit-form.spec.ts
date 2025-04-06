@@ -7,10 +7,10 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import { useUserPasswordForm } from '../composables';
+import { useUserPasswordForm } from '../composables/composables';
 
-import { PasswordEditForm } from './index';
 import type { IPasswordEditFormProps } from './password-edit-form.types';
+import PasswordEditForm from './password-edit-form.vue';
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -29,7 +29,7 @@ const editFormMock = {
 	formResult: ref(FormResult.NONE),
 };
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useUserPasswordForm: vi.fn(() => editFormMock),
 }));
 

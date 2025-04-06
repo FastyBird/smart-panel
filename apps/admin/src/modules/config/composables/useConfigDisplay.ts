@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IConfigDisplay, configDisplayStoreKey } from '../store';
+import type { IConfigDisplay } from '../store/config-display.store.types';
+import { configDisplayStoreKey } from '../store/keys';
 
 import type { IUseConfigDisplay } from './types';
 

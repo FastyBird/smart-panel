@@ -10,17 +10,18 @@ import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
 
 import type { ICard } from './cards.store.types';
+import { getDataSourcesSchemas } from './dataSources.mappers';
 import type { ITileDeviceChannelDataSourceRes } from './dataSources.store.types';
-import {
-	type ITileCreateReq,
-	type ITileUpdateReq,
-	dataSourcesStoreKey,
-	getDataSourcesSchemas,
-	getTilesSchemas,
-	transformDataSourceResponse,
-	transformTileResponse,
-} from './index';
+import { transformDataSourceResponse } from './dataSources.transformers';
+import { dataSourcesStoreKey } from './keys';
 import type { IPage } from './pages.store.types';
+import { getTilesSchemas } from './tiles.mappers';
+import {
+	CardTilesAddActionPayloadSchema,
+	CardTilesEditActionPayloadSchema,
+	PageTilesAddActionPayloadSchema,
+	PageTilesEditActionPayloadSchema,
+} from './tiles.store.schemas';
 import type {
 	ICardTile,
 	ICardTilesAddActionPayload,
@@ -41,6 +42,8 @@ import type {
 	IPageTilesSetActionPayload,
 	IPageTilesUnsetActionPayload,
 	ITileBase,
+	ITileCreateReq,
+	ITileUpdateReq,
 	ITilesAddActionPayload,
 	ITilesEditActionPayload,
 	ITilesFetchActionPayload,
@@ -55,13 +58,7 @@ import type {
 	TileParentTypeMap,
 	TilesStoreSetup,
 } from './tiles.store.types';
-import {
-	CardTilesAddActionPayloadSchema,
-	CardTilesEditActionPayloadSchema,
-	PageTilesAddActionPayloadSchema,
-	PageTilesEditActionPayloadSchema,
-} from './tiles.store.types';
-import { transformTileCreateRequest, transformTileUpdateRequest } from './tiles.transformers';
+import { transformTileCreateRequest, transformTileResponse, transformTileUpdateRequest } from './tiles.transformers';
 
 const defaultSemaphore: ITilesStateSemaphore = {
 	fetching: {

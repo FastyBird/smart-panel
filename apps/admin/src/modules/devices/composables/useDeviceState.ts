@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { injectStoresManager } from '../../../common';
 import { DevicesChannelCategory, DevicesChannelPropertyCategory } from '../../../openapi';
 import { ConnectionState } from '../devices.constants';
-import { type IDevice, channelsPropertiesStoreKey, channelsStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { channelsPropertiesStoreKey, channelsStoreKey } from '../store/keys';
 
 import type { IUseDeviceState } from './types';
 

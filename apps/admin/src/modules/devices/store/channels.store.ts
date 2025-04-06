@@ -9,34 +9,29 @@ import type { operations } from '../../../openapi';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
-import {
-	ChannelSchema,
-	ChannelsAddActionPayloadSchema,
-	ChannelsEditActionPayloadSchema,
-	type ChannelsStoreSetup,
-	type IChannel,
-	type IChannelsAddActionPayload,
-	type IChannelsEditActionPayload,
-	type IChannelsFetchActionPayload,
-	type IChannelsGetActionPayload,
-	type IChannelsRemoveActionPayload,
-	type IChannelsSaveActionPayload,
-	type IChannelsSetActionPayload,
-	type IChannelsStateSemaphore,
-	type IChannelsStoreActions,
-	type IChannelsStoreState,
-	type IChannelsUnsetActionPayload,
+import type { IChannelControlRes } from './channels.controls.store.types';
+import { transformChannelControlResponse } from './channels.controls.transformers';
+import type { IChannelPropertyRes } from './channels.properties.store.types';
+import { transformChannelPropertyResponse } from './channels.properties.transformers';
+import { ChannelSchema, ChannelsAddActionPayloadSchema, ChannelsEditActionPayloadSchema } from './channels.store.schemas';
+import type {
+	ChannelsStoreSetup,
+	IChannel,
+	IChannelsAddActionPayload,
+	IChannelsEditActionPayload,
+	IChannelsFetchActionPayload,
+	IChannelsGetActionPayload,
+	IChannelsRemoveActionPayload,
+	IChannelsSaveActionPayload,
+	IChannelsSetActionPayload,
+	IChannelsStateSemaphore,
+	IChannelsStoreActions,
+	IChannelsStoreState,
+	IChannelsUnsetActionPayload,
 } from './channels.store.types';
 import { transformChannelCreateRequest, transformChannelResponse, transformChannelUpdateRequest } from './channels.transformers';
 import type { IDevice } from './devices.store.types';
-import {
-	type IChannelControlRes,
-	type IChannelPropertyRes,
-	channelsControlsStoreKey,
-	channelsPropertiesStoreKey,
-	transformChannelControlResponse,
-	transformChannelPropertyResponse,
-} from './index';
+import { channelsControlsStoreKey, channelsPropertiesStoreKey } from './keys';
 
 const defaultSemaphore: IChannelsStateSemaphore = {
 	fetching: {

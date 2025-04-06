@@ -7,9 +7,9 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigLanguageLanguage, ConfigLanguageTime_format, ConfigLanguageType } from '../../../openapi';
-import type { IConfigLanguageEditForm } from '../composables';
+import type { IConfigLanguageEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
-import type { ConfigLanguageStore } from '../store';
+import type { ConfigLanguageStore } from '../store/config-language.store.types';
 
 import type { IConfigLanguageFormProps } from './config-language-form.types';
 import ConfigLanguageForm from './config-language-form.vue';

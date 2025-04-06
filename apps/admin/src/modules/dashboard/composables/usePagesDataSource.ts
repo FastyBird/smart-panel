@@ -6,7 +6,8 @@ import { cloneDeep, isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager } from '../../../common';
-import { type IPage, pagesStoreKey } from '../store';
+import { pagesStoreKey } from '../store/keys';
+import type { IPage } from '../store/pages.store.types';
 
 import type { IPagesFilter, IUsePagesDataSource } from './types';
 

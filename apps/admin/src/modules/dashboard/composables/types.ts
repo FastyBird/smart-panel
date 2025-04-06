@@ -1,6 +1,9 @@
 import type { ComputedRef, Ref } from 'vue';
 
-import type { DataSourceParentTypeMap, ICard, IDataSource, IPage, ITile, TileParentTypeMap } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import type { DataSourceParentTypeMap, IDataSource } from '../store/dataSources.store.types';
+import type { IPage } from '../store/pages.store.types';
+import type { ITile, TileParentTypeMap } from '../store/tiles.store.types';
 
 export interface ICardsFilter {
 	search: string | undefined;

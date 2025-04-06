@@ -1,6 +1,7 @@
 import type { Handler } from 'mitt';
 
-import { type Events, injectEventBus } from '../services';
+import type { Events } from '../services/event-bus';
+import { injectEventBus } from '../services/event-bus';
 
 import type { IUseEventBus } from './types';
 

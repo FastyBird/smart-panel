@@ -4,7 +4,11 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DashboardApiException, DashboardException } from '../dashboard.exceptions';
-import { type DataSourceParentTypeMap, type ICard, type IDataSource, type IPage, type ITile, dataSourcesStoreKey } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import { type DataSourceParentTypeMap, type IDataSource } from '../store/dataSources.store.types';
+import { dataSourcesStoreKey } from '../store/keys';
+import type { IPage } from '../store/pages.store.types';
+import type { ITile } from '../store/tiles.store.types';
 
 import type { IUseDataSourcesActions } from './types';
 

@@ -4,14 +4,8 @@ import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioRes } from './config-audio.store.types';
 import type { IConfigDisplayRes } from './config-display.store.types';
-import {
-	ConfigLanguageSchema,
-	ConfigLanguageUpdateReqSchema,
-	type IConfigLanguage,
-	type IConfigLanguageEditActionPayload,
-	type IConfigLanguageRes,
-	type IConfigLanguageUpdateReq,
-} from './config-language.store.types';
+import { ConfigLanguageSchema, ConfigLanguageUpdateReqSchema } from './config-language.store.schemas';
+import type { IConfigLanguage, IConfigLanguageEditActionPayload, IConfigLanguageRes, IConfigLanguageUpdateReq } from './config-language.store.types';
 import type { IConfigWeatherRes } from './config-weather.store.types';
 
 export const transformConfigLanguageResponse = (

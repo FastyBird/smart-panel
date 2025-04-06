@@ -5,7 +5,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { DataSourceParentType, ICard, IDataSource, IPageBase, IPageDeviceChannelDataSource } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import type { DataSourceParentType, IDataSource, IPageDeviceChannelDataSource } from '../store/dataSources.store.types';
+import type { IPage } from '../store/pages.store.types';
 
 import { useDataSources } from './useDataSources';
 
@@ -63,7 +65,7 @@ describe('useDataSources', () => {
 		firstLoad = ref([]);
 
 		fetch = vi.fn();
-		findForParent = vi.fn((_parent: DataSourceParentType, parentId: IPageBase['id'] | ICard['id']) =>
+		findForParent = vi.fn((_parent: DataSourceParentType, parentId: IPage['id'] | ICard['id']) =>
 			Object.values(data).filter((dataSource) => 'page' in dataSource && dataSource.page === parentId)
 		);
 

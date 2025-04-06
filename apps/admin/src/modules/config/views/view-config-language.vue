@@ -34,8 +34,8 @@ import { useMeta } from 'vue-meta';
 import { ElCard, vLoading } from 'element-plus';
 
 import { useBreakpoints } from '../../../common';
-import { ConfigLanguageForm } from '../components';
-import { useConfigLanguage } from '../composables';
+import { ConfigLanguageForm } from '../components/components';
+import { useConfigLanguage } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 

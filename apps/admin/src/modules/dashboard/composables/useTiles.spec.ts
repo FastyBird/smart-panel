@@ -5,7 +5,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { ICard, IPageBase, ITile, TileParentType } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import type { IPage } from '../store/pages.store.types';
+import type { ITile, TileParentType } from '../store/tiles.store.types';
 
 import { useTiles } from './useTiles';
 
@@ -51,7 +53,7 @@ describe('useTiles', () => {
 		firstLoad = ref([]);
 
 		fetch = vi.fn();
-		findForParent = vi.fn((_parent: TileParentType, parentId: IPageBase['id'] | ICard['id']) =>
+		findForParent = vi.fn((_parent: TileParentType, parentId: IPage['id'] | ICard['id']) =>
 			Object.values(data).filter((tile) => 'page' in tile && tile.page === parentId)
 		);
 

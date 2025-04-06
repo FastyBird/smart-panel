@@ -6,7 +6,7 @@ import ThirdPartyDeviceAddForm from './third-party-device-add-form.vue';
 
 const mockSubmit = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useThirdPartyDeviceAddForm: () => ({
 		categoriesOptions: [
 			{ value: 'generic', label: 'Generic' },

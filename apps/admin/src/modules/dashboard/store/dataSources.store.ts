@@ -11,6 +11,14 @@ import { DashboardApiException, DashboardException, DashboardValidationException
 
 import type { ICard } from './cards.store.types';
 import { getDataSourcesSchemas } from './dataSources.mappers';
+import {
+	CardDataSourcesAddActionPayloadSchema,
+	CardDataSourcesEditActionPayloadSchema,
+	PageDataSourcesAddActionPayloadSchema,
+	PageDataSourcesEditActionPayloadSchema,
+	TileDataSourcesAddActionPayloadSchema,
+	TileDataSourcesEditActionPayloadSchema,
+} from './dataSources.store.schemas';
 import type {
 	DataSourceParentTypeMap,
 	DataSourcesStoreSetup,
@@ -55,14 +63,6 @@ import type {
 	ITileDataSourcesSetActionPayload,
 	ITileDataSourcesUnsetActionPayload,
 	ITileDeviceChannelDataSource,
-} from './dataSources.store.types';
-import {
-	CardDataSourcesAddActionPayloadSchema,
-	CardDataSourcesEditActionPayloadSchema,
-	PageDataSourcesAddActionPayloadSchema,
-	PageDataSourcesEditActionPayloadSchema,
-	TileDataSourcesAddActionPayloadSchema,
-	TileDataSourcesEditActionPayloadSchema,
 } from './dataSources.store.types';
 import { transformDataSourceCreateRequest, transformDataSourceResponse, transformDataSourceUpdateRequest } from './dataSources.transformers';
 import type { IPage } from './pages.store.types';

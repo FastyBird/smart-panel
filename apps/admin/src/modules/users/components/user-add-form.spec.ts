@@ -7,10 +7,10 @@ import { VueWrapper, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import type { IUserAddForm } from '../composables';
+import type { IUserAddForm } from '../composables/types';
 
-import { UserAddForm } from './index';
 import type { IUserAddFormProps } from './user-add-form.types';
+import UserAddForm from './user-add-form.vue';
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -36,7 +36,7 @@ const addFormMock = {
 	formResult: ref(FormResult.NONE),
 };
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useUserAddForm: vi.fn(() => addFormMock),
 }));
 

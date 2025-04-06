@@ -153,11 +153,11 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import { ListChannels, ListChannelsAdjust } from '../components';
-import { useChannelsActions, useChannelsDataSource } from '../composables';
+import { ListChannels, ListChannelsAdjust } from '../components/components';
+import { useChannelsActions, useChannelsDataSource } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import type { IChannel } from '../store';
+import type { IChannel } from '../store/channels.store.types';
 
 import type { IViewChannelsProps } from './view-channels.types';
 

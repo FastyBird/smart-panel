@@ -28,7 +28,7 @@ import { ElIcon, ElLink, ElText } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import type { IPlugin } from '../../../../common';
-import { usePlugin } from '../../composables';
+import { usePlugin } from '../../composables/composables';
 
 import type { IDevicesTableColumnPluginProps } from './devices-table-column-plugin.types';
 

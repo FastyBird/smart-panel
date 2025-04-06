@@ -242,7 +242,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputTag, ElOption, ElSelect, vLoading } from 'element-plus';
 
 import { DevicesChannelPropertyData_type } from '../../../../openapi';
-import { useChannel, useChannelPropertyEditForm } from '../../composables';
+import { useChannel, useChannelPropertyEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 
 import type { IChannelPropertyEditFormProps } from './channel-property-edit-form.types';

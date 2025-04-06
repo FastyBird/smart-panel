@@ -9,6 +9,7 @@ import 'nprogress/nprogress.css';
 import createClient from 'openapi-fetch';
 import 'virtual:uno.css';
 
+import { RouteNames } from './app.constants.ts';
 import AppMain from './app.main.vue';
 import type { IModuleOptions } from './app.types';
 import './assets/styles/base.scss';
@@ -17,6 +18,7 @@ import {
 	PluginsManager,
 	RouterGuards,
 	StoresManager,
+	injectAccountManager,
 	provideBackendClient,
 	provideEventBus,
 	providePluginsManager,
@@ -25,7 +27,7 @@ import {
 	router,
 } from './common';
 import i18n from './locales';
-import { AuthModule, sessionStoreKey } from './modules/auth';
+import { AuthModule } from './modules/auth';
 import { ConfigModule } from './modules/config';
 import { DashboardModule } from './modules/dashboard';
 import { DevicesModule } from './modules/devices';
@@ -70,6 +72,19 @@ const routerGuards = new RouterGuards();
 app.config.globalProperties['routerGuards'] = routerGuards;
 provideRouterGuards(app, routerGuards);
 
+// Default route
+router.addRoute(RouteNames.ROOT, {
+	path: 'dashboard',
+	name: RouteNames.DASHBOARD,
+	component: () => import('./views/HomeView.vue'),
+	meta: {
+		guards: ['authenticated'],
+		title: 'Dashboard',
+		icon: 'mdi:monitor-dashboard',
+		menu: true,
+	},
+});
+
 // Modules
 const moduleOptions: IModuleOptions = {
 	router,
@@ -94,13 +109,9 @@ const pluginOptions: IModuleOptions = {
 app.use(ThirdPartyDevicesPlugin, pluginOptions);
 
 router.beforeEach((to) => {
-	const sessionStore = storesManager.getStore(sessionStoreKey);
+	const accountManager = injectAccountManager(app);
 
-	const appUser = sessionStore.profile
-		? { id: sessionStore.profile.id, role: sessionStore.profile.role, email: sessionStore.profile.email }
-		: undefined;
-
-	return routerGuards.handle(appUser, to as unknown as RouteRecordRaw);
+	return routerGuards.handle(accountManager?.details.value ?? undefined, to as unknown as RouteRecordRaw);
 });
 
 // App router initialization

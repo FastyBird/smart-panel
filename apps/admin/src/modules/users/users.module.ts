@@ -10,7 +10,8 @@ import { injectRouterGuard, injectStoresManager } from '../../common';
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import roleGuard from './router/guards/role.guard';
-import { registerUsersStore, usersStoreKey } from './store';
+import { usersStoreKey } from './store/keys';
+import { registerUsersStore } from './store/users.store';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {

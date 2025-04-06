@@ -1,4 +1,4 @@
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { createRouter, createWebHistory } from 'vue-router';
 
@@ -7,22 +7,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
-import { RouteNames, sessionStoreKey } from '../../modules/auth';
-import { injectStoresManager } from '../services';
+import { RouteNames } from '../../app.constants';
+import { RouteNames as AuthRouteNames } from '../../modules/auth';
+import { injectAccountManager } from '../services/account-manager';
 
 import enUS from './../../locales/en-US.json';
 import AppNavigation from './app-navigation.vue';
 
 const isMDDevice = ref(true);
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/useBreakpoints', () => ({
 	useBreakpoints: vi.fn(() => ({
 		isMDDevice: isMDDevice,
 	})),
+}));
+vi.mock('../composables/useMenu', () => ({
 	useMenu: vi.fn(() => ({
 		mainMenuItems: [
 			{
-				name: 'root',
+				name: RouteNames.ROOT,
 				meta: { title: 'Dashboard', icon: 'mdi:home' },
 				children: [],
 			},
@@ -38,14 +41,10 @@ vi.mock('../composables', () => ({
 	})),
 }));
 
-const mockClear = vi.fn();
-
-vi.mock('../services', () => ({
-	injectStoresManager: vi.fn(() => ({
-		getStore: vi.fn(() => ({
-			clear: mockClear,
-		})),
-	})),
+vi.mock('../services/account-manager', () => ({
+	injectAccountManager: vi.fn().mockReturnValue({
+		signOut: vi.fn(),
+	}),
 }));
 
 describe('AppNavigation', () => {
@@ -55,8 +54,8 @@ describe('AppNavigation', () => {
 		const router = createRouter({
 			history: createWebHistory(),
 			routes: [
-				{ path: '/', name: 'root', component: {} },
-				{ path: '/sign-in', name: RouteNames.SIGN_IN, component: {} },
+				{ path: '/', name: RouteNames.ROOT, component: {} },
+				{ path: '/sign-in', name: AuthRouteNames.SIGN_IN, component: {} },
 				{
 					path: '/settings',
 					name: 'settings',
@@ -122,6 +121,6 @@ describe('AppNavigation', () => {
 		await signOutButton.trigger('click');
 		await nextTick();
 
-		expect(injectStoresManager().getStore(sessionStoreKey).clear).toHaveBeenCalled();
+		expect(injectAccountManager()?.signOut).toHaveBeenCalled();
 	});
 });

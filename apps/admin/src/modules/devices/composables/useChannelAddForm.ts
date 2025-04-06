@@ -8,7 +8,9 @@ import { DevicesChannelCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';
-import { type IChannel, type IDevice, channelsStoreKey } from '../store';
+import type { IChannel } from '../store/channels.store.types';
+import type { IDevice } from '../store/devices.store.types';
+import { channelsStoreKey } from '../store/keys';
 
 import type { IChannelAddForm, IUseChannelAddForm } from './types';
 import { useDevices } from './useDevices';

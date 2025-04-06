@@ -146,7 +146,7 @@ import { ElAvatar, ElCol, ElDivider, ElRow, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useSystemActions } from '../composables';
+import { useSystemActions } from '../composables/composables';
 
 defineOptions({
 	name: 'SystemReset',

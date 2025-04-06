@@ -1,7 +1,8 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { type IDevice, devicesStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { devicesStoreKey } from '../store/keys';
 
 import type { IUseDeviceIcon } from './types';
 

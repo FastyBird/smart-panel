@@ -11,15 +11,14 @@ import {
 	DevicePreviewTileUpdateReqSchema,
 	ForecastWeatherTileCreateReqSchema,
 	ForecastWeatherTileUpdateReqSchema,
-	type ITilesEntitiesSchemas,
 	PageDayWeatherTileSchema,
 	PageDevicePreviewTileSchema,
 	PageForecastWeatherTileSchema,
 	PageTimeTileSchema,
-	type TileParentType,
 	TimeTileCreateReqSchema,
 	TimeTileUpdateReqSchema,
-} from './tiles.store.types';
+} from './tiles.store.schemas';
+import type { ITilesEntitiesSchemas, TileParentType } from './tiles.store.types';
 
 const schemas: Record<TileParentType, Record<string, ITilesEntitiesSchemas>> = {
 	page: {

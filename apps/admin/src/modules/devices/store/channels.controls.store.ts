@@ -7,21 +7,20 @@ import type { operations } from '../../../openapi';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
-import {
-	ChannelControlSchema,
-	ChannelsControlsAddActionPayloadSchema,
-	type ChannelsControlsStoreSetup,
-	type IChannelControl,
-	type IChannelsControlsAddActionPayload,
-	type IChannelsControlsFetchActionPayload,
-	type IChannelsControlsGetActionPayload,
-	type IChannelsControlsRemoveActionPayload,
-	type IChannelsControlsSaveActionPayload,
-	type IChannelsControlsSetActionPayload,
-	type IChannelsControlsStateSemaphore,
-	type IChannelsControlsStoreActions,
-	type IChannelsControlsStoreState,
-	type IChannelsControlsUnsetActionPayload,
+import { ChannelControlSchema, ChannelsControlsAddActionPayloadSchema } from './channels.controls.store.schemas';
+import type {
+	ChannelsControlsStoreSetup,
+	IChannelControl,
+	IChannelsControlsAddActionPayload,
+	IChannelsControlsFetchActionPayload,
+	IChannelsControlsGetActionPayload,
+	IChannelsControlsRemoveActionPayload,
+	IChannelsControlsSaveActionPayload,
+	IChannelsControlsSetActionPayload,
+	IChannelsControlsStateSemaphore,
+	IChannelsControlsStoreActions,
+	IChannelsControlsStoreState,
+	IChannelsControlsUnsetActionPayload,
 } from './channels.controls.store.types';
 import { transformChannelControlCreateRequest, transformChannelControlResponse } from './channels.controls.transformers';
 import type { IChannel } from './channels.store.types';

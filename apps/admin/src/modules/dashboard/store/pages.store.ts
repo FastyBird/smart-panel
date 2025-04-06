@@ -9,39 +9,34 @@ import type { operations } from '../../../openapi';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	type ICardRes,
-	type IPageDeviceChannelDataSourceRes,
-	type IPageTileRes,
-	cardsStoreKey,
-	dataSourcesStoreKey,
-	getDataSourcesSchemas,
-	getTilesSchemas,
-	tilesStoreKey,
-	transformCardResponse,
-	transformDataSourceResponse,
-	transformTileResponse,
-} from './index';
+import type { ICardRes } from './cards.store.types';
+import { transformCardResponse } from './cards.transformers';
+import { getDataSourcesSchemas } from './dataSources.mappers';
+import { type IPageDeviceChannelDataSourceRes } from './dataSources.store.types';
+import { transformDataSourceResponse } from './dataSources.transformers';
+import { cardsStoreKey, dataSourcesStoreKey, tilesStoreKey } from './keys';
 import { getPagesSchemas } from './pages.mappers';
-import {
-	type IPageBase,
-	type IPageCreateReq,
-	type IPageUpdateReq,
-	type IPagesAddActionPayload,
-	type IPagesEditActionPayload,
-	type IPagesGetActionPayload,
-	type IPagesRemoveActionPayload,
-	type IPagesSaveActionPayload,
-	type IPagesSetActionPayload,
-	type IPagesStateSemaphore,
-	type IPagesStoreActions,
-	type IPagesStoreState,
-	type IPagesUnsetActionPayload,
-	PagesAddActionPayloadSchema,
-	PagesEditActionPayloadSchema,
-	type PagesStoreSetup,
+import { PagesAddActionPayloadSchema, PagesEditActionPayloadSchema } from './pages.store.schemas';
+import type {
+	IPageBase,
+	IPageCreateReq,
+	IPageUpdateReq,
+	IPagesAddActionPayload,
+	IPagesEditActionPayload,
+	IPagesGetActionPayload,
+	IPagesRemoveActionPayload,
+	IPagesSaveActionPayload,
+	IPagesSetActionPayload,
+	IPagesStateSemaphore,
+	IPagesStoreActions,
+	IPagesStoreState,
+	IPagesUnsetActionPayload,
+	PagesStoreSetup,
 } from './pages.store.types';
 import { transformPageCreateRequest, transformPageResponse, transformPageUpdateRequest } from './pages.transformers';
+import { getTilesSchemas } from './tiles.mappers';
+import { type IPageTileRes } from './tiles.store.types';
+import { transformTileResponse } from './tiles.transformers';
 
 const defaultSemaphore: IPagesStateSemaphore = {
 	fetching: {

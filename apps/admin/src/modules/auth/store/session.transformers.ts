@@ -1,13 +1,7 @@
 import { AuthValidationException } from '../auth.exceptions';
 
-import {
-	type IAuthTokenPairRes,
-	type ISessionCreateActionPayload,
-	type ISessionLoginReq,
-	type ITokenPair,
-	SessionLoginReqSchema,
-	TokenPairSchema,
-} from './session.store.types';
+import { SessionLoginReqSchema, TokenPairSchema } from './session.store.schemas';
+import type { IAuthTokenPairRes, ISessionCreateActionPayload, ISessionLoginReq, ITokenPair } from './session.store.types';
 
 export const transformTokenPairResponse = (response: IAuthTokenPairRes): ITokenPair => {
 	const parsedTokenPair = TokenPairSchema.safeParse({

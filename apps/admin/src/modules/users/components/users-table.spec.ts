@@ -6,10 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
-import type { IUser } from '../store';
+import type { IUser } from '../store/users.store.types';
 
-import { UsersTable } from './index';
 import type { IUsersTableProps } from './users-table.types';
+import UsersTable from './users-table.vue';
 
 type UsersTableInstance = ComponentPublicInstance<IUsersTableProps>;
 

@@ -1,12 +1,22 @@
 /*
 eslint-disable @typescript-eslint/no-empty-object-type
 */
-import type { InjectionKey } from 'vue';
+import type { ComputedRef, InjectionKey } from 'vue';
 import type { RouteLocationRaw, RouteRecordRaw } from 'vue-router';
 
 import type { StateTree, Store } from 'pinia';
 
 import type { IAppUser } from '../../app.types';
+
+export interface IAccountManager {
+	isSignedIn: ComputedRef<boolean>;
+	isLocked: ComputedRef<boolean>;
+	details: ComputedRef<IAppUser | null>;
+	signIn: (credentials: { username: string; password: string }) => Promise<boolean>;
+	signOut: () => Promise<boolean>;
+	lock?: () => Promise<boolean>;
+	canAccess: (resource: string, action: string) => Promise<boolean>;
+}
 
 export type StoreInjectionKey<Id extends string = string, S extends StateTree = object, G = object, A = object> = InjectionKey<Store<Id, S, G, A>>;
 

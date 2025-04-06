@@ -229,8 +229,9 @@ import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
 import { DevicesChannelCategory } from '../../../../openapi';
-import type { IChannelsFilter } from '../../composables';
-import type { IChannel, IDevice } from '../../store';
+import type { IChannelsFilter } from '../../composables/types';
+import type { IChannel } from '../../store/channels.store.types';
+import type { IDevice } from '../../store/devices.store.types';
 
 import ChannelsTableColumnDevice from './channels-table-column-device.vue';
 import ChannelsTableColumnIcon from './channels-table-column-icon.vue';

@@ -9,7 +9,7 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { UsersUserRole } from '../../../../openapi';
 import { FormResult } from '../../auth.constants';
-import type { SessionStore } from '../../store';
+import type { SessionStore } from '../../store/session.store.types';
 
 import type { SettingsProfileFormProps } from './settings-profile-form.types';
 import SettingsProfileForm from './settings-profile-form.vue';

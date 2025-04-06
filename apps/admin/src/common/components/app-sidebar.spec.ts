@@ -24,10 +24,12 @@ vi.mock('../../assets/images/fb_smartpanel.svg?component', () => ({
 	},
 }));
 
-vi.mock('../services', () => ({
+vi.mock('../services/store', () => ({
 	injectStoresManager: vi.fn(() => ({
 		getStore: vi.fn(() => ({})),
 	})),
+}));
+vi.mock('../services/router-guards', () => ({
 	injectRouterGuard: vi.fn(() => ({
 		handle: vi.fn(() => ({})).mockReturnValue(true),
 	})),

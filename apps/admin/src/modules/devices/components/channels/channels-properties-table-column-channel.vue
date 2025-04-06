@@ -27,8 +27,8 @@ import { ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useChannel } from '../../composables';
-import type { IChannel } from '../../store';
+import { useChannel } from '../../composables/composables';
+import type { IChannel } from '../../store/channels.store.types';
 
 import type { IChannelsPropertiesTableColumnChannelProps } from './channels-properties-table-column-channel.types';
 

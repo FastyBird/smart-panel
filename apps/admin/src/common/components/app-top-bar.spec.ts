@@ -1,4 +1,4 @@
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { createRouter, createWebHistory } from 'vue-router';
 
@@ -8,9 +8,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Icon } from '@iconify/vue';
 import { mount } from '@vue/test-utils';
 
-import { RouteNames, sessionStoreKey } from '../../modules/auth';
-import { useDarkMode } from '../composables';
-import { injectStoresManager } from '../services';
+import { RouteNames } from '../../app.constants';
+import { useDarkMode } from '../composables/useDarkMode';
+import { injectAccountManager } from '../services/account-manager';
 
 import enUS from './../../locales/en-US.json';
 import AppTopBar from './app-top-bar.vue';
@@ -20,27 +20,23 @@ const toggleDarkMock = vi.fn(() => {
 	mockIsDark.value = !mockIsDark.value; // Simulate Vue reactivity
 });
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/useDarkMode', () => ({
 	useDarkMode: vi.fn(() => ({
 		isDark: mockIsDark,
 		toggleDark: toggleDarkMock,
 	})),
 }));
 
-const mockClear = vi.fn();
-
-vi.mock('../services', () => ({
-	injectStoresManager: vi.fn(() => ({
-		getStore: vi.fn(() => ({
-			profile: {
-				firstName: 'John',
-				lastName: 'Doe',
-				email: 'john.doe@example.com',
-				username: 'johndoe',
-			},
-			clear: mockClear,
+vi.mock('../services/account-manager', () => ({
+	injectAccountManager: vi.fn().mockReturnValue({
+		details: computed(() => ({
+			id: 'user-1',
+			name: 'John Doe',
+			email: 'john.doe@example.com',
+			username: 'johndoe',
 		})),
-	})),
+		signOut: vi.fn(),
+	}),
 }));
 
 describe('AppTopBar.vue', () => {
@@ -49,10 +45,7 @@ describe('AppTopBar.vue', () => {
 	beforeEach(() => {
 		const router = createRouter({
 			history: createWebHistory(),
-			routes: [
-				{ path: '/', name: 'root', component: {} },
-				{ path: '/sign-in', name: RouteNames.SIGN_IN, component: {} },
-			],
+			routes: [{ path: '/', name: RouteNames.ROOT, component: {} }],
 		});
 
 		const i18n = createI18n({
@@ -99,6 +92,6 @@ describe('AppTopBar.vue', () => {
 		await dropdownItems[1].find('div').trigger('click');
 		await nextTick();
 
-		expect(injectStoresManager().getStore(sessionStoreKey).clear).toHaveBeenCalled();
+		expect(injectAccountManager()?.signOut).toHaveBeenCalled();
 	});
 });

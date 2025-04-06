@@ -131,7 +131,7 @@ import {
 	useBreakpoints,
 } from '../../../common';
 import { FormResult, RouteNames } from '../auth.constants';
-import { sessionStoreKey } from '../store';
+import { sessionStoreKey } from '../store/keys';
 
 type PageTabName = 'general' | 'security';
 

@@ -6,7 +6,7 @@ import { flushPromises } from '@vue/test-utils';
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import type { IUser, UsersStore } from '../store';
+import type { IUser, UsersStore } from '../store/users.store.types';
 import { UsersApiException } from '../users.exceptions';
 
 import { useUserEditForm } from './useUserEditForm';

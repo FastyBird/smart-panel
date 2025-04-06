@@ -5,8 +5,8 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
-import { RouteNames } from '../app.constants';
-import { useBreakpoints } from '../common';
+import { RouteNames } from '../../app.constants';
+import { useBreakpoints } from '../composables/useBreakpoints';
 
 import LayoutDefault from './layout-default.vue';
 
@@ -18,11 +18,13 @@ vi.mock('../assets/images/fb_row.svg?component', () => ({
 	},
 }));
 
-vi.mock('../common', () => ({
+vi.mock('../components/components', () => ({
 	AppBar: { template: '<div data-test-id="app-bar"></div>' },
 	AppNavigation: { template: '<div data-test-id="app-navigation"></div>' },
 	AppSidebar: { template: '<div data-test-id="app-sidebar"></div>' },
 	AppTopBar: { template: '<div data-test-id="app-top-bar"></div>' },
+}));
+vi.mock('../composables/useBreakpoints', () => ({
 	useBreakpoints: vi.fn(),
 }));
 

@@ -6,9 +6,9 @@ import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { DEVICES_MODULE_NAME, type IPluginsComponents, type IPluginsSchemas } from '../../modules/devices';
 
-import { ThirdPartyDeviceAddForm, ThirdPartyDeviceEditForm } from './components';
+import { ThirdPartyDeviceAddForm, ThirdPartyDeviceEditForm } from './components/components';
 import enUS from './locales/en-US.json';
-import { ThirdPartyDeviceCreateReqSchema, ThirdPartyDeviceSchema, ThirdPartyDeviceUpdateReqSchema } from './store';
+import { ThirdPartyDeviceCreateReqSchema, ThirdPartyDeviceSchema, ThirdPartyDeviceUpdateReqSchema } from './store/devices.store.schemas';
 
 export const thirdPartyDevicesPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol('FB-Plugin-ThirdPartyDevices');
 

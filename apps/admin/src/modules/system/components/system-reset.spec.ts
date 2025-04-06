@@ -18,7 +18,7 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useSystemActions: () => ({
 		onRestart,
 		onPowerOff,

@@ -1,27 +1,12 @@
-/*
-eslint-disable @typescript-eslint/no-empty-object-type
-*/
-import type { ComponentOptionsMixin, DefineComponent } from 'vue';
-
-import { type IDeviceAddFormProps, type IDeviceEditFormProps, deviceAddFormEmits, deviceEditFormEmits } from './components';
 import DevicesModule from './devices.module';
-import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './store';
 
 // Module
 export { DevicesModule };
 
-export * from './composables';
-export * from './store';
+export * from './components/components';
+export * from './composables/composables';
+export * from './store/stores';
+
 export * from './devices.constants';
 export * from './devices.exceptions';
-
-export type IPluginsComponents = {
-	deviceAddForm?: DefineComponent<IDeviceAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceAddFormEmits>;
-	deviceEditForm?: DefineComponent<IDeviceEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof deviceEditFormEmits>;
-};
-
-export type IPluginsSchemas = {
-	deviceSchema?: typeof DeviceSchema;
-	deviceCreateReqSchema?: typeof DeviceCreateReqSchema;
-	deviceUpdateReqSchema?: typeof DeviceUpdateReqSchema;
-};
+export * from './devices.types';

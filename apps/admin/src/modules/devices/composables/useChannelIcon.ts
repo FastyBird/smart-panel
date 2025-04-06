@@ -1,7 +1,8 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { type IChannel, channelsStoreKey } from '../store';
+import type { IChannel } from '../store/channels.store.types';
+import { channelsStoreKey } from '../store/keys';
 
 import type { IUseChannelIcon } from './types';
 

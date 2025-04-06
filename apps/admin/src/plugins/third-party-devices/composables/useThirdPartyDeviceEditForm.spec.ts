@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesValidationException, FormResult } from '../../../modules/devices';
 import { DevicesDeviceCategory } from '../../../openapi';
-import type { IThirdPartyDevice } from '../store';
+import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import { useThirdPartyDeviceEditForm } from './useThirdPartyDeviceEditForm';
 

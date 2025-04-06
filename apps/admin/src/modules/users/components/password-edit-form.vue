@@ -40,7 +40,7 @@ import { useI18n } from 'vue-i18n';
 import type { InternalRuleItem } from 'async-validator';
 import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { type IUserPasswordForm, useUserPasswordForm } from '../composables';
+import { type IUserPasswordForm, useUserPasswordForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
 import type { IPasswordEditFormProps } from './password-edit-form.types';

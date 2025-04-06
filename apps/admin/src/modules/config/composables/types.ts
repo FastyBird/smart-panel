@@ -9,7 +9,10 @@ import {
 	PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type,
 } from '../../../openapi';
 import type { FormResultType } from '../config.constants';
-import type { IConfigAudio, IConfigDisplay, IConfigLanguage, IConfigWeather } from '../store';
+import type { IConfigAudio } from '../store/config-audio.store.types';
+import type { IConfigDisplay } from '../store/config-display.store.types';
+import type { IConfigLanguage } from '../store/config-language.store.types';
+import type { IConfigWeather } from '../store/config-weather.store.types';
 
 export interface IConfigAudioEditForm {
 	speaker: boolean;

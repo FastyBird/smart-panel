@@ -166,10 +166,10 @@ import { ElAlert, ElButton, ElDivider, ElFormItem, ElIcon, ElMessageBox, ElOptio
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
-import { DeviceAddForm } from '../components';
-import { usePlugins } from '../composables';
+import { DeviceAddForm } from '../components/components';
+import { usePlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
-import type { IPluginsComponents, IPluginsSchemas } from '../index';
+import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
 
 import type { IViewDeviceAddProps } from './view-device-add.types';
 

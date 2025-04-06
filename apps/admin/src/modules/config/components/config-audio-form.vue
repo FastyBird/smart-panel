@@ -64,7 +64,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElSlider, ElSwitch } from 'element-plus';
 
-import { useConfigAudioEditForm } from '../composables';
+import { useConfigAudioEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
 import type { IConfigAudioFormProps } from './config-audio-form.types';

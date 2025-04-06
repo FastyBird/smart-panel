@@ -5,7 +5,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectStoresManager } from '../../../common';
 import { DevicesChannelCategory, DevicesChannelPropertyCategory } from '../../../openapi';
 import { ConnectionState } from '../devices.constants';
-import type { IDevice } from '../store';
+import type { IDevice } from '../store/devices.store.types';
 
 import { useDeviceState } from './useDeviceState';
 

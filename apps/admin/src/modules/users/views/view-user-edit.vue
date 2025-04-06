@@ -124,9 +124,9 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, UserAvatar, useBreakpoints, useUuid } from '../../../common';
-import { UserEditForm } from '../components';
-import { useUser } from '../composables';
-import type { IUser } from '../store';
+import { UserEditForm } from '../components/components';
+import { useUser } from '../composables/composables';
+import type { IUser } from '../store/users.store.types';
 import { FormResult, type FormResultType, RouteNames } from '../users.constants';
 import { UsersApiException, UsersException } from '../users.exceptions';
 

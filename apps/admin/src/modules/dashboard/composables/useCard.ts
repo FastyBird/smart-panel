@@ -3,7 +3,9 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type ICard, type IPage, cardsStoreKey } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import { cardsStoreKey } from '../store/keys';
+import type { IPage } from '../store/pages.store.types';
 
 import type { IUseCard } from './types';
 

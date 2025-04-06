@@ -1,16 +1,7 @@
 import { UsersValidationException } from '../users.exceptions';
 
-import {
-	type IUser,
-	type IUserCreateReq,
-	type IUserRes,
-	type IUserUpdateReq,
-	type IUsersAddActionPayload,
-	type IUsersEditActionPayload,
-	UserCreateReqSchema,
-	UserSchema,
-	UserUpdateReqSchema,
-} from './users.store.types';
+import { UserCreateReqSchema, UserSchema, UserUpdateReqSchema } from './users.store.schemas';
+import type { IUser, IUserCreateReq, IUserRes, IUserUpdateReq, IUsersAddActionPayload, IUsersEditActionPayload } from './users.store.types';
 
 export const transformUserResponse = (response: IUserRes): IUser => {
 	const parsedUser = UserSchema.safeParse({

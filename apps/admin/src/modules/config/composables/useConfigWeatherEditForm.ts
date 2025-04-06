@@ -7,7 +7,8 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
-import { type IConfigWeather, configWeatherStoreKey } from '../store';
+import type { IConfigWeather } from '../store/config-weather.store.types';
+import { configWeatherStoreKey } from '../store/keys';
 
 import type { IConfigWeatherEditForm, IUseConfigWeatherEditForm } from './types';
 

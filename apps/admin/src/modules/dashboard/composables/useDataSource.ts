@@ -3,7 +3,10 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type DataSourceParentTypeMap, type ICard, type IDataSource, type IPage, dataSourcesStoreKey } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import type { DataSourceParentTypeMap, IDataSource } from '../store/dataSources.store.types';
+import { dataSourcesStoreKey } from '../store/keys';
+import type { IPage } from '../store/pages.store.types';
 
 import type { IUseDataSource } from './types';
 

@@ -1,5 +1,5 @@
 import type { FormResultType, LayoutType } from '../config.constants';
-import type { IConfigAudio } from '../store';
+import type { IConfigAudio } from '../store/config-audio.store.types';
 
 export type IConfigAudioFormProps = {
 	config: IConfigAudio;

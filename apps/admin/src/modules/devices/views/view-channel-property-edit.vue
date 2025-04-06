@@ -126,11 +126,12 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
-import { ChannelPropertyEditForm } from '../components';
-import { useChannel, useChannelProperty, useChannelPropertyIcon } from '../composables';
+import { ChannelPropertyEditForm } from '../components/components';
+import { useChannel, useChannelProperty, useChannelPropertyIcon } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
-import type { IChannel, IChannelProperty } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
 
 import type { IViewChannelPropertyEditProps } from './view-channel-property-edit.types';
 

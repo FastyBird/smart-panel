@@ -3,7 +3,10 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type ICard, type IPage, type TileParentTypeMap, tilesStoreKey } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import { tilesStoreKey } from '../store/keys';
+import type { IPage } from '../store/pages.store.types';
+import type { TileParentTypeMap } from '../store/tiles.store.types';
 
 import type { IUseTiles } from './types';
 

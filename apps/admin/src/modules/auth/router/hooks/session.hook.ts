@@ -5,7 +5,8 @@ import { jwtDecode } from 'jwt-decode';
 import * as Sentry from '@sentry/vue';
 
 import type { IStoresManager } from '../../../../common';
-import { type ITokenPayload, sessionStoreKey } from '../../store';
+import { sessionStoreKey } from '../../store/keys';
+import type { ITokenPayload } from '../../store/session.store.types';
 
 const sessionHook = async (storesManager: IStoresManager): Promise<boolean | RouteLocation | undefined> => {
 	const sessionStore = storesManager.getStore(sessionStoreKey);

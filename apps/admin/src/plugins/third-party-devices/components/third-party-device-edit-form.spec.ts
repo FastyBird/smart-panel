@@ -4,11 +4,11 @@ import { mount } from '@vue/test-utils';
 
 import { FormResult } from '../../../modules/devices';
 import { DevicesDeviceCategory } from '../../../openapi';
-import type { IThirdPartyDevice } from '../store';
+import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import ThirdPartyDeviceEditForm from './third-party-device-edit-form.vue';
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useThirdPartyDeviceEditForm: () => ({
 		categoriesOptions: [
 			{ value: 'generic', label: DevicesDeviceCategory.generic },

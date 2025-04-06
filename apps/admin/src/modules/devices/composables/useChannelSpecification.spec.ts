@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectStoresManager } from '../../../common';
 import { DevicesChannelCategory, DevicesChannelPropertyCategory } from '../../../openapi';
 import { DevicesException } from '../devices.exceptions';
-import type { IChannel, IChannelProperty } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
 
 import { useChannelSpecification } from './useChannelSpecification';
 

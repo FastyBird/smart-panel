@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IUser, usersStoreKey } from '../store';
+import { usersStoreKey } from '../store/keys';
+import type { IUser } from '../store/users.store.types';
 
 import type { IUseUser } from './types';
 

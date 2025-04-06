@@ -245,9 +245,9 @@ import { useVModel } from '@vueuse/core';
 
 import { type IPlugin, IconWithChild, useBreakpoints } from '../../../../common';
 import type { DevicesDeviceCategory } from '../../../../openapi';
-import type { IDevicesFilter } from '../../composables';
+import type { IDevicesFilter } from '../../composables/composables';
 import type { ConnectionState } from '../../devices.constants';
-import type { IDevice } from '../../store';
+import type { IDevice } from '../../store/devices.store.types';
 
 import DevicesTableColumnIcon from './devices-table-column-icon.vue';
 import DevicesTableColumnPlugin from './devices-table-column-plugin.vue';

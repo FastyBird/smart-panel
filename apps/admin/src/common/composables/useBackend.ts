@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-import { injectBackendClient } from '../services';
+import { injectBackendClient } from '../services/backend';
 
 import type { IUseBackend } from './types';
 

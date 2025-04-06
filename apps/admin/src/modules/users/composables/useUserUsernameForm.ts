@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { type IUser, usersStoreKey } from '../store';
+import { usersStoreKey } from '../store/keys';
+import type { IUser } from '../store/users.store.types';
 import { FormResult, type FormResultType } from '../users.constants';
 import { UsersApiException, UsersValidationException } from '../users.exceptions';
 

@@ -3,14 +3,8 @@ import { ConfigDisplayType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioRes } from './config-audio.store.types';
-import {
-	ConfigDisplaySchema,
-	ConfigDisplayUpdateReqSchema,
-	type IConfigDisplay,
-	type IConfigDisplayEditActionPayload,
-	type IConfigDisplayRes,
-	type IConfigDisplayUpdateReq,
-} from './config-display.store.types';
+import { ConfigDisplaySchema, ConfigDisplayUpdateReqSchema } from './config-display.store.schemas';
+import type { IConfigDisplay, IConfigDisplayEditActionPayload, IConfigDisplayRes, IConfigDisplayUpdateReq } from './config-display.store.types';
 import type { IConfigLanguageRes } from './config-language.store.types';
 import type { IConfigWeatherRes } from './config-weather.store.types';
 

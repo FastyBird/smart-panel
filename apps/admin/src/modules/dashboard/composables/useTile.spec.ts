@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { ITile } from '../store';
+import type { ITile } from '../store/tiles.store.types';
 
 import { useTile } from './useTile';
 

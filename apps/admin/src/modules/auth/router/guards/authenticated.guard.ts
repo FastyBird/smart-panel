@@ -2,7 +2,7 @@ import type { RouteLocationRaw, RouteRecordRaw } from 'vue-router';
 
 import type { IStoresManager } from '../../../../common';
 import { RouteNames } from '../../auth.constants';
-import { sessionStoreKey } from '../../store';
+import { sessionStoreKey } from '../../store/keys';
 
 export const GUARD_NAME = 'authenticated';
 

@@ -20,6 +20,9 @@ export interface IPluginOptions {
 
 export interface IAppUser {
 	id: string;
-	role: UsersUserRole;
+	username: string;
+	name?: string | null;
 	email?: string | null;
+	avatar?: string;
+	role: UsersUserRole;
 }

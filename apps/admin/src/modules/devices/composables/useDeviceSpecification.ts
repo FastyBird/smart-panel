@@ -4,7 +4,8 @@ import { injectStoresManager } from '../../../common';
 import type { DevicesChannelCategory } from '../../../openapi';
 import { DevicesException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';
-import { type IDevice, channelsStoreKey, devicesStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { channelsStoreKey, devicesStoreKey } from '../store/keys';
 
 import type { IUseDeviceSpecification } from './types';
 

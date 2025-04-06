@@ -6,42 +6,39 @@ import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import type { operations } from '../../../openapi';
-import { usePlugins } from '../composables';
+import { usePlugins } from '../composables/composables';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
+import { transformChannelControlResponse } from './channels.controls.transformers';
+import { transformChannelPropertyResponse } from './channels.properties.transformers';
+import type { IChannelRes } from './channels.store.types';
+import { transformChannelResponse } from './channels.transformers';
+import type { IDeviceControlRes } from './devices.controls.store.types';
+import { transformDeviceControlResponse } from './devices.controls.transformers';
 import {
 	DeviceCreateReqSchema,
 	DeviceSchema,
 	DeviceUpdateReqSchema,
 	DevicesAddActionPayloadSchema,
 	DevicesEditActionPayloadSchema,
-	type DevicesStoreSetup,
-	type IDevice,
-	type IDevicesAddActionPayload,
-	type IDevicesEditActionPayload,
-	type IDevicesGetActionPayload,
-	type IDevicesRemoveActionPayload,
-	type IDevicesSaveActionPayload,
-	type IDevicesSetActionPayload,
-	type IDevicesStateSemaphore,
-	type IDevicesStoreActions,
-	type IDevicesStoreState,
-	type IDevicesUnsetActionPayload,
+} from './devices.store.schemas';
+import type {
+	DevicesStoreSetup,
+	IDevice,
+	IDevicesAddActionPayload,
+	IDevicesEditActionPayload,
+	IDevicesGetActionPayload,
+	IDevicesRemoveActionPayload,
+	IDevicesSaveActionPayload,
+	IDevicesSetActionPayload,
+	IDevicesStateSemaphore,
+	IDevicesStoreActions,
+	IDevicesStoreState,
+	IDevicesUnsetActionPayload,
 } from './devices.store.types';
 import { transformDeviceCreateRequest, transformDeviceResponse, transformDeviceUpdateRequest } from './devices.transformers';
-import {
-	type IChannelRes,
-	type IDeviceControlRes,
-	channelsControlsStoreKey,
-	channelsPropertiesStoreKey,
-	channelsStoreKey,
-	devicesControlsStoreKey,
-	transformChannelControlResponse,
-	transformChannelPropertyResponse,
-	transformChannelResponse,
-	transformDeviceControlResponse,
-} from './index';
+import { channelsControlsStoreKey, channelsPropertiesStoreKey, channelsStoreKey, devicesControlsStoreKey } from './keys';
 
 const defaultSemaphore: IDevicesStateSemaphore = {
 	fetching: {

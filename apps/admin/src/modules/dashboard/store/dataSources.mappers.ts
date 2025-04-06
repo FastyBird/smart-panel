@@ -2,13 +2,12 @@ import { DashboardException } from '../dashboard.exceptions';
 
 import {
 	CardDeviceChannelDataSourceSchema,
-	type DataSourceParentType,
 	DeviceChannelDataSourceCreateReqSchema,
 	DeviceChannelDataSourceUpdateReqSchema,
-	type IDataSourcesEntitiesSchemas,
 	PageDeviceChannelDataSourceSchema,
 	TileDeviceChannelDataSourceSchema,
-} from './dataSources.store.types';
+} from './dataSources.store.schemas';
+import type { DataSourceParentType, IDataSourcesEntitiesSchemas } from './dataSources.store.types';
 
 const schemas: Record<DataSourceParentType, Record<string, IDataSourcesEntitiesSchemas>> = {
 	page: {

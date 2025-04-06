@@ -5,3 +5,5 @@ export { useEventBus } from './useEventBus';
 export { useFlashMessage } from './useFlashMessage';
 export { useMenu } from './useMenu';
 export { useUuid } from './useUuid';
+
+export * from './types';

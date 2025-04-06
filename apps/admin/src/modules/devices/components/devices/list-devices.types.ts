@@ -1,5 +1,5 @@
-import type { IDevicesFilter } from '../../composables';
-import type { IDevice } from '../../store';
+import type { IDevicesFilter } from '../../composables/composables';
+import type { IDevice } from '../../store/devices.store.types';
 
 export interface IListDevicesProps {
 	items: IDevice[];

@@ -4,7 +4,8 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
-import { type IChannel, channelsStoreKey } from '../store';
+import type { IChannel } from '../store/channels.store.types';
+import { channelsStoreKey } from '../store/keys';
 
 import type { IUseChannelsActions } from './types';
 

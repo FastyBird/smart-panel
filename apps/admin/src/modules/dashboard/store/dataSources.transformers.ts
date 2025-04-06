@@ -1,17 +1,15 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	DataSourceBaseSchema,
-	DataSourceCreateBaseReqSchema,
-	type DataSourceParentType,
-	DataSourceUpdateBaseReqSchema,
-	type IDataSourceBase,
-	type IDataSourceCreateBaseReq,
-	type IDataSourceRes,
-	type IDataSourceUpdateBaseReq,
-	type IDataSourcesAddActionPayload,
-	type IDataSourcesEditActionPayload,
+import { DataSourceBaseSchema, DataSourceCreateBaseReqSchema, DataSourceUpdateBaseReqSchema } from './dataSources.store.schemas';
+import type {
+	DataSourceParentType,
+	IDataSourceBase,
+	IDataSourceCreateBaseReq,
+	IDataSourceRes,
+	IDataSourceUpdateBaseReq,
+	IDataSourcesAddActionPayload,
+	IDataSourcesEditActionPayload,
 } from './dataSources.store.types';
 
 export const transformDataSourceResponse = <T extends IDataSourceBase = IDataSourceBase>(

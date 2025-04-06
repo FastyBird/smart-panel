@@ -4,7 +4,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import type { UsersStore } from '../store';
+import type { UsersStore } from '../store/users.store.types';
 import { UsersApiException, UsersException } from '../users.exceptions';
 
 import { useUsersActions } from './useUsersActions';

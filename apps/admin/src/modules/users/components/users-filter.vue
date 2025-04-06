@@ -60,7 +60,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { UsersUserRole } from '../../../openapi';
-import type { IUsersFilter } from '../composables';
+import type { IUsersFilter } from '../composables/types';
 
 import type { IUsersFilterProps } from './users-filter.types';
 

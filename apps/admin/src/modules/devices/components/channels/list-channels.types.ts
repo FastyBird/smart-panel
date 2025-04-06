@@ -1,5 +1,5 @@
-import type { IChannelsFilter } from '../../composables';
-import type { IChannel } from '../../store';
+import type { IChannelsFilter } from '../../composables/composables';
+import type { IChannel } from '../../store/channels.store.types';
 
 export interface IListChannelsProps {
 	items: IChannel[];

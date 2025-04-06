@@ -7,21 +7,20 @@ import type { operations } from '../../../openapi';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
-import {
-	DeviceControlSchema,
-	DevicesControlsAddActionPayloadSchema,
-	type DevicesControlsStoreSetup,
-	type IDeviceControl,
-	type IDevicesControlsAddActionPayload,
-	type IDevicesControlsFetchActionPayload,
-	type IDevicesControlsGetActionPayload,
-	type IDevicesControlsRemoveActionPayload,
-	type IDevicesControlsSaveActionPayload,
-	type IDevicesControlsSetActionPayload,
-	type IDevicesControlsStateSemaphore,
-	type IDevicesControlsStoreActions,
-	type IDevicesControlsStoreState,
-	type IDevicesControlsUnsetActionPayload,
+import { DeviceControlSchema, DevicesControlsAddActionPayloadSchema } from './devices.controls.store.schemas';
+import type {
+	DevicesControlsStoreSetup,
+	IDeviceControl,
+	IDevicesControlsAddActionPayload,
+	IDevicesControlsFetchActionPayload,
+	IDevicesControlsGetActionPayload,
+	IDevicesControlsRemoveActionPayload,
+	IDevicesControlsSaveActionPayload,
+	IDevicesControlsSetActionPayload,
+	IDevicesControlsStateSemaphore,
+	IDevicesControlsStoreActions,
+	IDevicesControlsStoreState,
+	IDevicesControlsUnsetActionPayload,
 } from './devices.controls.store.types';
 import { transformDeviceControlCreateRequest, transformDeviceControlResponse } from './devices.controls.transformers';
 import type { IDevice } from './devices.store.types';

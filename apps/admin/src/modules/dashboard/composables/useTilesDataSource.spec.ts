@@ -5,7 +5,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { ICard, IPageBase, IPageDayWeatherTile, IPageDevicePreviewTile, IPageTimeTile, ITile, TileParentType } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import type { IPage } from '../store/pages.store.types';
+import type { IPageDayWeatherTile, IPageDevicePreviewTile, IPageTimeTile, ITile, TileParentType } from '../store/tiles.store.types';
 
 import { defaultTilesFilter, useTilesDataSource } from './useTilesDataSource';
 
@@ -75,7 +77,7 @@ describe('useTilesDataSource', () => {
 		];
 
 		mockStore = {
-			findForParent: vi.fn((parent: TileParentType, parentId: IPageBase['id'] | ICard['id']) =>
+			findForParent: vi.fn((parent: TileParentType, parentId: IPage['id'] | ICard['id']) =>
 				mockTiles.filter((tile) => 'page' in tile && tile.page === parentId)
 			),
 			fetch: vi.fn(),

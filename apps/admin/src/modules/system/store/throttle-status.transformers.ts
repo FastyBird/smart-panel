@@ -1,7 +1,8 @@
 import { snakeToCamel } from '../../../common';
 import { SystemValidationException } from '../system.exceptions';
 
-import { type IThrottleStatus, type IThrottleStatusRes, ThrottleStatusSchema } from './throttle-status.store.types';
+import { ThrottleStatusSchema } from './throttle-status.store.schemas';
+import type { IThrottleStatus, IThrottleStatusRes } from './throttle-status.store.types';
 
 export const transformThrottleStatusResponse = (response: IThrottleStatusRes): IThrottleStatus => {
 	const parsed = ThrottleStatusSchema.safeParse(snakeToCamel(response));

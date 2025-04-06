@@ -9,16 +9,15 @@ import { ConfigAudioType, PathsConfigModuleConfigSectionParametersParametersPath
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
-import {
-	ConfigAudioEditActionPayloadSchema,
-	ConfigAudioSchema,
-	type ConfigAudioStoreSetup,
-	type IConfigAudio,
-	type IConfigAudioEditActionPayload,
-	type IConfigAudioSetActionPayload,
-	type IConfigAudioStateSemaphore,
-	type IConfigAudioStoreActions,
-	type IConfigAudioStoreState,
+import { ConfigAudioEditActionPayloadSchema, ConfigAudioSchema } from './config-audio.store.schemas';
+import type {
+	ConfigAudioStoreSetup,
+	IConfigAudio,
+	IConfigAudioEditActionPayload,
+	IConfigAudioSetActionPayload,
+	IConfigAudioStateSemaphore,
+	IConfigAudioStoreActions,
+	IConfigAudioStoreState,
 } from './config-audio.store.types';
 import { transformConfigAudioResponse, transformConfigAudioUpdateRequest } from './config-audio.transformers';
 

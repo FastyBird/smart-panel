@@ -97,8 +97,8 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType } from '../../../modules/devices';
-import { type IThirdPartyDeviceEditForm, useThirdPartyDeviceEditForm } from '../composables';
-import type { IThirdPartyDevice } from '../store';
+import { type IThirdPartyDeviceEditForm, useThirdPartyDeviceEditForm } from '../composables/composables';
+import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import type { IThirdPartyDeviceEditFormProps } from './third-party-device-edit-form.types';
 

@@ -9,20 +9,18 @@ import type { operations } from '../../../openapi';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 import { UsersApiException, UsersException, UsersValidationException } from '../users.exceptions';
 
-import {
-	type IUser,
-	type IUsersAddActionPayload,
-	type IUsersEditActionPayload,
-	type IUsersGetActionPayload,
-	type IUsersRemoveActionPayload,
-	type IUsersSaveActionPayload,
-	type IUsersStateSemaphore,
-	type IUsersStoreActions,
-	type IUsersStoreState,
-	UserSchema,
-	UsersAddActionPayloadSchema,
-	UsersEditActionPayloadSchema,
-	type UsersStoreSetup,
+import { UserSchema, UsersAddActionPayloadSchema, UsersEditActionPayloadSchema } from './users.store.schemas';
+import type {
+	IUser,
+	IUsersAddActionPayload,
+	IUsersEditActionPayload,
+	IUsersGetActionPayload,
+	IUsersRemoveActionPayload,
+	IUsersSaveActionPayload,
+	IUsersStateSemaphore,
+	IUsersStoreActions,
+	IUsersStoreState,
+	UsersStoreSetup,
 } from './users.store.types';
 import { transformUserCreateRequest, transformUserResponse, transformUserUpdateRequest } from './users.transformers';
 

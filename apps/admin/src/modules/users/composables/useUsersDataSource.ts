@@ -6,7 +6,8 @@ import { cloneDeep, isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager } from '../../../common';
-import { type IUser, usersStoreKey } from '../store';
+import { usersStoreKey } from '../store/keys';
+import type { IUser } from '../store/users.store.types';
 
 import type { IUseUsersDataSource, IUsersFilter } from './types';
 

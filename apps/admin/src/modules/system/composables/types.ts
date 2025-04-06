@@ -1,6 +1,7 @@
 import type { ComputedRef } from 'vue';
 
-import type { ISystemInfo, IThrottleStatus } from '../store';
+import type { ISystemInfo } from '../store/system-info.store.types';
+import type { IThrottleStatus } from '../store/throttle-status.store.types';
 
 export interface IUseSystemInfo {
 	systemInfo: ComputedRef<ISystemInfo | null>;

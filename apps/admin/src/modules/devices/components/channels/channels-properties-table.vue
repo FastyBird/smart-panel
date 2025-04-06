@@ -278,8 +278,10 @@ import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
 import { DevicesChannelPropertyCategory, type DevicesChannelPropertyData_type, DevicesChannelPropertyPermissions } from '../../../../openapi';
-import type { IChannelsPropertiesFilter } from '../../composables';
-import type { IChannel, IChannelProperty, IDevice } from '../../store';
+import type { IChannelsPropertiesFilter } from '../../composables/composables';
+import type { IChannelProperty } from '../../store/channels.properties.store.types';
+import type { IChannel } from '../../store/channels.store.types';
+import type { IDevice } from '../../store/devices.store.types';
 
 import ChannelsPropertiesTableColumnChannel from './channels-properties-table-column-channel.vue';
 import ChannelsPropertiesTableColumnDataType from './channels-properties-table-column-data-type.vue';

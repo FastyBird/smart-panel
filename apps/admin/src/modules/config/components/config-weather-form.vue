@@ -76,7 +76,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput, ElOption, ElSelect } from 'element-plus';
 
-import { useConfigWeatherEditForm } from '../composables';
+import { useConfigWeatherEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
 import type { IConfigWeatherFormProps } from './config-weather-form.types';

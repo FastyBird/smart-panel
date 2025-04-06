@@ -115,7 +115,7 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
-import { ChannelAddForm } from '../components';
+import { ChannelAddForm } from '../components/components';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 
 import type { IViewChannelAddProps } from './view-channel-add.types';

@@ -51,8 +51,8 @@ import { ElCard, ElPagination } from 'element-plus';
 import { useVModel } from '@vueuse/core';
 
 import { useBreakpoints } from '../../../common';
-import type { IUsersFilter } from '../composables';
-import type { IUser } from '../store';
+import type { IUsersFilter } from '../composables/types';
+import type { IUser } from '../store/users.store.types';
 
 import { type IListUsersProps } from './list-users.types';
 import UsersFilter from './users-filter.vue';

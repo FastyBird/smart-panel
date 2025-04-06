@@ -1,12 +1,11 @@
 import { DevicesValidationException } from '../devices.exceptions';
 
-import {
-	ChannelControlCreateReqSchema,
-	ChannelControlSchema,
-	type IChannelControl,
-	type IChannelControlCreateReq,
-	type IChannelControlRes,
-	type IChannelsControlsAddActionPayload,
+import { ChannelControlCreateReqSchema, ChannelControlSchema } from './channels.controls.store.schemas';
+import type {
+	IChannelControl,
+	IChannelControlCreateReq,
+	IChannelControlRes,
+	IChannelsControlsAddActionPayload,
 } from './channels.controls.store.types';
 
 export const transformChannelControlResponse = (response: IChannelControlRes): IChannelControl => {

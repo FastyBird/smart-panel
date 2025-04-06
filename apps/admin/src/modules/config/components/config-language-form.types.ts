@@ -1,5 +1,5 @@
 import type { FormResultType, LayoutType } from '../config.constants';
-import type { IConfigLanguage } from '../store';
+import type { IConfigLanguage } from '../store/config-language.store.types';
 
 export type IConfigLanguageFormProps = {
 	config: IConfigLanguage;

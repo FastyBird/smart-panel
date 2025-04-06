@@ -110,7 +110,7 @@ import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import { DevicesChannelPropertyCategory, DevicesChannelPropertyData_type, DevicesChannelPropertyPermissions } from '../../../../openapi';
-import type { IDevicesFilter } from '../../composables';
+import type { IDevicesFilter } from '../../composables/composables';
 
 import { type IListChannelsPropertiesAdjustProps } from './list-channels-properties-adjust.types';
 

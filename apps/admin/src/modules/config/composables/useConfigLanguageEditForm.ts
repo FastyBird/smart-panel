@@ -7,7 +7,8 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigLanguageLanguage, ConfigLanguageTime_format } from '../../../openapi';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
-import { type IConfigLanguage, configLanguageStoreKey } from '../store';
+import type { IConfigLanguage } from '../store/config-language.store.types';
+import { configLanguageStoreKey } from '../store/keys';
 
 import type { IConfigLanguageEditForm, IUseConfigLanguageEditForm } from './types';
 

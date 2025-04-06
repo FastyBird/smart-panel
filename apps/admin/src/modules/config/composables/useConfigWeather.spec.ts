@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
 import { ConfigWeatherType, ConfigWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
-import type { IConfigWeather } from '../store';
+import type { IConfigWeather } from '../store/config-weather.store.types';
 
 import { useConfigWeather } from './useConfigWeather';
 

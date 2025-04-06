@@ -4,7 +4,8 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DashboardApiException, DashboardException } from '../dashboard.exceptions';
-import { type ICard, cardsStoreKey } from '../store';
+import type { ICard } from '../store/cards.store.types';
+import { cardsStoreKey } from '../store/keys';
 
 import type { IUseCardsActions } from './types';
 

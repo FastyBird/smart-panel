@@ -47,7 +47,7 @@ import { ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from '
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { FormResult, type FormResultType, Layout } from '../../auth.constants';
-import { sessionStoreKey } from '../../store';
+import { sessionStoreKey } from '../../store/keys';
 
 import type { SettingsProfileFormFields, SettingsProfileFormProps } from './settings-profile-form.types';
 

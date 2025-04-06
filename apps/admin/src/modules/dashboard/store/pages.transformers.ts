@@ -1,16 +1,14 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	type IPageBase,
-	type IPageCreateBaseReq,
-	type IPageRes,
-	type IPageUpdateBaseReq,
-	type IPagesAddActionPayload,
-	type IPagesEditActionPayload,
-	PageBaseSchema,
-	PageCreateBaseReqSchema,
-	PageUpdateBaseReqSchema,
+import { PageBaseSchema, PageCreateBaseReqSchema, PageUpdateBaseReqSchema } from './pages.store.schemas';
+import type {
+	IPageBase,
+	IPageCreateBaseReq,
+	IPageRes,
+	IPageUpdateBaseReq,
+	IPagesAddActionPayload,
+	IPagesEditActionPayload,
 } from './pages.store.types';
 
 export const transformPageResponse = <T extends IPageBase = IPageBase>(response: IPageRes, schema: typeof PageBaseSchema): T => {

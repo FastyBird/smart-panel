@@ -82,7 +82,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import type { IPlugin } from '../../../../common';
-import { type IDeviceAddForm, useDeviceAddForm } from '../../composables';
+import { type IDeviceAddForm, useDeviceAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 
 import type { IDeviceAddFormProps } from './device-add-form.types';

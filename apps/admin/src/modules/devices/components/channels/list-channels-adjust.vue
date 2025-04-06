@@ -72,7 +72,7 @@ import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import { DevicesChannelCategory } from '../../../../openapi';
-import type { IDevicesFilter } from '../../composables';
+import type { IDevicesFilter } from '../../composables/composables';
 
 import { type IListChannelsAdjustProps } from './list-channels-adjust.types';
 

@@ -51,7 +51,8 @@
     "test:cov:watch": "vitest --watch --coverage",
     "test:e2e": "playwright test",
     "type-check": "vue-tsc --build",
-    "generate:openapi": "openapi-typescript ../../spec/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false"
+    "generate:openapi": "openapi-typescript ../../spec/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false",
+    "circular": "npx madge --circular src --extensions ts,tsx --ts-config tsconfig.json"
   },
   "dependencies": {
     "@iconify/vue": "^4.3",

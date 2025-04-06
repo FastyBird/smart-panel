@@ -3,7 +3,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import { UsersUserRole } from '../../../openapi';
-import type { IUser } from '../store';
+import type { IUser } from '../store/users.store.types';
 import type { FormResultType } from '../users.constants';
 
 export interface IUsersFilter {

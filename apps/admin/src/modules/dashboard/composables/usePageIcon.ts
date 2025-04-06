@@ -1,7 +1,8 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { type IPage, pagesStoreKey } from '../store';
+import { pagesStoreKey } from '../store/keys';
+import type { IPage } from '../store/pages.store.types';
 
 import type { IUsePageIcon } from './types';
 

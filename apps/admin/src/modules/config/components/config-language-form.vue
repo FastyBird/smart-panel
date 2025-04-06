@@ -74,7 +74,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElOption, ElSelect } from 'element-plus';
 
-import { useConfigLanguageEditForm } from '../composables';
+import { useConfigLanguageEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
 import type { IConfigLanguageFormProps } from './config-language-form.types';

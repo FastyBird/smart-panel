@@ -11,3 +11,5 @@ export { default as IconWithChild } from './icon-with-child.vue';
 export { default as UserAvatar } from './user-avatar.vue';
 export { default as ViewError } from './view-error.vue';
 export { default as ViewHeader } from './view-header.vue';
+
+export * from './types';

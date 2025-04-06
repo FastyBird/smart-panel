@@ -9,7 +9,7 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { UsersUserRole } from '../../../../openapi';
 import { FormResult, Layout } from '../../auth.constants';
-import type { SessionStore } from '../../store';
+import type { SessionStore } from '../../store/session.store.types';
 
 import type { SettingsPasswordFormFields, SettingsPasswordFormProps } from './settings-password-form.types';
 import SettingsPasswordForm from './settings-password-form.vue';

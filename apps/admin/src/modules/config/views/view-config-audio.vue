@@ -34,8 +34,8 @@ import { useMeta } from 'vue-meta';
 import { ElCard, vLoading } from 'element-plus';
 
 import { useBreakpoints } from '../../../common';
-import { ConfigAudioForm } from '../components';
-import { useConfigAudio } from '../composables';
+import { ConfigAudioForm } from '../components/components';
+import { useConfigAudio } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 

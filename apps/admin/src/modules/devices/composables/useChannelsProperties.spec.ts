@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { IChannelProperty } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
 
 import { useChannelsProperties } from './useChannelsProperties';
 

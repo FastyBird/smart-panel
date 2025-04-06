@@ -6,10 +6,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
-import type { IUsersFilter } from '../composables';
+import type { IUsersFilter } from '../composables/types';
 
-import { UsersFilter } from './index';
 import type { IUsersFilterProps } from './users-filter.types';
+import UsersFilter from './users-filter.vue';
 
 type UsersFilterInstance = ComponentPublicInstance<IUsersFilterProps>;
 

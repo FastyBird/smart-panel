@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
 import { ConfigLanguageLanguage, ConfigLanguageTime_format, ConfigLanguageType } from '../../../openapi';
-import type { IConfigLanguage } from '../store';
+import type { IConfigLanguage } from '../store/config-language.store.types';
 
 import { useConfigLanguage } from './useConfigLanguage';
 

@@ -9,36 +9,31 @@ import type { operations } from '../../../openapi';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	CardSchema,
-	CardsAddActionPayloadSchema,
-	CardsEditActionPayloadSchema,
-	type CardsStoreSetup,
-	type ICard,
-	type ICardsAddActionPayload,
-	type ICardsEditActionPayload,
-	type ICardsFetchActionPayload,
-	type ICardsGetActionPayload,
-	type ICardsRemoveActionPayload,
-	type ICardsSaveActionPayload,
-	type ICardsSetActionPayload,
-	type ICardsStateSemaphore,
-	type ICardsStoreActions,
-	type ICardsStoreState,
-	type ICardsUnsetActionPayload,
+import { CardSchema, CardsAddActionPayloadSchema, CardsEditActionPayloadSchema } from './cards.store.schemas';
+import type {
+	CardsStoreSetup,
+	ICard,
+	ICardsAddActionPayload,
+	ICardsEditActionPayload,
+	ICardsFetchActionPayload,
+	ICardsGetActionPayload,
+	ICardsRemoveActionPayload,
+	ICardsSaveActionPayload,
+	ICardsSetActionPayload,
+	ICardsStateSemaphore,
+	ICardsStoreActions,
+	ICardsStoreState,
+	ICardsUnsetActionPayload,
 } from './cards.store.types';
 import { transformCardCreateRequest, transformCardResponse, transformCardUpdateRequest } from './cards.transformers';
+import { getDataSourcesSchemas } from './dataSources.mappers';
 import type { ICardDeviceChannelDataSourceRes } from './dataSources.store.types';
-import {
-	type ICardTileRes,
-	dataSourcesStoreKey,
-	getDataSourcesSchemas,
-	getTilesSchemas,
-	tilesStoreKey,
-	transformDataSourceResponse,
-	transformTileResponse,
-} from './index';
+import { transformDataSourceResponse } from './dataSources.transformers';
+import { dataSourcesStoreKey, tilesStoreKey } from './keys';
 import type { IPage } from './pages.store.types';
+import { getTilesSchemas } from './tiles.mappers';
+import type { ICardTileRes } from './tiles.store.types';
+import { transformTileResponse } from './tiles.transformers';
 
 const defaultSemaphore: ICardsStateSemaphore = {
 	fetching: {

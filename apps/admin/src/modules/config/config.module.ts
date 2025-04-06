@@ -9,16 +9,11 @@ import { injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
-import {
-	configAudioStoreKey,
-	configDisplayStoreKey,
-	configLanguageStoreKey,
-	configWeatherStoreKey,
-	registerConfigAudioStore,
-	registerConfigDisplayStore,
-	registerConfigLanguageStore,
-	registerConfigWeatherStore,
-} from './store';
+import { registerConfigAudioStore } from './store/config-audio.store';
+import { registerConfigDisplayStore } from './store/config-display.store';
+import { registerConfigLanguageStore } from './store/config-language.store';
+import { registerConfigWeatherStore } from './store/config-weather.store';
+import { configAudioStoreKey, configDisplayStoreKey, configLanguageStoreKey, configWeatherStoreKey } from './store/keys';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {

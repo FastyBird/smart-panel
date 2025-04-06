@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
 import { ConfigAudioType } from '../../../openapi';
-import type { IConfigAudio } from '../store';
+import type { IConfigAudio } from '../store/config-audio.store.types';
 
 import { useConfigAudio } from './useConfigAudio';
 

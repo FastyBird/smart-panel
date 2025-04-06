@@ -1,7 +1,8 @@
 import { computed } from 'vue';
 
 import { type IPlugin, injectPluginsManager } from '../../../common';
-import { DEVICES_MODULE_NAME, type IPluginsComponents, type IPluginsSchemas } from '../index';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
+import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
 
 import type { IUsePlugins } from './types';
 

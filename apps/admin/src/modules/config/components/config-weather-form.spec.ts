@@ -7,9 +7,9 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigWeatherType, ConfigWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
-import type { IConfigWeatherEditForm } from '../composables';
+import type { IConfigWeatherEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
-import type { ConfigWeatherStore } from '../store';
+import type { ConfigWeatherStore } from '../store/config-weather.store.types';
 
 import type { IConfigWeatherFormProps } from './config-weather-form.types';
 import ConfigWeatherForm from './config-weather-form.vue';

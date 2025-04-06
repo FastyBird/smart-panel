@@ -10,7 +10,7 @@ export const router = createRouter({
 		{
 			path: '/',
 			name: RouteNames.ROOT,
-			component: () => import('../../layouts/layout-default.vue'),
+			component: () => import('../layouts/layout-default.vue'),
 			meta: {
 				guards: ['authenticated'],
 			},
@@ -18,18 +18,6 @@ export const router = createRouter({
 			children: [],
 		},
 	],
-});
-
-router.addRoute(RouteNames.ROOT, {
-	path: 'dashboard',
-	name: RouteNames.DASHBOARD,
-	component: () => import('../../views/HomeView.vue'),
-	meta: {
-		guards: ['authenticated'],
-		title: 'Dashboard',
-		icon: 'mdi:monitor-dashboard',
-		menu: true,
-	},
 });
 
 router.beforeEach(() => {

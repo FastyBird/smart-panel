@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
 import { DevicesChannelCategory } from '../../../openapi';
-import type { IChannel } from '../store';
+import type { IChannel } from '../store/channels.store.types';
 
 import { defaultChannelsFilter, useChannelsDataSource } from './useChannelsDataSource';
 

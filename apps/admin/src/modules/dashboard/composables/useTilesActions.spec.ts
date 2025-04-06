@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardException } from '../dashboard.exceptions';
-import type { TileParentType } from '../store';
+import type { TileParentType } from '../store/tiles.store.types';
 
 import { useTilesActions } from './useTilesActions';
 

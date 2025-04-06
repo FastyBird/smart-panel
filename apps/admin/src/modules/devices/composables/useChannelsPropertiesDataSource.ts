@@ -6,7 +6,9 @@ import { cloneDeep, isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager } from '../../../common';
-import { type IChannel, type IChannelProperty, channelsPropertiesStoreKey } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import { channelsPropertiesStoreKey } from '../store/keys';
 
 import type { IChannelsPropertiesFilter, IUseChannelsPropertiesDataSource } from './types';
 

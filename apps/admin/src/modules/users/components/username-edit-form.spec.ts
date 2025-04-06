@@ -7,7 +7,7 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import { useUserUsernameForm } from '../composables';
+import { useUserUsernameForm } from '../composables/composables';
 
 import type { IUsernameEditFormProps } from './username-edit-form.types';
 import UsernameEditForm from './username-edit-form.vue';
@@ -29,7 +29,7 @@ const editFormMock = {
 	formResult: ref(FormResult.NONE),
 };
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useUserUsernameForm: vi.fn(() => editFormMock),
 }));
 

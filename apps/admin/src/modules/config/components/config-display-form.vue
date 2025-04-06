@@ -80,7 +80,7 @@ import { ElForm, ElFormItem, ElOption, ElSelect, ElSlider, ElSwitch } from 'elem
 
 import { Icon } from '@iconify/vue';
 
-import { useConfigDisplayEditForm } from '../composables';
+import { useConfigDisplayEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
 import type { IConfigDisplayFormProps } from './config-display-form.types';

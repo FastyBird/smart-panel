@@ -2,39 +2,25 @@ import type { Ref } from 'vue';
 
 import type { Store } from 'pinia';
 
-import { type ZodType, z } from 'zod';
+import { z } from 'zod';
 
-import { type components } from '../../../openapi';
-
-type ApiThrottleStatus = components['schemas']['SystemThrottleStatus'];
+import {
+	ThrottleStatusResSchema,
+	ThrottleStatusSchema,
+	ThrottleStatusSetActionPayloadSchema,
+	ThrottleStatusStateSemaphoreSchema,
+} from './throttle-status.store.schemas';
 
 // STORE STATE
 // ===========
 
-export const ThrottleStatusSchema = z.object({
-	undervoltage: z.boolean(),
-	frequencyCapping: z.boolean(),
-	throttling: z.boolean(),
-	softTempLimit: z.boolean(),
-});
 export type IThrottleStatus = z.infer<typeof ThrottleStatusSchema>;
 
-export const ThrottleStatusStateSemaphoreSchema = z.object({
-	getting: z.boolean(),
-});
 export type IThrottleStatusStateSemaphore = z.infer<typeof ThrottleStatusStateSemaphoreSchema>;
 
 // STORE ACTIONS
 // =============
 
-export const ThrottleStatusSetActionPayloadSchema = z.object({
-	data: z.object({
-		undervoltage: z.boolean(),
-		frequencyCapping: z.boolean(),
-		throttling: z.boolean(),
-		softTempLimit: z.boolean(),
-	}),
-});
 export type IThrottleStatusSetActionPayload = z.infer<typeof ThrottleStatusSetActionPayloadSchema>;
 
 // STORE
@@ -60,12 +46,6 @@ export type ThrottleStatusStoreSetup = IThrottleStatusStoreState & IThrottleStat
 // BACKEND API
 // ===========
 
-export const ThrottleStatusResSchema: ZodType<ApiThrottleStatus> = z.object({
-	undervoltage: z.boolean(),
-	frequency_capping: z.boolean(),
-	throttling: z.boolean(),
-	soft_temp_limit: z.boolean(),
-});
 export type IThrottleStatusRes = z.infer<typeof ThrottleStatusResSchema>;
 
 // STORE

@@ -14,25 +14,25 @@ describe('roleGuard', (): void => {
 		const route = { path: '/route-path', meta: {} };
 
 		expect(roleGuard(undefined, route as unknown as RouteRecordRaw)).toBe(true);
-		expect(roleGuard({ id: uuid(), role: UsersUserRole.admin }, route as unknown as RouteRecordRaw)).toBe(true);
+		expect(roleGuard({ id: uuid(), username: 'johndoe', role: UsersUserRole.admin }, route as unknown as RouteRecordRaw)).toBe(true);
 	});
 
 	it('should allow access when no role guard is set', (): void => {
 		const route = { path: '/route-path', meta: { guards: {} } };
 
 		expect(roleGuard(undefined, route as unknown as RouteRecordRaw)).toBe(true);
-		expect(roleGuard({ id: uuid(), role: UsersUserRole.admin }, route as unknown as RouteRecordRaw)).toBe(true);
+		expect(roleGuard({ id: uuid(), username: 'johndoe', role: UsersUserRole.admin }, route as unknown as RouteRecordRaw)).toBe(true);
 	});
 
 	it('should allow access when the user has the required role', (): void => {
-		const user: IAppUser = { id: uuid(), role: UsersUserRole.admin };
+		const user: IAppUser = { id: uuid(), username: 'johndoe', role: UsersUserRole.admin };
 		const route = { meta: { guards: { roles: [UsersUserRole.admin, UsersUserRole.owner] } } };
 
 		expect(roleGuard(user, route as unknown as RouteRecordRaw)).toBe(true);
 	});
 
 	it('should redirect when the user does not have the required role', (): void => {
-		const user: IAppUser = { id: uuid(), role: UsersUserRole.user };
+		const user: IAppUser = { id: uuid(), username: 'johndoe', role: UsersUserRole.user };
 		const route = { meta: { guards: { roles: [UsersUserRole.admin, UsersUserRole.owner] } } };
 
 		expect(roleGuard(user, route as unknown as RouteRecordRaw)).toEqual({ name: AppRouteNames.ROOT });
@@ -48,11 +48,11 @@ describe('roleGuard', (): void => {
 		const route = { meta: { guards: { roles: [] } } };
 
 		expect(roleGuard(undefined, route as unknown as RouteRecordRaw)).toBe(true);
-		expect(roleGuard({ id: uuid(), role: UsersUserRole.admin }, route as unknown as RouteRecordRaw)).toBe(true);
+		expect(roleGuard({ id: uuid(), username: 'johndoe', role: UsersUserRole.admin }, route as unknown as RouteRecordRaw)).toBe(true);
 	});
 
 	it('should handle malformed guards data gracefully', (): void => {
-		const user: IAppUser = { id: uuid(), role: UsersUserRole.admin };
+		const user: IAppUser = { id: uuid(), username: 'johndoe', role: UsersUserRole.admin };
 
 		expect(roleGuard(user, { meta: { guards: null } } as unknown as RouteRecordRaw)).toBe(true);
 		expect(roleGuard(user, { meta: { guards: 'invalid' } } as unknown as RouteRecordRaw)).toBe(true);

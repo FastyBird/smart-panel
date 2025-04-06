@@ -88,8 +88,9 @@ import { ElAvatar, ElButton, ElCard, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useChannelSpecification, useChannelsPropertiesDataSource } from '../../composables';
-import type { IChannel, IChannelProperty } from '../../store';
+import { useChannelSpecification, useChannelsPropertiesDataSource } from '../../composables/composables';
+import type { IChannelProperty } from '../../store/channels.properties.store.types';
+import type { IChannel } from '../../store/channels.store.types';
 
 import type { IChannelDetailProps } from './channel-detail.types';
 import ChannelsPropertiesTable from './channels-properties-table.vue';

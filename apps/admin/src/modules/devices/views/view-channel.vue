@@ -191,11 +191,12 @@ import {
 	useBreakpoints,
 	useUuid,
 } from '../../../common';
-import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components';
-import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables';
+import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
+import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import type { IChannel, IChannelProperty } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
 
 import type { IViewChannelProps } from './view-channel.types';
 

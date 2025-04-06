@@ -277,12 +277,15 @@ import {
 	useUuid,
 } from '../../../common';
 import type { DevicesChannelCategory } from '../../../openapi';
-import { ChannelDetail, DeviceDetail } from '../components';
-import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification } from '../composables';
+import { ChannelDetail, DeviceDetail } from '../components/components';
+import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { deviceChannelsSpecificationOrder } from '../devices.mapping';
-import type { IChannel, IChannelProperty, IDevice, IDeviceControl } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import type { IDeviceControl } from '../store/devices.controls.store.types';
+import type { IDevice } from '../store/devices.store.types';
 
 import type { IViewDeviceProps } from './view-device.types';
 

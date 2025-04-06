@@ -120,7 +120,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules, vLoading } from 'element-plus';
 
-import { type IChannelEditForm, useChannelEditForm, useDevice } from '../../composables';
+import { type IChannelEditForm, useChannelEditForm, useDevice } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 
 import type { IChannelEditFormProps } from './channel-edit-form.types';

@@ -6,7 +6,8 @@ import type { FormInstance } from 'element-plus';
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
-import { type IConfigAudio, configAudioStoreKey } from '../store';
+import type { IConfigAudio } from '../store/config-audio.store.types';
+import { configAudioStoreKey } from '../store/keys';
 
 import type { IConfigAudioEditForm, IUseConfigAudioEditForm } from './types';
 

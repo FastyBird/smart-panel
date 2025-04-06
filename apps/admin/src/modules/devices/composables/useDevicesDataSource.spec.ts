@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
 import { DevicesDeviceCategory } from '../../../openapi';
-import type { IDevice } from '../store';
+import type { IDevice } from '../store/devices.store.types';
 
 import { defaultDevicesFilter, useDevicesDataSource } from './useDevicesDataSource';
 

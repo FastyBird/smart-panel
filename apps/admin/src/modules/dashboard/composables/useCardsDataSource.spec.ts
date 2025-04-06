@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { ICard } from '../store';
+import type { ICard } from '../store/cards.store.types';
 
 import { defaultCardsFilter, useCardsDataSource } from './useCardsDataSource';
 

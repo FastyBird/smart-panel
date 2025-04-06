@@ -227,8 +227,8 @@ import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, UserAvatar, useBreakpoints } from '../../../common';
 import { UsersUserRole } from '../../../openapi';
-import type { IUsersFilter } from '../composables';
-import type { IUser } from '../store';
+import type { IUsersFilter } from '../composables/types';
+import type { IUser } from '../store/users.store.types';
 
 import type { IUsersTableProps } from './users-table.types';
 

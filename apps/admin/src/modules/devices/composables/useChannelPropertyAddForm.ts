@@ -8,7 +8,9 @@ import { DevicesChannelPropertyCategory, DevicesChannelPropertyData_type, Device
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { channelChannelsPropertiesSpecificationMappers } from '../devices.mapping';
-import { type IChannel, type IChannelProperty, channelsPropertiesStoreKey } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import { channelsPropertiesStoreKey } from '../store/keys';
 
 import type { IChannelPropertyAddForm, IUseChannelPropertyAddForm } from './types';
 import { useChannels } from './useChannels';

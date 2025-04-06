@@ -102,7 +102,7 @@ import { ElButton, ElForm, ElFormItem, ElInput, type FormInstance, type FormRule
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { FormResult, type FormResultType, RouteNames } from '../../auth.constants';
-import { sessionStoreKey } from '../../store';
+import { sessionStoreKey } from '../../store/keys';
 
 import type { SignUpFormFields, SignUpFormProps } from './sign-up-form.types';
 

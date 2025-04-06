@@ -11,8 +11,10 @@ import {
 	DevicesDeviceCategory,
 } from '../../../openapi';
 import type { ConnectionState, FormResultType } from '../devices.constants';
-import type { IPluginsComponents, IPluginsSchemas } from '../index';
-import type { IChannel, IChannelProperty, IDevice } from '../store';
+import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import type { IDevice } from '../store/devices.store.types';
 
 export interface IChannelsFilter {
 	search: string | undefined;

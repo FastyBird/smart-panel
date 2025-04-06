@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { DEVICES_MODULE_NAME } from '../index';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 
 import { usePlugins } from './usePlugins';
 

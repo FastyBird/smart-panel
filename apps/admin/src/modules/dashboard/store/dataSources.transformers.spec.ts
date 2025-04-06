@@ -7,11 +7,9 @@ import { DashboardValidationException } from '../dashboard.exceptions';
 import {
 	DeviceChannelDataSourceCreateReqSchema,
 	DeviceChannelDataSourceUpdateReqSchema,
-	type IDataSourcesAddActionPayload,
-	type IDataSourcesEditActionPayload,
-	type IPageDeviceChannelDataSourceRes,
 	PageDeviceChannelDataSourceSchema,
-} from './dataSources.store.types';
+} from './dataSources.store.schemas';
+import type { IDataSourcesAddActionPayload, IDataSourcesEditActionPayload, IPageDeviceChannelDataSourceRes } from './dataSources.store.types';
 import { transformDataSourceCreateRequest, transformDataSourceResponse, transformDataSourceUpdateRequest } from './dataSources.transformers';
 
 const dsId = uuid();

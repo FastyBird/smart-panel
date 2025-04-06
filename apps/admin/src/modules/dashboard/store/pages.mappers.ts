@@ -7,11 +7,11 @@ import {
 	DeviceDetailPageCreateReqSchema,
 	DeviceDetailPageSchema,
 	DeviceDetailPageUpdateReqSchema,
-	type IPagesEntitiesSchemas,
 	TilesPageCreateReqSchema,
 	TilesPageSchema,
 	TilesPageUpdateReqSchema,
-} from './pages.store.types';
+} from './pages.store.schemas';
+import type { IPagesEntitiesSchemas } from './pages.store.types';
 
 const schemas: Record<string, IPagesEntitiesSchemas> = {
 	['cards']: {

@@ -110,7 +110,7 @@ import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import { DevicesDeviceCategory } from '../../../../openapi';
-import { type IDevicesFilter, usePlugins } from '../../composables';
+import { type IDevicesFilter, usePlugins } from '../../composables/composables';
 import { ConnectionState } from '../../devices.constants';
 
 import { type IListDevicesAdjustProps } from './list-devices-adjust.types';

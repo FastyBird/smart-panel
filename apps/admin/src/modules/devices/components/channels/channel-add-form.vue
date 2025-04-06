@@ -118,9 +118,9 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules, vLoading } from 'element-plus';
 
-import { type IChannelAddForm, useChannelAddForm, useDevices } from '../../composables';
+import { type IChannelAddForm, useChannelAddForm, useDevices } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
-import type { IDevice } from '../../store';
+import type { IDevice } from '../../store/devices.store.types';
 
 import type { IChannelAddFormProps } from './channel-add-form.types';
 

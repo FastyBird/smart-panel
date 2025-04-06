@@ -1,13 +1,7 @@
 import { DevicesValidationException } from '../devices.exceptions';
 
-import {
-	DeviceControlCreateReqSchema,
-	DeviceControlSchema,
-	type IDeviceControl,
-	type IDeviceControlCreateReq,
-	type IDeviceControlRes,
-	type IDevicesControlsAddActionPayload,
-} from './devices.controls.store.types';
+import { DeviceControlCreateReqSchema, DeviceControlSchema } from './devices.controls.store.schemas';
+import type { IDeviceControl, IDeviceControlCreateReq, IDeviceControlRes, IDevicesControlsAddActionPayload } from './devices.controls.store.types';
 
 export const transformDeviceControlResponse = (response: IDeviceControlRes): IDeviceControl => {
 	const parsedDeviceControl = DeviceControlSchema.safeParse({

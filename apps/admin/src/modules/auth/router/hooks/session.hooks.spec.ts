@@ -4,7 +4,7 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import * as Sentry from '@sentry/vue';
 
 import type { IStoresManager } from '../../../../common';
-import type { SessionStore } from '../../store';
+import type { SessionStore } from '../../store/session.store.types';
 
 import sessionHook from './session.hook';
 

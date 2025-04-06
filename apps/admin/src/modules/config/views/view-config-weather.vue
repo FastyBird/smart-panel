@@ -34,8 +34,8 @@ import { useMeta } from 'vue-meta';
 import { ElCard, vLoading } from 'element-plus';
 
 import { useBreakpoints } from '../../../common';
-import { ConfigWeatherForm } from '../components';
-import { useConfigWeather } from '../composables';
+import { ConfigWeatherForm } from '../components/components';
+import { useConfigWeather } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 import { ConfigException } from '../config.exceptions';
 

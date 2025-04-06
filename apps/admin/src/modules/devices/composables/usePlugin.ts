@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 
 import { type IPlugin } from '../../../common';
-import type { IPluginsComponents, IPluginsSchemas } from '../index';
+import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
 
 import type { IUsePlugin } from './types';
 import { usePlugins } from './usePlugins';

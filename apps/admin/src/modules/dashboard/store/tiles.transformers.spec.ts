@@ -4,14 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { DashboardDevicePreviewTileType } from '../../../openapi';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	DevicePreviewTileCreateReqSchema,
-	DevicePreviewTileUpdateReqSchema,
-	type IPageDevicePreviewTileRes,
-	type ITilesAddActionPayload,
-	type ITilesEditActionPayload,
-	PageDevicePreviewTileSchema,
-} from './tiles.store.types';
+import { DevicePreviewTileCreateReqSchema, DevicePreviewTileUpdateReqSchema, PageDevicePreviewTileSchema } from './tiles.store.schemas';
+import type { IPageDevicePreviewTileRes, ITilesAddActionPayload, ITilesEditActionPayload } from './tiles.store.types';
 import { transformTileCreateRequest, transformTileResponse, transformTileUpdateRequest } from './tiles.transformers';
 
 const tileId = uuid();

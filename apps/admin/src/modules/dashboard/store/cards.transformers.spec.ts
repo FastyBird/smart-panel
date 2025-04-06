@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import { type ICardRes, type ICardsAddActionPayload, type ICardsEditActionPayload } from './cards.store.types';
+import type { ICardRes, ICardsAddActionPayload, ICardsEditActionPayload } from './cards.store.types';
 import { transformCardCreateRequest, transformCardResponse, transformCardUpdateRequest } from './cards.transformers';
 
 const cardId = uuid();

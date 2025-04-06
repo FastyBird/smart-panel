@@ -3,7 +3,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import { UsersUserRole } from '../../../openapi';
 import { RouteNames } from '../users.constants';
 
-export * from './guards';
+export * from './guards/guards';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
 	{

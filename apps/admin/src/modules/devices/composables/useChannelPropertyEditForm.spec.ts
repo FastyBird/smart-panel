@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DevicesChannelPropertyCategory, DevicesChannelPropertyData_type } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
-import type { IChannelProperty } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
 
 import { useChannelPropertyEditForm } from './useChannelPropertyEditForm';
 

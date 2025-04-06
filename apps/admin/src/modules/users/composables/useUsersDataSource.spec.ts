@@ -4,7 +4,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
 import { UsersUserRole } from '../../../openapi';
-import type { IUsersStateSemaphore, UsersStore } from '../store';
+import type { IUsersStateSemaphore, UsersStore } from '../store/users.store.types';
 
 import { useUsersDataSource } from './useUsersDataSource';
 

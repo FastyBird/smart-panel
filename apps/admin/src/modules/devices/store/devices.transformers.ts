@@ -1,16 +1,14 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
 import { DevicesValidationException } from '../devices.exceptions';
 
-import {
-	DeviceCreateReqSchema,
-	DeviceSchema,
-	DeviceUpdateReqSchema,
-	type IDevice,
-	type IDeviceCreateReq,
-	type IDeviceRes,
-	type IDeviceUpdateReq,
-	type IDevicesAddActionPayload,
-	type IDevicesEditActionPayload,
+import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './devices.store.schemas';
+import type {
+	IDevice,
+	IDeviceCreateReq,
+	IDeviceRes,
+	IDeviceUpdateReq,
+	IDevicesAddActionPayload,
+	IDevicesEditActionPayload,
 } from './devices.store.types';
 
 export const transformDeviceResponse = (response: IDeviceRes, schema: typeof DeviceSchema): IDevice => {

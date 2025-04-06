@@ -7,7 +7,7 @@ import { VueWrapper, mount } from '@vue/test-utils';
 
 import { UsersUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import type { IUserEditForm } from '../composables';
+import type { IUserEditForm } from '../composables/types';
 
 import type { IUserEditFormProps } from './user-edit-form.types';
 import UserEditForm from './user-edit-form.vue';
@@ -56,7 +56,7 @@ const passwordFormMock = {
 	formResult: ref(FormResult.NONE),
 };
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useUserEditForm: vi.fn(() => editFormMock),
 	useUserUsernameForm: vi.fn(() => usernameFormMock),
 	useUserPasswordForm: vi.fn(() => passwordFormMock),

@@ -7,7 +7,7 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { FormResult } from '../../auth.constants';
-import type { SessionStore } from '../../store';
+import type { SessionStore } from '../../store/session.store.types';
 
 import SignInForm from './sign-in-form.vue';
 

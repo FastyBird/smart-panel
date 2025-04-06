@@ -11,7 +11,7 @@ import { useRouter } from 'vue-router';
 import { RouteNames as AppRouteNames } from '../../../app.constants';
 import { useEventBus } from '../../../common';
 import { FormResult, type FormResultType } from '../auth.constants';
-import { SignUpForm } from '../components';
+import { SignUpForm } from '../components/components';
 
 defineOptions({
 	name: 'ViewSignUp',

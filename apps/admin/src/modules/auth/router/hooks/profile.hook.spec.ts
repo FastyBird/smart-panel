@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/vue';
 
 import type { IStoresManager } from '../../../../common';
 import type { IUser } from '../../../users';
-import type { SessionStore } from '../../store';
+import type { SessionStore } from '../../store/session.store.types';
 
 import profileHook from './profile.hook';
 

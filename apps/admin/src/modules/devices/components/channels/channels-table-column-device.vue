@@ -27,8 +27,8 @@ import { ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useDevice } from '../../composables';
-import type { IDevice } from '../../store';
+import { useDevice } from '../../composables/composables';
+import type { IDevice } from '../../store/devices.store.types';
 
 import type { IChannelsTableColumnDeviceProps } from './channels-table-column-device.types';
 

@@ -1,15 +1,13 @@
 import { DevicesValidationException } from '../devices.exceptions';
 
-import {
-	ChannelPropertyCreateReqSchema,
-	ChannelPropertySchema,
-	ChannelPropertyUpdateReqSchema,
-	type IChannelProperty,
-	type IChannelPropertyCreateReq,
-	type IChannelPropertyRes,
-	type IChannelPropertyUpdateReq,
-	type IChannelsPropertiesAddActionPayload,
-	type IChannelsPropertiesEditActionPayload,
+import { ChannelPropertyCreateReqSchema, ChannelPropertySchema, ChannelPropertyUpdateReqSchema } from './channels.properties.store.schemas';
+import type {
+	IChannelProperty,
+	IChannelPropertyCreateReq,
+	IChannelPropertyRes,
+	IChannelPropertyUpdateReq,
+	IChannelsPropertiesAddActionPayload,
+	IChannelsPropertiesEditActionPayload,
 } from './channels.properties.store.types';
 
 export const transformChannelPropertyResponse = (response: IChannelPropertyRes): IChannelProperty => {
