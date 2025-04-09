@@ -4,43 +4,17 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DashboardApiException, DashboardException } from '../dashboard.exceptions';
-import type { ICard } from '../store/cards.store.types';
-import { type DataSourceParentTypeMap, type IDataSource } from '../store/dataSources.store.types';
+import { type IDataSource } from '../store/dataSources.store.types';
 import { dataSourcesStoreKey } from '../store/keys';
-import type { IPage } from '../store/pages.store.types';
-import type { ITile } from '../store/tiles.store.types';
 
 import type { IUseDataSourcesActions } from './types';
 
-interface IUsePageDataSourcesActionsProps {
-	parent: 'page';
-	pageId: IPage['id'];
+interface IUseDataSourcesActionsProps {
+	parent: string;
+	parentId: string;
 }
 
-interface IUseCardDataSourcesActionsProps {
-	parent: 'card';
-	pageId: IPage['id'];
-	cardId: ICard['id'];
-}
-
-interface IUseTileDataSourcesActionsProps {
-	parent: 'tile';
-	pageId: IPage['id'];
-	cardId?: ICard['id'];
-	tileId: ITile['id'];
-}
-
-type IUseDataSourcesActionsProps = IUsePageDataSourcesActionsProps | IUseCardDataSourcesActionsProps | IUseTileDataSourcesActionsProps;
-
-export const useDataSourcesActions = <T extends keyof DataSourceParentTypeMap>(
-	props: IUseDataSourcesActionsProps & { parent: T }
-): IUseDataSourcesActions => {
-	const is = {
-		page: (p: IUseDataSourcesActionsProps): p is IUsePageDataSourcesActionsProps => p.parent === 'page',
-		card: (p: IUseDataSourcesActionsProps): p is IUseCardDataSourcesActionsProps => p.parent === 'card',
-		tile: (p: IUseDataSourcesActionsProps): p is IUseTileDataSourcesActionsProps => p.parent === 'tile',
-	};
-
+export const useDataSourcesActions = (props: IUseDataSourcesActionsProps): IUseDataSourcesActions => {
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
@@ -63,19 +37,7 @@ export const useDataSourcesActions = <T extends keyof DataSourceParentTypeMap>(
 		})
 			.then(async (): Promise<void> => {
 				try {
-					if (is.tile(props)) {
-						await dataSourcesStore.remove({
-							parent: props.parent,
-							id: dataSource.id,
-							pageId: props.pageId,
-							cardId: props.cardId,
-							tileId: props.tileId,
-						});
-					} else if (is.card(props)) {
-						await dataSourcesStore.remove({ parent: props.parent, id: dataSource.id, pageId: props.pageId, cardId: props.cardId });
-					} else {
-						await dataSourcesStore.remove({ parent: props.parent, id: dataSource.id, pageId: props.pageId });
-					}
+					await dataSourcesStore.remove({ parent: { type: props.parent, id: props.parentId }, id: dataSource.id });
 
 					flashMessage.success(t('dashboardModule.messages.dataSources.removed'));
 				} catch (error: unknown) {

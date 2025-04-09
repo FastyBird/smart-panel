@@ -25,7 +25,7 @@ export const useUsersActions = (): IUseUsersActions => {
 			throw new UsersException("Something went wrong, user can't be loaded");
 		}
 
-		ElMessageBox.confirm(t('usersModule.messages.confirmRemove', { user: user.username }), t('usersModule.headings.remove'), {
+		ElMessageBox.confirm(t('usersModule.texts.confirmRemove', { user: user.username }), t('usersModule.headings.remove'), {
 			confirmButtonText: t('usersModule.buttons.yes.title'),
 			cancelButtonText: t('usersModule.buttons.no.title'),
 			type: 'warning',

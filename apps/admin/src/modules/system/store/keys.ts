@@ -4,7 +4,8 @@ import type { ISystemInfoStoreActions, ISystemInfoStoreState } from './system-in
 import type { IThrottleStatusStoreActions, IThrottleStatusStoreState } from './throttle-status.store.types';
 
 export const systemInfoStoreKey: StoreInjectionKey<string, ISystemInfoStoreState, object, ISystemInfoStoreActions> =
-	Symbol('FB-SystemModuleSystemInfo');
+	Symbol('FB-Module-SystemModuleSystemInfo');
 
-export const throttleStatusStoreKey: StoreInjectionKey<string, IThrottleStatusStoreState, object, IThrottleStatusStoreActions> =
-	Symbol('FB-SystemModuleThrottleStatus');
+export const throttleStatusStoreKey: StoreInjectionKey<string, IThrottleStatusStoreState, object, IThrottleStatusStoreActions> = Symbol(
+	'FB-Module-SystemModuleThrottleStatus'
+);

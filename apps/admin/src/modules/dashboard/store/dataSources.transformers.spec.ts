@@ -1,65 +1,54 @@
 import { v4 as uuid } from 'uuid';
 import { describe, expect, it } from 'vitest';
 
-import { DashboardDeviceChannelDataSourceType } from '../../../openapi';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import {
-	DeviceChannelDataSourceCreateReqSchema,
-	DeviceChannelDataSourceUpdateReqSchema,
-	PageDeviceChannelDataSourceSchema,
-} from './dataSources.store.schemas';
-import type { IDataSourcesAddActionPayload, IDataSourcesEditActionPayload, IPageDeviceChannelDataSourceRes } from './dataSources.store.types';
+import { DataSourceCreateReqSchema, DataSourceSchema, DataSourceUpdateReqSchema } from './dataSources.store.schemas';
+import type { IDataSourceRes, IDataSourcesAddActionPayload, IDataSourcesEditActionPayload } from './dataSources.store.types';
 import { transformDataSourceCreateRequest, transformDataSourceResponse, transformDataSourceUpdateRequest } from './dataSources.transformers';
 
 const dsId = uuid();
-const pageId = uuid();
+const parentId = uuid();
 
-const deviceId = uuid();
-const channelId = uuid();
-const propertyId = uuid();
-
-const validDataSourceResponse: IPageDeviceChannelDataSourceRes & { parent: 'page' } = {
+const validDataSourceResponse: IDataSourceRes = {
 	id: dsId.toString(),
-	type: DashboardDeviceChannelDataSourceType.device_channel,
-	device: deviceId.toString(),
-	channel: channelId.toString(),
-	property: propertyId.toString(),
-	icon: 'test',
-	page: pageId.toString(),
+	type: 'some-datasource',
+	parent: {
+		type: 'page',
+		id: parentId.toString(),
+	},
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
-	parent: 'page',
 };
 
 const validDataSourceCreatePayload: IDataSourcesAddActionPayload['data'] = {
-	type: DashboardDeviceChannelDataSourceType.device_channel,
-	icon: null,
-	device: deviceId.toString(),
-	channel: channelId.toString(),
-	property: propertyId.toString(),
+	type: 'some-datasource',
+	parent: {
+		type: 'page',
+		id: parentId.toString(),
+	},
 };
 
 const validDataSourceUpdatePayload: IDataSourcesEditActionPayload['data'] = {
-	type: DashboardDeviceChannelDataSourceType.device_channel,
-	device: deviceId.toString(),
-	channel: channelId.toString(),
-	property: propertyId.toString(),
+	type: 'some-datasource',
+	parent: {
+		type: 'page',
+		id: parentId.toString(),
+	},
 };
 
 describe('DataSources Transformers', (): void => {
 	describe('transformDataSourceResponse', (): void => {
 		it('should transform a valid data source response', (): void => {
-			const result = transformDataSourceResponse(validDataSourceResponse, PageDeviceChannelDataSourceSchema);
+			const result = transformDataSourceResponse(validDataSourceResponse, DataSourceSchema);
 
 			expect(result).toEqual({
 				id: dsId.toString(),
-				type: DashboardDeviceChannelDataSourceType.device_channel,
-				device: deviceId.toString(),
-				channel: channelId.toString(),
-				property: propertyId.toString(),
-				icon: 'test',
-				page: pageId.toString(),
+				type: 'some-datasource',
+				parent: {
+					type: 'page',
+					id: parentId.toString(),
+				},
 				draft: false,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
 				updatedAt: new Date('2024-03-02T12:00:00Z'),
@@ -68,32 +57,29 @@ describe('DataSources Transformers', (): void => {
 
 		it('should throw an error for an invalid data source response', (): void => {
 			expect(() =>
-				transformDataSourceResponse(
-					{ ...validDataSourceResponse, id: null } as unknown as IPageDeviceChannelDataSourceRes & { parent: 'page' },
-					PageDeviceChannelDataSourceSchema
-				)
+				transformDataSourceResponse({ ...validDataSourceResponse, id: null } as unknown as IDataSourceRes & { parent: 'page' }, DataSourceSchema)
 			).toThrow(DashboardValidationException);
 		});
 	});
 
 	describe('transformDataSourceCreateRequest', (): void => {
 		it('should transform a valid data source create request', (): void => {
-			const result = transformDataSourceCreateRequest(validDataSourceCreatePayload, DeviceChannelDataSourceCreateReqSchema);
+			const result = transformDataSourceCreateRequest(validDataSourceCreatePayload, DataSourceCreateReqSchema);
 
 			expect(result).toEqual({
-				type: DashboardDeviceChannelDataSourceType.device_channel,
-				icon: null,
-				device: deviceId.toString(),
-				channel: channelId.toString(),
-				property: propertyId.toString(),
+				type: 'some-datasource',
+				parent: {
+					type: 'page',
+					id: parentId.toString(),
+				},
 			});
 		});
 
 		it('should throw an error for an invalid data source create request', (): void => {
 			expect(() =>
 				transformDataSourceCreateRequest(
-					{ ...validDataSourceCreatePayload, type: 'invalid-type' } as unknown as IDataSourcesAddActionPayload['data'],
-					DeviceChannelDataSourceCreateReqSchema
+					{ ...validDataSourceCreatePayload, type: undefined } as unknown as IDataSourcesAddActionPayload['data'],
+					DataSourceCreateReqSchema
 				)
 			).toThrow(DashboardValidationException);
 		});
@@ -101,13 +87,14 @@ describe('DataSources Transformers', (): void => {
 
 	describe('transformDataSourceUpdateRequest', (): void => {
 		it('should transform a valid data source update request', (): void => {
-			const result = transformDataSourceUpdateRequest(validDataSourceUpdatePayload, DeviceChannelDataSourceUpdateReqSchema);
+			const result = transformDataSourceUpdateRequest(validDataSourceUpdatePayload, DataSourceUpdateReqSchema);
 
 			expect(result).toEqual({
-				type: DashboardDeviceChannelDataSourceType.device_channel,
-				device: deviceId.toString(),
-				channel: channelId.toString(),
-				property: propertyId.toString(),
+				type: 'some-datasource',
+				parent: {
+					type: 'page',
+					id: parentId.toString(),
+				},
 			});
 		});
 
@@ -116,9 +103,9 @@ describe('DataSources Transformers', (): void => {
 				transformDataSourceUpdateRequest(
 					{
 						...validDataSourceUpdatePayload,
-						type: 'invalid-type',
+						type: undefined,
 					} as unknown as IDataSourcesEditActionPayload['data'],
-					DeviceChannelDataSourceUpdateReqSchema
+					DataSourceUpdateReqSchema
 				)
 			).toThrow(DashboardValidationException);
 		});

@@ -25,7 +25,7 @@ export const useDevicesActions = (): IUseDevicesActions => {
 			throw new DevicesException("Something went wrong, device can't be loaded");
 		}
 
-		ElMessageBox.confirm(t('devicesModule.messages.devices.confirmRemove', { device: device.name }), t('devicesModule.headings.devices.remove'), {
+		ElMessageBox.confirm(t('devicesModule.texts.devices.confirmRemove', { device: device.name }), t('devicesModule.headings.devices.remove'), {
 			confirmButtonText: t('devicesModule.buttons.yes.title'),
 			cancelButtonText: t('devicesModule.buttons.no.title'),
 			type: 'warning',

@@ -4,34 +4,22 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend, useUuid } from '../../../common';
+import { getErrorReason, useBackend } from '../../../common';
 import type { operations } from '../../../openapi';
+import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
 
-import type { ICard } from './cards.store.types';
-import { getDataSourcesSchemas } from './dataSources.mappers';
 import {
-	CardDataSourcesAddActionPayloadSchema,
-	CardDataSourcesEditActionPayloadSchema,
-	PageDataSourcesAddActionPayloadSchema,
-	PageDataSourcesEditActionPayloadSchema,
-	TileDataSourcesAddActionPayloadSchema,
-	TileDataSourcesEditActionPayloadSchema,
+	DataSourceCreateReqSchema,
+	DataSourceSchema,
+	DataSourceUpdateReqSchema,
+	DataSourcesAddActionPayloadSchema,
+	DataSourcesEditActionPayloadSchema,
 } from './dataSources.store.schemas';
 import type {
-	DataSourceParentTypeMap,
 	DataSourcesStoreSetup,
-	ICardDataSourcesAddActionPayload,
-	ICardDataSourcesEditActionPayload,
-	ICardDataSourcesFetchActionPayload,
-	ICardDataSourcesGetActionPayload,
-	ICardDataSourcesRemoveActionPayload,
-	ICardDataSourcesSaveActionPayload,
-	ICardDataSourcesSetActionPayload,
-	ICardDataSourcesUnsetActionPayload,
-	ICardDeviceChannelDataSource,
-	IDataSourceBase,
+	IDataSource,
 	IDataSourceCreateReq,
 	IDataSourceUpdateReq,
 	IDataSourcesAddActionPayload,
@@ -45,28 +33,8 @@ import type {
 	IDataSourcesStoreActions,
 	IDataSourcesStoreState,
 	IDataSourcesUnsetActionPayload,
-	IPageDataSourcesAddActionPayload,
-	IPageDataSourcesEditActionPayload,
-	IPageDataSourcesFetchActionPayload,
-	IPageDataSourcesGetActionPayload,
-	IPageDataSourcesRemoveActionPayload,
-	IPageDataSourcesSaveActionPayload,
-	IPageDataSourcesSetActionPayload,
-	IPageDataSourcesUnsetActionPayload,
-	IPageDeviceChannelDataSource,
-	ITileDataSourcesAddActionPayload,
-	ITileDataSourcesEditActionPayload,
-	ITileDataSourcesFetchActionPayload,
-	ITileDataSourcesGetActionPayload,
-	ITileDataSourcesRemoveActionPayload,
-	ITileDataSourcesSaveActionPayload,
-	ITileDataSourcesSetActionPayload,
-	ITileDataSourcesUnsetActionPayload,
-	ITileDeviceChannelDataSource,
 } from './dataSources.store.types';
 import { transformDataSourceCreateRequest, transformDataSourceResponse, transformDataSourceUpdateRequest } from './dataSources.transformers';
-import type { IPage } from './pages.store.types';
-import type { ITile } from './tiles.store.types';
 
 const defaultSemaphore: IDataSourcesStateSemaphore = {
 	fetching: {
@@ -82,183 +50,85 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 	'dashboard_module-data_sources',
 	(): DataSourcesStoreSetup => {
 		const backend = useBackend();
-		const { validate: validateUuid } = useUuid();
+
+		const { getByType: getPluginByType } = useDataSourcesPlugins();
 
 		const semaphore = ref<IDataSourcesStateSemaphore>(defaultSemaphore);
 
-		const firstLoad = ref<(IPage['id'] | ICard['id'] | ITile['id'])[]>([]);
+		const firstLoad = ref<string[]>([]);
 
-		const data = ref<{ [key: IDataSourceBase['id']]: IDataSourceBase }>({});
+		const data = ref<{ [key: IDataSource['id']]: IDataSource }>({});
 
-		const firstLoadFinished = (parentId: IPage['id'] | ICard['id'] | ITile['id']): boolean => firstLoad.value.includes(parentId);
+		const firstLoadFinished = (parentId: string): boolean => firstLoad.value.includes(parentId);
 
-		const getting = (id: IDataSourceBase['id']): boolean => semaphore.value.fetching.item.includes(id);
+		const getting = (id: IDataSource['id']): boolean => semaphore.value.fetching.item.includes(id);
 
-		const fetching = (parentId: IPage['id'] | ICard['id'] | ITile['id']): boolean => semaphore.value.fetching.items.includes(parentId);
+		const fetching = (parentId: string): boolean => semaphore.value.fetching.items.includes(parentId);
 
-		const findAll = <T extends keyof DataSourceParentTypeMap>(parent: T): DataSourceParentTypeMap[T][] => {
-			if (parent === 'page') {
-				return Object.values(data.value).filter(
-					(dataSource) => 'page' in dataSource && typeof dataSource.page === 'string' && validateUuid(dataSource.page)
-				) as DataSourceParentTypeMap[T][];
-			} else if (parent === 'card') {
-				return Object.values(data.value).filter(
-					(dataSource) => 'card' in dataSource && typeof dataSource.card === 'string' && validateUuid(dataSource.card)
-				) as DataSourceParentTypeMap[T][];
-			} else if (parent === 'tile') {
-				return Object.values(data.value).filter(
-					(dataSource) => 'tile' in dataSource && typeof dataSource.tile === 'string' && validateUuid(dataSource.tile)
-				) as DataSourceParentTypeMap[T][];
-			}
-
-			return [];
+		const findAll = (parent: string): IDataSource[] => {
+			return Object.values(data.value).filter((dataSource) => dataSource.parent.type === parent);
 		};
 
-		const findForParent = <T extends keyof DataSourceParentTypeMap>(
-			parent: T,
-			parentId: IPage['id'] | ICard['id'] | ITile['id']
-		): DataSourceParentTypeMap[T][] =>
+		const findForParent = (parent: string, parentId: string): IDataSource[] =>
 			Object.values(data.value ?? {}).filter((dataSource): boolean => {
-				if (parent === 'page') {
-					return (dataSource as IPageDeviceChannelDataSource).page === parentId;
-				} else if (parent === 'card') {
-					return (dataSource as ICardDeviceChannelDataSource).card === parentId;
-				} else if (parent === 'tile') {
-					return (dataSource as ITileDeviceChannelDataSource).tile === parentId;
-				}
-				return false;
-			}) as DataSourceParentTypeMap[T][];
+				return dataSource.parent.type === parent && dataSource.parent.id === parentId;
+			});
 
-		const findById = <T extends keyof DataSourceParentTypeMap>(parent: T, id: IDataSourceBase['id']): DataSourceParentTypeMap[T] | null => {
-			const item = (id in data.value ? data.value[id] : null) as DataSourceParentTypeMap[T] | null;
+		const findById = (parent: string, id: IDataSource['id']): IDataSource | null => {
+			const item = id in data.value ? data.value[id] : null;
 
 			if (item === null) {
 				return null;
 			}
 
-			if (parent === 'page') {
-				return 'page' in item && typeof item.page === 'string' && validateUuid(item.page) ? item : null;
-			} else if (parent === 'card') {
-				return 'card' in item && typeof item.card === 'string' && validateUuid(item.card) ? item : null;
-			} else if (parent === 'tile') {
-				return 'tile' in item && typeof item.tile === 'string' && validateUuid(item.tile) ? item : null;
-			}
-
-			return null;
+			return item.parent.type === parent ? item : null;
 		};
 
-		const pendingGetPromises: {
-			[K in keyof DataSourceParentTypeMap]: Record<IDataSourceBase['id'], Promise<DataSourceParentTypeMap[K]>>;
-		} = {
-			page: {},
-			card: {},
-			tile: {},
-		};
+		const pendingGetPromises: Record<IDataSource['id'], Promise<IDataSource>> = {};
 
-		const getPendingGetPromise = <T extends keyof DataSourceParentTypeMap>(
-			parent: T,
-			id: IDataSourceBase['id']
-		): Promise<DataSourceParentTypeMap[T]> | undefined => {
-			return pendingGetPromises[parent][id] as Promise<DataSourceParentTypeMap[T]> | undefined;
-		};
+		const pendingFetchPromises: Record<string, Promise<IDataSource[]>> = {};
 
-		const pendingFetchPromises: {
-			[K in keyof DataSourceParentTypeMap]: Record<IPage['id'] | ICard['id'] | ITile['id'], Promise<DataSourceParentTypeMap[K][]>>;
-		} = {
-			page: {},
-			card: {},
-			tile: {},
-		};
+		const set = (payload: IDataSourcesSetActionPayload): IDataSource => {
+			const plugin = getPluginByType(payload.data.type);
 
-		const getPendingFetchPromise = <T extends keyof DataSourceParentTypeMap>(
-			parent: T,
-			parentId: IPage['id'] | ICard['id'] | ITile['id']
-		): Promise<DataSourceParentTypeMap[T][]> | undefined => {
-			return pendingFetchPromises[parent][parentId] as Promise<DataSourceParentTypeMap[T][]> | undefined;
-		};
-
-		const set = <T extends keyof DataSourceParentTypeMap>(payload: IDataSourcesSetActionPayload & { parent: T }): DataSourceParentTypeMap[T] => {
-			const is = {
-				page: (p: IDataSourcesSetActionPayload): p is IPageDataSourcesSetActionPayload => p.parent === 'page',
-				card: (p: IDataSourcesSetActionPayload): p is ICardDataSourcesSetActionPayload => p.parent === 'card',
-				tile: (p: IDataSourcesSetActionPayload): p is ITileDataSourcesSetActionPayload => p.parent === 'tile',
-			};
-
-			const parentSchemas = getDataSourcesSchemas(payload.parent, payload.data.type);
-
-			const parentShape: Record<string, unknown> = {
+			const toInsert = {
 				id: payload.id,
 				parent: payload.parent,
-				type: payload.data.type,
-			};
-
-			if (is.page(payload)) {
-				parentShape.page = payload.pageId;
-			} else if (is.card(payload)) {
-				parentShape.card = payload.cardId;
-			} else if (is.tile(payload)) {
-				parentShape.tile = payload.tileId;
-			}
-
-			const toParse = {
 				...payload.data,
-				...parentShape,
 			};
 
 			if (payload.id && data.value && payload.id in data.value) {
-				const parsedDataSource = parentSchemas.dataSource.safeParse({ ...data.value[payload.id], ...toParse });
+				const parsed = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({ ...data.value[payload.id], ...toInsert });
 
-				if (!parsedDataSource.success) {
+				if (!parsed.success) {
+					console.error('Schema validation failed with:', parsed.error);
+
 					throw new DashboardValidationException('Failed to insert data source.');
 				}
 
-				return (data.value[parsedDataSource.data.id] = parsedDataSource.data as DataSourceParentTypeMap[T]);
+				return (data.value[parsed.data.id] = parsed.data);
 			}
 
-			const parsedDataSource = parentSchemas.dataSource.safeParse(toParse);
+			const parsed = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(toInsert);
 
-			if (!parsedDataSource.success) {
+			if (!parsed.success) {
+				console.error('Schema validation failed with:', parsed.error);
+
 				throw new DashboardValidationException('Failed to insert data source.');
 			}
 
 			data.value ??= {};
 
-			return (data.value[parsedDataSource.data.id] = parsedDataSource.data as DataSourceParentTypeMap[T]);
+			return (data.value[parsed.data.id] = parsed.data);
 		};
 
-		const unset = <T extends keyof DataSourceParentTypeMap>(payload: IDataSourcesUnsetActionPayload & { parent: T }): void => {
+		const unset = (payload: IDataSourcesUnsetActionPayload): void => {
 			if (!data.value) {
 				return;
 			}
 
-			const is = {
-				page: (p: IDataSourcesUnsetActionPayload): p is IPageDataSourcesUnsetActionPayload => p.parent === 'page',
-				card: (p: IDataSourcesUnsetActionPayload): p is ICardDataSourcesUnsetActionPayload => p.parent === 'card',
-				tile: (p: IDataSourcesUnsetActionPayload): p is ITileDataSourcesUnsetActionPayload => p.parent === 'tile',
-			};
-
-			if (is.page(payload) && payload.pageId !== undefined) {
-				const items = findForParent<T>(payload.parent, payload.pageId);
-
-				for (const item of items) {
-					if (item.id in (data.value ?? {})) {
-						delete (data.value ?? {})[item.id];
-					}
-				}
-
-				return;
-			} else if (is.card(payload) && payload.cardId !== undefined) {
-				const items = findForParent<T>(payload.parent, payload.cardId);
-
-				for (const item of items) {
-					if (item.id in (data.value ?? {})) {
-						delete (data.value ?? {})[item.id];
-					}
-				}
-
-				return;
-			} else if (is.tile(payload) && payload.tileId !== undefined) {
-				const items = findForParent<T>(payload.parent, payload.tileId);
+			if (payload.parent !== undefined) {
+				const items = findForParent(payload.parent.type, payload.parent.id);
 
 				for (const item of items) {
 					if (item.id in (data.value ?? {})) {
@@ -273,223 +143,96 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				return;
 			}
 
-			throw new DashboardException('You have to provide at least page, card, tile or data source id');
+			throw new DashboardException('You have to provide at least parent definition or data source id');
 		};
 
-		const get = async <T extends keyof DataSourceParentTypeMap>(
-			payload: IDataSourcesGetActionPayload & { parent: T }
-		): Promise<DataSourceParentTypeMap[T]> => {
-			const is = {
-				page: (p: IDataSourcesGetActionPayload): p is IPageDataSourcesGetActionPayload => p.parent === 'page',
-				card: (p: IDataSourcesGetActionPayload): p is ICardDataSourcesGetActionPayload => p.parent === 'card',
-				tile: (p: IDataSourcesGetActionPayload): p is ITileDataSourcesGetActionPayload => p.parent === 'tile',
-			};
-
-			const existing = getPendingGetPromise<T>(payload.parent, payload.id);
-
-			if (existing) {
-				return existing;
+		const get = async (payload: IDataSourcesGetActionPayload): Promise<IDataSource> => {
+			if (payload.id in pendingGetPromises) {
+				return pendingGetPromises[payload.id];
 			}
 
-			const getPromise = (async (): Promise<DataSourceParentTypeMap[T]> => {
+			const getPromise = (async (): Promise<IDataSource> => {
 				if (semaphore.value.fetching.item.includes(payload.id)) {
 					throw new DashboardApiException('Already fetching data source.');
 				}
 
 				semaphore.value.fetching.item.push(payload.id);
 
-				let apiResponse;
-
-				if (is.tile(payload)) {
-					if (typeof payload.cardId !== 'undefined') {
-						apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source/{id}`, {
-							params: {
-								path: { pageId: payload.pageId, cardId: payload.cardId, tileId: payload.tileId, id: payload.id },
-							},
-						});
-					} else {
-						apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/tiles/{tileId}/data-source/{id}`, {
-							params: {
-								path: { pageId: payload.pageId, tileId: payload.tileId, id: payload.id },
-							},
-						});
-					}
-				} else if (is.card(payload)) {
-					apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/data-source/{id}`, {
-						params: {
-							path: { pageId: payload.pageId, cardId: payload.cardId, id: payload.id },
-						},
-					});
-				} else if (is.page(payload)) {
-					apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/data-source/{id}`, {
-						params: {
-							path: { pageId: payload.pageId, id: payload.id },
-						},
-					});
-				} else {
-					throw new DashboardApiException('Missing parent identifiers.');
-				}
-
-				const { data: responseData, error, response } = apiResponse;
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+				});
 
 				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
 				if (typeof responseData !== 'undefined') {
-					const parentSchemas = getDataSourcesSchemas(payload.parent, responseData.data.type);
+					const plugin = getPluginByType(responseData.data.type);
 
-					const transformed = transformDataSourceResponse({ ...responseData.data, parent: payload.parent }, parentSchemas.dataSource);
+					const transformed = transformDataSourceResponse(responseData.data, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
 
 					data.value[transformed.id] = transformed;
 
-					return transformed as DataSourceParentTypeMap[T];
+					return transformed;
 				}
 
 				let errorReason: string | null = 'Failed to fetch data source.';
 
 				if (error) {
-					if (is.page(payload)) {
-						errorReason = getErrorReason<operations['get-dashboard-module-page-data-source']>(error, errorReason);
-					} else if (is.card(payload)) {
-						errorReason = getErrorReason<operations['get-dashboard-module-page-card-data-source']>(error, errorReason);
-					} else if (is.tile(payload)) {
-						if (typeof payload.cardId !== 'undefined') {
-							errorReason = getErrorReason<operations['get-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-						} else {
-							errorReason = getErrorReason<operations['get-dashboard-module-page-tile-data-source']>(error, errorReason);
-						}
-					}
+					errorReason = getErrorReason<operations['get-dashboard-module-data-source']>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
 			})();
 
-			if (is.page(payload)) {
-				pendingGetPromises['page'][payload.id] = getPromise as Promise<IPageDeviceChannelDataSource>;
-			} else if (is.card(payload)) {
-				pendingGetPromises['card'][payload.id] = getPromise as Promise<ICardDeviceChannelDataSource>;
-			} else if (is.tile(payload)) {
-				pendingGetPromises['tile'][payload.id] = getPromise as Promise<ITileDeviceChannelDataSource>;
-			}
+			pendingGetPromises[payload.id] = getPromise;
 
 			try {
 				return await getPromise;
 			} finally {
-				delete pendingGetPromises[payload.parent][payload.id];
+				delete pendingGetPromises[payload.id];
 			}
 		};
 
-		const fetch = async <T extends keyof DataSourceParentTypeMap>(
-			payload: IDataSourcesFetchActionPayload & { parent: T }
-		): Promise<DataSourceParentTypeMap[T][]> => {
-			const is = {
-				page: (p: IDataSourcesFetchActionPayload): p is IPageDataSourcesFetchActionPayload => p.parent === 'page',
-				card: (p: IDataSourcesFetchActionPayload): p is ICardDataSourcesFetchActionPayload => p.parent === 'card',
-				tile: (p: IDataSourcesFetchActionPayload): p is ITileDataSourcesFetchActionPayload => p.parent === 'tile',
-			};
-
-			if (is.page(payload)) {
-				const existing = getPendingFetchPromise<T>(payload.parent, payload.pageId);
-
-				if (existing) {
-					return existing;
-				}
-			} else if (is.card(payload)) {
-				const existing = getPendingFetchPromise<T>(payload.parent, payload.cardId);
-
-				if (existing) {
-					return existing;
-				}
-			} else if (is.tile(payload)) {
-				const existing = getPendingFetchPromise<T>(payload.parent, payload.tileId);
-
-				if (existing) {
-					return existing;
-				}
+		const fetch = async (payload: IDataSourcesFetchActionPayload): Promise<IDataSource[]> => {
+			if (payload.parent.id in pendingFetchPromises) {
+				return pendingFetchPromises[payload.parent.id];
 			}
 
-			const fetchPromise = (async (): Promise<DataSourceParentTypeMap[T][]> => {
-				if (
-					(is.page(payload) && semaphore.value.fetching.items.includes(payload.pageId)) ||
-					(is.card(payload) && semaphore.value.fetching.items.includes(payload.cardId)) ||
-					(is.tile(payload) && semaphore.value.fetching.items.includes(payload.tileId))
-				) {
-					throw new DashboardApiException('Already fetching data sources.');
-				}
+			const fetchPromise = (async (): Promise<IDataSource[]> => {
+				semaphore.value.fetching.items.push(payload.parent.id);
 
-				if (is.page(payload)) {
-					semaphore.value.fetching.items.push(payload.pageId);
-
-					firstLoad.value = firstLoad.value.filter((item) => item !== payload.pageId);
-				} else if (is.card(payload)) {
-					semaphore.value.fetching.items.push(payload.cardId);
-
-					firstLoad.value = firstLoad.value.filter((item) => item !== payload.cardId);
-				} else if (is.tile(payload)) {
-					semaphore.value.fetching.items.push(payload.tileId);
-
-					firstLoad.value = firstLoad.value.filter((item) => item !== payload.tileId);
-				}
-
+				firstLoad.value = firstLoad.value.filter((item) => item !== payload.parent.id);
 				firstLoad.value = [...new Set(firstLoad.value)];
 
-				let apiResponse;
-
-				if (is.tile(payload)) {
-					if (typeof payload.cardId !== 'undefined') {
-						apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source`, {
-							params: {
-								path: { pageId: payload.pageId, cardId: payload.cardId, tileId: payload.tileId },
-							},
-						});
-					} else {
-						apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/tiles/{tileId}/data-source`, {
-							params: {
-								path: { pageId: payload.pageId, tileId: payload.tileId },
-							},
-						});
-					}
-				} else if (is.card(payload)) {
-					apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/data-source`, {
-						params: {
-							path: { pageId: payload.pageId, cardId: payload.cardId },
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/{parent}/{parentId}/data-source`, {
+					params: {
+						path: {
+							parent: payload.parent.type,
+							parentId: payload.parent.id,
 						},
-					});
-				} else if (is.page(payload)) {
-					apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/data-source`, {
-						params: {
-							path: { pageId: payload.pageId },
-						},
-					});
-				} else {
-					throw new DashboardApiException('Missing parent identifiers.');
-				}
+					},
+				});
 
-				const { data: responseData, error, response } = apiResponse;
-
-				if (is.page(payload)) {
-					semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.pageId);
-				} else if (is.card(payload)) {
-					semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.cardId);
-				} else if (is.tile(payload)) {
-					semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.tileId);
-				}
+				semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.parent.id);
 
 				if (typeof responseData !== 'undefined') {
-					if (is.page(payload)) {
-						firstLoad.value.push(payload.pageId);
-					} else if (is.card(payload)) {
-						firstLoad.value.push(payload.cardId);
-					} else if (is.tile(payload)) {
-						firstLoad.value.push(payload.tileId);
-					}
-
+					firstLoad.value.push(payload.parent.id);
 					firstLoad.value = [...new Set(firstLoad.value)];
 
 					const dataSources = Object.fromEntries(
 						responseData.data.map((dataSource) => {
-							const parentSchemas = getDataSourcesSchemas(payload.parent, dataSource.type);
+							const plugin = getPluginByType(dataSource.type);
 
-							const transformed = transformDataSourceResponse({ ...dataSource, parent: payload.parent }, parentSchemas.dataSource);
+							const transformed = transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
 
 							return [transformed.id, transformed];
 						})
@@ -497,198 +240,98 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 
 					data.value = { ...data.value, ...dataSources };
 
-					return Object.values(data.value) as DataSourceParentTypeMap[T][];
+					return Object.values(data.value);
 				}
 
 				let errorReason: string | null = 'Failed to fetch data sources.';
 
 				if (error) {
-					if (is.page(payload)) {
-						errorReason = getErrorReason<operations['get-dashboard-module-page-data-sources']>(error, errorReason);
-					} else if (is.card(payload)) {
-						errorReason = getErrorReason<operations['get-dashboard-module-page-card-data-sources']>(error, errorReason);
-					} else if (is.tile(payload)) {
-						if (typeof payload.cardId !== 'undefined') {
-							errorReason = getErrorReason<operations['get-dashboard-module-page-card-tile-data-sources']>(error, errorReason);
-						} else {
-							errorReason = getErrorReason<operations['get-dashboard-module-page-tile-data-sources']>(error, errorReason);
-						}
-					}
+					errorReason = getErrorReason<operations['get-dashboard-module-parent-data-sources']>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
 			})();
 
-			if (is.page(payload)) {
-				pendingFetchPromises['page'][payload.pageId] = fetchPromise as Promise<IPageDeviceChannelDataSource[]>;
-			} else if (is.card(payload)) {
-				pendingFetchPromises['card'][payload.cardId] = fetchPromise as Promise<ICardDeviceChannelDataSource[]>;
-			} else if (is.tile(payload)) {
-				pendingFetchPromises['tile'][payload.tileId] = fetchPromise as Promise<ITileDeviceChannelDataSource[]>;
-			}
+			pendingFetchPromises[payload.parent.id] = fetchPromise;
 
 			try {
 				return await fetchPromise;
 			} finally {
-				if (is.page(payload)) {
-					delete pendingFetchPromises[payload.parent][payload.pageId];
-				} else if (is.card(payload)) {
-					delete pendingFetchPromises[payload.parent][payload.cardId];
-				} else if (is.tile(payload)) {
-					delete pendingFetchPromises[payload.parent][payload.tileId];
-				}
+				delete pendingFetchPromises[payload.parent.id];
 			}
 		};
 
-		const add = async <T extends keyof DataSourceParentTypeMap>(
-			payload: IDataSourcesAddActionPayload & { parent: T }
-		): Promise<DataSourceParentTypeMap[T]> => {
-			const is = {
-				page: (p: IDataSourcesAddActionPayload): p is IPageDataSourcesAddActionPayload => p.parent === 'page',
-				card: (p: IDataSourcesAddActionPayload): p is ICardDataSourcesAddActionPayload => p.parent === 'card',
-				tile: (p: IDataSourcesAddActionPayload): p is ITileDataSourcesAddActionPayload => p.parent === 'tile',
-			};
+		const add = async (payload: IDataSourcesAddActionPayload): Promise<IDataSource> => {
+			const parsedPayload = DataSourcesAddActionPayloadSchema.safeParse(payload);
 
-			const parentSchemas = getDataSourcesSchemas(payload.parent, payload.data.type);
-
-			let parsedPayload;
-
-			if (is.page(payload)) {
-				parsedPayload = PageDataSourcesAddActionPayloadSchema.safeParse(payload);
-			} else if (is.card(payload)) {
-				parsedPayload = CardDataSourcesAddActionPayloadSchema.safeParse(payload);
-			} else if (is.tile(payload)) {
-				parsedPayload = TileDataSourcesAddActionPayloadSchema.safeParse(payload);
-			}
-
-			if (!parsedPayload || !parsedPayload.success) {
+			if (!parsedPayload.success) {
 				throw new DashboardValidationException('Failed to add data source.');
 			}
 
-			const parentShape: Record<string, unknown> = {
+			const plugin = getPluginByType(payload.data.type);
+
+			const parsedNewItem = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({
+				...payload.data,
 				id: payload.id,
-				parent: payload.parent,
 				type: payload.data.type,
+				parent: payload.parent,
 				draft: payload.draft,
 				createdAt: new Date(),
-			};
+			});
 
-			if (is.page(payload)) {
-				parentShape.page = payload.pageId;
-			} else if (is.card(payload)) {
-				parentShape.card = payload.cardId;
-			} else if (is.tile(payload)) {
-				parentShape.tile = payload.tileId;
-			}
-
-			const toParse = {
-				...payload.data,
-				...parentShape,
-			};
-
-			const parsedNewDataSource = parentSchemas.dataSource.safeParse(toParse);
-
-			if (!parsedNewDataSource.success) {
+			if (!parsedNewItem.success) {
 				throw new DashboardValidationException('Failed to add data source.');
 			}
 
-			semaphore.value.creating.push(parsedNewDataSource.data.id);
+			semaphore.value.creating.push(parsedNewItem.data.id);
 
-			data.value[parsedNewDataSource.data.id] = parsedNewDataSource.data;
+			data.value[parsedNewItem.data.id] = parsedNewItem.data;
 
-			if (parsedNewDataSource.data.draft) {
-				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDataSource.data.id);
+			if (parsedNewItem.data.draft) {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
-				return parsedNewDataSource.data as DataSourceParentTypeMap[T];
+				return parsedNewItem.data;
 			} else {
-				let apiResponse;
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/{parent}/{parentId}/data-source`, {
+					params: {
+						path: { parent: payload.parent.type, parentId: payload.parent.id },
+					},
+					body: {
+						data: transformDataSourceCreateRequest<IDataSourceCreateReq>(
+							parsedNewItem.data,
+							plugin?.schemas?.dataSourceCreateReqSchema || DataSourceCreateReqSchema
+						),
+					},
+				});
 
-				if (is.tile(payload)) {
-					if (typeof payload.cardId !== 'undefined') {
-						apiResponse = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source`, {
-							params: {
-								path: { pageId: payload.pageId, cardId: payload.cardId, tileId: payload.tileId },
-							},
-							body: {
-								data: transformDataSourceCreateRequest<IDataSourceCreateReq>(parsedNewDataSource.data, parentSchemas.createDataSourceReq),
-							},
-						});
-					} else {
-						apiResponse = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/tiles/{tileId}/data-source`, {
-							params: {
-								path: { pageId: payload.pageId, tileId: payload.tileId },
-							},
-							body: {
-								data: transformDataSourceCreateRequest<IDataSourceCreateReq>(parsedNewDataSource.data, parentSchemas.createDataSourceReq),
-							},
-						});
-					}
-				} else if (is.card(payload)) {
-					apiResponse = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/data-source`, {
-						params: {
-							path: { pageId: payload.pageId, cardId: payload.cardId },
-						},
-						body: {
-							data: transformDataSourceCreateRequest<IDataSourceCreateReq>(parsedNewDataSource.data, parentSchemas.createDataSourceReq),
-						},
-					});
-				} else if (is.page(payload)) {
-					apiResponse = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/data-source`, {
-						params: {
-							path: { pageId: payload.pageId },
-						},
-						body: {
-							data: transformDataSourceCreateRequest<IDataSourceCreateReq>(parsedNewDataSource.data, parentSchemas.createDataSourceReq),
-						},
-					});
-				} else {
-					throw new DashboardApiException('Missing parent identifiers.');
-				}
-
-				const { data: responseData, error, response } = apiResponse;
-
-				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDataSource.data.id);
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
 				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const transformed = transformDataSourceResponse({ ...responseData.data, parent: payload.parent }, parentSchemas.dataSource);
+					const transformed = transformDataSourceResponse(responseData.data, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
 
 					data.value[transformed.id] = transformed;
 
-					return transformed as DataSourceParentTypeMap[T];
+					return transformed;
 				}
 
 				// Record could not be created on api, we have to remove it from database
-				delete data.value[parsedNewDataSource.data.id];
+				delete data.value[parsedNewItem.data.id];
 
 				let errorReason: string | null = 'Failed to create data source.';
 
 				if (error) {
-					if (is.page(payload)) {
-						errorReason = getErrorReason<operations['create-dashboard-module-page-data-source']>(error, errorReason);
-					} else if (is.card(payload)) {
-						errorReason = getErrorReason<operations['create-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-					} else if (is.tile(payload)) {
-						if (typeof payload.cardId !== 'undefined') {
-							errorReason = getErrorReason<operations['create-dashboard-module-page-tile-data-source']>(error, errorReason);
-						} else {
-							errorReason = getErrorReason<operations['create-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-						}
-					}
+					errorReason = getErrorReason<operations['create-dashboard-module-parent-data-source']>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
 			}
 		};
 
-		const edit = async <T extends keyof DataSourceParentTypeMap>(
-			payload: IDataSourcesEditActionPayload & { parent: T }
-		): Promise<DataSourceParentTypeMap[T]> => {
-			const is = {
-				page: (p: IDataSourcesEditActionPayload): p is IPageDataSourcesEditActionPayload => p.parent === 'page',
-				card: (p: IDataSourcesEditActionPayload): p is ICardDataSourcesEditActionPayload => p.parent === 'card',
-				tile: (p: IDataSourcesEditActionPayload): p is ITileDataSourcesEditActionPayload => p.parent === 'tile',
-			};
-
+		const edit = async (payload: IDataSourcesEditActionPayload): Promise<IDataSource> => {
 			if (semaphore.value.updating.includes(payload.id)) {
 				throw new DashboardException('Data source is already being updated.');
 			}
@@ -697,134 +340,72 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				throw new DashboardException('Failed to get data source data to update.');
 			}
 
-			const parentSchemas = getDataSourcesSchemas(payload.parent, data.value[payload.id].type);
+			const parsedPayload = DataSourcesEditActionPayloadSchema.safeParse(payload);
 
-			let parsedPayload;
-
-			if (is.page(payload)) {
-				parsedPayload = PageDataSourcesEditActionPayloadSchema.safeParse(payload);
-			} else if (is.card(payload)) {
-				parsedPayload = CardDataSourcesEditActionPayloadSchema.safeParse(payload);
-			} else if (is.tile(payload)) {
-				parsedPayload = TileDataSourcesEditActionPayloadSchema.safeParse(payload);
-			}
-
-			if (!parsedPayload || !parsedPayload.success) {
+			if (!parsedPayload.success) {
 				throw new DashboardValidationException('Failed to edit data source.');
 			}
 
-			const parsedEditedDataSource = parentSchemas.dataSource.safeParse({
+			const plugin = getPluginByType(payload.data.type);
+
+			const parsedEditedItem = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({
 				...data.value[payload.id],
 				...omitBy(parsedPayload.data.data, isUndefined),
 			});
 
-			if (!parsedEditedDataSource.success) {
+			if (!parsedEditedItem.success) {
 				throw new DashboardValidationException('Failed to edit data source.');
 			}
 
 			semaphore.value.updating.push(payload.id);
 
-			data.value[parsedEditedDataSource.data.id] = parsedEditedDataSource.data;
+			data.value[parsedEditedItem.data.id] = parsedEditedItem.data;
 
-			if (parsedEditedDataSource.data.draft) {
-				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedDataSource.data.id);
+			if (parsedEditedItem.data.draft) {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedItem.data.id);
 
-				return parsedEditedDataSource.data as DataSourceParentTypeMap[T];
+				return parsedEditedItem.data;
 			} else {
-				let apiResponse;
-
-				if (is.tile(payload)) {
-					if (typeof payload.cardId !== 'undefined') {
-						apiResponse = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source/{id}`, {
-							params: {
-								path: { pageId: payload.pageId, cardId: payload.cardId, tileId: payload.tileId, id: payload.id },
-							},
-							body: {
-								data: transformDataSourceUpdateRequest<IDataSourceUpdateReq>(parsedEditedDataSource.data, parentSchemas.updateDataSourceReq),
-							},
-						});
-					} else {
-						apiResponse = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/tiles/{tileId}/data-source/{id}`, {
-							params: {
-								path: { pageId: payload.pageId, tileId: payload.tileId, id: payload.id },
-							},
-							body: {
-								data: transformDataSourceUpdateRequest<IDataSourceUpdateReq>(parsedEditedDataSource.data, parentSchemas.updateDataSourceReq),
-							},
-						});
-					}
-				} else if (is.card(payload)) {
-					apiResponse = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/data-source/{id}`, {
-						params: {
-							path: { pageId: payload.pageId, cardId: payload.cardId, id: payload.id },
-						},
-						body: {
-							data: transformDataSourceUpdateRequest<IDataSourceUpdateReq>(parsedEditedDataSource.data, parentSchemas.updateDataSourceReq),
-						},
-					});
-				} else if (is.page(payload)) {
-					apiResponse = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/data-source/{id}`, {
-						params: {
-							path: { pageId: payload.pageId, id: payload.id },
-						},
-						body: {
-							data: transformDataSourceUpdateRequest<IDataSourceUpdateReq>(parsedEditedDataSource.data, parentSchemas.updateDataSourceReq),
-						},
-					});
-				} else {
-					throw new DashboardApiException('Missing parent identifiers.');
-				}
-
-				const { data: responseData, error, response } = apiResponse;
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+					body: {
+						data: transformDataSourceUpdateRequest<IDataSourceUpdateReq>(
+							parsedEditedItem.data,
+							plugin?.schemas?.dataSourceUpdateReqSchema || DataSourceUpdateReqSchema
+						),
+					},
+				});
 
 				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 				if (typeof responseData !== 'undefined') {
-					const transformed = transformDataSourceResponse({ ...responseData.data, parent: payload.parent }, parentSchemas.dataSource);
+					const transformed = transformDataSourceResponse(responseData.data, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
 
 					data.value[transformed.id] = transformed;
 
-					return transformed as DataSourceParentTypeMap[T];
+					return transformed;
 				}
 
 				// Updating record on api failed, we need to refresh record
-				if (is.page(payload)) {
-					await get({ id: payload.id, parent: payload.parent, pageId: payload.pageId });
-				} else if (is.card(payload)) {
-					await get({ id: payload.id, parent: payload.parent, cardId: payload.cardId, pageId: payload.pageId });
-				} else if (is.tile(payload)) {
-					await get({ id: payload.id, parent: payload.parent, tileId: payload.tileId, cardId: payload.cardId, pageId: payload.pageId });
-				}
+				await get({ id: payload.id, parent: payload.parent });
 
 				let errorReason: string | null = 'Failed to update data source.';
 
 				if (error) {
-					if (is.page(payload)) {
-						errorReason = getErrorReason<operations['update-dashboard-module-page-data-source']>(error, errorReason);
-					} else if (is.card(payload)) {
-						errorReason = getErrorReason<operations['update-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-					} else if (is.tile(payload)) {
-						if (typeof payload.cardId !== 'undefined') {
-							errorReason = getErrorReason<operations['update-dashboard-module-page-tile-data-source']>(error, errorReason);
-						} else {
-							errorReason = getErrorReason<operations['update-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-						}
-					}
+					errorReason = getErrorReason<operations['update-dashboard-module-data-source']>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);
 			}
 		};
 
-		const save = async <T extends keyof DataSourceParentTypeMap>(
-			payload: IDataSourcesSaveActionPayload & { parent: T }
-		): Promise<DataSourceParentTypeMap[T]> => {
-			const is = {
-				page: (p: IDataSourcesSaveActionPayload): p is IPageDataSourcesSaveActionPayload => p.parent === 'page',
-				card: (p: IDataSourcesSaveActionPayload): p is ICardDataSourcesSaveActionPayload => p.parent === 'card',
-				tile: (p: IDataSourcesSaveActionPayload): p is ITileDataSourcesSaveActionPayload => p.parent === 'tile',
-			};
-
+		const save = async (payload: IDataSourcesSaveActionPayload): Promise<IDataSource> => {
 			if (semaphore.value.updating.includes(payload.id)) {
 				throw new DashboardException('Data source is already being saved.');
 			}
@@ -833,98 +414,52 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				throw new DashboardException('Failed to get data source data to save.');
 			}
 
-			const parentSchemas = getDataSourcesSchemas(payload.parent, data.value[payload.id].type);
+			const plugin = getPluginByType(data.value[payload.id].type);
 
-			const parsedSaveProperty = parentSchemas.dataSource.safeParse(data.value[payload.id]);
+			const parsedSaveItem = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(data.value[payload.id]);
 
-			if (!parsedSaveProperty.success) {
+			if (!parsedSaveItem.success) {
 				throw new DashboardValidationException('Failed to save data source.');
 			}
 
 			semaphore.value.updating.push(payload.id);
 
-			let apiResponse;
-
-			if (is.tile(payload)) {
-				if (typeof payload.cardId !== 'undefined') {
-					apiResponse = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source`, {
-						params: {
-							path: { pageId: payload.pageId, cardId: payload.cardId, tileId: payload.tileId },
-						},
-						body: {
-							data: transformDataSourceCreateRequest<IDataSourceCreateReq>(parsedSaveProperty.data, parentSchemas.createDataSourceReq),
-						},
-					});
-				} else {
-					apiResponse = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/tiles/{tileId}/data-source`, {
-						params: {
-							path: { pageId: payload.pageId, tileId: payload.tileId },
-						},
-						body: {
-							data: transformDataSourceCreateRequest<IDataSourceCreateReq>(parsedSaveProperty.data, parentSchemas.createDataSourceReq),
-						},
-					});
-				}
-			} else if (is.card(payload)) {
-				apiResponse = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/data-source`, {
-					params: {
-						path: { pageId: payload.pageId, cardId: payload.cardId },
-					},
-					body: {
-						data: transformDataSourceCreateRequest<IDataSourceCreateReq>(parsedSaveProperty.data, parentSchemas.createDataSourceReq),
-					},
-				});
-			} else if (is.page(payload)) {
-				apiResponse = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/data-source`, {
-					params: {
-						path: { pageId: payload.pageId },
-					},
-					body: {
-						data: transformDataSourceCreateRequest<IDataSourceCreateReq>(parsedSaveProperty.data, parentSchemas.createDataSourceReq),
-					},
-				});
-			} else {
-				throw new DashboardApiException('Missing parent identifiers.');
-			}
-
-			const { data: responseData, error, response } = apiResponse;
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/{parent}/{parentId}/data-source`, {
+				params: {
+					path: { parent: payload.parent.type, parentId: payload.parent.id },
+				},
+				body: {
+					data: transformDataSourceCreateRequest<IDataSourceCreateReq>(
+						parsedSaveItem.data,
+						plugin?.schemas?.dataSourceCreateReqSchema || DataSourceCreateReqSchema
+					),
+				},
+			});
 
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const transformed = transformDataSourceResponse({ ...responseData.data, parent: payload.parent }, parentSchemas.dataSource);
+				const transformed = transformDataSourceResponse(responseData.data, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
 
 				data.value[transformed.id] = transformed;
 
-				return transformed as DataSourceParentTypeMap[T];
+				return transformed;
 			}
 
 			let errorReason: string | null = 'Failed to create data source.';
 
 			if (error) {
-				if (is.page(payload)) {
-					errorReason = getErrorReason<operations['create-dashboard-module-page-data-source']>(error, errorReason);
-				} else if (is.card(payload)) {
-					errorReason = getErrorReason<operations['create-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-				} else if (is.tile(payload)) {
-					if (typeof payload.cardId !== 'undefined') {
-						errorReason = getErrorReason<operations['create-dashboard-module-page-tile-data-source']>(error, errorReason);
-					} else {
-						errorReason = getErrorReason<operations['create-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-					}
-				}
+				errorReason = getErrorReason<operations['create-dashboard-module-parent-data-source']>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
 		};
 
-		const remove = async <T extends keyof DataSourceParentTypeMap>(payload: IDataSourcesRemoveActionPayload & { parent: T }): Promise<boolean> => {
-			const is = {
-				page: (p: IDataSourcesRemoveActionPayload): p is IPageDataSourcesRemoveActionPayload => p.parent === 'page',
-				card: (p: IDataSourcesRemoveActionPayload): p is ICardDataSourcesRemoveActionPayload => p.parent === 'card',
-				tile: (p: IDataSourcesRemoveActionPayload): p is ITileDataSourcesRemoveActionPayload => p.parent === 'tile',
-			};
-
+		const remove = async (payload: IDataSourcesRemoveActionPayload): Promise<boolean> => {
 			if (semaphore.value.deleting.includes(payload.id)) {
 				throw new DashboardException('Data source is already being removed.');
 			}
@@ -942,39 +477,11 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			if (recordToRemove.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
-				let apiResponse;
-
-				if (is.tile(payload)) {
-					if (typeof payload.cardId !== 'undefined') {
-						apiResponse = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source/{id}`, {
-							params: {
-								path: { pageId: payload.pageId, cardId: payload.cardId, tileId: payload.tileId, id: payload.id },
-							},
-						});
-					} else {
-						apiResponse = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/tiles/{tileId}/data-source/{id}`, {
-							params: {
-								path: { pageId: payload.pageId, tileId: payload.tileId, id: payload.id },
-							},
-						});
-					}
-				} else if (is.card(payload)) {
-					apiResponse = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{cardId}/data-source/{id}`, {
-						params: {
-							path: { pageId: payload.pageId, cardId: payload.cardId, id: payload.id },
-						},
-					});
-				} else if (is.page(payload)) {
-					apiResponse = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/data-source/{id}`, {
-						params: {
-							path: { pageId: payload.pageId, id: payload.id },
-						},
-					});
-				} else {
-					throw new DashboardApiException('Missing parent identifiers.');
-				}
-
-				const { error, response } = apiResponse;
+				const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/data-source/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+				});
 
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 
@@ -983,28 +490,12 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				}
 
 				// Deleting record on api failed, we need to refresh record
-				if (is.page(payload)) {
-					await get({ id: payload.id, parent: payload.parent, pageId: payload.pageId });
-				} else if (is.card(payload)) {
-					await get({ id: payload.id, parent: payload.parent, cardId: payload.cardId, pageId: payload.pageId });
-				} else if (is.tile(payload)) {
-					await get({ id: payload.id, parent: payload.parent, tileId: payload.tileId, cardId: payload.cardId, pageId: payload.pageId });
-				}
+				await get({ id: payload.id, parent: payload.parent });
 
 				let errorReason: string | null = 'Remove data source failed.';
 
 				if (error) {
-					if (is.page(payload)) {
-						errorReason = getErrorReason<operations['delete-dashboard-module-page-data-source']>(error, errorReason);
-					} else if (is.card(payload)) {
-						errorReason = getErrorReason<operations['delete-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-					} else if (is.tile(payload)) {
-						if (typeof payload.cardId !== 'undefined') {
-							errorReason = getErrorReason<operations['delete-dashboard-module-page-tile-data-source']>(error, errorReason);
-						} else {
-							errorReason = getErrorReason<operations['delete-dashboard-module-page-card-tile-data-source']>(error, errorReason);
-						}
-					}
+					errorReason = getErrorReason<operations['delete-dashboard-module-data-source']>(error, errorReason);
 				}
 
 				throw new DashboardApiException(errorReason, response.status);

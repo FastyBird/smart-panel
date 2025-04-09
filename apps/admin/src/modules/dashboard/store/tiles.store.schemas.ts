@@ -1,56 +1,30 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import {
-	DashboardDayWeatherTileType,
-	DashboardDevicePreviewTileType,
-	DashboardForecastWeatherTileType,
-	DashboardTimeTileType,
-	type components,
-} from '../../../openapi';
+import { type components } from '../../../openapi';
 
-import { DeviceChannelDataSourceCreateReqSchema, TileDeviceChannelDataSourceResSchema } from './dataSources.store.schemas';
+import { DataSourceCreateReqSchema, DataSourceResSchema } from './dataSources.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreateTileBase = components['schemas']['DashboardCreateTileBase'];
-type ApiCreateDevicePreviewTile = components['schemas']['DashboardCreateDevicePreviewTile'];
-type ApiCreateTimeTile = components['schemas']['DashboardCreateTimeTile'];
-type ApiCreateDayWeatherTile = components['schemas']['DashboardCreateDayWeatherTile'];
-type ApiCreateForecastWeatherTile = components['schemas']['DashboardCreateForecastWeatherTile'];
-
-type ApiUpdateTileBase = components['schemas']['DashboardUpdateTileBase'];
-type ApiUpdateDevicePreviewTile = components['schemas']['DashboardUpdateDevicePreviewTile'];
-type ApiUpdateTimeTile = components['schemas']['DashboardUpdateTimeTile'];
-type ApiUpdateDayWeatherTile = components['schemas']['DashboardUpdateDayWeatherTile'];
-type ApiUpdateForecastWeatherTile = components['schemas']['DashboardUpdateForecastWeatherTile'];
-
-type ApiTileBase = components['schemas']['DashboardTileBase'];
-type ApiDevicePreviewTile = components['schemas']['DashboardDevicePreviewTile'];
-type ApiTimeTile = components['schemas']['DashboardTimeTile'];
-type ApiDayWeatherTile = components['schemas']['DashboardDayWeatherTile'];
-type ApiForecastWeatherTile = components['schemas']['DashboardForecastWeatherTile'];
-
-type ApiCardDevicePreviewTile = components['schemas']['DashboardCardDevicePreviewTile'];
-type ApiCardTimeTile = components['schemas']['DashboardCardTimeTile'];
-type ApiCardDayWeatherTile = components['schemas']['DashboardCardDayWeatherTile'];
-type ApiCardForecastWeatherTile = components['schemas']['DashboardCardForecastWeatherTile'];
-
-type ApiPageDevicePreviewTile = components['schemas']['DashboardPageDevicePreviewTile'];
-type ApiPageTimeTile = components['schemas']['DashboardPageTimeTile'];
-type ApiPageDayWeatherTile = components['schemas']['DashboardPageDayWeatherTile'];
-type ApiPageForecastWeatherTile = components['schemas']['DashboardPageForecastWeatherTile'];
+type ApiCreateTile = components['schemas']['DashboardCreateTile'];
+type ApiUpdateTile = components['schemas']['DashboardUpdateTile'];
+type ApiTile = components['schemas']['DashboardTile'];
 
 // STORE STATE
 // ===========
 
-export const TileBaseSchema = z.object({
+export const TileSchema = z.object({
 	id: ItemIdSchema,
 	type: z.string().trim().nonempty(),
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
 	draft: z.boolean().default(false),
 	row: z.number(),
 	col: z.number(),
-	rowSpan: z.number().default(0),
-	colSpan: z.number().default(0),
+	rowSpan: z.number().default(1),
+	colSpan: z.number().default(1),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -58,49 +32,6 @@ export const TileBaseSchema = z.object({
 		.optional()
 		.nullable()
 		.default(null),
-});
-
-export const DevicePreviewTileSchema = TileBaseSchema.extend({
-	device: ItemIdSchema,
-	icon: z.string().trim().nullable().default(null),
-});
-
-export const PageDevicePreviewTileSchema = DevicePreviewTileSchema.extend({
-	page: ItemIdSchema,
-});
-
-export const CardDevicePreviewTileSchema = DevicePreviewTileSchema.extend({
-	card: ItemIdSchema,
-});
-
-export const TimeTileSchema = TileBaseSchema.extend({});
-
-export const PageTimeTileSchema = TimeTileSchema.extend({
-	page: ItemIdSchema,
-});
-
-export const CardTimeTileSchema = TimeTileSchema.extend({
-	card: ItemIdSchema,
-});
-
-export const DayWeatherTileSchema = TileBaseSchema.extend({});
-
-export const PageDayWeatherTileSchema = DayWeatherTileSchema.extend({
-	page: ItemIdSchema,
-});
-
-export const CardDayWeatherTileSchema = DayWeatherTileSchema.extend({
-	card: ItemIdSchema,
-});
-
-export const ForecastWeatherTileSchema = TileBaseSchema.extend({});
-
-export const PageForecastWeatherTileSchema = ForecastWeatherTileSchema.extend({
-	page: ItemIdSchema,
-});
-
-export const CardForecastWeatherTileSchema = ForecastWeatherTileSchema.extend({
-	card: ItemIdSchema,
 });
 
 export const TilesStateSemaphoreSchema = z.object({
@@ -116,113 +47,75 @@ export const TilesStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
-export const PageTilesSetActionPayloadSchema = z.object({
+export const TilesSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	parent: z.literal('page'),
-	pageId: ItemIdSchema,
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
 			row: z.number(),
 			col: z.number(),
-			rowSpan: z.number().default(0),
-			colSpan: z.number().default(0),
+			rowSpan: z.number().default(1),
+			colSpan: z.number().default(1),
 		})
 		.passthrough(),
 });
 
-export const CardTilesSetActionPayloadSchema = z.object({
-	id: ItemIdSchema,
-	parent: z.literal('card'),
-	pageId: ItemIdSchema,
-	cardId: ItemIdSchema,
-	data: z
+export const TilesUnsetActionPayloadSchema = z.object({
+	id: ItemIdSchema.optional(),
+	parent: z
 		.object({
+			id: ItemIdSchema,
 			type: z.string().trim().nonempty(),
-			row: z.number(),
-			col: z.number(),
-			rowSpan: z.number().default(0),
-			colSpan: z.number().default(0),
 		})
-		.passthrough(),
+		.optional(),
 });
 
-export const PageTilesUnsetActionPayloadSchema = z.object({
-	id: ItemIdSchema.optional(),
-	parent: z.literal('page'),
-	pageId: ItemIdSchema,
-});
-
-export const CardTilesUnsetActionPayloadSchema = z.object({
-	id: ItemIdSchema.optional(),
-	parent: z.literal('card'),
-	pageId: ItemIdSchema,
-	cardId: ItemIdSchema,
-});
-
-export const PageTilesGetActionPayloadSchema = z.object({
+export const TilesGetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	parent: z.literal('page'),
-	pageId: ItemIdSchema,
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
 });
 
-export const CardTilesGetActionPayloadSchema = z.object({
-	id: ItemIdSchema,
-	parent: z.literal('card'),
-	pageId: ItemIdSchema,
-	cardId: ItemIdSchema,
+export const TilesFetchActionPayloadSchema = z.object({
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
 });
 
-export const PageTilesFetchActionPayloadSchema = z.object({
-	parent: z.literal('page'),
-	pageId: ItemIdSchema,
-});
-
-export const CardTilesFetchActionPayloadSchema = z.object({
-	parent: z.literal('card'),
-	pageId: ItemIdSchema,
-	cardId: ItemIdSchema,
-});
-
-export const PageTilesAddActionPayloadSchema = z.object({
+export const TilesAddActionPayloadSchema = z.object({
 	id: ItemIdSchema.optional().default(uuid()),
-	parent: z.literal('page'),
-	pageId: ItemIdSchema,
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
 	draft: z.boolean().optional().default(false),
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
 			row: z.number(),
 			col: z.number(),
-			rowSpan: z.number().default(0),
-			colSpan: z.number().default(0),
+			rowSpan: z.number().default(1),
+			colSpan: z.number().default(1),
 		})
 		.passthrough(),
 });
 
-export const CardTilesAddActionPayloadSchema = z.object({
-	id: ItemIdSchema.optional().default(uuid()),
-	parent: z.literal('card'),
-	pageId: ItemIdSchema,
-	cardId: ItemIdSchema,
-	draft: z.boolean().optional().default(false),
+export const TilesEditActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
-			row: z.number(),
-			col: z.number(),
-			rowSpan: z.number().default(0),
-			colSpan: z.number().default(0),
-		})
-		.passthrough(),
-});
-
-export const PageTilesEditActionPayloadSchema = z.object({
-	id: ItemIdSchema,
-	parent: z.literal('page'),
-	pageId: ItemIdSchema,
-	data: z
-		.object({
 			row: z.number().optional(),
 			col: z.number().optional(),
 			rowSpan: z.number().optional(),
@@ -231,206 +124,63 @@ export const PageTilesEditActionPayloadSchema = z.object({
 		.passthrough(),
 });
 
-export const CardTilesEditActionPayloadSchema = z.object({
+export const TilesSaveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	parent: z.literal('card'),
-	pageId: ItemIdSchema,
-	cardId: ItemIdSchema,
-	data: z
-		.object({
-			row: z.number().optional(),
-			col: z.number().optional(),
-			rowSpan: z.number().optional(),
-			colSpan: z.number().optional(),
-		})
-		.passthrough(),
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
 });
 
-export const PageTilesSaveActionPayloadSchema = z.object({
+export const TilesRemoveActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	parent: z.literal('page'),
-	pageId: ItemIdSchema,
-});
-
-export const CardTilesSaveActionPayloadSchema = z.object({
-	id: ItemIdSchema,
-	parent: z.literal('card'),
-	pageId: ItemIdSchema,
-	cardId: ItemIdSchema,
-});
-
-export const PageTilesRemoveActionPayloadSchema = z.object({
-	id: ItemIdSchema,
-	parent: z.literal('page'),
-	pageId: ItemIdSchema,
-});
-
-export const CardTilesRemoveActionPayloadSchema = z.object({
-	id: ItemIdSchema,
-	parent: z.literal('card'),
-	pageId: ItemIdSchema,
-	cardId: ItemIdSchema,
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
 });
 
 // BACKEND API
 // ===========
 
-export const TileCreateBaseReqSchema: ZodType<ApiCreateTileBase> = z.object({
+export const TileCreateReqSchema: ZodType<ApiCreateTile & { parent: { type: string; id: string } }> = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
+	parent: z.object({
+		id: z.string().uuid(),
+		type: z.string().trim().nonempty(),
+	}),
 	row: z.number(),
 	col: z.number(),
-	row_span: z.number().default(0),
-	col_span: z.number().default(0),
-	data_source: z.array(DeviceChannelDataSourceCreateReqSchema).optional(),
+	row_span: z.number().default(1),
+	col_span: z.number().default(1),
+	data_source: z.array(DataSourceCreateReqSchema).optional(),
 });
 
-export const DevicePreviewTileCreateReqSchema: ZodType<ApiCreateDevicePreviewTile> = TileCreateBaseReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDevicePreviewTileType),
-		device: z.string().uuid(),
-		icon: z.string().trim().nullable(),
-	})
-);
-
-export const TimeTileCreateReqSchema: ZodType<ApiCreateTimeTile> = TileCreateBaseReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardTimeTileType),
-	})
-);
-
-export const DayWeatherTileCreateReqSchema: ZodType<ApiCreateDayWeatherTile> = TileCreateBaseReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDayWeatherTileType),
-	})
-);
-
-export const ForecastWeatherTileCreateReqSchema: ZodType<ApiCreateForecastWeatherTile> = TileCreateBaseReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardForecastWeatherTileType),
-	})
-);
-
-export const TileUpdateBaseReqSchema: ZodType<ApiUpdateTileBase> = z.object({
+export const TileUpdateReqSchema: ZodType<ApiUpdateTile & { parent: { type: string; id: string } }> = z.object({
 	type: z.string().trim().nonempty(),
+	parent: z.object({
+		id: z.string().uuid(),
+		type: z.string().trim().nonempty(),
+	}),
 	row: z.number().optional(),
 	col: z.number().optional(),
 	row_span: z.number().optional(),
 	col_span: z.number().optional(),
 });
 
-export const DevicePreviewTileUpdateReqSchema: ZodType<ApiUpdateDevicePreviewTile> = TileUpdateBaseReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDevicePreviewTileType),
-		device: z.string().uuid().optional(),
-		icon: z.string().trim().nullable().optional(),
-	})
-);
-
-export const TimeTileUpdateReqSchema: ZodType<ApiUpdateTimeTile> = TileUpdateBaseReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardTimeTileType),
-	})
-);
-
-export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile> = TileUpdateBaseReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDayWeatherTileType),
-	})
-);
-
-export const ForecastWeatherTileUpdateReqSchema: ZodType<ApiUpdateForecastWeatherTile> = TileUpdateBaseReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardForecastWeatherTileType),
-	})
-);
-
-export const TileResSchema: ZodType<ApiTileBase> = z.object({
+export const TileResSchema: ZodType<ApiTile> = z.object({
 	id: z.string().uuid(),
 	type: z.string().trim().nonempty(),
+	parent: z.object({
+		id: z.string().uuid(),
+		type: z.string().trim().nonempty(),
+	}),
 	row: z.number(),
 	col: z.number(),
 	row_span: z.number(),
 	col_span: z.number(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
-	data_source: z.array(TileDeviceChannelDataSourceResSchema),
+	data_source: z.array(DataSourceResSchema),
 });
-
-export const DevicePreviewTileResSchema: ZodType<ApiDevicePreviewTile> = TileResSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDevicePreviewTileType),
-		device: z.string().uuid(),
-		icon: z.string().trim().nullable(),
-	})
-);
-
-export const PageDevicePreviewTileResSchema: ZodType<ApiPageDevicePreviewTile> = DevicePreviewTileResSchema.and(
-	z.object({
-		page: z.string().uuid(),
-	})
-).and(
-	z.object({
-		type: z.nativeEnum(DashboardDevicePreviewTileType),
-	})
-);
-
-export const CardDevicePreviewTileResSchema: ZodType<ApiCardDevicePreviewTile> = DevicePreviewTileResSchema.and(
-	z.object({
-		card: z.string().uuid(),
-	})
-);
-
-export const TimeTileResSchema: ZodType<ApiTimeTile> = TileResSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardTimeTileType),
-	})
-);
-
-export const PageTimeTileResSchema: ZodType<ApiPageTimeTile> = TimeTileResSchema.and(
-	z.object({
-		page: z.string().uuid(),
-	})
-);
-
-export const CardTimeTileResSchema: ZodType<ApiCardTimeTile> = TimeTileResSchema.and(
-	z.object({
-		card: z.string().uuid(),
-	})
-);
-
-export const DayWeatherTileResSchema: ZodType<ApiDayWeatherTile> = TileResSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDayWeatherTileType),
-	})
-);
-
-export const PageDayWeatherTileResSchema: ZodType<ApiPageDayWeatherTile> = DayWeatherTileResSchema.and(
-	z.object({
-		page: z.string().uuid(),
-	})
-);
-
-export const CardDayWeatherTileResSchema: ZodType<ApiCardDayWeatherTile> = DayWeatherTileResSchema.and(
-	z.object({
-		card: z.string().uuid(),
-	})
-);
-
-export const ForecastWeatherTileResSchema: ZodType<ApiForecastWeatherTile> = TileResSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardForecastWeatherTileType),
-	})
-);
-
-export const PageForecastWeatherTileResSchema: ZodType<ApiPageForecastWeatherTile> = ForecastWeatherTileResSchema.and(
-	z.object({
-		page: z.string().uuid(),
-	})
-);
-
-export const CardForecastWeatherTileResSchema: ZodType<ApiCardForecastWeatherTile> = ForecastWeatherTileResSchema.and(
-	z.object({
-		card: z.string().uuid(),
-	})
-);

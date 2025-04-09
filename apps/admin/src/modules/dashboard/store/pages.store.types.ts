@@ -5,18 +5,10 @@ import type { Store } from 'pinia';
 import { z } from 'zod';
 
 import {
-	CardsPageCreateReqSchema,
-	CardsPageResSchema,
-	CardsPageSchema,
-	CardsPageUpdateReqSchema,
-	DeviceDetailPageCreateReqSchema,
-	DeviceDetailPageResSchema,
-	DeviceDetailPageSchema,
-	DeviceDetailPageUpdateReqSchema,
-	PageBaseSchema,
-	PageCreateBaseReqSchema,
+	PageCreateReqSchema,
 	PageResSchema,
-	PageUpdateBaseReqSchema,
+	PageSchema,
+	PageUpdateReqSchema,
 	PagesAddActionPayloadSchema,
 	PagesEditActionPayloadSchema,
 	PagesGetActionPayloadSchema,
@@ -25,24 +17,12 @@ import {
 	PagesSetActionPayloadSchema,
 	PagesStateSemaphoreSchema,
 	PagesUnsetActionPayloadSchema,
-	TilesPageCreateReqSchema,
-	TilesPageResSchema,
-	TilesPageSchema,
-	TilesPageUpdateReqSchema,
 } from './pages.store.schemas';
 
 // STORE STATE
 // ===========
 
-export type IPageBase = z.infer<typeof PageBaseSchema>;
-
-export type ICardsPage = z.infer<typeof CardsPageSchema>;
-
-export type ITilesPage = z.infer<typeof TilesPageSchema>;
-
-export type IDeviceDetailPage = z.infer<typeof DeviceDetailPageSchema>;
-
-export type IPage = ICardsPage | ITilesPage | IDeviceDetailPage;
+export type IPage = z.infer<typeof PageSchema>;
 
 export type IPagesStateSemaphore = z.infer<typeof PagesStateSemaphoreSchema>;
 
@@ -67,7 +47,7 @@ export type IPagesRemoveActionPayload = z.infer<typeof PagesRemoveActionPayloadS
 // =====
 
 export interface IPagesStoreState {
-	data: Ref<{ [key: IPageBase['id']]: IPageBase }>;
+	data: Ref<{ [key: IPage['id']]: IPage }>;
 	semaphore: Ref<IPagesStateSemaphore>;
 	firstLoad: Ref<boolean>;
 }
@@ -75,18 +55,18 @@ export interface IPagesStoreState {
 export interface IPagesStoreActions {
 	// Getters
 	firstLoadFinished: () => boolean;
-	getting: (id: IPageBase['id']) => boolean;
+	getting: (id: IPage['id']) => boolean;
 	fetching: () => boolean;
-	findById: (id: IPageBase['id']) => IPageBase | null;
-	findAll: () => IPageBase[];
+	findById: (id: IPage['id']) => IPage | null;
+	findAll: () => IPage[];
 	// Actions
-	set: (payload: IPagesSetActionPayload) => IPageBase;
+	set: (payload: IPagesSetActionPayload) => IPage;
 	unset: (payload: IPagesUnsetActionPayload) => void;
-	get: (payload: IPagesGetActionPayload) => Promise<IPageBase>;
-	fetch: () => Promise<IPageBase[]>;
-	add: (payload: IPagesAddActionPayload) => Promise<IPageBase>;
-	edit: (payload: IPagesEditActionPayload) => Promise<IPageBase>;
-	save: (payload: IPagesSaveActionPayload) => Promise<IPageBase>;
+	get: (payload: IPagesGetActionPayload) => Promise<IPage>;
+	fetch: () => Promise<IPage[]>;
+	add: (payload: IPagesAddActionPayload) => Promise<IPage>;
+	edit: (payload: IPagesEditActionPayload) => Promise<IPage>;
+	save: (payload: IPagesSaveActionPayload) => Promise<IPage>;
 	remove: (payload: IPagesRemoveActionPayload) => Promise<boolean>;
 }
 
@@ -95,40 +75,18 @@ export type PagesStoreSetup = IPagesStoreState & IPagesStoreActions;
 // BACKEND API
 // ===========
 
-export type IPageCreateBaseReq = z.infer<typeof PageCreateBaseReqSchema>;
+export type IPageCreateReq = z.infer<typeof PageCreateReqSchema>;
 
-export type ICardPageCreateReq = z.infer<typeof CardsPageCreateReqSchema>;
-
-export type ITilePageCreateReq = z.infer<typeof TilesPageCreateReqSchema>;
-
-export type IDeviceDetailPageCreateReq = z.infer<typeof DeviceDetailPageCreateReqSchema>;
-
-export type IPageCreateReq = ICardPageCreateReq | ITilePageCreateReq | IDeviceDetailPageCreateReq;
-
-export type IPageUpdateBaseReq = z.infer<typeof PageUpdateBaseReqSchema>;
-
-export type ICardsPageUpdateReq = z.infer<typeof CardsPageUpdateReqSchema>;
-
-export type ITilesPageUpdateReq = z.infer<typeof TilesPageUpdateReqSchema>;
-
-export type IDeviceDetailPageUpdateReq = z.infer<typeof DeviceDetailPageUpdateReqSchema>;
-
-export type IPageUpdateReq = ICardsPageUpdateReq | ITilesPageUpdateReq | IDeviceDetailPageUpdateReq;
+export type IPageUpdateReq = z.infer<typeof PageUpdateReqSchema>;
 
 export type IPageRes = z.infer<typeof PageResSchema>;
-
-export type ICardsPageRes = z.infer<typeof CardsPageResSchema>;
-
-export type ITilesPageRes = z.infer<typeof TilesPageResSchema>;
-
-export type IDeviceDetailPageRes = z.infer<typeof DeviceDetailPageResSchema>;
 
 // STORE
 export type PagesStore = Store<string, IPagesStoreState, object, IPagesStoreActions>;
 
 // MISC
 export type IPagesEntitiesSchemas = {
-	page: typeof PageBaseSchema;
-	createPageReq: typeof PageCreateBaseReqSchema;
-	updatePageReq: typeof PageUpdateBaseReqSchema;
+	page: typeof PageSchema;
+	createPageReq: typeof PageCreateReqSchema;
+	updatePageReq: typeof PageUpdateReqSchema;
 };

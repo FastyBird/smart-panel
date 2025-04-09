@@ -6,11 +6,8 @@ import { cloneDeep, isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager } from '../../../common';
-import type { ICard } from '../store/cards.store.types';
-import type { DataSourceParentTypeMap, IDataSource } from '../store/dataSources.store.types';
+import type { IDataSource } from '../store/dataSources.store.types';
 import { dataSourcesStoreKey } from '../store/keys';
-import type { IPage } from '../store/pages.store.types';
-import type { ITile } from '../store/tiles.store.types';
 
 import type { IDataSourcesFilter, IUseDataSourcesDataSource } from './types';
 
@@ -19,35 +16,12 @@ export const defaultDataSourcesFilter: IDataSourcesFilter = {
 	types: [],
 };
 
-interface IUsePageDataSourcesDataSourceProps {
-	parent: 'page';
-	pageId: IPage['id'];
+interface IUseDataSourcesDataSourceProps {
+	parent: string;
+	parentId: string;
 }
 
-interface IUseCardDataSourcesDataSourceProps {
-	parent: 'card';
-	pageId: IPage['id'];
-	cardId: ICard['id'];
-}
-
-interface IUseTileDataSourcesDataSourceProps {
-	parent: 'tile';
-	pageId: IPage['id'];
-	cardId?: ICard['id'];
-	tileId: ITile['id'];
-}
-
-type IUseDataSourcesDataSourceProps = IUsePageDataSourcesDataSourceProps | IUseCardDataSourcesDataSourceProps | IUseTileDataSourcesDataSourceProps;
-
-export const useDataSourcesDataSource = <T extends keyof DataSourceParentTypeMap>(
-	props: IUseDataSourcesDataSourceProps & { parent: T }
-): IUseDataSourcesDataSource<T> => {
-	const is = {
-		page: (p: IUseDataSourcesDataSourceProps): p is IUsePageDataSourcesDataSourceProps => p.parent === 'page',
-		card: (p: IUseDataSourcesDataSourceProps): p is IUseCardDataSourcesDataSourceProps => p.parent === 'card',
-		tile: (p: IUseDataSourcesDataSourceProps): p is IUseTileDataSourcesDataSourceProps => p.parent === 'tile',
-	};
-
+export const useDataSourcesDataSource = (props: IUseDataSourcesDataSourceProps): IUseDataSourcesDataSource => {
 	const storesManager = injectStoresManager();
 
 	const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
@@ -68,29 +42,15 @@ export const useDataSourcesDataSource = <T extends keyof DataSourceParentTypeMap
 
 	const sortDir = ref<'ascending' | 'descending' | null>('ascending');
 
-	const dataSources = computed<DataSourceParentTypeMap[T][]>((): DataSourceParentTypeMap[T][] => {
-		if (is.tile(props)) {
-			return orderBy<DataSourceParentTypeMap[T]>(
-				dataSourcesStore.findForParent(props.parent, props.tileId).filter((dataSource) => !dataSource.draft) as DataSourceParentTypeMap[T][],
-				[(dataSource: IDataSource) => dataSource[sortBy.value as keyof IDataSource] ?? ''],
-				[sortDir.value === 'ascending' ? 'asc' : 'desc']
-			);
-		} else if (is.card(props)) {
-			return orderBy<DataSourceParentTypeMap[T]>(
-				dataSourcesStore.findForParent(props.parent, props.cardId).filter((dataSource) => !dataSource.draft) as DataSourceParentTypeMap[T][],
-				[(dataSource: IDataSource) => dataSource[sortBy.value as keyof IDataSource] ?? ''],
-				[sortDir.value === 'ascending' ? 'asc' : 'desc']
-			);
-		} else {
-			return orderBy<DataSourceParentTypeMap[T]>(
-				dataSourcesStore.findForParent(props.parent, props.pageId).filter((dataSource) => !dataSource.draft) as DataSourceParentTypeMap[T][],
-				[(dataSource: IDataSource) => dataSource[sortBy.value as keyof IDataSource] ?? ''],
-				[sortDir.value === 'ascending' ? 'asc' : 'desc']
-			);
-		}
+	const dataSources = computed<IDataSource[]>((): IDataSource[] => {
+		return orderBy<IDataSource>(
+			dataSourcesStore.findForParent(props.parent, props.parentId).filter((dataSource) => !dataSource.draft) as IDataSource[],
+			[(dataSource: IDataSource) => dataSource[sortBy.value as keyof IDataSource] ?? ''],
+			[sortDir.value === 'ascending' ? 'asc' : 'desc']
+		);
 	});
 
-	const dataSourcesPaginated = computed<DataSourceParentTypeMap[T][]>((): DataSourceParentTypeMap[T][] => {
+	const dataSourcesPaginated = computed<IDataSource[]>((): IDataSource[] => {
 		const start = (paginatePage.value - 1) * paginateSize.value;
 		const end = start + paginateSize.value;
 
@@ -98,67 +58,27 @@ export const useDataSourcesDataSource = <T extends keyof DataSourceParentTypeMap
 	});
 
 	const fetchDataSources = async (): Promise<void> => {
-		if (is.tile(props)) {
-			await dataSourcesStore.fetch({ parent: props.parent, pageId: props.pageId, cardId: props.cardId, tileId: props.tileId });
-		} else if (is.card(props)) {
-			await dataSourcesStore.fetch({ parent: props.parent, pageId: props.pageId, cardId: props.cardId });
-		} else {
-			await dataSourcesStore.fetch({ parent: props.parent, pageId: props.pageId });
-		}
+		await dataSourcesStore.fetch({ parent: { type: props.parent, id: props.parentId } });
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
-		if (is.tile(props)) {
-			if (semaphore.value.fetching.items.includes(props.tileId)) {
-				return true;
-			}
-
-			if (firstLoad.value.includes(props.tileId)) {
-				return false;
-			}
-
-			return semaphore.value.fetching.items.includes(props.tileId);
-		} else if (is.card(props)) {
-			if (semaphore.value.fetching.items.includes(props.cardId)) {
-				return true;
-			}
-
-			if (firstLoad.value.includes(props.cardId)) {
-				return false;
-			}
-
-			return semaphore.value.fetching.items.includes(props.cardId);
-		} else {
-			if (semaphore.value.fetching.items.includes(props.pageId)) {
-				return true;
-			}
-
-			if (firstLoad.value.includes(props.pageId)) {
-				return false;
-			}
-
-			return semaphore.value.fetching.items.includes(props.pageId);
+		if (semaphore.value.fetching.items.includes(props.parentId)) {
+			return true;
 		}
+
+		if (firstLoad.value.includes(props.parentId)) {
+			return false;
+		}
+
+		return semaphore.value.fetching.items.includes(props.parentId);
 	});
 
 	const loaded = computed<boolean>((): boolean => {
-		if (is.tile(props)) {
-			return firstLoad.value.includes(props.tileId);
-		} else if (is.card(props)) {
-			return firstLoad.value.includes(props.cardId);
-		} else {
-			return firstLoad.value.includes(props.pageId);
-		}
+		return firstLoad.value.includes(props.parentId);
 	});
 
 	const totalRows = computed<number>(() => {
-		if (is.tile(props)) {
-			return dataSourcesStore.findForParent(props.parent, props.tileId).filter((dataSource) => !dataSource.draft).length;
-		} else if (is.card(props)) {
-			return dataSourcesStore.findForParent(props.parent, props.cardId).filter((dataSource) => !dataSource.draft).length;
-		} else {
-			return dataSourcesStore.findForParent(props.parent, props.pageId).filter((dataSource) => !dataSource.draft).length;
-		}
+		return dataSourcesStore.findForParent(props.parent, props.parentId).filter((dataSource) => !dataSource.draft).length;
 	});
 
 	const resetFilter = (): void => {

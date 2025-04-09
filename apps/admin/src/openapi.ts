@@ -798,46 +798,70 @@ export interface paths {
         patch: operations["update-dashboard-module-page"];
         trace?: never;
     };
-    "/dashboard-module/pages/{pageId}/data-source": {
+    "/dashboard-module/tiles": {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-            };
+            path?: never;
             cookie?: never;
         };
         /**
-         * Retrieve a list of all available data sources for a page
-         * @description Fetches a list of data sources associated with a specific page. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.
+         * Retrieve a list of all available tiles
+         * @description Fetches a list of tiles. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.
          */
-        get: operations["get-dashboard-module-page-data-sources"];
+        get: operations["get-dashboard-module-tiles"];
         put?: never;
         /**
-         * Create a new data source for a specific page
-         * @description Creates a new data source for a specific page. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.
+         * Create a new tile
+         * @description Creates a new tile. Tiles represent widgets that can display device state or actual clock.
          */
-        post: operations["create-dashboard-module-page-data-source"];
+        post: operations["create-dashboard-module-tile"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/dashboard-module/pages/{pageId}/data-source/{id}": {
+    "/dashboard-module/{parent}/{parentId}/tiles": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description The ID of the page to retrieve.
+                 * @description The ID of the type of the parent resource.
+                 * @example page
+                 */
+                parent: string;
+                /**
+                 * @description The ID of the parent resource.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
                  */
-                pageId: components["parameters"]["pageId"];
+                parentId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Retrieve a list of all available tiles for given parent
+         * @description Fetches a list of tiles for given parent. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.
+         */
+        get: operations["get-dashboard-module-parent-tiles"];
+        put?: never;
+        /**
+         * Create a new tile for given parent
+         * @description Creates a new tile for given parent. Tiles represent widgets that can display device state or actual clock.
+         */
+        post: operations["create-dashboard-module-parent-tile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard-module/tiles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
                 /**
                  * @description The ID of the resource to retrieve.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
@@ -847,66 +871,90 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Retrieve details of a specific data source for a page
-         * @description Fetches detailed information about a specific data source associated with a page using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.
+         * Retrieve details of a specific tile
+         * @description Fetches detailed information about a specific tile using its unique ID. The response includes metadata such as the tiles’s position, ID, associated page, and timestamps.
          */
-        get: operations["get-dashboard-module-page-data-source"];
+        get: operations["get-dashboard-module-tile"];
         put?: never;
         post?: never;
         /**
-         * Delete a specific data source from a page
-         * @description Deletes a specific data source associated with a page using its unique ID. This operation is irreversible and removes the property from the system.
+         * Delete a specific tile
+         * @description Deletes a specific tile using its unique ID. This action is irreversible and will remove the tile and its associated data from the system.
          */
-        delete: operations["delete-dashboard-module-page-data-source"];
+        delete: operations["delete-dashboard-module-tile"];
         options?: never;
         head?: never;
         /**
-         * Update and existing data source for a specific page
-         * @description Partially updates the details of a specific data source associated with a page. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.
+         * Update an existing tile
+         * @description Partially updates the attributes of a specific tile using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object.
          */
-        patch: operations["update-dashboard-module-page-data-source"];
+        patch: operations["update-dashboard-module-tile"];
         trace?: never;
     };
-    "/dashboard-module/pages/{pageId}/tiles": {
+    "/dashboard-module/data-source": {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-            };
+            path?: never;
             cookie?: never;
         };
         /**
-         * Retrieve a list of all available page tiles
-         * @description Fetches a list of tiles associated with a specific page. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.
+         * Retrieve a list of all available data sources
+         * @description Fetches a list of data sources. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.
          */
-        get: operations["get-dashboard-module-page-tiles"];
+        get: operations["get-dashboard-module-data-sources"];
         put?: never;
         /**
-         * Create a new tile for a page
-         * @description Creates a new tile associated with a specific page. Tiles represent widgets that can display device state or actual clock.
+         * Create a new data source
+         * @description Creates a new data source. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.
          */
-        post: operations["create-dashboard-module-page-tile"];
+        post: operations["create-dashboard-module-data-source"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/dashboard-module/pages/{pageId}/tiles/{id}": {
+    "/dashboard-module/{parent}/{parentId}/data-source": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description The ID of the page to retrieve.
+                 * @description The ID of the type of the parent resource.
+                 * @example page
+                 */
+                parent: string;
+                /**
+                 * @description The ID of the parent resource.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
                  */
-                pageId: components["parameters"]["pageId"];
+                parentId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Retrieve a list of all available data sources for given parent
+         * @description Fetches a list of data sources for given parent. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.
+         */
+        get: operations["get-dashboard-module-parent-data-sources"];
+        put?: never;
+        /**
+         * Create a new data source for given parent
+         * @description Creates a new data source. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.
+         */
+        post: operations["create-dashboard-module-parent-data-source"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard-module/data-source/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
                 /**
                  * @description The ID of the resource to retrieve.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
@@ -916,103 +964,24 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Retrieve details of a specific tile for a page
-         * @description Fetches detailed information about a specific tile associated with a page using its unique ID. The response includes metadata such as the tiles’s position, ID, associated page, and timestamps.
+         * Retrieve details of a specific data source
+         * @description Fetches detailed information about a specific data source using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.
          */
-        get: operations["get-dashboard-module-page-tile"];
+        get: operations["get-dashboard-module-data-source"];
         put?: never;
         post?: never;
         /**
-         * Delete a specific tile for a page
-         * @description Deletes a specific tile associated with a page using its unique ID. This action is irreversible and will remove the tile and its associated data from the system.
+         * Delete a specific data source.
+         * @description Deletes a specific data source using its unique ID. This operation is irreversible and removes the property from the system.
          */
-        delete: operations["delete-dashboard-module-page-tile"];
+        delete: operations["delete-dashboard-module-data-source"];
         options?: never;
         head?: never;
         /**
-         * Update an existing tile for a page
-         * @description Partially updates the attributes of a specific tile associated with a page using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object.
+         * Update and existing data source
+         * @description Partially updates the details of a specific data source. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.
          */
-        patch: operations["update-dashboard-module-page-tile"];
-        trace?: never;
-    };
-    "/dashboard-module/pages/{pageId}/tiles/{tileId}/data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Retrieve a list of all available data sources for a page’s tile
-         * @description Fetches a list of data sources associated with a specific tile of a page. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.
-         */
-        get: operations["get-dashboard-module-page-tile-data-sources"];
-        put?: never;
-        /**
-         * Create a new data source for a specific page’s tile
-         * @description Creates a new data source for a specific page tile. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.
-         */
-        post: operations["create-dashboard-module-page-tile-data-source"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/dashboard-module/pages/{pageId}/tiles/{tileId}/data-source/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Retrieve details of a specific data source for a page’s tile
-         * @description Fetches detailed information about a specific data source associated with a page tile using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.
-         */
-        get: operations["get-dashboard-module-page-tile-data-source"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete a specific data source from a page’s tile.
-         * @description Deletes a specific data source associated with a page tile using its unique ID. This operation is irreversible and removes the property from the system.
-         */
-        delete: operations["delete-dashboard-module-page-tile-data-source"];
-        options?: never;
-        head?: never;
-        /**
-         * Update and existing data source for a specific page’s tile
-         * @description Partially updates the details of a specific data source associated with a page tile. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.
-         */
-        patch: operations["update-dashboard-module-page-tile-data-source"];
+        patch: operations["update-dashboard-module-data-source"];
         trace?: never;
     };
     "/dashboard-module/pages/{pageId}/cards": {
@@ -1082,253 +1051,6 @@ export interface paths {
          * @description Partially updates the attributes of a specific card associated with a page using its unique ID. The update can modify metadata, such as the card’s position or title, without requiring the full object.
          */
         patch: operations["update-dashboard-module-page-card"];
-        trace?: never;
-    };
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/tiles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Retrieve a list of all available card tiles
-         * @description Fetches a list of tiles associated with a specific card. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.
-         */
-        get: operations["get-dashboard-module-page-card-tiles"];
-        put?: never;
-        /**
-         * Create a new tile for a card
-         * @description Creates a new tile associated with a specific card. Tiles represent widgets that can display device state or actual clock.
-         */
-        post: operations["create-dashboard-module-page-card-tile"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Retrieve details of a specific tile for a card
-         * @description Fetches detailed information about a specific tile associated with a card using its unique ID. The response includes metadata such as the tiles’s position, ID, associated page, and timestamps.
-         */
-        get: operations["get-dashboard-module-page-card-tile"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete a specific tile for a card
-         * @description Deletes a specific tile associated with a card using its unique ID. This action is irreversible and will remove the tile and its associated data from the system.
-         */
-        delete: operations["delete-dashboard-module-page-card-tile"];
-        options?: never;
-        head?: never;
-        /**
-         * Update an existing tile for a card
-         * @description Partially updates the attributes of a specific tile associated with a card using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object.
-         */
-        patch: operations["update-dashboard-module-page-card-tile"];
-        trace?: never;
-    };
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Retrieve a list of all available data sources for a card’s tile
-         * @description Fetches a list of data sources associated with a specific tile of a card. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.
-         */
-        get: operations["get-dashboard-module-page-card-tile-data-sources"];
-        put?: never;
-        /**
-         * Create a new data source for a specific card’s tile
-         * @description Creates a new data source for a specific card tile. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.
-         */
-        post: operations["create-dashboard-module-page-card-tile-data-source"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Retrieve details of a specific data source for a card’s tile
-         * @description Fetches detailed information about a specific data source associated with a card tile using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.
-         */
-        get: operations["get-dashboard-module-page-card-tile-data-source"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete a specific data source from a card’s tile
-         * @description Deletes a specific data source associated with a card tile using its unique ID. This operation is irreversible and removes the property from the system.
-         */
-        delete: operations["delete-dashboard-module-page-card-tile-data-source"];
-        options?: never;
-        head?: never;
-        /**
-         * Update and existing data source for a specific card’s tile
-         * @description Partially updates the details of a specific data source associated with a card tile. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.
-         */
-        patch: operations["update-dashboard-module-page-card-tile-data-source"];
-        trace?: never;
-    };
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Retrieve a list of all available data sources for a card
-         * @description Fetches a list of data sources associated with a specific card. Data sources represent attributes or measurements related to the card, such as device state, weather location, or timezone.
-         */
-        get: operations["get-dashboard-module-page-card-data-sources"];
-        put?: never;
-        /**
-         * Create a new data source for a specific card
-         * @description Creates a new data source for a specific card. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.
-         */
-        post: operations["create-dashboard-module-page-card-data-source"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/data-source/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Retrieve details of a specific data source for a card
-         * @description Fetches detailed information about a specific data source associated with a card using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.
-         */
-        get: operations["get-dashboard-module-page-card-data-source"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete a specific data source from a card
-         * @description Deletes a specific data source associated with a card using its unique ID. This operation is irreversible and removes the property from the system.
-         */
-        delete: operations["delete-dashboard-module-page-card-data-source"];
-        options?: never;
-        head?: never;
-        /**
-         * Update and existing data source for a specific card
-         * @description Partially updates the details of a specific data source associated with a card. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.
-         */
-        patch: operations["update-dashboard-module-page-card-data-source"];
         trace?: never;
     };
     "/config-module/config": {
@@ -3624,7 +3346,7 @@ export interface components {
          * Page Base
          * @description The base schema for all dashboard pages, including common properties such as id, type, title, and timestamps.
          */
-        DashboardPageBase: {
+        DashboardPage: {
             /**
              * Format: uuid
              * @description A unique identifier for the dashboard page.
@@ -3672,17 +3394,11 @@ export interface components {
          * Cards Page
          * @description A cards page dashboard type, displaying an overview with associated cards.
          */
-        DashboardCardsPage: Omit<components["schemas"]["DashboardPageBase"], "type"> & {
+        DashboardCardsPage: Omit<components["schemas"]["DashboardPage"], "type"> & {
             /** @description A list of cards associated with the page. */
             cards: components["schemas"]["DashboardCard"][];
             /** @description A list of data sources associated with the page. */
-            data_source: components["schemas"]["DashboardPageDeviceChannelDataSource"][];
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardCardsPageType;
+            data_source: components["schemas"]["DashboardDataSource"][];
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3694,17 +3410,11 @@ export interface components {
          * Tiles Page
          * @description A tiles page dashboard type, displaying a grid of customizable tiles.
          */
-        DashboardTilesPage: Omit<components["schemas"]["DashboardPageBase"], "type"> & {
+        DashboardTilesPage: Omit<components["schemas"]["DashboardPage"], "type"> & {
             /** @description A list of tiles associated with the tiles page. */
-            tiles: (components["schemas"]["DashboardPageDevicePreviewTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"])[];
+            tiles: components["schemas"]["DashboardTile"][];
             /** @description A list of data sources associated with the tiles page. */
-            data_source: components["schemas"]["DashboardPageDeviceChannelDataSource"][];
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardTilesPageType;
+            data_source: components["schemas"]["DashboardDataSource"][];
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3716,19 +3426,13 @@ export interface components {
          * Device Page
          * @description A dashboard page type associated with a specific device.
          */
-        DashboardDeviceDetailPage: Omit<components["schemas"]["DashboardPageBase"], "type"> & {
+        DashboardDeviceDetailPage: Omit<components["schemas"]["DashboardPage"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
              * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
              */
             device: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDeviceDetailPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3772,9 +3476,9 @@ export interface components {
              */
             page: string;
             /** @description A list of tiles associated with the dashboard card, representing widgets or functional components. */
-            tiles: (components["schemas"]["DashboardCardDevicePreviewTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"])[];
+            tiles: components["schemas"]["DashboardTile"][];
             /** @description A list of data sources used by the card, typically for real-time updates. */
-            data_source: components["schemas"]["DashboardCardDeviceChannelDataSource"][];
+            data_source: components["schemas"]["DashboardDataSource"][];
             /**
              * Format: date-time
              * @description The timestamp when the dashboard card was created.
@@ -3793,7 +3497,7 @@ export interface components {
          * Tile
          * @description The base schema for all dashboard tiles, containing common properties such as position, dimensions, and associated page and data sources.
          */
-        DashboardTileBase: {
+        DashboardTile: {
             /**
              * Format: uuid
              * @description A unique identifier for the dashboard tile.
@@ -3802,6 +3506,17 @@ export interface components {
             readonly id: string;
             /** @description Discriminator for the tile type */
             type: string;
+            /** @description Discriminator for the data source type */
+            parent: {
+                /**
+                 * Format: uuid
+                 * @description A unique parent identifier.
+                 * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
+                 */
+                readonly id: string;
+                /** @description Discriminator for the tile parent */
+                type: string;
+            };
             /**
              * Format: int32
              * @description The row position of the tile in the grid.
@@ -3829,7 +3544,7 @@ export interface components {
              */
             col_span: number;
             /** @description A list of data sources used by the tile, typically for real-time updates. */
-            data_source: components["schemas"]["DashboardTileDeviceChannelDataSource"][];
+            data_source: components["schemas"]["DashboardDataSource"][];
             /**
              * Format: date-time
              * @description The timestamp when the dashboard tile was created.
@@ -3848,7 +3563,7 @@ export interface components {
          * Device Tile
          * @description A dashboard tile associated with a specific device.
          */
-        DashboardDevicePreviewTile: Omit<components["schemas"]["DashboardTileBase"], "type"> & {
+        DashboardDevicePreviewTile: Omit<components["schemas"]["DashboardTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -3868,82 +3583,10 @@ export interface components {
             type: DashboardDevicePreviewTileType;
         };
         /**
-         * Device Tile On Page
-         * @description A dashboard tile associated with a specific device.
-         */
-        DashboardPageDevicePreviewTile: Omit<components["schemas"]["DashboardDevicePreviewTile"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated page.
-             * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
-             */
-            page: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDevicePreviewTileType;
-        };
-        /**
-         * Device Tile On Card
-         * @description A dashboard tile associated with a specific device.
-         */
-        DashboardCardDevicePreviewTile: Omit<components["schemas"]["DashboardDevicePreviewTile"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated card.
-             * @example 7943c740-52b6-4e18-a136-cf39061ac869
-             */
-            card: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDevicePreviewTileType;
-        };
-        /**
          * Time Tile
          * @description A dashboard tile displaying a clock.
          */
-        DashboardTimeTile: Omit<components["schemas"]["DashboardTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardTimeTileType;
-        };
-        /**
-         * Device Tile On Page
-         * @description A dashboard tile associated with a specific device.
-         */
-        DashboardPageTimeTile: Omit<components["schemas"]["DashboardTimeTile"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated page.
-             * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
-             */
-            page: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardTimeTileType;
-        };
-        /**
-         * Device Tile On Card
-         * @description A dashboard tile associated with a specific device.
-         */
-        DashboardCardTimeTile: Omit<components["schemas"]["DashboardTimeTile"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated card.
-             * @example 7943c740-52b6-4e18-a136-cf39061ac869
-             */
-            card: string;
-        } & {
+        DashboardTimeTile: Omit<components["schemas"]["DashboardTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -3954,43 +3597,7 @@ export interface components {
          * Day Weather Tile
          * @description A dashboard tile displaying the weather for a specific day.
          */
-        DashboardDayWeatherTile: Omit<components["schemas"]["DashboardTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDayWeatherTileType;
-        };
-        /**
-         * Device Tile On Page
-         * @description A dashboard tile associated with a specific device.
-         */
-        DashboardPageDayWeatherTile: Omit<components["schemas"]["DashboardDayWeatherTile"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated page.
-             * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
-             */
-            page: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDayWeatherTileType;
-        };
-        /**
-         * Device Tile On Card
-         * @description A dashboard tile associated with a specific device.
-         */
-        DashboardCardDayWeatherTile: Omit<components["schemas"]["DashboardDayWeatherTile"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated card.
-             * @example 7943c740-52b6-4e18-a136-cf39061ac869
-             */
-            card: string;
-        } & {
+        DashboardDayWeatherTile: Omit<components["schemas"]["DashboardTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4001,43 +3608,7 @@ export interface components {
          * Forecast Weather Tile
          * @description A dashboard tile displaying a weather forecast.
          */
-        DashboardForecastWeatherTile: Omit<components["schemas"]["DashboardTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardForecastWeatherTileType;
-        };
-        /**
-         * Device Tile On Page
-         * @description A dashboard tile associated with a specific device.
-         */
-        DashboardPageForecastWeatherTile: Omit<components["schemas"]["DashboardForecastWeatherTile"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated page.
-             * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
-             */
-            page: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardForecastWeatherTileType;
-        };
-        /**
-         * Device Tile On Card
-         * @description A dashboard tile associated with a specific device.
-         */
-        DashboardCardForecastWeatherTile: Omit<components["schemas"]["DashboardForecastWeatherTile"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated card.
-             * @example 7943c740-52b6-4e18-a136-cf39061ac869
-             */
-            card: string;
-        } & {
+        DashboardForecastWeatherTile: Omit<components["schemas"]["DashboardTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4048,7 +3619,7 @@ export interface components {
          * Data Source
          * @description The base schema for all dashboard data sources, containing common attributes such as the associated tile and timestamps.
          */
-        DashboardDataSourceBase: {
+        DashboardDataSource: {
             /**
              * Format: uuid
              * @description A unique identifier for the data source.
@@ -4057,6 +3628,17 @@ export interface components {
             readonly id: string;
             /** @description Discriminator for the data source type */
             type: string;
+            /** @description Discriminator for the data source type */
+            parent: {
+                /**
+                 * Format: uuid
+                 * @description A unique parent identifier.
+                 * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
+                 */
+                readonly id: string;
+                /** @description Discriminator for the data source parent */
+                type: string;
+            };
             /**
              * Format: date-time
              * @description The timestamp when the data source was created.
@@ -4075,7 +3657,7 @@ export interface components {
          * Device Channel Data Source
          * @description A data source linked to a specific device channel and property.
          */
-        DashboardDeviceChannelDataSource: Omit<components["schemas"]["DashboardDataSourceBase"], "type"> & {
+        DashboardDeviceChannelDataSource: Omit<components["schemas"]["DashboardDataSource"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4108,64 +3690,10 @@ export interface components {
             type: DashboardDeviceChannelDataSourceType;
         };
         /**
-         * Device Channel Data Source
-         * @description A data source linked to a specific device channel and property.
-         */
-        DashboardPageDeviceChannelDataSource: Omit<components["schemas"]["DashboardDeviceChannelDataSource"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated page.
-             * @example 602df00f-0cc9-45dd-a74f-3a28f0e8c8ee
-             */
-            page: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDeviceChannelDataSourceType;
-        };
-        /**
-         * Device Channel Data Source
-         * @description A data source linked to a specific device channel and property.
-         */
-        DashboardCardDeviceChannelDataSource: Omit<components["schemas"]["DashboardDeviceChannelDataSource"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated card.
-             * @example 7943c740-52b6-4e18-a136-cf39061ac869
-             */
-            card: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDeviceChannelDataSourceType;
-        };
-        /**
-         * Device Channel Data Source
-         * @description A data source linked to a specific device channel and property.
-         */
-        DashboardTileDeviceChannelDataSource: Omit<components["schemas"]["DashboardDeviceChannelDataSource"], "type"> & {
-            /**
-             * Format: uuid
-             * @description The unique identifier of the associated tile.
-             * @example 9f807d44-bd0f-4f5e-b409-3d048efa03d8
-             */
-            tile: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDeviceChannelDataSourceType;
-        };
-        /**
          * Create Page
          * @description The base schema for creating a new dashboard page, containing shared attributes like title and order.
          */
-        DashboardCreatePageBase: {
+        DashboardCreatePage: {
             /**
              * Format: uuid
              * @description The unique identifier for the dashboard page (optional during creation).
@@ -4197,17 +3725,11 @@ export interface components {
          * Create Cards Page
          * @description The schema for creating a cards dashboard page.
          */
-        DashboardCreateCardsPage: Omit<components["schemas"]["DashboardCreatePageBase"], "type"> & {
+        DashboardCreateCardsPage: Omit<components["schemas"]["DashboardCreatePage"], "type"> & {
             /** @description A list of cards associated with the page. */
             cards?: components["schemas"]["DashboardCreateCard"][];
             /** @description A list of data sources associated with the page. */
-            data_source?: components["schemas"]["DashboardCreateDeviceChannelDataSource"][];
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardCardsPageType;
+            data_source?: components["schemas"]["DashboardCreateDataSource"][];
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4219,17 +3741,11 @@ export interface components {
          * Create Tiles Page
          * @description The schema for creating a tiles dashboard page.
          */
-        DashboardCreateTilesPage: Omit<components["schemas"]["DashboardCreatePageBase"], "type"> & {
+        DashboardCreateTilesPage: Omit<components["schemas"]["DashboardCreatePage"], "type"> & {
             /** @description A list of tiles associated with the tiles page. */
-            tiles?: (components["schemas"]["DashboardCreateDevicePreviewTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"])[];
+            tiles?: components["schemas"]["DashboardCreateTile"][];
             /** @description A list of data sources associated with the tiles page. */
-            data_source?: components["schemas"]["DashboardCreateDeviceChannelDataSource"][];
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardTilesPageType;
+            data_source?: components["schemas"]["DashboardCreateDataSource"][];
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4241,19 +3757,13 @@ export interface components {
          * Create Device Page
          * @description The schema for creating a device dashboard page.
          */
-        DashboardCreateDeviceDetailPage: Omit<components["schemas"]["DashboardCreatePageBase"], "type"> & {
+        DashboardCreateDeviceDetailPage: Omit<components["schemas"]["DashboardCreatePage"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
              * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
              */
             device: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDeviceDetailPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4290,15 +3800,15 @@ export interface components {
              */
             order?: number;
             /** @description A list of tiles associated with the dashboard card, representing widgets or functional components. */
-            tiles?: (components["schemas"]["DashboardCreateDevicePreviewTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"])[];
+            tiles?: components["schemas"]["DashboardCreateTile"][];
             /** @description A list of data sources used by the card, typically for real-time updates. */
-            data_source?: components["schemas"]["DashboardCreateDeviceChannelDataSource"][];
+            data_source?: components["schemas"]["DashboardCreateDataSource"][];
         };
         /**
          * Create Tile
          * @description Base schema for creating a dashboard tile, containing shared attributes such as position and size.
          */
-        DashboardCreateTileBase: {
+        DashboardCreateTile: {
             /**
              * Format: uuid
              * @description Unique identifier for the dashboard tile (optional during creation).
@@ -4334,13 +3844,13 @@ export interface components {
              */
             col_span?: number;
             /** @description A list of data sources used by the tile, typically for real-time updates. */
-            data_source?: components["schemas"]["DashboardCreateDeviceChannelDataSource"][];
+            data_source?: components["schemas"]["DashboardCreateDataSource"][];
         };
         /**
          * Create Device Tile
          * @description Schema for creating a dashboard tile representing a device.
          */
-        DashboardCreateDevicePreviewTile: Omit<components["schemas"]["DashboardCreateTileBase"], "type"> & {
+        DashboardCreateDevicePreviewTile: Omit<components["schemas"]["DashboardCreateTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4358,24 +3868,12 @@ export interface components {
              * @enum {string}
              */
             type: DashboardDevicePreviewTileType;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDevicePreviewTileType;
         };
         /**
          * Create Time Tile
          * @description Schema for creating a dashboard tile representing a clock.
          */
-        DashboardCreateTimeTile: Omit<components["schemas"]["DashboardCreateTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardTimeTileType;
-        } & {
+        DashboardCreateTimeTile: Omit<components["schemas"]["DashboardCreateTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4386,13 +3884,7 @@ export interface components {
          * Create Day Weather Tile
          * @description Schema for creating a dashboard tile representing day weather.
          */
-        DashboardCreateDayWeatherTile: Omit<components["schemas"]["DashboardCreateTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDayWeatherTileType;
-        } & {
+        DashboardCreateDayWeatherTile: Omit<components["schemas"]["DashboardCreateTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4403,13 +3895,7 @@ export interface components {
          * Create Forecast Weather Tile
          * @description Schema for creating a dashboard tile representing weather forecast.
          */
-        DashboardCreateForecastWeatherTile: Omit<components["schemas"]["DashboardCreateTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardForecastWeatherTileType;
-        } & {
+        DashboardCreateForecastWeatherTile: Omit<components["schemas"]["DashboardCreateTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4420,7 +3906,7 @@ export interface components {
          * Create Data Source
          * @description Base schema for creating a data source.
          */
-        DashboardCreateDataSourceBase: {
+        DashboardCreateDataSource: {
             /**
              * Format: uuid
              * @description Unique identifier for the data source (optional during creation).
@@ -4434,7 +3920,7 @@ export interface components {
          * Create Device Channel Data Source
          * @description Schema for creating a data source linked to a device channel and property.
          */
-        DashboardCreateDeviceChannelDataSource: Omit<components["schemas"]["DashboardCreateDataSourceBase"], "type"> & {
+        DashboardCreateDeviceChannelDataSource: Omit<components["schemas"]["DashboardCreateDataSource"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4469,7 +3955,7 @@ export interface components {
          * Update Page
          * @description Base schema for updating a dashboard page.
          */
-        DashboardUpdatePageBase: {
+        DashboardUpdatePage: {
             /** @description Discriminator for the page type */
             type: string;
             /**
@@ -4493,13 +3979,7 @@ export interface components {
          * Update Cards Page
          * @description Schema for updating a cards page in the dashboard.
          */
-        DashboardUpdateCardsPage: Omit<components["schemas"]["DashboardUpdatePageBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardCardsPageType;
-        } & {
+        DashboardUpdateCardsPage: Omit<components["schemas"]["DashboardUpdatePage"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4510,13 +3990,7 @@ export interface components {
          * Update Tiles Page
          * @description Schema for updating a tiles page in the dashboard.
          */
-        DashboardUpdateTilesPage: Omit<components["schemas"]["DashboardUpdatePageBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardTilesPageType;
-        } & {
+        DashboardUpdateTilesPage: Omit<components["schemas"]["DashboardUpdatePage"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4527,19 +4001,13 @@ export interface components {
          * Update Device Page
          * @description Schema for updating a device page in the dashboard.
          */
-        DashboardUpdateDeviceDetailPage: Omit<components["schemas"]["DashboardUpdatePageBase"], "type"> & {
+        DashboardUpdateDeviceDetailPage: Omit<components["schemas"]["DashboardUpdatePage"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
              * @example 4751ac17-9d97-4fb9-932b-dad617c3e66b
              */
             device?: string;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDeviceDetailPageType;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4574,7 +4042,7 @@ export interface components {
          * Update Tile
          * @description Base schema for updating a tile in the dashboard.
          */
-        DashboardUpdateTileBase: {
+        DashboardUpdateTile: {
             /** @description Discriminator for the tile type */
             type: string;
             /**
@@ -4606,7 +4074,7 @@ export interface components {
          * Update Device Tile
          * @description Schema for updating a device tile in the dashboard.
          */
-        DashboardUpdateDevicePreviewTile: Omit<components["schemas"]["DashboardUpdateTileBase"], "type"> & {
+        DashboardUpdateDevicePreviewTile: Omit<components["schemas"]["DashboardUpdateTile"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4624,24 +4092,12 @@ export interface components {
              * @enum {string}
              */
             type: DashboardDevicePreviewTileType;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDevicePreviewTileType;
         };
         /**
          * Update Time Tile
          * @description Schema for updating a time tile (clock) in the dashboard.
          */
-        DashboardUpdateTimeTile: Omit<components["schemas"]["DashboardUpdateTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardTimeTileType;
-        } & {
+        DashboardUpdateTimeTile: Omit<components["schemas"]["DashboardUpdateTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4652,13 +4108,7 @@ export interface components {
          * Update Day Weather Tile
          * @description Schema for updating a day weather tile in the dashboard.
          */
-        DashboardUpdateDayWeatherTile: Omit<components["schemas"]["DashboardUpdateTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDayWeatherTileType;
-        } & {
+        DashboardUpdateDayWeatherTile: Omit<components["schemas"]["DashboardUpdateTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4669,13 +4119,7 @@ export interface components {
          * Update Forecast Weather Tile
          * @description Schema for updating a forecast weather tile in the dashboard.
          */
-        DashboardUpdateForecastWeatherTile: Omit<components["schemas"]["DashboardUpdateTileBase"], "type"> & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardForecastWeatherTileType;
-        } & {
+        DashboardUpdateForecastWeatherTile: Omit<components["schemas"]["DashboardUpdateTile"], "type"> & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -4686,7 +4130,7 @@ export interface components {
          * Update Data Source Base
          * @description Base schema for updating a data source in the dashboard.
          */
-        DashboardUpdateDataSourceBase: {
+        DashboardUpdateDataSource: {
             /**
              * @description Specifies the type of data source.
              * @example device-channel
@@ -4697,7 +4141,7 @@ export interface components {
          * Update Device Channel Data Source
          * @description Schema for updating a device channel data source in the dashboard.
          */
-        DashboardUpdateDeviceChannelDataSource: Omit<components["schemas"]["DashboardUpdateDataSourceBase"], "type"> & {
+        DashboardUpdateDeviceChannelDataSource: Omit<components["schemas"]["DashboardUpdateDataSource"], "type"> & {
             /**
              * Format: uuid
              * @description The unique identifier of the associated device.
@@ -4727,54 +4171,79 @@ export interface components {
              * @enum {string}
              */
             type: DashboardDeviceChannelDataSourceType;
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: DashboardDeviceChannelDataSourceType;
         };
         /**
          * Create Page Request
          * @description Request schema for creating new page.
          */
         DashboardReqCreatePage: {
-            data: components["schemas"]["DashboardCreateCardsPage"] | components["schemas"]["DashboardCreateTilesPage"] | components["schemas"]["DashboardCreateDeviceDetailPage"];
+            data: components["schemas"]["DashboardCreatePage"];
         };
         /**
          * Create Page Card Request
          * @description Request schema for creating new page card.
          */
-        DashboardReqCreatePageCard: {
+        DashboardReqCreateCard: {
             data: components["schemas"]["DashboardCreateCard"];
         };
         /**
          * Create Page Tile Request
          * @description Request schema for creating new page tile.
          */
-        DashboardReqCreatePageTile: {
-            data: components["schemas"]["DashboardCreateDevicePreviewTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"];
+        DashboardReqCreateTile: {
+            data: Omit<components["schemas"]["DashboardCreateTile"], "type"> & {
+                /** @description Discriminator for the tile type */
+                parent: {
+                    /**
+                     * Format: uuid
+                     * @description A unique parent identifier.
+                     * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
+                     */
+                    readonly id: string;
+                    /** @description Discriminator for the tile parent */
+                    type: string;
+                };
+            };
         };
         /**
-         * Create Card Tile Request
-         * @description Request schema for creating new card tile.
+         * Create Page Tile Request
+         * @description Request schema for creating new page tile.
          */
-        DashboardReqCreateCardTile: {
-            data: components["schemas"]["DashboardCreateDevicePreviewTile"] | components["schemas"]["DashboardCreateTimeTile"] | components["schemas"]["DashboardCreateDayWeatherTile"] | components["schemas"]["DashboardCreateForecastWeatherTile"];
+        DashboardReqCreateTileWithParent: {
+            data: components["schemas"]["DashboardCreateTile"];
         };
         /**
          * Create Data Source Request
          * @description Request schema for creating new data source.
          */
         DashboardReqCreateDataSource: {
-            data: components["schemas"]["DashboardCreateDeviceChannelDataSource"];
+            data: Omit<components["schemas"]["DashboardCreateDataSource"], "type"> & {
+                /** @description Discriminator for the data source type */
+                parent: {
+                    /**
+                     * Format: uuid
+                     * @description A unique parent identifier.
+                     * @example dbf838d6-5c5b-4c8e-b189-952038b9020c
+                     */
+                    readonly id: string;
+                    /** @description Discriminator for the data source parent */
+                    type: string;
+                };
+            };
+        };
+        /**
+         * Create Data Source Request
+         * @description Request schema for creating new data source.
+         */
+        DashboardReqCreateDataSourceWithParent: {
+            data: components["schemas"]["DashboardCreateDataSource"];
         };
         /**
          * Update Page Request
          * @description Request schema for updating an existing page.
          */
         DashboardReqUpdatePage: {
-            data: components["schemas"]["DashboardUpdateCardsPage"] | components["schemas"]["DashboardUpdateTilesPage"] | components["schemas"]["DashboardUpdateDeviceDetailPage"];
+            data: components["schemas"]["DashboardUpdatePage"];
         };
         /**
          * Update Card Request
@@ -4788,14 +4257,14 @@ export interface components {
          * @description Request schema for updating an existing tile.
          */
         DashboardReqUpdateTile: {
-            data: components["schemas"]["DashboardUpdateDevicePreviewTile"] | components["schemas"]["DashboardUpdateTimeTile"] | components["schemas"]["DashboardUpdateDayWeatherTile"] | components["schemas"]["DashboardUpdateForecastWeatherTile"];
+            data: components["schemas"]["DashboardUpdateTile"];
         };
         /**
          * Update Data Source Request
          * @description Request schema for updating an existing data source.
          */
         DashboardReqUpdateDataSource: {
-            data: components["schemas"]["DashboardUpdateDeviceChannelDataSource"];
+            data: components["schemas"]["DashboardUpdateDataSource"];
         };
         /**
          * Page Response
@@ -4831,7 +4300,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardCardsPage"] | components["schemas"]["DashboardTilesPage"] | components["schemas"]["DashboardDeviceDetailPage"];
+            data: components["schemas"]["DashboardPage"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -4869,7 +4338,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: (components["schemas"]["DashboardCardsPage"] | components["schemas"]["DashboardTilesPage"] | components["schemas"]["DashboardDeviceDetailPage"])[];
+            data: components["schemas"]["DashboardPage"][];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -4877,7 +4346,7 @@ export interface components {
          * Page Card Response
          * @description Response schema containing a single page card.
          */
-        DashboardResPageCard: {
+        DashboardResCard: {
             /**
              * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
              * @example success
@@ -4915,7 +4384,7 @@ export interface components {
          * Page Cards Response
          * @description Response schema containing a list of page cards.
          */
-        DashboardResPageCards: {
+        DashboardResCards: {
             /**
              * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
              * @example success
@@ -4953,7 +4422,7 @@ export interface components {
          * Card Tile Response
          * @description Response schema containing a single card tile.
          */
-        DashboardResPageCardTile: {
+        DashboardResTile: {
             /**
              * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
              * @example success
@@ -4983,7 +4452,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardCardDevicePreviewTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"];
+            data: components["schemas"]["DashboardTile"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -4991,7 +4460,7 @@ export interface components {
          * Card Tiles Response
          * @description Response schema containing a list of card tiles.
          */
-        DashboardResPageCardTiles: {
+        DashboardResTiles: {
             /**
              * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
              * @example success
@@ -5021,7 +4490,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: (components["schemas"]["DashboardCardDevicePreviewTile"] | components["schemas"]["DashboardCardTimeTile"] | components["schemas"]["DashboardCardDayWeatherTile"] | components["schemas"]["DashboardCardForecastWeatherTile"])[];
+            data: components["schemas"]["DashboardTile"][];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -5029,7 +4498,7 @@ export interface components {
          * Card Tile Data Source Response
          * @description Response schema containing a single tile data source.
          */
-        DashboardResPageCardTileDataSource: {
+        DashboardResDataSource: {
             /**
              * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
              * @example success
@@ -5059,7 +4528,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardTileDeviceChannelDataSource"];
+            data: components["schemas"]["DashboardDataSource"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -5067,7 +4536,7 @@ export interface components {
          * Card Tile Data Sources Response
          * @description Response schema containing a list of tile data sources.
          */
-        DashboardResPageCardTileDataSources: {
+        DashboardResDataSources: {
             /**
              * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
              * @example success
@@ -5097,311 +4566,7 @@ export interface components {
              */
             readonly method: AuthResCheckUsernameMethod;
             /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardTileDeviceChannelDataSource"][];
-            /** @description Additional metadata about the request and server performance metrics. */
-            metadata: components["schemas"]["CommonResMetadata"];
-        };
-        /**
-         * Card Data Source Response
-         * @description Response schema containing a single card data source.
-         */
-        DashboardResPageCardDataSource: {
-            /**
-             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
-             * @example success
-             */
-            readonly status: string;
-            /**
-             * Format: date-time
-             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
-             * @example 2025-01-18T12:00:00Z
-             */
-            readonly timestamp: string;
-            /**
-             * Format: uuid
-             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
-             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-             */
-            readonly request_id: string;
-            /**
-             * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c
-             */
-            readonly path: string;
-            /**
-             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
-             * @example GET
-             * @enum {string}
-             */
-            readonly method: AuthResCheckUsernameMethod;
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardCardDeviceChannelDataSource"];
-            /** @description Additional metadata about the request and server performance metrics. */
-            metadata: components["schemas"]["CommonResMetadata"];
-        };
-        /**
-         * Card Data Sources Response
-         * @description Response schema containing a list of card data sources.
-         */
-        DashboardResPageCardDataSources: {
-            /**
-             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
-             * @example success
-             */
-            readonly status: string;
-            /**
-             * Format: date-time
-             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
-             * @example 2025-01-18T12:00:00Z
-             */
-            readonly timestamp: string;
-            /**
-             * Format: uuid
-             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
-             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-             */
-            readonly request_id: string;
-            /**
-             * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source
-             */
-            readonly path: string;
-            /**
-             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
-             * @example GET
-             * @enum {string}
-             */
-            readonly method: AuthResCheckUsernameMethod;
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardCardDeviceChannelDataSource"][];
-            /** @description Additional metadata about the request and server performance metrics. */
-            metadata: components["schemas"]["CommonResMetadata"];
-        };
-        /**
-         * Page Tile Response
-         * @description Response schema containing a single page tile.
-         */
-        DashboardResPageTile: {
-            /**
-             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
-             * @example success
-             */
-            readonly status: string;
-            /**
-             * Format: date-time
-             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
-             * @example 2025-01-18T12:00:00Z
-             */
-            readonly timestamp: string;
-            /**
-             * Format: uuid
-             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
-             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-             */
-            readonly request_id: string;
-            /**
-             * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8
-             */
-            readonly path: string;
-            /**
-             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
-             * @example GET
-             * @enum {string}
-             */
-            readonly method: AuthResCheckUsernameMethod;
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardPageDevicePreviewTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"];
-            /** @description Additional metadata about the request and server performance metrics. */
-            metadata: components["schemas"]["CommonResMetadata"];
-        };
-        /**
-         * Page Tiles Response
-         * @description Response schema containing a list of page tiles.
-         */
-        DashboardResPageTiles: {
-            /**
-             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
-             * @example success
-             */
-            readonly status: string;
-            /**
-             * Format: date-time
-             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
-             * @example 2025-01-18T12:00:00Z
-             */
-            readonly timestamp: string;
-            /**
-             * Format: uuid
-             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
-             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-             */
-            readonly request_id: string;
-            /**
-             * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles
-             */
-            readonly path: string;
-            /**
-             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
-             * @example GET
-             * @enum {string}
-             */
-            readonly method: AuthResCheckUsernameMethod;
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: (components["schemas"]["DashboardPageDevicePreviewTile"] | components["schemas"]["DashboardPageTimeTile"] | components["schemas"]["DashboardPageDayWeatherTile"] | components["schemas"]["DashboardPageForecastWeatherTile"])[];
-            /** @description Additional metadata about the request and server performance metrics. */
-            metadata: components["schemas"]["CommonResMetadata"];
-        };
-        /**
-         * Page Tile Data Source Response
-         * @description Response schema containing a single tile data source.
-         */
-        DashboardResPageTileDataSource: {
-            /**
-             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
-             * @example success
-             */
-            readonly status: string;
-            /**
-             * Format: date-time
-             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
-             * @example 2025-01-18T12:00:00Z
-             */
-            readonly timestamp: string;
-            /**
-             * Format: uuid
-             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
-             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-             */
-            readonly request_id: string;
-            /**
-             * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c
-             */
-            readonly path: string;
-            /**
-             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
-             * @example GET
-             * @enum {string}
-             */
-            readonly method: AuthResCheckUsernameMethod;
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardTileDeviceChannelDataSource"];
-            /** @description Additional metadata about the request and server performance metrics. */
-            metadata: components["schemas"]["CommonResMetadata"];
-        };
-        /**
-         * Page Tile Data Sources Response
-         * @description Response schema containing a list of tile data sources.
-         */
-        DashboardResPageTileDataSources: {
-            /**
-             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
-             * @example success
-             */
-            readonly status: string;
-            /**
-             * Format: date-time
-             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
-             * @example 2025-01-18T12:00:00Z
-             */
-            readonly timestamp: string;
-            /**
-             * Format: uuid
-             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
-             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-             */
-            readonly request_id: string;
-            /**
-             * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source
-             */
-            readonly path: string;
-            /**
-             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
-             * @example GET
-             * @enum {string}
-             */
-            readonly method: AuthResCheckUsernameMethod;
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardTileDeviceChannelDataSource"][];
-            /** @description Additional metadata about the request and server performance metrics. */
-            metadata: components["schemas"]["CommonResMetadata"];
-        };
-        /**
-         * Page Data Source Response
-         * @description Response schema containing a single page data source.
-         */
-        DashboardResPageDataSource: {
-            /**
-             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
-             * @example success
-             */
-            readonly status: string;
-            /**
-             * Format: date-time
-             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
-             * @example 2025-01-18T12:00:00Z
-             */
-            readonly timestamp: string;
-            /**
-             * Format: uuid
-             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
-             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-             */
-            readonly request_id: string;
-            /**
-             * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c
-             */
-            readonly path: string;
-            /**
-             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
-             * @example GET
-             * @enum {string}
-             */
-            readonly method: AuthResCheckUsernameMethod;
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardPageDeviceChannelDataSource"];
-            /** @description Additional metadata about the request and server performance metrics. */
-            metadata: components["schemas"]["CommonResMetadata"];
-        };
-        /**
-         * Page Data Sources Response
-         * @description Response schema containing a list of page data sources.
-         */
-        DashboardResPageDataSources: {
-            /**
-             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
-             * @example success
-             */
-            readonly status: string;
-            /**
-             * Format: date-time
-             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
-             * @example 2025-01-18T12:00:00Z
-             */
-            readonly timestamp: string;
-            /**
-             * Format: uuid
-             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
-             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
-             */
-            readonly request_id: string;
-            /**
-             * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source
-             */
-            readonly path: string;
-            /**
-             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
-             * @example GET
-             * @enum {string}
-             */
-            readonly method: AuthResCheckUsernameMethod;
-            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
-            data: components["schemas"]["DashboardPageDeviceChannelDataSource"][];
+            data: components["schemas"]["DashboardDataSource"][];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -6458,16 +5623,6 @@ export interface components {
          * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
          */
         pageId: string;
-        /**
-         * @description The ID of the card to retrieve.
-         * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-         */
-        cardId: string;
-        /**
-         * @description The ID of the tile to retrieve.
-         * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-         */
-        tileId: string;
     };
     requestBodies: never;
     headers: never;
@@ -6554,78 +5709,60 @@ export type SchemaDevicesThirdPartyDevicePropertiesUpdateRequest = components['s
 export type SchemaDevicesThirdPartyDevicePropertyUpdateResult = components['schemas']['DevicesThirdPartyDevicePropertyUpdateResult'];
 export type SchemaDevicesThirdPartyDevicePropertiesUpdateResult = components['schemas']['DevicesThirdPartyDevicePropertiesUpdateResult'];
 export type SchemaDevicesThirdPartyErrorCode = components['schemas']['DevicesThirdPartyErrorCode'];
-export type SchemaDashboardPageBase = components['schemas']['DashboardPageBase'];
+export type SchemaDashboardPage = components['schemas']['DashboardPage'];
 export type SchemaDashboardCardsPage = components['schemas']['DashboardCardsPage'];
 export type SchemaDashboardTilesPage = components['schemas']['DashboardTilesPage'];
 export type SchemaDashboardDeviceDetailPage = components['schemas']['DashboardDeviceDetailPage'];
 export type SchemaDashboardCard = components['schemas']['DashboardCard'];
-export type SchemaDashboardTileBase = components['schemas']['DashboardTileBase'];
+export type SchemaDashboardTile = components['schemas']['DashboardTile'];
 export type SchemaDashboardDevicePreviewTile = components['schemas']['DashboardDevicePreviewTile'];
-export type SchemaDashboardPageDevicePreviewTile = components['schemas']['DashboardPageDevicePreviewTile'];
-export type SchemaDashboardCardDevicePreviewTile = components['schemas']['DashboardCardDevicePreviewTile'];
 export type SchemaDashboardTimeTile = components['schemas']['DashboardTimeTile'];
-export type SchemaDashboardPageTimeTile = components['schemas']['DashboardPageTimeTile'];
-export type SchemaDashboardCardTimeTile = components['schemas']['DashboardCardTimeTile'];
 export type SchemaDashboardDayWeatherTile = components['schemas']['DashboardDayWeatherTile'];
-export type SchemaDashboardPageDayWeatherTile = components['schemas']['DashboardPageDayWeatherTile'];
-export type SchemaDashboardCardDayWeatherTile = components['schemas']['DashboardCardDayWeatherTile'];
 export type SchemaDashboardForecastWeatherTile = components['schemas']['DashboardForecastWeatherTile'];
-export type SchemaDashboardPageForecastWeatherTile = components['schemas']['DashboardPageForecastWeatherTile'];
-export type SchemaDashboardCardForecastWeatherTile = components['schemas']['DashboardCardForecastWeatherTile'];
-export type SchemaDashboardDataSourceBase = components['schemas']['DashboardDataSourceBase'];
+export type SchemaDashboardDataSource = components['schemas']['DashboardDataSource'];
 export type SchemaDashboardDeviceChannelDataSource = components['schemas']['DashboardDeviceChannelDataSource'];
-export type SchemaDashboardPageDeviceChannelDataSource = components['schemas']['DashboardPageDeviceChannelDataSource'];
-export type SchemaDashboardCardDeviceChannelDataSource = components['schemas']['DashboardCardDeviceChannelDataSource'];
-export type SchemaDashboardTileDeviceChannelDataSource = components['schemas']['DashboardTileDeviceChannelDataSource'];
-export type SchemaDashboardCreatePageBase = components['schemas']['DashboardCreatePageBase'];
+export type SchemaDashboardCreatePage = components['schemas']['DashboardCreatePage'];
 export type SchemaDashboardCreateCardsPage = components['schemas']['DashboardCreateCardsPage'];
 export type SchemaDashboardCreateTilesPage = components['schemas']['DashboardCreateTilesPage'];
 export type SchemaDashboardCreateDeviceDetailPage = components['schemas']['DashboardCreateDeviceDetailPage'];
 export type SchemaDashboardCreateCard = components['schemas']['DashboardCreateCard'];
-export type SchemaDashboardCreateTileBase = components['schemas']['DashboardCreateTileBase'];
+export type SchemaDashboardCreateTile = components['schemas']['DashboardCreateTile'];
 export type SchemaDashboardCreateDevicePreviewTile = components['schemas']['DashboardCreateDevicePreviewTile'];
 export type SchemaDashboardCreateTimeTile = components['schemas']['DashboardCreateTimeTile'];
 export type SchemaDashboardCreateDayWeatherTile = components['schemas']['DashboardCreateDayWeatherTile'];
 export type SchemaDashboardCreateForecastWeatherTile = components['schemas']['DashboardCreateForecastWeatherTile'];
-export type SchemaDashboardCreateDataSourceBase = components['schemas']['DashboardCreateDataSourceBase'];
+export type SchemaDashboardCreateDataSource = components['schemas']['DashboardCreateDataSource'];
 export type SchemaDashboardCreateDeviceChannelDataSource = components['schemas']['DashboardCreateDeviceChannelDataSource'];
-export type SchemaDashboardUpdatePageBase = components['schemas']['DashboardUpdatePageBase'];
+export type SchemaDashboardUpdatePage = components['schemas']['DashboardUpdatePage'];
 export type SchemaDashboardUpdateCardsPage = components['schemas']['DashboardUpdateCardsPage'];
 export type SchemaDashboardUpdateTilesPage = components['schemas']['DashboardUpdateTilesPage'];
 export type SchemaDashboardUpdateDeviceDetailPage = components['schemas']['DashboardUpdateDeviceDetailPage'];
 export type SchemaDashboardUpdateCard = components['schemas']['DashboardUpdateCard'];
-export type SchemaDashboardUpdateTileBase = components['schemas']['DashboardUpdateTileBase'];
+export type SchemaDashboardUpdateTile = components['schemas']['DashboardUpdateTile'];
 export type SchemaDashboardUpdateDevicePreviewTile = components['schemas']['DashboardUpdateDevicePreviewTile'];
 export type SchemaDashboardUpdateTimeTile = components['schemas']['DashboardUpdateTimeTile'];
 export type SchemaDashboardUpdateDayWeatherTile = components['schemas']['DashboardUpdateDayWeatherTile'];
 export type SchemaDashboardUpdateForecastWeatherTile = components['schemas']['DashboardUpdateForecastWeatherTile'];
-export type SchemaDashboardUpdateDataSourceBase = components['schemas']['DashboardUpdateDataSourceBase'];
+export type SchemaDashboardUpdateDataSource = components['schemas']['DashboardUpdateDataSource'];
 export type SchemaDashboardUpdateDeviceChannelDataSource = components['schemas']['DashboardUpdateDeviceChannelDataSource'];
 export type SchemaDashboardReqCreatePage = components['schemas']['DashboardReqCreatePage'];
-export type SchemaDashboardReqCreatePageCard = components['schemas']['DashboardReqCreatePageCard'];
-export type SchemaDashboardReqCreatePageTile = components['schemas']['DashboardReqCreatePageTile'];
-export type SchemaDashboardReqCreateCardTile = components['schemas']['DashboardReqCreateCardTile'];
+export type SchemaDashboardReqCreateCard = components['schemas']['DashboardReqCreateCard'];
+export type SchemaDashboardReqCreateTile = components['schemas']['DashboardReqCreateTile'];
+export type SchemaDashboardReqCreateTileWithParent = components['schemas']['DashboardReqCreateTileWithParent'];
 export type SchemaDashboardReqCreateDataSource = components['schemas']['DashboardReqCreateDataSource'];
+export type SchemaDashboardReqCreateDataSourceWithParent = components['schemas']['DashboardReqCreateDataSourceWithParent'];
 export type SchemaDashboardReqUpdatePage = components['schemas']['DashboardReqUpdatePage'];
 export type SchemaDashboardReqUpdateCard = components['schemas']['DashboardReqUpdateCard'];
 export type SchemaDashboardReqUpdateTile = components['schemas']['DashboardReqUpdateTile'];
 export type SchemaDashboardReqUpdateDataSource = components['schemas']['DashboardReqUpdateDataSource'];
 export type SchemaDashboardResPage = components['schemas']['DashboardResPage'];
 export type SchemaDashboardResPages = components['schemas']['DashboardResPages'];
-export type SchemaDashboardResPageCard = components['schemas']['DashboardResPageCard'];
-export type SchemaDashboardResPageCards = components['schemas']['DashboardResPageCards'];
-export type SchemaDashboardResPageCardTile = components['schemas']['DashboardResPageCardTile'];
-export type SchemaDashboardResPageCardTiles = components['schemas']['DashboardResPageCardTiles'];
-export type SchemaDashboardResPageCardTileDataSource = components['schemas']['DashboardResPageCardTileDataSource'];
-export type SchemaDashboardResPageCardTileDataSources = components['schemas']['DashboardResPageCardTileDataSources'];
-export type SchemaDashboardResPageCardDataSource = components['schemas']['DashboardResPageCardDataSource'];
-export type SchemaDashboardResPageCardDataSources = components['schemas']['DashboardResPageCardDataSources'];
-export type SchemaDashboardResPageTile = components['schemas']['DashboardResPageTile'];
-export type SchemaDashboardResPageTiles = components['schemas']['DashboardResPageTiles'];
-export type SchemaDashboardResPageTileDataSource = components['schemas']['DashboardResPageTileDataSource'];
-export type SchemaDashboardResPageTileDataSources = components['schemas']['DashboardResPageTileDataSources'];
-export type SchemaDashboardResPageDataSource = components['schemas']['DashboardResPageDataSource'];
-export type SchemaDashboardResPageDataSources = components['schemas']['DashboardResPageDataSources'];
+export type SchemaDashboardResCard = components['schemas']['DashboardResCard'];
+export type SchemaDashboardResCards = components['schemas']['DashboardResCards'];
+export type SchemaDashboardResTile = components['schemas']['DashboardResTile'];
+export type SchemaDashboardResTiles = components['schemas']['DashboardResTiles'];
+export type SchemaDashboardResDataSource = components['schemas']['DashboardResDataSource'];
+export type SchemaDashboardResDataSources = components['schemas']['DashboardResDataSources'];
 export type SchemaSystemMemoryInfo = components['schemas']['SystemMemoryInfo'];
 export type SchemaSystemStorageInfo = components['schemas']['SystemStorageInfo'];
 export type SchemaSystemTemperatureInfo = components['schemas']['SystemTemperatureInfo'];
@@ -6657,8 +5794,6 @@ export type ParameterId = components['parameters']['id'];
 export type ParameterDeviceId = components['parameters']['deviceId'];
 export type ParameterChannelId = components['parameters']['channelId'];
 export type ParameterPageId = components['parameters']['pageId'];
-export type ParameterCardId = components['parameters']['cardId'];
-export type ParameterTileId = components['parameters']['tileId'];
 export type $defs = Record<string, never>;
 export interface operations {
     "create-auth-module-register": {
@@ -8354,28 +7489,22 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "get-dashboard-module-page-data-sources": {
+    "get-dashboard-module-tiles": {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
+            /** @description The list of tiles was successfully retrieved. Each tile includes metadata such as its ID, size, and position. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageDataSources"];
+                    "application/json": components["schemas"]["DashboardResTiles"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8383,35 +7512,29 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "create-dashboard-module-page-data-source": {
+    "create-dashboard-module-tile": {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-            };
+            path?: never;
             cookie?: never;
         };
-        /** @description The payload schema used for creating a new page data source. */
+        /** @description The payload schema used for creating a new tile. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DashboardReqCreateDataSource"];
+                "application/json": components["schemas"]["DashboardReqCreateTileWithParent"];
             };
         };
         responses: {
-            /** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
+            /** @description The tile was successfully created. The response contains the details of the newly created tile. */
             201: {
                 headers: {
-                    /** @description The URI of the newly created page data source resource, which can be used to retrieve, update, or delete the data source. */
+                    /** @description The URI of the newly created tile resource, which can be used to retrieve, update, or delete the tile. */
                     Location?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageDataSource"];
+                    "application/json": components["schemas"]["DashboardResTile"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8419,121 +7542,21 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "get-dashboard-module-page-data-source": {
+    "get-dashboard-module-parent-tiles": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+                 * @description The ID of the type of the parent resource.
+                 * @example page
                  */
-                pageId: components["parameters"]["pageId"];
+                parent: string;
                 /**
-                 * @description The ID of the resource to retrieve.
+                 * @description The ID of the parent resource.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
                  */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated page. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageDataSource"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "delete-dashboard-module-page-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The data source was successfully deleted. No content is returned in the response body. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "update-dashboard-module-page-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        /** @description The payload schema used for updating a existing page data source. */
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DashboardReqUpdateDataSource"];
-            };
-        };
-        responses: {
-            /** @description The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageDataSource"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "get-dashboard-module-page-tiles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
+                parentId: string;
             };
             cookie?: never;
         };
@@ -8545,7 +7568,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageTiles"];
+                    "application/json": components["schemas"]["DashboardResTiles"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8553,35 +7576,40 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "create-dashboard-module-page-tile": {
+    "create-dashboard-module-parent-tile": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description The ID of the page to retrieve.
+                 * @description The ID of the type of the parent resource.
+                 * @example page
+                 */
+                parent: string;
+                /**
+                 * @description The ID of the parent resource.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
                  */
-                pageId: components["parameters"]["pageId"];
+                parentId: string;
             };
             cookie?: never;
         };
-        /** @description The payload schema used for creating a new page tile. */
+        /** @description The payload schema used for creating a new tile. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DashboardReqCreatePageTile"];
+                "application/json": components["schemas"]["DashboardReqCreateTile"];
             };
         };
         responses: {
             /** @description The tile was successfully created. The response contains the details of the newly created tile. */
             201: {
                 headers: {
-                    /** @description The URI of the newly created page tile resource, which can be used to retrieve, update, or delete the tile. */
+                    /** @description The URI of the newly created tile resource, which can be used to retrieve, update, or delete the tile. */
                     Location?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageTile"];
+                    "application/json": components["schemas"]["DashboardResTile"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8589,16 +7617,11 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "get-dashboard-module-page-tile": {
+    "get-dashboard-module-tile": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
                 /**
                  * @description The ID of the resource to retrieve.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
@@ -8615,7 +7638,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageTile"];
+                    "application/json": components["schemas"]["DashboardResTile"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8623,16 +7646,11 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "delete-dashboard-module-page-tile": {
+    "delete-dashboard-module-tile": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
                 /**
                  * @description The ID of the resource to retrieve.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
@@ -8655,16 +7673,11 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "update-dashboard-module-page-tile": {
+    "update-dashboard-module-tile": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
                 /**
                  * @description The ID of the resource to retrieve.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
@@ -8673,20 +7686,20 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description The payload schema used for updating a existing page tile. */
+        /** @description The payload schema used for updating a existing tile. */
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["DashboardReqUpdateTile"];
             };
         };
         responses: {
-            /** @description Partially updates the attributes of a specific tile associated with a page using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object. */
+            /** @description Partially updates the attributes of a specific tile using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageTile"];
+                    "application/json": components["schemas"]["DashboardResTile"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8694,33 +7707,22 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "get-dashboard-module-page-tile-data-sources": {
+    "get-dashboard-module-data-sources": {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
+            /** @description The list of data sources was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageTileDataSources"];
+                    "application/json": components["schemas"]["DashboardResDataSources"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8728,25 +7730,14 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "create-dashboard-module-page-tile-data-source": {
+    "create-dashboard-module-data-source": {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-            };
+            path?: never;
             cookie?: never;
         };
-        /** @description The payload schema used for creating a new tile data source. */
+        /** @description The payload schema used for creating a new data source. */
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["DashboardReqCreateDataSource"];
@@ -8756,12 +7747,12 @@ export interface operations {
             /** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
             201: {
                 headers: {
-                    /** @description The URI of the newly created data tile data source resource, which can be used to retrieve, update, or delete the data source. */
+                    /** @description The URI of the newly created data source resource, which can be used to retrieve, update, or delete the data source. */
                     Location?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageTileDataSource"];
+                    "application/json": components["schemas"]["DashboardResDataSource"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8769,21 +7760,86 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "get-dashboard-module-page-tile-data-source": {
+    "get-dashboard-module-parent-data-sources": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+                 * @description The ID of the type of the parent resource.
+                 * @example page
                  */
-                pageId: components["parameters"]["pageId"];
+                parent: string;
                 /**
-                 * @description The ID of the tile to retrieve.
+                 * @description The ID of the parent resource.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
                  */
-                tileId: components["parameters"]["tileId"];
+                parentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The list of data sources was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardResDataSources"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "create-dashboard-module-parent-data-source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The ID of the type of the parent resource.
+                 * @example page
+                 */
+                parent: string;
+                /**
+                 * @description The ID of the parent resource.
+                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+                 */
+                parentId: string;
+            };
+            cookie?: never;
+        };
+        /** @description The payload schema used for creating a new data source. */
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DashboardReqCreateDataSourceWithParent"];
+            };
+        };
+        responses: {
+            /** @description The data source for given parent was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
+            201: {
+                headers: {
+                    /** @description The URI of the newly created data source resource, which can be used to retrieve, update, or delete the data source. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardResDataSource"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "get-dashboard-module-data-source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
                 /**
                  * @description The ID of the resource to retrieve.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
@@ -8800,7 +7856,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageTileDataSource"];
+                    "application/json": components["schemas"]["DashboardResDataSource"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8808,21 +7864,11 @@ export interface operations {
             500: components["responses"]["BadRequestError"];
         };
     };
-    "delete-dashboard-module-page-tile-data-source": {
+    "delete-dashboard-module-data-source": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
                 /**
                  * @description The ID of the resource to retrieve.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
@@ -8845,21 +7891,11 @@ export interface operations {
             500: components["responses"]["InternalServerError"];
         };
     };
-    "update-dashboard-module-page-tile-data-source": {
+    "update-dashboard-module-data-source": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
                 /**
                  * @description The ID of the resource to retrieve.
                  * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
@@ -8881,7 +7917,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageTileDataSource"];
+                    "application/json": components["schemas"]["DashboardResDataSource"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8910,7 +7946,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageCards"];
+                    "application/json": components["schemas"]["DashboardResCards"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8934,7 +7970,7 @@ export interface operations {
         /** @description The payload schema used for creating a new page card. */
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["DashboardReqCreatePageCard"];
+                "application/json": components["schemas"]["DashboardReqCreateCard"];
             };
         };
         responses: {
@@ -8946,7 +7982,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageCard"];
+                    "application/json": components["schemas"]["DashboardResCard"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -8980,7 +8016,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageCard"];
+                    "application/json": components["schemas"]["DashboardResCard"];
                 };
             };
             400: components["responses"]["BadRequestError"];
@@ -9051,617 +8087,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DashboardResPageCard"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "get-dashboard-module-page-card-tiles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The details of the tile were successfully retrieved. The response contains information such as the tile’s position, size, associated card, and timestamps. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardTiles"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "create-dashboard-module-page-card-tile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-            };
-            cookie?: never;
-        };
-        /** @description The payload schema used for updating a existing card tile. */
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DashboardReqCreateCardTile"];
-            };
-        };
-        responses: {
-            /** @description Partially updates the attributes of a specific tile associated with a card using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object. */
-            201: {
-                headers: {
-                    /** @description The URI of the newly created card tile resource, which can be used to retrieve, update, or delete the tile. */
-                    Location?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardTile"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "get-dashboard-module-page-card-tile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The details of the tile were successfully retrieved. The response contains information such as the tile’s position, size, associated card, and timestamps. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardTile"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "delete-dashboard-module-page-card-tile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The tile was successfully deleted. No content is returned in the response body. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "update-dashboard-module-page-card-tile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        /** @description The payload schema used for updating a existing card tile. */
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DashboardReqUpdateTile"];
-            };
-        };
-        responses: {
-            /** @description Partially updates the attributes of a specific tile associated with a card using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardTile"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "get-dashboard-module-page-card-tile-data-sources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardTileDataSources"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "create-dashboard-module-page-card-tile-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-            };
-            cookie?: never;
-        };
-        /** @description The payload schema used for creating a new card data source. */
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DashboardReqCreateDataSource"];
-            };
-        };
-        responses: {
-            /** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
-            201: {
-                headers: {
-                    /** @description The URI of the newly created tile data source resource, which can be used to retrieve, update, or delete the data source. */
-                    Location?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardTileDataSource"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "get-dashboard-module-page-card-tile-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated tile. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardTileDataSource"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "delete-dashboard-module-page-card-tile-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The data source was successfully deleted. No content is returned in the response body. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "update-dashboard-module-page-card-tile-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the tile to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                tileId: components["parameters"]["tileId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        /** @description The payload schema used for updating a existing card data source. */
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DashboardReqUpdateDataSource"];
-            };
-        };
-        responses: {
-            /** @description The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardTileDataSource"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "get-dashboard-module-page-card-data-sources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The list of data sources associated with the card was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardDataSources"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "create-dashboard-module-page-card-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-            };
-            cookie?: never;
-        };
-        /** @description The payload schema used for creating a new card data source. */
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DashboardReqCreateDataSource"];
-            };
-        };
-        responses: {
-            /** @description The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata. */
-            201: {
-                headers: {
-                    /** @description The URI of the newly created card data source resource, which can be used to retrieve, update, or delete the data source. */
-                    Location?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardDataSource"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "get-dashboard-module-page-card-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated card. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardDataSource"];
-                };
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "delete-dashboard-module-page-card-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The data source was successfully deleted. No content is returned in the response body. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequestError"];
-            404: components["responses"]["NotFoundError"];
-            500: components["responses"]["InternalServerError"];
-        };
-    };
-    "update-dashboard-module-page-card-data-source": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description The ID of the page to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                pageId: components["parameters"]["pageId"];
-                /**
-                 * @description The ID of the card to retrieve.
-                 * @example 89a29104-184f-4b6f-9b37-5a70e24f8b44
-                 */
-                cardId: components["parameters"]["cardId"];
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        /** @description The payload schema used for updating a existing card data source. */
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DashboardReqUpdateDataSource"];
-            };
-        };
-        responses: {
-            /** @description The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardResPageCardDataSource"];
+                    "application/json": components["schemas"]["DashboardResCard"];
                 };
             };
             400: components["responses"]["BadRequestError"];

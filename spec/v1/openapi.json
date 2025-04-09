@@ -4255,14 +4255,9 @@
         ]
       }
     },
-    "/dashboard-module/pages/{pageId}/data-source": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        }
-      ],
+    "/dashboard-module/tiles": {
       "get": {
-        "summary": "Retrieve a list of all available data sources for a page",
+        "summary": "Retrieve a list of all available tiles",
         "tags": [
           "Dashboard module"
         ],
@@ -4271,368 +4266,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageDataSources"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source",
-                      "method": "GET",
-                      "data": [
-                        {
-                          "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                          "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                          "created_at": "2025-01-25T12:00:00Z",
-                          "updated_at": "2025-01-25T13:00:00Z",
-                          "type": "device-channel",
-                          "device": "234e5678-a89b-22d3-c456-426614174133",
-                          "channel": "345e6789-b89c-32d4-d567-526715184244",
-                          "property": "456e7890-c89d-42d5-e678-626816194355",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "get-dashboard-module-page-data-sources",
-        "description": "Fetches a list of data sources associated with a specific page. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "post": {
-        "summary": "Create a new data source for a specific page",
-        "responses": {
-          "201": {
-            "description": "The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "POST",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "headers": {
-              "Location": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "The URI of the newly created page data source resource, which can be used to retrieve, update, or delete the data source."
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "create-dashboard-module-page-data-source",
-        "tags": [
-          "Dashboard module"
-        ],
-        "description": "Creates a new data source for a specific page. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreateDataSource"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "type": "device-channel",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                      "property": "3d988def-559f-498c-a804-5111aba2df66",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "description": "The payload schema used for creating a new page data source."
-        },
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      }
-    },
-    "/dashboard-module/pages/{pageId}/data-source/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
-      "get": {
-        "summary": "Retrieve details of a specific data source for a page",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "GET",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated page."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "get-dashboard-module-page-data-source",
-        "description": "Fetches detailed information about a specific data source associated with a page using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "patch": {
-        "summary": "Update and existing data source for a specific page",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "description": "The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "PATCH",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "update-dashboard-module-page-data-source",
-        "description": "Partially updates the details of a specific data source associated with a page. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DashboardReqUpdateDataSource"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "type": "device-channel",
-                      "tile": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                      "property": "3d988def-559f-498c-a804-5111aba2df66",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "description": "The payload schema used for updating a existing page data source."
-        },
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Delete a specific data source from a page",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "204": {
-            "description": "The data source was successfully deleted. No content is returned in the response body."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "delete-dashboard-module-page-data-source",
-        "description": "Deletes a specific data source associated with a page using its unique ID. This operation is irreversible and removes the property from the system.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      }
-    },
-    "/dashboard-module/pages/{pageId}/tiles": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        }
-      ],
-      "get": {
-        "summary": "Retrieve a list of all available page tiles",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageTiles"
+                  "$ref": "#/components/schemas/DashboardResTiles"
                 }
               }
             },
@@ -4648,8 +4282,8 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "get-dashboard-module-page-tiles",
-        "description": "Fetches a list of tiles associated with a specific page. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.",
+        "operationId": "get-dashboard-module-tiles",
+        "description": "Fetches a list of tiles. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.",
         "security": [
           {
             "authentication": []
@@ -4660,7 +4294,7 @@
         ]
       },
       "post": {
-        "summary": "Create a new tile for a page",
+        "summary": "Create a new tile",
         "tags": [
           "Dashboard module"
         ],
@@ -4669,7 +4303,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageTile"
+                  "$ref": "#/components/schemas/DashboardResTile"
                 }
               }
             },
@@ -4679,7 +4313,7 @@
                   "type": "string",
                   "format": "uri"
                 },
-                "description": "The URI of the newly created page tile resource, which can be used to retrieve, update, or delete the tile."
+                "description": "The URI of the newly created tile resource, which can be used to retrieve, update, or delete the tile."
               }
             },
             "description": "The tile was successfully created. The response contains the details of the newly created tile."
@@ -4694,18 +4328,18 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "create-dashboard-module-page-tile",
+        "operationId": "create-dashboard-module-tile",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreatePageTile"
+                "$ref": "#/components/schemas/DashboardReqCreateTileWithParent"
               }
             }
           },
-          "description": "The payload schema used for creating a new page tile."
+          "description": "The payload schema used for creating a new tile."
         },
-        "description": "Creates a new tile associated with a specific page. Tiles represent widgets that can display device state or actual clock.",
+        "description": "Creates a new tile. Tiles represent widgets that can display device state or actual clock.",
         "security": [
           {
             "authentication": []
@@ -4716,17 +4350,33 @@
         ]
       }
     },
-    "/dashboard-module/pages/{pageId}/tiles/{id}": {
+    "/dashboard-module/{parent}/{parentId}/tiles": {
       "parameters": [
         {
-          "$ref": "#/components/parameters/pageId"
+          "name": "parent",
+          "in": "path",
+          "required": true,
+          "description": "The ID of the type of the parent resource.",
+          "schema": {
+            "type": "string"
+          },
+          "example": "page"
         },
         {
-          "$ref": "#/components/parameters/id"
+          "name": "parentId",
+          "in": "path",
+          "required": true,
+          "description": "The ID of the parent resource.",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "example": "9431cc2d-d447-44c1-b2d0-4398624e4921"
+          },
+          "example": "9431cc2d-d447-44c1-b2d0-4398624e4921"
         }
       ],
       "get": {
-        "summary": "Retrieve details of a specific tile for a page",
+        "summary": "Retrieve a list of all available tiles for given parent",
         "tags": [
           "Dashboard module"
         ],
@@ -4735,7 +4385,113 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageTile"
+                  "$ref": "#/components/schemas/DashboardResTiles"
+                }
+              }
+            },
+            "description": "The list of tiles was successfully retrieved. Each tile includes metadata such as its ID, size, and position."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "operationId": "get-dashboard-module-parent-tiles",
+        "description": "Fetches a list of tiles for given parent. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.",
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ],
+        "x-stoplight": {
+          "id": "k42s272z5qo0w"
+        }
+      },
+      "post": {
+        "summary": "Create a new tile for given parent",
+        "tags": [
+          "Dashboard module"
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResTile"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "description": "The URI of the newly created tile resource, which can be used to retrieve, update, or delete the tile."
+              }
+            },
+            "description": "The tile was successfully created. The response contains the details of the newly created tile."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "operationId": "create-dashboard-module-parent-tile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardReqCreateTile"
+              }
+            }
+          },
+          "description": "The payload schema used for creating a new tile."
+        },
+        "description": "Creates a new tile for given parent. Tiles represent widgets that can display device state or actual clock.",
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ],
+        "x-stoplight": {
+          "id": "yf3ttyc400g60"
+        }
+      }
+    },
+    "/dashboard-module/tiles/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/id"
+        }
+      ],
+      "get": {
+        "summary": "Retrieve details of a specific tile",
+        "tags": [
+          "Dashboard module"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResTile"
                 }
               }
             },
@@ -4751,8 +4507,8 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "get-dashboard-module-page-tile",
-        "description": "Fetches detailed information about a specific tile associated with a page using its unique ID. The response includes metadata such as the tiles’s position, ID, associated page, and timestamps.",
+        "operationId": "get-dashboard-module-tile",
+        "description": "Fetches detailed information about a specific tile using its unique ID. The response includes metadata such as the tiles’s position, ID, associated page, and timestamps.",
         "security": [
           {
             "authentication": []
@@ -4763,7 +4519,7 @@
         ]
       },
       "patch": {
-        "summary": "Update an existing tile for a page",
+        "summary": "Update an existing tile",
         "tags": [
           "Dashboard module"
         ],
@@ -4772,11 +4528,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageTile"
+                  "$ref": "#/components/schemas/DashboardResTile"
                 }
               }
             },
-            "description": "Partially updates the attributes of a specific tile associated with a page using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object."
+            "description": "Partially updates the attributes of a specific tile using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object."
           },
           "400": {
             "$ref": "#/components/responses/BadRequestError"
@@ -4788,7 +4544,7 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "update-dashboard-module-page-tile",
+        "operationId": "update-dashboard-module-tile",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4797,9 +4553,9 @@
               }
             }
           },
-          "description": "The payload schema used for updating a existing page tile."
+          "description": "The payload schema used for updating a existing tile."
         },
-        "description": "Partially updates the attributes of a specific tile associated with a page using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object.",
+        "description": "Partially updates the attributes of a specific tile using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object.",
         "security": [
           {
             "authentication": []
@@ -4810,7 +4566,7 @@
         ]
       },
       "delete": {
-        "summary": "Delete a specific tile for a page",
+        "summary": "Delete a specific tile",
         "tags": [
           "Dashboard module"
         ],
@@ -4828,8 +4584,8 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "delete-dashboard-module-page-tile",
-        "description": "Deletes a specific tile associated with a page using its unique ID. This action is irreversible and will remove the tile and its associated data from the system.",
+        "operationId": "delete-dashboard-module-tile",
+        "description": "Deletes a specific tile using its unique ID. This action is irreversible and will remove the tile and its associated data from the system.",
         "security": [
           {
             "authentication": []
@@ -4840,17 +4596,9 @@
         ]
       }
     },
-    "/dashboard-module/pages/{pageId}/tiles/{tileId}/data-source": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        },
-        {
-          "$ref": "#/components/parameters/tileId"
-        }
-      ],
+    "/dashboard-module/data-source": {
       "get": {
-        "summary": "Retrieve a list of all available data sources for a page’s tile",
+        "summary": "Retrieve a list of all available data sources",
         "tags": [
           "Dashboard module"
         ],
@@ -4859,40 +4607,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageTileDataSources"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source",
-                      "method": "GET",
-                      "data": [
-                        {
-                          "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                          "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                          "created_at": "2025-01-25T12:00:00Z",
-                          "updated_at": "2025-01-25T13:00:00Z",
-                          "type": "device-channel",
-                          "device": "234e5678-a89b-22d3-c456-426614174133",
-                          "channel": "345e6789-b89c-32d4-d567-526715184244",
-                          "property": "456e7890-c89d-42d5-e678-626816194355",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardResDataSources"
                 }
               }
             },
-            "description": "The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata."
+            "description": "The list of data sources was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata."
           },
           "400": {
             "$ref": "#/components/responses/BadRequestError"
@@ -4904,8 +4623,8 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "get-dashboard-module-page-tile-data-sources",
-        "description": "Fetches a list of data sources associated with a specific tile of a page. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.",
+        "operationId": "get-dashboard-module-data-sources",
+        "description": "Fetches a list of data sources. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.",
         "security": [
           {
             "authentication": []
@@ -4916,7 +4635,7 @@
         ]
       },
       "post": {
-        "summary": "Create a new data source for a specific page’s tile",
+        "summary": "Create a new data source",
         "tags": [
           "Dashboard module"
         ],
@@ -4928,40 +4647,13 @@
                   "type": "string",
                   "format": "uri"
                 },
-                "description": "The URI of the newly created data tile data source resource, which can be used to retrieve, update, or delete the data source."
+                "description": "The URI of the newly created data source resource, which can be used to retrieve, update, or delete the data source."
               }
             },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageTileDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "POST",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardResDataSource"
                 }
               }
             },
@@ -4977,32 +4669,18 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "create-dashboard-module-page-tile-data-source",
+        "operationId": "create-dashboard-module-data-source",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqCreateDataSource"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "type": "device-channel",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                      "property": "3d988def-559f-498c-a804-5111aba2df66",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
               }
             }
           },
-          "description": "The payload schema used for creating a new tile data source."
+          "description": "The payload schema used for creating a new data source."
         },
-        "description": "Creates a new data source for a specific page tile. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.",
+        "description": "Creates a new data source. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.",
         "security": [
           {
             "authentication": []
@@ -5013,20 +4691,33 @@
         ]
       }
     },
-    "/dashboard-module/pages/{pageId}/tiles/{tileId}/data-source/{id}": {
+    "/dashboard-module/{parent}/{parentId}/data-source": {
       "parameters": [
         {
-          "$ref": "#/components/parameters/pageId"
+          "name": "parent",
+          "in": "path",
+          "required": true,
+          "description": "The ID of the type of the parent resource.",
+          "schema": {
+            "type": "string"
+          },
+          "example": "page"
         },
         {
-          "$ref": "#/components/parameters/tileId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
+          "name": "parentId",
+          "in": "path",
+          "required": true,
+          "description": "The ID of the parent resource.",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "example": "9431cc2d-d447-44c1-b2d0-4398624e4921"
+          },
+          "example": "9431cc2d-d447-44c1-b2d0-4398624e4921"
         }
       ],
       "get": {
-        "summary": "Retrieve details of a specific data source for a page’s tile",
+        "summary": "Retrieve a list of all available data sources for given parent",
         "tags": [
           "Dashboard module"
         ],
@@ -5035,34 +4726,113 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageTileDataSource"
+                  "$ref": "#/components/schemas/DashboardResDataSources"
+                }
+              }
+            },
+            "description": "The list of data sources was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "operationId": "get-dashboard-module-parent-data-sources",
+        "description": "Fetches a list of data sources for given parent. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.",
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ],
+        "x-stoplight": {
+          "id": "mn0xoxls6jnwn"
+        }
+      },
+      "post": {
+        "summary": "Create a new data source for given parent",
+        "tags": [
+          "Dashboard module"
+        ],
+        "responses": {
+          "201": {
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
                 },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "GET",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
+                "description": "The URI of the newly created data source resource, which can be used to retrieve, update, or delete the data source."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResDataSource"
+                }
+              }
+            },
+            "description": "The data source for given parent was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "operationId": "create-dashboard-module-parent-data-source",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardReqCreateDataSourceWithParent"
+              }
+            }
+          },
+          "description": "The payload schema used for creating a new data source."
+        },
+        "description": "Creates a new data source. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.",
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ],
+        "x-stoplight": {
+          "id": "zlixpof1vhrnv"
+        }
+      }
+    },
+    "/dashboard-module/data-source/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/id"
+        }
+      ],
+      "get": {
+        "summary": "Retrieve details of a specific data source",
+        "tags": [
+          "Dashboard module"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResDataSource"
                 }
               }
             },
@@ -5078,8 +4848,8 @@
             "$ref": "#/components/responses/BadRequestError"
           }
         },
-        "operationId": "get-dashboard-module-page-tile-data-source",
-        "description": "Fetches detailed information about a specific data source associated with a page tile using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.",
+        "operationId": "get-dashboard-module-data-source",
+        "description": "Fetches detailed information about a specific data source using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.",
         "security": [
           {
             "authentication": []
@@ -5090,7 +4860,7 @@
         ]
       },
       "patch": {
-        "summary": "Update and existing data source for a specific page’s tile",
+        "summary": "Update and existing data source",
         "tags": [
           "Dashboard module"
         ],
@@ -5099,34 +4869,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageTileDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "PATCH",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardResDataSource"
                 }
               }
             },
@@ -5142,32 +4885,18 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "update-dashboard-module-page-tile-data-source",
+        "operationId": "update-dashboard-module-data-source",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqUpdateDataSource"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "type": "device-channel",
-                      "tile": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                      "property": "3d988def-559f-498c-a804-5111aba2df66",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
               }
             }
           },
           "description": "The payload schema used for updating a existing tile data source."
         },
-        "description": "Partially updates the details of a specific data source associated with a page tile. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.",
+        "description": "Partially updates the details of a specific data source. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.",
         "security": [
           {
             "authentication": []
@@ -5178,7 +4907,7 @@
         ]
       },
       "delete": {
-        "summary": "Delete a specific data source from a page’s tile.",
+        "summary": "Delete a specific data source.",
         "tags": [
           "Dashboard module"
         ],
@@ -5196,8 +4925,8 @@
             "$ref": "#/components/responses/InternalServerError"
           }
         },
-        "operationId": "delete-dashboard-module-page-tile-data-source",
-        "description": "Deletes a specific data source associated with a page tile using its unique ID. This operation is irreversible and removes the property from the system.",
+        "operationId": "delete-dashboard-module-data-source",
+        "description": "Deletes a specific data source using its unique ID. This operation is irreversible and removes the property from the system.",
         "security": [
           {
             "authentication": []
@@ -5224,7 +4953,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCards"
+                  "$ref": "#/components/schemas/DashboardResCards"
                 }
               }
             },
@@ -5249,7 +4978,10 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "rovy89kmpeu4z"
+        }
       },
       "post": {
         "summary": "Create a new card for a page",
@@ -5270,7 +5002,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCard"
+                  "$ref": "#/components/schemas/DashboardResCard"
                 }
               }
             },
@@ -5292,7 +5024,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreatePageCard"
+                "$ref": "#/components/schemas/DashboardReqCreateCard"
               }
             }
           },
@@ -5305,7 +5037,10 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "htjb1kvqbx9qy"
+        }
       }
     },
     "/dashboard-module/pages/{pageId}/cards/{id}": {
@@ -5327,7 +5062,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCard"
+                  "$ref": "#/components/schemas/DashboardResCard"
                 }
               }
             },
@@ -5352,7 +5087,10 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "iayjblwq45o6u"
+        }
       },
       "patch": {
         "summary": "Update an existing card for a page",
@@ -5364,7 +5102,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCard"
+                  "$ref": "#/components/schemas/DashboardResCard"
                 }
               }
             },
@@ -5410,7 +5148,10 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "rtrc0tu1nn2yk"
+        }
       },
       "delete": {
         "summary": "Delete a specific card for a page",
@@ -5440,977 +5181,10 @@
           {
             "x-display-secret": []
           }
-        ]
-      }
-    },
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/tiles": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        },
-        {
-          "$ref": "#/components/parameters/cardId"
+        ],
+        "x-stoplight": {
+          "id": "t1rvp6nkir1eo"
         }
-      ],
-      "get": {
-        "summary": "Retrieve a list of all available card tiles",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardTiles"
-                }
-              }
-            },
-            "description": "The details of the tile were successfully retrieved. The response contains information such as the tile’s position, size, associated card, and timestamps."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "get-dashboard-module-page-card-tiles",
-        "description": "Fetches a list of tiles associated with a specific card. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "post": {
-        "summary": "Create a new tile for a card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "operationId": "create-dashboard-module-page-card-tile",
-        "description": "Creates a new tile associated with a specific card. Tiles represent widgets that can display device state or actual clock.",
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardTile"
-                }
-              }
-            },
-            "headers": {
-              "Location": {
-                "schema": {
-                  "type": "string",
-                  "format": "uri"
-                },
-                "description": "The URI of the newly created card tile resource, which can be used to retrieve, update, or delete the tile."
-              }
-            },
-            "description": "Partially updates the attributes of a specific tile associated with a card using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreateCardTile"
-              }
-            }
-          },
-          "description": "The payload schema used for updating a existing card tile."
-        },
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      }
-    },
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        },
-        {
-          "$ref": "#/components/parameters/cardId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
-      "get": {
-        "summary": "Retrieve details of a specific tile for a card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardTile"
-                }
-              }
-            },
-            "description": "The details of the tile were successfully retrieved. The response contains information such as the tile’s position, size, associated card, and timestamps."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "get-dashboard-module-page-card-tile",
-        "description": "Fetches detailed information about a specific tile associated with a card using its unique ID. The response includes metadata such as the tiles’s position, ID, associated page, and timestamps.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "patch": {
-        "summary": "Update an existing tile for a card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardTile"
-                }
-              }
-            },
-            "description": "Partially updates the attributes of a specific tile associated with a card using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "update-dashboard-module-page-card-tile",
-        "description": "Partially updates the attributes of a specific tile associated with a card using its unique ID. The update can modify metadata, such as the tile’s position or size, without requiring the full object.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DashboardReqUpdateTile"
-              }
-            }
-          },
-          "description": "The payload schema used for updating a existing card tile."
-        },
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Delete a specific tile for a card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "204": {
-            "description": "The tile was successfully deleted. No content is returned in the response body."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "delete-dashboard-module-page-card-tile",
-        "description": "Deletes a specific tile associated with a card using its unique ID. This action is irreversible and will remove the tile and its associated data from the system.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      }
-    },
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        },
-        {
-          "$ref": "#/components/parameters/cardId"
-        },
-        {
-          "$ref": "#/components/parameters/tileId"
-        }
-      ],
-      "get": {
-        "summary": "Retrieve a list of all available data sources for a card’s tile",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardTileDataSources"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source",
-                      "method": "GET",
-                      "data": [
-                        {
-                          "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                          "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                          "created_at": "2025-01-25T12:00:00Z",
-                          "updated_at": "2025-01-25T13:00:00Z",
-                          "type": "device-channel",
-                          "device": "234e5678-a89b-22d3-c456-426614174133",
-                          "channel": "345e6789-b89c-32d4-d567-526715184244",
-                          "property": "456e7890-c89d-42d5-e678-626816194355",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The list of data sources associated with the tile was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "get-dashboard-module-page-card-tile-data-sources",
-        "description": "Fetches a list of data sources associated with a specific tile of a card. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "post": {
-        "summary": "Create a new data source for a specific card’s tile",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "201": {
-            "headers": {
-              "Location": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "The URI of the newly created tile data source resource, which can be used to retrieve, update, or delete the data source."
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardTileDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "POST",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "create-dashboard-module-page-card-tile-data-source",
-        "description": "Creates a new data source for a specific card tile. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreateDataSource"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "type": "device-channel",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                      "property": "3d988def-559f-498c-a804-5111aba2df66",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "description": "The payload schema used for creating a new card data source."
-        },
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      }
-    },
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/tiles/{tileId}/data-source/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        },
-        {
-          "$ref": "#/components/parameters/cardId"
-        },
-        {
-          "$ref": "#/components/parameters/tileId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
-      "get": {
-        "summary": "Retrieve details of a specific data source for a card’s tile",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardTileDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "GET",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated tile."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "get-dashboard-module-page-card-tile-data-source",
-        "description": "Fetches detailed information about a specific data source associated with a card tile using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "patch": {
-        "summary": "Update and existing data source for a specific card’s tile",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardTileDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "GET",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "update-dashboard-module-page-card-tile-data-source",
-        "description": "Partially updates the details of a specific data source associated with a card tile. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DashboardReqUpdateDataSource"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "type": "device-channel",
-                      "tile": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                      "property": "3d988def-559f-498c-a804-5111aba2df66",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "description": "The payload schema used for updating a existing card data source."
-        },
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Delete a specific data source from a card’s tile",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "204": {
-            "description": "The data source was successfully deleted. No content is returned in the response body."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "delete-dashboard-module-page-card-tile-data-source",
-        "description": "Deletes a specific data source associated with a card tile using its unique ID. This operation is irreversible and removes the property from the system.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      }
-    },
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/data-source": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        },
-        {
-          "$ref": "#/components/parameters/cardId"
-        }
-      ],
-      "get": {
-        "summary": "Retrieve a list of all available data sources for a card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardDataSources"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source",
-                      "method": "GET",
-                      "data": [
-                        {
-                          "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                          "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                          "created_at": "2025-01-25T12:00:00Z",
-                          "updated_at": "2025-01-25T13:00:00Z",
-                          "type": "device-channel",
-                          "device": "234e5678-a89b-22d3-c456-426614174133",
-                          "channel": "345e6789-b89c-32d4-d567-526715184244",
-                          "property": "456e7890-c89d-42d5-e678-626816194355",
-                          "icon": "icon-name"
-                        }
-                      ],
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The list of data sources associated with the card was successfully retrieved. Each data source includes details such as its ID, associated device, value, and metadata."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "get-dashboard-module-page-card-data-sources",
-        "description": "Fetches a list of data sources associated with a specific card. Data sources represent attributes or measurements related to the card, such as device state, weather location, or timezone.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "post": {
-        "summary": "Create a new data source for a specific card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "POST",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "headers": {
-              "Location": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "The URI of the newly created card data source resource, which can be used to retrieve, update, or delete the data source."
-              }
-            },
-            "description": "The data source was successfully created. The response body contains the complete representation of the data source, including its unique identifier, associated device, associated channel, timezone and metadata."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "create-dashboard-module-page-card-data-source",
-        "description": "Creates a new data source for a specific card. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DashboardReqCreateDataSource"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "type": "device-channel",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                      "property": "3d988def-559f-498c-a804-5111aba2df66",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "description": "The payload schema used for creating a new card data source."
-        },
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      }
-    },
-    "/dashboard-module/pages/{pageId}/cards/{cardId}/data-source/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/pageId"
-        },
-        {
-          "$ref": "#/components/parameters/cardId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
-      "get": {
-        "summary": "Retrieve details of a specific data source for a card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "GET",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The details of the data source were successfully retrieved. The response contains information such as the data source’s associated device, channel, value, and associated card."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "get-dashboard-module-page-card-data-source",
-        "description": "Fetches detailed information about a specific data source associated with a card using its unique ID. The response includes metadata such as the data source’s associated device, channel, value, and associated tile.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "patch": {
-        "summary": "Update and existing data source for a specific card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DashboardResPageCardDataSource"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "method": "POST",
-                      "data": {
-                        "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                        "card": "7943c740-52b6-4e18-a136-cf39061ac869",
-                        "created_at": "2025-01-25T12:00:00Z",
-                        "updated_at": "2025-01-25T13:00:00Z",
-                        "type": "device-channel",
-                        "device": "234e5678-a89b-22d3-c456-426614174133",
-                        "channel": "345e6789-b89c-32d4-d567-526715184244",
-                        "property": "456e7890-c89d-42d5-e678-626816194355",
-                        "icon": "icon-name"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "description": "The data source was successfully updated. The response contains the updated data source details, including its unique identifier, associated device, channel, value, and metadata."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "update-dashboard-module-page-card-data-source",
-        "description": "Partially updates the details of a specific data source associated with a card. This operation allows modifications to attributes such as the data source’s associated device, channel, value, or metadata, while preserving its unique identifier and association with the tile.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DashboardReqUpdateDataSource"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "type": "device-channel",
-                      "tile": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                      "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                      "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                      "property": "3d988def-559f-498c-a804-5111aba2df66",
-                      "icon": "icon-name"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "description": "The payload schema used for updating a existing card data source."
-        },
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
-      },
-      "delete": {
-        "summary": "Delete a specific data source from a card",
-        "tags": [
-          "Dashboard module"
-        ],
-        "responses": {
-          "204": {
-            "description": "The data source was successfully deleted. No content is returned in the response body."
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        },
-        "operationId": "delete-dashboard-module-page-card-data-source",
-        "description": "Deletes a specific data source associated with a card using its unique ID. This operation is irreversible and removes the property from the system.",
-        "security": [
-          {
-            "authentication": []
-          },
-          {
-            "x-display-secret": []
-          }
-        ]
       }
     },
     "/config-module/config": {
@@ -11369,7 +10143,7 @@
           "-80011": "Insufficient authorization for the requested operation."
         }
       },
-      "DashboardPageBase": {
+      "DashboardPage": {
         "title": "Page Base",
         "description": "The base schema for all dashboard pages, including common properties such as id, type, title, and timestamps.",
         "type": "object",
@@ -11448,7 +10222,7 @@
         "description": "A cards page dashboard type, displaying an overview with associated cards.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardPageBase"
+            "$ref": "#/components/schemas/DashboardPage"
           },
           {
             "type": "object",
@@ -11468,17 +10242,7 @@
                 "type": "array",
                 "description": "A list of data sources associated with the page.",
                 "items": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/DashboardPageDeviceChannelDataSource"
-                    }
-                  ],
-                  "discriminator": {
-                    "propertyName": "type",
-                    "mapping": {
-                      "device-channel": "#/components/schemas/DashboardPageDeviceChannelDataSource"
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardDataSource"
                 }
               }
             }
@@ -11490,7 +10254,7 @@
         "description": "A tiles page dashboard type, displaying a grid of customizable tiles.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardPageBase"
+            "$ref": "#/components/schemas/DashboardPage"
           },
           {
             "type": "object",
@@ -11503,101 +10267,17 @@
                 "type": "array",
                 "description": "A list of tiles associated with the tiles page.",
                 "items": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/DashboardPageDevicePreviewTile"
-                    },
-                    {
-                      "$ref": "#/components/schemas/DashboardPageTimeTile"
-                    },
-                    {
-                      "$ref": "#/components/schemas/DashboardPageDayWeatherTile"
-                    },
-                    {
-                      "$ref": "#/components/schemas/DashboardPageForecastWeatherTile"
-                    }
-                  ],
-                  "discriminator": {
-                    "propertyName": "type",
-                    "mapping": {
-                      "device-preview": "#/components/schemas/DashboardPageDevicePreviewTile",
-                      "clock": "#/components/schemas/DashboardPageTimeTile",
-                      "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
-                      "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardTile"
                 }
               },
               "data_source": {
                 "type": "array",
                 "description": "A list of data sources associated with the tiles page.",
                 "items": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/DashboardPageDeviceChannelDataSource"
-                    }
-                  ],
-                  "discriminator": {
-                    "propertyName": "type",
-                    "mapping": {
-                      "device-channel": "#/components/schemas/DashboardPageDeviceChannelDataSource"
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardDataSource"
                 }
               }
             }
-          }
-        ],
-        "examples": [
-          {
-            "id": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-            "title": "Cards Dashboard",
-            "icon": "icon-name",
-            "order": 1,
-            "created_at": "2025-01-25T12:00:00Z",
-            "updated_at": "2025-01-25T13:00:00Z",
-            "type": "tiles",
-            "tiles": [
-              {
-                "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                "row": 1,
-                "col": 1,
-                "row_span": 2,
-                "col_span": 2,
-                "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                "data_source": [
-                  {
-                    "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                    "tile": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                    "created_at": "2025-01-25T12:00:00Z",
-                    "updated_at": "2025-01-25T13:00:00Z",
-                    "type": "device-channel",
-                    "device": "234e5678-a89b-22d3-c456-426614174133",
-                    "channel": "345e6789-b89c-32d4-d567-526715184244",
-                    "property": "456e7890-c89d-42d5-e678-626816194355",
-                    "icon": "icon-name"
-                  }
-                ],
-                "created_at": "2025-01-25T12:00:00Z",
-                "updated_at": "2025-01-25T13:00:00Z",
-                "type": "device-preview",
-                "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                "icon": "icon-name"
-              }
-            ],
-            "data_source": [
-              {
-                "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                "page": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                "created_at": "2025-01-25T12:00:00Z",
-                "updated_at": "2025-01-25T13:00:00Z",
-                "type": "device-channel",
-                "device": "234e5678-a89b-22d3-c456-426614174133",
-                "channel": "345e6789-b89c-32d4-d567-526715184244",
-                "property": "456e7890-c89d-42d5-e678-626816194355",
-                "icon": "icon-name"
-              }
-            ]
           }
         ]
       },
@@ -11606,7 +10286,7 @@
         "description": "A dashboard page type associated with a specific device.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardPageBase"
+            "$ref": "#/components/schemas/DashboardPage"
           },
           {
             "type": "object",
@@ -11677,46 +10357,14 @@
           "tiles": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardCardDevicePreviewTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCardTimeTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCardDayWeatherTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCardForecastWeatherTile"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-preview": "#/components/schemas/DashboardCardDevicePreviewTile",
-                  "clock": "#/components/schemas/DashboardCardTimeTile",
-                  "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
-                  "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardTile"
             },
             "description": "A list of tiles associated with the dashboard card, representing widgets or functional components."
           },
           "data_source": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardCardDeviceChannelDataSource"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-channel": "#/components/schemas/DashboardCardDeviceChannelDataSource"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardDataSource"
             },
             "description": "A list of data sources used by the card, typically for real-time updates."
           },
@@ -11738,13 +10386,14 @@
           }
         }
       },
-      "DashboardTileBase": {
+      "DashboardTile": {
         "title": "Tile",
         "description": "The base schema for all dashboard tiles, containing common properties such as position, dimensions, and associated page and data sources.",
         "type": "object",
         "required": [
           "id",
           "type",
+          "parent",
           "row",
           "col",
           "row_span",
@@ -11764,6 +10413,27 @@
           "type": {
             "type": "string",
             "description": "Discriminator for the tile type"
+          },
+          "parent": {
+            "type": "object",
+            "description": "Discriminator for the data source type",
+            "required": [
+              "id",
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "A unique parent identifier.",
+                "example": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                "readOnly": true
+              },
+              "type": {
+                "type": "string",
+                "description": "Discriminator for the tile parent"
+              }
+            }
           },
           "row": {
             "type": "integer",
@@ -11802,17 +10472,7 @@
           "data_source": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardDataSource"
             },
             "description": "A list of data sources used by the tile, typically for real-time updates."
           },
@@ -11848,7 +10508,7 @@
         "description": "A dashboard tile associated with a specific device.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardTileBase"
+            "$ref": "#/components/schemas/DashboardTile"
           },
           {
             "type": "object",
@@ -11873,104 +10533,12 @@
           }
         ]
       },
-      "DashboardPageDevicePreviewTile": {
-        "title": "Device Tile On Page",
-        "description": "A dashboard tile associated with a specific device.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardDevicePreviewTile"
-          },
-          {
-            "type": "object",
-            "required": [
-              "page"
-            ],
-            "properties": {
-              "page": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated page.",
-                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
-              }
-            }
-          }
-        ]
-      },
-      "DashboardCardDevicePreviewTile": {
-        "title": "Device Tile On Card",
-        "description": "A dashboard tile associated with a specific device.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardDevicePreviewTile"
-          },
-          {
-            "type": "object",
-            "required": [
-              "card"
-            ],
-            "properties": {
-              "card": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated card.",
-                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
-              }
-            }
-          }
-        ]
-      },
       "DashboardTimeTile": {
         "title": "Time Tile",
         "description": "A dashboard tile displaying a clock.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardTileBase"
-          }
-        ]
-      },
-      "DashboardPageTimeTile": {
-        "title": "Device Tile On Page",
-        "description": "A dashboard tile associated with a specific device.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardTimeTile"
-          },
-          {
-            "type": "object",
-            "required": [
-              "page"
-            ],
-            "properties": {
-              "page": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated page.",
-                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
-              }
-            }
-          }
-        ]
-      },
-      "DashboardCardTimeTile": {
-        "title": "Device Tile On Card",
-        "description": "A dashboard tile associated with a specific device.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardTimeTile"
-          },
-          {
-            "type": "object",
-            "required": [
-              "card"
-            ],
-            "properties": {
-              "card": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated card.",
-                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
-              }
-            }
+            "$ref": "#/components/schemas/DashboardTile"
           }
         ]
       },
@@ -11979,53 +10547,7 @@
         "description": "A dashboard tile displaying the weather for a specific day.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardTileBase"
-          }
-        ]
-      },
-      "DashboardPageDayWeatherTile": {
-        "title": "Device Tile On Page",
-        "description": "A dashboard tile associated with a specific device.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardDayWeatherTile"
-          },
-          {
-            "type": "object",
-            "required": [
-              "page"
-            ],
-            "properties": {
-              "page": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated page.",
-                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
-              }
-            }
-          }
-        ]
-      },
-      "DashboardCardDayWeatherTile": {
-        "title": "Device Tile On Card",
-        "description": "A dashboard tile associated with a specific device.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardDayWeatherTile"
-          },
-          {
-            "type": "object",
-            "required": [
-              "card"
-            ],
-            "properties": {
-              "card": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated card.",
-                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
-              }
-            }
+            "$ref": "#/components/schemas/DashboardTile"
           }
         ]
       },
@@ -12034,63 +10556,21 @@
         "description": "A dashboard tile displaying a weather forecast.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardTileBase"
+            "$ref": "#/components/schemas/DashboardTile"
           }
         ]
       },
-      "DashboardPageForecastWeatherTile": {
-        "title": "Device Tile On Page",
-        "description": "A dashboard tile associated with a specific device.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardForecastWeatherTile"
-          },
-          {
-            "type": "object",
-            "required": [
-              "page"
-            ],
-            "properties": {
-              "page": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated page.",
-                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
-              }
-            }
-          }
-        ]
-      },
-      "DashboardCardForecastWeatherTile": {
-        "title": "Device Tile On Card",
-        "description": "A dashboard tile associated with a specific device.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardForecastWeatherTile"
-          },
-          {
-            "type": "object",
-            "required": [
-              "card"
-            ],
-            "properties": {
-              "card": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated card.",
-                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
-              }
-            }
-          }
-        ]
-      },
-      "DashboardDataSourceBase": {
+      "DashboardDataSource": {
         "title": "Data Source",
+        "x-stoplight": {
+          "id": "fe5d7abbb79b2"
+        },
         "description": "The base schema for all dashboard data sources, containing common attributes such as the associated tile and timestamps.",
         "type": "object",
         "required": [
           "id",
           "type",
+          "parent",
           "created_at",
           "updated_at"
         ],
@@ -12105,6 +10585,27 @@
           "type": {
             "type": "string",
             "description": "Discriminator for the data source type"
+          },
+          "parent": {
+            "type": "object",
+            "description": "Discriminator for the data source type",
+            "required": [
+              "id",
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "A unique parent identifier.",
+                "example": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                "readOnly": true
+              },
+              "type": {
+                "type": "string",
+                "description": "Discriminator for the data source parent"
+              }
+            }
           },
           "created_at": {
             "type": "string",
@@ -12135,7 +10636,7 @@
         "description": "A data source linked to a specific device channel and property.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardDataSourceBase"
+            "$ref": "#/components/schemas/DashboardDataSource"
           },
           {
             "type": "object",
@@ -12175,76 +10676,7 @@
           }
         ]
       },
-      "DashboardPageDeviceChannelDataSource": {
-        "title": "Device Channel Data Source",
-        "description": "A data source linked to a specific device channel and property.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
-          },
-          {
-            "type": "object",
-            "required": [
-              "page"
-            ],
-            "properties": {
-              "page": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated page.",
-                "example": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee"
-              }
-            }
-          }
-        ]
-      },
-      "DashboardCardDeviceChannelDataSource": {
-        "title": "Device Channel Data Source",
-        "description": "A data source linked to a specific device channel and property.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
-          },
-          {
-            "type": "object",
-            "required": [
-              "card"
-            ],
-            "properties": {
-              "card": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated card.",
-                "example": "7943c740-52b6-4e18-a136-cf39061ac869"
-              }
-            }
-          }
-        ]
-      },
-      "DashboardTileDeviceChannelDataSource": {
-        "title": "Device Channel Data Source",
-        "description": "A data source linked to a specific device channel and property.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardDeviceChannelDataSource"
-          },
-          {
-            "type": "object",
-            "required": [
-              "tile"
-            ],
-            "properties": {
-              "tile": {
-                "type": "string",
-                "format": "uuid",
-                "description": "The unique identifier of the associated tile.",
-                "example": "9f807d44-bd0f-4f5e-b409-3d048efa03d8"
-              }
-            }
-          }
-        ]
-      },
-      "DashboardCreatePageBase": {
+      "DashboardCreatePage": {
         "title": "Create Page",
         "description": "The base schema for creating a new dashboard page, containing shared attributes like title and order.",
         "type": "object",
@@ -12299,7 +10731,7 @@
         "description": "The schema for creating a cards dashboard page.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardCreatePageBase"
+            "$ref": "#/components/schemas/DashboardCreatePage"
           },
           {
             "type": "object",
@@ -12314,17 +10746,7 @@
               "data_source": {
                 "type": "array",
                 "items": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-                    }
-                  ],
-                  "discriminator": {
-                    "propertyName": "type",
-                    "mapping": {
-                      "device-channel": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardCreateDataSource"
                 },
                 "description": "A list of data sources associated with the page."
               }
@@ -12337,7 +10759,7 @@
         "description": "The schema for creating a tiles dashboard page.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardCreatePageBase"
+            "$ref": "#/components/schemas/DashboardCreatePage"
           },
           {
             "type": "object",
@@ -12345,46 +10767,14 @@
               "tiles": {
                 "type": "array",
                 "items": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/DashboardCreateDevicePreviewTile"
-                    },
-                    {
-                      "$ref": "#/components/schemas/DashboardCreateTimeTile"
-                    },
-                    {
-                      "$ref": "#/components/schemas/DashboardCreateDayWeatherTile"
-                    },
-                    {
-                      "$ref": "#/components/schemas/DashboardCreateForecastWeatherTile"
-                    }
-                  ],
-                  "discriminator": {
-                    "propertyName": "type",
-                    "mapping": {
-                      "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
-                      "clock": "#/components/schemas/DashboardCreateTimeTile",
-                      "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
-                      "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardCreateTile"
                 },
                 "description": "A list of tiles associated with the tiles page."
               },
               "data_source": {
                 "type": "array",
                 "items": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-                    }
-                  ],
-                  "discriminator": {
-                    "propertyName": "type",
-                    "mapping": {
-                      "device-channel": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-                    }
-                  }
+                  "$ref": "#/components/schemas/DashboardCreateDataSource"
                 },
                 "description": "A list of data sources associated with the tiles page."
               }
@@ -12397,7 +10787,7 @@
         "description": "The schema for creating a device dashboard page.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardCreatePageBase"
+            "$ref": "#/components/schemas/DashboardCreatePage"
           },
           {
             "type": "object",
@@ -12452,52 +10842,20 @@
           "tiles": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardCreateDevicePreviewTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCreateTimeTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCreateDayWeatherTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCreateForecastWeatherTile"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
-                  "clock": "#/components/schemas/DashboardCreateTimeTile",
-                  "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
-                  "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardCreateTile"
             },
             "description": "A list of tiles associated with the dashboard card, representing widgets or functional components."
           },
           "data_source": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-channel": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardCreateDataSource"
             },
             "description": "A list of data sources used by the card, typically for real-time updates."
           }
         }
       },
-      "DashboardCreateTileBase": {
+      "DashboardCreateTile": {
         "title": "Create Tile",
         "description": "Base schema for creating a dashboard tile, containing shared attributes such as position and size.",
         "type": "object",
@@ -12554,17 +10912,7 @@
           "data_source": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-channel": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardCreateDataSource"
             },
             "description": "A list of data sources used by the tile, typically for real-time updates."
           }
@@ -12584,7 +10932,7 @@
         "description": "Schema for creating a dashboard tile representing a device.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardCreateTileBase"
+            "$ref": "#/components/schemas/DashboardCreateTile"
           },
           {
             "type": "object",
@@ -12613,7 +10961,7 @@
         "description": "Schema for creating a dashboard tile representing a clock.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardCreateTileBase"
+            "$ref": "#/components/schemas/DashboardCreateTile"
           }
         ]
       },
@@ -12622,7 +10970,7 @@
         "description": "Schema for creating a dashboard tile representing day weather.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardCreateTileBase"
+            "$ref": "#/components/schemas/DashboardCreateTile"
           }
         ]
       },
@@ -12631,16 +10979,17 @@
         "description": "Schema for creating a dashboard tile representing weather forecast.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardCreateTileBase"
+            "$ref": "#/components/schemas/DashboardCreateTile"
           }
         ]
       },
-      "DashboardCreateDataSourceBase": {
+      "DashboardCreateDataSource": {
         "title": "Create Data Source",
         "description": "Base schema for creating a data source.",
         "type": "object",
         "required": [
-          "type"
+          "type",
+          "parent"
         ],
         "properties": {
           "id": {
@@ -12657,7 +11006,7 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "device-channel": "#/components/schemas/DashboardCreateDataSourceBase"
+            "device-channel": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
           }
         }
       },
@@ -12666,7 +11015,7 @@
         "description": "Schema for creating a data source linked to a device channel and property.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardCreateDataSourceBase"
+            "$ref": "#/components/schemas/DashboardCreateDataSource"
           },
           {
             "type": "object",
@@ -12704,7 +11053,7 @@
           }
         ]
       },
-      "DashboardUpdatePageBase": {
+      "DashboardUpdatePage": {
         "title": "Update Page",
         "description": "Base schema for updating a dashboard page.",
         "type": "object",
@@ -12750,7 +11099,7 @@
         "description": "Schema for updating a cards page in the dashboard.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardUpdatePageBase"
+            "$ref": "#/components/schemas/DashboardUpdatePage"
           }
         ]
       },
@@ -12759,7 +11108,7 @@
         "description": "Schema for updating a tiles page in the dashboard.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardUpdatePageBase"
+            "$ref": "#/components/schemas/DashboardUpdatePage"
           }
         ]
       },
@@ -12768,7 +11117,7 @@
         "description": "Schema for updating a device page in the dashboard.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardUpdatePageBase"
+            "$ref": "#/components/schemas/DashboardUpdatePage"
           },
           {
             "type": "object",
@@ -12810,7 +11159,7 @@
           }
         }
       },
-      "DashboardUpdateTileBase": {
+      "DashboardUpdateTile": {
         "title": "Update Tile",
         "description": "Base schema for updating a tile in the dashboard.",
         "type": "object",
@@ -12870,7 +11219,7 @@
         "description": "Schema for updating a device tile in the dashboard.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardUpdateTileBase"
+            "$ref": "#/components/schemas/DashboardUpdateTile"
           },
           {
             "type": "object",
@@ -12896,7 +11245,7 @@
         "description": "Schema for updating a time tile (clock) in the dashboard.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardUpdateTileBase"
+            "$ref": "#/components/schemas/DashboardUpdateTile"
           }
         ]
       },
@@ -12905,7 +11254,7 @@
         "description": "Schema for updating a day weather tile in the dashboard.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardUpdateTileBase"
+            "$ref": "#/components/schemas/DashboardUpdateTile"
           }
         ]
       },
@@ -12914,11 +11263,11 @@
         "description": "Schema for updating a forecast weather tile in the dashboard.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardUpdateTileBase"
+            "$ref": "#/components/schemas/DashboardUpdateTile"
           }
         ]
       },
-      "DashboardUpdateDataSourceBase": {
+      "DashboardUpdateDataSource": {
         "title": "Update Data Source Base",
         "description": "Base schema for updating a data source in the dashboard.",
         "type": "object",
@@ -12944,7 +11293,7 @@
         "description": "Schema for updating a device channel data source in the dashboard.",
         "allOf": [
           {
-            "$ref": "#/components/schemas/DashboardUpdateDataSourceBase"
+            "$ref": "#/components/schemas/DashboardUpdateDataSource"
           },
           {
             "type": "object",
@@ -12986,29 +11335,11 @@
         ],
         "properties": {
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardCreateCardsPage"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCreateTilesPage"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCreateDeviceDetailPage"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "cards": "#/components/schemas/DashboardCreateCardsPage",
-                "tiles": "#/components/schemas/DashboardCreateTilesPage",
-                "device-detail": "#/components/schemas/DashboardCreateDeviceDetailPage"
-              }
-            }
+            "$ref": "#/components/schemas/DashboardCreatePage"
           }
         }
       },
-      "DashboardReqCreatePageCard": {
+      "DashboardReqCreateCard": {
         "title": "Create Page Card Request",
         "description": "Request schema for creating new page card.",
         "type": "object",
@@ -13021,8 +11352,11 @@
           }
         }
       },
-      "DashboardReqCreatePageTile": {
+      "DashboardReqCreateTile": {
         "title": "Create Page Tile Request",
+        "x-stoplight": {
+          "id": "122b5a25ea486"
+        },
         "description": "Request schema for creating new page tile.",
         "type": "object",
         "required": [
@@ -13030,64 +11364,56 @@
         ],
         "properties": {
           "data": {
-            "oneOf": [
+            "allOf": [
               {
-                "$ref": "#/components/schemas/DashboardCreateDevicePreviewTile"
+                "$ref": "#/components/schemas/DashboardCreateTile"
               },
               {
-                "$ref": "#/components/schemas/DashboardCreateTimeTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCreateDayWeatherTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCreateForecastWeatherTile"
+                "type": "object",
+                "required": [
+                  "parent"
+                ],
+                "properties": {
+                  "parent": {
+                    "type": "object",
+                    "description": "Discriminator for the tile type",
+                    "required": [
+                      "id",
+                      "type"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "A unique parent identifier.",
+                        "example": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "Discriminator for the tile parent"
+                      }
+                    }
+                  }
+                }
               }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
-                "clock": "#/components/schemas/DashboardCreateTimeTile",
-                "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
-                "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
-              }
-            }
+            ]
           }
         }
       },
-      "DashboardReqCreateCardTile": {
-        "title": "Create Card Tile Request",
-        "description": "Request schema for creating new card tile.",
+      "DashboardReqCreateTileWithParent": {
+        "title": "Create Page Tile Request",
+        "x-stoplight": {
+          "id": "122b5a25ea486"
+        },
+        "description": "Request schema for creating new page tile.",
         "type": "object",
         "required": [
           "data"
         ],
         "properties": {
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardCreateDevicePreviewTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCreateTimeTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCreateDayWeatherTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCreateForecastWeatherTile"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-preview": "#/components/schemas/DashboardCreateDevicePreviewTile",
-                "clock": "#/components/schemas/DashboardCreateTimeTile",
-                "weather-day": "#/components/schemas/DashboardCreateDayWeatherTile",
-                "weather-forecast": "#/components/schemas/DashboardCreateForecastWeatherTile"
-              }
-            }
+            "$ref": "#/components/schemas/DashboardCreateTile"
           }
         }
       },
@@ -13100,17 +11426,56 @@
         ],
         "properties": {
           "data": {
-            "oneOf": [
+            "allOf": [
               {
-                "$ref": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
+                "$ref": "#/components/schemas/DashboardCreateDataSource"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "parent"
+                ],
+                "properties": {
+                  "parent": {
+                    "type": "object",
+                    "description": "Discriminator for the data source type",
+                    "required": [
+                      "id",
+                      "type"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "A unique parent identifier.",
+                        "example": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
+                        "readOnly": true
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "Discriminator for the data source parent"
+                      }
+                    }
+                  }
+                }
               }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-channel": "#/components/schemas/DashboardCreateDeviceChannelDataSource"
-              }
-            }
+            ]
+          }
+        }
+      },
+      "DashboardReqCreateDataSourceWithParent": {
+        "title": "Create Data Source Request",
+        "x-stoplight": {
+          "id": "2011ec1e1946f"
+        },
+        "description": "Request schema for creating new data source.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DashboardCreateDataSource"
           }
         }
       },
@@ -13123,25 +11488,7 @@
         ],
         "properties": {
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardUpdateCardsPage"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardUpdateTilesPage"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardUpdateDeviceDetailPage"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "cards": "#/components/schemas/DashboardUpdateCardsPage",
-                "tiles": "#/components/schemas/DashboardUpdateTilesPage",
-                "device-detail": "#/components/schemas/DashboardUpdateDeviceDetailPage"
-              }
-            }
+            "$ref": "#/components/schemas/DashboardUpdatePage"
           }
         }
       },
@@ -13167,29 +11514,7 @@
         ],
         "properties": {
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardUpdateDevicePreviewTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardUpdateTimeTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardUpdateDayWeatherTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardUpdateForecastWeatherTile"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-preview": "#/components/schemas/DashboardUpdateDevicePreviewTile",
-                "clock": "#/components/schemas/DashboardUpdateTimeTile",
-                "weather-day": "#/components/schemas/DashboardUpdateDayWeatherTile",
-                "weather-forecast": "#/components/schemas/DashboardUpdateForecastWeatherTile"
-              }
-            }
+            "$ref": "#/components/schemas/DashboardUpdateTile"
           }
         }
       },
@@ -13202,17 +11527,7 @@
         ],
         "properties": {
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardUpdateDeviceChannelDataSource"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-channel": "#/components/schemas/DashboardUpdateDeviceChannelDataSource"
-              }
-            }
+            "$ref": "#/components/schemas/DashboardUpdateDataSource"
           }
         }
       },
@@ -13269,25 +11584,7 @@
             "readOnly": true
           },
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardCardsPage"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardTilesPage"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardDeviceDetailPage"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "cards": "#/components/schemas/DashboardCardsPage",
-                "tiles": "#/components/schemas/DashboardTilesPage",
-                "device-detail": "#/components/schemas/DashboardDeviceDetailPage"
-              }
-            },
+            "$ref": "#/components/schemas/DashboardPage",
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
           },
           "metadata": {
@@ -13351,25 +11648,7 @@
           "data": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardCardsPage"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardTilesPage"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardDeviceDetailPage"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "cards": "#/components/schemas/DashboardCardsPage",
-                  "tiles": "#/components/schemas/DashboardTilesPage",
-                  "device-detail": "#/components/schemas/DashboardDeviceDetailPage"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardPage"
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
           },
@@ -13379,7 +11658,7 @@
           }
         }
       },
-      "DashboardResPageCard": {
+      "DashboardResCard": {
         "title": "Page Card Response",
         "description": "Response schema containing a single page card.",
         "type": "object",
@@ -13441,7 +11720,7 @@
           }
         }
       },
-      "DashboardResPageCards": {
+      "DashboardResCards": {
         "title": "Page Cards Response",
         "description": "Response schema containing a list of page cards.",
         "type": "object",
@@ -13506,8 +11785,11 @@
           }
         }
       },
-      "DashboardResPageCardTile": {
+      "DashboardResTile": {
         "title": "Card Tile Response",
+        "x-stoplight": {
+          "id": "875d75bd56e55"
+        },
         "description": "Response schema containing a single card tile.",
         "type": "object",
         "required": [
@@ -13559,29 +11841,7 @@
             "readOnly": true
           },
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardCardDevicePreviewTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCardTimeTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCardDayWeatherTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardCardForecastWeatherTile"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-preview": "#/components/schemas/DashboardCardDevicePreviewTile",
-                "clock": "#/components/schemas/DashboardCardTimeTile",
-                "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
-                "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
-              }
-            },
+            "$ref": "#/components/schemas/DashboardTile",
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
           },
           "metadata": {
@@ -13590,8 +11850,11 @@
           }
         }
       },
-      "DashboardResPageCardTiles": {
+      "DashboardResTiles": {
         "title": "Card Tiles Response",
+        "x-stoplight": {
+          "id": "4b8f10b99bb9e"
+        },
         "description": "Response schema containing a list of card tiles.",
         "type": "object",
         "required": [
@@ -13645,29 +11908,7 @@
           "data": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardCardDevicePreviewTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCardTimeTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCardDayWeatherTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardCardForecastWeatherTile"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-preview": "#/components/schemas/DashboardCardDevicePreviewTile",
-                  "clock": "#/components/schemas/DashboardCardTimeTile",
-                  "weather-day": "#/components/schemas/DashboardCardDayWeatherTile",
-                  "weather-forecast": "#/components/schemas/DashboardCardForecastWeatherTile"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardTile"
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
           },
@@ -13677,8 +11918,11 @@
           }
         }
       },
-      "DashboardResPageCardTileDataSource": {
+      "DashboardResDataSource": {
         "title": "Card Tile Data Source Response",
+        "x-stoplight": {
+          "id": "3af635e93d5c2"
+        },
         "description": "Response schema containing a single tile data source.",
         "type": "object",
         "required": [
@@ -13730,17 +11974,7 @@
             "readOnly": true
           },
           "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-              }
-            },
+            "$ref": "#/components/schemas/DashboardDataSource",
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
           },
           "metadata": {
@@ -13749,8 +11983,11 @@
           }
         }
       },
-      "DashboardResPageCardTileDataSources": {
+      "DashboardResDataSources": {
         "title": "Card Tile Data Sources Response",
+        "x-stoplight": {
+          "id": "036d9b540d161"
+        },
         "description": "Response schema containing a list of tile data sources.",
         "type": "object",
         "required": [
@@ -13804,629 +12041,7 @@
           "data": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-                }
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        }
-      },
-      "DashboardResPageCardDataSource": {
-        "title": "Card Data Source Response",
-        "description": "Response schema containing a single card data source.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardCardDeviceChannelDataSource"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-channel": "#/components/schemas/DashboardCardDeviceChannelDataSource"
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        }
-      },
-      "DashboardResPageCardDataSources": {
-        "title": "Card Data Sources Response",
-        "description": "Response schema containing a list of card data sources.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/cards/7943c740-52b6-4e18-a136-cf39061ac869/data-source",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "type": "array",
-            "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardCardDeviceChannelDataSource"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-channel": "#/components/schemas/DashboardCardDeviceChannelDataSource"
-                }
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        }
-      },
-      "DashboardResPageTile": {
-        "title": "Page Tile Response",
-        "description": "Response schema containing a single page tile.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardPageDevicePreviewTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardPageTimeTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardPageDayWeatherTile"
-              },
-              {
-                "$ref": "#/components/schemas/DashboardPageForecastWeatherTile"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-preview": "#/components/schemas/DashboardPageDevicePreviewTile",
-                "clock": "#/components/schemas/DashboardPageTimeTile",
-                "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
-                "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        }
-      },
-      "DashboardResPageTiles": {
-        "title": "Page Tiles Response",
-        "description": "Response schema containing a list of page tiles.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "type": "array",
-            "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardPageDevicePreviewTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardPageTimeTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardPageDayWeatherTile"
-                },
-                {
-                  "$ref": "#/components/schemas/DashboardPageForecastWeatherTile"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-preview": "#/components/schemas/DashboardPageDevicePreviewTile",
-                  "clock": "#/components/schemas/DashboardPageTimeTile",
-                  "weather-day": "#/components/schemas/DashboardPageDayWeatherTile",
-                  "weather-forecast": "#/components/schemas/DashboardPageForecastWeatherTile"
-                }
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        }
-      },
-      "DashboardResPageTileDataSource": {
-        "title": "Page Tile Data Source Response",
-        "description": "Response schema containing a single tile data source.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        }
-      },
-      "DashboardResPageTileDataSources": {
-        "title": "Page Tile Data Sources Response",
-        "description": "Response schema containing a list of tile data sources.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/tiles/9f807d44-bd0f-4f5e-b409-3d048efa03d8/data-source",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "type": "array",
-            "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-channel": "#/components/schemas/DashboardTileDeviceChannelDataSource"
-                }
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        }
-      },
-      "DashboardResPageDataSource": {
-        "title": "Page Data Source Response",
-        "description": "Response schema containing a single page data source.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source/dbf838d6-5c5b-4c8e-b189-952038b9020c",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DashboardPageDeviceChannelDataSource"
-              }
-            ],
-            "discriminator": {
-              "propertyName": "type",
-              "mapping": {
-                "device-channel": "#/components/schemas/DashboardPageDeviceChannelDataSource"
-              }
-            },
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        }
-      },
-      "DashboardResPageDataSources": {
-        "title": "Page Data Sources Response",
-        "description": "Response schema containing a list of page data sources.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/dashboard-module/pages/602df00f-0cc9-45dd-a74f-3a28f0e8c8ee/data-source",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "type": "array",
-            "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/DashboardPageDeviceChannelDataSource"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "type",
-                "mapping": {
-                  "device-channel": "#/components/schemas/DashboardPageDeviceChannelDataSource"
-                }
-              }
+              "$ref": "#/components/schemas/DashboardDataSource"
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
           },
@@ -16751,30 +14366,6 @@
         "in": "path",
         "required": true,
         "description": "The ID of the page to retrieve.",
-        "schema": {
-          "type": "string",
-          "format": "uuid",
-          "example": "9431cc2d-d447-44c1-b2d0-4398624e4921"
-        },
-        "example": "9431cc2d-d447-44c1-b2d0-4398624e4921"
-      },
-      "cardId": {
-        "name": "cardId",
-        "in": "path",
-        "required": true,
-        "description": "The ID of the card to retrieve.",
-        "schema": {
-          "type": "string",
-          "format": "uuid",
-          "example": "89a29104-184f-4b6f-9b37-5a70e24f8b44"
-        },
-        "example": "89a29104-184f-4b6f-9b37-5a70e24f8b44"
-      },
-      "tileId": {
-        "name": "tileId",
-        "in": "path",
-        "required": true,
-        "description": "The ID of the tile to retrieve.",
         "schema": {
           "type": "string",
           "format": "uuid",

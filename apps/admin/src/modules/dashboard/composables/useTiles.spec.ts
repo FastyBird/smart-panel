@@ -5,9 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { ICard } from '../store/cards.store.types';
-import type { IPage } from '../store/pages.store.types';
-import type { ITile, TileParentType } from '../store/tiles.store.types';
+import type { ITile } from '../store/tiles.store.types';
 
 import { useTiles } from './useTiles';
 
@@ -21,7 +19,7 @@ vi.mock('../../../common', async () => {
 });
 
 describe('useTiles', () => {
-	const pageId = 'page-1';
+	const parentId = 'page-1';
 
 	let data: Record<string, ITile>;
 	let semaphore: Ref;
@@ -40,8 +38,8 @@ describe('useTiles', () => {
 		setActivePinia(createPinia());
 
 		data = {
-			'tile-1': { id: 'tile-1', page: pageId } as ITile,
-			'tile-2': { id: 'tile-2', page: 'page-2' } as ITile,
+			'tile-1': { id: 'tile-1', parent: { type: 'parent', id: parentId } } as ITile,
+			'tile-2': { id: 'tile-2', parent: { type: 'parent', id: 'page-2' } } as ITile,
 		};
 
 		semaphore = ref({
@@ -53,9 +51,7 @@ describe('useTiles', () => {
 		firstLoad = ref([]);
 
 		fetch = vi.fn();
-		findForParent = vi.fn((_parent: TileParentType, parentId: IPage['id'] | ICard['id']) =>
-			Object.values(data).filter((tile) => 'page' in tile && tile.page === parentId)
-		);
+		findForParent = vi.fn((_parent: string, parentId: string) => Object.values(data).filter((tile) => tile && tile.parent.id === parentId));
 
 		mockStore = {
 			$id: 'tiles',
@@ -71,45 +67,45 @@ describe('useTiles', () => {
 	});
 
 	it('should return only tiles matching the page ID', () => {
-		const { tiles } = useTiles({ parent: 'page', pageId });
+		const { tiles } = useTiles({ parent: 'page', parentId });
 
-		expect(tiles.value).toEqual([{ id: 'tile-1', page: pageId }]);
+		expect(tiles.value).toEqual([{ id: 'tile-1', parent: { id: parentId, type: 'parent' } }]);
 	});
 
 	it('should call fetchTile', async () => {
-		const { fetchTiles } = useTiles({ parent: 'page', pageId });
+		const { fetchTiles } = useTiles({ parent: 'page', parentId });
 
 		await fetchTiles();
 
-		expect(fetch).toHaveBeenCalledWith({ parent: 'page', pageId });
+		expect(fetch).toHaveBeenCalledWith({ parent: { type: 'page', id: parentId } });
 	});
 
-	it('should return areLoading = true if fetching includes pageId', () => {
-		semaphore.value.fetching.items.push(pageId);
+	it('should return areLoading = true if fetching includes parentId', () => {
+		semaphore.value.fetching.items.push(parentId);
 
-		const { areLoading } = useTiles({ parent: 'page', pageId });
+		const { areLoading } = useTiles({ parent: 'page', parentId });
 
 		expect(areLoading.value).toBe(true);
 	});
 
-	it('should return areLoading = false if firstLoad includes pageId', () => {
-		firstLoad.value.push(pageId);
+	it('should return areLoading = false if firstLoad includes parentId', () => {
+		firstLoad.value.push(parentId);
 
-		const { areLoading } = useTiles({ parent: 'page', pageId });
+		const { areLoading } = useTiles({ parent: 'page', parentId });
 
 		expect(areLoading.value).toBe(false);
 	});
 
-	it('should return loaded = true if firstLoad includes pageId', () => {
-		firstLoad.value.push(pageId);
+	it('should return loaded = true if firstLoad includes parentId', () => {
+		firstLoad.value.push(parentId);
 
-		const { loaded } = useTiles({ parent: 'page', pageId });
+		const { loaded } = useTiles({ parent: 'page', parentId });
 
 		expect(loaded.value).toBe(true);
 	});
 
-	it('should return loaded = false if firstLoad does not include pageId', () => {
-		const { loaded } = useTiles({ parent: 'page', pageId });
+	it('should return loaded = false if firstLoad does not include parentId', () => {
+		const { loaded } = useTiles({ parent: 'page', parentId });
 
 		expect(loaded.value).toBe(false);
 	});

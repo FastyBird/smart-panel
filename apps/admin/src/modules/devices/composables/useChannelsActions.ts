@@ -29,7 +29,7 @@ export const useChannelsActions = (): IUseChannelsActions => {
 			throw new DevicesException("Something went wrong, channel can't be loaded");
 		}
 
-		ElMessageBox.confirm(t('devicesModule.messages.channels.confirmRemove', { channel: channel.name }), t('devicesModule.headings.channels.remove'), {
+		ElMessageBox.confirm(t('devicesModule.texts.channels.confirmRemove', { channel: channel.name }), t('devicesModule.headings.channels.remove'), {
 			confirmButtonText: t('devicesModule.buttons.yes.title'),
 			cancelButtonText: t('devicesModule.buttons.no.title'),
 			type: 'warning',

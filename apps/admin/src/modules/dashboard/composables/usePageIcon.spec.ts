@@ -42,7 +42,7 @@ describe('usePageIcon', () => {
 	it('returns default icon for page without custom icon', () => {
 		findById.mockReturnValue({ id: pageId });
 
-		const { icon } = usePageIcon(pageId);
+		const { icon } = usePageIcon({ id: pageId });
 
 		expect(icon.value).toBe('mdi:monitor-dashboard');
 	});
@@ -50,7 +50,7 @@ describe('usePageIcon', () => {
 	it('returns default icon if page is null', () => {
 		findById.mockReturnValue(null);
 
-		const { icon } = usePageIcon(pageId);
+		const { icon } = usePageIcon({ id: pageId });
 
 		expect(icon.value).toBe('mdi:monitor-dashboard');
 	});
@@ -58,7 +58,7 @@ describe('usePageIcon', () => {
 	it('returns page cuctom icon', () => {
 		findById.mockReturnValue({ id: pageId, icon: 'custom-icon' });
 
-		const { icon } = usePageIcon(pageId);
+		const { icon } = usePageIcon({ id: pageId });
 
 		expect(icon.value).toBe('custom-icon');
 	});

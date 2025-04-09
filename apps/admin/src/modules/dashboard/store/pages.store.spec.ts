@@ -3,28 +3,31 @@ import { createPinia, setActivePinia } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { IPlugin } from '../../../common';
+import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import { DashboardApiException } from '../dashboard.exceptions';
 
 import { usePages } from './pages.store';
-import type { IDeviceDetailPage, IPagesSetActionPayload } from './pages.store.types';
+import type { IPage, IPagesSetActionPayload } from './pages.store.types';
 
 const pageId = uuid();
 
+const mockBackendClient = {
+	GET: vi.fn(),
+	POST: vi.fn(),
+	PATCH: vi.fn(),
+	DELETE: vi.fn(),
+};
+
 const mockGetStore = vi.fn((key: symbol) => {
 	switch (key.description) {
-		case 'FB-DashboardModuleDataSourcesStore':
+		case 'FB-Module-DashboardModuleDataSourcesStore':
 			return {
 				firstLoad: [],
 				set: vi.fn(),
 				unset: vi.fn(),
 			};
-		case 'FB-DashboardModulePagesStore':
-			return {
-				firstLoad: [],
-				set: vi.fn(),
-				unset: vi.fn(),
-			};
-		case 'FB-DashboardModuleCardsStore':
+		case 'FB-Module-DashboardModulePagesStore':
 			return {
 				firstLoad: [],
 				set: vi.fn(),
@@ -35,12 +38,12 @@ const mockGetStore = vi.fn((key: symbol) => {
 	}
 });
 
-const mockBackendClient = {
-	GET: vi.fn(),
-	POST: vi.fn(),
-	PATCH: vi.fn(),
-	DELETE: vi.fn(),
-};
+const mockGetPlugins = vi.fn().mockReturnValue([
+	{
+		type: 'some-page',
+		modules: [DASHBOARD_MODULE_NAME],
+	} as IPlugin,
+]);
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
@@ -53,6 +56,9 @@ vi.mock('../../../common', async () => {
 		getErrorReason: vi.fn(() => 'Some error'),
 		injectStoresManager: vi.fn(() => ({
 			getStore: mockGetStore,
+		})),
+		injectPluginsManager: vi.fn(() => ({
+			getPlugins: mockGetPlugins,
 		})),
 	};
 });
@@ -74,9 +80,8 @@ describe('Pages Store', () => {
 				data: [
 					{
 						id: pageId,
-						type: 'device-detail',
+						type: 'some-page',
 						title: 'Page title',
-						device: uuid(),
 						created_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					},
@@ -104,14 +109,13 @@ describe('Pages Store', () => {
 	it('should get page by id', async () => {
 		const testPage = {
 			id: pageId,
-			type: 'device-detail',
+			type: 'some-page',
 			title: 'Page title',
-			device: uuid(),
 			created_at: new Date().toISOString(),
 			updatedAt: null,
 		};
 
-		store.data[pageId] = testPage as unknown as IDeviceDetailPage;
+		store.data[pageId] = testPage as unknown as IPage;
 
 		const found = store.findById(pageId);
 		expect(found).toEqual(testPage);
@@ -121,10 +125,9 @@ describe('Pages Store', () => {
 		const dummy: IPagesSetActionPayload = {
 			id: pageId,
 			data: {
-				type: 'device-detail',
+				type: 'some-page',
 				title: 'Page title',
 				order: 0,
-				device: uuid(),
 				createdAt: new Date(),
 			},
 		};
@@ -139,10 +142,9 @@ describe('Pages Store', () => {
 		const dummy: IPagesSetActionPayload = {
 			id: pageId,
 			data: {
-				type: 'device-detail',
+				type: 'some-page',
 				title: 'Page title',
 				order: 0,
-				device: uuid(),
 				createdAt: new Date(),
 			},
 		};

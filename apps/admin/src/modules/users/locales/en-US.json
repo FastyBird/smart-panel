@@ -32,7 +32,6 @@
   },
   "messages": {
     "requestError": "Something went wrong, please try again later.",
-    "confirmRemove": "Are you sure you want to remove user: {user}? This cannot be reversed.",
     "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
     "created": "New user added successfully.",
     "notCreated": "Something went wrong. Unable to create the user.",
@@ -48,6 +47,7 @@
     "passwordNotEdited": "Failed to update user password. Please try again."
   },
   "texts": {
+    "confirmRemove": "Are you sure you want to remove user: {user}? This cannot be reversed.",
     "misc": {
       "noUsers": "You don't have configured any user",
       "noFilteredUsers": "No users found matching the active filter criteria",

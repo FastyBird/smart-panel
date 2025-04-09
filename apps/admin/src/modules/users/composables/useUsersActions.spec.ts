@@ -67,7 +67,7 @@ describe('useUsersActions', (): void => {
 
 		await flushPromises();
 
-		expect(ElMessageBox.confirm).toHaveBeenCalledWith('usersModule.messages.confirmRemove testuser', 'usersModule.headings.remove', {
+		expect(ElMessageBox.confirm).toHaveBeenCalledWith('usersModule.texts.confirmRemove testuser', 'usersModule.headings.remove', {
 			confirmButtonText: 'usersModule.buttons.yes.title',
 			cancelButtonText: 'usersModule.buttons.no.title',
 			type: 'warning',

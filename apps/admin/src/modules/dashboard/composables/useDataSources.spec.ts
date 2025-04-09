@@ -5,9 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { ICard } from '../store/cards.store.types';
-import type { DataSourceParentType, IDataSource, IPageDeviceChannelDataSource } from '../store/dataSources.store.types';
-import type { IPage } from '../store/pages.store.types';
+import type { IDataSource } from '../store/dataSources.store.types';
 
 import { useDataSources } from './useDataSources';
 
@@ -21,7 +19,7 @@ vi.mock('../../../common', async () => {
 });
 
 describe('useDataSources', () => {
-	const pageId = 'page-1';
+	const parentId = 'page-1';
 
 	let data: Record<string, IDataSource>;
 	let semaphore: Ref;
@@ -42,18 +40,18 @@ describe('useDataSources', () => {
 		data = {
 			'dataSource-1': {
 				id: 'dataSource-1',
-				page: pageId,
-				device: 'device-1',
-				channel: 'channel-1',
-				property: 'property-1',
-			} as IPageDeviceChannelDataSource,
+				parent: {
+					type: 'page',
+					id: parentId,
+				},
+			} as IDataSource,
 			'dataSource-2': {
 				id: 'dataSource-2',
-				page: 'page-2',
-				device: 'device-2',
-				channel: 'channel-2',
-				property: 'property-2',
-			} as IPageDeviceChannelDataSource,
+				parent: {
+					type: 'page',
+					id: 'page-2',
+				},
+			} as IDataSource,
 		};
 
 		semaphore = ref({
@@ -65,9 +63,7 @@ describe('useDataSources', () => {
 		firstLoad = ref([]);
 
 		fetch = vi.fn();
-		findForParent = vi.fn((_parent: DataSourceParentType, parentId: IPage['id'] | ICard['id']) =>
-			Object.values(data).filter((dataSource) => 'page' in dataSource && dataSource.page === parentId)
-		);
+		findForParent = vi.fn((_parent: string, parentId: string) => Object.values(data).filter((dataSource) => dataSource.parent.id === parentId));
 
 		mockStore = {
 			$id: 'dataSources',
@@ -83,45 +79,45 @@ describe('useDataSources', () => {
 	});
 
 	it('should return only data sources matching the page ID', () => {
-		const { dataSources } = useDataSources({ parent: 'page', pageId });
+		const { dataSources } = useDataSources({ parent: 'page', parentId });
 
-		expect(dataSources.value).toEqual([{ id: 'dataSource-1', page: pageId, device: 'device-1', channel: 'channel-1', property: 'property-1' }]);
+		expect(dataSources.value).toEqual([{ id: 'dataSource-1', parent: { type: 'page', id: parentId } }]);
 	});
 
 	it('should call fetchDataSource', async () => {
-		const { fetchDataSources } = useDataSources({ parent: 'page', pageId });
+		const { fetchDataSources } = useDataSources({ parent: 'page', parentId });
 
 		await fetchDataSources();
 
-		expect(fetch).toHaveBeenCalledWith({ parent: 'page', pageId });
+		expect(fetch).toHaveBeenCalledWith({ parent: { type: 'page', id: parentId } });
 	});
 
-	it('should return areLoading = true if fetching includes pageId', () => {
-		semaphore.value.fetching.items.push(pageId);
+	it('should return areLoading = true if fetching includes parentId', () => {
+		semaphore.value.fetching.items.push(parentId);
 
-		const { areLoading } = useDataSources({ parent: 'page', pageId });
+		const { areLoading } = useDataSources({ parent: 'page', parentId });
 
 		expect(areLoading.value).toBe(true);
 	});
 
-	it('should return areLoading = false if firstLoad includes pageId', () => {
-		firstLoad.value.push(pageId);
+	it('should return areLoading = false if firstLoad includes parentId', () => {
+		firstLoad.value.push(parentId);
 
-		const { areLoading } = useDataSources({ parent: 'page', pageId });
+		const { areLoading } = useDataSources({ parent: 'page', parentId });
 
 		expect(areLoading.value).toBe(false);
 	});
 
-	it('should return loaded = true if firstLoad includes pageId', () => {
-		firstLoad.value.push(pageId);
+	it('should return loaded = true if firstLoad includes parentId', () => {
+		firstLoad.value.push(parentId);
 
-		const { loaded } = useDataSources({ parent: 'page', pageId });
+		const { loaded } = useDataSources({ parent: 'page', parentId });
 
 		expect(loaded.value).toBe(true);
 	});
 
-	it('should return loaded = false if firstLoad does not include pageId', () => {
-		const { loaded } = useDataSources({ parent: 'page', pageId });
+	it('should return loaded = false if firstLoad does not include parentId', () => {
+		const { loaded } = useDataSources({ parent: 'page', parentId });
 
 		expect(loaded.value).toBe(false);
 	});

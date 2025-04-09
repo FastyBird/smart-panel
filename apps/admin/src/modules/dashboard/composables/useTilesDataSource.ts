@@ -6,10 +6,8 @@ import { cloneDeep, isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager } from '../../../common';
-import type { ICard } from '../store/cards.store.types';
 import { tilesStoreKey } from '../store/keys';
-import type { IPage } from '../store/pages.store.types';
-import type { ITile, TileParentTypeMap } from '../store/tiles.store.types';
+import type { ITile } from '../store/tiles.store.types';
 
 import type { ITilesFilter, IUseTilesDataSource } from './types';
 
@@ -18,25 +16,12 @@ export const defaultTilesFilter: ITilesFilter = {
 	types: [],
 };
 
-interface IUsePageTilesDataSourceProps {
-	parent: 'page';
-	pageId: IPage['id'];
+interface IUseTilesDataSourceProps {
+	parent: string;
+	parentId: string;
 }
 
-interface IUseCardTilesDataSourceProps {
-	parent: 'card';
-	pageId: IPage['id'];
-	cardId: ICard['id'];
-}
-
-type IUseTilesDataSourceProps = IUsePageTilesDataSourceProps | IUseCardTilesDataSourceProps;
-
-export const useTilesDataSource = <T extends keyof TileParentTypeMap>(props: IUseTilesDataSourceProps & { parent: T }): IUseTilesDataSource<T> => {
-	const is = {
-		page: (p: IUseTilesDataSourceProps): p is IUsePageTilesDataSourceProps => p.parent === 'page',
-		card: (p: IUseTilesDataSourceProps): p is IUseCardTilesDataSourceProps => p.parent === 'card',
-	};
-
+export const useTilesDataSource = (props: IUseTilesDataSourceProps): IUseTilesDataSource => {
 	const storesManager = injectStoresManager();
 
 	const tilesStore = storesManager.getStore(tilesStoreKey);
@@ -53,27 +38,19 @@ export const useTilesDataSource = <T extends keyof TileParentTypeMap>(props: IUs
 		return filters.value.search !== defaultTilesFilter.search || !isEqual(filters.value.types, defaultTilesFilter.types);
 	});
 
-	const sortBy = ref<'row' | 'col' | 'type'>('row');
+	const sortBy = ref<'row' | 'col' | 'rowSpan' | 'colSpan' | 'type'>('row');
 
 	const sortDir = ref<'ascending' | 'descending' | null>('ascending');
 
-	const tiles = computed<TileParentTypeMap[T][]>((): TileParentTypeMap[T][] => {
-		if (is.card(props)) {
-			return orderBy<TileParentTypeMap[T]>(
-				tilesStore.findForParent(props.parent, props.cardId).filter((tile) => !tile.draft) as TileParentTypeMap[T][],
-				[(tile: ITile) => tile[sortBy.value as keyof ITile] ?? ''],
-				[sortDir.value === 'ascending' ? 'asc' : 'desc']
-			);
-		} else {
-			return orderBy<TileParentTypeMap[T]>(
-				tilesStore.findForParent(props.parent, props.pageId).filter((tile) => !tile.draft) as TileParentTypeMap[T][],
-				[(tile: ITile) => tile[sortBy.value as keyof ITile] ?? ''],
-				[sortDir.value === 'ascending' ? 'asc' : 'desc']
-			);
-		}
+	const tiles = computed<ITile[]>((): ITile[] => {
+		return orderBy<ITile>(
+			tilesStore.findForParent(props.parent, props.parentId).filter((tile) => !tile.draft),
+			[(tile: ITile) => tile[sortBy.value as keyof ITile] ?? ''],
+			[sortDir.value === 'ascending' ? 'asc' : 'desc']
+		);
 	});
 
-	const tilesPaginated = computed<TileParentTypeMap[T][]>((): TileParentTypeMap[T][] => {
+	const tilesPaginated = computed<ITile[]>((): ITile[] => {
 		const start = (paginatePage.value - 1) * paginateSize.value;
 		const end = start + paginateSize.value;
 
@@ -81,51 +58,27 @@ export const useTilesDataSource = <T extends keyof TileParentTypeMap>(props: IUs
 	});
 
 	const fetchTiles = async (): Promise<void> => {
-		if (is.card(props)) {
-			await tilesStore.fetch({ parent: props.parent, pageId: props.pageId, cardId: props.cardId });
-		} else {
-			await tilesStore.fetch({ parent: props.parent, pageId: props.pageId });
-		}
+		await tilesStore.fetch({ parent: { type: props.parent, id: props.parentId } });
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
-		if (is.card(props)) {
-			if (semaphore.value.fetching.items.includes(props.cardId)) {
-				return true;
-			}
-
-			if (firstLoad.value.includes(props.cardId)) {
-				return false;
-			}
-
-			return semaphore.value.fetching.items.includes(props.cardId);
-		} else {
-			if (semaphore.value.fetching.items.includes(props.pageId)) {
-				return true;
-			}
-
-			if (firstLoad.value.includes(props.pageId)) {
-				return false;
-			}
-
-			return semaphore.value.fetching.items.includes(props.pageId);
+		if (semaphore.value.fetching.items.includes(props.parentId)) {
+			return true;
 		}
+
+		if (firstLoad.value.includes(props.parentId)) {
+			return false;
+		}
+
+		return semaphore.value.fetching.items.includes(props.parentId);
 	});
 
 	const loaded = computed<boolean>((): boolean => {
-		if (is.card(props)) {
-			return firstLoad.value.includes(props.cardId);
-		} else {
-			return firstLoad.value.includes(props.pageId);
-		}
+		return firstLoad.value.includes(props.parentId);
 	});
 
 	const totalRows = computed<number>(() => {
-		if (is.card(props)) {
-			return tilesStore.findForParent(props.parent, props.cardId).filter((tile) => !tile.draft).length;
-		} else {
-			return tilesStore.findForParent(props.parent, props.pageId).filter((tile) => !tile.draft).length;
-		}
+		return tilesStore.findForParent(props.parent, props.parentId).filter((tile) => !tile.draft).length;
 	});
 
 	const resetFilter = (): void => {

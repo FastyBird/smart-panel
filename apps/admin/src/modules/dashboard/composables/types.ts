@@ -1,18 +1,40 @@
 import type { ComputedRef, Ref } from 'vue';
 
-import type { ICard } from '../store/cards.store.types';
-import type { DataSourceParentTypeMap, IDataSource } from '../store/dataSources.store.types';
-import type { IPage } from '../store/pages.store.types';
-import type { ITile, TileParentTypeMap } from '../store/tiles.store.types';
+import type { FormInstance } from 'element-plus';
 
-export interface ICardsFilter {
-	search: string | undefined;
-	pages: IPage['id'][];
-}
+import type { IPlugin } from '../../../common';
+import type { FormResultType } from '../dashboard.constants';
+import type {
+	IDataSourcePluginsComponents,
+	IDataSourcePluginsSchemas,
+	IPagePluginsComponents,
+	IPagePluginsSchemas,
+	ITilePluginsComponents,
+	ITilePluginsSchemas,
+} from '../dashboard.types';
+import type { IDataSource } from '../store/dataSources.store.types';
+import type { IPage } from '../store/pages.store.types';
+import type { ITile } from '../store/tiles.store.types';
 
 export interface IPagesFilter {
 	search: string | undefined;
 	types: string[];
+}
+
+export interface IPageAddForm {
+	id: IPage['id'];
+	type: string;
+	title: string;
+	icon: string;
+	order: number;
+}
+
+export interface IPageEditForm {
+	id: IPage['id'];
+	type: string;
+	title: string;
+	icon: string;
+	order: number;
 }
 
 export interface ITilesFilter {
@@ -20,42 +42,37 @@ export interface ITilesFilter {
 	types: string[];
 }
 
+export interface ITileAddForm {
+	id: ITile['id'];
+	type: string;
+	row: number;
+	col: number;
+	rowSpan: number;
+	colSpan: number;
+}
+
+export interface ITileEditForm {
+	id: ITile['id'];
+	type: string;
+	row: number;
+	col: number;
+	rowSpan: number;
+	colSpan: number;
+}
+
 export interface IDataSourcesFilter {
 	search: string | undefined;
 	types: string[];
 }
 
-export interface IUseCard {
-	card: ComputedRef<ICard | null>;
-	isLoading: ComputedRef<boolean>;
-	fetchCard: () => Promise<void>;
+export interface IDataSourceAddForm {
+	id: IDataSource['id'];
+	type: string;
 }
 
-export interface IUseCards {
-	cards: ComputedRef<ICard[]>;
-	areLoading: ComputedRef<boolean>;
-	loaded: ComputedRef<boolean>;
-	fetchCards: () => Promise<void>;
-}
-
-export interface IUseCardsDataSource {
-	cards: ComputedRef<ICard[]>;
-	cardsPaginated: ComputedRef<ICard[]>;
-	totalRows: ComputedRef<number>;
-	areLoading: ComputedRef<boolean>;
-	loaded: ComputedRef<boolean>;
-	fetchCards: () => Promise<void>;
-	filters: Ref<ICardsFilter>;
-	filtersActive: ComputedRef<boolean>;
-	paginateSize: Ref<number>;
-	paginatePage: Ref<number>;
-	sortBy: Ref<'title' | 'order'>;
-	sortDir: Ref<'ascending' | 'descending' | null>;
-	resetFilter: () => void;
-}
-
-export interface IUseCardsActions {
-	remove: (id: ICard['id']) => Promise<void>;
+export interface IDataSourceEditForm {
+	id: IDataSource['id'];
+	type: string;
 }
 
 export interface IUsePage {
@@ -95,22 +112,50 @@ export interface IUsePageIcon {
 	icon: ComputedRef<string>;
 }
 
-export interface IUseTile<T extends keyof TileParentTypeMap> {
-	tile: ComputedRef<TileParentTypeMap[T] | null>;
+export interface IUsePageAddForm {
+	model: IPageAddForm;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'added'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUsePageEditForm {
+	model: IPageEditForm;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'added' | 'saved'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUsePagesPlugin {
+	plugin: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined>;
+}
+
+export interface IUsePagesPlugins {
+	plugins: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>[]>;
+	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
+	getByType: (type: IPlugin['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined;
+}
+
+export interface IUseTile {
+	tile: ComputedRef<ITile | null>;
 	isLoading: ComputedRef<boolean>;
 	fetchTile: () => Promise<void>;
 }
 
-export interface IUseTiles<T extends keyof TileParentTypeMap> {
-	tiles: ComputedRef<TileParentTypeMap[T][]>;
+export interface IUseTiles {
+	tiles: ComputedRef<ITile[]>;
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
 	fetchTiles: () => Promise<void>;
 }
 
-export interface IUseTilesDataSource<T extends keyof TileParentTypeMap> {
-	tiles: ComputedRef<TileParentTypeMap[T][]>;
-	tilesPaginated: ComputedRef<TileParentTypeMap[T][]>;
+export interface IUseTilesDataSource {
+	tiles: ComputedRef<ITile[]>;
+	tilesPaginated: ComputedRef<ITile[]>;
 	totalRows: ComputedRef<number>;
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
@@ -119,7 +164,7 @@ export interface IUseTilesDataSource<T extends keyof TileParentTypeMap> {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'row' | 'col' | 'type'>;
+	sortBy: Ref<'row' | 'col' | 'rowSpan' | 'colSpan' | 'type'>;
 	sortDir: Ref<'ascending' | 'descending' | null>;
 	resetFilter: () => void;
 }
@@ -128,22 +173,50 @@ export interface IUseTilesActions {
 	remove: (id: ITile['id']) => Promise<void>;
 }
 
-export interface IUseDataSource<T extends keyof DataSourceParentTypeMap> {
-	dataSource: ComputedRef<DataSourceParentTypeMap[T] | null>;
+export interface IUseTileAddForm {
+	model: ITileAddForm;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'added'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUseTileEditForm {
+	model: ITileEditForm;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'added' | 'saved'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUseTilesPlugin {
+	plugin: ComputedRef<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined>;
+}
+
+export interface IUseTilesPlugins {
+	plugins: ComputedRef<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>[]>;
+	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
+	getByType: (type: IPlugin['type']) => IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
+}
+
+export interface IUseDataSource {
+	dataSource: ComputedRef<IDataSource | null>;
 	isLoading: ComputedRef<boolean>;
 	fetchDataSource: () => Promise<void>;
 }
 
-export interface IUseDataSources<T extends keyof DataSourceParentTypeMap> {
-	dataSources: ComputedRef<DataSourceParentTypeMap[T][]>;
+export interface IUseDataSources {
+	dataSources: ComputedRef<IDataSource[]>;
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
 	fetchDataSources: () => Promise<void>;
 }
 
-export interface IUseDataSourcesDataSource<T extends keyof DataSourceParentTypeMap> {
-	dataSources: ComputedRef<DataSourceParentTypeMap[T][]>;
-	dataSourcesPaginated: ComputedRef<DataSourceParentTypeMap[T][]>;
+export interface IUseDataSourcesDataSource {
+	dataSources: ComputedRef<IDataSource[]>;
+	dataSourcesPaginated: ComputedRef<IDataSource[]>;
 	totalRows: ComputedRef<number>;
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
@@ -159,4 +232,32 @@ export interface IUseDataSourcesDataSource<T extends keyof DataSourceParentTypeM
 
 export interface IUseDataSourcesActions {
 	remove: (id: IDataSource['id']) => Promise<void>;
+}
+
+export interface IUseDataSourceAddForm {
+	model: IDataSourceAddForm;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'added'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUseDataSourceEditForm {
+	model: IDataSourceEditForm;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'added' | 'saved'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUseDataSourcesPlugin {
+	plugin: ComputedRef<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>;
+}
+
+export interface IUseDataSourcesPlugins {
+	plugins: ComputedRef<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas>[]>;
+	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
+	getByType: (type: IPlugin['type']) => IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
 }

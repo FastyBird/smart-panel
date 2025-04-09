@@ -1,17 +1,10 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import { PageBaseSchema, PageCreateBaseReqSchema, PageUpdateBaseReqSchema } from './pages.store.schemas';
-import type {
-	IPageBase,
-	IPageCreateBaseReq,
-	IPageRes,
-	IPageUpdateBaseReq,
-	IPagesAddActionPayload,
-	IPagesEditActionPayload,
-} from './pages.store.types';
+import { PageCreateReqSchema, PageSchema, PageUpdateReqSchema } from './pages.store.schemas';
+import type { IPage, IPageCreateReq, IPageRes, IPageUpdateReq, IPagesAddActionPayload, IPagesEditActionPayload } from './pages.store.types';
 
-export const transformPageResponse = <T extends IPageBase = IPageBase>(response: IPageRes, schema: typeof PageBaseSchema): T => {
+export const transformPageResponse = <T extends IPage = IPage>(response: IPageRes, schema: typeof PageSchema): T => {
 	const parsed = schema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
@@ -21,9 +14,9 @@ export const transformPageResponse = <T extends IPageBase = IPageBase>(response:
 	return parsed.data as T;
 };
 
-export const transformPageCreateRequest = <T extends IPageCreateBaseReq = IPageCreateBaseReq>(
+export const transformPageCreateRequest = <T extends IPageCreateReq = IPageCreateReq>(
 	property: IPagesAddActionPayload['data'],
-	schema: typeof PageCreateBaseReqSchema
+	schema: typeof PageCreateReqSchema
 ): T => {
 	const parsed = schema.safeParse(camelToSnake(property));
 
@@ -34,9 +27,9 @@ export const transformPageCreateRequest = <T extends IPageCreateBaseReq = IPageC
 	return parsed.data as T;
 };
 
-export const transformPageUpdateRequest = <T extends IPageUpdateBaseReq = IPageUpdateBaseReq>(
+export const transformPageUpdateRequest = <T extends IPageUpdateReq = IPageUpdateReq>(
 	property: IPagesEditActionPayload['data'],
-	schema: typeof PageUpdateBaseReqSchema
+	schema: typeof PageUpdateReqSchema
 ): T => {
 	const parsed = schema.safeParse(camelToSnake(property));
 

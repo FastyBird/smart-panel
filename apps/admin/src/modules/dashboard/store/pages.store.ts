@@ -6,19 +6,25 @@ import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import type { operations } from '../../../openapi';
+import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
+import { usePagesPlugins } from '../composables/usePagesPlugins';
+import { useTilesPlugins } from '../composables/useTilesPlugins';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
 
-import type { ICardRes } from './cards.store.types';
-import { transformCardResponse } from './cards.transformers';
-import { getDataSourcesSchemas } from './dataSources.mappers';
-import { type IPageDeviceChannelDataSourceRes } from './dataSources.store.types';
+import { DataSourceSchema } from './dataSources.store.schemas';
+import type { IDataSourceRes } from './dataSources.store.types';
 import { transformDataSourceResponse } from './dataSources.transformers';
-import { cardsStoreKey, dataSourcesStoreKey, tilesStoreKey } from './keys';
-import { getPagesSchemas } from './pages.mappers';
-import { PagesAddActionPayloadSchema, PagesEditActionPayloadSchema } from './pages.store.schemas';
+import { dataSourcesStoreKey, tilesStoreKey } from './keys';
+import {
+	PageCreateReqSchema,
+	PageSchema,
+	PageUpdateReqSchema,
+	PagesAddActionPayloadSchema,
+	PagesEditActionPayloadSchema,
+} from './pages.store.schemas';
 import type {
-	IPageBase,
+	IPage,
 	IPageCreateReq,
 	IPageUpdateReq,
 	IPagesAddActionPayload,
@@ -34,8 +40,8 @@ import type {
 	PagesStoreSetup,
 } from './pages.store.types';
 import { transformPageCreateRequest, transformPageResponse, transformPageUpdateRequest } from './pages.transformers';
-import { getTilesSchemas } from './tiles.mappers';
-import { type IPageTileRes } from './tiles.store.types';
+import { TileSchema } from './tiles.store.schemas';
+import type { ITileRes } from './tiles.store.types';
 import { transformTileResponse } from './tiles.transformers';
 
 const defaultSemaphore: IPagesStateSemaphore = {
@@ -48,8 +54,12 @@ const defaultSemaphore: IPagesStateSemaphore = {
 	deleting: [],
 };
 
-export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('pages_module-pages', (): PagesStoreSetup => {
+export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('dashboard_module-pages', (): PagesStoreSetup => {
 	const backend = useBackend();
+
+	const { getByType: getPluginByType } = usePagesPlugins();
+	const { getByType: getTilePluginByType } = useTilesPlugins();
+	const { getByType: getDataSourcePluginByType } = useDataSourcesPlugins();
 
 	const storesManager = injectStoresManager();
 
@@ -57,48 +67,48 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 
 	const firstLoad = ref<boolean>(false);
 
-	const data = ref<{ [key: IPageBase['id']]: IPageBase }>({});
+	const data = ref<{ [key: IPage['id']]: IPage }>({});
 
 	const firstLoadFinished = (): boolean => firstLoad.value;
 
-	const getting = (id: IPageBase['id']): boolean => semaphore.value.fetching.item.includes(id);
+	const getting = (id: IPage['id']): boolean => semaphore.value.fetching.item.includes(id);
 
 	const fetching = (): boolean => semaphore.value.fetching.items;
 
-	const findAll = (): IPageBase[] => Object.values(data.value);
+	const findAll = (): IPage[] => Object.values(data.value);
 
-	const findById = (id: IPageBase['id']): IPageBase | null => (id in data.value ? data.value[id] : null);
+	const findById = (id: IPage['id']): IPage | null => (id in data.value ? data.value[id] : null);
 
-	const pendingGetPromises: Record<string, Promise<IPageBase>> = {};
+	const pendingGetPromises: Record<string, Promise<IPage>> = {};
 
-	const pendingFetchPromises: Record<string, Promise<IPageBase[]>> = {};
+	const pendingFetchPromises: Record<string, Promise<IPage[]>> = {};
 
-	const set = (payload: IPagesSetActionPayload): IPageBase => {
-		const schemas = getPagesSchemas(payload.data.type);
+	const set = (payload: IPagesSetActionPayload): IPage => {
+		const plugin = getPluginByType(payload.data.type);
 
 		if (payload.id && data.value && payload.id in data.value) {
-			const merged = { ...data.value[payload.id], ...payload.data };
+			const parsed = (plugin?.schemas?.pageSchema || PageSchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
-			const parsedPage = schemas.page.safeParse(merged);
+			if (!parsed.success) {
+				console.error('Schema validation failed with:', parsed.error);
 
-			if (!parsedPage.success) {
 				throw new DashboardValidationException('Failed to insert page.');
 			}
 
-			return (data.value[parsedPage.data.id] = parsedPage.data);
+			return (data.value[parsed.data.id] = parsed.data);
 		}
 
-		const merged = { ...payload.data, id: payload.id };
+		const parsed = (plugin?.schemas?.pageSchema || PageSchema).safeParse({ ...payload.data, id: payload.id });
 
-		const parsedPage = schemas.page.safeParse(merged);
+		if (!parsed.success) {
+			console.error('Schema validation failed with:', parsed.error);
 
-		if (!parsedPage.success) {
 			throw new DashboardValidationException('Failed to insert page.');
 		}
 
 		data.value = data.value ?? {};
 
-		return (data.value[parsedPage.data.id] = parsedPage.data);
+		return (data.value[parsed.data.id] = parsed.data);
 	};
 
 	const unset = (payload: IPagesUnsetActionPayload): void => {
@@ -111,12 +121,12 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 		return;
 	};
 
-	const get = async (payload: IPagesGetActionPayload): Promise<IPageBase> => {
+	const get = async (payload: IPagesGetActionPayload): Promise<IPage> => {
 		if (payload.id in pendingGetPromises) {
 			return pendingGetPromises[payload.id];
 		}
 
-		const fetchPromise = (async (): Promise<IPageBase> => {
+		const fetchPromise = (async (): Promise<IPage> => {
 			if (semaphore.value.fetching.item.includes(payload.id)) {
 				throw new DashboardApiException('Already fetching page.');
 			}
@@ -136,25 +146,21 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const schemas = getPagesSchemas(responseData.data.type);
+				const plugin = getPluginByType(responseData.data.type);
 
-				const parsed = transformPageResponse(responseData.data, schemas.page);
+				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
 
-				data.value[parsed.id] = parsed;
+				data.value[transformed.id] = transformed;
 
-				if ('data_source' in responseData.data) {
-					insertDataSourceRelations(parsed, responseData.data.data_source);
+				if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+					insertDataSourceRelations(transformed, responseData.data.data_source);
 				}
 
-				if ('tiles' in responseData.data) {
-					insertTilesRelations(parsed, responseData.data.tiles);
+				if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+					insertTilesRelations(transformed, responseData.data.tiles);
 				}
 
-				if ('cards' in responseData.data) {
-					insertCardsRelations(parsed, responseData.data.cards);
-				}
-
-				return parsed;
+				return transformed;
 			}
 
 			let errorReason: string | null = 'Failed to fetch page.';
@@ -175,46 +181,44 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 		}
 	};
 
-	const fetch = async (): Promise<IPageBase[]> => {
+	const fetch = async (): Promise<IPage[]> => {
 		if ('all' in pendingFetchPromises) {
 			return pendingFetchPromises['all'];
 		}
 
-		const fetchPromise = (async (): Promise<IPageBase[]> => {
+		const fetchPromise = (async (): Promise<IPage[]> => {
 			if (semaphore.value.fetching.items) {
 				throw new DashboardApiException('Already fetching pages.');
 			}
 
 			semaphore.value.fetching.items = true;
 
+			firstLoad.value = false;
+
 			const { data: responseData, error, response } = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages`);
 
 			semaphore.value.fetching.items = false;
 
 			if (typeof responseData !== 'undefined') {
+				firstLoad.value = true;
+
 				data.value = Object.fromEntries(
 					responseData.data.map((page) => {
-						const schemas = getPagesSchemas(page.type);
+						const plugin = getPluginByType(page.type);
 
-						const parsed = transformPageResponse(page, schemas.page);
+						const transformed = transformPageResponse(page, plugin?.schemas?.pageSchema || PageSchema);
 
-						if ('data_source' in page) {
-							insertDataSourceRelations(parsed, page.data_source);
+						if ('data_source' in page && Array.isArray(page.data_source)) {
+							insertDataSourceRelations(transformed, page.data_source);
 						}
 
-						if ('tiles' in page) {
-							insertTilesRelations(parsed, page.tiles);
+						if ('tiles' in page && Array.isArray(page.tiles)) {
+							insertTilesRelations(transformed, page.tiles);
 						}
 
-						if ('cards' in page) {
-							insertCardsRelations(parsed, page.cards);
-						}
-
-						return [parsed.id, parsed];
+						return [transformed.id, transformed];
 					})
 				);
-
-				firstLoad.value = true;
 
 				return Object.values(data.value);
 			}
@@ -237,36 +241,34 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 		}
 	};
 
-	const add = async (payload: IPagesAddActionPayload): Promise<IPageBase> => {
+	const add = async (payload: IPagesAddActionPayload): Promise<IPage> => {
 		const parsedPayload = PagesAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
 			throw new DashboardValidationException('Failed to add page.');
 		}
 
-		const schemas = getPagesSchemas(payload.data.type);
+		const plugin = getPluginByType(payload.data.type);
 
-		const merged = {
-			...parsedPayload.data.data,
+		const parsedNewItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse({
+			...payload.data,
 			id: parsedPayload.data.id,
 			draft: parsedPayload.data.draft,
 			createdAt: new Date(),
-		};
+		});
 
-		const parsedNewPage = schemas.page.safeParse(merged);
-
-		if (!parsedNewPage.success) {
+		if (!parsedNewItem.success) {
 			throw new DashboardValidationException('Failed to add page.');
 		}
 
-		semaphore.value.creating.push(parsedNewPage.data.id);
+		semaphore.value.creating.push(parsedNewItem.data.id);
 
-		data.value[parsedNewPage.data.id] = parsedNewPage.data;
+		data.value[parsedNewItem.data.id] = parsedNewItem.data;
 
-		if (parsedNewPage.data.draft) {
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewPage.data.id);
+		if (parsedNewItem.data.draft) {
+			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
-			return parsedNewPage.data;
+			return parsedNewItem.data;
 		} else {
 			const {
 				data: responseData,
@@ -274,34 +276,30 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 				response,
 			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
 				body: {
-					data: transformPageCreateRequest<IPageCreateReq>({ ...parsedNewPage.data, ...{ id: payload.id } }, schemas.createPageReq),
+					data: transformPageCreateRequest<IPageCreateReq>(parsedNewItem.data, plugin?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
 				},
 			});
 
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewPage.data.id);
+			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const parsed = transformPageResponse(responseData.data, schemas.page);
+				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
 
-				data.value[parsed.id] = parsed;
+				data.value[transformed.id] = transformed;
 
-				if ('data_source' in responseData.data) {
-					insertDataSourceRelations(parsed, responseData.data.data_source);
+				if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+					insertDataSourceRelations(transformed, responseData.data.data_source);
 				}
 
-				if ('tiles' in responseData.data) {
-					insertTilesRelations(parsed, responseData.data.tiles);
+				if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+					insertTilesRelations(transformed, responseData.data.tiles);
 				}
 
-				if ('cards' in responseData.data) {
-					insertCardsRelations(parsed, responseData.data.cards);
-				}
-
-				return parsed;
+				return transformed;
 			}
 
 			// Record could not be created on api, we have to remove it from database
-			delete data.value[parsedNewPage.data.id];
+			delete data.value[parsedNewItem.data.id];
 
 			let errorReason: string | null = 'Failed to create page.';
 
@@ -313,13 +311,7 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 		}
 	};
 
-	const edit = async (payload: IPagesEditActionPayload): Promise<IPageBase> => {
-		const parsedPayload = PagesEditActionPayloadSchema.safeParse(payload);
-
-		if (!parsedPayload.success) {
-			throw new DashboardValidationException('Failed to edit page.');
-		}
-
+	const edit = async (payload: IPagesEditActionPayload): Promise<IPage> => {
 		if (semaphore.value.updating.includes(payload.id)) {
 			throw new DashboardException('Page is already being updated.');
 		}
@@ -328,27 +320,31 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 			throw new DashboardException('Failed to get page data to update.');
 		}
 
-		const schemas = getPagesSchemas(data.value[payload.id].type);
+		const parsedPayload = PagesEditActionPayloadSchema.safeParse(payload);
 
-		const merged = {
+		if (!parsedPayload.success) {
+			throw new DashboardValidationException('Failed to edit page.');
+		}
+
+		const plugin = getPluginByType(payload.data.type);
+
+		const parsedEditedItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse({
 			...data.value[payload.id],
 			...omitBy(parsedPayload.data.data, isUndefined),
-		};
+		});
 
-		const parsedEditedPage = schemas.page.safeParse(merged);
-
-		if (!parsedEditedPage.success) {
+		if (!parsedEditedItem.success) {
 			throw new DashboardValidationException('Failed to edit page.');
 		}
 
 		semaphore.value.updating.push(payload.id);
 
-		data.value[parsedEditedPage.data.id] = parsedEditedPage.data;
+		data.value[parsedEditedItem.data.id] = parsedEditedItem.data;
 
-		if (parsedEditedPage.data.draft) {
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedPage.data.id);
+		if (parsedEditedItem.data.draft) {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedItem.data.id);
 
-			return parsedEditedPage.data;
+			return parsedEditedItem.data;
 		} else {
 			const {
 				data: responseData,
@@ -361,18 +357,18 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 					},
 				},
 				body: {
-					data: transformPageUpdateRequest<IPageUpdateReq>(parsedEditedPage.data, schemas.updatePageReq),
+					data: transformPageUpdateRequest<IPageUpdateReq>(parsedEditedItem.data, plugin?.schemas?.pageUpdateReqSchema || PageUpdateReqSchema),
 				},
 			});
 
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const parsed = transformPageResponse(responseData.data, schemas.page);
+				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
 
-				data.value[parsed.id] = parsed;
+				data.value[transformed.id] = transformed;
 
-				return parsed;
+				return transformed;
 			}
 
 			// Updating record on api failed, we need to refresh record
@@ -388,7 +384,7 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 		}
 	};
 
-	const save = async (payload: IPagesSaveActionPayload): Promise<IPageBase> => {
+	const save = async (payload: IPagesSaveActionPayload): Promise<IPage> => {
 		if (semaphore.value.updating.includes(payload.id)) {
 			throw new DashboardException('Page is already being saved.');
 		}
@@ -397,11 +393,11 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 			throw new DashboardException('Failed to get page data to save.');
 		}
 
-		const schemas = getPagesSchemas(data.value[payload.id].type);
+		const plugin = getPluginByType(data.value[payload.id].type);
 
-		const parsedSavePage = schemas.page.safeParse(data.value[payload.id]);
+		const parsedSaveItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse(data.value[payload.id]);
 
-		if (!parsedSavePage.success) {
+		if (!parsedSaveItem.success) {
 			throw new DashboardValidationException('Failed to save page.');
 		}
 
@@ -413,30 +409,26 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 			response,
 		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
 			body: {
-				data: transformPageCreateRequest<IPageCreateReq>({ ...parsedSavePage.data, ...{ id: payload.id } }, schemas.createPageReq),
+				data: transformPageCreateRequest<IPageCreateReq>(parsedSaveItem.data, plugin?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
 			},
 		});
 
 		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const parsed = transformPageResponse(responseData.data, schemas.page);
+			const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
 
-			data.value[parsed.id] = parsed;
+			data.value[transformed.id] = transformed;
 
-			if ('data_source' in responseData.data) {
-				insertDataSourceRelations(parsed, responseData.data.data_source);
+			if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+				insertDataSourceRelations(transformed, responseData.data.data_source);
 			}
 
-			if ('tiles' in responseData.data) {
-				insertTilesRelations(parsed, responseData.data.tiles);
+			if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+				insertTilesRelations(transformed, responseData.data.tiles);
 			}
 
-			if ('cards' in responseData.data) {
-				insertCardsRelations(parsed, responseData.data.cards);
-			}
-
-			return parsed;
+			return transformed;
 		}
 
 		let errorReason: string | null = 'Failed to create page.';
@@ -477,35 +469,18 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 
 			if (response.status === 204) {
-				const cardsStore = storesManager.getStore(cardsStoreKey);
 				const tilesStore = storesManager.getStore(tilesStoreKey);
 				const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
-				dataSourcesStore.unset({ parent: 'page', pageId: payload.id });
+				dataSourcesStore.unset({ parent: { type: 'page', id: payload.id } });
 
 				const tiles = tilesStore.findForParent('page', payload.id);
 
 				tiles.forEach((tile) => {
-					dataSourcesStore.unset({ parent: 'tile', pageId: payload.id, tileId: tile.id });
+					dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
 				});
 
-				tilesStore.unset({ parent: 'page', pageId: payload.id });
-
-				const cards = cardsStore.findForPage(payload.id);
-
-				cards.forEach((card) => {
-					dataSourcesStore.unset({ parent: 'card', pageId: payload.id, cardId: card.id });
-
-					const tiles = tilesStore.findForParent('card', card.id);
-
-					tiles.forEach((tile) => {
-						dataSourcesStore.unset({ parent: 'tile', pageId: payload.id, cardId: card.id, tileId: tile.id });
-					});
-
-					tilesStore.unset({ parent: 'card', pageId: payload.id, cardId: card.id });
-				});
-
-				cardsStore.unset({ pageId: payload.id });
+				tilesStore.unset({ parent: { type: 'page', id: payload.id } });
 
 				return true;
 			}
@@ -525,105 +500,42 @@ export const usePages = defineStore<'pages_module-pages', PagesStoreSetup>('page
 		return true;
 	};
 
-	const insertDataSourceRelations = (page: IPageBase, dataSources: IPageDeviceChannelDataSourceRes[]): void => {
+	const insertDataSourceRelations = (page: IPage, dataSources: IDataSourceRes[]): void => {
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
 		dataSources.forEach((dataSource) => {
-			const parentSchemas = getDataSourcesSchemas('page', dataSource.type);
+			const plugin = getDataSourcePluginByType(dataSource.type);
 
 			dataSourcesStore.set({
 				id: dataSource.id,
-				parent: 'page',
-				pageId: page.id,
-				data: transformDataSourceResponse({ ...dataSource, parent: 'page' }, parentSchemas.dataSource),
+				parent: { type: 'page', id: page.id },
+				data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
 			});
 		});
 
 		dataSourcesStore.firstLoad.push(page.id);
 	};
 
-	const insertCardsRelations = (page: IPageBase, cards: ICardRes[]): void => {
-		const cardsStore = storesManager.getStore(cardsStoreKey);
-		const tilesStore = storesManager.getStore(tilesStoreKey);
-		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
-
-		cards.forEach((card) => {
-			cardsStore.set({
-				id: card.id,
-				pageId: page.id,
-				data: transformCardResponse(card),
-			});
-
-			card.data_source.forEach((dataSource) => {
-				const parentSchemas = getDataSourcesSchemas('card', dataSource.type);
-
-				dataSourcesStore.set({
-					id: dataSource.id,
-					parent: 'card',
-					pageId: page.id,
-					cardId: card.id,
-					data: transformDataSourceResponse({ ...dataSource, parent: 'card' }, parentSchemas.dataSource),
-				});
-			});
-
-			dataSourcesStore.firstLoad.push(card.id);
-
-			card.tiles.forEach((tile) => {
-				const parentSchemas = getTilesSchemas('card', tile.type);
-
-				tilesStore.set({
-					id: tile.id,
-					parent: 'card',
-					pageId: page.id,
-					cardId: card.id,
-					data: transformTileResponse({ ...tile, parent: 'card' }, parentSchemas.tile),
-				});
-
-				tile.data_source.forEach((dataSource) => {
-					const parentSchemas = getDataSourcesSchemas('tile', dataSource.type);
-
-					dataSourcesStore.set({
-						id: dataSource.id,
-						parent: 'tile',
-						pageId: page.id,
-						cardId: card.id,
-						tileId: tile.id,
-						data: transformDataSourceResponse({ ...dataSource, parent: 'tile' }, parentSchemas.dataSource),
-					});
-				});
-
-				dataSourcesStore.firstLoad.push(tile.id);
-			});
-
-			tilesStore.firstLoad.push(card.id);
-		});
-
-		cardsStore.firstLoad.push(page.id);
-	};
-
-	const insertTilesRelations = (page: IPageBase, tiles: IPageTileRes[]): void => {
+	const insertTilesRelations = (page: IPage, tiles: ITileRes[]): void => {
 		const tilesStore = storesManager.getStore(tilesStoreKey);
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
 		tiles.forEach((tile) => {
-			const parentSchemas = getTilesSchemas('page', tile.type);
+			const plugin = getTilePluginByType(tile.type);
 
 			tilesStore.set({
 				id: tile.id,
-				parent: 'page',
-				pageId: page.id,
-				data: transformTileResponse({ ...tile, parent: 'page' }, parentSchemas.tile),
+				parent: { type: 'page', id: page.id },
+				data: transformTileResponse(tile, plugin?.schemas?.tileSchema || TileSchema),
 			});
 
 			tile.data_source.forEach((dataSource) => {
-				const parentSchemas = getDataSourcesSchemas('tile', dataSource.type);
+				const plugin = getDataSourcePluginByType(dataSource.type);
 
 				dataSourcesStore.set({
 					id: dataSource.id,
-					parent: 'tile',
-					pageId: page.id,
-					tileId: tile.id,
-					data: transformDataSourceResponse({ ...dataSource, parent: 'tile' }, parentSchemas.dataSource),
+					parent: { type: 'tile', id: tile.id },
+					data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
 				});
 			});
 

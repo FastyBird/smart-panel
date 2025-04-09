@@ -6,13 +6,14 @@ import type { IConfigLanguageStoreActions, IConfigLanguageStoreState } from './c
 import type { IConfigWeatherStoreActions, IConfigWeatherStoreState } from './config-weather.store.types';
 
 export const configAudioStoreKey: StoreInjectionKey<string, IConfigAudioStoreState, object, IConfigAudioStoreActions> =
-	Symbol('FB-ConfigModuleConfigAudio');
+	Symbol('FB-Module-ConfigModuleConfigAudio');
 
 export const configDisplayStoreKey: StoreInjectionKey<string, IConfigDisplayStoreState, object, IConfigDisplayStoreActions> =
-	Symbol('FB-ConfigModuleConfigDisplay');
+	Symbol('FB-Module-ConfigModuleConfigDisplay');
 
-export const configLanguageStoreKey: StoreInjectionKey<string, IConfigLanguageStoreState, object, IConfigLanguageStoreActions> =
-	Symbol('FB-ConfigModuleConfigLanguage');
+export const configLanguageStoreKey: StoreInjectionKey<string, IConfigLanguageStoreState, object, IConfigLanguageStoreActions> = Symbol(
+	'FB-Module-ConfigModuleConfigLanguage'
+);
 
 export const configWeatherStoreKey: StoreInjectionKey<string, IConfigWeatherStoreState, object, IConfigWeatherStoreActions> =
-	Symbol('FB-ConfigModuleConfigWeather');
+	Symbol('FB-Module-ConfigModuleConfigWeather');

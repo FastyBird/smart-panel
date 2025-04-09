@@ -3,12 +3,14 @@ import { createPinia, setActivePinia } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { IPlugin } from '../../../common';
+import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import { DashboardApiException } from '../dashboard.exceptions';
 
 import { useDataSources } from './dataSources.store';
-import type { IPageDataSourcesFetchActionPayload, IPageDataSourcesSetActionPayload, IPageDeviceChannelDataSource } from './dataSources.store.types';
+import type { IDataSource, IDataSourcesFetchActionPayload, IDataSourcesSetActionPayload } from './dataSources.store.types';
 
-const pageId = uuid();
+const parentId = uuid();
 const dsId = uuid();
 
 const mockBackendClient = {
@@ -17,6 +19,13 @@ const mockBackendClient = {
 	PATCH: vi.fn(),
 	DELETE: vi.fn(),
 };
+
+const mockGetPlugins = vi.fn().mockReturnValue([
+	{
+		type: 'some-datasource',
+		modules: [DASHBOARD_MODULE_NAME],
+	} as IPlugin,
+]);
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
@@ -27,6 +36,9 @@ vi.mock('../../../common', async () => {
 			client: mockBackendClient,
 		})),
 		getErrorReason: vi.fn(() => 'Some error'),
+		injectPluginsManager: vi.fn(() => ({
+			getPlugins: mockGetPlugins,
+		})),
 	};
 });
 
@@ -47,12 +59,11 @@ describe('DataSources Store', () => {
 				data: [
 					{
 						id: dsId,
-						type: 'device-channel',
-						device: uuid(),
-						channel: uuid(),
-						property: uuid(),
-						icon: 'test',
-						page: pageId,
+						type: 'some-datasource',
+						parent: {
+							type: 'page',
+							id: parentId,
+						},
 						created_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					},
@@ -60,11 +71,11 @@ describe('DataSources Store', () => {
 			},
 		});
 
-		const result = await store.fetch({ parent: 'page', pageId } satisfies IPageDataSourcesFetchActionPayload);
+		const result = await store.fetch({ parent: { type: 'page', id: parentId } } satisfies IDataSourcesFetchActionPayload);
 
-		expect(store.findForParent('page', pageId)).toHaveLength(1);
+		expect(store.findForParent('page', parentId)).toHaveLength(1);
 		expect(result[0].id).toBe(dsId);
-		expect(store.firstLoadFinished(pageId)).toBe(true);
+		expect(store.firstLoadFinished(parentId)).toBe(true);
 		expect(store.findAll('page')).toHaveLength(1);
 		expect(store.findById('page', dsId)).not.toBeNull();
 	});
@@ -75,40 +86,35 @@ describe('DataSources Store', () => {
 			response: { status: 500 },
 		});
 
-		await expect(store.fetch({ parent: 'page', pageId } satisfies IPageDataSourcesFetchActionPayload)).rejects.toThrow(DashboardApiException);
+		await expect(store.fetch({ parent: { type: 'page', id: parentId } } satisfies IDataSourcesFetchActionPayload)).rejects.toThrow(
+			DashboardApiException
+		);
 	});
 
 	it('should get data source by id', async () => {
 		const testDataSource = {
 			id: dsId,
-			type: 'device-channel',
-			device: uuid(),
-			channel: uuid(),
-			property: uuid(),
-			icon: 'icon',
-			page: pageId,
-			parent: 'page',
+			type: 'some-datasource',
+			parent: {
+				type: 'page',
+				id: parentId,
+			},
 			createdAt: new Date(),
 			updatedAt: null,
 		};
 
-		store.data[dsId] = testDataSource as unknown as IPageDeviceChannelDataSource;
+		store.data[dsId] = testDataSource as unknown as IDataSource;
 
 		const found = store.findById('page', dsId);
 		expect(found).toEqual(testDataSource);
 	});
 
 	it('should set a data source manually', () => {
-		const dummy: IPageDataSourcesSetActionPayload = {
+		const dummy: IDataSourcesSetActionPayload = {
 			id: dsId,
-			parent: 'page',
-			pageId,
+			parent: { type: 'page', id: parentId },
 			data: {
-				type: 'device-channel',
-				device: uuid(),
-				channel: uuid(),
-				property: uuid(),
-				icon: 'icon',
+				type: 'some-datasource',
 				createdAt: new Date(),
 			},
 		};
@@ -120,16 +126,11 @@ describe('DataSources Store', () => {
 	});
 
 	it('should unset data sources for a page', () => {
-		const dummy: IPageDataSourcesSetActionPayload = {
+		const dummy: IDataSourcesSetActionPayload = {
 			id: dsId,
-			parent: 'page',
-			pageId,
+			parent: { type: 'page', id: parentId },
 			data: {
-				type: 'device-channel',
-				device: uuid(),
-				channel: uuid(),
-				property: uuid(),
-				icon: 'icon',
+				type: 'some-datasource',
 				createdAt: new Date(),
 			},
 		};
@@ -137,7 +138,7 @@ describe('DataSources Store', () => {
 		const added = store.set(dummy);
 		expect(store.data[dsId]).toEqual(added);
 
-		store.unset({ parent: 'page', pageId });
+		store.unset({ parent: { type: 'page', id: parentId } });
 
 		expect(store.findAll('page')).toHaveLength(0);
 	});

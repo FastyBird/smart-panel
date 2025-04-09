@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardException } from '../dashboard.exceptions';
-import type { TileParentType } from '../store/tiles.store.types';
 
 import { useTilesActions } from './useTilesActions';
 
 const mockTile = { id: '2', page: 'page-2' };
 
-const mockFindById = vi.fn((_parent: TileParentType, id: string) => {
+const mockFindById = vi.fn((_parent: string, id: string) => {
 	if (id === '1') return null;
 	if (id === '2') return mockTile;
 	return null;
@@ -47,16 +46,16 @@ vi.mock('../../../common', () => ({
 
 describe('useTilesActions', () => {
 	it('throws error if tile is not found', async () => {
-		const { remove } = useTilesActions({ parent: 'page', pageId: 'page-1' });
+		const { remove } = useTilesActions({ parent: 'page', parentId: 'page-1' });
 
 		await expect(remove('1')).rejects.toThrow(DashboardException);
 	});
 
 	it('calls remove when confirmed', async () => {
-		const { remove } = useTilesActions({ parent: 'page', pageId: 'page-2' });
+		const { remove } = useTilesActions({ parent: 'page', parentId: 'page-2' });
 
 		await remove('2');
 
-		expect(mockRemove).toHaveBeenCalledWith({ id: '2', parent: 'page', pageId: 'page-2' });
+		expect(mockRemove).toHaveBeenCalledWith({ id: '2', parent: { type: 'page', id: 'page-2' } });
 	});
 });

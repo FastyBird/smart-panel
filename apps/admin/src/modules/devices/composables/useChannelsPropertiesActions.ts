@@ -26,7 +26,7 @@ export const useChannelsPropertiesActions = (): IUseChannelsPropertiesActions =>
 		}
 
 		ElMessageBox.confirm(
-			t('devicesModule.messages.channelsProperties.confirmRemove', { property: property.name }),
+			t('devicesModule.texts.channelsProperties.confirmRemove', { property: property.name }),
 			t('devicesModule.headings.channelsProperties.remove'),
 			{
 				confirmButtonText: t('devicesModule.buttons.yes.title'),

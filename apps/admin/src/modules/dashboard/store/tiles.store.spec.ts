@@ -3,17 +3,26 @@ import { createPinia, setActivePinia } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { IPlugin } from '../../../common';
+import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import { DashboardApiException } from '../dashboard.exceptions';
 
 import { useTiles } from './tiles.store';
-import type { IPageDevicePreviewTile, IPageTilesFetchActionPayload, IPageTilesSetActionPayload } from './tiles.store.types';
+import type { ITile, ITilesFetchActionPayload, ITilesSetActionPayload } from './tiles.store.types';
 
-const pageId = uuid();
+const parentId = uuid();
 const tileId = uuid();
+
+const mockBackendClient = {
+	GET: vi.fn(),
+	POST: vi.fn(),
+	PATCH: vi.fn(),
+	DELETE: vi.fn(),
+};
 
 const mockGetStore = vi.fn((key: symbol) => {
 	switch (key.description) {
-		case 'FB-DashboardModuleDataSourcesStore':
+		case 'FB-Module-DashboardModuleDataSourcesStore':
 			return {
 				firstLoad: [],
 				set: vi.fn(),
@@ -24,12 +33,12 @@ const mockGetStore = vi.fn((key: symbol) => {
 	}
 });
 
-const mockBackendClient = {
-	GET: vi.fn(),
-	POST: vi.fn(),
-	PATCH: vi.fn(),
-	DELETE: vi.fn(),
-};
+const mockGetPlugins = vi.fn().mockReturnValue([
+	{
+		type: 'some-tile',
+		modules: [DASHBOARD_MODULE_NAME],
+	} as IPlugin,
+]);
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
@@ -42,6 +51,9 @@ vi.mock('../../../common', async () => {
 		getErrorReason: vi.fn(() => 'Some error'),
 		injectStoresManager: vi.fn(() => ({
 			getStore: mockGetStore,
+		})),
+		injectPluginsManager: vi.fn(() => ({
+			getPlugins: mockGetPlugins,
 		})),
 	};
 });
@@ -63,14 +75,16 @@ describe('Tiles Store', () => {
 				data: [
 					{
 						id: tileId,
-						type: 'device-preview',
+						type: 'some-tile',
+						parent: {
+							type: 'page',
+							id: parentId,
+						},
 						row: 0,
 						col: 0,
 						row_span: 1,
 						col_span: 1,
 						data_source: [],
-						page: pageId,
-						device: uuid(),
 						created_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					},
@@ -78,11 +92,11 @@ describe('Tiles Store', () => {
 			},
 		});
 
-		const result = await store.fetch({ parent: 'page', pageId } satisfies IPageTilesFetchActionPayload);
+		const result = await store.fetch({ parent: { type: 'page', id: parentId } } satisfies ITilesFetchActionPayload);
 
-		expect(store.findForParent('page', pageId)).toHaveLength(1);
+		expect(store.findForParent('page', parentId)).toHaveLength(1);
 		expect(result[0].id).toBe(tileId);
-		expect(store.firstLoadFinished(pageId)).toBe(true);
+		expect(store.firstLoadFinished(parentId)).toBe(true);
 		expect(store.findAll('page')).toHaveLength(1);
 		expect(store.findById('page', tileId)).not.toBeNull();
 	});
@@ -93,43 +107,42 @@ describe('Tiles Store', () => {
 			response: { status: 500 },
 		});
 
-		await expect(store.fetch({ parent: 'page', pageId } satisfies IPageTilesFetchActionPayload)).rejects.toThrow(DashboardApiException);
+		await expect(store.fetch({ parent: { type: 'page', id: parentId } } satisfies ITilesFetchActionPayload)).rejects.toThrow(DashboardApiException);
 	});
 
 	it('should get tile by id', async () => {
 		const testTile = {
 			id: tileId,
-			type: 'device-preview',
+			type: 'some-tile',
+			parent: {
+				type: 'page',
+				id: parentId,
+			},
 			row: 0,
 			col: 0,
 			row_span: 1,
 			col_span: 1,
 			data_source: [],
-			device: uuid(),
-			page: pageId,
-			parent: 'page',
 			created_at: new Date().toISOString(),
 			updatedAt: null,
 		};
 
-		store.data[tileId] = testTile as unknown as IPageDevicePreviewTile;
+		store.data[tileId] = testTile as unknown as ITile;
 
 		const found = store.findById('page', tileId);
 		expect(found).toEqual(testTile);
 	});
 
 	it('should set a tile manually', () => {
-		const dummy: IPageTilesSetActionPayload = {
-			parent: 'page',
-			pageId,
+		const dummy: ITilesSetActionPayload = {
 			id: tileId,
+			parent: { type: 'page', id: parentId },
 			data: {
-				type: 'device-preview',
+				type: 'some-tile',
 				row: 0,
 				col: 0,
 				rowSpan: 1,
 				colSpan: 1,
-				device: uuid(),
 				createdAt: new Date(),
 			},
 		};
@@ -141,17 +154,15 @@ describe('Tiles Store', () => {
 	});
 
 	it('should unset tiles for a page', () => {
-		const dummy: IPageTilesSetActionPayload = {
-			parent: 'page',
-			pageId,
+		const dummy: ITilesSetActionPayload = {
 			id: tileId,
+			parent: { type: 'page', id: parentId },
 			data: {
-				type: 'device-preview',
+				type: 'some-tile',
 				row: 0,
 				col: 0,
 				rowSpan: 1,
 				colSpan: 1,
-				device: uuid(),
 				createdAt: new Date(),
 			},
 		};
@@ -159,7 +170,7 @@ describe('Tiles Store', () => {
 		const added = store.set(dummy);
 		expect(store.data[tileId]).toEqual(added);
 
-		store.unset({ parent: 'page', pageId });
+		store.unset({ parent: { type: 'page', id: parentId } });
 
 		expect(store.findAll('page')).toHaveLength(0);
 	});

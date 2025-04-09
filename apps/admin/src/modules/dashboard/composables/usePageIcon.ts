@@ -6,7 +6,11 @@ import type { IPage } from '../store/pages.store.types';
 
 import type { IUsePageIcon } from './types';
 
-export const usePageIcon = (id: IPage['id']): IUsePageIcon => {
+interface IUsePageIconProps {
+	id: IPage['id'];
+}
+
+export const usePageIcon = ({ id }: IUsePageIconProps): IUsePageIcon => {
 	const storesManager = injectStoresManager();
 
 	const pagesStore = storesManager.getStore(pagesStoreKey);

@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { IDeviceDetailPage, IPage, ITilesPage } from '../store/pages.store.types';
+import type { IPage } from '../store/pages.store.types';
 
 import { defaultPagesFilter, usePagesDataSource } from './usePagesDataSource';
 
@@ -32,25 +32,25 @@ describe('usePagesDataSource', () => {
 		mockPages = [
 			{
 				id: '1',
-				title: 'Device',
-				type: 'device-detail',
+				title: 'Page one',
+				type: 'some-page',
 				order: 0,
 				draft: false,
-			} as IDeviceDetailPage,
+			} as IPage,
 			{
 				id: '2',
-				title: 'Tiles',
+				title: 'Page two',
 				type: 'tiles',
 				order: 1,
 				draft: false,
-			} as ITilesPage,
+			} as IPage,
 			{
 				id: '3',
 				title: 'Draft page',
-				type: 'device-detail',
+				type: 'some-page',
 				order: 1,
 				draft: true,
-			} as IDeviceDetailPage,
+			} as IPage,
 		];
 
 		mockStore = {
@@ -83,7 +83,7 @@ describe('usePagesDataSource', () => {
 	it('filters pages by search text', () => {
 		const { filters, pages } = usePagesDataSource();
 
-		filters.value.search = 'Tiles';
+		filters.value.search = 'Page two';
 
 		expect(pages.value).toEqual([mockPages[1]]);
 	});
@@ -91,7 +91,7 @@ describe('usePagesDataSource', () => {
 	it('filters pages by types', () => {
 		const { filters, pages } = usePagesDataSource();
 
-		filters.value.types = ['device-detail'];
+		filters.value.types = ['some-page'];
 
 		expect(pages.value).toEqual([mockPages[0]]);
 	});
@@ -99,7 +99,7 @@ describe('usePagesDataSource', () => {
 	it('sorts pages in ascending order by default', () => {
 		const { pages } = usePagesDataSource();
 
-		expect(pages.value.map((d) => d.title)).toEqual(['Device', 'Tiles']);
+		expect(pages.value.map((d) => d.title)).toEqual(['Page one', 'Page two']);
 	});
 
 	it('paginates pages', () => {

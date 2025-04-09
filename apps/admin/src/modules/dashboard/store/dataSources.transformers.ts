@@ -1,50 +1,52 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
-import { DataSourceBaseSchema, DataSourceCreateBaseReqSchema, DataSourceUpdateBaseReqSchema } from './dataSources.store.schemas';
+import { DataSourceCreateReqSchema, DataSourceSchema, DataSourceUpdateReqSchema } from './dataSources.store.schemas';
 import type {
-	DataSourceParentType,
-	IDataSourceBase,
-	IDataSourceCreateBaseReq,
+	IDataSource,
+	IDataSourceCreateReq,
 	IDataSourceRes,
-	IDataSourceUpdateBaseReq,
+	IDataSourceUpdateReq,
 	IDataSourcesAddActionPayload,
 	IDataSourcesEditActionPayload,
 } from './dataSources.store.types';
 
-export const transformDataSourceResponse = <T extends IDataSourceBase = IDataSourceBase>(
-	response: IDataSourceRes & { parent: DataSourceParentType },
-	schema: typeof DataSourceBaseSchema
-): T => {
-	const parsed = schema.safeParse(snakeToCamel(response));
+export const transformDataSourceResponse = <T extends IDataSource = IDataSource>(response: IDataSourceRes, schema: typeof DataSourceSchema): T => {
+	const parsedResponse = schema.safeParse(snakeToCamel(response));
 
-	if (!parsed.success) {
+	if (!parsedResponse.success) {
+		console.error('Schema validation failed with:', parsedResponse.error);
+
 		throw new DashboardValidationException('Failed to validate received data source data.');
 	}
 
-	return parsed.data as T;
+	return parsedResponse.data as T;
 };
 
-export const transformDataSourceCreateRequest = <T extends IDataSourceCreateBaseReq = IDataSourceCreateBaseReq>(
+export const transformDataSourceCreateRequest = <T extends IDataSourceCreateReq = IDataSourceCreateReq>(
 	property: IDataSourcesAddActionPayload['data'],
-	schema: typeof DataSourceCreateBaseReqSchema
+	schema: typeof DataSourceCreateReqSchema
 ): T => {
 	const parsedRequest = schema.safeParse(camelToSnake(property));
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DashboardValidationException('Failed to validate create data source request.');
 	}
 
 	return parsedRequest.data as T;
 };
 
-export const transformDataSourceUpdateRequest = <T extends IDataSourceUpdateBaseReq = IDataSourceUpdateBaseReq>(
+export const transformDataSourceUpdateRequest = <T extends IDataSourceUpdateReq = IDataSourceUpdateReq>(
 	property: IDataSourcesEditActionPayload['data'],
-	schema: typeof DataSourceUpdateBaseReqSchema
+	schema: typeof DataSourceUpdateReqSchema
 ): T => {
 	const parsedRequest = schema.safeParse(camelToSnake(property));
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DashboardValidationException('Failed to validate update data source request.');
 	}
 

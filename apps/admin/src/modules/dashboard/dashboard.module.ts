@@ -9,9 +9,8 @@ import { injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
-import { registerCardsStore } from './store/cards.store';
 import { registerDataSourcesStore } from './store/dataSources.store';
-import { cardsStoreKey, dataSourcesStoreKey, pagesStoreKey, tilesStoreKey } from './store/keys';
+import { dataSourcesStoreKey, pagesStoreKey, tilesStoreKey } from './store/keys';
 import { registerPagesStore } from './store/pages.store';
 import { registerTilesStore } from './store/tiles.store';
 
@@ -30,11 +29,6 @@ export default {
 
 		app.provide(pagesStoreKey, pagesStore);
 		storesManager.addStore(pagesStoreKey, pagesStore);
-
-		const cardsStore = registerCardsStore(options.store);
-
-		app.provide(cardsStoreKey, cardsStore);
-		storesManager.addStore(cardsStoreKey, cardsStore);
 
 		const tilesStore = registerTilesStore(options.store);
 

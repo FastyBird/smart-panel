@@ -4,32 +4,17 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DashboardApiException, DashboardException } from '../dashboard.exceptions';
-import type { ICard } from '../store/cards.store.types';
 import { tilesStoreKey } from '../store/keys';
-import type { IPage } from '../store/pages.store.types';
-import type { ITile, TileParentTypeMap } from '../store/tiles.store.types';
+import type { ITile } from '../store/tiles.store.types';
 
 import type { IUseTilesActions } from './types';
 
-interface IUsePageTilesActionsProps {
-	parent: 'page';
-	pageId: IPage['id'];
+interface IUseTilesActionsProps {
+	parent: string;
+	parentId: string;
 }
 
-interface IUseCardTilesActionsProps {
-	parent: 'card';
-	pageId: IPage['id'];
-	cardId: ICard['id'];
-}
-
-type IUseTilesActionsProps = IUsePageTilesActionsProps | IUseCardTilesActionsProps;
-
-export const useTilesActions = <T extends keyof TileParentTypeMap>(props: IUseTilesActionsProps & { parent: T }): IUseTilesActions => {
-	const is = {
-		page: (p: IUseTilesActionsProps): p is IUsePageTilesActionsProps => p.parent === 'page',
-		card: (p: IUseTilesActionsProps): p is IUseCardTilesActionsProps => p.parent === 'card',
-	};
-
+export const useTilesActions = (props: IUseTilesActionsProps): IUseTilesActions => {
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
@@ -52,11 +37,7 @@ export const useTilesActions = <T extends keyof TileParentTypeMap>(props: IUseTi
 		})
 			.then(async (): Promise<void> => {
 				try {
-					if (is.card(props)) {
-						await tilesStore.remove({ parent: props.parent, id: tile.id, pageId: props.pageId, cardId: props.cardId });
-					} else {
-						await tilesStore.remove({ parent: props.parent, id: tile.id, pageId: props.pageId });
-					}
+					await tilesStore.remove({ id: tile.id, parent: { type: props.parent, id: props.parentId } });
 
 					flashMessage.success(t('dashboardModule.messages.tiles.removed'));
 				} catch (error: unknown) {

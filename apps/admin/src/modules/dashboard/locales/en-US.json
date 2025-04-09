@@ -1,7 +1,36 @@
 {
+  "meta": {
+    "pages": {
+      "list": {
+        "title": "List pages"
+      },
+      "edit": {
+        "title": "Edit page: {page}"
+      },
+      "add": {
+        "title": "Add page"
+      },
+      "detail": {
+        "title": "Page: {page}"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "pages": {
+      "list": "pages",
+      "add": "add page",
+      "edit": "edit page",
+      "detail": "page: {page}"
+    }
+  },
   "headings": {
     "pages": {
-      "remove": "Remove page?"
+      "list": "Pages",
+      "add": "Add page",
+      "edit": "Edit page",
+      "detail": "Page: {page}",
+      "remove": "Remove page?",
+      "adjustFilters": "Filter pages"
     },
     "cards": {
       "remove": "Remove card?"
@@ -13,8 +42,23 @@
       "remove": "Remove data source?"
     }
   },
+  "subHeadings": {
+    "pages": {
+      "list": "Manage smart panel pages",
+      "add": "Add new smart panel page",
+      "edit": "Edit smart panel page",
+      "detail": "Manager smart panel page",
+      "adjustFilters": "Adjust display filters"
+    }
+  },
   "messages": {
     "pages": {
+      "notFound": "The page you are looking for doesn’t exist or may have been removed.",
+      "confirmRemove": "Are you sure you want to remove page: {page}? This cannot be reversed.",
+      "created": "New page added successfully.",
+      "notCreated": "Something went wrong. Unable to create the page.",
+      "edited": "Changes saved! The page: {page} has been updated.",
+      "notEdited": "Something went wrong. Page update was not successful.",
       "removed": "The page: {page} was successfully removed.",
       "removeCanceled": "Page: {page} removal has been canceled.",
       "notRemoved": "Something went wrong, and the page: {page} was not removed."
@@ -37,6 +81,10 @@
   },
   "texts": {
     "pages": {
+      "noPages": "You don't have configured any page",
+      "noFilteredPages": "No pages found matching the active filter criteria",
+      "loadingPages": "Loading pages...",
+      "loadingPage": "Loading page...",
       "confirmRemove": "Are you sure you want to remove page: {page}? This cannot be reversed."
     },
     "cards": {
@@ -49,12 +97,93 @@
       "confirmRemove": "Are you sure you want to remove data source? This cannot be reversed."
     }
   },
+  "fields": {
+    "pages": {
+      "search": {
+        "placeholder": "Search for page"
+      },
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Page id"
+      },
+      "title": {
+        "title": "Title",
+        "placeholder": "Page title",
+        "validation": {
+          "required": "Please fill in page title"
+        }
+      },
+      "icon": {
+        "title": "Icon",
+        "placeholder": "Page icon"
+      },
+      "order": {
+        "title": "Order",
+        "placeholder": "Page position"
+      }
+    }
+  },
+  "table": {
+    "pages": {
+      "columns": {
+        "title": {
+          "title": "Title"
+        },
+        "type": {
+          "title": "Type"
+        },
+        "order": {
+          "title": "Order"
+        }
+      }
+    }
+  },
+  "filters": {
+    "pages": {
+      "types": {
+        "title": "Filter by page type"
+      }
+    }
+  },
   "buttons": {
+    "add": {
+      "title": "Add"
+    },
+    "edit": {
+      "title": "Edit"
+    },
+    "detail": {
+      "title": "Detail"
+    },
+    "discard": {
+      "title": "Discard"
+    },
+    "cancel": {
+      "title": "Cancel"
+    },
+    "close": {
+      "title": "Close"
+    },
+    "save": {
+      "title": "Save"
+    },
+    "change": {
+      "title": "Change"
+    },
+    "remove": {
+      "title": "Remove"
+    },
+    "resetFilters": {
+      "title": "Reset filters"
+    },
     "yes": {
       "title": "Yes"
     },
     "no": {
       "title": "No"
+    },
+    "reset": {
+      "title": "Reset"
     }
   }
 }

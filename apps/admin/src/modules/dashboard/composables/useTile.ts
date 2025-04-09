@@ -3,35 +3,19 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import type { ICard } from '../store/cards.store.types';
 import { tilesStoreKey } from '../store/keys';
-import type { IPage } from '../store/pages.store.types';
-import type { ITile, TileParentTypeMap } from '../store/tiles.store.types';
+import type { ITile } from '../store/tiles.store.types';
 
 import type { IUseTile } from './types';
 
-interface IUsePageTileProps {
-	parent: 'page';
+interface IUseTileProps {
 	id: ITile['id'];
-	pageId: IPage['id'];
+	parent: string;
+	parentId: string;
 }
 
-interface IUseCardTileProps {
-	parent: 'card';
-	id: ITile['id'];
-	pageId: IPage['id'];
-	cardId: ICard['id'];
-}
-
-type IUseTileProps = IUsePageTileProps | IUseCardTileProps;
-
-export const useTile = <T extends keyof TileParentTypeMap>(props: IUseTileProps & { parent: T }): IUseTile<T> => {
+export const useTile = (props: IUseTileProps): IUseTile => {
 	const { id } = props;
-
-	const is = {
-		page: (p: IUseTileProps): p is IUsePageTileProps => p.parent === 'page',
-		card: (p: IUseTileProps): p is IUseCardTileProps => p.parent === 'card',
-	};
 
 	const storesManager = injectStoresManager();
 
@@ -39,12 +23,12 @@ export const useTile = <T extends keyof TileParentTypeMap>(props: IUseTileProps 
 
 	const { data, semaphore } = storeToRefs(tilesStore);
 
-	const tile = computed<TileParentTypeMap[T] | null>((): TileParentTypeMap[T] | null => {
+	const tile = computed<ITile | null>((): ITile | null => {
 		if (id === null) {
 			return null;
 		}
 
-		return id in data.value ? (data.value[id] as TileParentTypeMap[T]) : null;
+		return id in data.value ? (data.value[id] as ITile) : null;
 	});
 
 	const fetchTile = async (): Promise<void> => {
@@ -54,11 +38,7 @@ export const useTile = <T extends keyof TileParentTypeMap>(props: IUseTileProps 
 			return;
 		}
 
-		if (is.card(props)) {
-			await tilesStore.get({ id, parent: props.parent, pageId: props.pageId, cardId: props.cardId });
-		} else {
-			await tilesStore.get({ id, parent: props.parent, pageId: props.pageId });
-		}
+		await tilesStore.get({ id, parent: { type: props.parent, id: props.parentId } });
 	};
 
 	const isLoading = computed<boolean>((): boolean => {
@@ -72,11 +52,7 @@ export const useTile = <T extends keyof TileParentTypeMap>(props: IUseTileProps 
 			return false;
 		}
 
-		if (is.card(props)) {
-			return semaphore.value.fetching.items.includes(props.cardId);
-		} else {
-			return semaphore.value.fetching.items.includes(props.pageId);
-		}
+		return semaphore.value.fetching.items.includes(props.parentId);
 	});
 
 	return {
