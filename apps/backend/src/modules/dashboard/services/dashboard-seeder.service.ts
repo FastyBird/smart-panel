@@ -143,7 +143,7 @@ export class DashboardSeederService implements Seeder {
 			const dtoInstance = plainToInstance(mapping.createDto, item, { excludeExtraneousValues: true });
 
 			try {
-				await this.tilesService.create(dtoInstance, { pageId });
+				await this.tilesService.create(dtoInstance, { parentType: 'page', parentId: pageId });
 			} catch (error) {
 				const err = error as Error;
 
@@ -185,7 +185,7 @@ export class DashboardSeederService implements Seeder {
 			const dtoInstance = plainToInstance(mapping.createDto, item, { excludeExtraneousValues: true });
 
 			try {
-				await this.dataSourceService.create(dtoInstance, { tileId });
+				await this.dataSourceService.create(dtoInstance, { parentType: 'tile', parentId: tileId });
 			} catch (error) {
 				const err = error as Error;
 

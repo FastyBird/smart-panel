@@ -18,33 +18,11 @@ import { v4 as uuid } from 'uuid';
 
 import { components } from '../../../openapi';
 
-import {
-	CardEntity,
-	CardsPageEntity,
-	DataSourceEntity,
-	DayWeatherTileEntity,
-	DeviceChannelDataSourceEntity,
-	DeviceDetailPageEntity,
-	DevicePreviewTileEntity,
-	ForecastWeatherTileEntity,
-	PageEntity,
-	TileEntity,
-	TilesPageEntity,
-	TimeTileEntity,
-} from './dashboard.entity';
+import { DataSourceEntity, PageEntity, TileEntity } from './dashboard.entity';
 
-type Page = components['schemas']['DashboardPageBase'];
-type CardsPage = components['schemas']['DashboardCardsPage'];
-type TilesPage = components['schemas']['DashboardTilesPage'];
-type DeviceDetailPage = components['schemas']['DashboardDeviceDetailPage'];
-type Tile = components['schemas']['DashboardTileBase'];
-type DevicePreviewTile = components['schemas']['DashboardDevicePreviewTile'];
-type TimeTile = components['schemas']['DashboardTimeTile'];
-type DayWeatherTile = components['schemas']['DashboardDayWeatherTile'];
-type ForecastWeatherTile = components['schemas']['DashboardForecastWeatherTile'];
-type DataSource = components['schemas']['DashboardDataSourceBase'];
-type DeviceChannelDataSource = components['schemas']['DashboardDeviceChannelDataSource'];
-type Card = components['schemas']['DashboardCard'];
+type Page = components['schemas']['DashboardPage'];
+type Tile = components['schemas']['DashboardTile'];
+type DataSource = components['schemas']['DashboardDataSource'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -93,6 +71,7 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			title: 'Cards Dashboard',
 			icon: 'cards-icon',
 			order: 1,
+			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
 		};
@@ -111,90 +90,14 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('CardsPageEntity matches DashboardCardsPage', () => {
-		const openApiModel: CardsPage = {
-			id: uuid().toString(),
-			type: 'cards',
-			title: 'Cards Dashboard',
-			icon: 'cards-icon',
-			order: 1,
-			cards: [],
-			data_source: [],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-		};
-
-		const entityInstance = plainToInstance(CardsPageEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
-	});
-
-	test('TilesPageEntity matches DashboardTilesPage', () => {
-		const openApiModel: TilesPage = {
-			id: uuid().toString(),
-			type: 'tiles',
-			title: 'Cards Dashboard',
-			icon: 'cards-icon',
-			order: 1,
-			tiles: [],
-			data_source: [],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-		};
-
-		const entityInstance = plainToInstance(TilesPageEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
-	});
-
-	test('DeviceDetailPageEntity matches DashboardDeviceDetailPage', () => {
-		const openApiModel: DeviceDetailPage = {
-			id: uuid().toString(),
-			type: 'device-detail',
-			title: 'Device Dashboard',
-			icon: 'device-icon',
-			order: 1,
-			device: uuid().toString(),
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-		};
-
-		const entityInstance = plainToInstance(DeviceDetailPageEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
-	});
-
 	test('TileEntity matches DashboardTile', () => {
-		const openApiModel: Tile & { page: string; card: string } = {
+		const openApiModel: Tile = {
 			id: uuid().toString(),
 			type: 'tile',
+			parent: {
+				type: 'page',
+				id: uuid().toString(),
+			},
 			row: 1,
 			col: 0,
 			row_span: 2,
@@ -202,8 +105,6 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
-			page: uuid().toString(),
-			card: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(TileBaseEntity, openApiModel, {
@@ -217,136 +118,22 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
-		expect(errors).toHaveLength(0);
-	});
 
-	test('DevicePreviewTileEntity matches DashboardDevicePreviewTile', () => {
-		const openApiModel: DevicePreviewTile & { page: string; card: string } = {
-			id: uuid().toString(),
-			type: 'device-preview',
-			device: uuid().toString(),
-			row: 1,
-			col: 0,
-			row_span: 2,
-			col_span: 2,
-			icon: 'icon',
-			data_source: [],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-			page: uuid().toString(),
-			card: uuid().toString(),
-		};
+		const nonInternalErrors = errors.filter((error) => !['parentType', 'parentId'].includes(error.property));
 
-		const entityInstance = plainToInstance(DevicePreviewTileEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
-	});
-
-	test('TimeTileEntity matches DashboardTimeTile', () => {
-		const openApiModel: TimeTile & { page: string; card: string } = {
-			id: uuid().toString(),
-			type: 'clock',
-			row: 1,
-			col: 0,
-			row_span: 2,
-			col_span: 2,
-			data_source: [],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-			page: uuid().toString(),
-			card: uuid().toString(),
-		};
-
-		const entityInstance = plainToInstance(TimeTileEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
-	});
-
-	test('DayWeatherTileEntity matches DashboardDayWeatherTile', () => {
-		const openApiModel: DayWeatherTile & { page: string; card: string } = {
-			id: uuid().toString(),
-			type: 'weather-day',
-			row: 1,
-			col: 0,
-			row_span: 2,
-			col_span: 2,
-			data_source: [],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-			page: uuid().toString(),
-			card: uuid().toString(),
-		};
-
-		const entityInstance = plainToInstance(DayWeatherTileEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
-	});
-
-	test('ForecastWeatherTileEntity matches DashboardForecastWeatherTile', () => {
-		const openApiModel: ForecastWeatherTile & { page: string; card: string } = {
-			id: uuid().toString(),
-			type: 'weather-forecast',
-			row: 1,
-			col: 0,
-			row_span: 2,
-			col_span: 2,
-			data_source: [],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-			page: uuid().toString(),
-			card: uuid().toString(),
-		};
-
-		const entityInstance = plainToInstance(ForecastWeatherTileEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
+		expect(nonInternalErrors).toHaveLength(0);
 	});
 
 	test('DataSourceEntity matches DashboardDataSource', () => {
-		const openApiModel: DataSource & { page: string; tile: string; card: string } = {
+		const openApiModel: DataSource = {
 			id: uuid().toString(),
 			type: 'data-source',
+			parent: {
+				type: 'tile',
+				id: uuid().toString(),
+			},
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
-			page: uuid().toString(),
-			tile: uuid().toString(),
-			card: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(DataSourceBaseEntity, openApiModel, {
@@ -360,62 +147,9 @@ describe('Dashboard module entity and OpenAPI Model Synchronization', () => {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
-		expect(errors).toHaveLength(0);
-	});
 
-	test('DeviceChannelDataSourceEntity matches DashboardDeviceChannelDataSource', () => {
-		const openApiModel: DeviceChannelDataSource & { page: string; tile: string; card: string } = {
-			id: uuid().toString(),
-			type: 'device-channel',
-			device: uuid().toString(),
-			channel: uuid().toString(),
-			property: uuid().toString(),
-			icon: 'icon',
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-			page: uuid().toString(),
-			tile: uuid().toString(),
-			card: uuid().toString(),
-		};
+		const nonInternalErrors = errors.filter((error) => !['parentType', 'parentId'].includes(error.property));
 
-		const entityInstance = plainToInstance(DeviceChannelDataSourceEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
-	});
-
-	test('CardEntity matches DashboardCard', () => {
-		const openApiModel: Card = {
-			id: uuid().toString(),
-			title: 'Card title',
-			icon: 'Card icon',
-			order: 0,
-			page: uuid().toString(),
-			tiles: [],
-			data_source: [],
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-		};
-
-		const entityInstance = plainToInstance(CardEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
-
-		validateEntityAgainstModel(entityInstance, openApiModel);
-
-		const errors = validateSync(entityInstance, {
-			whitelist: true,
-			forbidNonWhitelisted: true,
-		});
-		expect(errors).toHaveLength(0);
+		expect(nonInternalErrors).toHaveLength(0);
 	});
 });

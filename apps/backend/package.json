@@ -84,6 +84,7 @@
     "sqlite3": "^5.1",
     "systeminformation": "^5.25",
     "typeorm": "^0.3",
+    "uuid": "^11.0",
     "yaml": "^2.7"
   },
   "devDependencies": {
@@ -120,8 +121,7 @@
     "ts-node": "^10.9",
     "tsconfig-paths": "^4.2",
     "typescript": "^5.7",
-    "typescript-eslint": "^8.20",
-    "uuid": "^11.0"
+    "typescript-eslint": "^8.20"
   },
   "engines": {
     "node": ">=20.0.0",

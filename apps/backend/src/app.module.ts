@@ -27,7 +27,14 @@ import { UsersModule } from './modules/users/users.module';
 import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
-import { ThirdPartyDevicesPlugin } from './plugins/third-party-devices/third-party-devices.plugin';
+import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
+import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
+import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
+import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';
+import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
+import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-device-preview.plugin';
+import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
+import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin';
 
 @Module({
 	imports: [
@@ -103,7 +110,14 @@ import { ThirdPartyDevicesPlugin } from './plugins/third-party-devices/third-par
 		UsersModule,
 		WeatherModule,
 		WebsocketModule,
-		ThirdPartyDevicesPlugin,
+		DevicesThirdPartyPlugin,
+		PagesCardsPlugin,
+		PagesDeviceDetailPlugin,
+		PagesTilesPlugin,
+		TilesDevicePreviewPlugin,
+		TilesTimePlugin,
+		TilesWeatherPlugin,
+		DataSourcesDeviceChannelPlugin,
 	],
 })
 export class AppModule {}

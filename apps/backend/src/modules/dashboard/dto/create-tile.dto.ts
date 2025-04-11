@@ -1,28 +1,17 @@
-import { Expose } from 'class-transformer';
-import {
-	IsArray,
-	IsNotEmpty,
-	IsNumber,
-	IsOptional,
-	IsString,
-	IsUUID,
-	ValidateIf,
-	ValidateNested,
-} from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
-import { ValidateTileDataSources } from '../validators/tile-data-source-type-constraint.validator';
+import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
 
-import { CreateDeviceChannelDataSourceDto } from './create-data-source.dto';
+import { ParentDto } from './common.dto';
+import { CreateDataSourceDto } from './create-data-source.dto';
 
-type CreateTileBase = components['schemas']['DashboardCreateTileBase'];
-type CreateDevicePreviewTile = components['schemas']['DashboardCreateDevicePreviewTile'];
-type CreateTimeTile = components['schemas']['DashboardCreateTimeTile'];
-type CreateDayWeatherTile = components['schemas']['DashboardCreateDayWeatherTile'];
-type CreateForecastWeatherTile = components['schemas']['DashboardCreateForecastWeatherTile'];
+type ReqCreateTile = components['schemas']['DashboardReqCreateTile'];
+type ReqCreateTileWithParent = components['schemas']['DashboardReqCreateTileWithParent'];
+type CreateTile = components['schemas']['DashboardCreateTile'];
 
-export abstract class CreateTileDto implements CreateTileBase {
+export abstract class CreateTileDto implements CreateTile {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
@@ -34,11 +23,16 @@ export abstract class CreateTileDto implements CreateTileBase {
 	readonly type: string;
 
 	@Expose()
+	@ValidateNested()
+	@Type(() => ParentDto)
+	readonly parent: ParentDto;
+
+	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
 	@ValidateNested({ each: true })
-	@ValidateTileDataSources()
-	data_source?: CreateDeviceChannelDataSourceDto[] = [];
+	@ValidateDataSourceType()
+	data_source?: CreateDataSourceDto[] = [];
 
 	@Expose()
 	@IsNumber(
@@ -61,6 +55,7 @@ export abstract class CreateTileDto implements CreateTileBase {
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"row_span","reason":"Row span must be a valid number."}]' },
 	)
+	@Min(1, { message: '[{"field":"col_span","reason":"Row span minimum value must be greater than 0."}]' })
 	row_span?: number;
 
 	@Expose()
@@ -70,33 +65,20 @@ export abstract class CreateTileDto implements CreateTileBase {
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"col_span","reason":"Column span must be a valid number."}]' },
 	)
+	@Min(1, { message: '[{"field":"col_span","reason":"Column span minimum value must be greater than 0."}]' })
 	col_span?: number;
 }
 
-export class CreateDevicePreviewTileDto extends CreateTileDto implements CreateDevicePreviewTile {
-	readonly type: 'device-preview';
-
+export class ReqCreateTileDto implements ReqCreateTile {
 	@Expose()
-	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
-	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
-	device: string;
+	@ValidateNested()
+	@Type(() => CreateTileDto)
+	data: CreateTileDto;
+}
 
+export class ReqCreateTileWithParentDto implements ReqCreateTileWithParent {
 	@Expose()
-	@IsOptional()
-	@IsNotEmpty({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
-	@IsString({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
-	@ValidateIf((_, value) => value !== null)
-	icon?: string | null;
-}
-
-export class CreateTimeTileDto extends CreateTileDto implements CreateTimeTile {
-	readonly type: 'clock';
-}
-
-export class CreateDayWeatherTileDto extends CreateTileDto implements CreateDayWeatherTile {
-	readonly type: 'weather-day';
-}
-
-export class CreateForecastWeatherTileDto extends CreateTileDto implements CreateForecastWeatherTile {
-	readonly type: 'weather-forecast';
+	@ValidateNested()
+	@Type(() => CreateTileDto)
+	data: CreateTileDto;
 }

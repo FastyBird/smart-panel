@@ -13,16 +13,17 @@ import { DashboardException, DashboardNotFoundException, DashboardValidationExce
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { CreateTileDto } from '../dto/create-tile.dto';
 import { UpdateTileDto } from '../dto/update-tile.dto';
-import { DataSourceEntity, TileEntity, TilesPageEntity } from '../entities/dashboard.entity';
+import { DataSourceEntity, TileEntity } from '../entities/dashboard.entity';
 
-import { CardsService } from './cards.service';
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
-import { PagesService } from './pages.service';
+import { DataSourceService } from './data-source.service';
+import { TileCreateBuilderRegistryService } from './tile-create-builder-registry.service';
+import { TileRelationsLoaderRegistryService } from './tile-relations-loader-registry.service';
 import { TilesTypeMapperService } from './tiles-type-mapper.service';
 
-interface FilterBy {
-	pageId?: string;
-	cardId?: string;
+interface Relation {
+	parentType: string;
+	parentId: string;
 }
 
 @Injectable()
@@ -32,119 +33,82 @@ export class TilesService {
 	constructor(
 		@InjectRepository(TileEntity)
 		private readonly repository: Repository<TileEntity>,
-		private readonly pagesService: PagesService,
-		private readonly cardsService: CardsService,
+		private readonly dataSourceService: DataSourceService,
 		private readonly tilesMapperService: TilesTypeMapperService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
+		private readonly relationsRegistryService: TileRelationsLoaderRegistryService,
+		private readonly nestedCreateBuilders: TileCreateBuilderRegistryService,
 		private readonly dataSource: OrmDataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async findAll<TTile extends TileEntity>(filterBy?: FilterBy): Promise<TTile[]> {
-		if (filterBy?.pageId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all tiles for pageId=${filterBy.pageId}`);
-
-			const page = await this.pagesService.getOneOrThrow<TilesPageEntity>(filterBy.pageId);
-
-			const tiles = await this.repository
-				.createQueryBuilder('tile')
-				.innerJoinAndSelect('tile.page', 'page')
-				.leftJoinAndSelect('tile.dataSource', 'dataSource')
-				.leftJoinAndSelect('tile.device', 'device')
-				.leftJoinAndSelect('dataSource.device', 'device')
-				.leftJoinAndSelect('dataSource.channel', 'channel')
-				.leftJoinAndSelect('dataSource.property', 'property')
-				.where('page.id = :pageId', { pageId: page.id })
-				.getMany();
-
-			this.logger.debug(`[LOOKUP ALL] Found ${tiles.length} tiles for pageId=${filterBy.pageId}`);
-
-			return tiles as TTile[];
-		}
-
-		if (filterBy?.cardId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all tiles for cardId=${filterBy.cardId}`);
-
-			const card = await this.cardsService.getOneOrThrow(filterBy.cardId);
+	async findAll<TTile extends TileEntity>(relation?: Relation): Promise<TTile[]> {
+		if (relation) {
+			this.logger.debug(
+				`[LOOKUP ALL] Fetching all tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
 
 			const tiles = await this.repository
 				.createQueryBuilder('tile')
-				.innerJoinAndSelect('tile.card', 'card')
-				.leftJoinAndSelect('tile.dataSource', 'dataSource')
-				.leftJoinAndSelect('tile.device', 'device')
-				.leftJoinAndSelect('dataSource.device', 'device')
-				.leftJoinAndSelect('dataSource.channel', 'channel')
-				.leftJoinAndSelect('dataSource.property', 'property')
-				.where('card.id = :cardId', { cardId: card.id })
+				.where('tile.parentType = :parentType', { parentType: relation.parentType })
+				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
 				.getMany();
 
-			this.logger.debug(`[LOOKUP ALL] Found ${tiles.length} tiles for cardId=${filterBy.cardId}`);
+			this.logger.debug(
+				`[LOOKUP ALL] Found ${tiles.length} tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			for (const tile of tiles) {
+				await this.loadRelations(tile);
+			}
 
 			return tiles as TTile[];
 		}
 
 		this.logger.debug('[LOOKUP ALL] Fetching all tiles');
 
-		const tiles = await this.repository.find({
-			relations: ['page', 'card', 'dataSource', 'dataSource.tile', 'device'],
-		});
+		const tiles = await this.repository.find();
 
 		this.logger.debug(`[LOOKUP ALL] Found ${tiles.length} tiles`);
+
+		for (const tile of tiles) {
+			await this.loadRelations(tile);
+		}
 
 		return tiles as TTile[];
 	}
 
-	async findOne<TTile extends TileEntity>(id: string, filterBy?: FilterBy): Promise<TTile | null> {
+	async findOne<TTile extends TileEntity>(id: string, relation?: Relation): Promise<TTile | null> {
 		let tile: TileEntity | null;
 
-		if (filterBy?.pageId) {
-			this.logger.debug(`[LOOKUP] Fetching tile with id=${id} for pageId=${filterBy.pageId}`);
-
-			const page = await this.pagesService.getOneOrThrow<TilesPageEntity>(filterBy.pageId);
+		if (relation) {
+			this.logger.debug(
+				`[LOOKUP] Fetching tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
 
 			tile = await this.repository
 				.createQueryBuilder('tile')
-				.innerJoinAndSelect('tile.page', 'page')
-				.leftJoinAndSelect('tile.dataSource', 'dataSource')
-				.leftJoinAndSelect('tile.device', 'device')
 				.where('tile.id = :id', { id })
-				.andWhere('page.id = :pageId', { pageId: page.id })
+				.andWhere('tile.parentType = :parentType', { parentType: relation.parentType })
+				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
 				.getOne();
 
 			if (!tile) {
-				this.logger.warn(`[LOOKUP] Tile with id=${id} for pageId=${filterBy.pageId} not found`);
+				this.logger.warn(
+					`[LOOKUP] Tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
+				);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched tile with id=${id} for pageId=${filterBy.pageId}`);
-		} else if (filterBy?.cardId) {
-			this.logger.debug(`[LOOKUP] Fetching tile with id=${id} for cardId=${filterBy.cardId}`);
-
-			const page = await this.pagesService.getOneOrThrow<TilesPageEntity>(filterBy.cardId);
-
-			tile = await this.repository
-				.createQueryBuilder('tile')
-				.innerJoinAndSelect('tile.card', 'card')
-				.leftJoinAndSelect('tile.dataSource', 'dataSource')
-				.leftJoinAndSelect('tile.device', 'device')
-				.where('tile.id = :id', { id })
-				.andWhere('card.id = :cardId', { cardId: page.id })
-				.getOne();
-
-			if (!tile) {
-				this.logger.warn(`[LOOKUP] Tile with id=${id} for cardId=${filterBy.cardId} not found`);
-
-				return null;
-			}
-
-			this.logger.debug(`[LOOKUP] Successfully fetched tile with id=${id} for cardId=${filterBy.cardId}`);
+			this.logger.debug(
+				`[LOOKUP] Successfully fetched tile with id=${id} parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
 		} else {
 			this.logger.debug(`[LOOKUP] Fetching tile with id=${id}`);
 
 			tile = await this.repository.findOne({
 				where: { id },
-				relations: ['page', 'card', 'dataSource', 'dataSource.tile', 'device'],
 			});
 
 			if (!tile) {
@@ -156,21 +120,18 @@ export class TilesService {
 			this.logger.debug(`[LOOKUP] Successfully fetched tile with id=${id}`);
 		}
 
+		await this.loadRelations(tile);
+
 		return tile as TTile;
 	}
 
 	async create<TTile extends TileEntity, TCreateDTO extends CreateTileDto>(
 		createDto: CreateTileDto,
-		relation: FilterBy,
+		relation?: Relation,
 	): Promise<TTile> {
-		this.logger.debug(`[CREATE] Creating new tile for pageId=${relation.pageId}`);
-
-		const page = relation.pageId ? await this.pagesService.getOneOrThrow<TilesPageEntity>(relation.pageId) : undefined;
-		const card = relation.cardId ? await this.cardsService.getOneOrThrow(relation.cardId) : undefined;
-
-		if (!page && !card) {
-			throw new DashboardException('The page or card relation have to be provided.');
-		}
+		this.logger.debug(
+			`[CREATE] Creating new tile for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+		);
 
 		const { type } = createDto;
 
@@ -184,17 +145,35 @@ export class TilesService {
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
+		let parent: { parentId: string; parentType: string };
+
+		if (relation?.parentType && relation?.parentId) {
+			parent = { parentType: relation.parentType, parentId: relation.parentId };
+		} else if (dtoInstance.parent?.type && dtoInstance.parent?.id) {
+			parent = { parentType: dtoInstance.parent.type, parentId: dtoInstance.parent.id };
+		} else {
+			this.logger.error('[CREATE] Relation invalid: Missing required relation definition.');
+
+			throw new DashboardException('Missing both parentType and parentId for assigning parent relation.');
+		}
+
 		const repository: Repository<TTile> = this.dataSource.getRepository(mapping.class);
 
 		const tile = plainToInstance(
 			mapping.class,
-			{ ...dtoInstance, page: page?.id, card: card?.id },
+			{ ...dtoInstance, ...parent },
 			{
 				enableImplicitConversion: true,
 				excludeExtraneousValues: true,
 				exposeUnsetFields: false,
 			},
 		);
+
+		for (const builder of this.nestedCreateBuilders.getBuilders()) {
+			if (builder.supports(dtoInstance)) {
+				await builder.build(dtoInstance, tile);
+			}
+		}
 
 		tile.dataSource = (dtoInstance.data_source || []).map((createDataSourceDto: CreateDataSourceDto) => {
 			const dataSourceMapping = this.dataSourcesMapperService.getMapping(createDataSourceDto.type);
@@ -204,7 +183,7 @@ export class TilesService {
 			return dataSourceRepository.create(
 				plainToInstance(
 					dataSourceMapping.class,
-					{ ...createDataSourceDto, tile: tile.id },
+					{ ...createDataSourceDto, parentType: 'tile', parentId: tile.id },
 					{
 						enableImplicitConversion: true,
 						excludeExtraneousValues: true,
@@ -220,7 +199,7 @@ export class TilesService {
 		await repository.save(created);
 
 		// Retrieve the saved tile with its full relations
-		const savedTile = await this.getOneOrThrow<TTile>(created.id, { pageId: page?.id, cardId: card?.id });
+		const savedTile = await this.getOneOrThrow<TTile>(created.id, relation);
 
 		this.logger.debug(`[CREATE] Successfully created tile with id=${savedTile.id}`);
 
@@ -278,12 +257,12 @@ export class TilesService {
 		this.eventEmitter.emit(EventType.TILE_DELETED, tile);
 	}
 
-	async getOneOrThrow<TTile extends TileEntity>(id: string, filterBy?: FilterBy): Promise<TTile> {
-		const tile = await this.findOne<TTile>(id, filterBy);
+	async getOneOrThrow<TTile extends TileEntity>(id: string, relation?: Relation): Promise<TTile> {
+		const tile = await this.findOne<TTile>(id, relation);
 
 		if (!tile) {
 			this.logger.error(
-				`[ERROR] Tile with id=${id} for pageId=${filterBy?.pageId} cardId=${filterBy?.cardId} not found`,
+				`[ERROR] Tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
 			);
 
 			throw new DashboardNotFoundException('Requested tile does not exist');
@@ -311,5 +290,18 @@ export class TilesService {
 		}
 
 		return dtoInstance;
+	}
+
+	private async loadRelations(entity: TileEntity): Promise<void> {
+		entity.dataSource = await this.dataSourceService.findAll({
+			parentType: 'tile',
+			parentId: entity.id,
+		});
+
+		for (const loader of this.relationsRegistryService.getLoaders()) {
+			if (loader.supports(entity)) {
+				await loader.loadRelations(entity);
+			}
+		}
 	}
 }

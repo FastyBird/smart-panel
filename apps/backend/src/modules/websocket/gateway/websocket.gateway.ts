@@ -125,7 +125,6 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 							return response !== null ? { handler: name, ...response } : null;
 						} catch (error) {
-							console.log(error);
 							const err = error as Error;
 
 							this.logger.error(`[COMMAND HANDLER] Error in '${name}'`, { message: err.message, stack: err.stack });

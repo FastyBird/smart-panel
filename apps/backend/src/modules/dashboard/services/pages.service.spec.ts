@@ -1,6 +1,5 @@
 /*
 eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-assignment
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -8,7 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { plainToInstance } from 'class-transformer';
 import { Expose, Transform } from 'class-transformer';
-import { IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -17,20 +16,35 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { DeviceCategory } from '../../devices/devices.constants';
-import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException } from '../dashboard.exceptions';
-import { CreateDeviceDetailPageDto, CreateTilesPageDto } from '../dto/create-page.dto';
-import { UpdateTilesPageDto } from '../dto/update-page.dto';
-import { DeviceDetailPageEntity, PageEntity, TilesPageEntity } from '../entities/dashboard.entity';
+import { CreatePageDto } from '../dto/create-page.dto';
+import { UpdatePageDto } from '../dto/update-page.dto';
+import { PageEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
+import { DataSourceService } from './data-source.service';
+import { PageCreateBuilderRegistryService } from './page-create-builder-registry.service';
+import { PageRelationsLoaderRegistryService } from './page-relations-loader-registry.service';
 import { PagesTypeMapperService } from './pages-type-mapper.service';
 import { PagesService } from './pages.service';
-import { TilesTypeMapperService } from './tiles-type-mapper.service';
 
-class MockDevice extends DeviceEntity {
+class CreateMockPageDto extends CreatePageDto {
+	@Expose()
+	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
+	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
+	mockValue: string;
+}
+
+class UpdateMockPageDto extends UpdatePageDto {
+	@Expose()
+	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
+	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
+	mockValue?: string;
+}
+
+class MockPageEntity extends PageEntity {
 	@Expose({ name: 'mock_value' })
 	@IsString()
 	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
@@ -51,38 +65,26 @@ describe('PagesService', () => {
 	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 
-	const mockDevice: MockDevice = {
+	const mockPageOne: MockPageEntity = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategory.GENERIC,
-		name: 'Test Device',
-		description: null,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		controls: [],
-		channels: [],
-		mockValue: 'Some value',
-	};
-
-	const mockDevicePage: DeviceDetailPageEntity = {
-		id: uuid().toString(),
-		type: 'device-detail',
-		title: 'Device detail',
+		title: 'Mock page one',
 		order: 0,
-		device: mockDevice.id,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-	};
-
-	const mockTilesPage: TilesPageEntity = {
-		id: uuid().toString(),
-		type: 'tiles',
-		title: 'Tiles detail',
-		order: 0,
-		tiles: [],
 		dataSource: [],
 		createdAt: new Date(),
 		updatedAt: new Date(),
+		mockValue: 'Some mock value',
+	};
+
+	const mockPageTwo: MockPageEntity = {
+		id: uuid().toString(),
+		type: 'mock',
+		title: 'Mock page two',
+		order: 0,
+		dataSource: [],
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		mockValue: 'Other mock value',
 	};
 
 	beforeEach(async () => {
@@ -93,8 +95,6 @@ describe('PagesService', () => {
 			save: jest.fn(),
 			remove: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getMany: jest.fn(),
@@ -107,14 +107,13 @@ describe('PagesService', () => {
 				PagesService,
 				{ provide: getRepositoryToken(PageEntity), useFactory: mockRepository },
 				{
-					provide: PagesTypeMapperService,
+					provide: DataSourceService,
 					useValue: {
-						registerMapping: jest.fn(() => {}),
-						getMapping: jest.fn(() => {}),
+						findAll: jest.fn().mockResolvedValue([]),
 					},
 				},
 				{
-					provide: TilesTypeMapperService,
+					provide: PagesTypeMapperService,
 					useValue: {
 						registerMapping: jest.fn(() => {}),
 						getMapping: jest.fn(() => {}),
@@ -125,6 +124,18 @@ describe('PagesService', () => {
 					useValue: {
 						registerMapping: jest.fn(() => {}),
 						getMapping: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: PageRelationsLoaderRegistryService,
+					useValue: {
+						getLoaders: jest.fn().mockReturnValue([]),
+					},
+				},
+				{
+					provide: PageCreateBuilderRegistryService,
+					useValue: {
+						getBuilders: jest.fn().mockReturnValue([]),
 					},
 				},
 				{
@@ -163,46 +174,29 @@ describe('PagesService', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all pages with relations', async () => {
-			const mockPages: PageEntity[] = [mockDevicePage];
+		it('should return all pages', async () => {
+			const mockPages: PageEntity[] = [mockPageOne];
 
 			jest
 				.spyOn(repository, 'find')
-				.mockResolvedValue(mockPages.map((entity) => plainToInstance(DeviceDetailPageEntity, entity)));
+				.mockResolvedValue(mockPages.map((entity) => plainToInstance(MockPageEntity, entity)));
 
 			const result = await service.findAll();
 
-			expect(result).toEqual(mockPages.map((entity) => plainToInstance(DeviceDetailPageEntity, entity)));
-			expect(repository.find).toHaveBeenCalledWith({
-				relations: expect.arrayContaining([
-					'tiles',
-					'tiles.page',
-					'tiles.dataSource',
-					'tiles.dataSource.tile',
-					'tiles.device',
-					'device',
-				]),
-			});
+			expect(result).toEqual(mockPages.map((entity) => plainToInstance(MockPageEntity, entity)));
+			expect(repository.find).toHaveBeenCalled();
 		});
 	});
 
 	describe('findOne', () => {
 		it('should return a page by ID', async () => {
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(DeviceDetailPageEntity, mockDevicePage));
+			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockPageEntity, mockPageOne));
 
-			const result = await service.findOne(mockDevicePage.id);
+			const result = await service.findOne(mockPageOne.id);
 
-			expect(result).toEqual(plainToInstance(DeviceDetailPageEntity, mockDevicePage));
+			expect(result).toEqual(plainToInstance(MockPageEntity, mockPageOne));
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockDevicePage.id },
-				relations: expect.arrayContaining([
-					'tiles',
-					'tiles.page',
-					'tiles.dataSource',
-					'tiles.dataSource.tile',
-					'tiles.device',
-					'device',
-				]),
+				where: { id: mockPageOne.id },
 			});
 		});
 
@@ -219,43 +213,44 @@ describe('PagesService', () => {
 
 	describe('create', () => {
 		it('should create and return a new page', async () => {
-			const createDto: CreateTilesPageDto = { type: 'tiles', title: 'New Page', order: 1 };
-			const mockCratePage: Partial<TilesPageEntity> = {
+			const createDto: CreateMockPageDto = { type: 'tiles', title: 'New Page', order: 1, mockValue: 'New mock value' };
+			const mockCratePage: Partial<MockPageEntity> = {
 				type: createDto.type,
 				title: createDto.title,
 				icon: null,
 				order: createDto.order,
+				mockValue: createDto.mockValue,
 			};
-			const mockCratedPage: TilesPageEntity = {
+			const mockCratedPage: MockPageEntity = {
 				id: uuid().toString(),
 				type: mockCratePage.type,
 				title: mockCratePage.title,
 				icon: null,
 				order: mockCratePage.order,
-				tiles: [],
-				dataSource: [],
 				createdAt: new Date(),
+				dataSource: [],
 				updatedAt: null,
+				mockValue: mockCratePage.mockValue,
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
 				type: 'tiles',
-				class: TilesPageEntity,
-				createDto: CreateTilesPageDto,
-				updateDto: UpdateTilesPageDto,
+				class: MockPageEntity,
+				createDto: CreateMockPageDto,
+				updateDto: UpdateMockPageDto,
 			});
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
 			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedPage);
 			jest.spyOn(repository, 'create').mockReturnValue(mockCratedPage);
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(TilesPageEntity, mockCratedPage));
+			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockPageEntity, mockCratedPage));
 
 			const result = await service.create(createDto);
 
-			expect(result).toEqual(plainToInstance(TilesPageEntity, mockCratedPage));
+			expect(result).toEqual(plainToInstance(MockPageEntity, mockCratedPage));
 			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(TilesPageEntity, mockCratePage, {
+				plainToInstance(MockPageEntity, mockCratePage, {
 					enableImplicitConversion: true,
 					excludeExtraneousValues: true,
 					exposeUnsetFields: false,
@@ -264,149 +259,90 @@ describe('PagesService', () => {
 			expect(repository.save).toHaveBeenCalledWith(mockCratedPage);
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockCratedPage.id },
-				relations: [
-					'cards',
-					'cards.page',
-					'cards.tiles',
-					'cards.tiles.card',
-					'cards.tiles.dataSource',
-					'cards.tiles.dataSource.tile',
-					'cards.tiles.dataSource.device',
-					'cards.tiles.dataSource.channel',
-					'cards.tiles.dataSource.property',
-					'cards.dataSource',
-					'cards.dataSource.card',
-					'cards.dataSource.device',
-					'cards.dataSource.channel',
-					'cards.dataSource.property',
-					'tiles',
-					'tiles.page',
-					'tiles.dataSource',
-					'tiles.dataSource.tile',
-					'tiles.dataSource.device',
-					'tiles.dataSource.channel',
-					'tiles.dataSource.property',
-					'tiles.device',
-					'device',
-					'dataSource',
-					'dataSource.page',
-					'dataSource.device',
-					'dataSource.channel',
-					'dataSource.property',
-				],
 			});
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_CREATED,
-				plainToInstance(TilesPageEntity, mockCratedPage),
+				plainToInstance(MockPageEntity, mockCratedPage),
 			);
 		});
 
 		it('should throw validation exception for invalid data', async () => {
-			const createDto: Partial<CreateDeviceDetailPageDto> = {
+			const createDto: Partial<CreateMockPageDto> = {
 				title: 'New page',
 			};
 
-			await expect(service.create(createDto as CreateDeviceDetailPageDto)).rejects.toThrow(DashboardException);
+			await expect(service.create(createDto as CreateMockPageDto)).rejects.toThrow(DashboardException);
 		});
 	});
 
 	describe('update', () => {
 		it('should update a page', async () => {
-			const updateDto: UpdateTilesPageDto = {
+			const updateDto: UpdateMockPageDto = {
 				type: 'tiles',
 				title: 'Updated title',
+				mockValue: 'Updated mock value',
 			};
-			const mockUpdatePage: TilesPageEntity = {
-				id: mockTilesPage.id,
-				type: mockTilesPage.type,
+			const mockUpdatePage: MockPageEntity = {
+				id: mockPageTwo.id,
+				type: mockPageTwo.type,
 				title: updateDto.title,
-				order: mockTilesPage.order,
-				tiles: [],
-				dataSource: [],
-				createdAt: mockTilesPage.createdAt,
-				updatedAt: mockTilesPage.updatedAt,
+				order: mockPageTwo.order,
+				dataSource: mockPageTwo.dataSource,
+				createdAt: mockPageTwo.createdAt,
+				updatedAt: mockPageTwo.updatedAt,
+				mockValue: updateDto.mockValue,
 			};
-			const mockUpdatedPage: TilesPageEntity = {
+			const mockUpdatedPage: MockPageEntity = {
 				id: mockUpdatePage.id,
 				type: mockUpdatePage.type,
 				title: mockUpdatePage.title,
 				order: mockUpdatePage.order,
-				tiles: [],
-				dataSource: [],
+				dataSource: mockUpdatePage.dataSource,
 				createdAt: mockUpdatePage.createdAt,
 				updatedAt: new Date(),
+				mockValue: mockUpdatePage.mockValue,
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
 				type: 'mock',
-				class: TilesPageEntity,
-				createDto: CreateTilesPageDto,
-				updateDto: UpdateTilesPageDto,
+				class: MockPageEntity,
+				createDto: CreateMockPageDto,
+				updateDto: UpdateMockPageDto,
 			});
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
 			jest
 				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(TilesPageEntity, mockTilesPage))
-				.mockResolvedValueOnce(plainToInstance(TilesPageEntity, mockUpdatedPage));
+				.mockResolvedValueOnce(plainToInstance(MockPageEntity, mockPageTwo))
+				.mockResolvedValueOnce(plainToInstance(MockPageEntity, mockUpdatedPage));
 			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedPage);
 
-			const result = await service.update(mockTilesPage.id, updateDto);
+			const result = await service.update(mockPageTwo.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(TilesPageEntity, mockUpdatedPage));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(TilesPageEntity, mockUpdatePage));
+			expect(result).toEqual(plainToInstance(MockPageEntity, mockUpdatedPage));
+			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockPageEntity, mockUpdatePage));
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockTilesPage.id },
-				relations: [
-					'cards',
-					'cards.page',
-					'cards.tiles',
-					'cards.tiles.card',
-					'cards.tiles.dataSource',
-					'cards.tiles.dataSource.tile',
-					'cards.tiles.dataSource.device',
-					'cards.tiles.dataSource.channel',
-					'cards.tiles.dataSource.property',
-					'cards.dataSource',
-					'cards.dataSource.card',
-					'cards.dataSource.device',
-					'cards.dataSource.channel',
-					'cards.dataSource.property',
-					'tiles',
-					'tiles.page',
-					'tiles.dataSource',
-					'tiles.dataSource.tile',
-					'tiles.dataSource.device',
-					'tiles.dataSource.channel',
-					'tiles.dataSource.property',
-					'tiles.device',
-					'device',
-					'dataSource',
-					'dataSource.page',
-					'dataSource.device',
-					'dataSource.channel',
-					'dataSource.property',
-				],
+				where: { id: mockPageTwo.id },
 			});
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_UPDATED,
-				plainToInstance(TilesPageEntity, mockUpdatedPage),
+				plainToInstance(MockPageEntity, mockUpdatedPage),
 			);
 		});
 	});
 
 	describe('remove', () => {
 		it('should delete a page', async () => {
-			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(DeviceDetailPageEntity, mockDevicePage));
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockDevicePage);
+			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(MockPageEntity, mockPageOne));
+			jest.spyOn(repository, 'remove').mockResolvedValue(mockPageOne);
 
-			await service.remove(mockDevicePage.id);
+			await service.remove(mockPageOne.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(MockDevice, mockDevicePage));
+			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(MockPageEntity, mockPageOne));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_DELETED,
-				plainToInstance(MockDevice, mockDevicePage),
+				plainToInstance(MockPageEntity, mockPageOne),
 			);
 		});
 

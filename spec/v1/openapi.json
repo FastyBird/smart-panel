@@ -4055,69 +4055,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardReqCreatePage"
-              },
-              "examples": {
-                "Example 1": {
-                  "value": {
-                    "data": {
-                      "id": "602df00f-0cc9-45dd-a74f-3a28f0e8c8ee",
-                      "title": "My Dashboard",
-                      "icon": "icon-name",
-                      "order": 1,
-                      "type": "cards",
-                      "cards": [
-                        {
-                          "id": "7943c740-52b6-4e18-a136-cf39061ac869",
-                          "title": "Mood lights",
-                          "icon": "icon-name",
-                          "order": 1,
-                          "tiles": [
-                            {
-                              "id": "9f807d44-bd0f-4f5e-b409-3d048efa03d8",
-                              "row": 1,
-                              "col": 2,
-                              "row_span": 1,
-                              "col_span": 2,
-                              "data_source": [
-                                {
-                                  "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                                  "type": "device-channel",
-                                  "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                                  "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                                  "property": "3d988def-559f-498c-a804-5111aba2df66",
-                                  "icon": "icon-name"
-                                }
-                              ],
-                              "type": "device-preview",
-                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                              "icon": "icon-name"
-                            }
-                          ],
-                          "data_source": [
-                            {
-                              "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                              "type": "device-channel",
-                              "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                              "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                              "property": "3d988def-559f-498c-a804-5111aba2df66",
-                              "icon": "icon-name"
-                            }
-                          ]
-                        }
-                      ],
-                      "data_source": [
-                        {
-                          "id": "dbf838d6-5c5b-4c8e-b189-952038b9020c",
-                          "type": "device-channel",
-                          "device": "4751ac17-9d97-4fb9-932b-dad617c3e66b",
-                          "channel": "e6e21ca0-ab84-48d0-b229-9ba5ad19b2e7",
-                          "property": "3d988def-559f-498c-a804-5111aba2df66",
-                          "icon": "icon-name"
-                        }
-                      ]
-                    }
-                  }
-                }
               }
             }
           },
@@ -10153,6 +10090,7 @@
           "title",
           "icon",
           "order",
+          "data_source",
           "created_at",
           "updated_at"
         ],
@@ -10191,6 +10129,13 @@
             "default": 0,
             "example": 1
           },
+          "data_source": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardDataSource"
+            },
+            "description": "A list of data sources used by the page, typically for real-time updates."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -10227,8 +10172,7 @@
           {
             "type": "object",
             "required": [
-              "cards",
-              "data_source"
+              "cards"
             ],
             "properties": {
               "cards": {
@@ -10236,13 +10180,6 @@
                 "description": "A list of cards associated with the page.",
                 "items": {
                   "$ref": "#/components/schemas/DashboardCard"
-                }
-              },
-              "data_source": {
-                "type": "array",
-                "description": "A list of data sources associated with the page.",
-                "items": {
-                  "$ref": "#/components/schemas/DashboardDataSource"
                 }
               }
             }
@@ -10259,8 +10196,7 @@
           {
             "type": "object",
             "required": [
-              "tiles",
-              "data_source"
+              "tiles"
             ],
             "properties": {
               "tiles": {
@@ -10268,13 +10204,6 @@
                 "description": "A list of tiles associated with the tiles page.",
                 "items": {
                   "$ref": "#/components/schemas/DashboardTile"
-                }
-              },
-              "data_source": {
-                "type": "array",
-                "description": "A list of data sources associated with the tiles page.",
-                "items": {
-                  "$ref": "#/components/schemas/DashboardDataSource"
                 }
               }
             }
@@ -10715,6 +10644,13 @@
             "description": "The position of the page in the dashboard’s list.",
             "default": 0,
             "example": 1
+          },
+          "data_source": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardCreateDataSource"
+            },
+            "description": "A list of data sources used by the page, typically for real-time updates."
           }
         },
         "discriminator": {
@@ -10742,13 +10678,6 @@
                   "$ref": "#/components/schemas/DashboardCreateCard"
                 },
                 "description": "A list of cards associated with the page."
-              },
-              "data_source": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/DashboardCreateDataSource"
-                },
-                "description": "A list of data sources associated with the page."
               }
             }
           }
@@ -10770,13 +10699,6 @@
                   "$ref": "#/components/schemas/DashboardCreateTile"
                 },
                 "description": "A list of tiles associated with the tiles page."
-              },
-              "data_source": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/DashboardCreateDataSource"
-                },
-                "description": "A list of data sources associated with the tiles page."
               }
             }
           }
