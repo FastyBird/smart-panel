@@ -65,13 +65,11 @@ export class CardEntity extends BaseEntity {
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => TileEntity)
 	tiles: TileEntity[] = [];
 
 	@Expose({ name: 'data_source' })
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => DataSourceEntity)
 	@Transform(
 		({ obj }: { obj: { data_source?: DataSourceEntity[]; dataSource?: DataSourceEntity[] } }) =>
 			obj.data_source || obj.dataSource,

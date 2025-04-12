@@ -5,7 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Expose, Transform, Type } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
@@ -46,7 +46,6 @@ class MockPageEntity extends PageEntity {
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => TileEntity)
 	tiles: TileEntity[];
 
 	@Expose()
