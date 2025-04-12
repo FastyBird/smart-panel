@@ -9,7 +9,7 @@ import { DASHBOARD_MODULE_NAME, type IPagePluginsComponents, type IPagePluginsSc
 import enUS from './locales/en-US.json';
 import { TilesPageCreateReqSchema, TilesPageSchema, TilesPageUpdateReqSchema } from './store/pages.store.schemas';
 
-export const tilesPagePluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>> = Symbol('FB-Plugin-DashboardTilesPage');
+export const pagesTilesPluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>> = Symbol('FB-Plugin-PagesTiles');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -22,9 +22,9 @@ export default {
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
 
-		pluginsManager.addPlugin(tilesPagePluginKey, {
+		pluginsManager.addPlugin(pagesTilesPluginKey, {
 			type: 'tiles',
-			source: 'com.fastybird.smart-panel.tiles-page',
+			source: 'com.fastybird.smart-panel.plugin.pages-tiles',
 			name: 'Tiles Page',
 			description: 'Tiles page plugin for FastyBird IoT Smart Panel',
 			links: {

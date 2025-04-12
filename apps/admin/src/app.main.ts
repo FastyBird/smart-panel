@@ -34,10 +34,10 @@ import { DevicesModule } from './modules/devices';
 import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import type { paths } from './openapi';
-import { CardsPagesPlugin } from './plugins/cards-pages';
-import { DevicePagesPlugin } from './plugins/device-pages';
-import { ThirdPartyDevicesPlugin } from './plugins/third-party-devices';
-import { TilesPagesPlugin } from './plugins/tiles-pages';
+import { DevicesThirdPartyPlugin } from './plugins/devices-third-party';
+import { PagesCardsPlugin } from './plugins/pages-cards';
+import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail';
+import { PagesTilesPlugin } from './plugins/pages-tiles';
 
 const app = createApp(AppMain);
 
@@ -109,10 +109,10 @@ const pluginOptions: IModuleOptions = {
 	i18n,
 };
 
-app.use(ThirdPartyDevicesPlugin, pluginOptions);
-app.use(TilesPagesPlugin, pluginOptions);
-app.use(CardsPagesPlugin, pluginOptions);
-app.use(DevicePagesPlugin, pluginOptions);
+app.use(DevicesThirdPartyPlugin, pluginOptions);
+app.use(PagesCardsPlugin, pluginOptions);
+app.use(PagesDeviceDetailPlugin, pluginOptions);
+app.use(PagesTilesPlugin, pluginOptions);
 
 router.beforeEach((to) => {
 	const accountManager = injectAccountManager(app);

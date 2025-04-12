@@ -10,7 +10,7 @@ import { ThirdPartyDeviceAddForm, ThirdPartyDeviceEditForm } from './components/
 import enUS from './locales/en-US.json';
 import { ThirdPartyDeviceCreateReqSchema, ThirdPartyDeviceSchema, ThirdPartyDeviceUpdateReqSchema } from './store/devices.store.schemas';
 
-export const thirdPartyDevicesPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol('FB-Plugin-ThirdPartyDevices');
+export const devicesThirdPartyPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol('FB-Plugin-DevicesThirdParty');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -23,9 +23,9 @@ export default {
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
 
-		pluginsManager.addPlugin(thirdPartyDevicesPluginKey, {
+		pluginsManager.addPlugin(devicesThirdPartyPluginKey, {
 			type: 'third-party',
-			source: 'com.fastybird.smart-panel.third-party-devices',
+			source: 'com.fastybird.smart-panel.plugin.devices-third-party',
 			name: 'Third Party Devices',
 			description: 'Third party devices plugin for FastyBird IoT Smart Panel',
 			links: {

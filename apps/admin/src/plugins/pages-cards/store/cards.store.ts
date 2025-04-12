@@ -52,7 +52,7 @@ const defaultSemaphore: ICardsStateSemaphore = {
 	deleting: [],
 };
 
-export const useCards = defineStore<'dashboard_module-cards', CardsStoreSetup>('dashboard_module-cards', (): CardsStoreSetup => {
+export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>('pages_cards_plugin-cards', (): CardsStoreSetup => {
 	const backend = useBackend();
 
 	const { getByType: getTilePluginByType } = useTilesPlugins();

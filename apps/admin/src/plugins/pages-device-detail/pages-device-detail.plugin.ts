@@ -10,8 +10,8 @@ import { DeviceDetailPageAddForm, DeviceDetailPageEditForm } from './components/
 import enUS from './locales/en-US.json';
 import { DeviceDetailPageCreateReqSchema, DeviceDetailPageSchema, DeviceDetailPageUpdateReqSchema } from './store/pages.store.schemas';
 
-export const tilesPagePluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>> =
-	Symbol('FB-Plugin-DashboardDeviceDetailPage');
+export const pagesDeviceDetailPluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>> =
+	Symbol('FB-Plugin-PagesDeviceDetail');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -24,9 +24,9 @@ export default {
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
 
-		pluginsManager.addPlugin(tilesPagePluginKey, {
+		pluginsManager.addPlugin(pagesDeviceDetailPluginKey, {
 			type: 'device-detail',
-			source: 'com.fastybird.smart-panel.tiles-page',
+			source: 'com.fastybird.smart-panel.plugin.pages-device-detail',
 			name: 'Device Detail Page',
 			description: 'Device detail page plugin for FastyBird IoT Smart Panel',
 			links: {

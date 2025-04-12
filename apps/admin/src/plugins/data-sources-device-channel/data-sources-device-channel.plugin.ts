@@ -6,7 +6,6 @@ import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { DASHBOARD_MODULE_NAME, type IDataSourcePluginsComponents, type IDataSourcePluginsSchemas } from '../../modules/dashboard';
 
-import { DEVICE_CHANNEL_DATA_SOURCES_PLUGIN_NAME } from './device-channel-data-sources.constants';
 import enUS from './locales/en-US.json';
 import {
 	DeviceChannelDataSourceCreateReqSchema,
@@ -14,9 +13,8 @@ import {
 	DeviceChannelDataSourceUpdateReqSchema,
 } from './store/dataSources.store.schemas';
 
-export const tilesPagePluginKey: PluginInjectionKey<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas>> = Symbol(
-	'FB-Plugin-DashboardDeviceChannelDataSources'
-);
+export const dataSourcesDeviceChannelPluginKey: PluginInjectionKey<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas>> =
+	Symbol('FB-Plugin-DataSourcesDeviceChannel');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -29,9 +27,9 @@ export default {
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
 
-		pluginsManager.addPlugin(tilesPagePluginKey, {
-			type: DEVICE_CHANNEL_DATA_SOURCES_PLUGIN_NAME,
-			source: 'com.fastybird.smart-panel.device-channel-data-sources',
+		pluginsManager.addPlugin(dataSourcesDeviceChannelPluginKey, {
+			type: 'device-channel',
+			source: 'com.fastybird.smart-panel.plugin.data-source-device-channel',
 			name: 'Device Channel Data Sources',
 			description: '',
 			links: {

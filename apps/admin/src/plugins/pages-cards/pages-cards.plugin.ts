@@ -11,7 +11,7 @@ import { registerCardsStore } from './store/cards.store';
 import { cardsStoreKey } from './store/keys';
 import { CardsPageCreateReqSchema, CardsPageSchema, CardsPageUpdateReqSchema } from './store/pages.store.schemas';
 
-export const tilesPagePluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>> = Symbol('FB-Plugin-DashboardCardsPage');
+export const pagesCardsPluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>> = Symbol('FB-Plugin-PagesCards');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -30,9 +30,9 @@ export default {
 		app.provide(cardsStoreKey, cardsStore);
 		storesManager.addStore(cardsStoreKey, cardsStore);
 
-		pluginsManager.addPlugin(tilesPagePluginKey, {
+		pluginsManager.addPlugin(pagesCardsPluginKey, {
 			type: 'cards',
-			source: 'com.fastybird.smart-panel.tiles-page',
+			source: 'com.fastybird.smart-panel.plugin.pages-cards',
 			name: 'Cards Page',
 			description: 'Cards with tiles page plugin for FastyBird IoT Smart Panel',
 			links: {

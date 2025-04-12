@@ -6,21 +6,19 @@ import type { IChannelsStoreActions, IChannelsStoreState } from './channels.stor
 import type { IDevicesControlsStoreActions, IDevicesControlsStoreState } from './devices.controls.store.types';
 import type { IDevicesStoreActions, IDevicesStoreState } from './devices.store.types';
 
-export const devicesStoreKey: StoreInjectionKey<string, IDevicesStoreState, object, IDevicesStoreActions> =
-	Symbol('FB-Module-DevicesModuleDevicesStore');
+export const devicesStoreKey: StoreInjectionKey<string, IDevicesStoreState, object, IDevicesStoreActions> = Symbol('FB-Module-Devices-DevicesStore');
 
 export const devicesControlsStoreKey: StoreInjectionKey<string, IDevicesControlsStoreState, object, IDevicesControlsStoreActions> = Symbol(
-	'FB-Module-DevicesModuleDevicesControlsStore'
+	'FB-Module-Devices-DevicesControlsStore'
 );
 
-export const channelsStoreKey: StoreInjectionKey<string, IChannelsStoreState, object, IChannelsStoreActions> = Symbol(
-	'FB-Module-DevicesModuleChannelsStore'
-);
+export const channelsStoreKey: StoreInjectionKey<string, IChannelsStoreState, object, IChannelsStoreActions> =
+	Symbol('FB-Module-Devices-ChannelsStore');
 
 export const channelsControlsStoreKey: StoreInjectionKey<string, IChannelsControlsStoreState, object, IChannelsControlsStoreActions> = Symbol(
-	'FB-Module-DevicesModuleChannelsControlsStore'
+	'FB-Module-Devices-ChannelsControlsStore'
 );
 
 export const channelsPropertiesStoreKey: StoreInjectionKey<string, IChannelsPropertiesStoreState, object, IChannelsPropertiesStoreActions> = Symbol(
-	'FB-Module-DevicesModuleChannelsPropertiesStore'
+	'FB-Module-Devices-ChannelsPropertiesStore'
 );
