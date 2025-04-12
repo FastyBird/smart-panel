@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+// @ts-expect-error This plugin is without TS support
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 
 import { ElOption, ElSelect } from 'element-plus';

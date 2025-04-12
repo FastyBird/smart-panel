@@ -22,7 +22,7 @@ const mockBackendClient = {
 
 const mockGetStore = vi.fn((key: symbol) => {
 	switch (key.description) {
-		case 'FB-Module-DashboardModuleDataSourcesStore':
+		case 'FB-Module-Dashboard-DataSourcesStore':
 			return {
 				firstLoad: [],
 				set: vi.fn(),

@@ -14,13 +14,13 @@ const cardId = uuid();
 
 const mockGetStore = vi.fn((key: symbol) => {
 	switch (key.description) {
-		case 'FB-Module-DashboardModuleDataSourcesStore':
+		case 'FB-Module-Dashboard-DataSourcesStore':
 			return {
 				firstLoad: [],
 				set: vi.fn(),
 				unset: vi.fn(),
 			};
-		case 'FB-Module-DashboardModuleTilesStore':
+		case 'FB-Module-Dashboard-TilesStore':
 			return {
 				firstLoad: [],
 				set: vi.fn(),
