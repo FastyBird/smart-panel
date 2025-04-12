@@ -14,8 +14,7 @@ _$DashboardResPageImpl _$$DashboardResPageImplFromJson(
       requestId: json['request_id'] as String,
       path: json['path'] as String,
       method: DashboardResPageMethod.fromJson(json['method'] as String),
-      data: DashboardResPageDataUnion.fromJson(
-          json['data'] as Map<String, dynamic>),
+      data: DashboardPage.fromJson(json['data'] as Map<String, dynamic>),
       metadata:
           CommonResMetadata.fromJson(json['metadata'] as Map<String, dynamic>),
     );

@@ -37,8 +37,7 @@ mixin _$DashboardResPages {
   DashboardResPagesMethod get method => throw _privateConstructorUsedError;
 
   /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
-  List<DashboardResPagesDataUnion> get data =>
-      throw _privateConstructorUsedError;
+  List<DashboardPage> get data => throw _privateConstructorUsedError;
 
   /// Additional metadata about the request and server performance metrics.
   CommonResMetadata get metadata => throw _privateConstructorUsedError;
@@ -65,7 +64,7 @@ abstract class $DashboardResPagesCopyWith<$Res> {
       @JsonKey(name: 'request_id') String requestId,
       String path,
       DashboardResPagesMethod method,
-      List<DashboardResPagesDataUnion> data,
+      List<DashboardPage> data,
       CommonResMetadata metadata});
 
   $CommonResMetadataCopyWith<$Res> get metadata;
@@ -118,7 +117,7 @@ class _$DashboardResPagesCopyWithImpl<$Res, $Val extends DashboardResPages>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as List<DashboardResPagesDataUnion>,
+              as List<DashboardPage>,
       metadata: null == metadata
           ? _value.metadata
           : metadata // ignore: cast_nullable_to_non_nullable
@@ -151,7 +150,7 @@ abstract class _$$DashboardResPagesImplCopyWith<$Res>
       @JsonKey(name: 'request_id') String requestId,
       String path,
       DashboardResPagesMethod method,
-      List<DashboardResPagesDataUnion> data,
+      List<DashboardPage> data,
       CommonResMetadata metadata});
 
   @override
@@ -203,7 +202,7 @@ class __$$DashboardResPagesImplCopyWithImpl<$Res>
       data: null == data
           ? _value._data
           : data // ignore: cast_nullable_to_non_nullable
-              as List<DashboardResPagesDataUnion>,
+              as List<DashboardPage>,
       metadata: null == metadata
           ? _value.metadata
           : metadata // ignore: cast_nullable_to_non_nullable
@@ -221,7 +220,7 @@ class _$DashboardResPagesImpl implements _DashboardResPages {
       @JsonKey(name: 'request_id') required this.requestId,
       required this.path,
       required this.method,
-      required final List<DashboardResPagesDataUnion> data,
+      required final List<DashboardPage> data,
       required this.metadata})
       : _data = data;
 
@@ -250,11 +249,11 @@ class _$DashboardResPagesImpl implements _DashboardResPages {
   final DashboardResPagesMethod method;
 
   /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
-  final List<DashboardResPagesDataUnion> _data;
+  final List<DashboardPage> _data;
 
   /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
   @override
-  List<DashboardResPagesDataUnion> get data {
+  List<DashboardPage> get data {
     if (_data is EqualUnmodifiableListView) return _data;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_data);
@@ -315,7 +314,7 @@ abstract class _DashboardResPages implements DashboardResPages {
       @JsonKey(name: 'request_id') required final String requestId,
       required final String path,
       required final DashboardResPagesMethod method,
-      required final List<DashboardResPagesDataUnion> data,
+      required final List<DashboardPage> data,
       required final CommonResMetadata metadata}) = _$DashboardResPagesImpl;
 
   factory _DashboardResPages.fromJson(Map<String, dynamic> json) =
@@ -344,7 +343,7 @@ abstract class _DashboardResPages implements DashboardResPages {
 
   /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
   @override
-  List<DashboardResPagesDataUnion> get data;
+  List<DashboardPage> get data;
 
   /// Additional metadata about the request and server performance metrics.
   @override

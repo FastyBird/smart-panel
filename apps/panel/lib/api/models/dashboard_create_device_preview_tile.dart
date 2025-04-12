@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'dashboard_create_tile_base_data_source_union.dart';
+import 'dashboard_create_data_source.dart';
 
 part 'dashboard_create_device_preview_tile.freezed.dart';
 part 'dashboard_create_device_preview_tile.g.dart';
@@ -27,7 +27,7 @@ class DashboardCreateDevicePreviewTile with _$DashboardCreateDevicePreviewTile {
 
     /// A list of data sources used by the tile, typically for real-time updates.
     @JsonKey(name: 'data_source')
-    required List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+    required List<DashboardCreateDataSource> dataSource,
 
     /// The unique identifier of the associated device.
     required String device,

@@ -9,8 +9,7 @@ part of 'dashboard_req_update_page.dart';
 _$DashboardReqUpdatePageImpl _$$DashboardReqUpdatePageImplFromJson(
         Map<String, dynamic> json) =>
     _$DashboardReqUpdatePageImpl(
-      data: DashboardReqUpdatePageDataUnion.fromJson(
-          json['data'] as Map<String, dynamic>),
+      data: DashboardUpdatePage.fromJson(json['data'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$DashboardReqUpdatePageImplToJson(

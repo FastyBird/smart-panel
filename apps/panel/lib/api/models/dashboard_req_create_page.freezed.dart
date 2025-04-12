@@ -21,8 +21,7 @@ DashboardReqCreatePage _$DashboardReqCreatePageFromJson(
 
 /// @nodoc
 mixin _$DashboardReqCreatePage {
-  DashboardReqCreatePageDataUnion get data =>
-      throw _privateConstructorUsedError;
+  DashboardCreatePage get data => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardReqCreatePage to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -40,9 +39,9 @@ abstract class $DashboardReqCreatePageCopyWith<$Res> {
           $Res Function(DashboardReqCreatePage) then) =
       _$DashboardReqCreatePageCopyWithImpl<$Res, DashboardReqCreatePage>;
   @useResult
-  $Res call({DashboardReqCreatePageDataUnion data});
+  $Res call({DashboardCreatePage data});
 
-  $DashboardReqCreatePageDataUnionCopyWith<$Res> get data;
+  $DashboardCreatePageCopyWith<$Res> get data;
 }
 
 /// @nodoc
@@ -67,7 +66,7 @@ class _$DashboardReqCreatePageCopyWithImpl<$Res,
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DashboardReqCreatePageDataUnion,
+              as DashboardCreatePage,
     ) as $Val);
   }
 
@@ -75,8 +74,8 @@ class _$DashboardReqCreatePageCopyWithImpl<$Res,
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $DashboardReqCreatePageDataUnionCopyWith<$Res> get data {
-    return $DashboardReqCreatePageDataUnionCopyWith<$Res>(_value.data, (value) {
+  $DashboardCreatePageCopyWith<$Res> get data {
+    return $DashboardCreatePageCopyWith<$Res>(_value.data, (value) {
       return _then(_value.copyWith(data: value) as $Val);
     });
   }
@@ -91,10 +90,10 @@ abstract class _$$DashboardReqCreatePageImplCopyWith<$Res>
       __$$DashboardReqCreatePageImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({DashboardReqCreatePageDataUnion data});
+  $Res call({DashboardCreatePage data});
 
   @override
-  $DashboardReqCreatePageDataUnionCopyWith<$Res> get data;
+  $DashboardCreatePageCopyWith<$Res> get data;
 }
 
 /// @nodoc
@@ -118,7 +117,7 @@ class __$$DashboardReqCreatePageImplCopyWithImpl<$Res>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DashboardReqCreatePageDataUnion,
+              as DashboardCreatePage,
     ));
   }
 }
@@ -132,7 +131,7 @@ class _$DashboardReqCreatePageImpl implements _DashboardReqCreatePage {
       _$$DashboardReqCreatePageImplFromJson(json);
 
   @override
-  final DashboardReqCreatePageDataUnion data;
+  final DashboardCreatePage data;
 
   @override
   String toString() {
@@ -170,14 +169,13 @@ class _$DashboardReqCreatePageImpl implements _DashboardReqCreatePage {
 
 abstract class _DashboardReqCreatePage implements DashboardReqCreatePage {
   const factory _DashboardReqCreatePage(
-          {required final DashboardReqCreatePageDataUnion data}) =
-      _$DashboardReqCreatePageImpl;
+      {required final DashboardCreatePage data}) = _$DashboardReqCreatePageImpl;
 
   factory _DashboardReqCreatePage.fromJson(Map<String, dynamic> json) =
       _$DashboardReqCreatePageImpl.fromJson;
 
   @override
-  DashboardReqCreatePageDataUnion get data;
+  DashboardCreatePage get data;
 
   /// Create a copy of DashboardReqCreatePage
   /// with the given fields replaced by the non-null parameter values.

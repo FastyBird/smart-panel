@@ -9,8 +9,7 @@ part of 'dashboard_req_create_page.dart';
 _$DashboardReqCreatePageImpl _$$DashboardReqCreatePageImplFromJson(
         Map<String, dynamic> json) =>
     _$DashboardReqCreatePageImpl(
-      data: DashboardReqCreatePageDataUnion.fromJson(
-          json['data'] as Map<String, dynamic>),
+      data: DashboardCreatePage.fromJson(json['data'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$DashboardReqCreatePageImplToJson(

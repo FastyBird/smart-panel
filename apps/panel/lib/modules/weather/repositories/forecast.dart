@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/weather/models/forecast_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
@@ -54,15 +52,9 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
       () async {
         final response = await apiClient.getWeatherModuleForecast();
 
-        final data = response.data.data;
+        final raw = response.response.data['data'] as List;
 
-        List<Map<String, dynamic>> forecast = [];
-
-        for (var day in data) {
-          forecast.add(jsonDecode(jsonEncode(day)));
-        }
-
-        insertForecast(forecast);
+        insertForecast(raw.cast<Map<String, dynamic>>());
       },
       'fetch forecast weather',
     );

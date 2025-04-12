@@ -4,6 +4,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'dashboard_create_data_source.dart';
+
 part 'dashboard_create_device_detail_page.freezed.dart';
 part 'dashboard_create_device_detail_page.g.dart';
 
@@ -19,6 +21,10 @@ class DashboardCreateDeviceDetailPage with _$DashboardCreateDeviceDetailPage {
 
     /// The title of the dashboard page.
     required String title,
+
+    /// A list of data sources used by the page, typically for real-time updates.
+    @JsonKey(name: 'data_source')
+    required List<DashboardCreateDataSource> dataSource,
 
     /// The unique identifier of the associated device.
     required String device,

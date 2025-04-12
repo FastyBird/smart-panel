@@ -21,8 +21,7 @@ DashboardReqCreateDataSource _$DashboardReqCreateDataSourceFromJson(
 
 /// @nodoc
 mixin _$DashboardReqCreateDataSource {
-  DashboardReqCreateDataSourceDataUnion get data =>
-      throw _privateConstructorUsedError;
+  dynamic get data => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardReqCreateDataSource to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -42,9 +41,7 @@ abstract class $DashboardReqCreateDataSourceCopyWith<$Res> {
       _$DashboardReqCreateDataSourceCopyWithImpl<$Res,
           DashboardReqCreateDataSource>;
   @useResult
-  $Res call({DashboardReqCreateDataSourceDataUnion data});
-
-  $DashboardReqCreateDataSourceDataUnionCopyWith<$Res> get data;
+  $Res call({dynamic data});
 }
 
 /// @nodoc
@@ -63,25 +60,14 @@ class _$DashboardReqCreateDataSourceCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? data = null,
+    Object? data = freezed,
   }) {
     return _then(_value.copyWith(
-      data: null == data
+      data: freezed == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DashboardReqCreateDataSourceDataUnion,
+              as dynamic,
     ) as $Val);
-  }
-
-  /// Create a copy of DashboardReqCreateDataSource
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @pragma('vm:prefer-inline')
-  $DashboardReqCreateDataSourceDataUnionCopyWith<$Res> get data {
-    return $DashboardReqCreateDataSourceDataUnionCopyWith<$Res>(_value.data,
-        (value) {
-      return _then(_value.copyWith(data: value) as $Val);
-    });
   }
 }
 
@@ -94,10 +80,7 @@ abstract class _$$DashboardReqCreateDataSourceImplCopyWith<$Res>
       __$$DashboardReqCreateDataSourceImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({DashboardReqCreateDataSourceDataUnion data});
-
-  @override
-  $DashboardReqCreateDataSourceDataUnionCopyWith<$Res> get data;
+  $Res call({dynamic data});
 }
 
 /// @nodoc
@@ -115,13 +98,13 @@ class __$$DashboardReqCreateDataSourceImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? data = null,
+    Object? data = freezed,
   }) {
     return _then(_$DashboardReqCreateDataSourceImpl(
-      data: null == data
+      data: freezed == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DashboardReqCreateDataSourceDataUnion,
+              as dynamic,
     ));
   }
 }
@@ -137,7 +120,7 @@ class _$DashboardReqCreateDataSourceImpl
       _$$DashboardReqCreateDataSourceImplFromJson(json);
 
   @override
-  final DashboardReqCreateDataSourceDataUnion data;
+  final dynamic data;
 
   @override
   String toString() {
@@ -149,12 +132,13 @@ class _$DashboardReqCreateDataSourceImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DashboardReqCreateDataSourceImpl &&
-            (identical(other.data, data) || other.data == data));
+            const DeepCollectionEquality().equals(other.data, data));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, data);
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(data));
 
   /// Create a copy of DashboardReqCreateDataSource
   /// with the given fields replaced by the non-null parameter values.
@@ -176,15 +160,14 @@ class _$DashboardReqCreateDataSourceImpl
 
 abstract class _DashboardReqCreateDataSource
     implements DashboardReqCreateDataSource {
-  const factory _DashboardReqCreateDataSource(
-          {required final DashboardReqCreateDataSourceDataUnion data}) =
+  const factory _DashboardReqCreateDataSource({required final dynamic data}) =
       _$DashboardReqCreateDataSourceImpl;
 
   factory _DashboardReqCreateDataSource.fromJson(Map<String, dynamic> json) =
       _$DashboardReqCreateDataSourceImpl.fromJson;
 
   @override
-  DashboardReqCreateDataSourceDataUnion get data;
+  dynamic get data;
 
   /// Create a copy of DashboardReqCreateDataSource
   /// with the given fields replaced by the non-null parameter values.

@@ -1,4 +1,4 @@
-import { Exclude, Expose, Transform } from 'class-transformer';
+import { Exclude, Expose, Transform, Type } from 'class-transformer';
 import { IsInstance, IsOptional, IsString, IsUUID, Validate, ValidateIf } from 'class-validator';
 import { ChildEntity, Column, ManyToOne, RelationId } from 'typeorm';
 
@@ -29,6 +29,7 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@Transform(({ value }: { value: ChannelEntity | string }) => (typeof value === 'string' ? value : value?.id), {
 		toPlainOnly: true,
 	})
+	@Type(() => ChannelEntity)
 	@ManyToOne(() => ChannelEntity, { onDelete: 'CASCADE' })
 	channel: ChannelEntity | string;
 
@@ -39,6 +40,7 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@IsInstance(ChannelPropertyEntity, {
 		message: '[{"field":"property","reason":"Property must be a valid ChannelPropertyEntity."}]',
 	})
+	@Type(() => ChannelPropertyEntity)
 	@Transform(
 		({ value }: { value: ChannelPropertyEntity | string }) => (typeof value === 'string' ? value : value?.id),
 		{ toPlainOnly: true },

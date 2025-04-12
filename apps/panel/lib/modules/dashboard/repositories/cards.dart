@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/dashboard/models/card.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
@@ -58,7 +56,9 @@ class CardsRepository extends Repository<CardModel> {
           id: id,
         );
 
-        insertCards([jsonDecode(jsonEncode(response.data.data))]);
+        final raw = response.response.data['data'] as Map<String, dynamic>;
+
+        insertCards([raw]);
       },
       'fetch page card',
     );
@@ -73,13 +73,9 @@ class CardsRepository extends Repository<CardModel> {
           pageId: pageId,
         );
 
-        List<Map<String, dynamic>> cards = [];
+        final raw = response.response.data['data'] as List;
 
-        for (var card in response.data.data) {
-          cards.add(jsonDecode(jsonEncode(card)));
-        }
-
-        insertCards(cards);
+        insertCards(raw.cast<Map<String, dynamic>>());
       },
       'fetch page cards',
     );

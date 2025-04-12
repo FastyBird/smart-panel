@@ -4,8 +4,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'dashboard_card_data_source_union.dart';
-import 'dashboard_card_tiles_union.dart';
+import 'dashboard_data_source.dart';
+import 'dashboard_tile.dart';
 
 part 'dashboard_card.freezed.dart';
 part 'dashboard_card.g.dart';
@@ -27,11 +27,11 @@ class DashboardCard with _$DashboardCard {
     required String page,
 
     /// A list of tiles associated with the dashboard card, representing widgets or functional components.
-    required List<DashboardCardTilesUnion> tiles,
+    required List<DashboardTile> tiles,
 
     /// A list of data sources used by the card, typically for real-time updates.
     @JsonKey(name: 'data_source')
-    required List<DashboardCardDataSourceUnion> dataSource,
+    required List<DashboardDataSource> dataSource,
 
     /// The timestamp when the dashboard card was created.
     @JsonKey(name: 'created_at')

@@ -30,6 +30,11 @@ mixin _$DashboardCreateDeviceDetailPage {
   /// The title of the dashboard page.
   String get title => throw _privateConstructorUsedError;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateDataSource> get dataSource =>
+      throw _privateConstructorUsedError;
+
   /// The unique identifier of the associated device.
   String get device => throw _privateConstructorUsedError;
 
@@ -61,6 +66,7 @@ abstract class $DashboardCreateDeviceDetailPageCopyWith<$Res> {
       {String id,
       String type,
       String title,
+      @JsonKey(name: 'data_source') List<DashboardCreateDataSource> dataSource,
       String device,
       int order,
       String? icon});
@@ -85,6 +91,7 @@ class _$DashboardCreateDeviceDetailPageCopyWithImpl<$Res,
     Object? id = null,
     Object? type = null,
     Object? title = null,
+    Object? dataSource = null,
     Object? device = null,
     Object? order = null,
     Object? icon = freezed,
@@ -102,6 +109,10 @@ class _$DashboardCreateDeviceDetailPageCopyWithImpl<$Res,
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
+      dataSource: null == dataSource
+          ? _value.dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateDataSource>,
       device: null == device
           ? _value.device
           : device // ignore: cast_nullable_to_non_nullable
@@ -131,6 +142,7 @@ abstract class _$$DashboardCreateDeviceDetailPageImplCopyWith<$Res>
       {String id,
       String type,
       String title,
+      @JsonKey(name: 'data_source') List<DashboardCreateDataSource> dataSource,
       String device,
       int order,
       String? icon});
@@ -154,6 +166,7 @@ class __$$DashboardCreateDeviceDetailPageImplCopyWithImpl<$Res>
     Object? id = null,
     Object? type = null,
     Object? title = null,
+    Object? dataSource = null,
     Object? device = null,
     Object? order = null,
     Object? icon = freezed,
@@ -171,6 +184,10 @@ class __$$DashboardCreateDeviceDetailPageImplCopyWithImpl<$Res>
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateDataSource>,
       device: null == device
           ? _value.device
           : device // ignore: cast_nullable_to_non_nullable
@@ -195,9 +212,12 @@ class _$DashboardCreateDeviceDetailPageImpl
       {required this.id,
       required this.type,
       required this.title,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardCreateDataSource> dataSource,
       required this.device,
       this.order = 0,
-      this.icon});
+      this.icon})
+      : _dataSource = dataSource;
 
   factory _$DashboardCreateDeviceDetailPageImpl.fromJson(
           Map<String, dynamic> json) =>
@@ -215,6 +235,18 @@ class _$DashboardCreateDeviceDetailPageImpl
   @override
   final String title;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  final List<DashboardCreateDataSource> _dataSource;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateDataSource> get dataSource {
+    if (_dataSource is EqualUnmodifiableListView) return _dataSource;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_dataSource);
+  }
+
   /// The unique identifier of the associated device.
   @override
   final String device;
@@ -230,7 +262,7 @@ class _$DashboardCreateDeviceDetailPageImpl
 
   @override
   String toString() {
-    return 'DashboardCreateDeviceDetailPage(id: $id, type: $type, title: $title, device: $device, order: $order, icon: $icon)';
+    return 'DashboardCreateDeviceDetailPage(id: $id, type: $type, title: $title, dataSource: $dataSource, device: $device, order: $order, icon: $icon)';
   }
 
   @override
@@ -241,6 +273,8 @@ class _$DashboardCreateDeviceDetailPageImpl
             (identical(other.id, id) || other.id == id) &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
+            const DeepCollectionEquality()
+                .equals(other._dataSource, _dataSource) &&
             (identical(other.device, device) || other.device == device) &&
             (identical(other.order, order) || other.order == order) &&
             (identical(other.icon, icon) || other.icon == icon));
@@ -248,8 +282,8 @@ class _$DashboardCreateDeviceDetailPageImpl
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, type, title, device, order, icon);
+  int get hashCode => Object.hash(runtimeType, id, type, title,
+      const DeepCollectionEquality().hash(_dataSource), device, order, icon);
 
   /// Create a copy of DashboardCreateDeviceDetailPage
   /// with the given fields replaced by the non-null parameter values.
@@ -275,6 +309,8 @@ abstract class _DashboardCreateDeviceDetailPage
       {required final String id,
       required final String type,
       required final String title,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardCreateDataSource> dataSource,
       required final String device,
       final int order,
       final String? icon}) = _$DashboardCreateDeviceDetailPageImpl;
@@ -293,6 +329,11 @@ abstract class _DashboardCreateDeviceDetailPage
   /// The title of the dashboard page.
   @override
   String get title;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateDataSource> get dataSource;
 
   /// The unique identifier of the associated device.
   @override

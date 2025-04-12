@@ -30,13 +30,13 @@ mixin _$DashboardCreateCardsPage {
   /// The title of the dashboard page.
   String get title => throw _privateConstructorUsedError;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateDataSource> get dataSource =>
+      throw _privateConstructorUsedError;
+
   /// A list of cards associated with the page.
   List<DashboardCreateCard> get cards => throw _privateConstructorUsedError;
-
-  /// A list of data sources associated with the page.
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateCardsPageDataSourceUnion> get dataSource =>
-      throw _privateConstructorUsedError;
 
   /// The position of the page in the dashboard’s list.
   int get order => throw _privateConstructorUsedError;
@@ -64,9 +64,8 @@ abstract class $DashboardCreateCardsPageCopyWith<$Res> {
       {String id,
       String type,
       String title,
+      @JsonKey(name: 'data_source') List<DashboardCreateDataSource> dataSource,
       List<DashboardCreateCard> cards,
-      @JsonKey(name: 'data_source')
-      List<DashboardCreateCardsPageDataSourceUnion> dataSource,
       int order,
       String? icon});
 }
@@ -90,8 +89,8 @@ class _$DashboardCreateCardsPageCopyWithImpl<$Res,
     Object? id = null,
     Object? type = null,
     Object? title = null,
-    Object? cards = null,
     Object? dataSource = null,
+    Object? cards = null,
     Object? order = null,
     Object? icon = freezed,
   }) {
@@ -108,14 +107,14 @@ class _$DashboardCreateCardsPageCopyWithImpl<$Res,
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
+      dataSource: null == dataSource
+          ? _value.dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateDataSource>,
       cards: null == cards
           ? _value.cards
           : cards // ignore: cast_nullable_to_non_nullable
               as List<DashboardCreateCard>,
-      dataSource: null == dataSource
-          ? _value.dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateCardsPageDataSourceUnion>,
       order: null == order
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
@@ -141,9 +140,8 @@ abstract class _$$DashboardCreateCardsPageImplCopyWith<$Res>
       {String id,
       String type,
       String title,
+      @JsonKey(name: 'data_source') List<DashboardCreateDataSource> dataSource,
       List<DashboardCreateCard> cards,
-      @JsonKey(name: 'data_source')
-      List<DashboardCreateCardsPageDataSourceUnion> dataSource,
       int order,
       String? icon});
 }
@@ -166,8 +164,8 @@ class __$$DashboardCreateCardsPageImplCopyWithImpl<$Res>
     Object? id = null,
     Object? type = null,
     Object? title = null,
-    Object? cards = null,
     Object? dataSource = null,
+    Object? cards = null,
     Object? order = null,
     Object? icon = freezed,
   }) {
@@ -184,14 +182,14 @@ class __$$DashboardCreateCardsPageImplCopyWithImpl<$Res>
           ? _value.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardCreateDataSource>,
       cards: null == cards
           ? _value._cards
           : cards // ignore: cast_nullable_to_non_nullable
               as List<DashboardCreateCard>,
-      dataSource: null == dataSource
-          ? _value._dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateCardsPageDataSourceUnion>,
       order: null == order
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
@@ -211,13 +209,13 @@ class _$DashboardCreateCardsPageImpl implements _DashboardCreateCardsPage {
       {required this.id,
       required this.type,
       required this.title,
-      required final List<DashboardCreateCard> cards,
       @JsonKey(name: 'data_source')
-      required final List<DashboardCreateCardsPageDataSourceUnion> dataSource,
+      required final List<DashboardCreateDataSource> dataSource,
+      required final List<DashboardCreateCard> cards,
       this.order = 0,
       this.icon})
-      : _cards = cards,
-        _dataSource = dataSource;
+      : _dataSource = dataSource,
+        _cards = cards;
 
   factory _$DashboardCreateCardsPageImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardCreateCardsPageImplFromJson(json);
@@ -234,6 +232,18 @@ class _$DashboardCreateCardsPageImpl implements _DashboardCreateCardsPage {
   @override
   final String title;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  final List<DashboardCreateDataSource> _dataSource;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateDataSource> get dataSource {
+    if (_dataSource is EqualUnmodifiableListView) return _dataSource;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_dataSource);
+  }
+
   /// A list of cards associated with the page.
   final List<DashboardCreateCard> _cards;
 
@@ -243,18 +253,6 @@ class _$DashboardCreateCardsPageImpl implements _DashboardCreateCardsPage {
     if (_cards is EqualUnmodifiableListView) return _cards;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_cards);
-  }
-
-  /// A list of data sources associated with the page.
-  final List<DashboardCreateCardsPageDataSourceUnion> _dataSource;
-
-  /// A list of data sources associated with the page.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateCardsPageDataSourceUnion> get dataSource {
-    if (_dataSource is EqualUnmodifiableListView) return _dataSource;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_dataSource);
   }
 
   /// The position of the page in the dashboard’s list.
@@ -268,7 +266,7 @@ class _$DashboardCreateCardsPageImpl implements _DashboardCreateCardsPage {
 
   @override
   String toString() {
-    return 'DashboardCreateCardsPage(id: $id, type: $type, title: $title, cards: $cards, dataSource: $dataSource, order: $order, icon: $icon)';
+    return 'DashboardCreateCardsPage(id: $id, type: $type, title: $title, dataSource: $dataSource, cards: $cards, order: $order, icon: $icon)';
   }
 
   @override
@@ -279,9 +277,9 @@ class _$DashboardCreateCardsPageImpl implements _DashboardCreateCardsPage {
             (identical(other.id, id) || other.id == id) &&
             (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
-            const DeepCollectionEquality().equals(other._cards, _cards) &&
             const DeepCollectionEquality()
                 .equals(other._dataSource, _dataSource) &&
+            const DeepCollectionEquality().equals(other._cards, _cards) &&
             (identical(other.order, order) || other.order == order) &&
             (identical(other.icon, icon) || other.icon == icon));
   }
@@ -293,8 +291,8 @@ class _$DashboardCreateCardsPageImpl implements _DashboardCreateCardsPage {
       id,
       type,
       title,
-      const DeepCollectionEquality().hash(_cards),
       const DeepCollectionEquality().hash(_dataSource),
+      const DeepCollectionEquality().hash(_cards),
       order,
       icon);
 
@@ -320,9 +318,9 @@ abstract class _DashboardCreateCardsPage implements DashboardCreateCardsPage {
       {required final String id,
       required final String type,
       required final String title,
-      required final List<DashboardCreateCard> cards,
       @JsonKey(name: 'data_source')
-      required final List<DashboardCreateCardsPageDataSourceUnion> dataSource,
+      required final List<DashboardCreateDataSource> dataSource,
+      required final List<DashboardCreateCard> cards,
       final int order,
       final String? icon}) = _$DashboardCreateCardsPageImpl;
 
@@ -341,14 +339,14 @@ abstract class _DashboardCreateCardsPage implements DashboardCreateCardsPage {
   @override
   String get title;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardCreateDataSource> get dataSource;
+
   /// A list of cards associated with the page.
   @override
   List<DashboardCreateCard> get cards;
-
-  /// A list of data sources associated with the page.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardCreateCardsPageDataSourceUnion> get dataSource;
 
   /// The position of the page in the dashboard’s list.
   @override

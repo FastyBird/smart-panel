@@ -9,8 +9,7 @@ part of 'dashboard_req_create_data_source.dart';
 _$DashboardReqCreateDataSourceImpl _$$DashboardReqCreateDataSourceImplFromJson(
         Map<String, dynamic> json) =>
     _$DashboardReqCreateDataSourceImpl(
-      data: DashboardReqCreateDataSourceDataUnion.fromJson(
-          json['data'] as Map<String, dynamic>),
+      data: json['data'],
     );
 
 Map<String, dynamic> _$$DashboardReqCreateDataSourceImplToJson(

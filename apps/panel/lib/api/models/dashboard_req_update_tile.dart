@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'dashboard_req_update_tile_data_union.dart';
+import 'dashboard_update_tile.dart';
 
 part 'dashboard_req_update_tile.freezed.dart';
 part 'dashboard_req_update_tile.g.dart';
@@ -13,7 +13,7 @@ part 'dashboard_req_update_tile.g.dart';
 @Freezed()
 class DashboardReqUpdateTile with _$DashboardReqUpdateTile {
   const factory DashboardReqUpdateTile({
-    required DashboardReqUpdateTileDataUnion data,
+    required DashboardUpdateTile data,
   }) = _DashboardReqUpdateTile;
   
   factory DashboardReqUpdateTile.fromJson(Map<String, Object?> json) => _$DashboardReqUpdateTileFromJson(json);

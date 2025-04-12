@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'dashboard_req_update_data_source_data_union.dart';
+import 'dashboard_update_data_source.dart';
 
 part 'dashboard_req_update_data_source.freezed.dart';
 part 'dashboard_req_update_data_source.g.dart';
@@ -13,7 +13,7 @@ part 'dashboard_req_update_data_source.g.dart';
 @Freezed()
 class DashboardReqUpdateDataSource with _$DashboardReqUpdateDataSource {
   const factory DashboardReqUpdateDataSource({
-    required DashboardReqUpdateDataSourceDataUnion data,
+    required DashboardUpdateDataSource data,
   }) = _DashboardReqUpdateDataSource;
   
   factory DashboardReqUpdateDataSource.fromJson(Map<String, Object?> json) => _$DashboardReqUpdateDataSourceFromJson(json);

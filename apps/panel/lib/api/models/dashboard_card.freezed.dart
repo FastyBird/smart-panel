@@ -33,11 +33,11 @@ mixin _$DashboardCard {
   String get page => throw _privateConstructorUsedError;
 
   /// A list of tiles associated with the dashboard card, representing widgets or functional components.
-  List<DashboardCardTilesUnion> get tiles => throw _privateConstructorUsedError;
+  List<DashboardTile> get tiles => throw _privateConstructorUsedError;
 
   /// A list of data sources used by the card, typically for real-time updates.
   @JsonKey(name: 'data_source')
-  List<DashboardCardDataSourceUnion> get dataSource =>
+  List<DashboardDataSource> get dataSource =>
       throw _privateConstructorUsedError;
 
   /// The timestamp when the dashboard card was created.
@@ -72,9 +72,8 @@ abstract class $DashboardCardCopyWith<$Res> {
       String title,
       String? icon,
       String page,
-      List<DashboardCardTilesUnion> tiles,
-      @JsonKey(name: 'data_source')
-      List<DashboardCardDataSourceUnion> dataSource,
+      List<DashboardTile> tiles,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       int order});
@@ -125,11 +124,11 @@ class _$DashboardCardCopyWithImpl<$Res, $Val extends DashboardCard>
       tiles: null == tiles
           ? _value.tiles
           : tiles // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCardTilesUnion>,
+              as List<DashboardTile>,
       dataSource: null == dataSource
           ? _value.dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCardDataSourceUnion>,
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -159,9 +158,8 @@ abstract class _$$DashboardCardImplCopyWith<$Res>
       String title,
       String? icon,
       String page,
-      List<DashboardCardTilesUnion> tiles,
-      @JsonKey(name: 'data_source')
-      List<DashboardCardDataSourceUnion> dataSource,
+      List<DashboardTile> tiles,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       int order});
@@ -210,11 +208,11 @@ class __$$DashboardCardImplCopyWithImpl<$Res>
       tiles: null == tiles
           ? _value._tiles
           : tiles // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCardTilesUnion>,
+              as List<DashboardTile>,
       dataSource: null == dataSource
           ? _value._dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCardDataSourceUnion>,
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -239,9 +237,9 @@ class _$DashboardCardImpl implements _DashboardCard {
       required this.title,
       required this.icon,
       required this.page,
-      required final List<DashboardCardTilesUnion> tiles,
+      required final List<DashboardTile> tiles,
       @JsonKey(name: 'data_source')
-      required final List<DashboardCardDataSourceUnion> dataSource,
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       this.order = 0})
@@ -268,23 +266,23 @@ class _$DashboardCardImpl implements _DashboardCard {
   final String page;
 
   /// A list of tiles associated with the dashboard card, representing widgets or functional components.
-  final List<DashboardCardTilesUnion> _tiles;
+  final List<DashboardTile> _tiles;
 
   /// A list of tiles associated with the dashboard card, representing widgets or functional components.
   @override
-  List<DashboardCardTilesUnion> get tiles {
+  List<DashboardTile> get tiles {
     if (_tiles is EqualUnmodifiableListView) return _tiles;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_tiles);
   }
 
   /// A list of data sources used by the card, typically for real-time updates.
-  final List<DashboardCardDataSourceUnion> _dataSource;
+  final List<DashboardDataSource> _dataSource;
 
   /// A list of data sources used by the card, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardCardDataSourceUnion> get dataSource {
+  List<DashboardDataSource> get dataSource {
     if (_dataSource is EqualUnmodifiableListView) return _dataSource;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_dataSource);
@@ -365,9 +363,9 @@ abstract class _DashboardCard implements DashboardCard {
       required final String title,
       required final String? icon,
       required final String page,
-      required final List<DashboardCardTilesUnion> tiles,
+      required final List<DashboardTile> tiles,
       @JsonKey(name: 'data_source')
-      required final List<DashboardCardDataSourceUnion> dataSource,
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       final int order}) = _$DashboardCardImpl;
@@ -393,12 +391,12 @@ abstract class _DashboardCard implements DashboardCard {
 
   /// A list of tiles associated with the dashboard card, representing widgets or functional components.
   @override
-  List<DashboardCardTilesUnion> get tiles;
+  List<DashboardTile> get tiles;
 
   /// A list of data sources used by the card, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardCardDataSourceUnion> get dataSource;
+  List<DashboardDataSource> get dataSource;
 
   /// The timestamp when the dashboard card was created.
   @override

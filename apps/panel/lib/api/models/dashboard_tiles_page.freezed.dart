@@ -32,6 +32,11 @@ mixin _$DashboardTilesPage {
   /// The icon representing the dashboard page.
   String? get icon => throw _privateConstructorUsedError;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource =>
+      throw _privateConstructorUsedError;
+
   /// The timestamp when the dashboard page was created.
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -41,13 +46,7 @@ mixin _$DashboardTilesPage {
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
   /// A list of tiles associated with the tiles page.
-  List<DashboardTilesPageTilesUnion> get tiles =>
-      throw _privateConstructorUsedError;
-
-  /// A list of data sources associated with the tiles page.
-  @JsonKey(name: 'data_source')
-  List<DashboardTilesPageDataSourceUnion> get dataSource =>
-      throw _privateConstructorUsedError;
+  List<DashboardTile> get tiles => throw _privateConstructorUsedError;
 
   /// The display order of the dashboard page in the navigation or list.
   int get order => throw _privateConstructorUsedError;
@@ -73,11 +72,10 @@ abstract class $DashboardTilesPageCopyWith<$Res> {
       String type,
       String title,
       String? icon,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
-      List<DashboardTilesPageTilesUnion> tiles,
-      @JsonKey(name: 'data_source')
-      List<DashboardTilesPageDataSourceUnion> dataSource,
+      List<DashboardTile> tiles,
       int order});
 }
 
@@ -100,10 +98,10 @@ class _$DashboardTilesPageCopyWithImpl<$Res, $Val extends DashboardTilesPage>
     Object? type = null,
     Object? title = null,
     Object? icon = freezed,
+    Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? tiles = null,
-    Object? dataSource = null,
     Object? order = null,
   }) {
     return _then(_value.copyWith(
@@ -123,6 +121,10 @@ class _$DashboardTilesPageCopyWithImpl<$Res, $Val extends DashboardTilesPage>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      dataSource: null == dataSource
+          ? _value.dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -134,11 +136,7 @@ class _$DashboardTilesPageCopyWithImpl<$Res, $Val extends DashboardTilesPage>
       tiles: null == tiles
           ? _value.tiles
           : tiles // ignore: cast_nullable_to_non_nullable
-              as List<DashboardTilesPageTilesUnion>,
-      dataSource: null == dataSource
-          ? _value.dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardTilesPageDataSourceUnion>,
+              as List<DashboardTile>,
       order: null == order
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
@@ -160,11 +158,10 @@ abstract class _$$DashboardTilesPageImplCopyWith<$Res>
       String type,
       String title,
       String? icon,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
-      List<DashboardTilesPageTilesUnion> tiles,
-      @JsonKey(name: 'data_source')
-      List<DashboardTilesPageDataSourceUnion> dataSource,
+      List<DashboardTile> tiles,
       int order});
 }
 
@@ -185,10 +182,10 @@ class __$$DashboardTilesPageImplCopyWithImpl<$Res>
     Object? type = null,
     Object? title = null,
     Object? icon = freezed,
+    Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? tiles = null,
-    Object? dataSource = null,
     Object? order = null,
   }) {
     return _then(_$DashboardTilesPageImpl(
@@ -208,6 +205,10 @@ class __$$DashboardTilesPageImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -219,11 +220,7 @@ class __$$DashboardTilesPageImplCopyWithImpl<$Res>
       tiles: null == tiles
           ? _value._tiles
           : tiles // ignore: cast_nullable_to_non_nullable
-              as List<DashboardTilesPageTilesUnion>,
-      dataSource: null == dataSource
-          ? _value._dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardTilesPageDataSourceUnion>,
+              as List<DashboardTile>,
       order: null == order
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
@@ -240,14 +237,14 @@ class _$DashboardTilesPageImpl implements _DashboardTilesPage {
       required this.type,
       required this.title,
       required this.icon,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
-      required final List<DashboardTilesPageTilesUnion> tiles,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardTilesPageDataSourceUnion> dataSource,
+      required final List<DashboardTile> tiles,
       this.order = 0})
-      : _tiles = tiles,
-        _dataSource = dataSource;
+      : _dataSource = dataSource,
+        _tiles = tiles;
 
   factory _$DashboardTilesPageImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardTilesPageImplFromJson(json);
@@ -268,6 +265,18 @@ class _$DashboardTilesPageImpl implements _DashboardTilesPage {
   @override
   final String? icon;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  final List<DashboardDataSource> _dataSource;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource {
+    if (_dataSource is EqualUnmodifiableListView) return _dataSource;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_dataSource);
+  }
+
   /// The timestamp when the dashboard page was created.
   @override
   @JsonKey(name: 'created_at')
@@ -279,26 +288,14 @@ class _$DashboardTilesPageImpl implements _DashboardTilesPage {
   final DateTime? updatedAt;
 
   /// A list of tiles associated with the tiles page.
-  final List<DashboardTilesPageTilesUnion> _tiles;
+  final List<DashboardTile> _tiles;
 
   /// A list of tiles associated with the tiles page.
   @override
-  List<DashboardTilesPageTilesUnion> get tiles {
+  List<DashboardTile> get tiles {
     if (_tiles is EqualUnmodifiableListView) return _tiles;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_tiles);
-  }
-
-  /// A list of data sources associated with the tiles page.
-  final List<DashboardTilesPageDataSourceUnion> _dataSource;
-
-  /// A list of data sources associated with the tiles page.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardTilesPageDataSourceUnion> get dataSource {
-    if (_dataSource is EqualUnmodifiableListView) return _dataSource;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_dataSource);
   }
 
   /// The display order of the dashboard page in the navigation or list.
@@ -308,7 +305,7 @@ class _$DashboardTilesPageImpl implements _DashboardTilesPage {
 
   @override
   String toString() {
-    return 'DashboardTilesPage(id: $id, type: $type, title: $title, icon: $icon, createdAt: $createdAt, updatedAt: $updatedAt, tiles: $tiles, dataSource: $dataSource, order: $order)';
+    return 'DashboardTilesPage(id: $id, type: $type, title: $title, icon: $icon, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, tiles: $tiles, order: $order)';
   }
 
   @override
@@ -320,13 +317,13 @@ class _$DashboardTilesPageImpl implements _DashboardTilesPage {
             (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.icon, icon) || other.icon == icon) &&
+            const DeepCollectionEquality()
+                .equals(other._dataSource, _dataSource) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
             const DeepCollectionEquality().equals(other._tiles, _tiles) &&
-            const DeepCollectionEquality()
-                .equals(other._dataSource, _dataSource) &&
             (identical(other.order, order) || other.order == order));
   }
 
@@ -338,10 +335,10 @@ class _$DashboardTilesPageImpl implements _DashboardTilesPage {
       type,
       title,
       icon,
+      const DeepCollectionEquality().hash(_dataSource),
       createdAt,
       updatedAt,
       const DeepCollectionEquality().hash(_tiles),
-      const DeepCollectionEquality().hash(_dataSource),
       order);
 
   /// Create a copy of DashboardTilesPage
@@ -367,11 +364,11 @@ abstract class _DashboardTilesPage implements DashboardTilesPage {
       required final String type,
       required final String title,
       required final String? icon,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-      required final List<DashboardTilesPageTilesUnion> tiles,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardTilesPageDataSourceUnion> dataSource,
+      required final List<DashboardTile> tiles,
       final int order}) = _$DashboardTilesPageImpl;
 
   factory _DashboardTilesPage.fromJson(Map<String, dynamic> json) =
@@ -393,6 +390,11 @@ abstract class _DashboardTilesPage implements DashboardTilesPage {
   @override
   String? get icon;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource;
+
   /// The timestamp when the dashboard page was created.
   @override
   @JsonKey(name: 'created_at')
@@ -405,12 +407,7 @@ abstract class _DashboardTilesPage implements DashboardTilesPage {
 
   /// A list of tiles associated with the tiles page.
   @override
-  List<DashboardTilesPageTilesUnion> get tiles;
-
-  /// A list of data sources associated with the tiles page.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardTilesPageDataSourceUnion> get dataSource;
+  List<DashboardTile> get tiles;
 
   /// The display order of the dashboard page in the navigation or list.
   @override

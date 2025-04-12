@@ -4,8 +4,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'dashboard_create_tiles_page_data_source_union.dart';
-import 'dashboard_create_tiles_page_tiles_union.dart';
+import 'dashboard_create_data_source.dart';
+import 'dashboard_create_tile.dart';
 
 part 'dashboard_create_tiles_page.freezed.dart';
 part 'dashboard_create_tiles_page.g.dart';
@@ -23,12 +23,12 @@ class DashboardCreateTilesPage with _$DashboardCreateTilesPage {
     /// The title of the dashboard page.
     required String title,
 
-    /// A list of tiles associated with the tiles page.
-    required List<DashboardCreateTilesPageTilesUnion> tiles,
-
-    /// A list of data sources associated with the tiles page.
+    /// A list of data sources used by the page, typically for real-time updates.
     @JsonKey(name: 'data_source')
-    required List<DashboardCreateTilesPageDataSourceUnion> dataSource,
+    required List<DashboardCreateDataSource> dataSource,
+
+    /// A list of tiles associated with the tiles page.
+    required List<DashboardCreateTile> tiles,
 
     /// The position of the page in the dashboard’s list.
     @Default(0)

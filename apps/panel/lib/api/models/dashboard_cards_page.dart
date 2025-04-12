@@ -5,7 +5,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'dashboard_card.dart';
-import 'dashboard_cards_page_data_source_union.dart';
+import 'dashboard_data_source.dart';
 
 part 'dashboard_cards_page.freezed.dart';
 part 'dashboard_cards_page.g.dart';
@@ -26,6 +26,10 @@ class DashboardCardsPage with _$DashboardCardsPage {
     /// The icon representing the dashboard page.
     required String? icon,
 
+    /// A list of data sources used by the page, typically for real-time updates.
+    @JsonKey(name: 'data_source')
+    required List<DashboardDataSource> dataSource,
+
     /// The timestamp when the dashboard page was created.
     @JsonKey(name: 'created_at')
     required DateTime createdAt,
@@ -36,10 +40,6 @@ class DashboardCardsPage with _$DashboardCardsPage {
 
     /// A list of cards associated with the page.
     required List<DashboardCard> cards,
-
-    /// A list of data sources associated with the page.
-    @JsonKey(name: 'data_source')
-    required List<DashboardCardsPageDataSourceUnion> dataSource,
 
     /// The display order of the dashboard page in the navigation or list.
     @Default(0)

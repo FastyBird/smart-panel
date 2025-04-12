@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/system/models/throttle_status.dart';
 import 'package:fastybird_smart_panel/modules/system/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
@@ -48,7 +46,9 @@ class ThrottleStatusRepository extends Repository<ThrottleStatusModel> {
       () async {
         final response = await apiClient.getSystemModuleSystemThrottle();
 
-        insertThrottleStatus(jsonDecode(jsonEncode(response.data.data)));
+        final raw = response.response.data['data'] as Map<String, dynamic>;
+
+        insertThrottleStatus(raw);
       },
       'fetch throttle status',
     );

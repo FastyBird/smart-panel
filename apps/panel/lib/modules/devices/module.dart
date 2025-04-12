@@ -1,9 +1,6 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
-import 'package:fastybird_smart_panel/api/models/devices_device.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
@@ -81,49 +78,30 @@ class DevicesModuleService {
   }
 
   Future<void> _initializeDevices() async {
-    var apiDevices = await _fetchDevices();
-
-    List<Map<String, dynamic>> devices = [];
-
-    for (var device in apiDevices) {
-      devices.add(jsonDecode(jsonEncode(device)));
-    }
+    var devices = await _fetchDevices();
 
     _devicesRepository.insert(devices);
 
-    for (var apiDevice in apiDevices) {
-      List<Map<String, dynamic>> deviceControls = [];
+    for (var device in devices) {
+      final deviceControls = (device['controls'] ?? []) as List;
 
-      for (var control in apiDevice.controls) {
-        deviceControls.add(jsonDecode(jsonEncode(control)));
-      }
+      _deviceControlsRepository
+          .insert(deviceControls.cast<Map<String, dynamic>>());
 
-      _deviceControlsRepository.insert(deviceControls);
+      final channels = (device['channels'] ?? []) as List;
 
-      List<Map<String, dynamic>> channels = [];
+      _channelsRepository.insert(channels.cast<Map<String, dynamic>>());
 
-      for (var channel in apiDevice.channels) {
-        channels.add(jsonDecode(jsonEncode(channel)));
-      }
+      for (var channel in channels) {
+        final channelControls = (channel['controls'] ?? []) as List;
 
-      _channelsRepository.insert(channels);
+        _channelControlsRepository
+            .insert(channelControls.cast<Map<String, dynamic>>());
 
-      for (var apiChannel in apiDevice.channels) {
-        List<Map<String, dynamic>> channelControls = [];
+        final channelProperties = (channel['properties'] ?? []) as List;
 
-        for (var control in apiChannel.controls) {
-          channelControls.add(jsonDecode(jsonEncode(control)));
-        }
-
-        _channelControlsRepository.insert(channelControls);
-
-        List<Map<String, dynamic>> properties = [];
-
-        for (var property in apiChannel.properties) {
-          properties.add(jsonDecode(jsonEncode(property)));
-        }
-
-        _channelPropertiesRepository.insert(properties);
+        _channelPropertiesRepository
+            .insert(channelProperties.cast<Map<String, dynamic>>());
       }
     }
   }
@@ -132,12 +110,14 @@ class DevicesModuleService {
   /// API HANDLERS
   /// ////////////
 
-  Future<List<DevicesDevice>> _fetchDevices() async {
+  Future<List<Map<String, dynamic>>> _fetchDevices() async {
     return _handleApiCall(
       () async {
         final response = await _apiClient.getDevicesModuleDevices();
 
-        return response.data.data;
+        final raw = response.response.data['data'] as List;
+
+        return raw.cast<Map<String, dynamic>>();
       },
       'fetch devices',
     );

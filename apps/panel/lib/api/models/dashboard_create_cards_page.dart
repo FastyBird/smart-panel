@@ -5,7 +5,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'dashboard_create_card.dart';
-import 'dashboard_create_cards_page_data_source_union.dart';
+import 'dashboard_create_data_source.dart';
 
 part 'dashboard_create_cards_page.freezed.dart';
 part 'dashboard_create_cards_page.g.dart';
@@ -23,12 +23,12 @@ class DashboardCreateCardsPage with _$DashboardCreateCardsPage {
     /// The title of the dashboard page.
     required String title,
 
+    /// A list of data sources used by the page, typically for real-time updates.
+    @JsonKey(name: 'data_source')
+    required List<DashboardCreateDataSource> dataSource,
+
     /// A list of cards associated with the page.
     required List<DashboardCreateCard> cards,
-
-    /// A list of data sources associated with the page.
-    @JsonKey(name: 'data_source')
-    required List<DashboardCreateCardsPageDataSourceUnion> dataSource,
 
     /// The position of the page in the dashboard’s list.
     @Default(0)

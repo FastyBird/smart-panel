@@ -11,7 +11,7 @@ import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/device_channel_data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/device_tile.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/device_preview_tile.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';

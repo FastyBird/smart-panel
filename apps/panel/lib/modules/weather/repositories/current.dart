@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/weather/models/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
@@ -48,9 +46,9 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
       () async {
         final response = await apiClient.getWeatherModuleCurrent();
 
-        final data = response.data.data;
+        final raw = response.response.data['data'] as Map<String, dynamic>;
 
-        insertWeather(jsonDecode(jsonEncode(data)));
+        insertWeather(raw);
       },
       'fetch current weather',
     );

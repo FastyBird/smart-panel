@@ -1,4 +1,4 @@
-import { Exclude, Expose, Transform, Type } from 'class-transformer';
+import { Exclude, Expose, Transform } from 'class-transformer';
 import { IsArray, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { BeforeInsert, BeforeUpdate, Column, Entity, TableInheritance } from 'typeorm';
 
@@ -26,7 +26,6 @@ export abstract class PageEntity extends BaseEntity {
 	@Expose({ name: 'data_source' })
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => DataSourceEntity)
 	@Transform(
 		({ obj }: { obj: { data_source?: DataSourceEntity[]; dataSource?: DataSourceEntity[] } }) =>
 			obj.data_source || obj.dataSource,
@@ -94,7 +93,6 @@ export abstract class TileEntity extends BaseEntity {
 	@Expose({ name: 'data_source' })
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => DataSourceEntity)
 	@Transform(
 		({ obj }: { obj: { data_source?: DataSourceEntity[]; dataSource?: DataSourceEntity[] } }) =>
 			obj.data_source || obj.dataSource,

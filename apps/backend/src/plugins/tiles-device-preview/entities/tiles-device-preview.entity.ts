@@ -1,4 +1,4 @@
-import { Exclude, Expose, Transform } from 'class-transformer';
+import { Exclude, Expose, Transform, Type } from 'class-transformer';
 import { IsOptional, IsString, IsUUID, Validate, ValidateIf } from 'class-validator';
 import { ChildEntity, Column, ManyToOne, RelationId } from 'typeorm';
 

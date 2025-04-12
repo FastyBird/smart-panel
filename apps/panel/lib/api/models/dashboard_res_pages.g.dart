@@ -15,8 +15,7 @@ _$DashboardResPagesImpl _$$DashboardResPagesImplFromJson(
       path: json['path'] as String,
       method: DashboardResPagesMethod.fromJson(json['method'] as String),
       data: (json['data'] as List<dynamic>)
-          .map((e) =>
-              DashboardResPagesDataUnion.fromJson(e as Map<String, dynamic>))
+          .map((e) => DashboardPage.fromJson(e as Map<String, dynamic>))
           .toList(),
       metadata:
           CommonResMetadata.fromJson(json['metadata'] as Map<String, dynamic>),

@@ -4,6 +4,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'parent2.dart';
+
 part 'dashboard_device_channel_data_source.freezed.dart';
 part 'dashboard_device_channel_data_source.g.dart';
 
@@ -16,6 +18,9 @@ class DashboardDeviceChannelDataSource with _$DashboardDeviceChannelDataSource {
 
     /// Discriminator for the data source type
     required String type,
+
+    /// Discriminator for the data source type
+    required Parent2 parent,
 
     /// The timestamp when the data source was created.
     @JsonKey(name: 'created_at')

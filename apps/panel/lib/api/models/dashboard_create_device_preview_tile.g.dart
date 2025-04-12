@@ -15,8 +15,8 @@ _$DashboardCreateDevicePreviewTileImpl
           row: (json['row'] as num).toInt(),
           col: (json['col'] as num).toInt(),
           dataSource: (json['data_source'] as List<dynamic>)
-              .map((e) => DashboardCreateTileBaseDataSourceUnion.fromJson(
-                  e as Map<String, dynamic>))
+              .map((e) =>
+                  DashboardCreateDataSource.fromJson(e as Map<String, dynamic>))
               .toList(),
           device: json['device'] as String,
           icon: json['icon'] as String?,

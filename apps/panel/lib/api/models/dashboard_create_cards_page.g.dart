@@ -12,12 +12,12 @@ _$DashboardCreateCardsPageImpl _$$DashboardCreateCardsPageImplFromJson(
       id: json['id'] as String,
       type: json['type'] as String,
       title: json['title'] as String,
+      dataSource: (json['data_source'] as List<dynamic>)
+          .map((e) =>
+              DashboardCreateDataSource.fromJson(e as Map<String, dynamic>))
+          .toList(),
       cards: (json['cards'] as List<dynamic>)
           .map((e) => DashboardCreateCard.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      dataSource: (json['data_source'] as List<dynamic>)
-          .map((e) => DashboardCreateCardsPageDataSourceUnion.fromJson(
-              e as Map<String, dynamic>))
           .toList(),
       order: (json['order'] as num?)?.toInt() ?? 0,
       icon: json['icon'] as String?,
@@ -29,8 +29,8 @@ Map<String, dynamic> _$$DashboardCreateCardsPageImplToJson(
       'id': instance.id,
       'type': instance.type,
       'title': instance.title,
-      'cards': instance.cards,
       'data_source': instance.dataSource,
+      'cards': instance.cards,
       'order': instance.order,
       'icon': instance.icon,
     };

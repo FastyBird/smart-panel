@@ -9,8 +9,7 @@ part of 'dashboard_req_update_tile.dart';
 _$DashboardReqUpdateTileImpl _$$DashboardReqUpdateTileImplFromJson(
         Map<String, dynamic> json) =>
     _$DashboardReqUpdateTileImpl(
-      data: DashboardReqUpdateTileDataUnion.fromJson(
-          json['data'] as Map<String, dynamic>),
+      data: DashboardUpdateTile.fromJson(json['data'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$DashboardReqUpdateTileImplToJson(

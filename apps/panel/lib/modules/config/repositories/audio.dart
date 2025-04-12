@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
 import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
@@ -144,7 +142,9 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionAudio) {
-          insertConfiguration(jsonDecode(jsonEncode(data)));
+          final raw = response.response.data['data'] as Map<String, dynamic>;
+
+          insertConfiguration(raw);
         }
       },
       'fetch audio configuration',

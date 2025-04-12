@@ -4,6 +4,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'dashboard_data_source.dart';
+
 part 'dashboard_device_detail_page.freezed.dart';
 part 'dashboard_device_detail_page.g.dart';
 
@@ -22,6 +24,10 @@ class DashboardDeviceDetailPage with _$DashboardDeviceDetailPage {
 
     /// The icon representing the dashboard page.
     required String? icon,
+
+    /// A list of data sources used by the page, typically for real-time updates.
+    @JsonKey(name: 'data_source')
+    required List<DashboardDataSource> dataSource,
 
     /// The timestamp when the dashboard page was created.
     @JsonKey(name: 'created_at')

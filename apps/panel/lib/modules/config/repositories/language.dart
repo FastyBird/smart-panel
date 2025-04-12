@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/api/models/config_language_language.dart';
 import 'package:fastybird_smart_panel/api/models/config_language_time_format.dart';
 import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
@@ -139,7 +137,9 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
         final data = response.data.data;
 
         if (data is ConfigResSectionDataUnionLanguage) {
-          insertConfiguration(jsonDecode(jsonEncode(data)));
+          final raw = response.response.data['data'] as Map<String, dynamic>;
+
+          insertConfiguration(raw);
         }
       },
       'fetch language configuration',

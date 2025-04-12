@@ -9,7 +9,7 @@ part of 'dashboard_req_update_data_source.dart';
 _$DashboardReqUpdateDataSourceImpl _$$DashboardReqUpdateDataSourceImplFromJson(
         Map<String, dynamic> json) =>
     _$DashboardReqUpdateDataSourceImpl(
-      data: DashboardReqUpdateDataSourceDataUnion.fromJson(
+      data: DashboardUpdateDataSource.fromJson(
           json['data'] as Map<String, dynamic>),
     );
 

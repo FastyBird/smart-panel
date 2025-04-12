@@ -35,7 +35,7 @@ mixin _$DashboardCreateDevicePreviewTile {
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource =>
+  List<DashboardCreateDataSource> get dataSource =>
       throw _privateConstructorUsedError;
 
   /// The unique identifier of the associated device.
@@ -75,8 +75,7 @@ abstract class $DashboardCreateDevicePreviewTileCopyWith<$Res> {
       String type,
       int row,
       int col,
-      @JsonKey(name: 'data_source')
-      List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'data_source') List<DashboardCreateDataSource> dataSource,
       String device,
       String? icon,
       @JsonKey(name: 'row_span') int rowSpan,
@@ -129,7 +128,7 @@ class _$DashboardCreateDevicePreviewTileCopyWithImpl<$Res,
       dataSource: null == dataSource
           ? _value.dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
+              as List<DashboardCreateDataSource>,
       device: null == device
           ? _value.device
           : device // ignore: cast_nullable_to_non_nullable
@@ -164,8 +163,7 @@ abstract class _$$DashboardCreateDevicePreviewTileImplCopyWith<$Res>
       String type,
       int row,
       int col,
-      @JsonKey(name: 'data_source')
-      List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'data_source') List<DashboardCreateDataSource> dataSource,
       String device,
       String? icon,
       @JsonKey(name: 'row_span') int rowSpan,
@@ -217,7 +215,7 @@ class __$$DashboardCreateDevicePreviewTileImplCopyWithImpl<$Res>
       dataSource: null == dataSource
           ? _value._dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
+              as List<DashboardCreateDataSource>,
       device: null == device
           ? _value.device
           : device // ignore: cast_nullable_to_non_nullable
@@ -248,7 +246,7 @@ class _$DashboardCreateDevicePreviewTileImpl
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
-      required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      required final List<DashboardCreateDataSource> dataSource,
       required this.device,
       this.icon,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
@@ -276,12 +274,12 @@ class _$DashboardCreateDevicePreviewTileImpl
   final int col;
 
   /// A list of data sources used by the tile, typically for real-time updates.
-  final List<DashboardCreateTileBaseDataSourceUnion> _dataSource;
+  final List<DashboardCreateDataSource> _dataSource;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource {
+  List<DashboardCreateDataSource> get dataSource {
     if (_dataSource is EqualUnmodifiableListView) return _dataSource;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_dataSource);
@@ -362,17 +360,17 @@ class _$DashboardCreateDevicePreviewTileImpl
 abstract class _DashboardCreateDevicePreviewTile
     implements DashboardCreateDevicePreviewTile {
   const factory _DashboardCreateDevicePreviewTile(
-      {required final String id,
-      required final String type,
-      required final int row,
-      required final int col,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      required final String device,
-      final String? icon,
-      @JsonKey(name: 'row_span') final int rowSpan,
-      @JsonKey(name: 'col_span')
-      final int colSpan}) = _$DashboardCreateDevicePreviewTileImpl;
+          {required final String id,
+          required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'data_source')
+          required final List<DashboardCreateDataSource> dataSource,
+          required final String device,
+          final String? icon,
+          @JsonKey(name: 'row_span') final int rowSpan,
+          @JsonKey(name: 'col_span') final int colSpan}) =
+      _$DashboardCreateDevicePreviewTileImpl;
 
   factory _DashboardCreateDevicePreviewTile.fromJson(
           Map<String, dynamic> json) =
@@ -397,7 +395,7 @@ abstract class _DashboardCreateDevicePreviewTile
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
+  List<DashboardCreateDataSource> get dataSource;
 
   /// The unique identifier of the associated device.
   @override

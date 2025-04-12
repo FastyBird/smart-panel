@@ -1,4 +1,4 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import { IsArray, ValidateNested } from 'class-validator';
 import { ChildEntity } from 'typeorm';
 
@@ -9,7 +9,6 @@ export class TilesPageEntity extends PageEntity {
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => TileEntity)
 	tiles: TileEntity[];
 
 	@Expose()

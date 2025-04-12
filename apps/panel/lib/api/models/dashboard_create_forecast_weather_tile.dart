@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'dashboard_create_tile_base_data_source_union.dart';
+import 'dashboard_create_data_source.dart';
 
 part 'dashboard_create_forecast_weather_tile.freezed.dart';
 part 'dashboard_create_forecast_weather_tile.g.dart';
@@ -27,7 +27,7 @@ class DashboardCreateForecastWeatherTile with _$DashboardCreateForecastWeatherTi
 
     /// A list of data sources used by the tile, typically for real-time updates.
     @JsonKey(name: 'data_source')
-    required List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+    required List<DashboardCreateDataSource> dataSource,
 
     /// The number of rows the tile spans in the grid.
     @JsonKey(name: 'row_span')

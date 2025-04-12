@@ -21,8 +21,7 @@ DashboardReqUpdateDataSource _$DashboardReqUpdateDataSourceFromJson(
 
 /// @nodoc
 mixin _$DashboardReqUpdateDataSource {
-  DashboardReqUpdateDataSourceDataUnion get data =>
-      throw _privateConstructorUsedError;
+  DashboardUpdateDataSource get data => throw _privateConstructorUsedError;
 
   /// Serializes this DashboardReqUpdateDataSource to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -42,9 +41,9 @@ abstract class $DashboardReqUpdateDataSourceCopyWith<$Res> {
       _$DashboardReqUpdateDataSourceCopyWithImpl<$Res,
           DashboardReqUpdateDataSource>;
   @useResult
-  $Res call({DashboardReqUpdateDataSourceDataUnion data});
+  $Res call({DashboardUpdateDataSource data});
 
-  $DashboardReqUpdateDataSourceDataUnionCopyWith<$Res> get data;
+  $DashboardUpdateDataSourceCopyWith<$Res> get data;
 }
 
 /// @nodoc
@@ -69,7 +68,7 @@ class _$DashboardReqUpdateDataSourceCopyWithImpl<$Res,
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DashboardReqUpdateDataSourceDataUnion,
+              as DashboardUpdateDataSource,
     ) as $Val);
   }
 
@@ -77,9 +76,8 @@ class _$DashboardReqUpdateDataSourceCopyWithImpl<$Res,
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $DashboardReqUpdateDataSourceDataUnionCopyWith<$Res> get data {
-    return $DashboardReqUpdateDataSourceDataUnionCopyWith<$Res>(_value.data,
-        (value) {
+  $DashboardUpdateDataSourceCopyWith<$Res> get data {
+    return $DashboardUpdateDataSourceCopyWith<$Res>(_value.data, (value) {
       return _then(_value.copyWith(data: value) as $Val);
     });
   }
@@ -94,10 +92,10 @@ abstract class _$$DashboardReqUpdateDataSourceImplCopyWith<$Res>
       __$$DashboardReqUpdateDataSourceImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({DashboardReqUpdateDataSourceDataUnion data});
+  $Res call({DashboardUpdateDataSource data});
 
   @override
-  $DashboardReqUpdateDataSourceDataUnionCopyWith<$Res> get data;
+  $DashboardUpdateDataSourceCopyWith<$Res> get data;
 }
 
 /// @nodoc
@@ -121,7 +119,7 @@ class __$$DashboardReqUpdateDataSourceImplCopyWithImpl<$Res>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DashboardReqUpdateDataSourceDataUnion,
+              as DashboardUpdateDataSource,
     ));
   }
 }
@@ -137,7 +135,7 @@ class _$DashboardReqUpdateDataSourceImpl
       _$$DashboardReqUpdateDataSourceImplFromJson(json);
 
   @override
-  final DashboardReqUpdateDataSourceDataUnion data;
+  final DashboardUpdateDataSource data;
 
   @override
   String toString() {
@@ -177,14 +175,14 @@ class _$DashboardReqUpdateDataSourceImpl
 abstract class _DashboardReqUpdateDataSource
     implements DashboardReqUpdateDataSource {
   const factory _DashboardReqUpdateDataSource(
-          {required final DashboardReqUpdateDataSourceDataUnion data}) =
+          {required final DashboardUpdateDataSource data}) =
       _$DashboardReqUpdateDataSourceImpl;
 
   factory _DashboardReqUpdateDataSource.fromJson(Map<String, dynamic> json) =
       _$DashboardReqUpdateDataSourceImpl.fromJson;
 
   @override
-  DashboardReqUpdateDataSourceDataUnion get data;
+  DashboardUpdateDataSource get data;
 
   /// Create a copy of DashboardReqUpdateDataSource
   /// with the given fields replaced by the non-null parameter values.

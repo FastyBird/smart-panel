@@ -32,6 +32,11 @@ mixin _$DashboardCardsPage {
   /// The icon representing the dashboard page.
   String? get icon => throw _privateConstructorUsedError;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource =>
+      throw _privateConstructorUsedError;
+
   /// The timestamp when the dashboard page was created.
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -42,11 +47,6 @@ mixin _$DashboardCardsPage {
 
   /// A list of cards associated with the page.
   List<DashboardCard> get cards => throw _privateConstructorUsedError;
-
-  /// A list of data sources associated with the page.
-  @JsonKey(name: 'data_source')
-  List<DashboardCardsPageDataSourceUnion> get dataSource =>
-      throw _privateConstructorUsedError;
 
   /// The display order of the dashboard page in the navigation or list.
   int get order => throw _privateConstructorUsedError;
@@ -72,11 +72,10 @@ abstract class $DashboardCardsPageCopyWith<$Res> {
       String type,
       String title,
       String? icon,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       List<DashboardCard> cards,
-      @JsonKey(name: 'data_source')
-      List<DashboardCardsPageDataSourceUnion> dataSource,
       int order});
 }
 
@@ -99,10 +98,10 @@ class _$DashboardCardsPageCopyWithImpl<$Res, $Val extends DashboardCardsPage>
     Object? type = null,
     Object? title = null,
     Object? icon = freezed,
+    Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? cards = null,
-    Object? dataSource = null,
     Object? order = null,
   }) {
     return _then(_value.copyWith(
@@ -122,6 +121,10 @@ class _$DashboardCardsPageCopyWithImpl<$Res, $Val extends DashboardCardsPage>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      dataSource: null == dataSource
+          ? _value.dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -134,10 +137,6 @@ class _$DashboardCardsPageCopyWithImpl<$Res, $Val extends DashboardCardsPage>
           ? _value.cards
           : cards // ignore: cast_nullable_to_non_nullable
               as List<DashboardCard>,
-      dataSource: null == dataSource
-          ? _value.dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCardsPageDataSourceUnion>,
       order: null == order
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
@@ -159,11 +158,10 @@ abstract class _$$DashboardCardsPageImplCopyWith<$Res>
       String type,
       String title,
       String? icon,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       List<DashboardCard> cards,
-      @JsonKey(name: 'data_source')
-      List<DashboardCardsPageDataSourceUnion> dataSource,
       int order});
 }
 
@@ -184,10 +182,10 @@ class __$$DashboardCardsPageImplCopyWithImpl<$Res>
     Object? type = null,
     Object? title = null,
     Object? icon = freezed,
+    Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? cards = null,
-    Object? dataSource = null,
     Object? order = null,
   }) {
     return _then(_$DashboardCardsPageImpl(
@@ -207,6 +205,10 @@ class __$$DashboardCardsPageImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -219,10 +221,6 @@ class __$$DashboardCardsPageImplCopyWithImpl<$Res>
           ? _value._cards
           : cards // ignore: cast_nullable_to_non_nullable
               as List<DashboardCard>,
-      dataSource: null == dataSource
-          ? _value._dataSource
-          : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCardsPageDataSourceUnion>,
       order: null == order
           ? _value.order
           : order // ignore: cast_nullable_to_non_nullable
@@ -239,14 +237,14 @@ class _$DashboardCardsPageImpl implements _DashboardCardsPage {
       required this.type,
       required this.title,
       required this.icon,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required final List<DashboardCard> cards,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardCardsPageDataSourceUnion> dataSource,
       this.order = 0})
-      : _cards = cards,
-        _dataSource = dataSource;
+      : _dataSource = dataSource,
+        _cards = cards;
 
   factory _$DashboardCardsPageImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardCardsPageImplFromJson(json);
@@ -266,6 +264,18 @@ class _$DashboardCardsPageImpl implements _DashboardCardsPage {
   /// The icon representing the dashboard page.
   @override
   final String? icon;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  final List<DashboardDataSource> _dataSource;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource {
+    if (_dataSource is EqualUnmodifiableListView) return _dataSource;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_dataSource);
+  }
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -288,18 +298,6 @@ class _$DashboardCardsPageImpl implements _DashboardCardsPage {
     return EqualUnmodifiableListView(_cards);
   }
 
-  /// A list of data sources associated with the page.
-  final List<DashboardCardsPageDataSourceUnion> _dataSource;
-
-  /// A list of data sources associated with the page.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardCardsPageDataSourceUnion> get dataSource {
-    if (_dataSource is EqualUnmodifiableListView) return _dataSource;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_dataSource);
-  }
-
   /// The display order of the dashboard page in the navigation or list.
   @override
   @JsonKey()
@@ -307,7 +305,7 @@ class _$DashboardCardsPageImpl implements _DashboardCardsPage {
 
   @override
   String toString() {
-    return 'DashboardCardsPage(id: $id, type: $type, title: $title, icon: $icon, createdAt: $createdAt, updatedAt: $updatedAt, cards: $cards, dataSource: $dataSource, order: $order)';
+    return 'DashboardCardsPage(id: $id, type: $type, title: $title, icon: $icon, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, cards: $cards, order: $order)';
   }
 
   @override
@@ -319,13 +317,13 @@ class _$DashboardCardsPageImpl implements _DashboardCardsPage {
             (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.icon, icon) || other.icon == icon) &&
+            const DeepCollectionEquality()
+                .equals(other._dataSource, _dataSource) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
                 other.updatedAt == updatedAt) &&
             const DeepCollectionEquality().equals(other._cards, _cards) &&
-            const DeepCollectionEquality()
-                .equals(other._dataSource, _dataSource) &&
             (identical(other.order, order) || other.order == order));
   }
 
@@ -337,10 +335,10 @@ class _$DashboardCardsPageImpl implements _DashboardCardsPage {
       type,
       title,
       icon,
+      const DeepCollectionEquality().hash(_dataSource),
       createdAt,
       updatedAt,
       const DeepCollectionEquality().hash(_cards),
-      const DeepCollectionEquality().hash(_dataSource),
       order);
 
   /// Create a copy of DashboardCardsPage
@@ -366,11 +364,11 @@ abstract class _DashboardCardsPage implements DashboardCardsPage {
       required final String type,
       required final String title,
       required final String? icon,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       required final List<DashboardCard> cards,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardCardsPageDataSourceUnion> dataSource,
       final int order}) = _$DashboardCardsPageImpl;
 
   factory _DashboardCardsPage.fromJson(Map<String, dynamic> json) =
@@ -392,6 +390,11 @@ abstract class _DashboardCardsPage implements DashboardCardsPage {
   @override
   String? get icon;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource;
+
   /// The timestamp when the dashboard page was created.
   @override
   @JsonKey(name: 'created_at')
@@ -405,11 +408,6 @@ abstract class _DashboardCardsPage implements DashboardCardsPage {
   /// A list of cards associated with the page.
   @override
   List<DashboardCard> get cards;
-
-  /// A list of data sources associated with the page.
-  @override
-  @JsonKey(name: 'data_source')
-  List<DashboardCardsPageDataSourceUnion> get dataSource;
 
   /// The display order of the dashboard page in the navigation or list.
   @override

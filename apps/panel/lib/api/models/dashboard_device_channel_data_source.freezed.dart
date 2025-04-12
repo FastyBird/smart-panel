@@ -27,6 +27,9 @@ mixin _$DashboardDeviceChannelDataSource {
   /// Discriminator for the data source type
   String get type => throw _privateConstructorUsedError;
 
+  /// Discriminator for the data source type
+  Parent2 get parent => throw _privateConstructorUsedError;
+
   /// The timestamp when the data source was created.
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -68,12 +71,15 @@ abstract class $DashboardDeviceChannelDataSourceCopyWith<$Res> {
   $Res call(
       {String id,
       String type,
+      Parent2 parent,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
       String channel,
       String property,
       String? icon});
+
+  $Parent2CopyWith<$Res> get parent;
 }
 
 /// @nodoc
@@ -94,6 +100,7 @@ class _$DashboardDeviceChannelDataSourceCopyWithImpl<$Res,
   $Res call({
     Object? id = null,
     Object? type = null,
+    Object? parent = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
@@ -110,6 +117,10 @@ class _$DashboardDeviceChannelDataSourceCopyWithImpl<$Res,
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
               as String,
+      parent: null == parent
+          ? _value.parent
+          : parent // ignore: cast_nullable_to_non_nullable
+              as Parent2,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -136,6 +147,16 @@ class _$DashboardDeviceChannelDataSourceCopyWithImpl<$Res,
               as String?,
     ) as $Val);
   }
+
+  /// Create a copy of DashboardDeviceChannelDataSource
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Parent2CopyWith<$Res> get parent {
+    return $Parent2CopyWith<$Res>(_value.parent, (value) {
+      return _then(_value.copyWith(parent: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -150,12 +171,16 @@ abstract class _$$DashboardDeviceChannelDataSourceImplCopyWith<$Res>
   $Res call(
       {String id,
       String type,
+      Parent2 parent,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
       String channel,
       String property,
       String? icon});
+
+  @override
+  $Parent2CopyWith<$Res> get parent;
 }
 
 /// @nodoc
@@ -175,6 +200,7 @@ class __$$DashboardDeviceChannelDataSourceImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? type = null,
+    Object? parent = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
@@ -191,6 +217,10 @@ class __$$DashboardDeviceChannelDataSourceImplCopyWithImpl<$Res>
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
               as String,
+      parent: null == parent
+          ? _value.parent
+          : parent // ignore: cast_nullable_to_non_nullable
+              as Parent2,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -226,6 +256,7 @@ class _$DashboardDeviceChannelDataSourceImpl
   const _$DashboardDeviceChannelDataSourceImpl(
       {required this.id,
       required this.type,
+      required this.parent,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.device,
@@ -244,6 +275,10 @@ class _$DashboardDeviceChannelDataSourceImpl
   /// Discriminator for the data source type
   @override
   final String type;
+
+  /// Discriminator for the data source type
+  @override
+  final Parent2 parent;
 
   /// The timestamp when the data source was created.
   @override
@@ -273,7 +308,7 @@ class _$DashboardDeviceChannelDataSourceImpl
 
   @override
   String toString() {
-    return 'DashboardDeviceChannelDataSource(id: $id, type: $type, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, channel: $channel, property: $property, icon: $icon)';
+    return 'DashboardDeviceChannelDataSource(id: $id, type: $type, parent: $parent, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, channel: $channel, property: $property, icon: $icon)';
   }
 
   @override
@@ -283,6 +318,7 @@ class _$DashboardDeviceChannelDataSourceImpl
             other is _$DashboardDeviceChannelDataSourceImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.type, type) || other.type == type) &&
+            (identical(other.parent, parent) || other.parent == parent) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -296,8 +332,8 @@ class _$DashboardDeviceChannelDataSourceImpl
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, type, createdAt, updatedAt,
-      device, channel, property, icon);
+  int get hashCode => Object.hash(runtimeType, id, type, parent, createdAt,
+      updatedAt, device, channel, property, icon);
 
   /// Create a copy of DashboardDeviceChannelDataSource
   /// with the given fields replaced by the non-null parameter values.
@@ -322,6 +358,7 @@ abstract class _DashboardDeviceChannelDataSource
   const factory _DashboardDeviceChannelDataSource(
       {required final String id,
       required final String type,
+      required final Parent2 parent,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       required final String device,
@@ -340,6 +377,10 @@ abstract class _DashboardDeviceChannelDataSource
   /// Discriminator for the data source type
   @override
   String get type;
+
+  /// Discriminator for the data source type
+  @override
+  Parent2 get parent;
 
   /// The timestamp when the data source was created.
   @override

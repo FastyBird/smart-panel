@@ -13,6 +13,9 @@ _$DashboardDeviceDetailPageImpl _$$DashboardDeviceDetailPageImplFromJson(
       type: json['type'] as String,
       title: json['title'] as String,
       icon: json['icon'] as String?,
+      dataSource: (json['data_source'] as List<dynamic>)
+          .map((e) => DashboardDataSource.fromJson(e as Map<String, dynamic>))
+          .toList(),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] == null
           ? null
@@ -28,6 +31,7 @@ Map<String, dynamic> _$$DashboardDeviceDetailPageImplToJson(
       'type': instance.type,
       'title': instance.title,
       'icon': instance.icon,
+      'data_source': instance.dataSource,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
       'device': instance.device,

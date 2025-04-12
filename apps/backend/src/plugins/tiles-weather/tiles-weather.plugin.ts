@@ -23,7 +23,7 @@ export class TilesWeatherPlugin {
 		});
 
 		this.mapper.registerMapping<ForecastWeatherTileEntity, CreateForecastWeatherTileDto, UpdateForecastWeatherTileDto>({
-			type: 'weather-day',
+			type: 'weather-forecast',
 			class: ForecastWeatherTileEntity,
 			createDto: CreateForecastWeatherTileDto,
 			updateDto: UpdateForecastWeatherTileDto,

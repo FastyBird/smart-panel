@@ -11,11 +11,11 @@ _$DashboardTimeTileImpl _$$DashboardTimeTileImplFromJson(
     _$DashboardTimeTileImpl(
       id: json['id'] as String,
       type: json['type'] as String,
+      parent: Parent.fromJson(json['parent'] as Map<String, dynamic>),
       row: (json['row'] as num).toInt(),
       col: (json['col'] as num).toInt(),
       dataSource: (json['data_source'] as List<dynamic>)
-          .map((e) => DashboardTileBaseDataSourceUnion.fromJson(
-              e as Map<String, dynamic>))
+          .map((e) => DashboardDataSource.fromJson(e as Map<String, dynamic>))
           .toList(),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] == null
@@ -30,6 +30,7 @@ Map<String, dynamic> _$$DashboardTimeTileImplToJson(
     <String, dynamic>{
       'id': instance.id,
       'type': instance.type,
+      'parent': instance.parent,
       'row': instance.row,
       'col': instance.col,
       'data_source': instance.dataSource,

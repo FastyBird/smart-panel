@@ -27,6 +27,9 @@ mixin _$DashboardDayWeatherTile {
   /// Discriminator for the tile type
   String get type => throw _privateConstructorUsedError;
 
+  /// Discriminator for the data source type
+  Parent get parent => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
@@ -35,7 +38,7 @@ mixin _$DashboardDayWeatherTile {
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @JsonKey(name: 'data_source')
-  List<DashboardTileBaseDataSourceUnion> get dataSource =>
+  List<DashboardDataSource> get dataSource =>
       throw _privateConstructorUsedError;
 
   /// The timestamp when the dashboard tile was created.
@@ -73,14 +76,16 @@ abstract class $DashboardDayWeatherTileCopyWith<$Res> {
   $Res call(
       {String id,
       String type,
+      Parent parent,
       int row,
       int col,
-      @JsonKey(name: 'data_source')
-      List<DashboardTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan});
+
+  $ParentCopyWith<$Res> get parent;
 }
 
 /// @nodoc
@@ -101,6 +106,7 @@ class _$DashboardDayWeatherTileCopyWithImpl<$Res,
   $Res call({
     Object? id = null,
     Object? type = null,
+    Object? parent = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -118,6 +124,10 @@ class _$DashboardDayWeatherTileCopyWithImpl<$Res,
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
               as String,
+      parent: null == parent
+          ? _value.parent
+          : parent // ignore: cast_nullable_to_non_nullable
+              as Parent,
       row: null == row
           ? _value.row
           : row // ignore: cast_nullable_to_non_nullable
@@ -129,7 +139,7 @@ class _$DashboardDayWeatherTileCopyWithImpl<$Res,
       dataSource: null == dataSource
           ? _value.dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardTileBaseDataSourceUnion>,
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -148,6 +158,16 @@ class _$DashboardDayWeatherTileCopyWithImpl<$Res,
               as int,
     ) as $Val);
   }
+
+  /// Create a copy of DashboardDayWeatherTile
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $ParentCopyWith<$Res> get parent {
+    return $ParentCopyWith<$Res>(_value.parent, (value) {
+      return _then(_value.copyWith(parent: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -162,14 +182,17 @@ abstract class _$$DashboardDayWeatherTileImplCopyWith<$Res>
   $Res call(
       {String id,
       String type,
+      Parent parent,
       int row,
       int col,
-      @JsonKey(name: 'data_source')
-      List<DashboardTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan});
+
+  @override
+  $ParentCopyWith<$Res> get parent;
 }
 
 /// @nodoc
@@ -189,6 +212,7 @@ class __$$DashboardDayWeatherTileImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? type = null,
+    Object? parent = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -206,6 +230,10 @@ class __$$DashboardDayWeatherTileImplCopyWithImpl<$Res>
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
               as String,
+      parent: null == parent
+          ? _value.parent
+          : parent // ignore: cast_nullable_to_non_nullable
+              as Parent,
       row: null == row
           ? _value.row
           : row // ignore: cast_nullable_to_non_nullable
@@ -217,7 +245,7 @@ class __$$DashboardDayWeatherTileImplCopyWithImpl<$Res>
       dataSource: null == dataSource
           ? _value._dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardTileBaseDataSourceUnion>,
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -244,10 +272,11 @@ class _$DashboardDayWeatherTileImpl implements _DashboardDayWeatherTile {
   const _$DashboardDayWeatherTileImpl(
       {required this.id,
       required this.type,
+      required this.parent,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
@@ -265,6 +294,10 @@ class _$DashboardDayWeatherTileImpl implements _DashboardDayWeatherTile {
   @override
   final String type;
 
+  /// Discriminator for the data source type
+  @override
+  final Parent parent;
+
   /// The row position of the tile in the grid.
   @override
   final int row;
@@ -274,12 +307,12 @@ class _$DashboardDayWeatherTileImpl implements _DashboardDayWeatherTile {
   final int col;
 
   /// A list of data sources used by the tile, typically for real-time updates.
-  final List<DashboardTileBaseDataSourceUnion> _dataSource;
+  final List<DashboardDataSource> _dataSource;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardTileBaseDataSourceUnion> get dataSource {
+  List<DashboardDataSource> get dataSource {
     if (_dataSource is EqualUnmodifiableListView) return _dataSource;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_dataSource);
@@ -307,7 +340,7 @@ class _$DashboardDayWeatherTileImpl implements _DashboardDayWeatherTile {
 
   @override
   String toString() {
-    return 'DashboardDayWeatherTile(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan)';
+    return 'DashboardDayWeatherTile(id: $id, type: $type, parent: $parent, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -317,6 +350,7 @@ class _$DashboardDayWeatherTileImpl implements _DashboardDayWeatherTile {
             other is _$DashboardDayWeatherTileImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.type, type) || other.type == type) &&
+            (identical(other.parent, parent) || other.parent == parent) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -335,6 +369,7 @@ class _$DashboardDayWeatherTileImpl implements _DashboardDayWeatherTile {
       runtimeType,
       id,
       type,
+      parent,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
@@ -364,10 +399,11 @@ abstract class _DashboardDayWeatherTile implements DashboardDayWeatherTile {
   const factory _DashboardDayWeatherTile(
           {required final String id,
           required final String type,
+          required final Parent parent,
           required final int row,
           required final int col,
           @JsonKey(name: 'data_source')
-          required final List<DashboardTileBaseDataSourceUnion> dataSource,
+          required final List<DashboardDataSource> dataSource,
           @JsonKey(name: 'created_at') required final DateTime createdAt,
           @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
           @JsonKey(name: 'row_span') final int rowSpan,
@@ -385,6 +421,10 @@ abstract class _DashboardDayWeatherTile implements DashboardDayWeatherTile {
   @override
   String get type;
 
+  /// Discriminator for the data source type
+  @override
+  Parent get parent;
+
   /// The row position of the tile in the grid.
   @override
   int get row;
@@ -396,7 +436,7 @@ abstract class _DashboardDayWeatherTile implements DashboardDayWeatherTile {
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardTileBaseDataSourceUnion> get dataSource;
+  List<DashboardDataSource> get dataSource;
 
   /// The timestamp when the dashboard tile was created.
   @override

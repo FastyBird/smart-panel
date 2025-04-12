@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/fo
 import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/time.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/weather.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/device_tile.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/device_preview_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/time_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/weather_tile.dart';

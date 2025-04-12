@@ -35,7 +35,7 @@ mixin _$DashboardCreateDayWeatherTile {
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource =>
+  List<DashboardCreateDataSource> get dataSource =>
       throw _privateConstructorUsedError;
 
   /// The number of rows the tile spans in the grid.
@@ -69,8 +69,7 @@ abstract class $DashboardCreateDayWeatherTileCopyWith<$Res> {
       String type,
       int row,
       int col,
-      @JsonKey(name: 'data_source')
-      List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'data_source') List<DashboardCreateDataSource> dataSource,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan});
 }
@@ -119,7 +118,7 @@ class _$DashboardCreateDayWeatherTileCopyWithImpl<$Res,
       dataSource: null == dataSource
           ? _value.dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
+              as List<DashboardCreateDataSource>,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -146,8 +145,7 @@ abstract class _$$DashboardCreateDayWeatherTileImplCopyWith<$Res>
       String type,
       int row,
       int col,
-      @JsonKey(name: 'data_source')
-      List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'data_source') List<DashboardCreateDataSource> dataSource,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan});
 }
@@ -195,7 +193,7 @@ class __$$DashboardCreateDayWeatherTileImplCopyWithImpl<$Res>
       dataSource: null == dataSource
           ? _value._dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardCreateTileBaseDataSourceUnion>,
+              as List<DashboardCreateDataSource>,
       rowSpan: null == rowSpan
           ? _value.rowSpan
           : rowSpan // ignore: cast_nullable_to_non_nullable
@@ -218,7 +216,7 @@ class _$DashboardCreateDayWeatherTileImpl
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
-      required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
+      required final List<DashboardCreateDataSource> dataSource,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
       @JsonKey(name: 'col_span') this.colSpan = 0})
       : _dataSource = dataSource;
@@ -244,12 +242,12 @@ class _$DashboardCreateDayWeatherTileImpl
   final int col;
 
   /// A list of data sources used by the tile, typically for real-time updates.
-  final List<DashboardCreateTileBaseDataSourceUnion> _dataSource;
+  final List<DashboardCreateDataSource> _dataSource;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource {
+  List<DashboardCreateDataSource> get dataSource {
     if (_dataSource is EqualUnmodifiableListView) return _dataSource;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_dataSource);
@@ -311,15 +309,15 @@ class _$DashboardCreateDayWeatherTileImpl
 abstract class _DashboardCreateDayWeatherTile
     implements DashboardCreateDayWeatherTile {
   const factory _DashboardCreateDayWeatherTile(
-      {required final String id,
-      required final String type,
-      required final int row,
-      required final int col,
-      @JsonKey(name: 'data_source')
-      required final List<DashboardCreateTileBaseDataSourceUnion> dataSource,
-      @JsonKey(name: 'row_span') final int rowSpan,
-      @JsonKey(name: 'col_span')
-      final int colSpan}) = _$DashboardCreateDayWeatherTileImpl;
+          {required final String id,
+          required final String type,
+          required final int row,
+          required final int col,
+          @JsonKey(name: 'data_source')
+          required final List<DashboardCreateDataSource> dataSource,
+          @JsonKey(name: 'row_span') final int rowSpan,
+          @JsonKey(name: 'col_span') final int colSpan}) =
+      _$DashboardCreateDayWeatherTileImpl;
 
   factory _DashboardCreateDayWeatherTile.fromJson(Map<String, dynamic> json) =
       _$DashboardCreateDayWeatherTileImpl.fromJson;
@@ -343,7 +341,7 @@ abstract class _DashboardCreateDayWeatherTile
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardCreateTileBaseDataSourceUnion> get dataSource;
+  List<DashboardCreateDataSource> get dataSource;
 
   /// The number of rows the tile spans in the grid.
   @override

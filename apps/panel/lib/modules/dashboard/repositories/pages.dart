@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
@@ -76,7 +74,9 @@ class PagesRepository extends Repository<PageModel> {
       () async {
         final response = await apiClient.getDashboardModulePage(id: id);
 
-        insertPages([jsonDecode(jsonEncode(response.data.data))]);
+        final raw = response.response.data['data'] as Map<String, dynamic>;
+
+        insertPages([raw]);
       },
       'fetch page',
     );
@@ -87,13 +87,9 @@ class PagesRepository extends Repository<PageModel> {
       () async {
         final response = await apiClient.getDashboardModulePages();
 
-        List<Map<String, dynamic>> pages = [];
+        final raw = response.response.data['data'] as List;
 
-        for (var page in response.data.data) {
-          pages.add(jsonDecode(jsonEncode(page)));
-        }
-
-        insertPages(pages);
+        insertPages(raw.cast<Map<String, dynamic>>());
       },
       'fetch pages',
     );

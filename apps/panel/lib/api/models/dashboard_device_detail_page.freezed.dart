@@ -33,6 +33,11 @@ mixin _$DashboardDeviceDetailPage {
   /// The icon representing the dashboard page.
   String? get icon => throw _privateConstructorUsedError;
 
+  /// A list of data sources used by the page, typically for real-time updates.
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource =>
+      throw _privateConstructorUsedError;
+
   /// The timestamp when the dashboard page was created.
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
@@ -68,6 +73,7 @@ abstract class $DashboardDeviceDetailPageCopyWith<$Res> {
       String type,
       String title,
       String? icon,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
@@ -94,6 +100,7 @@ class _$DashboardDeviceDetailPageCopyWithImpl<$Res,
     Object? type = null,
     Object? title = null,
     Object? icon = freezed,
+    Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
@@ -116,6 +123,10 @@ class _$DashboardDeviceDetailPageCopyWithImpl<$Res,
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      dataSource: null == dataSource
+          ? _value.dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -150,6 +161,7 @@ abstract class _$$DashboardDeviceDetailPageImplCopyWith<$Res>
       String type,
       String title,
       String? icon,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       String device,
@@ -175,6 +187,7 @@ class __$$DashboardDeviceDetailPageImplCopyWithImpl<$Res>
     Object? type = null,
     Object? title = null,
     Object? icon = freezed,
+    Object? dataSource = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
     Object? device = null,
@@ -197,6 +210,10 @@ class __$$DashboardDeviceDetailPageImplCopyWithImpl<$Res>
           ? _value.icon
           : icon // ignore: cast_nullable_to_non_nullable
               as String?,
+      dataSource: null == dataSource
+          ? _value._dataSource
+          : dataSource // ignore: cast_nullable_to_non_nullable
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -225,10 +242,13 @@ class _$DashboardDeviceDetailPageImpl implements _DashboardDeviceDetailPage {
       required this.type,
       required this.title,
       required this.icon,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       required this.device,
-      this.order = 0});
+      this.order = 0})
+      : _dataSource = dataSource;
 
   factory _$DashboardDeviceDetailPageImpl.fromJson(Map<String, dynamic> json) =>
       _$$DashboardDeviceDetailPageImplFromJson(json);
@@ -248,6 +268,18 @@ class _$DashboardDeviceDetailPageImpl implements _DashboardDeviceDetailPage {
   /// The icon representing the dashboard page.
   @override
   final String? icon;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  final List<DashboardDataSource> _dataSource;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource {
+    if (_dataSource is EqualUnmodifiableListView) return _dataSource;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_dataSource);
+  }
 
   /// The timestamp when the dashboard page was created.
   @override
@@ -270,7 +302,7 @@ class _$DashboardDeviceDetailPageImpl implements _DashboardDeviceDetailPage {
 
   @override
   String toString() {
-    return 'DashboardDeviceDetailPage(id: $id, type: $type, title: $title, icon: $icon, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, order: $order)';
+    return 'DashboardDeviceDetailPage(id: $id, type: $type, title: $title, icon: $icon, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, device: $device, order: $order)';
   }
 
   @override
@@ -282,6 +314,8 @@ class _$DashboardDeviceDetailPageImpl implements _DashboardDeviceDetailPage {
             (identical(other.type, type) || other.type == type) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.icon, icon) || other.icon == icon) &&
+            const DeepCollectionEquality()
+                .equals(other._dataSource, _dataSource) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
@@ -293,7 +327,16 @@ class _$DashboardDeviceDetailPageImpl implements _DashboardDeviceDetailPage {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
-      runtimeType, id, type, title, icon, createdAt, updatedAt, device, order);
+      runtimeType,
+      id,
+      type,
+      title,
+      icon,
+      const DeepCollectionEquality().hash(_dataSource),
+      createdAt,
+      updatedAt,
+      device,
+      order);
 
   /// Create a copy of DashboardDeviceDetailPage
   /// with the given fields replaced by the non-null parameter values.
@@ -318,6 +361,8 @@ abstract class _DashboardDeviceDetailPage implements DashboardDeviceDetailPage {
       required final String type,
       required final String title,
       required final String? icon,
+      @JsonKey(name: 'data_source')
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       required final String device,
@@ -341,6 +386,11 @@ abstract class _DashboardDeviceDetailPage implements DashboardDeviceDetailPage {
   /// The icon representing the dashboard page.
   @override
   String? get icon;
+
+  /// A list of data sources used by the page, typically for real-time updates.
+  @override
+  @JsonKey(name: 'data_source')
+  List<DashboardDataSource> get dataSource;
 
   /// The timestamp when the dashboard page was created.
   @override

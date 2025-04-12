@@ -26,6 +26,9 @@ mixin _$DashboardTimeTile {
   /// Discriminator for the tile type
   String get type => throw _privateConstructorUsedError;
 
+  /// Discriminator for the data source type
+  Parent get parent => throw _privateConstructorUsedError;
+
   /// The row position of the tile in the grid.
   int get row => throw _privateConstructorUsedError;
 
@@ -34,7 +37,7 @@ mixin _$DashboardTimeTile {
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @JsonKey(name: 'data_source')
-  List<DashboardTileBaseDataSourceUnion> get dataSource =>
+  List<DashboardDataSource> get dataSource =>
       throw _privateConstructorUsedError;
 
   /// The timestamp when the dashboard tile was created.
@@ -72,14 +75,16 @@ abstract class $DashboardTimeTileCopyWith<$Res> {
   $Res call(
       {String id,
       String type,
+      Parent parent,
       int row,
       int col,
-      @JsonKey(name: 'data_source')
-      List<DashboardTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan});
+
+  $ParentCopyWith<$Res> get parent;
 }
 
 /// @nodoc
@@ -99,6 +104,7 @@ class _$DashboardTimeTileCopyWithImpl<$Res, $Val extends DashboardTimeTile>
   $Res call({
     Object? id = null,
     Object? type = null,
+    Object? parent = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -116,6 +122,10 @@ class _$DashboardTimeTileCopyWithImpl<$Res, $Val extends DashboardTimeTile>
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
               as String,
+      parent: null == parent
+          ? _value.parent
+          : parent // ignore: cast_nullable_to_non_nullable
+              as Parent,
       row: null == row
           ? _value.row
           : row // ignore: cast_nullable_to_non_nullable
@@ -127,7 +137,7 @@ class _$DashboardTimeTileCopyWithImpl<$Res, $Val extends DashboardTimeTile>
       dataSource: null == dataSource
           ? _value.dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardTileBaseDataSourceUnion>,
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -146,6 +156,16 @@ class _$DashboardTimeTileCopyWithImpl<$Res, $Val extends DashboardTimeTile>
               as int,
     ) as $Val);
   }
+
+  /// Create a copy of DashboardTimeTile
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $ParentCopyWith<$Res> get parent {
+    return $ParentCopyWith<$Res>(_value.parent, (value) {
+      return _then(_value.copyWith(parent: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -159,14 +179,17 @@ abstract class _$$DashboardTimeTileImplCopyWith<$Res>
   $Res call(
       {String id,
       String type,
+      Parent parent,
       int row,
       int col,
-      @JsonKey(name: 'data_source')
-      List<DashboardTileBaseDataSourceUnion> dataSource,
+      @JsonKey(name: 'data_source') List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
       @JsonKey(name: 'row_span') int rowSpan,
       @JsonKey(name: 'col_span') int colSpan});
+
+  @override
+  $ParentCopyWith<$Res> get parent;
 }
 
 /// @nodoc
@@ -184,6 +207,7 @@ class __$$DashboardTimeTileImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? type = null,
+    Object? parent = null,
     Object? row = null,
     Object? col = null,
     Object? dataSource = null,
@@ -201,6 +225,10 @@ class __$$DashboardTimeTileImplCopyWithImpl<$Res>
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
               as String,
+      parent: null == parent
+          ? _value.parent
+          : parent // ignore: cast_nullable_to_non_nullable
+              as Parent,
       row: null == row
           ? _value.row
           : row // ignore: cast_nullable_to_non_nullable
@@ -212,7 +240,7 @@ class __$$DashboardTimeTileImplCopyWithImpl<$Res>
       dataSource: null == dataSource
           ? _value._dataSource
           : dataSource // ignore: cast_nullable_to_non_nullable
-              as List<DashboardTileBaseDataSourceUnion>,
+              as List<DashboardDataSource>,
       createdAt: null == createdAt
           ? _value.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -239,10 +267,11 @@ class _$DashboardTimeTileImpl implements _DashboardTimeTile {
   const _$DashboardTimeTileImpl(
       {required this.id,
       required this.type,
+      required this.parent,
       required this.row,
       required this.col,
       @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required this.createdAt,
       @JsonKey(name: 'updated_at') required this.updatedAt,
       @JsonKey(name: 'row_span') this.rowSpan = 0,
@@ -260,6 +289,10 @@ class _$DashboardTimeTileImpl implements _DashboardTimeTile {
   @override
   final String type;
 
+  /// Discriminator for the data source type
+  @override
+  final Parent parent;
+
   /// The row position of the tile in the grid.
   @override
   final int row;
@@ -269,12 +302,12 @@ class _$DashboardTimeTileImpl implements _DashboardTimeTile {
   final int col;
 
   /// A list of data sources used by the tile, typically for real-time updates.
-  final List<DashboardTileBaseDataSourceUnion> _dataSource;
+  final List<DashboardDataSource> _dataSource;
 
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardTileBaseDataSourceUnion> get dataSource {
+  List<DashboardDataSource> get dataSource {
     if (_dataSource is EqualUnmodifiableListView) return _dataSource;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_dataSource);
@@ -302,7 +335,7 @@ class _$DashboardTimeTileImpl implements _DashboardTimeTile {
 
   @override
   String toString() {
-    return 'DashboardTimeTile(id: $id, type: $type, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan)';
+    return 'DashboardTimeTile(id: $id, type: $type, parent: $parent, row: $row, col: $col, dataSource: $dataSource, createdAt: $createdAt, updatedAt: $updatedAt, rowSpan: $rowSpan, colSpan: $colSpan)';
   }
 
   @override
@@ -312,6 +345,7 @@ class _$DashboardTimeTileImpl implements _DashboardTimeTile {
             other is _$DashboardTimeTileImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.type, type) || other.type == type) &&
+            (identical(other.parent, parent) || other.parent == parent) &&
             (identical(other.row, row) || other.row == row) &&
             (identical(other.col, col) || other.col == col) &&
             const DeepCollectionEquality()
@@ -330,6 +364,7 @@ class _$DashboardTimeTileImpl implements _DashboardTimeTile {
       runtimeType,
       id,
       type,
+      parent,
       row,
       col,
       const DeepCollectionEquality().hash(_dataSource),
@@ -359,10 +394,11 @@ abstract class _DashboardTimeTile implements DashboardTimeTile {
   const factory _DashboardTimeTile(
       {required final String id,
       required final String type,
+      required final Parent parent,
       required final int row,
       required final int col,
       @JsonKey(name: 'data_source')
-      required final List<DashboardTileBaseDataSourceUnion> dataSource,
+      required final List<DashboardDataSource> dataSource,
       @JsonKey(name: 'created_at') required final DateTime createdAt,
       @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
       @JsonKey(name: 'row_span') final int rowSpan,
@@ -379,6 +415,10 @@ abstract class _DashboardTimeTile implements DashboardTimeTile {
   @override
   String get type;
 
+  /// Discriminator for the data source type
+  @override
+  Parent get parent;
+
   /// The row position of the tile in the grid.
   @override
   int get row;
@@ -390,7 +430,7 @@ abstract class _DashboardTimeTile implements DashboardTimeTile {
   /// A list of data sources used by the tile, typically for real-time updates.
   @override
   @JsonKey(name: 'data_source')
-  List<DashboardTileBaseDataSourceUnion> get dataSource;
+  List<DashboardDataSource> get dataSource;
 
   /// The timestamp when the dashboard tile was created.
   @override

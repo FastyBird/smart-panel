@@ -4,7 +4,7 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'dashboard_req_create_page_data_union.dart';
+import 'dashboard_create_page.dart';
 
 part 'dashboard_req_create_page.freezed.dart';
 part 'dashboard_req_create_page.g.dart';
@@ -13,7 +13,7 @@ part 'dashboard_req_create_page.g.dart';
 @Freezed()
 class DashboardReqCreatePage with _$DashboardReqCreatePage {
   const factory DashboardReqCreatePage({
-    required DashboardReqCreatePageDataUnion data,
+    required DashboardCreatePage data,
   }) = _DashboardReqCreatePage;
   
   factory DashboardReqCreatePage.fromJson(Map<String, Object?> json) => _$DashboardReqCreatePageFromJson(json);

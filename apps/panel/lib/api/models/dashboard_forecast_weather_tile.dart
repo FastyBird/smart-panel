@@ -4,7 +4,8 @@
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'dashboard_tile_base_data_source_union.dart';
+import 'dashboard_data_source.dart';
+import 'parent.dart';
 
 part 'dashboard_forecast_weather_tile.freezed.dart';
 part 'dashboard_forecast_weather_tile.g.dart';
@@ -19,6 +20,9 @@ class DashboardForecastWeatherTile with _$DashboardForecastWeatherTile {
     /// Discriminator for the tile type
     required String type,
 
+    /// Discriminator for the data source type
+    required Parent parent,
+
     /// The row position of the tile in the grid.
     required int row,
 
@@ -27,7 +31,7 @@ class DashboardForecastWeatherTile with _$DashboardForecastWeatherTile {
 
     /// A list of data sources used by the tile, typically for real-time updates.
     @JsonKey(name: 'data_source')
-    required List<DashboardTileBaseDataSourceUnion> dataSource,
+    required List<DashboardDataSource> dataSource,
 
     /// The timestamp when the dashboard tile was created.
     @JsonKey(name: 'created_at')

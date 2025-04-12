@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
@@ -9,7 +7,7 @@ import 'package:flutter/foundation.dart';
 class TilesRepository extends Repository<TileModel> {
   TilesRepository({required super.apiClient});
 
-  void insertPageTiles(List<Map<String, dynamic>> json) {
+  void insertTiles(List<Map<String, dynamic>> json) {
     late Map<String, TileModel> insertData = {...data};
 
     for (var row in json) {
@@ -36,7 +34,7 @@ class TilesRepository extends Repository<TileModel> {
       }
 
       try {
-        TileModel tile = buildPageTileModel(tileType, row);
+        TileModel tile = buildTileModel(tileType, row);
 
         insertData[tile.id] = tile;
       } catch (e) {
@@ -44,54 +42,7 @@ class TilesRepository extends Repository<TileModel> {
           debugPrint(
             '[DASHBOARD MODULE][TILES] Failed to create tile model: ${e.toString()}',
           );
-        }
-
-        /// Failed to create new model
-      }
-    }
-
-    if (!mapEquals(data, insertData)) {
-      data = insertData;
-
-      notifyListeners();
-    }
-  }
-
-  void insertCardTiles(List<Map<String, dynamic>> json) {
-    late Map<String, TileModel> insertData = {...data};
-
-    for (var row in json) {
-      if (!row.containsKey('type')) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][TILES] Missing required attribute: "type" for tile: "${row['id']}"',
-          );
-        }
-
-        continue;
-      }
-
-      final TileType? tileType = TileType.fromValue(row['type']);
-
-      if (tileType == null) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][TILES] Unknown tile type: "${row['type']}" for tile: "${row['id']}"',
-          );
-        }
-
-        continue;
-      }
-
-      try {
-        TileModel tile = buildCardTileModel(tileType, row);
-
-        insertData[tile.id] = tile;
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][TILES] Failed to create tile model: ${e.toString()}',
-          );
+          print(row);
         }
 
         /// Failed to create new model
@@ -117,83 +68,37 @@ class TilesRepository extends Repository<TileModel> {
     }
   }
 
-  Future<void> fetchPageTile(
-    String pageId,
+  Future<void> fetchTile(
     String id,
   ) async {
     return handleApiCall(
       () async {
-        final response = await apiClient.getDashboardModulePageTile(
-          pageId: pageId,
-          id: id,
-        );
+        final response = await apiClient.getDashboardModuleTile(id: id);
 
-        insertPageTiles([jsonDecode(jsonEncode(response.data.data))]);
+        final raw = response.response.data['data'] as Map<String, dynamic>;
+
+        insertTiles([raw]);
       },
-      'fetch page tiles',
+      'fetch tile',
     );
   }
 
-  Future<void> fetchPageTiles(
-    String pageId,
+  Future<void> fetchTiles(
+    String parentType,
+    String parentId,
   ) async {
     return handleApiCall(
       () async {
-        final response = await apiClient.getDashboardModulePageTiles(
-          pageId: pageId,
+        final response = await apiClient.getDashboardModuleParentTiles(
+          parent: parentType,
+          parentId: parentId,
         );
 
-        List<Map<String, dynamic>> tiles = [];
+        final raw = response.response.data['data'] as List;
 
-        for (var tile in response.data.data) {
-          tiles.add(jsonDecode(jsonEncode(tile)));
-        }
-
-        insertPageTiles(tiles);
+        insertTiles(raw.cast<Map<String, dynamic>>());
       },
-      'fetch page tiles',
-    );
-  }
-
-  Future<void> fetchCardTile(
-    String pageId,
-    String cardId,
-    String id,
-  ) async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getDashboardModulePageCardTile(
-          pageId: pageId,
-          cardId: cardId,
-          id: id,
-        );
-
-        insertCardTiles([jsonDecode(jsonEncode(response.data.data))]);
-      },
-      'fetch card tile',
-    );
-  }
-
-  Future<void> fetchCardTiles(
-    String pageId,
-    String cardId,
-  ) async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getDashboardModulePageCardTiles(
-          pageId: pageId,
-          cardId: cardId,
-        );
-
-        List<Map<String, dynamic>> tiles = [];
-
-        for (var tile in response.data.data) {
-          tiles.add(jsonDecode(jsonEncode(tile)));
-        }
-
-        insertCardTiles(tiles);
-      },
-      'fetch card tiles',
+      'fetch tiles',
     );
   }
 }

@@ -13,12 +13,10 @@ _$DashboardCardImpl _$$DashboardCardImplFromJson(Map<String, dynamic> json) =>
       icon: json['icon'] as String?,
       page: json['page'] as String,
       tiles: (json['tiles'] as List<dynamic>)
-          .map((e) =>
-              DashboardCardTilesUnion.fromJson(e as Map<String, dynamic>))
+          .map((e) => DashboardTile.fromJson(e as Map<String, dynamic>))
           .toList(),
       dataSource: (json['data_source'] as List<dynamic>)
-          .map((e) =>
-              DashboardCardDataSourceUnion.fromJson(e as Map<String, dynamic>))
+          .map((e) => DashboardDataSource.fromJson(e as Map<String, dynamic>))
           .toList(),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] == null

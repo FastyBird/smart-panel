@@ -37,7 +37,7 @@ mixin _$DashboardResPage {
   DashboardResPageMethod get method => throw _privateConstructorUsedError;
 
   /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
-  DashboardResPageDataUnion get data => throw _privateConstructorUsedError;
+  DashboardPage get data => throw _privateConstructorUsedError;
 
   /// Additional metadata about the request and server performance metrics.
   CommonResMetadata get metadata => throw _privateConstructorUsedError;
@@ -64,10 +64,10 @@ abstract class $DashboardResPageCopyWith<$Res> {
       @JsonKey(name: 'request_id') String requestId,
       String path,
       DashboardResPageMethod method,
-      DashboardResPageDataUnion data,
+      DashboardPage data,
       CommonResMetadata metadata});
 
-  $DashboardResPageDataUnionCopyWith<$Res> get data;
+  $DashboardPageCopyWith<$Res> get data;
   $CommonResMetadataCopyWith<$Res> get metadata;
 }
 
@@ -118,7 +118,7 @@ class _$DashboardResPageCopyWithImpl<$Res, $Val extends DashboardResPage>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DashboardResPageDataUnion,
+              as DashboardPage,
       metadata: null == metadata
           ? _value.metadata
           : metadata // ignore: cast_nullable_to_non_nullable
@@ -130,8 +130,8 @@ class _$DashboardResPageCopyWithImpl<$Res, $Val extends DashboardResPage>
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
-  $DashboardResPageDataUnionCopyWith<$Res> get data {
-    return $DashboardResPageDataUnionCopyWith<$Res>(_value.data, (value) {
+  $DashboardPageCopyWith<$Res> get data {
+    return $DashboardPageCopyWith<$Res>(_value.data, (value) {
       return _then(_value.copyWith(data: value) as $Val);
     });
   }
@@ -161,11 +161,11 @@ abstract class _$$DashboardResPageImplCopyWith<$Res>
       @JsonKey(name: 'request_id') String requestId,
       String path,
       DashboardResPageMethod method,
-      DashboardResPageDataUnion data,
+      DashboardPage data,
       CommonResMetadata metadata});
 
   @override
-  $DashboardResPageDataUnionCopyWith<$Res> get data;
+  $DashboardPageCopyWith<$Res> get data;
   @override
   $CommonResMetadataCopyWith<$Res> get metadata;
 }
@@ -215,7 +215,7 @@ class __$$DashboardResPageImplCopyWithImpl<$Res>
       data: null == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as DashboardResPageDataUnion,
+              as DashboardPage,
       metadata: null == metadata
           ? _value.metadata
           : metadata // ignore: cast_nullable_to_non_nullable
@@ -262,7 +262,7 @@ class _$DashboardResPageImpl implements _DashboardResPage {
 
   /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
   @override
-  final DashboardResPageDataUnion data;
+  final DashboardPage data;
 
   /// Additional metadata about the request and server performance metrics.
   @override
@@ -319,7 +319,7 @@ abstract class _DashboardResPage implements DashboardResPage {
       @JsonKey(name: 'request_id') required final String requestId,
       required final String path,
       required final DashboardResPageMethod method,
-      required final DashboardResPageDataUnion data,
+      required final DashboardPage data,
       required final CommonResMetadata metadata}) = _$DashboardResPageImpl;
 
   factory _DashboardResPage.fromJson(Map<String, dynamic> json) =
@@ -348,7 +348,7 @@ abstract class _DashboardResPage implements DashboardResPage {
 
   /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
   @override
-  DashboardResPageDataUnion get data;
+  DashboardPage get data;
 
   /// Additional metadata about the request and server performance metrics.
   @override

@@ -5,7 +5,8 @@ import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 abstract class TileModel extends Model {
   final TileType _type;
 
-  final String _parent;
+  final String _parentType;
+  final String _parentId;
 
   final List<String> _dataSource;
 
@@ -17,7 +18,8 @@ abstract class TileModel extends Model {
   TileModel({
     required super.id,
     required TileType type,
-    required String parent,
+    required String parentType,
+    required String parentId,
     List<String> dataSource = const [],
     required int row,
     required int col,
@@ -26,7 +28,8 @@ abstract class TileModel extends Model {
     super.createdAt,
     super.updatedAt,
   })  : _type = type,
-        _parent = UuidUtils.validateUuid(parent),
+        _parentType = parentType,
+        _parentId = UuidUtils.validateUuid(parentId),
         _dataSource = UuidUtils.validateUuidList(dataSource),
         _row = row,
         _col = col,
@@ -35,7 +38,9 @@ abstract class TileModel extends Model {
 
   TileType get type => _type;
 
-  String get parent => _parent;
+  String get parentType => _parentType;
+
+  String get parentId => _parentId;
 
   List<String> get dataSource => _dataSource;
 

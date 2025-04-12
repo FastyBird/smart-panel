@@ -162,26 +162,25 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageDataSources>>
-      getDashboardModulePageDataSources({required String pageId}) async {
+  Future<HttpResponse<DashboardResTiles>> getDashboardModuleTiles() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DashboardResPageDataSources>>(
+    final _options = _setStreamType<HttpResponse<DashboardResTiles>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/data-source',
+            '/dashboard-module/tiles',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageDataSources _value;
+    late DashboardResTiles _value;
     try {
-      _value = DashboardResPageDataSources.fromJson(_result.data!);
+      _value = DashboardResTiles.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -191,30 +190,28 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageDataSource>>
-      createDashboardModulePageDataSource({
-    required String pageId,
-    DashboardReqCreateDataSource? body,
+  Future<HttpResponse<DashboardResTile>> createDashboardModuleTile({
+    DashboardReqCreateTileWithParent? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DashboardResPageDataSource>>(
+    final _options = _setStreamType<HttpResponse<DashboardResTile>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/data-source',
+            '/dashboard-module/tiles',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageDataSource _value;
+    late DashboardResTile _value;
     try {
-      _value = DashboardResPageDataSource.fromJson(_result.data!);
+      _value = DashboardResTile.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -224,29 +221,28 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageDataSource>>
-      getDashboardModulePageDataSource({
-    required String pageId,
-    required String id,
+  Future<HttpResponse<DashboardResTiles>> getDashboardModuleParentTiles({
+    required String parent,
+    required String parentId,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DashboardResPageDataSource>>(
+    final _options = _setStreamType<HttpResponse<DashboardResTiles>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/data-source/${id}',
+            '/dashboard-module/${parent}/${parentId}/tiles',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageDataSource _value;
+    late DashboardResTiles _value;
     try {
-      _value = DashboardResPageDataSource.fromJson(_result.data!);
+      _value = DashboardResTiles.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -256,117 +252,30 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageDataSource>>
-      updateDashboardModulePageDataSource({
-    required String pageId,
-    required String id,
-    DashboardReqUpdateDataSource? body,
+  Future<HttpResponse<DashboardResTile>> createDashboardModuleParentTile({
+    required String parent,
+    required String parentId,
+    DashboardReqCreateTile? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DashboardResPageDataSource>>(
-      Options(method: 'PATCH', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/data-source/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageDataSource _value;
-    try {
-      _value = DashboardResPageDataSource.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<void>> deleteDashboardModulePageDataSource({
-    required String pageId,
-    required String id,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<void>>(
-      Options(method: 'DELETE', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/data-source/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<void>(_options);
-    final httpResponse = HttpResponse(null, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageTiles>> getDashboardModulePageTiles({
-    required String pageId,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DashboardResPageTiles>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageTiles _value;
-    try {
-      _value = DashboardResPageTiles.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageTile>> createDashboardModulePageTile({
-    required String pageId,
-    DashboardReqCreatePageTile? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options = _setStreamType<HttpResponse<DashboardResPageTile>>(
+    final _options = _setStreamType<HttpResponse<DashboardResTile>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles',
+            '/dashboard-module/${parent}/${parentId}/tiles',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageTile _value;
+    late DashboardResTile _value;
     try {
-      _value = DashboardResPageTile.fromJson(_result.data!);
+      _value = DashboardResTile.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -376,28 +285,27 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageTile>> getDashboardModulePageTile({
-    required String pageId,
+  Future<HttpResponse<DashboardResTile>> getDashboardModuleTile({
     required String id,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DashboardResPageTile>>(
+    final _options = _setStreamType<HttpResponse<DashboardResTile>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles/${id}',
+            '/dashboard-module/tiles/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageTile _value;
+    late DashboardResTile _value;
     try {
-      _value = DashboardResPageTile.fromJson(_result.data!);
+      _value = DashboardResTile.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -407,8 +315,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageTile>> updateDashboardModulePageTile({
-    required String pageId,
+  Future<HttpResponse<DashboardResTile>> updateDashboardModuleTile({
     required String id,
     DashboardReqUpdateTile? body,
   }) async {
@@ -417,20 +324,20 @@ class _DashboardModuleClient implements DashboardModuleClient {
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DashboardResPageTile>>(
+    final _options = _setStreamType<HttpResponse<DashboardResTile>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles/${id}',
+            '/dashboard-module/tiles/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageTile _value;
+    late DashboardResTile _value;
     try {
-      _value = DashboardResPageTile.fromJson(_result.data!);
+      _value = DashboardResTile.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -440,8 +347,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<void>> deleteDashboardModulePageTile({
-    required String pageId,
+  Future<HttpResponse<void>> deleteDashboardModuleTile({
     required String id,
   }) async {
     final _extra = <String, dynamic>{};
@@ -452,7 +358,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles/${id}',
+            '/dashboard-module/tiles/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -464,32 +370,26 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageTileDataSources>>
-      getDashboardModulePageTileDataSources({
-    required String pageId,
-    required String tileId,
-  }) async {
+  Future<HttpResponse<DashboardResDataSources>>
+      getDashboardModuleDataSources() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageTileDataSources>>(
+    final _options = _setStreamType<HttpResponse<DashboardResDataSources>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles/${tileId}/data-source',
+            '/dashboard-module/data-source',
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(
-            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
-          ),
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageTileDataSources _value;
+    late DashboardResDataSources _value;
     try {
-      _value = DashboardResPageTileDataSources.fromJson(_result.data!);
+      _value = DashboardResDataSources.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -499,10 +399,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageTileDataSource>>
-      createDashboardModulePageTileDataSource({
-    required String pageId,
-    required String tileId,
+  Future<HttpResponse<DashboardResDataSource>> createDashboardModuleDataSource({
     DashboardReqCreateDataSource? body,
   }) async {
     final _extra = <String, dynamic>{};
@@ -510,57 +407,20 @@ class _DashboardModuleClient implements DashboardModuleClient {
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageTileDataSource>>(
+    final _options = _setStreamType<HttpResponse<DashboardResDataSource>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles/${tileId}/data-source',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(
-            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
-          ),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageTileDataSource _value;
-    try {
-      _value = DashboardResPageTileDataSource.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageTileDataSource>>
-      getDashboardModulePageTileDataSource({
-    required String pageId,
-    required String tileId,
-    required String id,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageTileDataSource>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles/${tileId}/data-source/${id}',
+            '/dashboard-module/data-source',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageTileDataSource _value;
+    late DashboardResDataSource _value;
     try {
-      _value = DashboardResPageTileDataSource.fromJson(_result.data!);
+      _value = DashboardResDataSource.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -570,10 +430,103 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageTileDataSource>>
-      updateDashboardModulePageTileDataSource({
-    required String pageId,
-    required String tileId,
+  Future<HttpResponse<DashboardResDataSources>>
+      getDashboardModuleParentDataSources({
+    required String parent,
+    required String parentId,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<DashboardResDataSources>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/dashboard-module/${parent}/${parentId}/data-source',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late DashboardResDataSources _value;
+    try {
+      _value = DashboardResDataSources.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<DashboardResDataSource>>
+      createDashboardModuleParentDataSource({
+    required String parent,
+    required String parentId,
+    DashboardReqCreateDataSourceWithParent? body,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    final _data = body;
+    final _options = _setStreamType<HttpResponse<DashboardResDataSource>>(
+      Options(method: 'POST', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/dashboard-module/${parent}/${parentId}/data-source',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late DashboardResDataSource _value;
+    try {
+      _value = DashboardResDataSource.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<DashboardResDataSource>> getDashboardModuleDataSource({
+    required String id,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<HttpResponse<DashboardResDataSource>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/dashboard-module/data-source/${id}',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late DashboardResDataSource _value;
+    try {
+      _value = DashboardResDataSource.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<DashboardResDataSource>> updateDashboardModuleDataSource({
     required String id,
     DashboardReqUpdateDataSource? body,
   }) async {
@@ -582,21 +535,20 @@ class _DashboardModuleClient implements DashboardModuleClient {
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageTileDataSource>>(
+    final _options = _setStreamType<HttpResponse<DashboardResDataSource>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles/${tileId}/data-source/${id}',
+            '/dashboard-module/data-source/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageTileDataSource _value;
+    late DashboardResDataSource _value;
     try {
-      _value = DashboardResPageTileDataSource.fromJson(_result.data!);
+      _value = DashboardResDataSource.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -606,9 +558,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<void>> deleteDashboardModulePageTileDataSource({
-    required String pageId,
-    required String tileId,
+  Future<HttpResponse<void>> deleteDashboardModuleDataSource({
     required String id,
   }) async {
     final _extra = <String, dynamic>{};
@@ -619,7 +569,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/dashboard-module/pages/${pageId}/tiles/${tileId}/data-source/${id}',
+            '/dashboard-module/data-source/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -631,14 +581,14 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageCards>> getDashboardModulePageCards({
+  Future<HttpResponse<DashboardResCards>> getDashboardModulePageCards({
     required String pageId,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DashboardResPageCards>>(
+    final _options = _setStreamType<HttpResponse<DashboardResCards>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -649,9 +599,9 @@ class _DashboardModuleClient implements DashboardModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCards _value;
+    late DashboardResCards _value;
     try {
-      _value = DashboardResPageCards.fromJson(_result.data!);
+      _value = DashboardResCards.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -661,16 +611,16 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageCard>> createDashboardModulePageCard({
+  Future<HttpResponse<DashboardResCard>> createDashboardModulePageCard({
     required String pageId,
-    DashboardReqCreatePageCard? body,
+    DashboardReqCreateCard? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DashboardResPageCard>>(
+    final _options = _setStreamType<HttpResponse<DashboardResCard>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -681,9 +631,9 @@ class _DashboardModuleClient implements DashboardModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCard _value;
+    late DashboardResCard _value;
     try {
-      _value = DashboardResPageCard.fromJson(_result.data!);
+      _value = DashboardResCard.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -693,7 +643,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageCard>> getDashboardModulePageCard({
+  Future<HttpResponse<DashboardResCard>> getDashboardModulePageCard({
     required String pageId,
     required String id,
   }) async {
@@ -701,7 +651,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DashboardResPageCard>>(
+    final _options = _setStreamType<HttpResponse<DashboardResCard>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -712,9 +662,9 @@ class _DashboardModuleClient implements DashboardModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCard _value;
+    late DashboardResCard _value;
     try {
-      _value = DashboardResPageCard.fromJson(_result.data!);
+      _value = DashboardResCard.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -724,7 +674,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
   }
 
   @override
-  Future<HttpResponse<DashboardResPageCard>> updateDashboardModulePageCard({
+  Future<HttpResponse<DashboardResCard>> updateDashboardModulePageCard({
     required String pageId,
     required String id,
     DashboardReqUpdateCard? body,
@@ -734,7 +684,7 @@ class _DashboardModuleClient implements DashboardModuleClient {
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DashboardResPageCard>>(
+    final _options = _setStreamType<HttpResponse<DashboardResCard>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -745,9 +695,9 @@ class _DashboardModuleClient implements DashboardModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCard _value;
+    late DashboardResCard _value;
     try {
-      _value = DashboardResPageCard.fromJson(_result.data!);
+      _value = DashboardResCard.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -770,500 +720,6 @@ class _DashboardModuleClient implements DashboardModuleClient {
           .compose(
             _dio.options,
             '/dashboard-module/pages/${pageId}/cards/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<void>(_options);
-    final httpResponse = HttpResponse(null, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardTiles>>
-      getDashboardModulePageCardTiles({
-    required String pageId,
-    required String cardId,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DashboardResPageCardTiles>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardTiles _value;
-    try {
-      _value = DashboardResPageCardTiles.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardTile>>
-      createDashboardModulePageCardTile({
-    required String pageId,
-    required String cardId,
-    DashboardReqCreateCardTile? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options = _setStreamType<HttpResponse<DashboardResPageCardTile>>(
-      Options(method: 'POST', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardTile _value;
-    try {
-      _value = DashboardResPageCardTile.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardTile>>
-      getDashboardModulePageCardTile({
-    required String pageId,
-    required String cardId,
-    required String id,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DashboardResPageCardTile>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardTile _value;
-    try {
-      _value = DashboardResPageCardTile.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardTile>>
-      updateDashboardModulePageCardTile({
-    required String pageId,
-    required String cardId,
-    required String id,
-    DashboardReqUpdateTile? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options = _setStreamType<HttpResponse<DashboardResPageCardTile>>(
-      Options(method: 'PATCH', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardTile _value;
-    try {
-      _value = DashboardResPageCardTile.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<void>> deleteDashboardModulePageCardTile({
-    required String pageId,
-    required String cardId,
-    required String id,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<void>>(
-      Options(method: 'DELETE', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<void>(_options);
-    final httpResponse = HttpResponse(null, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardTileDataSources>>
-      getDashboardModulePageCardTileDataSources({
-    required String pageId,
-    required String cardId,
-    required String tileId,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageCardTileDataSources>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles/${tileId}/data-source',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardTileDataSources _value;
-    try {
-      _value = DashboardResPageCardTileDataSources.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardTileDataSource>>
-      createDashboardModulePageCardTileDataSource({
-    required String pageId,
-    required String cardId,
-    required String tileId,
-    DashboardReqCreateDataSource? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageCardTileDataSource>>(
-      Options(method: 'POST', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles/${tileId}/data-source',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardTileDataSource _value;
-    try {
-      _value = DashboardResPageCardTileDataSource.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardTileDataSource>>
-      getDashboardModulePageCardTileDataSource({
-    required String pageId,
-    required String cardId,
-    required String tileId,
-    required String id,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageCardTileDataSource>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles/${tileId}/data-source/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardTileDataSource _value;
-    try {
-      _value = DashboardResPageCardTileDataSource.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardTileDataSource>>
-      updateDashboardModulePageCardTileDataSource({
-    required String pageId,
-    required String cardId,
-    required String tileId,
-    required String id,
-    DashboardReqUpdateDataSource? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageCardTileDataSource>>(
-      Options(method: 'PATCH', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles/${tileId}/data-source/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardTileDataSource _value;
-    try {
-      _value = DashboardResPageCardTileDataSource.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<void>> deleteDashboardModulePageCardTileDataSource({
-    required String pageId,
-    required String cardId,
-    required String tileId,
-    required String id,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<void>>(
-      Options(method: 'DELETE', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/tiles/${tileId}/data-source/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<void>(_options);
-    final httpResponse = HttpResponse(null, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardDataSources>>
-      getDashboardModulePageCardDataSources({
-    required String pageId,
-    required String cardId,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageCardDataSources>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/data-source',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(
-            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
-          ),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardDataSources _value;
-    try {
-      _value = DashboardResPageCardDataSources.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardDataSource>>
-      createDashboardModulePageCardDataSource({
-    required String pageId,
-    required String cardId,
-    DashboardReqCreateDataSource? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageCardDataSource>>(
-      Options(method: 'POST', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/data-source',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(
-            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
-          ),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardDataSource _value;
-    try {
-      _value = DashboardResPageCardDataSource.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardDataSource>>
-      getDashboardModulePageCardDataSource({
-    required String pageId,
-    required String cardId,
-    required String id,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageCardDataSource>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/data-source/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardDataSource _value;
-    try {
-      _value = DashboardResPageCardDataSource.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<DashboardResPageCardDataSource>>
-      updateDashboardModulePageCardDataSource({
-    required String pageId,
-    required String cardId,
-    required String id,
-    DashboardReqUpdateDataSource? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options =
-        _setStreamType<HttpResponse<DashboardResPageCardDataSource>>(
-      Options(method: 'PATCH', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/data-source/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DashboardResPageCardDataSource _value;
-    try {
-      _value = DashboardResPageCardDataSource.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<void>> deleteDashboardModulePageCardDataSource({
-    required String pageId,
-    required String cardId,
-    required String id,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<void>>(
-      Options(method: 'DELETE', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/dashboard-module/pages/${pageId}/cards/${cardId}/data-source/${id}',
             queryParameters: queryParameters,
             data: _data,
           )

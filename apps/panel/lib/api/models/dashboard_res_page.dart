@@ -5,7 +5,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'common_res_metadata.dart';
-import 'dashboard_res_page_data_union.dart';
+import 'dashboard_page.dart';
 import 'dashboard_res_page_method.dart';
 
 part 'dashboard_res_page.freezed.dart';
@@ -32,7 +32,7 @@ class DashboardResPage with _$DashboardResPage {
     required DashboardResPageMethod method,
 
     /// The actual data payload returned by the API. The structure depends on the specific endpoint response.
-    required DashboardResPageDataUnion data,
+    required DashboardPage data,
 
     /// Additional metadata about the request and server performance metrics.
     required CommonResMetadata metadata,
