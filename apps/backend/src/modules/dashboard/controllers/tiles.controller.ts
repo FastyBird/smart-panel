@@ -20,8 +20,8 @@ import {
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateTileDto, ReqCreateTileDto } from '../dto/create-tile.dto';
-import { ReqUpdateTileDto, UpdateTileDto } from '../dto/update-tile.dto';
+import { CreateSingleTileDto, CreateTileDto } from '../dto/create-tile.dto';
+import { UpdateTileDto } from '../dto/update-tile.dto';
 import { TileEntity } from '../entities/dashboard.entity';
 import { TileTypeMapping, TilesTypeMapperService } from '../services/tiles-type-mapper.service';
 import { TilesService } from '../services/tiles.service';
@@ -37,39 +37,53 @@ export class TilesController {
 
 	@Get()
 	async findAll(): Promise<TileEntity[]> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all page tiles`);
+		this.logger.debug(`[LOOKUP ALL] Fetching all tiles`);
 
 		const tiles = await this.tilesService.findAll();
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${tiles.length} page tiles`);
+		this.logger.debug(`[LOOKUP ALL] Retrieved ${tiles.length} tiles`);
 
 		return tiles;
 	}
 
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TileEntity> {
-		this.logger.debug(`[LOOKUP] Fetching page tile id=${id}`);
+		this.logger.debug(`[LOOKUP] Fetching tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
 
-		this.logger.debug(`[LOOKUP] Found page tile id=${tile.id}`);
+		this.logger.debug(`[LOOKUP] Found tile id=${tile.id}`);
 
 		return tile;
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:page/tiles/:id`)
-	async create(@Body() createDto: ReqCreateTileDto): Promise<TileEntity> {
-		this.logger.debug(`[CREATE] Incoming request to create a new page tile`);
+	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/tiles/:id`)
+	async create(@Body() createDto: { data: object }): Promise<TileEntity> {
+		this.logger.debug(`[CREATE] Incoming request to create a new tile`);
 
-		const type: string | undefined = createDto.data.type;
+		const type: string | undefined =
+			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
 
 		if (!type) {
 			this.logger.error('[VALIDATION] Missing required field: type');
 
-			throw new BadRequestException([
-				JSON.stringify({ field: 'type', reason: 'Page tile property type is required.' }),
-			]);
+			throw new BadRequestException([JSON.stringify({ field: 'type', reason: 'Tile property type is required.' })]);
+		}
+
+		const baseDtoInstance = plainToInstance(CreateSingleTileDto, createDto.data, {
+			enableImplicitConversion: true,
+			exposeUnsetFields: false,
+		});
+
+		const baseErrors = await validate(baseDtoInstance, {
+			whitelist: true,
+		});
+
+		if (baseErrors.length > 0) {
+			this.logger.error(`[VALIDATION FAILED] Validation failed for tile creation error=${JSON.stringify(baseErrors)}`);
+
+			throw ValidationExceptionFactory.createException(baseErrors);
 		}
 
 		let mapping: TileTypeMapping<TileEntity, CreateTileDto, UpdateTileDto>;
@@ -79,12 +93,10 @@ export class TilesController {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[ERROR] Unsupported page tile type: ${type}`, { message: err.message, stack: err.stack });
+			this.logger.error(`[ERROR] Unsupported tile type: ${type}`, { message: err.message, stack: err.stack });
 
 			if (error instanceof DashboardException) {
-				throw new BadRequestException([
-					JSON.stringify({ field: 'type', reason: `Unsupported page tile type: ${type}` }),
-				]);
+				throw new BadRequestException([JSON.stringify({ field: 'type', reason: `Unsupported tile type: ${type}` })]);
 			}
 
 			throw error;
@@ -101,20 +113,23 @@ export class TilesController {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for page tile creation error=${JSON.stringify(errors)}`);
+			this.logger.error(`[VALIDATION FAILED] Validation failed for tile creation error=${JSON.stringify(errors)}`);
 
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
 		try {
-			const tile = await this.tilesService.create(createDto.data);
+			const tile = await this.tilesService.create(dtoInstance, {
+				parentType: baseDtoInstance.parent.type,
+				parentId: baseDtoInstance.parent.id,
+			});
 
-			this.logger.debug(`[CREATE] Successfully created page tile id=${tile.id}`);
+			this.logger.debug(`[CREATE] Successfully created tile id=${tile.id}`);
 
 			return tile;
 		} catch (error) {
 			if (error instanceof DashboardException) {
-				throw new UnprocessableEntityException('Page tile could not be created. Please try again later');
+				throw new UnprocessableEntityException('Tile could not be created. Please try again later');
 			}
 
 			throw error;
@@ -124,9 +139,9 @@ export class TilesController {
 	@Patch(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: ReqUpdateTileDto,
+		@Body() updateDto: { data: object },
 	): Promise<TileEntity> {
-		this.logger.debug(`[UPDATE] Incoming update request for page tile id=${id}`);
+		this.logger.debug(`[UPDATE] Incoming update request for tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
 
@@ -137,14 +152,14 @@ export class TilesController {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[ERROR] Unsupported page tile type for update: ${tile.type}`, {
+			this.logger.error(`[ERROR] Unsupported tile type for update: ${tile.type}`, {
 				message: err.message,
 				stack: err.stack,
 			});
 
 			if (error instanceof DashboardException) {
 				throw new BadRequestException([
-					JSON.stringify({ field: 'type', reason: `Unsupported page tile type: ${tile.type}` }),
+					JSON.stringify({ field: 'type', reason: `Unsupported tile type: ${tile.type}` }),
 				]);
 			}
 
@@ -162,22 +177,20 @@ export class TilesController {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(
-				`[VALIDATION FAILED] Validation failed for page tile modification error=${JSON.stringify(errors)}`,
-			);
+			this.logger.error(`[VALIDATION FAILED] Validation failed for tile modification error=${JSON.stringify(errors)}`);
 
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
 		try {
-			const updatedTile = await this.tilesService.update(tile.id, updateDto.data);
+			const updatedTile = await this.tilesService.update(tile.id, dtoInstance);
 
-			this.logger.debug(`[UPDATE] Successfully updated page tile id=${updatedTile.id}`);
+			this.logger.debug(`[UPDATE] Successfully updated tile id=${updatedTile.id}`);
 
 			return updatedTile;
 		} catch (error) {
 			if (error instanceof DashboardException) {
-				throw new UnprocessableEntityException('Page tile could not be updated. Please try again later');
+				throw new UnprocessableEntityException('Tile could not be updated. Please try again later');
 			}
 
 			throw error;
@@ -186,24 +199,24 @@ export class TilesController {
 
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete page tile id=${id}`);
+		this.logger.debug(`[DELETE] Incoming request to delete tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
 
 		await this.tilesService.remove(tile.id);
 
-		this.logger.debug(`[DELETE] Successfully deleted page tile id=${id}`);
+		this.logger.debug(`[DELETE] Successfully deleted tile id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<TileEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of page tile id=${id}`);
+		this.logger.debug(`[LOOKUP] Checking existence of tile id=${id}`);
 
 		const tile = await this.tilesService.findOne(id);
 
 		if (!tile) {
-			this.logger.error(`[ERROR] Page tile with id=${id} not found`);
+			this.logger.error(`[ERROR] Tile with id=${id} not found`);
 
-			throw new NotFoundException('Requested page tile does not exist');
+			throw new NotFoundException('Requested tile does not exist');
 		}
 
 		return tile;

@@ -18,7 +18,7 @@ import { CreateDataSourceDto } from './create-data-source.dto';
 type ReqCreatePage = components['schemas']['DashboardReqCreatePage'];
 type CreatePage = components['schemas']['DashboardCreatePage'];
 
-export abstract class CreatePageDto implements CreatePage {
+export class CreatePageDto implements CreatePage {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
@@ -53,7 +53,8 @@ export abstract class CreatePageDto implements CreatePage {
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
 	@ValidateNested({ each: true })
 	@ValidateDataSourceType()
-	data_source?: CreateDataSourceDto[] = [];
+	@Type(() => CreateDataSourceDto)
+	data_source?: CreateDataSourceDto[];
 }
 
 export class ReqCreatePageDto implements ReqCreatePage {

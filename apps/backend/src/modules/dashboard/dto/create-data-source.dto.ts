@@ -19,7 +19,9 @@ export abstract class CreateDataSourceDto implements CreateDataSource {
 	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported data source type."}]' })
 	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported data source type."}]' })
 	readonly type: string;
+}
 
+export class CreateSingleDataSourceDto extends CreateDataSourceDto {
 	@Expose()
 	@ValidateNested()
 	@Type(() => ParentDto)
@@ -29,8 +31,8 @@ export abstract class CreateDataSourceDto implements CreateDataSource {
 export class ReqCreateDataSourceDto implements ReqCreateDataSource {
 	@Expose()
 	@ValidateNested()
-	@Type(() => CreateDataSourceDto)
-	data: CreateDataSourceDto;
+	@Type(() => CreateSingleDataSourceDto)
+	data: CreateSingleDataSourceDto;
 }
 
 export class ReqCreateDataSourceWithParentDto implements ReqCreateDataSourceWithParent {

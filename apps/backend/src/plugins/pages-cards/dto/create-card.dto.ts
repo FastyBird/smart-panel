@@ -49,6 +49,7 @@ export class CreateCardDto implements CreateCard {
 	@IsArray({ message: '[{"field":"tiles","reason":"Tiles must be a valid array."}]' })
 	@ValidateNested({ each: true })
 	@ValidateTileType()
+	@Type(() => CreateTileDto)
 	tiles?: CreateTileDto[] = [];
 
 	@Expose()
@@ -56,6 +57,7 @@ export class CreateCardDto implements CreateCard {
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
 	@ValidateNested({ each: true })
 	@ValidateDataSourceType()
+	@Type(() => CreateDataSourceDto)
 	data_source?: CreateDataSourceDto[] = [];
 }
 

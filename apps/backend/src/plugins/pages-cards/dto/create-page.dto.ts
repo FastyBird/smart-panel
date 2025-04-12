@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import { IsArray, IsOptional, ValidateNested } from 'class-validator';
 
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
@@ -15,5 +15,6 @@ export class CreateCardsPageDto extends CreatePageDto implements CreateCardsPage
 	@IsOptional()
 	@IsArray({ message: '[{"field":"tiles","reason":"Cards must be a valid array."}]' })
 	@ValidateNested({ each: true })
+	@Type(() => CreateCardDto)
 	cards?: CreateCardDto[];
 }

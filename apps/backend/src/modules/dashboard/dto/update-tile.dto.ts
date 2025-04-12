@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
@@ -45,11 +45,6 @@ export abstract class UpdateTileDto implements UpdateTile {
 	)
 	@Min(1, { message: '[{"field":"col_span","reason":"Column span minimum value must be greater than 0."}]' })
 	col_span?: number;
-
-	@Expose()
-	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"page","reason":"Page must be a valid UUID (version 4)."}]' })
-	page?: string;
 }
 
 export class ReqUpdateTileDto implements ReqUpdateTile {

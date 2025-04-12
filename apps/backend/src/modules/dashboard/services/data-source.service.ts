@@ -122,7 +122,7 @@ export class DataSourceService {
 
 	async create<TDataSource extends DataSourceEntity, TCreateDTO extends CreateDataSourceDto>(
 		createDto: CreateDataSourceDto,
-		relation?: Relation,
+		relation: Relation,
 	): Promise<TDataSource> {
 		this.logger.debug(
 			`[CREATE] Creating new data source for parentType=${relation.parentType} and parentId=${relation.parentId}`,
@@ -140,24 +140,12 @@ export class DataSourceService {
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
-		let parent: { parentId: string; parentType: string };
-
-		if (relation?.parentType && relation?.parentId) {
-			parent = { parentType: relation.parentType, parentId: relation.parentId };
-		} else if (dtoInstance.parent?.type && dtoInstance.parent?.id) {
-			parent = { parentType: dtoInstance.parent.type, parentId: dtoInstance.parent.id };
-		} else {
-			this.logger.error('[CREATE] Relation invalid: Missing required relation definition.');
-
-			throw new DashboardException('Missing both parentType and parentId for assigning parent relation.');
-		}
-
 		const repository: Repository<TDataSource> = this.dataSource.getRepository(mapping.class);
 
 		const dataSource = repository.create(
 			plainToInstance(
 				mapping.class,
-				{ ...dtoInstance, ...parent },
+				{ ...dtoInstance, parentType: relation.parentType, parentId: relation.parentId },
 				{
 					enableImplicitConversion: true,
 					excludeExtraneousValues: true,

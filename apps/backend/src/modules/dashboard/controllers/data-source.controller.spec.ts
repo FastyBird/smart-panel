@@ -13,7 +13,7 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { CreateDataSourceDto } from '../dto/create-data-source.dto';
+import { CreateSingleDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
 import { DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
@@ -21,7 +21,7 @@ import { DataSourceService } from '../services/data-source.service';
 
 import { DataSourceController } from './data-source.controller';
 
-class CreateMockDataSourceDto extends CreateDataSourceDto {
+class CreateMockDataSourceDto extends CreateSingleDataSourceDto {
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -170,7 +170,7 @@ describe('DataSourceController', () => {
 			const result = await controller.create({ data: createDto });
 
 			expect(result).toEqual(mockDataSource);
-			expect(dataSourceService.create).toHaveBeenCalledWith(createDto);
+			expect(dataSourceService.create).toHaveBeenCalledWith(createDto, { parentType: 'page', parentId: mockPage.id });
 		});
 
 		it('should update a data source', async () => {

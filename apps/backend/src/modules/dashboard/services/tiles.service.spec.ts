@@ -20,7 +20,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateTileDto } from '../dto/create-tile.dto';
+import { CreateSingleTileDto } from '../dto/create-tile.dto';
 import { UpdateTileDto } from '../dto/update-tile.dto';
 import { PageEntity, TileEntity } from '../entities/dashboard.entity';
 
@@ -31,7 +31,7 @@ import { TileRelationsLoaderRegistryService } from './tile-relations-loader-regi
 import { TilesTypeMapperService } from './tiles-type-mapper.service';
 import { TilesService } from './tiles.service';
 
-class CreateMockTileDto extends CreateTileDto {
+class CreateMockTileDto extends CreateSingleTileDto {
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })

@@ -23,16 +23,12 @@ export abstract class CreateTileDto implements CreateTile {
 	readonly type: string;
 
 	@Expose()
-	@ValidateNested()
-	@Type(() => ParentDto)
-	readonly parent: ParentDto;
-
-	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
 	@ValidateNested({ each: true })
 	@ValidateDataSourceType()
-	data_source?: CreateDataSourceDto[] = [];
+	@Type(() => CreateDataSourceDto)
+	data_source?: CreateDataSourceDto[];
 
 	@Expose()
 	@IsNumber(
@@ -69,16 +65,23 @@ export abstract class CreateTileDto implements CreateTile {
 	col_span?: number;
 }
 
+export class CreateSingleTileDto extends CreateTileDto {
+	@Expose()
+	@ValidateNested()
+	@Type(() => ParentDto)
+	readonly parent: ParentDto;
+}
+
 export class ReqCreateTileDto implements ReqCreateTile {
 	@Expose()
 	@ValidateNested()
-	@Type(() => CreateTileDto)
-	data: CreateTileDto;
+	@Type(() => CreateSingleTileDto)
+	data: CreateSingleTileDto;
 }
 
 export class ReqCreateTileWithParentDto implements ReqCreateTileWithParent {
 	@Expose()
 	@ValidateNested()
-	@Type(() => CreateTileDto)
-	data: CreateTileDto;
+	@Type(() => CreateSingleTileDto)
+	data: CreateSingleTileDto;
 }

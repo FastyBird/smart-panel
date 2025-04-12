@@ -127,7 +127,7 @@ export class TilesService {
 
 	async create<TTile extends TileEntity, TCreateDTO extends CreateTileDto>(
 		createDto: CreateTileDto,
-		relation?: Relation,
+		relation: Relation,
 	): Promise<TTile> {
 		this.logger.debug(
 			`[CREATE] Creating new tile for parentType=${relation.parentType} and parentId=${relation.parentId}`,
@@ -145,23 +145,11 @@ export class TilesService {
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
-		let parent: { parentId: string; parentType: string };
-
-		if (relation?.parentType && relation?.parentId) {
-			parent = { parentType: relation.parentType, parentId: relation.parentId };
-		} else if (dtoInstance.parent?.type && dtoInstance.parent?.id) {
-			parent = { parentType: dtoInstance.parent.type, parentId: dtoInstance.parent.id };
-		} else {
-			this.logger.error('[CREATE] Relation invalid: Missing required relation definition.');
-
-			throw new DashboardException('Missing both parentType and parentId for assigning parent relation.');
-		}
-
 		const repository: Repository<TTile> = this.dataSource.getRepository(mapping.class);
 
 		const tile = plainToInstance(
 			mapping.class,
-			{ ...dtoInstance, ...parent },
+			{ ...dtoInstance, parentType: relation.parentType, parentId: relation.parentId },
 			{
 				enableImplicitConversion: true,
 				excludeExtraneousValues: true,

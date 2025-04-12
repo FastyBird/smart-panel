@@ -21,7 +21,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateDataSourceDto } from '../dto/create-data-source.dto';
+import { CreateSingleDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
 
@@ -30,7 +30,7 @@ import { DataSourceRelationsLoaderRegistryService } from './data-source-relation
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
 import { DataSourceService } from './data-source.service';
 
-class CreateMockDataSourceDto extends CreateDataSourceDto {
+class CreateMockDataSourceDto extends CreateSingleDataSourceDto {
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })

@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
@@ -11,11 +11,6 @@ export abstract class UpdateDataSourceDto implements UpdateDataSource {
 	@IsNotEmpty({ message: '[{"field":"type","reason":"Type must be one of the supported data source type."}]' })
 	@IsString({ message: '[{"field":"type","reason":"Type must be one of the supported data source type."}]' })
 	readonly type: string;
-
-	@Expose()
-	@IsOptional()
-	@IsUUID('4', { message: '[{"field":"tile","reason":"Tile must be a valid UUID (version 4)."}]' })
-	tile?: string;
 }
 
 export class ReqUpdateDataSourceDto implements ReqUpdateDataSource {

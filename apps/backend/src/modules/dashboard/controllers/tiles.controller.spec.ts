@@ -12,7 +12,7 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { CreateTileDto } from '../dto/create-tile.dto';
+import { CreateSingleTileDto } from '../dto/create-tile.dto';
 import { UpdateTileDto } from '../dto/update-tile.dto';
 import { PageEntity, TileEntity } from '../entities/dashboard.entity';
 import { TilesTypeMapperService } from '../services/tiles-type-mapper.service';
@@ -20,7 +20,7 @@ import { TilesService } from '../services/tiles.service';
 
 import { TilesController } from './tiles.controller';
 
-class CreateMockTileDto extends CreateTileDto {
+class CreateMockTileDto extends CreateSingleTileDto {
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -173,7 +173,7 @@ describe('TilesController', () => {
 			const result = await controller.create({ data: createDto });
 
 			expect(result).toEqual(mockTile);
-			expect(tilesService.create).toHaveBeenCalledWith(createDto);
+			expect(tilesService.create).toHaveBeenCalledWith(createDto, { parentType: 'page', parentId: mockPage.id });
 		});
 
 		it('should update a tile', async () => {
