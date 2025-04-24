@@ -8,6 +8,8 @@ export const transformSystemInfoResponse = (response: ISystemInfoRes): ISystemIn
 	const parsed = SystemInfoSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
+
 		throw new SystemValidationException('Failed to validate received system info data.');
 	}
 

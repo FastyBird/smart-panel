@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-export const PageCreateSchema = z.object({
+export const PageAddFormSchema = z.object({
 	id: z.string().uuid().optional(),
+	type: z.string().trim().nonempty(),
 	title: z.string().trim().nonempty(),
 	icon: z
 		.string()
@@ -12,7 +13,9 @@ export const PageCreateSchema = z.object({
 	order: z.number().optional(),
 });
 
-export const PageUpdateSchema = z.object({
+export const PageEditFormSchema = z.object({
+	id: z.string().uuid(),
+	type: z.string().trim().nonempty(),
 	title: z.string().trim().nonempty().optional(),
 	icon: z
 		.string()

@@ -2,25 +2,25 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigWeatherType, ConfigWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
+import { ConfigModuleWeatherType, ConfigModuleWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigWeather } from './config-weather.store';
 import type { IConfigWeatherEditActionPayload, IConfigWeatherSetActionPayload } from './config-weather.store.types';
 
 const mockWeatherRes = {
-	type: ConfigWeatherType.weather,
+	type: ConfigModuleWeatherType.weather,
 	location: 'Prague',
 	location_type: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
-	unit: ConfigWeatherUnit.celsius,
+	unit: ConfigModuleWeatherUnit.celsius,
 	open_weather_api_key: null,
 };
 
 const mockWeather = {
-	type: ConfigWeatherType.weather,
+	type: ConfigModuleWeatherType.weather,
 	location: 'Prague',
 	locationType: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
-	unit: ConfigWeatherUnit.celsius,
+	unit: ConfigModuleWeatherUnit.celsius,
 	openWeatherApiKey: null,
 };
 
@@ -92,17 +92,17 @@ describe('ConfigWeather Store', () => {
 		store.data = { ...mockWeather };
 
 		(backendClient.PATCH as Mock).mockResolvedValue({
-			data: { data: { ...mockWeatherRes, unit: ConfigWeatherUnit.fahrenheit } },
+			data: { data: { ...mockWeatherRes, unit: ConfigModuleWeatherUnit.fahrenheit } },
 			error: undefined,
 			response: { status: 200 },
 		});
 
 		const result = await store.edit({
-			data: { ...mockWeather, unit: ConfigWeatherUnit.fahrenheit },
+			data: { ...mockWeather, unit: ConfigModuleWeatherUnit.fahrenheit },
 		});
 
-		expect(result.unit).toBe(ConfigWeatherUnit.fahrenheit);
-		expect(store.data?.unit).toBe(ConfigWeatherUnit.fahrenheit);
+		expect(result.unit).toBe(ConfigModuleWeatherUnit.fahrenheit);
+		expect(store.data?.unit).toBe(ConfigModuleWeatherUnit.fahrenheit);
 	});
 
 	it('should throw validation error if edit payload is invalid', async () => {
@@ -114,7 +114,7 @@ describe('ConfigWeather Store', () => {
 	});
 
 	it('should throw validation error if local data + edit is invalid', async () => {
-		store.data = { ...mockWeather, unit: ConfigWeatherUnit.fahrenheit };
+		store.data = { ...mockWeather, unit: ConfigModuleWeatherUnit.fahrenheit };
 
 		await expect(
 			store.edit({
@@ -138,6 +138,6 @@ describe('ConfigWeather Store', () => {
 			response: { status: 200 },
 		});
 
-		await expect(store.edit({ data: { ...mockWeather, unit: ConfigWeatherUnit.fahrenheit } })).rejects.toThrow(ConfigApiException);
+		await expect(store.edit({ data: { ...mockWeather, unit: ConfigModuleWeatherUnit.fahrenheit } })).rejects.toThrow(ConfigApiException);
 	});
 });

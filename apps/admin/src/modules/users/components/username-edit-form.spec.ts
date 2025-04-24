@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
 import { useUserUsernameForm } from '../composables/composables';
 
@@ -44,7 +44,7 @@ describe('UsernameEditForm', (): void => {
 		firstName: 'Admin',
 		lastName: 'User',
 		email: 'admin@example.com',
-		role: UsersUserRole.admin,
+		role: UsersModuleUserRole.admin,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),

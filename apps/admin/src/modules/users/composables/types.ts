@@ -2,13 +2,13 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import type { IUser } from '../store/users.store.types';
 import type { FormResultType } from '../users.constants';
 
 export interface IUsersFilter {
 	search: string | undefined;
-	roles: UsersUserRole[];
+	roles: UsersModuleUserRole[];
 }
 
 export interface IUserAddForm {
@@ -18,7 +18,7 @@ export interface IUserAddForm {
 	email: string;
 	firstName: string;
 	lastName: string;
-	role: UsersUserRole;
+	role: UsersModuleUserRole;
 }
 
 export interface IUserEditForm {
@@ -27,7 +27,7 @@ export interface IUserEditForm {
 	email: string;
 	firstName: string;
 	lastName: string;
-	role: UsersUserRole;
+	role: UsersModuleUserRole;
 }
 
 export interface IUserPasswordForm {

@@ -1,5 +1,7 @@
 import { computed } from 'vue';
 
+import { orderBy } from 'natural-orderby';
+
 import { type IPlugin, injectPluginsManager } from '../../../common';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
@@ -16,7 +18,7 @@ export const usePlugins = (): IUsePlugins => {
 	});
 
 	const options = computed<{ value: IPlugin['type']; label: IPlugin['name'] }[]>((): { value: IPlugin['type']; label: IPlugin['name'] }[] => {
-		return plugins.value.map((plugin) => ({
+		return orderBy<IPlugin>(plugins.value, [(plugin) => plugin.name], ['asc']).map((plugin) => ({
 			value: plugin.type,
 			label: plugin.name,
 		}));

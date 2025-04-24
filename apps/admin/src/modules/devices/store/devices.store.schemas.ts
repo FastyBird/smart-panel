@@ -1,15 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { DevicesDeviceCategory, type components } from '../../../openapi';
+import { DevicesModuleDeviceCategory, type components } from '../../../openapi';
 
 import { ChannelCreateReqSchema, ChannelResSchema } from './channels.store.schemas';
 import { DeviceControlCreateReqSchema, DeviceControlResSchema } from './devices.controls.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreateDevice = components['schemas']['DevicesCreateDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesUpdateDevice'];
-type ApiDevice = components['schemas']['DevicesDevice'];
+type ApiCreateDevice = components['schemas']['DevicesModuleCreateDevice'];
+type ApiUpdateDevice = components['schemas']['DevicesModuleUpdateDevice'];
+type ApiDevice = components['schemas']['DevicesModuleDevice'];
 
 // STORE STATE
 // ===========
@@ -18,7 +18,7 @@ export const DeviceSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
 	type: z.string(),
-	category: z.nativeEnum(DevicesDeviceCategory).default(DevicesDeviceCategory.generic),
+	category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -48,7 +48,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string(),
-			category: z.nativeEnum(DevicesDeviceCategory).default(DevicesDeviceCategory.generic),
+			category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -74,7 +74,7 @@ export const DevicesAddActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string(),
-			category: z.nativeEnum(DevicesDeviceCategory).default(DevicesDeviceCategory.generic),
+			category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -115,7 +115,7 @@ export const DevicesRemoveActionPayloadSchema = z.object({
 export const DeviceCreateReqSchema: ZodType<ApiCreateDevice> = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
-	category: z.nativeEnum(DevicesDeviceCategory),
+	category: z.nativeEnum(DevicesModuleDeviceCategory),
 	name: z.string().trim().nonempty(),
 	description: z
 		.string()
@@ -141,7 +141,7 @@ export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	id: z.string().uuid(),
 	type: z.string(),
-	category: z.nativeEnum(DevicesDeviceCategory),
+	category: z.nativeEnum(DevicesModuleDeviceCategory),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	created_at: z.string().date(),

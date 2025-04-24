@@ -41,6 +41,8 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 		const parsedSystemInfo = SystemInfoSchema.safeParse(payload.data);
 
 		if (!parsedSystemInfo.success) {
+			console.error('Schema validation failed with:', parsedSystemInfo.error);
+
 			throw new SystemValidationException('Failed to insert system info.');
 		}
 

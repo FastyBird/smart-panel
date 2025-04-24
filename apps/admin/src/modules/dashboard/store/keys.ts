@@ -1,6 +1,6 @@
 import type { StoreInjectionKey } from '../../../common';
 
-import type { IDataSourcesStoreActions, IDataSourcesStoreState } from './dataSources.store.types';
+import type { IDataSourcesStoreActions, IDataSourcesStoreState } from './data-sources.store.types';
 import type { IPagesStoreActions, IPagesStoreState } from './pages.store.types';
 import type { ITilesStoreActions, ITilesStoreState } from './tiles.store.types';
 

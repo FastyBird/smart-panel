@@ -79,6 +79,8 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				const parsedChannelProperty = ChannelPropertySchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 				if (!parsedChannelProperty.success) {
+					console.error('Schema validation failed with:', parsedChannelProperty.error);
+
 					throw new DevicesValidationException('Failed to insert channel property.');
 				}
 
@@ -88,6 +90,8 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const parsedChannelProperty = ChannelPropertySchema.safeParse({ ...payload.data, id: payload.id, channel: payload.channelId });
 
 			if (!parsedChannelProperty.success) {
+				console.error('Schema validation failed with:', parsedChannelProperty.error);
+
 				throw new DevicesValidationException('Failed to insert channel property.');
 			}
 
@@ -236,6 +240,8 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const parsedPayload = ChannelsPropertiesAddActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
 				throw new DevicesValidationException('Failed to add property.');
 			}
 
@@ -249,6 +255,8 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			});
 
 			if (!parsedNewProperty.success) {
+				console.error('Schema validation failed with:', parsedNewProperty.error);
+
 				throw new DevicesValidationException('Failed to add property.');
 			}
 
@@ -301,6 +309,8 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const parsedPayload = ChannelsPropertiesEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
 				throw new DevicesValidationException('Failed to edit property.');
 			}
 
@@ -318,6 +328,8 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			});
 
 			if (!parsedEditedProperty.success) {
+				console.error('Schema validation failed with:', parsedEditedProperty.error);
+
 				throw new DevicesValidationException('Failed to edit property.');
 			}
 
@@ -378,6 +390,8 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const parsedSaveProperty = ChannelPropertySchema.safeParse(data.value[payload.id]);
 
 			if (!parsedSaveProperty.success) {
+				console.error('Schema validation failed with:', parsedSaveProperty.error);
+
 				throw new DevicesValidationException('Failed to save property.');
 			}
 

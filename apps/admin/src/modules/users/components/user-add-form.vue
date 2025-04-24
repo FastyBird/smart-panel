@@ -104,7 +104,7 @@ import { useI18n } from 'vue-i18n';
 import type { InternalRuleItem } from 'async-validator';
 import { ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { type IUserAddForm, useUserAddForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
@@ -153,17 +153,17 @@ const rules = reactive<FormRules<IUserAddForm>>({
 	role: [{ required: true, message: t('usersModule.fields.role.validation.required'), trigger: 'change' }],
 });
 
-const roleOptions: { value: UsersUserRole; label: string }[] = [
+const roleOptions: { value: UsersModuleUserRole; label: string }[] = [
 	{
-		value: UsersUserRole.user,
+		value: UsersModuleUserRole.user,
 		label: t('usersModule.fields.role.options.user'),
 	},
 	{
-		value: UsersUserRole.admin,
+		value: UsersModuleUserRole.admin,
 		label: t('usersModule.fields.role.options.admin'),
 	},
 	{
-		value: UsersUserRole.owner,
+		value: UsersModuleUserRole.owner,
 		label: t('usersModule.fields.role.options.owner'),
 	},
 ];
@@ -182,7 +182,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

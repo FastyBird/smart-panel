@@ -80,6 +80,8 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			const parsedChannel = ChannelSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsedChannel.success) {
+				console.error('Schema validation failed with:', parsedChannel.error);
+
 				throw new DevicesValidationException('Failed to insert channel.');
 			}
 
@@ -89,6 +91,8 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const parsedChannel = ChannelSchema.safeParse({ ...payload.data, id: payload.id, device: payload.deviceId });
 
 		if (!parsedChannel.success) {
+			console.error('Schema validation failed with:', parsedChannel.error);
+
 			throw new DevicesValidationException('Failed to insert channel.');
 		}
 
@@ -272,6 +276,8 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const parsedPayload = ChannelsAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DevicesValidationException('Failed to add channel.');
 		}
 
@@ -284,6 +290,8 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		});
 
 		if (!parsedNewChannel.success) {
+			console.error('Schema validation failed with:', parsedNewChannel.error);
+
 			throw new DevicesValidationException('Failed to add channel.');
 		}
 
@@ -339,6 +347,8 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const parsedPayload = ChannelsEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DevicesValidationException('Failed to edit channel.');
 		}
 
@@ -356,6 +366,8 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		});
 
 		if (!parsedEditedChannel.success) {
+			console.error('Schema validation failed with:', parsedEditedChannel.error);
+
 			throw new DevicesValidationException('Failed to edit channel.');
 		}
 
@@ -431,6 +443,8 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const parsedSaveChannel = ChannelSchema.safeParse(data.value[payload.id]);
 
 		if (!parsedSaveChannel.success) {
+			console.error('Schema validation failed with:', parsedSaveChannel.error);
+
 			throw new DevicesValidationException('Failed to save channel.');
 		}
 

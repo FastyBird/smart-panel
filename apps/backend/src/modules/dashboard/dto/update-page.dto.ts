@@ -3,8 +3,8 @@ import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested 
 
 import type { components } from '../../../openapi';
 
-type ReqUpdatePage = components['schemas']['DashboardReqUpdatePage'];
-type UpdatePage = components['schemas']['DashboardUpdatePage'];
+type ReqUpdatePage = components['schemas']['DashboardModuleReqUpdatePage'];
+type UpdatePage = components['schemas']['DashboardModuleUpdatePage'];
 
 export abstract class UpdatePageDto implements UpdatePage {
 	@Expose()

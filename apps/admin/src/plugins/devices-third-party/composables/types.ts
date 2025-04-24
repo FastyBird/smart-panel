@@ -3,13 +3,13 @@ import type { Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import type { FormResultType } from '../../../modules/devices';
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 export interface IThirdPartyDeviceAddForm {
 	id: IThirdPartyDevice['id'];
 	type: string;
-	category: DevicesDeviceCategory;
+	category: DevicesModuleDeviceCategory;
 	name: string;
 	description: string;
 	serviceAddress: string;
@@ -18,14 +18,14 @@ export interface IThirdPartyDeviceAddForm {
 export interface IThirdPartyDeviceEditForm {
 	id: IThirdPartyDevice['id'];
 	type: string;
-	category: DevicesDeviceCategory;
+	category: DevicesModuleDeviceCategory;
 	name: string;
 	description: string;
 	serviceAddress: string;
 }
 
 export interface IUseThirdPartyDeviceAddForm {
-	categoriesOptions: { value: DevicesDeviceCategory; label: string }[];
+	categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[];
 	model: IThirdPartyDeviceAddForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -35,7 +35,7 @@ export interface IUseThirdPartyDeviceAddForm {
 }
 
 export interface IUseThirdPartyDeviceEditForm {
-	categoriesOptions: { value: DevicesDeviceCategory; label: string }[];
+	categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[];
 	model: IThirdPartyDeviceEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;

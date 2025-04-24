@@ -4,7 +4,7 @@ import type { Router } from 'vue-router';
 import type { Pinia } from 'pinia';
 
 import type { MessageSchema } from './locales';
-import { UsersUserRole } from './openapi';
+import { UsersModuleUserRole } from './openapi';
 
 export interface IModuleOptions {
 	router: Router;
@@ -24,5 +24,5 @@ export interface IAppUser {
 	name?: string | null;
 	email?: string | null;
 	avatar?: string;
-	role: UsersUserRole;
+	role: UsersModuleUserRole;
 }

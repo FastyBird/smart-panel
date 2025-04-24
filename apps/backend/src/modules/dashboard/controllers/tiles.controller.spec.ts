@@ -94,6 +94,7 @@ describe('TilesController', () => {
 		col: 0,
 		rowSpan: 0,
 		colSpan: 0,
+		hidden: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -157,7 +158,7 @@ describe('TilesController', () => {
 		it('should create a new tile', async () => {
 			const createDto: CreateMockTileDto = {
 				type: 'mock',
-				row: 0,
+				row: 1,
 				col: 1,
 				mockValue: 'New mock value',
 				parent: { type: 'page', id: mockPage.id },
@@ -179,8 +180,8 @@ describe('TilesController', () => {
 		it('should update a tile', async () => {
 			const updateDto: UpdateMockTileDto = {
 				type: 'mock',
-				row: 0,
-				col: 0,
+				row: 1,
+				col: 1,
 			};
 
 			jest.spyOn(tileMapper, 'getMapping').mockReturnValue({

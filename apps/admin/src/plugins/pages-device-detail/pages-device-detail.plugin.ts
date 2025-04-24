@@ -8,6 +8,7 @@ import { DASHBOARD_MODULE_NAME, type IPagePluginsComponents, type IPagePluginsSc
 
 import { DeviceDetailPageAddForm, DeviceDetailPageEditForm } from './components/components';
 import enUS from './locales/en-US.json';
+import { DeviceDetailPageAddFormSchema, DeviceDetailPageEditFormSchema } from './schemas/pages.schemas';
 import { DeviceDetailPageCreateReqSchema, DeviceDetailPageSchema, DeviceDetailPageUpdateReqSchema } from './store/pages.store.schemas';
 
 export const pagesDeviceDetailPluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>> =
@@ -19,7 +20,7 @@ export default {
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
-			const mergedMessages = defaultsDeep(currentMessages, { thirdPartyDevicesPlugin: translations });
+			const mergedMessages = defaultsDeep(currentMessages, { pagesDeviceDetailPlugin: translations });
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
@@ -28,7 +29,7 @@ export default {
 			type: 'device-detail',
 			source: 'com.fastybird.smart-panel.plugin.pages-device-detail',
 			name: 'Device Detail Page',
-			description: 'Device detail page plugin for FastyBird IoT Smart Panel',
+			description: 'A dedicated page focused on a single device. Perfect for viewing and controlling all properties of a specific device in detail.',
 			links: {
 				documentation: 'http://www.fastybird.com',
 				devDocumentation: 'http://www.fastybird.com',
@@ -40,6 +41,8 @@ export default {
 			},
 			schemas: {
 				pageSchema: DeviceDetailPageSchema,
+				pageAddFormSchema: DeviceDetailPageAddFormSchema,
+				pageEditFormSchema: DeviceDetailPageEditFormSchema,
 				pageCreateReqSchema: DeviceDetailPageCreateReqSchema,
 				pageUpdateReqSchema: DeviceDetailPageUpdateReqSchema,
 			},

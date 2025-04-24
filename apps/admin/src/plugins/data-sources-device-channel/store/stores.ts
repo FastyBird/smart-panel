@@ -1,3 +1,3 @@
-export * from './dataSources.store.types';
+export * from './data-sources.store.types';
 
-export * from './dataSources.store.schemas';
+export * from './data-sources.store.schemas';

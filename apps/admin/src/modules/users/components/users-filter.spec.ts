@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import type { IUsersFilter } from '../composables/types';
 
 import type { IUsersFilterProps } from './users-filter.types';
@@ -90,19 +90,19 @@ describe('UsersFilter', (): void => {
 
 		expect(select.exists()).toBe(true);
 
-		await select.setValue([UsersUserRole.admin]);
+		await select.setValue([UsersModuleUserRole.admin]);
 		await select.trigger('change');
 
-		select.vm.$emit('change', [UsersUserRole.admin]);
+		select.vm.$emit('change', [UsersModuleUserRole.admin]);
 
 		await wrapper.vm.$nextTick();
 
-		expect(filters.value.roles).toEqual([UsersUserRole.admin]);
+		expect(filters.value.roles).toEqual([UsersModuleUserRole.admin]);
 	});
 
 	it('clears filters when reset button is clicked', async (): Promise<void> => {
 		createWrapper({
-			filters: { search: 'admin', roles: [UsersUserRole.user] },
+			filters: { search: 'admin', roles: [UsersModuleUserRole.user] },
 			filtersActive: true,
 		});
 

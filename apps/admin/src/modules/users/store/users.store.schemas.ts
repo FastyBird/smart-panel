@@ -1,11 +1,11 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { UsersUserRole, type components } from '../../../openapi';
+import { UsersModuleUserRole, type components } from '../../../openapi';
 
-type ApiCreateUser = components['schemas']['UsersCreateUser'];
-type ApiUpdateUser = components['schemas']['UsersUpdateUser'];
-type ApiUser = components['schemas']['UsersUser'];
+type ApiCreateUser = components['schemas']['UsersModuleCreateUser'];
+type ApiUpdateUser = components['schemas']['UsersModuleUpdateUser'];
+type ApiUser = components['schemas']['UsersModuleUser'];
 
 export const UserIdSchema = z.string().uuid();
 
@@ -21,7 +21,7 @@ export const UserSchema = z.object({
 	email: z.string().email().nullable().default(null),
 	firstName: z.string().nullable().default(null),
 	lastName: z.string().nullable().default(null),
-	role: z.nativeEnum(UsersUserRole).default(UsersUserRole.user),
+	role: z.nativeEnum(UsersModuleUserRole).default(UsersModuleUserRole.user),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -73,7 +73,7 @@ export const UsersAddActionPayloadSchema = z.object({
 			.transform((val) => (val === '' ? null : val))
 			.nullable()
 			.optional(),
-		role: z.nativeEnum(UsersUserRole).default(UsersUserRole.user),
+		role: z.nativeEnum(UsersModuleUserRole).default(UsersModuleUserRole.user),
 	}),
 });
 
@@ -101,7 +101,7 @@ export const UsersEditActionPayloadSchema = z.object({
 			.transform((val) => (val === '' ? null : val))
 			.nullable()
 			.optional(),
-		role: z.nativeEnum(UsersUserRole).optional(),
+		role: z.nativeEnum(UsersModuleUserRole).optional(),
 	}),
 });
 
@@ -139,7 +139,7 @@ export const UserCreateReqSchema: ZodType<ApiCreateUser> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	role: z.nativeEnum(UsersUserRole).optional(),
+	role: z.nativeEnum(UsersModuleUserRole).optional(),
 });
 
 export const UserUpdateReqSchema: ZodType<ApiUpdateUser> = z.object({
@@ -164,7 +164,7 @@ export const UserUpdateReqSchema: ZodType<ApiUpdateUser> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
-	role: z.nativeEnum(UsersUserRole).optional(),
+	role: z.nativeEnum(UsersModuleUserRole).optional(),
 });
 
 export const UserResSchema: ZodType<ApiUser> = z.object({
@@ -174,7 +174,7 @@ export const UserResSchema: ZodType<ApiUser> = z.object({
 	first_name: z.string().trim().nullable(),
 	last_name: z.string().trim().nullable(),
 	is_hidden: z.boolean(),
-	role: z.nativeEnum(UsersUserRole),
+	role: z.nativeEnum(UsersModuleUserRole),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

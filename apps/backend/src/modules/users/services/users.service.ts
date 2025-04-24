@@ -128,7 +128,7 @@ export class UsersService {
 
 		const user = await this.getOneOrThrow(id);
 
-		await this.repository.remove(user);
+		await this.repository.delete(user.id);
 
 		this.logger.log(`[DELETE] Successfully removed user with id=${id}`);
 

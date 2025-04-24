@@ -9,6 +9,9 @@ export interface ITileAddFormProps {
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;
 	remoteFormChanged?: boolean;
+	onlyDraft?: boolean;
+	withPosition?: boolean;
+	withSize?: boolean;
 }
 
 export const tileAddFormEmits = {

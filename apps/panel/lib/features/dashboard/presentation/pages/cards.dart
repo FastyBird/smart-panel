@@ -22,7 +22,7 @@ class CardsPage extends StatelessWidget {
       cardsRepository,
       _,
     ) {
-      final cards = cardsRepository.getItems(page.cards);
+      final cards = cardsRepository.getForParent(page.id);
 
       if (cards.isEmpty) {
         final localizations = AppLocalizations.of(context)!;

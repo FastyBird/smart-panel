@@ -215,7 +215,7 @@ export class DataSourceService {
 
 		const dataSource = await this.getOneOrThrow<DataSourceEntity>(id);
 
-		await this.repository.remove(dataSource);
+		await this.repository.delete(dataSource.id);
 
 		this.logger.log(`[DELETE] Successfully removed data source with id=${id}`);
 

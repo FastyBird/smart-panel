@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi';
 import type { IChannel } from '../store/channels.store.types';
 
 import { defaultChannelsFilter, useChannelsDataSource } from './useChannelsDataSource';
@@ -35,7 +35,7 @@ describe('useChannelsDataSource', () => {
 				id: '1',
 				name: 'Main Light',
 				description: 'Ceiling light',
-				category: DevicesChannelCategory.light,
+				category: DevicesModuleChannelCategory.light,
 				device: 'device-1',
 				draft: false,
 			} as IChannel,
@@ -43,7 +43,7 @@ describe('useChannelsDataSource', () => {
 				id: '2',
 				name: 'Fan',
 				description: 'Cooling fan',
-				category: DevicesChannelCategory.fan,
+				category: DevicesModuleChannelCategory.fan,
 				device: 'device-2',
 				draft: false,
 			} as IChannel,
@@ -51,7 +51,7 @@ describe('useChannelsDataSource', () => {
 				id: '3',
 				name: 'Draft Channel',
 				description: 'Ignore me',
-				category: DevicesChannelCategory.generic,
+				category: DevicesModuleChannelCategory.generic,
 				device: 'device-1',
 				draft: true,
 			} as IChannel,

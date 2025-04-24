@@ -23,3 +23,5 @@ export * from './channels.controls.transformers';
 export * from './channels.properties.transformers';
 
 export * from './keys';
+
+export * from './types';

@@ -1,16 +1,18 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
-import { PageCreateSchema } from '../schemas/pages.schemas';
+import { PageAddFormSchema } from '../schemas/pages.schemas';
+import type { IPageAddForm } from '../schemas/pages.types';
 import { pagesStoreKey } from '../store/keys';
 import type { IPage } from '../store/pages.store.types';
 
-import type { IPageAddForm, IUsePageAddForm } from './types';
+import type { IUsePageAddForm } from './types';
 import { usePagesPlugin } from './usePagesPlugin';
 
 interface IUsePageAddFormProps {
@@ -18,7 +20,7 @@ interface IUsePageAddFormProps {
 	type: IPlugin['type'];
 }
 
-export const usePageAddForm = ({ id, type }: IUsePageAddFormProps): IUsePageAddForm => {
+export const usePageAddForm = <TForm extends IPageAddForm = IPageAddForm>({ id, type }: IUsePageAddFormProps): IUsePageAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
 	const { plugin } = usePagesPlugin({ type });
@@ -33,13 +35,15 @@ export const usePageAddForm = ({ id, type }: IUsePageAddFormProps): IUsePageAddF
 
 	let timer: number;
 
-	const model = reactive<IPageAddForm>({
+	const model = reactive<TForm>({
 		id,
 		type,
 		title: '',
 		icon: '',
 		order: 0,
-	});
+	} as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -52,9 +56,11 @@ export const usePageAddForm = ({ id, type }: IUsePageAddFormProps): IUsePageAddF
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.pageCreateSchema || PageCreateSchema).safeParse(model);
+		const parsedModel = (plugin.value?.schemas?.pageAddFormSchema || PageAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
 			throw new DashboardValidationException('Failed to validate create page model.');
 		}
 
@@ -104,18 +110,8 @@ export const usePageAddForm = ({ id, type }: IUsePageAddFormProps): IUsePageAddF
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: IPageAddForm): void => {
-		if (val.type !== '') {
-			formChanged.value = true;
-		} else if (val.title !== '') {
-			formChanged.value = true;
-		} else if (val.icon !== '') {
-			formChanged.value = true;
-		} else if (val.order !== 0) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

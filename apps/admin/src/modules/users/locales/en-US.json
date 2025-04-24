@@ -32,7 +32,6 @@
   },
   "messages": {
     "requestError": "Something went wrong, please try again later.",
-    "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
     "created": "New user added successfully.",
     "notCreated": "Something went wrong. Unable to create the user.",
     "edited": "Changes saved! The user: {user} has been updated.",
@@ -52,7 +51,8 @@
       "noUsers": "You don't have configured any user",
       "noFilteredUsers": "No users found matching the active filter criteria",
       "loadingUsers": "Loading users...",
-      "loadingUser": "Loading user..."
+      "loadingUser": "Loading user...",
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
     }
   },
   "fields": {

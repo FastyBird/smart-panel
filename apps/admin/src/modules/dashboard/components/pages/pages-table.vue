@@ -147,45 +147,16 @@
 		</el-table-column>
 
 		<el-table-column
-			:width="180"
+			:width="280"
 			align="right"
 		>
 			<template #default="scope">
-				<el-button
-					size="small"
-					plain
-					data-test-id="detail-page"
-					@click.stop="emit('detail', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:file-search-outline" />
-					</template>
-
-					{{ t('dashboardModule.buttons.detail.title') }}
-				</el-button>
-				<el-button
-					size="small"
-					plain
-					class="ml-1!"
-					data-test-id="edit-page"
-					@click.stop="emit('edit', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:pencil" />
-					</template>
-				</el-button>
-				<el-button
-					size="small"
-					type="warning"
-					plain
-					class="ml-1!"
-					data-test-id="remove-page"
-					@click.stop="emit('remove', scope.row.id)"
-				>
-					<template #icon>
-						<icon icon="mdi:trash" />
-					</template>
-				</el-button>
+				<pages-table-column-actions
+					:page="scope.row"
+					@detail="(id: IPage['id']) => emit('detail', id)"
+					@edit="(id: IPage['id']) => emit('edit', id)"
+					@remove="(id: IPage['id']) => emit('remove', id)"
+				/>
 			</template>
 		</el-table-column>
 	</el-table>
@@ -204,6 +175,7 @@ import { IconWithChild, useBreakpoints } from '../../../../common';
 import type { IPagesFilter } from '../../composables/types';
 import type { IPage } from '../../store/pages.store.types';
 
+import PagesTableColumnActions from './pages-table-column-actions.vue';
 import PagesTableColumnIcon from './pages-table-column-icon.vue';
 import PagesTableColumnPlugin from './pages-table-column-plugin.vue';
 import type { IPagesTableProps } from './pages-table.types';

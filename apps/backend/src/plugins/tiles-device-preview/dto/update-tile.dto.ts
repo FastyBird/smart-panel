@@ -5,7 +5,7 @@ import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
 import type { components } from '../../../openapi';
 
-type UpdateDevicePreviewTile = components['schemas']['DashboardUpdateDevicePreviewTile'];
+type UpdateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginUpdateDevicePreviewTile'];
 
 export class UpdateDevicePreviewTileDto extends UpdateTileDto implements UpdateDevicePreviewTile {
 	readonly type: 'device-preview';

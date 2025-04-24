@@ -3,11 +3,12 @@ import { type ZodType, z } from 'zod';
 
 import { type components } from '../../../openapi';
 
+import { DataSourceResSchema } from './data-sources.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreatePage = components['schemas']['DashboardCreatePage'];
-type ApiUpdatePage = components['schemas']['DashboardUpdatePage'];
-type ApiPage = components['schemas']['DashboardPage'];
+type ApiCreatePage = components['schemas']['DashboardModuleCreatePage'];
+type ApiUpdatePage = components['schemas']['DashboardModuleUpdatePage'];
+type ApiPage = components['schemas']['DashboardModulePage'];
 
 // STORE STATE
 // ===========
@@ -146,6 +147,7 @@ export const PageResSchema: ZodType<ApiPage> = z.object({
 	title: z.string().trim().nonempty(),
 	icon: z.string().trim().nullable(),
 	order: z.number(),
+	data_source: z.array(DataSourceResSchema),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

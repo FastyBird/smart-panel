@@ -1,7 +1,9 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import type { IDevice } from '../store/devices.store.types';
@@ -11,7 +13,7 @@ import { useDeviceEditForm } from './useDeviceEditForm';
 const mockDevice: IDevice = {
 	id: 'device-1',
 	type: 'mock-type',
-	category: DevicesDeviceCategory.generic,
+	category: DevicesModuleDeviceCategory.generic,
 	name: 'Test Device',
 	description: 'Test Desc',
 	draft: true,
@@ -64,7 +66,7 @@ describe('useDeviceEditForm', () => {
 		const form = useDeviceEditForm({ device: mockDevice });
 
 		form.model.name = 'Updated';
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});

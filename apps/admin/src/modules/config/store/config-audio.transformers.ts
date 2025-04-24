@@ -1,5 +1,5 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
-import { ConfigAudioType } from '../../../openapi';
+import { ConfigModuleAudioType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import { ConfigAudioSchema, ConfigAudioUpdateReqSchema } from './config-audio.store.schemas';
@@ -14,6 +14,8 @@ export const transformConfigAudioResponse = (
 	const parsed = ConfigAudioSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
+
 		throw new ConfigValidationException('Failed to validate received audio config data.');
 	}
 
@@ -21,9 +23,11 @@ export const transformConfigAudioResponse = (
 };
 
 export const transformConfigAudioUpdateRequest = (config: IConfigAudioEditActionPayload['data']): IConfigAudioUpdateReq => {
-	const parsedRequest = ConfigAudioUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigAudioType.audio });
+	const parsedRequest = ConfigAudioUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleAudioType.audio });
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new ConfigValidationException('Failed to validate update audio config request.');
 	}
 

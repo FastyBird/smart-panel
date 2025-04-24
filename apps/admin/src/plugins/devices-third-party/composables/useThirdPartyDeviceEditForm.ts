@@ -5,7 +5,7 @@ import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesApiException, DevicesValidationException, FormResult, type FormResultType, devicesStoreKey } from '../../../modules/devices';
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import type { IThirdPartyDeviceEditForm, IUseThirdPartyDeviceEditForm } from './types';
@@ -28,7 +28,7 @@ export const useThirdPartyDeviceEditForm = ({ device, messages }: IUseThirdParty
 
 	let timer: number;
 
-	const categoriesOptions: { value: DevicesDeviceCategory; label: string }[] = Object.values(DevicesDeviceCategory).map((value) => ({
+	const categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[] = Object.values(DevicesModuleDeviceCategory).map((value) => ({
 		value,
 		label: t(`devicesModule.categories.devices.${value}`),
 	}));

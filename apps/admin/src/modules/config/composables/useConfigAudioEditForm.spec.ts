@@ -1,14 +1,16 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigAudioType } from '../../../openapi';
+import { ConfigModuleAudioType } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigAudioEditForm } from './useConfigAudioEditForm';
 
 const mockConfig = {
-	type: ConfigAudioType.audio,
+	type: ConfigModuleAudioType.audio,
 	speaker: true,
 	speakerVolume: 80,
 	microphone: false,
@@ -61,7 +63,7 @@ describe('useConfigAudioEditForm', () => {
 		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		form.model.speaker = false;
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});

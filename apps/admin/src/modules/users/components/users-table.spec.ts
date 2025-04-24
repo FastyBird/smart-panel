@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import type { IUser } from '../store/users.store.types';
 
 import type { IUsersTableProps } from './users-table.types';
@@ -29,7 +29,7 @@ describe('UsersTable', (): void => {
 			firstName: 'Admin',
 			lastName: 'User',
 			email: 'admin@example.com',
-			role: UsersUserRole.admin,
+			role: UsersModuleUserRole.admin,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -41,7 +41,7 @@ describe('UsersTable', (): void => {
 			firstName: 'John',
 			lastName: 'Doe',
 			email: 'john@example.com',
-			role: UsersUserRole.owner,
+			role: UsersModuleUserRole.owner,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),

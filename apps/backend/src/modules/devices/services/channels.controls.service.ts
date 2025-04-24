@@ -130,7 +130,7 @@ export class ChannelsControlsService {
 		const channel = await this.channelsService.getOneOrThrow(channelId);
 		const control = await this.getOneOrThrow(id, channel.id);
 
-		await this.repository.remove(control);
+		await this.repository.delete(control.id);
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for channelId=${channelId}`);
 

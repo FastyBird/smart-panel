@@ -41,6 +41,7 @@
 				<el-button
 					type="primary"
 					plain
+					class="px-4! ml-2!"
 					@click="onUserCreate"
 				>
 					<template #icon>

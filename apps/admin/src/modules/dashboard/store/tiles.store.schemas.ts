@@ -3,12 +3,12 @@ import { type ZodType, z } from 'zod';
 
 import { type components } from '../../../openapi';
 
-import { DataSourceCreateReqSchema, DataSourceResSchema } from './dataSources.store.schemas';
+import { DataSourceCreateReqSchema, DataSourceResSchema } from './data-sources.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreateTile = components['schemas']['DashboardCreateTile'];
-type ApiUpdateTile = components['schemas']['DashboardUpdateTile'];
-type ApiTile = components['schemas']['DashboardTile'];
+type ApiCreateTile = components['schemas']['DashboardModuleCreateTile'];
+type ApiUpdateTile = components['schemas']['DashboardModuleUpdateTile'];
+type ApiTile = components['schemas']['DashboardModuleTile'];
 
 // STORE STATE
 // ===========
@@ -25,6 +25,7 @@ export const TileSchema = z.object({
 	col: z.number(),
 	rowSpan: z.number().default(1),
 	colSpan: z.number().default(1),
+	hidden: z.boolean().default(false),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -60,6 +61,7 @@ export const TilesSetActionPayloadSchema = z.object({
 			col: z.number(),
 			rowSpan: z.number().default(1),
 			colSpan: z.number().default(1),
+			hidden: z.boolean().default(false),
 		})
 		.passthrough(),
 });
@@ -76,10 +78,12 @@ export const TilesUnsetActionPayloadSchema = z.object({
 
 export const TilesGetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	parent: z.object({
-		id: ItemIdSchema,
-		type: z.string().trim().nonempty(),
-	}),
+	parent: z
+		.object({
+			id: ItemIdSchema,
+			type: z.string().trim().nonempty(),
+		})
+		.optional(),
 });
 
 export const TilesFetchActionPayloadSchema = z.object({
@@ -103,6 +107,7 @@ export const TilesAddActionPayloadSchema = z.object({
 			col: z.number(),
 			rowSpan: z.number().default(1),
 			colSpan: z.number().default(1),
+			hidden: z.boolean().default(false),
 		})
 		.passthrough(),
 });
@@ -120,6 +125,7 @@ export const TilesEditActionPayloadSchema = z.object({
 			col: z.number().optional(),
 			rowSpan: z.number().optional(),
 			colSpan: z.number().optional(),
+			hidden: z.boolean().optional(),
 		})
 		.passthrough(),
 });
@@ -154,6 +160,7 @@ export const TileCreateReqSchema: ZodType<ApiCreateTile & { parent: { type: stri
 	col: z.number(),
 	row_span: z.number().default(1),
 	col_span: z.number().default(1),
+	hidden: z.boolean().default(false),
 	data_source: z.array(DataSourceCreateReqSchema).optional(),
 });
 
@@ -167,6 +174,7 @@ export const TileUpdateReqSchema: ZodType<ApiUpdateTile & { parent: { type: stri
 	col: z.number().optional(),
 	row_span: z.number().optional(),
 	col_span: z.number().optional(),
+	hidden: z.boolean().optional(),
 });
 
 export const TileResSchema: ZodType<ApiTile> = z.object({
@@ -180,6 +188,7 @@ export const TileResSchema: ZodType<ApiTile> = z.object({
 	col: z.number(),
 	row_span: z.number(),
 	col_span: z.number(),
+	hidden: z.boolean(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 	data_source: z.array(DataSourceResSchema),

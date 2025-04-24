@@ -19,7 +19,7 @@ import { components } from '../../../openapi';
 
 import { DeviceDetailPageEntity } from './pages-device-detail.entity';
 
-type DeviceDetailPage = components['schemas']['DashboardDeviceDetailPage'];
+type DeviceDetailPage = components['schemas']['PagesDeviceDetailPluginDeviceDetailPage'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 

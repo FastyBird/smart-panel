@@ -45,11 +45,16 @@
 		<template #extra>
 			<div class="flex items-center">
 				<el-button
+					plain
 					:loading="remoteFormResult === FormResult.WORKING"
 					:disabled="remoteFormResult === FormResult.WORKING"
 					type="primary"
+					class="px-4! ml-2!"
 					@click="onSave"
 				>
+					<template #icon>
+						<icon icon="mdi:content-save" />
+					</template>
 					{{ t('authModule.buttons.save.title') }}
 				</el-button>
 			</div>

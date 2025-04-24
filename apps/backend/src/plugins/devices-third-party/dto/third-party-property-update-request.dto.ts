@@ -12,8 +12,8 @@ import {
 
 import type { components } from '../../../openapi';
 
-type ThirdPartyDevicePropertyUpdateRequest = components['schemas']['DevicesThirdPartyDevicePropertyUpdateRequest'];
-type ThirdPartyDevicePropertiesUpdateRequest = components['schemas']['DevicesThirdPartyDevicePropertiesUpdateRequest'];
+type ThirdPartyDevicePropertyUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertyUpdateRequest'];
+type ThirdPartyDevicePropertiesUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertiesUpdateRequest'];
 
 export class PropertyUpdateRequestDto implements ThirdPartyDevicePropertyUpdateRequest {
 	@Expose()

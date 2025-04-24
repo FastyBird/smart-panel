@@ -2,7 +2,7 @@ import { type ZodType, z } from 'zod';
 
 import { type components } from '../../../openapi';
 
-type ApiThrottleStatus = components['schemas']['SystemThrottleStatus'];
+type ApiThrottleStatus = components['schemas']['SystemModuleThrottleStatus'];
 
 // STORE STATE
 // ===========

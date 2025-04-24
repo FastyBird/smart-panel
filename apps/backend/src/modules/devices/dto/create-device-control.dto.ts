@@ -3,8 +3,8 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-
 
 import type { components } from '../../../openapi';
 
-type ReqCreateDeviceControl = components['schemas']['DevicesReqCreateDeviceControl'];
-type CreateDeviceControl = components['schemas']['DevicesCreateDeviceControl'];
+type ReqCreateDeviceControl = components['schemas']['DevicesModuleReqCreateDeviceControl'];
+type CreateDeviceControl = components['schemas']['DevicesModuleCreateDeviceControl'];
 
 export class CreateDeviceControlDto implements CreateDeviceControl {
 	@Expose()

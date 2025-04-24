@@ -84,6 +84,7 @@ describe('Tiles Store', () => {
 						col: 0,
 						row_span: 1,
 						col_span: 1,
+						hidden: false,
 						data_source: [],
 						created_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
@@ -122,6 +123,7 @@ describe('Tiles Store', () => {
 			col: 0,
 			row_span: 1,
 			col_span: 1,
+			hidden: false,
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updatedAt: null,
@@ -143,6 +145,7 @@ describe('Tiles Store', () => {
 				col: 0,
 				rowSpan: 1,
 				colSpan: 1,
+				hidden: false,
 				createdAt: new Date(),
 			},
 		};
@@ -163,6 +166,7 @@ describe('Tiles Store', () => {
 				col: 0,
 				rowSpan: 1,
 				colSpan: 1,
+				hidden: false,
 				createdAt: new Date(),
 			},
 		};

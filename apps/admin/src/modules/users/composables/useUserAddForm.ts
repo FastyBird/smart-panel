@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { usersStoreKey } from '../store/keys';
 import type { IUser } from '../store/users.store.types';
 import { FormResult, type FormResultType } from '../users.constants';
@@ -36,7 +36,7 @@ export const useUserAddForm = ({ id }: IUseUserAddFormProps): IUseUserAddForm =>
 		email: '',
 		firstName: '',
 		lastName: '',
-		role: UsersUserRole.user,
+		role: UsersModuleUserRole.user,
 	});
 
 	const formEl = ref<FormInstance | undefined>(undefined);
@@ -111,7 +111,7 @@ export const useUserAddForm = ({ id }: IUseUserAddFormProps): IUseUserAddForm =>
 			formChanged.value = true;
 		} else if (val.lastName !== '') {
 			formChanged.value = true;
-		} else if (val.role !== UsersUserRole.user) {
+		} else if (val.role !== UsersModuleUserRole.user) {
 			formChanged.value = true;
 		} else {
 			formChanged.value = false;

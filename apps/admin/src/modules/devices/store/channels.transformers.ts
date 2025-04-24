@@ -24,6 +24,8 @@ export const transformChannelResponse = (response: IChannelRes): IChannel => {
 	});
 
 	if (!parsedChannel.success) {
+		console.error('Schema validation failed with:', parsedChannel.error);
+
 		throw new DevicesValidationException('Failed to validate received channel data.');
 	}
 
@@ -40,6 +42,8 @@ export const transformChannelCreateRequest = (channel: IChannelsAddActionPayload
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate create channel request.');
 	}
 
@@ -53,6 +57,8 @@ export const transformChannelUpdateRequest = (channel: IChannelsEditActionPayloa
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate update channel request.');
 	}
 

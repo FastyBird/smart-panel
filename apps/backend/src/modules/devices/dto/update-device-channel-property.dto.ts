@@ -12,8 +12,8 @@ import {
 
 import type { components } from '../../../openapi';
 
-type ReqUpdateDeviceChannelProperty = components['schemas']['DevicesReqUpdateChannelProperty'];
-type UpdateChannelProperty = components['schemas']['DevicesUpdateChannelProperty'];
+type ReqUpdateDeviceChannelProperty = components['schemas']['DevicesModuleReqUpdateChannelProperty'];
+type UpdateChannelProperty = components['schemas']['DevicesModuleUpdateChannelProperty'];
 
 export class UpdateDeviceChannelPropertyDto implements UpdateChannelProperty {
 	@Expose()

@@ -104,10 +104,11 @@ describe('TilesService', () => {
 		type: 'mock',
 		parentType: 'page',
 		parentId: mockPage.id,
-		row: 0,
-		col: 0,
+		row: 1,
+		col: 1,
 		rowSpan: 1,
 		colSpan: 1,
+		hidden: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		dataSource: [],
@@ -121,6 +122,7 @@ describe('TilesService', () => {
 			create: jest.fn(),
 			save: jest.fn(),
 			remove: jest.fn(),
+			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
@@ -277,7 +279,7 @@ describe('TilesService', () => {
 		it('should create and return a new tile', async () => {
 			const createDto: CreateMockTileDto = {
 				type: 'mock',
-				row: 0,
+				row: 1,
 				col: 1,
 				mockValue: 'New mock value',
 				parent: { type: 'page', id: mockPage.id },
@@ -299,6 +301,7 @@ describe('TilesService', () => {
 				col: mockCrateTile.col,
 				rowSpan: mockCrateTile.rowSpan,
 				colSpan: mockCrateTile.colSpan,
+				hidden: mockCrateTile.hidden,
 				createdAt: new Date(),
 				updatedAt: null,
 				validateOwnership: (): void => {},
@@ -376,6 +379,7 @@ describe('TilesService', () => {
 				col: updateDto.col,
 				rowSpan: mockTile.rowSpan,
 				colSpan: mockTile.colSpan,
+				hidden: mockTile.hidden,
 				createdAt: mockTile.createdAt,
 				updatedAt: mockTile.updatedAt,
 				validateOwnership: (): void => {},
@@ -392,6 +396,7 @@ describe('TilesService', () => {
 				col: mockUpdateTile.col,
 				rowSpan: mockUpdateTile.rowSpan,
 				colSpan: mockUpdateTile.colSpan,
+				hidden: mockUpdateTile.hidden,
 				createdAt: mockUpdateTile.createdAt,
 				updatedAt: mockUpdateTile.updatedAt,
 				validateOwnership: (): void => {},
@@ -433,11 +438,11 @@ describe('TilesService', () => {
 		it('should remove a tile', async () => {
 			jest.spyOn(tilesService, 'findOne').mockResolvedValue(plainToInstance(MockTileEntity, mockTile));
 
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockTile);
+			jest.spyOn(repository, 'delete');
 
 			await tilesService.remove(mockTile.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(MockTileEntity, mockTile));
+			expect(repository.delete).toHaveBeenCalledWith(mockTile.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.TILE_DELETED, plainToInstance(MockTileEntity, mockTile));
 		});
 	});

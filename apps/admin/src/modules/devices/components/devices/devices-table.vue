@@ -244,7 +244,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { type IPlugin, IconWithChild, useBreakpoints } from '../../../../common';
-import type { DevicesDeviceCategory } from '../../../../openapi';
+import type { DevicesModuleDeviceCategory } from '../../../../openapi';
 import type { IDevicesFilter } from '../../composables/composables';
 import type { ConnectionState } from '../../devices.constants';
 import type { IDevice } from '../../store/devices.store.types';
@@ -307,7 +307,7 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		let filteredCategories = innerFilters.value.categories;
 
 		if (add === true) {
-			filteredCategories.push(data as DevicesDeviceCategory);
+			filteredCategories.push(data as DevicesModuleDeviceCategory);
 		} else {
 			filteredCategories = innerFilters.value.categories.filter((item) => item !== data);
 		}

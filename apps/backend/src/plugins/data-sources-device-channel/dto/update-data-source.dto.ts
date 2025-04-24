@@ -7,7 +7,8 @@ import { ValidateChannelPropertyExists } from '../validators/channel-property-ex
 import { ValidateDeviceChannelExists } from '../validators/device-channel-exists-constraint.validator';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 
-type UpdateDeviceChannelDataSource = components['schemas']['DashboardUpdateDeviceChannelDataSource'];
+type UpdateDeviceChannelDataSource =
+	components['schemas']['DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource'];
 
 export class UpdateDeviceChannelDataSourceDto extends UpdateDataSourceDto implements UpdateDeviceChannelDataSource {
 	readonly type: 'device-channel';

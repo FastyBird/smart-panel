@@ -1,5 +1,5 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
-import { ConfigDisplayType } from '../../../openapi';
+import { ConfigModuleDisplayType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioRes } from './config-audio.store.types';
@@ -14,6 +14,8 @@ export const transformConfigDisplayResponse = (
 	const parsed = ConfigDisplaySchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
+
 		throw new ConfigValidationException('Failed to validate received display config data.');
 	}
 
@@ -21,9 +23,11 @@ export const transformConfigDisplayResponse = (
 };
 
 export const transformConfigDisplayUpdateRequest = (config: IConfigDisplayEditActionPayload['data']): IConfigDisplayUpdateReq => {
-	const parsedRequest = ConfigDisplayUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigDisplayType.display });
+	const parsedRequest = ConfigDisplayUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleDisplayType.display });
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new ConfigValidationException('Failed to validate update display config request.');
 	}
 

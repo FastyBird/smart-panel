@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import type { DevicesChannelCategory } from '../../../openapi';
+import type { DevicesModuleChannelCategory } from '../../../openapi';
 import { DevicesException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';
 import type { IDevice } from '../store/devices.store.types';
@@ -25,7 +25,7 @@ export const useDeviceSpecification = ({ id }: IUseDeviceSpecificationProps): IU
 
 	const getDeviceSpecification = (
 		device: IDevice
-	): { required: DevicesChannelCategory[]; optional: DevicesChannelCategory[]; multiple?: DevicesChannelCategory[] } | null => {
+	): { required: DevicesModuleChannelCategory[]; optional: DevicesModuleChannelCategory[]; multiple?: DevicesModuleChannelCategory[] } | null => {
 		if (!(device.category in deviceChannelsSpecificationMappers)) {
 			return null;
 		}
@@ -51,7 +51,7 @@ export const useDeviceSpecification = ({ id }: IUseDeviceSpecificationProps): IU
 		return remaining.length > 0 || (typeof multiple !== 'undefined' && multiple.length > 0);
 	});
 
-	const missingRequiredChannels = computed<DevicesChannelCategory[]>((): DevicesChannelCategory[] => {
+	const missingRequiredChannels = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
 		const device = getDevice(id);
 
 		if (device === null) {

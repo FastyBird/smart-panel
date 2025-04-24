@@ -134,8 +134,8 @@ import { PageEditForm } from '../components/components';
 import { usePage, usePageIcon, usePagesPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../dashboard.constants';
 import { DashboardApiException, DashboardException } from '../dashboard.exceptions';
-import type { IPagePluginsComponents, IPagePluginsSchemas } from '../dashboard.types';
-import { PageUpdateSchema } from '../schemas/pages.schemas';
+import type { IPagePluginRoutes, IPagePluginsComponents, IPagePluginsSchemas } from '../dashboard.types';
+import { PageEditFormSchema } from '../schemas/pages.schemas';
 import type { IPage } from '../store/pages.store.types';
 
 import type { IViewPageEditProps } from './view-page-edit.types';
@@ -180,16 +180,16 @@ const isDetailRoute = computed<boolean>(
 		}) !== undefined
 );
 
-const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(() => {
+const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>(() => {
 	return plugins.value.find((plugin) => plugin.type === page.value?.type);
 });
 
-const formSchema = computed<typeof PageUpdateSchema>((): typeof PageUpdateSchema => {
-	if (plugin.value && plugin.value.schemas?.pageEditSchema) {
-		return plugin.value.schemas?.pageEditSchema;
+const formSchema = computed<typeof PageEditFormSchema>((): typeof PageEditFormSchema => {
+	if (plugin.value && plugin.value.schemas?.pageEditFormSchema) {
+		return plugin.value.schemas?.pageEditFormSchema;
 	}
 
-	return PageUpdateSchema;
+	return PageEditFormSchema;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -222,7 +222,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onDiscard = (): void => {
-	ElMessageBox.confirm(t('dashboardModule.messages.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
+	ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
 		confirmButtonText: t('dashboardModule.buttons.yes.title'),
 		cancelButtonText: t('dashboardModule.buttons.no.title'),
 		type: 'warning',

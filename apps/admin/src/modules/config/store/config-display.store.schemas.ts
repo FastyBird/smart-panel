@@ -1,15 +1,15 @@
 import { type ZodType, z } from 'zod';
 
-import { ConfigDisplayType, type components } from '../../../openapi';
+import { ConfigModuleDisplayType, type components } from '../../../openapi';
 
-type ApiConfigDisplay = components['schemas']['ConfigDisplay'];
-type ApiConfigUpdateDisplay = components['schemas']['ConfigUpdateDisplay'];
+type ApiConfigDisplay = components['schemas']['ConfigModuleDisplay'];
+type ApiConfigUpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];
 
 // STORE STATE
 // ===========
 
 export const ConfigDisplaySchema = z.object({
-	type: z.nativeEnum(ConfigDisplayType),
+	type: z.nativeEnum(ConfigModuleDisplayType),
 	darkMode: z.boolean(),
 	brightness: z.number().min(0).max(100),
 	screenLockDuration: z.number(),
@@ -46,7 +46,7 @@ export const ConfigDisplayEditActionPayloadSchema = z.object({
 // ===========
 
 export const ConfigDisplayUpdateReqSchema: ZodType<ApiConfigUpdateDisplay> = z.object({
-	type: z.nativeEnum(ConfigDisplayType),
+	type: z.nativeEnum(ConfigModuleDisplayType),
 	dark_mode: z.boolean(),
 	brightness: z.number().min(0).max(100),
 	screen_lock_duration: z.number(),
@@ -54,7 +54,7 @@ export const ConfigDisplayUpdateReqSchema: ZodType<ApiConfigUpdateDisplay> = z.o
 });
 
 export const ConfigDisplayResSchema: ZodType<ApiConfigDisplay> = z.object({
-	type: z.nativeEnum(ConfigDisplayType),
+	type: z.nativeEnum(ConfigModuleDisplayType),
 	dark_mode: z.boolean(),
 	brightness: z.number().min(0).max(100),
 	screen_lock_duration: z.number(),

@@ -19,8 +19,8 @@ import { components } from '../../../openapi';
 
 import { CardEntity, CardsPageEntity } from './pages-cards.entity';
 
-type CardsPage = components['schemas']['DashboardCardsPage'];
-type Card = components['schemas']['DashboardCard'];
+type CardsPage = components['schemas']['PagesCardsPluginCardsPage'];
+type Card = components['schemas']['PagesCardsPluginCard'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 

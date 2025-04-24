@@ -35,7 +35,7 @@
 			:prop="['icon']"
 		>
 			<icon-picker
-				:model="model.icon"
+				v-model="model.icon"
 				:placeholder="t('dashboardModule.fields.pages.icon.placeholder')"
 			/>
 		</el-form-item>
@@ -60,8 +60,9 @@ import { useI18n } from 'vue-i18n';
 import { ElForm, ElFormItem, ElInput, ElInputNumber, type FormRules } from 'element-plus';
 
 import { type IPlugin, IconPicker } from '../../../../common';
-import { type IPageAddForm, usePageAddForm } from '../../composables/composables';
+import { usePageAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../dashboard.constants';
+import type { IPageAddForm } from '../../schemas/pages.types';
 
 import type { IPageAddFormProps } from './page-add-form.types';
 
@@ -104,7 +105,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

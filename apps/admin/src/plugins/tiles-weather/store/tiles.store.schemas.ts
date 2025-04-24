@@ -1,14 +1,14 @@
 import { type ZodType, z } from 'zod';
 
 import { TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { DashboardDayWeatherTileType, DashboardForecastWeatherTileType, type components } from '../../../openapi';
+import { TilesWeatherPluginDayWeatherTileType, TilesWeatherPluginForecastWeatherTileType, type components } from '../../../openapi';
 
-type ApiCreateDayWeatherTile = components['schemas']['DashboardCreateDayWeatherTile'];
-type ApiCreateForecastWeatherTile = components['schemas']['DashboardCreateForecastWeatherTile'];
-type ApiUpdateDayWeatherTile = components['schemas']['DashboardUpdateDayWeatherTile'];
-type ApiUpdateForecastWeatherTile = components['schemas']['DashboardUpdateForecastWeatherTile'];
-type ApiDayWeatherTile = components['schemas']['DashboardDayWeatherTile'];
-type ApiForecastWeatherTile = components['schemas']['DashboardForecastWeatherTile'];
+type ApiCreateDayWeatherTile = components['schemas']['TilesWeatherPluginCreateDayWeatherTile'];
+type ApiCreateForecastWeatherTile = components['schemas']['TilesWeatherPluginCreateForecastWeatherTile'];
+type ApiUpdateDayWeatherTile = components['schemas']['TilesWeatherPluginUpdateDayWeatherTile'];
+type ApiUpdateForecastWeatherTile = components['schemas']['TilesWeatherPluginUpdateForecastWeatherTile'];
+type ApiDayWeatherTile = components['schemas']['TilesWeatherPluginDayWeatherTile'];
+type ApiForecastWeatherTile = components['schemas']['TilesWeatherPluginForecastWeatherTile'];
 
 // STORE STATE
 // ===========
@@ -20,38 +20,40 @@ export const ForecastWeatherTileSchema = TileSchema.extend({});
 // BACKEND API
 // ===========
 
-export const DayWeatherTileCreateReqSchema: ZodType<ApiCreateDayWeatherTile> = TileCreateReqSchema.and(
+export const DayWeatherTileCreateReqSchema: ZodType<ApiCreateDayWeatherTile & { parent: { type: string; id: string } }> = TileCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardDayWeatherTileType),
+		type: z.nativeEnum(TilesWeatherPluginDayWeatherTileType),
 	})
 );
 
-export const ForecastWeatherTileCreateReqSchema: ZodType<ApiCreateForecastWeatherTile> = TileCreateReqSchema.and(
+export const ForecastWeatherTileCreateReqSchema: ZodType<ApiCreateForecastWeatherTile & { parent: { type: string; id: string } }> =
+	TileCreateReqSchema.and(
+		z.object({
+			type: z.nativeEnum(TilesWeatherPluginForecastWeatherTileType),
+		})
+	);
+
+export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardForecastWeatherTileType),
+		type: z.nativeEnum(TilesWeatherPluginDayWeatherTileType),
 	})
 );
 
-export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile> = TileUpdateReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDayWeatherTileType),
-	})
-);
-
-export const ForecastWeatherTileUpdateReqSchema: ZodType<ApiUpdateForecastWeatherTile> = TileUpdateReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardForecastWeatherTileType),
-	})
-);
+export const ForecastWeatherTileUpdateReqSchema: ZodType<ApiUpdateForecastWeatherTile & { parent: { type: string; id: string } }> =
+	TileUpdateReqSchema.and(
+		z.object({
+			type: z.nativeEnum(TilesWeatherPluginForecastWeatherTileType),
+		})
+	);
 
 export const DayWeatherTileResSchema: ZodType<ApiDayWeatherTile> = TileResSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardDayWeatherTileType),
+		type: z.nativeEnum(TilesWeatherPluginDayWeatherTileType),
 	})
 );
 
 export const ForecastWeatherTileResSchema: ZodType<ApiForecastWeatherTile> = TileResSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardForecastWeatherTileType),
+		type: z.nativeEnum(TilesWeatherPluginForecastWeatherTileType),
 	})
 );

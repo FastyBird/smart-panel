@@ -7,7 +7,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
-import { UsersUserRole } from '../../../../openapi';
+import { UsersModuleUserRole } from '../../../../openapi';
 import { FormResult } from '../../auth.constants';
 import type { SessionStore } from '../../store/session.store.types';
 
@@ -59,7 +59,7 @@ describe('SettingsProfileForm', (): void => {
 					lastName: 'Doe',
 					draft: false,
 					isHidden: false,
-					role: UsersUserRole.user,
+					role: UsersModuleUserRole.user,
 					createdAt: new Date(),
 					updatedAt: null,
 				},

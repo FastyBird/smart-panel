@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import type { IDevice } from '../store/devices.store.types';
@@ -30,7 +30,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 
 	let timer: number;
 
-	const categoriesOptions: { value: DevicesDeviceCategory; label: string }[] = Object.values(DevicesDeviceCategory).map((value) => ({
+	const categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[] = Object.values(DevicesModuleDeviceCategory).map((value) => ({
 		value,
 		label: t(`devicesModule.categories.devices.${value}`),
 	}));

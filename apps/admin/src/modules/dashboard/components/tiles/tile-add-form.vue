@@ -19,49 +19,59 @@
 			/>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.row.title')"
-			:prop="['row']"
-		>
-			<el-input-number
-				v-model="model.row"
-				:placeholder="t('dashboardModule.fields.tiles.row.placeholder')"
-				name="row"
-			/>
-		</el-form-item>
+		<el-row v-if="props.withPosition">
+			<el-col :span="12">
+				<el-form-item
+					:label="t('dashboardModule.fields.tiles.row.title')"
+					:prop="['row']"
+				>
+					<el-input-number
+						v-model="model.row"
+						:placeholder="t('dashboardModule.fields.tiles.row.placeholder')"
+						name="row"
+					/>
+				</el-form-item>
+			</el-col>
+			<el-col :span="12">
+				<el-form-item
+					:label="t('dashboardModule.fields.tiles.col.title')"
+					:prop="['col']"
+				>
+					<el-input-number
+						v-model="model.col"
+						:placeholder="t('dashboardModule.fields.tiles.col.placeholder')"
+						name="col"
+					/>
+				</el-form-item>
+			</el-col>
+		</el-row>
 
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.col.title')"
-			:prop="['col']"
-		>
-			<el-input-number
-				v-model="model.col"
-				:placeholder="t('dashboardModule.fields.tiles.col.placeholder')"
-				name="col"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.rowSpan.title')"
-			:prop="['rowSpan']"
-		>
-			<el-input-number
-				v-model="model.rowSpan"
-				:placeholder="t('dashboardModule.fields.tiles.rowSpan.placeholder')"
-				name="rowSpan"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.colSpan.title')"
-			:prop="['colSpan']"
-		>
-			<el-input-number
-				v-model="model.colSpan"
-				:placeholder="t('dashboardModule.fields.tiles.colSpan.placeholder')"
-				name="colSpan"
-			/>
-		</el-form-item>
+		<el-row v-if="props.withSize">
+			<el-col :span="12">
+				<el-form-item
+					:label="t('dashboardModule.fields.tiles.rowSpan.title')"
+					:prop="['rowSpan']"
+				>
+					<el-input-number
+						v-model="model.rowSpan"
+						:placeholder="t('dashboardModule.fields.tiles.rowSpan.placeholder')"
+						name="rowSpan"
+					/>
+				</el-form-item>
+			</el-col>
+			<el-col :span="12">
+				<el-form-item
+					:label="t('dashboardModule.fields.tiles.colSpan.title')"
+					:prop="['colSpan']"
+				>
+					<el-input-number
+						v-model="model.colSpan"
+						:placeholder="t('dashboardModule.fields.tiles.colSpan.placeholder')"
+						name="colSpan"
+					/>
+				</el-form-item>
+			</el-col>
+		</el-row>
 	</el-form>
 </template>
 
@@ -69,11 +79,12 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, type FormRules } from 'element-plus';
+import { ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, type FormRules } from 'element-plus';
 
 import { type IPlugin } from '../../../../common';
-import { type ITileAddForm, useTileAddForm } from '../../composables/composables';
+import { useTileAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../dashboard.constants';
+import type { ITileAddForm } from '../../schemas/tiles.types';
 
 import type { ITileAddFormProps } from './tile-add-form.types';
 
@@ -85,6 +96,9 @@ const props = withDefaults(defineProps<ITileAddFormProps & { type: IPlugin['type
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
+	onlyDraft: false,
+	withPosition: true,
+	withSize: true,
 });
 
 const emit = defineEmits<{
@@ -101,6 +115,7 @@ const { model, formEl, formChanged, submit, formResult } = useTileAddForm({
 	type: props.type,
 	parent: props.parent,
 	parentId: props.parentId,
+	onlyDraft: props.onlyDraft,
 });
 
 const rules = reactive<FormRules<ITileAddForm>>({
@@ -122,7 +137,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

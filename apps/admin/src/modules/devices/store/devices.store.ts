@@ -88,6 +88,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			const parsedDevice = pluginSchema ? pluginSchema.safeParse(merged) : DeviceSchema.safeParse(merged);
 
 			if (!parsedDevice.success) {
+				console.error('Schema validation failed with:', parsedDevice.error);
+
 				throw new DevicesValidationException('Failed to insert device.');
 			}
 
@@ -99,6 +101,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedDevice = pluginSchema ? pluginSchema.safeParse(merged) : DeviceSchema.safeParse(merged);
 
 		if (!parsedDevice.success) {
+			console.error('Schema validation failed with:', parsedDevice.error);
+
 			throw new DevicesValidationException('Failed to insert device.');
 		}
 
@@ -229,6 +233,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedPayload = DevicesAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DevicesValidationException('Failed to add device.');
 		}
 
@@ -246,6 +252,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedNewDevice = pluginSchema ? pluginSchema.safeParse(merged) : DeviceSchema.safeParse(merged);
 
 		if (!parsedNewDevice.success) {
+			console.error('Schema validation failed with:', parsedNewDevice.error);
+
 			throw new DevicesValidationException('Failed to add device.');
 		}
 
@@ -305,6 +313,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedPayload = DevicesEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DevicesValidationException('Failed to edit device.');
 		}
 
@@ -328,6 +338,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedEditedDevice = pluginSchema ? pluginSchema.safeParse(merged) : DeviceSchema.safeParse(merged);
 
 		if (!parsedEditedDevice.success) {
+			console.error('Schema validation failed with:', parsedEditedDevice.error);
+
 			throw new DevicesValidationException('Failed to edit device.');
 		}
 
@@ -400,6 +412,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedSaveDevice = pluginSchema ? pluginSchema.safeParse(data.value[payload.id]) : DeviceSchema.safeParse(data.value[payload.id]);
 
 		if (!parsedSaveDevice.success) {
+			console.error('Schema validation failed with:', parsedSaveDevice.error);
+
 			throw new DevicesValidationException('Failed to save device.');
 		}
 

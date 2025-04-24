@@ -4,7 +4,7 @@ import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { FormResult } from '../../../modules/devices';
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 
 import { useThirdPartyDeviceAddForm } from './useThirdPartyDeviceAddForm';
 
@@ -44,7 +44,7 @@ describe('useThirdPartyDeviceAddForm', () => {
 		expect(form.model.type).toBe('third-party');
 		expect(form.model.name).toBe('');
 		expect(form.model.serviceAddress).toBe('');
-		expect(form.model.category).toBe(DevicesDeviceCategory.generic);
+		expect(form.model.category).toBe(DevicesModuleDeviceCategory.generic);
 	});
 
 	it('should mark form as changed when model updates', async () => {
@@ -64,7 +64,7 @@ describe('useThirdPartyDeviceAddForm', () => {
 			draft: false,
 			data: {
 				type: 'third-party',
-				category: DevicesDeviceCategory.generic,
+				category: DevicesModuleDeviceCategory.generic,
 				name: '',
 				description: null,
 				serviceAddress: '',

@@ -41,6 +41,7 @@
 				<el-button
 					type="primary"
 					plain
+					class="px-4! ml-2!"
 					@click="onPageCreate"
 				>
 					<template #icon>
@@ -211,7 +212,7 @@ const onCloseDrawer = (done?: () => void): void => {
 		done?.();
 	} else {
 		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('dashboardModule.messages.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
+			ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
 				confirmButtonText: t('dashboardModule.buttons.yes.title'),
 				cancelButtonText: t('dashboardModule.buttons.no.title'),
 				type: 'warning',

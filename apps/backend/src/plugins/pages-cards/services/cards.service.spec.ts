@@ -16,14 +16,14 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { DataSourcesTypeMapperService } from '../../../modules/dashboard/services/data-source-type-mapper.service';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
 import { TilesTypeMapperService } from '../../../modules/dashboard/services/tiles-type-mapper.service';
-import { CreateCardDto } from '../dto/create-card.dto';
+import { CreateSingleCardDto } from '../dto/create-card.dto';
 import { UpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
 import { EventType } from '../pages-cards.constants';
+import { PagesCardsValidationException } from '../pages-cards.exceptions';
 
 import { CardsService } from './cards.service';
 
@@ -67,6 +67,8 @@ describe('CardsService', () => {
 			save: jest.fn(),
 			remove: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getMany: jest.fn(),
@@ -144,6 +146,7 @@ describe('CardsService', () => {
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
 
 			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				getMany: jest.fn().mockResolvedValue(mockCards.map((entity) => plainToInstance(CardsPageEntity, entity))),
 			};
@@ -155,6 +158,7 @@ describe('CardsService', () => {
 			expect(result).toEqual(mockCards.map((entity) => plainToInstance(CardsPageEntity, entity)));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('card');
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('card.page', 'page');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockCardsPage.id });
 			expect(queryBuilderMock.getMany).toHaveBeenCalled();
 		});
@@ -165,6 +169,7 @@ describe('CardsService', () => {
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
 
 			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getOne: jest.fn().mockResolvedValue(plainToInstance(CardEntity, mockCard)),
@@ -177,6 +182,7 @@ describe('CardsService', () => {
 			expect(result).toEqual(plainToInstance(CardEntity, mockCard));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('card');
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('card.page', 'page');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('card.id = :id', { id: mockCard.id });
 			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockCardsPage.id });
 			expect(queryBuilderMock.getOne).toHaveBeenCalled();
@@ -188,6 +194,7 @@ describe('CardsService', () => {
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
 
 			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getOne: jest.fn().mockResolvedValue(null),
@@ -200,6 +207,7 @@ describe('CardsService', () => {
 			expect(result).toEqual(null);
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('card');
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('card.page', 'page');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('card.id = :id', { id: cardId });
 			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockCardsPage.id });
 			expect(queryBuilderMock.getOne).toHaveBeenCalled();
@@ -208,11 +216,11 @@ describe('CardsService', () => {
 
 	describe('create', () => {
 		it('should create and return a new card', async () => {
-			const createDto: CreateCardDto = { title: 'Card title', order: 0 };
+			const createDto: CreateSingleCardDto = { title: 'Card title', order: 0, page: mockCardsPage.id };
 			const mockCrateCard: Partial<CardEntity> = {
 				title: createDto.title,
 				order: createDto.order,
-				page: mockCardsPage.id,
+				page: createDto.page,
 				tiles: [],
 				dataSource: [],
 			};
@@ -229,6 +237,7 @@ describe('CardsService', () => {
 			};
 
 			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getOne: jest.fn().mockResolvedValueOnce(plainToInstance(CardEntity, mockCratedCard)),
@@ -242,7 +251,7 @@ describe('CardsService', () => {
 			jest.spyOn(repository, 'create').mockReturnValue(mockCratedCard);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedCard);
 
-			const result = await cardsService.create(mockCardsPage.id, createDto);
+			const result = await cardsService.create(createDto);
 
 			expect(result).toEqual(plainToInstance(CardEntity, mockCratedCard));
 			expect(repository.create).toHaveBeenCalledWith(
@@ -263,14 +272,15 @@ describe('CardsService', () => {
 		});
 
 		it('should throw validation exception for invalid data', async () => {
-			const createDto: Partial<CreateCardDto> = {
+			const createDto: Partial<CreateSingleCardDto> = {
+				page: mockCardsPage.id,
 				title: 'Card title',
 			};
 
 			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
 
-			await expect(cardsService.create(mockCardsPage.id, createDto as CreateCardDto)).rejects.toThrow(
-				DashboardException,
+			await expect(cardsService.create(createDto as CreateSingleCardDto)).rejects.toThrow(
+				PagesCardsValidationException,
 			);
 		});
 	});
@@ -305,22 +315,21 @@ describe('CardsService', () => {
 			};
 
 			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
-					.mockResolvedValueOnce(plainToInstance(CardEntity, mockCard))
+					.mockResolvedValueOnce(mockCard)
 					.mockResolvedValueOnce(plainToInstance(CardEntity, mockUpdatedCard)),
 			};
-
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedCard);
 
-			const result = await cardsService.update(mockCard.id, mockCardsPage.id, updateDto);
+			const result = await cardsService.update(mockCard.id, updateDto);
 
 			expect(result).toEqual(plainToInstance(CardEntity, mockUpdatedCard));
 			expect(repository.save).toHaveBeenCalledWith(plainToInstance(CardEntity, mockUpdatedCard));
@@ -329,8 +338,8 @@ describe('CardsService', () => {
 				plainToInstance(CardEntity, mockUpdatedCard),
 			);
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('card');
+			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('card.page', 'page');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('card.id = :id', { id: mockCard.id });
-			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockCardsPage.id });
 			expect(queryBuilderMock.getOne).toHaveBeenCalledTimes(2);
 		});
 	});

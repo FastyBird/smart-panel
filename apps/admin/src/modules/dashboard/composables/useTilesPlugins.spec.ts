@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
+import { TileSchema } from '../store/tiles.store.schemas';
 
 import { useTilesPlugins } from './useTilesPlugins';
+
+const tileSchema = TileSchema;
 
 const mockPluginList = [
 	{
@@ -14,6 +17,9 @@ const mockPluginList = [
 			documentation: '',
 			devDocumentation: '',
 			bugsTracking: '',
+		},
+		schemas: {
+			tileSchema,
 		},
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],

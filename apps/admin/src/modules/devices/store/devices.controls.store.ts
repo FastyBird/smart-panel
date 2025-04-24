@@ -68,6 +68,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 				const parsedDeviceControl = DeviceControlSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 				if (!parsedDeviceControl.success) {
+					console.error('Schema validation failed with:', parsedDeviceControl.error);
+
 					throw new DevicesValidationException('Failed to insert device control.');
 				}
 
@@ -77,6 +79,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			const parsedDeviceControl = DeviceControlSchema.safeParse({ ...payload.data, id: payload.id, device: payload.deviceId });
 
 			if (!parsedDeviceControl.success) {
+				console.error('Schema validation failed with:', parsedDeviceControl.error);
+
 				throw new DevicesValidationException('Failed to insert device control.');
 			}
 
@@ -225,6 +229,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			const parsedPayload = DevicesControlsAddActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
 				throw new DevicesValidationException('Failed to add device control.');
 			}
 
@@ -237,6 +243,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			});
 
 			if (!parsedNewDeviceControl.success) {
+				console.error('Schema validation failed with:', parsedNewDeviceControl.error);
+
 				throw new DevicesValidationException('Failed to add device control.');
 			}
 
@@ -297,6 +305,8 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			const parsedSaveDeviceControl = DeviceControlSchema.safeParse(data.value[payload.id]);
 
 			if (!parsedSaveDeviceControl.success) {
+				console.error('Schema validation failed with:', parsedSaveDeviceControl.error);
+
 				throw new DevicesValidationException('Failed to save device control.');
 			}
 

@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { RouteNames } from '../devices.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
@@ -12,7 +12,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		meta: {
 			guards: {
 				authenticated: true,
-				roles: [UsersUserRole.admin, UsersUserRole.owner],
+				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Devices',
 			icon: 'mdi:power-plug',
@@ -27,7 +27,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Add new device',
 					icon: 'mdi:add-circle',
@@ -41,7 +41,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Edit device',
 					icon: 'mdi:pencil-circle',
@@ -57,7 +57,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		meta: {
 			guards: {
 				authenticated: true,
-				roles: [UsersUserRole.admin, UsersUserRole.owner],
+				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Device detail',
 			icon: 'mdi:power-plug',
@@ -71,7 +71,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Edit device',
 					icon: 'mdi:pencil-circle',
@@ -85,7 +85,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Add new channel',
 					icon: 'mdi:plus-circle',
@@ -99,7 +99,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Edit channel',
 					icon: 'mdi:pencil-circle',
@@ -113,7 +113,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Add new channel property',
 					icon: 'mdi:plus-circle',
@@ -127,7 +127,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Edit channel property',
 					icon: 'mdi:pencil-circle',
@@ -143,7 +143,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		meta: {
 			guards: {
 				authenticated: true,
-				roles: [UsersUserRole.admin, UsersUserRole.owner],
+				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Channels',
 			icon: 'mdi:chip',
@@ -158,7 +158,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Add new channel',
 					icon: 'mdi:add-circle',
@@ -172,7 +172,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Edit channel',
 					icon: 'mdi:pencil-circle',
@@ -188,7 +188,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		meta: {
 			guards: {
 				authenticated: true,
-				roles: [UsersUserRole.admin, UsersUserRole.owner],
+				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Channel detail',
 			icon: 'mdi:chip',
@@ -202,7 +202,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Edit channel',
 					icon: 'mdi:pencil-circle',
@@ -216,7 +216,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Add new channel property',
 					icon: 'mdi:plus-circle',
@@ -230,7 +230,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Edit channel property',
 					icon: 'mdi:pencil-circle',

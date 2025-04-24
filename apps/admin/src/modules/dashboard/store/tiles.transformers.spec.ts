@@ -21,6 +21,7 @@ const validTileResponse: ITileRes = {
 	col: 0,
 	row_span: 0,
 	col_span: 0,
+	hidden: false,
 	data_source: [],
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
@@ -36,6 +37,7 @@ const validTileCreatePayload: ITilesAddActionPayload['data'] = {
 	col: 0,
 	rowSpan: 0,
 	colSpan: 0,
+	hidden: false,
 };
 
 const validTileUpdatePayload: ITilesEditActionPayload['data'] = {
@@ -64,6 +66,7 @@ describe('Tiles Transformers', (): void => {
 				col: 0,
 				rowSpan: 0,
 				colSpan: 0,
+				hidden: false,
 				draft: false,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
 				updatedAt: new Date('2024-03-02T12:00:00Z'),
@@ -91,6 +94,7 @@ describe('Tiles Transformers', (): void => {
 				col: 0,
 				row_span: 0,
 				col_span: 0,
+				hidden: false,
 			});
 		});
 

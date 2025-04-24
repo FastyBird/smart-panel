@@ -55,7 +55,7 @@ const error = ref<unknown | null>(null);
 onErrorCaptured((err: unknown, _vm: ComponentPublicInstance | null, info: string): boolean => {
 	error.value = err;
 
-	console.log(err, info);
+	console.error(err, info);
 
 	return false; // prevent further propagation
 });

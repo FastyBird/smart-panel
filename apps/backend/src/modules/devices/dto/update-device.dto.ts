@@ -3,7 +3,7 @@ import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
-type UpdateDeviceBase = components['schemas']['DevicesUpdateDevice'];
+type UpdateDeviceBase = components['schemas']['DevicesModuleUpdateDevice'];
 
 export class UpdateDeviceDto implements UpdateDeviceBase {
 	@Expose()

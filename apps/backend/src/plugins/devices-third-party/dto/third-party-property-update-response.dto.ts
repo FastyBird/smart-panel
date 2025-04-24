@@ -4,8 +4,8 @@ import { IsArray, IsEnum, IsUUID, ValidateNested } from 'class-validator';
 import type { components } from '../../../openapi';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 
-type ThirdPartyDevicePropertyUpdateResult = components['schemas']['DevicesThirdPartyDevicePropertyUpdateResult'];
-type ThirdPartyDevicePropertiesUpdateResult = components['schemas']['DevicesThirdPartyDevicePropertiesUpdateResult'];
+type ThirdPartyDevicePropertyUpdateResult = components['schemas']['DevicesThirdPartyPluginPropertyUpdateResult'];
+type ThirdPartyDevicePropertiesUpdateResult = components['schemas']['DevicesThirdPartyPluginPropertiesUpdateResult'];
 
 export class PropertyUpdateResultDto implements ThirdPartyDevicePropertyUpdateResult {
 	@Expose()

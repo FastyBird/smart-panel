@@ -4,7 +4,7 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
 import type { IUser, UsersStore } from '../store/users.store.types';
 import { UsersApiException } from '../users.exceptions';
@@ -56,7 +56,7 @@ describe('useUserEditForm', (): void => {
 			email: 'test@example.com',
 			firstName: 'John',
 			lastName: 'Doe',
-			role: UsersUserRole.user,
+			role: UsersModuleUserRole.user,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -85,7 +85,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'updated@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Smith';
-		formHandler.model.role = UsersUserRole.admin;
+		formHandler.model.role = UsersModuleUserRole.admin;
 
 		const result = await formHandler.submit();
 
@@ -97,7 +97,7 @@ describe('useUserEditForm', (): void => {
 				email: 'updated@example.com',
 				firstName: 'John',
 				lastName: 'Smith',
-				role: UsersUserRole.admin,
+				role: UsersModuleUserRole.admin,
 			},
 		});
 		expect(usersStoreMock.save).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'new@example.com';
 		formHandler.model.firstName = 'Jane';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		const result = await formHandler.submit();
 
@@ -150,7 +150,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'invalid-email';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(UsersApiException);
 
@@ -174,7 +174,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'test@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
@@ -197,7 +197,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = '';
 		formHandler.model.firstName = '';
 		formHandler.model.lastName = '';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await formHandler.submit();
 
@@ -207,7 +207,7 @@ describe('useUserEditForm', (): void => {
 				email: null,
 				firstName: null,
 				lastName: null,
-				role: UsersUserRole.user,
+				role: UsersModuleUserRole.user,
 			},
 		});
 
@@ -233,7 +233,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'custom@example.com';
 		formHandler.model.firstName = 'Custom';
 		formHandler.model.lastName = 'User';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await formHandler.submit();
 
@@ -244,7 +244,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'custom@example.com';
 		formHandler.model.firstName = 'Custom';
 		formHandler.model.lastName = 'User';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
@@ -266,7 +266,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'test@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await formHandler.submit();
 

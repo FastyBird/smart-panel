@@ -40,6 +40,7 @@ const props = withDefaults(defineProps<IDataSourceEditFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
+	onlyDraft: false,
 });
 
 const emit = defineEmits<{
@@ -51,7 +52,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = useDataSourceEditForm({ dataSource: props.dataSource });
+const { model, formEl, formChanged, submit, formResult } = useDataSourceEditForm({ dataSource: props.dataSource, onlyDraft: props.onlyDraft });
 
 watch(
 	(): FormResultType => formResult.value,
@@ -67,7 +68,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

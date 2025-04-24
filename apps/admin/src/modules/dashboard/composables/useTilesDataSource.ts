@@ -38,7 +38,7 @@ export const useTilesDataSource = (props: IUseTilesDataSourceProps): IUseTilesDa
 		return filters.value.search !== defaultTilesFilter.search || !isEqual(filters.value.types, defaultTilesFilter.types);
 	});
 
-	const sortBy = ref<'row' | 'col' | 'rowSpan' | 'colSpan' | 'type'>('row');
+	const sortBy = ref<'row' | 'col' | 'rowSpan' | 'colSpan' | 'hidden' | 'type'>('row');
 
 	const sortDir = ref<'ascending' | 'descending' | null>('ascending');
 

@@ -12,6 +12,26 @@
       },
       "detail": {
         "title": "Page: {page}"
+      },
+      "editDataSource": {
+        "title": "Edit page data source"
+      },
+      "addDataSource": {
+        "title": "Add page data source"
+      }
+    },
+    "tiles": {
+      "edit": {
+        "title": "Edit tile"
+      },
+      "detail": {
+        "title": "Tile detail"
+      },
+      "editDataSource": {
+        "title": "Edit tile data source"
+      },
+      "addDataSource": {
+        "title": "Add tile data source"
       }
     }
   },
@@ -20,7 +40,15 @@
       "list": "pages",
       "add": "add page",
       "edit": "edit page",
-      "detail": "page: {page}"
+      "detail": "page: {page}",
+      "addDataSource": "add page data source",
+      "editDataSource": "edit page data source"
+    },
+    "tiles": {
+      "edit": "edit tile",
+      "detail": "tile detail",
+      "addDataSource": "add tile data source",
+      "editDataSource": "edit tile data source"
     }
   },
   "headings": {
@@ -30,16 +58,30 @@
       "edit": "Edit page",
       "detail": "Page: {page}",
       "remove": "Remove page?",
-      "adjustFilters": "Filter pages"
-    },
-    "cards": {
-      "remove": "Remove card?"
+      "selectPlugin": "Page plugin required",
+      "adjustFilters": "Filter pages",
+      "addDataSource": "Add page data source",
+      "editDataSource": "Edit page data source"
     },
     "tiles": {
-      "remove": "Remove tile?"
+      "add": "Add tile",
+      "edit": "Edit tile",
+      "detail": "Tile detail",
+      "remove": "Remove tile?",
+      "selectPlugin": "Tile plugin required",
+      "adjustFilters": "Filter tiles",
+      "addDataSource": "Add tile data source",
+      "editDataSource": "Edit tile data source"
     },
     "dataSources": {
-      "remove": "Remove data source?"
+      "add": "Add data source",
+      "edit": "Edit data source",
+      "remove": "Remove data source?",
+      "selectPlugin": "Data source plugin required",
+      "adjustFilters": "Filter data sources"
+    },
+    "misc": {
+      "discard": "Discard changes?"
     }
   },
   "subHeadings": {
@@ -47,7 +89,23 @@
       "list": "Manage smart panel pages",
       "add": "Add new smart panel page",
       "edit": "Edit smart panel page",
-      "detail": "Manager smart panel page",
+      "detail": "Manage smart panel page",
+      "adjustFilters": "Adjust display filters",
+      "addDataSource": "Add new smart panel page data source",
+      "editDataSource": "Edit smart panel page data source"
+    },
+    "tiles": {
+      "add": "Add new smart panel tile",
+      "edit": "Edit smart panel tile",
+      "detail": "Manage smart panel tile",
+      "adjustFilters": "Adjust display filters",
+      "addDataSource": "Add new smart panel tile data source",
+      "editDataSource": "Edit smart panel tile data source"
+    },
+    "dataSources": {
+      "add": "Add new smart panel data source",
+      "edit": "Edit smart panel data source",
+      "detail": "Manage smart panel data source",
       "adjustFilters": "Adjust display filters"
     }
   },
@@ -61,22 +119,33 @@
       "notEdited": "Something went wrong. Page update was not successful.",
       "removed": "The page: {page} was successfully removed.",
       "removeCanceled": "Page: {page} removal has been canceled.",
-      "notRemoved": "Something went wrong, and the page: {page} was not removed."
-    },
-    "cards": {
-      "removed": "The card: {card} was successfully removed.",
-      "removeCanceled": "Card: {card} removal has been canceled.",
-      "notRemoved": "Something went wrong, and the card: {card} was not removed."
+      "notRemoved": "Something went wrong, and the page: {page} was not removed.",
+      "noDetailAllowed": "This page type cannot be opened because it has no detail view."
     },
     "tiles": {
+      "notFound": "The tile you are looking for doesn’t exist or may have been removed.",
+      "confirmRemove": "Are you sure you want to remove tile? This cannot be reversed.",
+      "created": "New tile added successfully.",
+      "notCreated": "Something went wrong. Unable to create the tile.",
+      "edited": "Changes saved! The tile has been updated.",
+      "notEdited": "Something went wrong. Tile update was not successful.",
       "removed": "The tile was successfully removed.",
       "removeCanceled": "Tile removal has been canceled.",
       "notRemoved": "Something tile wrong, and the tile was not removed."
     },
     "dataSources": {
+      "notFound": "The data source you are looking for doesn’t exist or may have been removed.",
+      "confirmRemove": "Are you sure you want to remove data source? This cannot be reversed.",
+      "created": "New data source added successfully.",
+      "notCreated": "Something went wrong. Unable to create the data source.",
+      "edited": "Changes saved! The data source has been updated.",
+      "notEdited": "Something went wrong. Data source update was not successful.",
       "removed": "The data source was successfully removed.",
       "removeCanceled": "Data sources removal has been canceled.",
       "notRemoved": "Something went wrong, and the data sources was not removed."
+    },
+    "misc": {
+      "requestError": "Something went wrong, please try again later."
     }
   },
   "texts": {
@@ -85,22 +154,49 @@
       "noFilteredPages": "No pages found matching the active filter criteria",
       "loadingPages": "Loading pages...",
       "loadingPage": "Loading page...",
-      "confirmRemove": "Are you sure you want to remove page: {page}? This cannot be reversed."
-    },
-    "cards": {
-      "confirmRemove": "Are you sure you want to remove card: {card}? This cannot be reversed."
+      "confirmRemove": "Are you sure you want to remove page: {page}? This cannot be reversed.",
+      "selectPlugin": "To create a new page, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific page types.",
+      "noPlugins": "No page plugins have been configured yet."
     },
     "tiles": {
-      "confirmRemove": "Are you sure you want to remove tile? This cannot be reversed."
+      "noTiles": "You don't have configured any tile",
+      "noFilteredTiles": "No tiles found matching the active filter criteria",
+      "loadingTiles": "Loading tiles...",
+      "loadingTile": "Loading tile...",
+      "confirmRemove": "Are you sure you want to remove tile? This cannot be reversed.",
+      "selectPlugin": "To create a new tiles, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific tile types.",
+      "noPlugins": "No tile plugins have been configured yet.",
+      "plugin": "Plugin",
+      "dataSources": "Data sources",
+      "dataSourcesCount": "No data sources configured | One data source configured | {count} data sources configured",
+      "row": "Row positon",
+      "col": "Column positon",
+      "size": "Size",
+      "visibility": "Visibility",
+      "hidden": "Tile is hidden",
+      "visible": "Tile is visible"
     },
     "dataSources": {
-      "confirmRemove": "Are you sure you want to remove data source? This cannot be reversed."
+      "noDataSources": "You don't have configured any data source",
+      "noFilteredDataSources": "No data sources found matching the active filter criteria",
+      "loadingDataSources": "Loading data sources...",
+      "loadingDataSource": "Loading data source...",
+      "confirmRemove": "Are you sure you want to remove data source? This cannot be reversed.",
+      "selectPlugin": "To create a new data source, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific data source types.",
+      "noPlugins": "No data source plugins have been configured yet."
+    },
+    "misc": {
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
     }
   },
   "fields": {
     "pages": {
       "search": {
         "placeholder": "Search for page"
+      },
+      "plugin": {
+        "title": "Page plugin",
+        "placeholder": "Select page plugin"
       },
       "id": {
         "title": "System identifier",
@@ -121,6 +217,58 @@
         "title": "Order",
         "placeholder": "Page position"
       }
+    },
+    "tiles": {
+      "search": {
+        "placeholder": "Search for tile"
+      },
+      "plugin": {
+        "title": "Tile plugin",
+        "placeholder": "Select tile plugin"
+      },
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Tile id"
+      },
+      "row": {
+        "title": "Row position",
+        "placeholder": "Row number 1-n",
+        "validation": {
+          "required": "Please fill in tile row"
+        }
+      },
+      "col": {
+        "title": "Column position",
+        "placeholder": "Column number 1-n",
+        "validation": {
+          "required": "Please fill in tile column"
+        }
+      },
+      "rowSpan": {
+        "title": "Row span",
+        "placeholder": "Row size of the tile"
+      },
+      "colSpan": {
+        "title": "Column span",
+        "placeholder": "Column size of the tile"
+      },
+      "hidden": {
+        "title": "Hidden",
+        "placeholder": "Make tile invisible on the display application"
+      }
+    },
+    "dataSources": {
+      "search": {
+        "placeholder": "Search for data source"
+      },
+      "plugin": {
+        "title": "Data source plugin",
+        "placeholder": "Select data source plugin"
+      },
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Data source id"
+      }
     }
   },
   "table": {
@@ -136,12 +284,51 @@
           "title": "Order"
         }
       }
+    },
+    "tiles": {
+      "columns": {
+        "type": {
+          "title": "Type"
+        },
+        "row": {
+          "title": "Row"
+        },
+        "col": {
+          "title": "Column"
+        },
+        "rowSpan": {
+          "title": "Row span"
+        },
+        "colSpan": {
+          "title": "Column span"
+        },
+        "hidden": {
+          "title": "Hidden"
+        }
+      }
+    },
+    "dataSources": {
+      "columns": {
+        "type": {
+          "title": "Type"
+        }
+      }
     }
   },
   "filters": {
     "pages": {
       "types": {
         "title": "Filter by page type"
+      }
+    },
+    "tiles": {
+      "types": {
+        "title": "Filter by tile type"
+      }
+    },
+    "dataSources": {
+      "types": {
+        "title": "Filter by data source type"
       }
     }
   },
@@ -154,6 +341,9 @@
     },
     "detail": {
       "title": "Detail"
+    },
+    "configure": {
+      "title": "Configure"
     },
     "discard": {
       "title": "Discard"
@@ -184,6 +374,9 @@
     },
     "reset": {
       "title": "Reset"
+    },
+    "addDataSource": {
+      "title": "Add data source"
     }
   }
 }

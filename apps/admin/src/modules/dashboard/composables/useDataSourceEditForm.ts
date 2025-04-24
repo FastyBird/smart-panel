@@ -1,24 +1,31 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
-import { DataSourceUpdateSchema } from '../schemas/dataSources.schemas';
-import type { IDataSource } from '../store/dataSources.store.types';
+import { DataSourceEditFormSchema } from '../schemas/dataSources.schemas';
+import type { IDataSourceEditForm } from '../schemas/dataSources.types';
+import type { IDataSource } from '../store/data-sources.store.types';
 import { dataSourcesStoreKey } from '../store/keys';
 
-import type { IDataSourceEditForm, IUseDataSourceEditForm } from './types';
+import type { IUseDataSourceEditForm } from './types';
 import { useDataSourcesPlugin } from './useDataSourcesPlugin';
 
 interface IUseDataSourceEditFormProps {
 	dataSource: IDataSource;
 	messages?: { success?: string; error?: string };
+	onlyDraft?: boolean;
 }
 
-export const useDataSourceEditForm = ({ dataSource, messages }: IUseDataSourceEditFormProps): IUseDataSourceEditForm => {
+export const useDataSourceEditForm = <TForm extends IDataSourceEditForm = IDataSourceEditForm>({
+	dataSource,
+	messages,
+	onlyDraft = false,
+}: IUseDataSourceEditFormProps): IUseDataSourceEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
 	const { plugin } = useDataSourcesPlugin({ type: dataSource.type });
@@ -33,10 +40,9 @@ export const useDataSourceEditForm = ({ dataSource, messages }: IUseDataSourceEd
 
 	let timer: number;
 
-	const model = reactive<IDataSourceEditForm>({
-		id: dataSource.id,
-		type: dataSource.type,
-	});
+	const model = reactive<TForm>(dataSource as unknown as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -50,7 +56,7 @@ export const useDataSourceEditForm = ({ dataSource, messages }: IUseDataSourceEd
 		const errorMessage =
 			messages && messages.error
 				? messages.error
-				: dataSource.draft
+				: dataSource.draft && !onlyDraft
 					? t('dashboardModule.messages.dataSources.notCreated')
 					: t('dashboardModule.messages.dataSources.notEdited');
 
@@ -60,9 +66,11 @@ export const useDataSourceEditForm = ({ dataSource, messages }: IUseDataSourceEd
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.dataSourceEditSchema || DataSourceUpdateSchema).safeParse(model);
+		const parsedModel = (plugin.value?.schemas?.dataSourceEditFormSchema || DataSourceEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
 			throw new DashboardValidationException('Failed to validate create dataSource model.');
 		}
 
@@ -76,7 +84,7 @@ export const useDataSourceEditForm = ({ dataSource, messages }: IUseDataSourceEd
 				},
 			});
 
-			if (dataSource.draft) {
+			if (dataSource.draft && !onlyDraft) {
 				await dataSourcesStore.save({
 					id: dataSource.id,
 					parent: dataSource.parent,
@@ -100,7 +108,7 @@ export const useDataSourceEditForm = ({ dataSource, messages }: IUseDataSourceEd
 
 		timer = window.setTimeout(clear, 2000);
 
-		if (isDraft) {
+		if (isDraft && !onlyDraft) {
 			flashMessage.success(t(messages && messages.success ? messages.success : 'dashboardModule.messages.dataSources.created'));
 
 			return 'added';
@@ -118,7 +126,7 @@ export const useDataSourceEditForm = ({ dataSource, messages }: IUseDataSourceEd
 	};
 
 	watch(model, (): void => {
-		formChanged.value = false;
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 
 import { useDeviceAddForm } from './useDeviceAddForm';
@@ -43,7 +43,7 @@ describe('useDeviceAddForm', () => {
 		expect(form.model.id).toBe('device-123');
 		expect(form.model.type).toBe('test-plugin');
 		expect(form.model.name).toBe('');
-		expect(form.model.category).toBe(DevicesDeviceCategory.generic);
+		expect(form.model.category).toBe(DevicesModuleDeviceCategory.generic);
 	});
 
 	it('should mark form as changed when model updates', async () => {
@@ -63,7 +63,7 @@ describe('useDeviceAddForm', () => {
 			draft: false,
 			data: {
 				type: 'test-plugin',
-				category: DevicesDeviceCategory.generic,
+				category: DevicesModuleDeviceCategory.generic,
 				name: '',
 				description: null,
 			},

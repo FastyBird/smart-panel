@@ -1,24 +1,31 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
-import { TileUpdateSchema } from '../schemas/tiles.schemas';
+import { TileEditFormSchema } from '../schemas/tiles.schemas';
+import type { ITileEditForm } from '../schemas/tiles.types';
 import { tilesStoreKey } from '../store/keys';
 import type { ITile } from '../store/tiles.store.types';
 
-import type { ITileEditForm, IUseTileEditForm } from './types';
+import type { IUseTileEditForm } from './types';
 import { useTilesPlugin } from './useTilesPlugin';
 
 interface IUseTileEditFormProps {
 	tile: ITile;
 	messages?: { success?: string; error?: string };
+	onlyDraft?: boolean;
 }
 
-export const useTileEditForm = ({ tile, messages }: IUseTileEditFormProps): IUseTileEditForm => {
+export const useTileEditForm = <TForm extends ITileEditForm = ITileEditForm>({
+	tile,
+	messages,
+	onlyDraft = false,
+}: IUseTileEditFormProps): IUseTileEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
 	const { plugin } = useTilesPlugin({ type: tile.type });
@@ -33,14 +40,9 @@ export const useTileEditForm = ({ tile, messages }: IUseTileEditFormProps): IUse
 
 	let timer: number;
 
-	const model = reactive<ITileEditForm>({
-		id: tile.id,
-		type: tile.type,
-		row: tile.row,
-		col: tile.col,
-		rowSpan: tile.rowSpan ?? 0,
-		colSpan: tile.colSpan ?? 0,
-	});
+	const model = reactive<TForm>(tile as unknown as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -54,7 +56,7 @@ export const useTileEditForm = ({ tile, messages }: IUseTileEditFormProps): IUse
 		const errorMessage =
 			messages && messages.error
 				? messages.error
-				: tile.draft
+				: tile.draft && !onlyDraft
 					? t('dashboardModule.messages.tiles.notCreated')
 					: t('dashboardModule.messages.tiles.notEdited');
 
@@ -64,9 +66,11 @@ export const useTileEditForm = ({ tile, messages }: IUseTileEditFormProps): IUse
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.tileEditSchema || TileUpdateSchema).safeParse(model);
+		const parsedModel = (plugin.value?.schemas?.tileEditFormSchema || TileEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
 			throw new DashboardValidationException('Failed to validate create tile model.');
 		}
 
@@ -80,7 +84,7 @@ export const useTileEditForm = ({ tile, messages }: IUseTileEditFormProps): IUse
 				},
 			});
 
-			if (tile.draft) {
+			if (tile.draft && !onlyDraft) {
 				await tilesStore.save({
 					id: tile.id,
 					parent: tile.parent,
@@ -104,7 +108,7 @@ export const useTileEditForm = ({ tile, messages }: IUseTileEditFormProps): IUse
 
 		timer = window.setTimeout(clear, 2000);
 
-		if (isDraft) {
+		if (isDraft && !onlyDraft) {
 			flashMessage.success(t(messages && messages.success ? messages.success : 'dashboardModule.messages.tiles.created'));
 
 			return 'added';
@@ -121,18 +125,8 @@ export const useTileEditForm = ({ tile, messages }: IUseTileEditFormProps): IUse
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: ITileEditForm): void => {
-		if (val.row !== tile.row) {
-			formChanged.value = true;
-		} else if (val.col !== tile.col) {
-			formChanged.value = true;
-		} else if (val.rowSpan !== tile.rowSpan) {
-			formChanged.value = true;
-		} else if (val.colSpan !== tile.colSpan) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

@@ -6,7 +6,7 @@ import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { ValidateTileType } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
 import type { components } from '../../../openapi';
 
-type CreateTilesPage = components['schemas']['DashboardCreateTilesPage'];
+type CreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];
 
 export class CreateTilesPageDto extends CreatePageDto implements CreateTilesPage {
 	readonly type: 'tiles';

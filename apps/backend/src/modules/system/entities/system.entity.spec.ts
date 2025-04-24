@@ -15,14 +15,14 @@ import {
 	ThrottleStatusEntity,
 } from './system.entity';
 
-type MemoryInfo = components['schemas']['SystemMemoryInfo'];
-type StorageInfo = components['schemas']['SystemStorageInfo'];
-type TemperatureInfo = components['schemas']['SystemTemperatureInfo'];
-type OperatingSystemInfo = components['schemas']['SystemOperatingSystemInfo'];
-type DisplayInfo = components['schemas']['SystemDisplayInfo'];
-type NetworkStats = components['schemas']['SystemNetworkStats'];
-type SystemInfo = components['schemas']['SystemSystemInfo'];
-type ThrottleStatus = components['schemas']['SystemThrottleStatus'];
+type MemoryInfo = components['schemas']['SystemModuleMemoryInfo'];
+type StorageInfo = components['schemas']['SystemModuleStorageInfo'];
+type TemperatureInfo = components['schemas']['SystemModuleTemperatureInfo'];
+type OperatingSystemInfo = components['schemas']['SystemModuleOperatingSystemInfo'];
+type DisplayInfo = components['schemas']['SystemModuleDisplayInfo'];
+type NetworkStats = components['schemas']['SystemModuleNetworkStats'];
+type SystemInfo = components['schemas']['SystemModuleSystemInfo'];
+type ThrottleStatus = components['schemas']['SystemModuleThrottleStatus'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 

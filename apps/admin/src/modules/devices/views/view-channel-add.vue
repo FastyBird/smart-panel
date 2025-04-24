@@ -189,7 +189,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onDiscard = (): void => {
-	ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+	ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 		confirmButtonText: t('devicesModule.buttons.yes.title'),
 		cancelButtonText: t('devicesModule.buttons.no.title'),
 		type: 'warning',
@@ -246,7 +246,7 @@ watch(
 				if (isLGDevice.value) {
 					router.replace({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { id: props.device?.id, channelId: newChannelId } });
 				} else {
-					router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id, channelId: newChannelId } });
+					router.push({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { id: props.device?.id, channelId: newChannelId } });
 				}
 			} else {
 				if (isLGDevice.value) {

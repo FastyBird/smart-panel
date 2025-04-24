@@ -55,6 +55,7 @@
 				<el-button
 					type="primary"
 					plain
+					class="px-4! ml-2!"
 					:disabled="!canAddAnotherChannel"
 					@click="onChannelAdd"
 				>
@@ -276,7 +277,7 @@ import {
 	useFlashMessage,
 	useUuid,
 } from '../../../common';
-import type { DevicesChannelCategory } from '../../../openapi';
+import type { DevicesModuleChannelCategory } from '../../../openapi';
 import { ChannelDetail, DeviceDetail } from '../components/components';
 import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
@@ -327,7 +328,7 @@ const isDeviceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DEVICE;
 });
 
-const channelsSortOrder = computed<DevicesChannelCategory[]>((): DevicesChannelCategory[] => {
+const channelsSortOrder = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
 	if (!device.value) {
 		return [];
 	}
@@ -375,7 +376,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 
 const onCloseDrawer = (done?: () => void): void => {
 	if (remoteFormChanged.value) {
-		ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+		ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 			confirmButtonText: t('devicesModule.buttons.yes.title'),
 			cancelButtonText: t('devicesModule.buttons.no.title'),
 			type: 'warning',

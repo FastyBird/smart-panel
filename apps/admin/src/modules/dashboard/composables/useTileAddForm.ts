@@ -1,16 +1,18 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
-import { TileCreateSchema } from '../schemas/tiles.schemas';
+import { TileAddFormSchema } from '../schemas/tiles.schemas';
+import type { ITileAddForm } from '../schemas/tiles.types';
 import { tilesStoreKey } from '../store/keys';
 import type { ITile } from '../store/tiles.store.types';
 
-import type { ITileAddForm, IUseTileAddForm } from './types';
+import type { IUseTileAddForm } from './types';
 import { useTilesPlugin } from './useTilesPlugin';
 
 interface IUseTileAddFormProps {
@@ -18,9 +20,16 @@ interface IUseTileAddFormProps {
 	type: IPlugin['type'];
 	parent: string;
 	parentId: string;
+	onlyDraft?: boolean;
 }
 
-export const useTileAddForm = ({ id, parent, parentId, type }: IUseTileAddFormProps): IUseTileAddForm => {
+export const useTileAddForm = <TForm extends ITileAddForm = ITileAddForm>({
+	id,
+	parent,
+	parentId,
+	type,
+	onlyDraft = false,
+}: IUseTileAddFormProps): IUseTileAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
 	const { plugin } = useTilesPlugin({ type });
@@ -35,14 +44,17 @@ export const useTileAddForm = ({ id, parent, parentId, type }: IUseTileAddFormPr
 
 	let timer: number;
 
-	const model = reactive<ITileAddForm>({
+	const model = reactive<TForm>({
 		id,
 		type,
-		row: 0,
-		col: 0,
+		row: 1,
+		col: 1,
 		rowSpan: 1,
 		colSpan: 1,
-	});
+		hidden: false,
+	} as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -55,9 +67,11 @@ export const useTileAddForm = ({ id, parent, parentId, type }: IUseTileAddFormPr
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.tileCreateSchema || TileCreateSchema).safeParse(model);
+		const parsedModel = (plugin.value?.schemas?.tileAddFormSchema || TileAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
 			throw new DashboardValidationException('Failed to validate create tile model.');
 		}
 
@@ -72,7 +86,7 @@ export const useTileAddForm = ({ id, parent, parentId, type }: IUseTileAddFormPr
 					type: parent,
 					id: parentId,
 				},
-				draft: false,
+				draft: onlyDraft,
 				data: {
 					...parsedModel.data,
 					type,
@@ -107,20 +121,8 @@ export const useTileAddForm = ({ id, parent, parentId, type }: IUseTileAddFormPr
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: ITileAddForm): void => {
-		if (val.type !== '') {
-			formChanged.value = true;
-		} else if (val.row !== 0) {
-			formChanged.value = true;
-		} else if (val.col !== 0) {
-			formChanged.value = true;
-		} else if (val.rowSpan !== 1) {
-			formChanged.value = true;
-		} else if (val.colSpan !== 1) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

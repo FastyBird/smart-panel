@@ -4,8 +4,8 @@ import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf, Validate
 import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
-type ReqUpdateUser = components['schemas']['UsersReqUpdateUser'];
-type UpdateUser = components['schemas']['UsersUpdateUser'];
+type ReqUpdateUser = components['schemas']['UsersModuleReqUpdateUser'];
+type UpdateUser = components['schemas']['UsersModuleUpdateUser'];
 
 export class UpdateUserDto implements UpdateUser {
 	@Expose()

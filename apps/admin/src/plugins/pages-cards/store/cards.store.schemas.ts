@@ -4,9 +4,9 @@ import { type ZodType, z } from 'zod';
 import { DataSourceCreateReqSchema, DataSourceResSchema, ItemIdSchema, TileCreateReqSchema, TileResSchema } from '../../../modules/dashboard';
 import { type components } from '../../../openapi';
 
-type ApiCreateCard = components['schemas']['DashboardCreateCard'];
-type ApiUpdateCard = components['schemas']['DashboardUpdateCard'];
-type ApiCard = components['schemas']['DashboardCard'];
+type ApiCreateCard = components['schemas']['PagesCardsPluginCreateCard'];
+type ApiUpdateCard = components['schemas']['PagesCardsPluginUpdateCard'];
+type ApiCard = components['schemas']['PagesCardsPluginCard'];
 
 // STORE STATE
 // ===========

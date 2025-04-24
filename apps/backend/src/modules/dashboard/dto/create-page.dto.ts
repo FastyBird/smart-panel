@@ -15,8 +15,8 @@ import { ValidateDataSourceType } from '../validators/data-source-type-constrain
 
 import { CreateDataSourceDto } from './create-data-source.dto';
 
-type ReqCreatePage = components['schemas']['DashboardReqCreatePage'];
-type CreatePage = components['schemas']['DashboardCreatePage'];
+type ReqCreatePage = components['schemas']['DashboardModuleReqCreatePage'];
+type CreatePage = components['schemas']['DashboardModuleCreatePage'];
 
 export class CreatePageDto implements CreatePage {
 	@Expose()

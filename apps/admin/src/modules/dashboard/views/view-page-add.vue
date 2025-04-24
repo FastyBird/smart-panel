@@ -44,32 +44,7 @@
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar class="grow-1 p-2 md:px-4">
-			<el-form-item
-				:label="t('dashboardModule.fields.devices.plugin.title')"
-				label-position="top"
-			>
-				<el-select
-					v-model="selectedType"
-					:placeholder="t('dashboardModule.fields.devices.plugin.placeholder')"
-					name="plugin"
-					filterable
-				>
-					<el-option
-						v-for="item in typesOptions"
-						:key="item.value"
-						:label="item.label"
-						:value="item.value"
-					/>
-				</el-select>
-			</el-form-item>
-
-			<el-alert
-				v-if="plugin"
-				:description="plugin.description"
-				:closable="false"
-				show-icon
-				type="info"
-			/>
+			<select-page-plugin v-model="selectedType" />
 
 			<el-divider />
 
@@ -99,8 +74,8 @@
 
 			<el-alert
 				v-else
-				:title="t('dashboardModule.headings.devices.selectPlugin')"
-				:description="t('dashboardModule.texts.devices.selectPlugin')"
+				:title="t('dashboardModule.headings.pages.selectPlugin')"
+				:description="t('dashboardModule.texts.pages.selectPlugin')"
 				:closable="false"
 				show-icon
 				type="info"
@@ -163,16 +138,17 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDivider, ElFormItem, ElIcon, ElMessageBox, ElOption, ElScrollbar, ElSelect } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
 import { PageAddForm } from '../components/components';
+import SelectPagePlugin from '../components/pages/select-page-plugin.vue';
 import { usePagesPlugins } from '../composables/usePagesPlugins';
 import { FormResult, type FormResultType, RouteNames } from '../dashboard.constants';
-import type { IPagePluginsComponents, IPagePluginsSchemas } from '../dashboard.types';
-import { PageCreateSchema } from '../schemas/pages.schemas';
+import type { IPagePluginRoutes, IPagePluginsComponents, IPagePluginsSchemas } from '../dashboard.types';
+import { PageAddFormSchema } from '../schemas/pages.schemas';
 
 import type { IViewPageAddProps } from './view-page-add.types';
 
@@ -199,7 +175,7 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const newPageId = uuidGenerate();
 
-const { plugins, options: typesOptions } = usePagesPlugins();
+const { plugins } = usePagesPlugins();
 
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
@@ -208,16 +184,16 @@ const remoteFormChanged = ref<boolean>(false);
 
 const selectedType = ref<string | undefined>(undefined);
 
-const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(() => {
+const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>(() => {
 	return plugins.value.find((plugin) => plugin.type === selectedType.value);
 });
 
-const formSchema = computed<typeof PageCreateSchema>((): typeof PageCreateSchema => {
-	if (plugin.value && plugin.value.schemas?.pageCreateSchema) {
-		return plugin.value.schemas?.pageCreateSchema;
+const formSchema = computed<typeof PageAddFormSchema>((): typeof PageAddFormSchema => {
+	if (plugin.value && plugin.value.schemas?.pageAddFormSchema) {
+		return plugin.value.schemas?.pageAddFormSchema;
 	}
 
-	return PageCreateSchema;
+	return PageAddFormSchema;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
@@ -236,7 +212,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onDiscard = (): void => {
-	ElMessageBox.confirm(t('dashboardModule.messages.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
+	ElMessageBox.confirm(t('dashboardModule.texts.misc.confirmDiscard'), t('dashboardModule.headings.misc.discard'), {
 		confirmButtonText: t('dashboardModule.buttons.yes.title'),
 		cancelButtonText: t('dashboardModule.buttons.no.title'),
 		type: 'warning',

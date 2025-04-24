@@ -3,8 +3,8 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-
 
 import type { components } from '../../../openapi';
 
-type ReqCreateChannelControl = components['schemas']['DevicesReqCreateChannelControl'];
-type CreateChannelControl = components['schemas']['DevicesCreateChannelControl'];
+type ReqCreateChannelControl = components['schemas']['DevicesModuleReqCreateChannelControl'];
+type CreateChannelControl = components['schemas']['DevicesModuleCreateChannelControl'];
 
 export class CreateDeviceChannelControlDto implements CreateChannelControl {
 	@Expose()

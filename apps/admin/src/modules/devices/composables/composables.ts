@@ -7,6 +7,7 @@ export * from './useChannelSpecification';
 export * from './useChannelAddForm';
 export * from './useChannelEditForm';
 export * from './useChannelProperty';
+export * from './useChannelsProperties';
 export * from './useChannelsPropertiesDataSource';
 export * from './useChannelsPropertiesActions';
 export * from './useChannelPropertyIcon';

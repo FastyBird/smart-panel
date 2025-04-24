@@ -3,8 +3,8 @@ import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
-type ReqRefreshToken = components['schemas']['AuthReqRefreshToken'];
-type RefreshToken = components['schemas']['AuthRefreshToken'];
+type ReqRefreshToken = components['schemas']['AuthModuleReqRefreshToken'];
+type RefreshToken = components['schemas']['AuthModuleRefreshToken'];
 
 export class RefreshTokenDto implements RefreshToken {
 	@Expose()

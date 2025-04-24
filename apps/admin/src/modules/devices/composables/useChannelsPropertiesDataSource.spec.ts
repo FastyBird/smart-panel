@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesChannelPropertyCategory, DevicesChannelPropertyData_type } from '../../../openapi';
+import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 
 import { defaultChannelsPropertiesFilter, useChannelsPropertiesDataSource } from './useChannelsPropertiesDataSource';
@@ -34,21 +34,21 @@ describe('useChannelsPropertiesDataSource', () => {
 			{
 				id: '1',
 				name: 'Power',
-				category: DevicesChannelPropertyCategory.power,
+				category: DevicesModuleChannelPropertyCategory.power,
 				channel: 'channel-1',
 				draft: false,
 			} as IChannelProperty,
 			{
 				id: '2',
 				name: 'Humidity',
-				category: DevicesChannelPropertyCategory.humidity,
+				category: DevicesModuleChannelPropertyCategory.humidity,
 				channel: 'channel-2',
 				draft: false,
 			} as IChannelProperty,
 			{
 				id: '3',
 				name: 'Draft Prop',
-				category: DevicesChannelPropertyCategory.generic,
+				category: DevicesModuleChannelPropertyCategory.generic,
 				channel: 'channel-1',
 				draft: true,
 			} as IChannelProperty,
@@ -97,13 +97,13 @@ describe('useChannelsPropertiesDataSource', () => {
 
 	it('filtersActive is true when filters are applied', () => {
 		const { filters, filtersActive } = useChannelsPropertiesDataSource({ channelId: 'channel-1' });
-		filters.value.categories = [DevicesChannelPropertyCategory.humidity];
+		filters.value.categories = [DevicesModuleChannelPropertyCategory.humidity];
 		expect(filtersActive.value).toBe(true);
 	});
 
 	it('resets filters', () => {
 		const { filters, resetFilter } = useChannelsPropertiesDataSource({ channelId: 'channel-1' });
-		filters.value.dataTypes = [DevicesChannelPropertyData_type.bool];
+		filters.value.dataTypes = [DevicesModuleChannelPropertyData_type.bool];
 		resetFilter();
 		expect(filters.value).toEqual(defaultChannelsPropertiesFilter);
 	});

@@ -218,7 +218,7 @@
 				<channels-properties-table-column-data-type
 					:property="scope.row"
 					:filters="innerFilters"
-					@filter-by="(value: DevicesChannelPropertyData_type, add: boolean) => onFilterBy('dataType', value, add)"
+					@filter-by="(value: DevicesModuleChannelPropertyData_type, add: boolean) => onFilterBy('dataType', value, add)"
 				/>
 			</template>
 		</el-table-column>
@@ -277,7 +277,11 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
-import { DevicesChannelPropertyCategory, type DevicesChannelPropertyData_type, DevicesChannelPropertyPermissions } from '../../../../openapi';
+import {
+	DevicesModuleChannelPropertyCategory,
+	type DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyPermissions,
+} from '../../../../openapi';
 import type { IChannelsPropertiesFilter } from '../../composables/composables';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 import type { IChannel } from '../../store/channels.store.types';
@@ -341,7 +345,7 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		let filteredCategories = innerFilters.value.categories;
 
 		if (add === true) {
-			filteredCategories.push(data as DevicesChannelPropertyCategory);
+			filteredCategories.push(data as DevicesModuleChannelPropertyCategory);
 		} else {
 			filteredCategories = innerFilters.value.categories.filter((item) => item !== data);
 		}
@@ -351,7 +355,7 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		let filteredPermissions = innerFilters.value.permissions;
 
 		if (add === true) {
-			filteredPermissions.push(data as DevicesChannelPropertyPermissions);
+			filteredPermissions.push(data as DevicesModuleChannelPropertyPermissions);
 		} else {
 			filteredPermissions = innerFilters.value.permissions.filter((item) => item !== data);
 		}
@@ -361,7 +365,7 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		let filteredDataTypes = innerFilters.value.dataTypes;
 
 		if (add === true) {
-			filteredDataTypes.push(data as DevicesChannelPropertyData_type);
+			filteredDataTypes.push(data as DevicesModuleChannelPropertyData_type);
 		} else {
 			filteredDataTypes = innerFilters.value.dataTypes.filter((item) => item !== data);
 		}

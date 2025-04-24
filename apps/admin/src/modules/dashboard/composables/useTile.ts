@@ -10,8 +10,8 @@ import type { IUseTile } from './types';
 
 interface IUseTileProps {
 	id: ITile['id'];
-	parent: string;
-	parentId: string;
+	parent?: string;
+	parentId?: string;
 }
 
 export const useTile = (props: IUseTileProps): IUseTile => {
@@ -38,7 +38,7 @@ export const useTile = (props: IUseTileProps): IUseTile => {
 			return;
 		}
 
-		await tilesStore.get({ id, parent: { type: props.parent, id: props.parentId } });
+		await tilesStore.get({ id, parent: props.parent && props.parentId ? { type: props.parent, id: props.parentId } : undefined });
 	};
 
 	const isLoading = computed<boolean>((): boolean => {
@@ -52,7 +52,7 @@ export const useTile = (props: IUseTileProps): IUseTile => {
 			return false;
 		}
 
-		return semaphore.value.fetching.items.includes(props.parentId);
+		return props.parentId ? semaphore.value.fetching.items.includes(props.parentId) : false;
 	});
 
 	return {

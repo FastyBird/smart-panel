@@ -34,10 +34,14 @@ import { DevicesModule } from './modules/devices';
 import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import type { paths } from './openapi';
+import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party';
 import { PagesCardsPlugin } from './plugins/pages-cards';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail';
 import { PagesTilesPlugin } from './plugins/pages-tiles';
+import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview';
+import { TilesTimePlugin } from './plugins/tiles-time';
+import { TilesWeatherPlugin } from './plugins/tiles-weather';
 
 const app = createApp(AppMain);
 
@@ -113,6 +117,10 @@ app.use(DevicesThirdPartyPlugin, pluginOptions);
 app.use(PagesCardsPlugin, pluginOptions);
 app.use(PagesDeviceDetailPlugin, pluginOptions);
 app.use(PagesTilesPlugin, pluginOptions);
+app.use(TilesDevicePreviewPlugin, pluginOptions);
+app.use(TilesTimePlugin);
+app.use(TilesWeatherPlugin);
+app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
 
 router.beforeEach((to) => {
 	const accountManager = injectAccountManager(app);

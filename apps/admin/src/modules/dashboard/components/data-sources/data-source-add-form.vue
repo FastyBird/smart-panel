@@ -40,6 +40,7 @@ const props = withDefaults(defineProps<IDataSourceAddFormProps & { type: IPlugin
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
+	onlyDraft: false,
 });
 
 const emit = defineEmits<{
@@ -56,6 +57,7 @@ const { model, formEl, formChanged, submit, formResult } = useDataSourceAddForm(
 	type: props.type,
 	parent: props.parent,
 	parentId: props.parentId,
+	onlyDraft: props.onlyDraft,
 });
 
 watch(
@@ -72,7 +74,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

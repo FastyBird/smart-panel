@@ -1,16 +1,18 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
-import { PageUpdateSchema } from '../schemas/pages.schemas';
+import { PageEditFormSchema } from '../schemas/pages.schemas';
+import type { IPageEditForm } from '../schemas/pages.types';
 import { pagesStoreKey } from '../store/keys';
 import type { IPage } from '../store/pages.store.types';
 
-import type { IPageEditForm, IUsePageEditForm } from './types';
+import type { IUsePageEditForm } from './types';
 import { usePagesPlugin } from './usePagesPlugin';
 
 interface IUsePageEditFormProps {
@@ -18,7 +20,7 @@ interface IUsePageEditFormProps {
 	messages?: { success?: string; error?: string };
 }
 
-export const usePageEditForm = ({ page, messages }: IUsePageEditFormProps): IUsePageEditForm => {
+export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ page, messages }: IUsePageEditFormProps): IUsePageEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
 	const { plugin } = usePagesPlugin({ type: page.type });
@@ -33,13 +35,9 @@ export const usePageEditForm = ({ page, messages }: IUsePageEditFormProps): IUse
 
 	let timer: number;
 
-	const model = reactive<IPageEditForm>({
-		id: page.id,
-		type: page.type,
-		title: page.title,
-		icon: page.icon ?? '',
-		order: page.order,
-	});
+	const model = reactive<TForm>(page as unknown as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -63,9 +61,11 @@ export const usePageEditForm = ({ page, messages }: IUsePageEditFormProps): IUse
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.pageEditSchema || PageUpdateSchema).safeParse(model);
+		const parsedModel = (plugin.value?.schemas?.pageEditFormSchema || PageEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
 			throw new DashboardValidationException('Failed to validate create page model.');
 		}
 
@@ -126,16 +126,8 @@ export const usePageEditForm = ({ page, messages }: IUsePageEditFormProps): IUse
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: IPageEditForm): void => {
-		if (val.title !== page.title) {
-			formChanged.value = true;
-		} else if (val.icon !== page.icon) {
-			formChanged.value = true;
-		} else if (val.order !== page.order) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

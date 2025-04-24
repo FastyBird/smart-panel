@@ -77,6 +77,7 @@ describe('ChannelsService', () => {
 			create: jest.fn(),
 			save: jest.fn(),
 			remove: jest.fn(),
+			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -274,11 +275,11 @@ describe('ChannelsService', () => {
 	describe('remove', () => {
 		it('should remove a channel', async () => {
 			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockChannel);
+			jest.spyOn(repository, 'delete');
 
 			await service.remove(mockChannel.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(mockChannel);
+			expect(repository.delete).toHaveBeenCalledWith(mockChannel.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_DELETED,
 				plainToInstance(ChannelEntity, mockChannel),

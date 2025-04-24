@@ -19,49 +19,59 @@
 			/>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.row.title')"
-			:prop="['row']"
-		>
-			<el-input-number
-				v-model="model.row"
-				:placeholder="t('dashboardModule.fields.tiles.row.placeholder')"
-				name="row"
-			/>
-		</el-form-item>
+		<el-row v-if="props.withPosition">
+			<el-col :span="12">
+				<el-form-item
+					:label="t('dashboardModule.fields.tiles.row.title')"
+					:prop="['row']"
+				>
+					<el-input-number
+						v-model="model.row"
+						:placeholder="t('dashboardModule.fields.tiles.row.placeholder')"
+						name="row"
+					/>
+				</el-form-item>
+			</el-col>
+			<el-col :span="12">
+				<el-form-item
+					:label="t('dashboardModule.fields.tiles.col.title')"
+					:prop="['col']"
+				>
+					<el-input-number
+						v-model="model.col"
+						:placeholder="t('dashboardModule.fields.tiles.col.placeholder')"
+						name="col"
+					/>
+				</el-form-item>
+			</el-col>
+		</el-row>
 
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.col.title')"
-			:prop="['col']"
-		>
-			<el-input-number
-				v-model="model.col"
-				:placeholder="t('dashboardModule.fields.tiles.col.placeholder')"
-				name="col"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.rowSpan.title')"
-			:prop="['rowSpan']"
-		>
-			<el-input-number
-				v-model="model.rowSpan"
-				:placeholder="t('dashboardModule.fields.tiles.rowSpan.placeholder')"
-				name="rowSpan"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('dashboardModule.fields.tiles.colSpan.title')"
-			:prop="['colSpan']"
-		>
-			<el-input-number
-				v-model="model.colSpan"
-				:placeholder="t('dashboardModule.fields.tiles.colSpan.placeholder')"
-				name="colSpan"
-			/>
-		</el-form-item>
+		<el-row v-if="props.withSize">
+			<el-col :span="12">
+				<el-form-item
+					:label="t('dashboardModule.fields.tiles.rowSpan.title')"
+					:prop="['rowSpan']"
+				>
+					<el-input-number
+						v-model="model.rowSpan"
+						:placeholder="t('dashboardModule.fields.tiles.rowSpan.placeholder')"
+						name="rowSpan"
+					/>
+				</el-form-item>
+			</el-col>
+			<el-col :span="12">
+				<el-form-item
+					:label="t('dashboardModule.fields.tiles.colSpan.title')"
+					:prop="['colSpan']"
+				>
+					<el-input-number
+						v-model="model.colSpan"
+						:placeholder="t('dashboardModule.fields.tiles.colSpan.placeholder')"
+						name="colSpan"
+					/>
+				</el-form-item>
+			</el-col>
+		</el-row>
 	</el-form>
 </template>
 
@@ -70,10 +80,11 @@ import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, type FormRules } from 'element-plus';
+import { ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, type FormRules } from 'element-plus';
 
-import { type ITileEditForm, useTileEditForm } from '../../composables/composables';
+import { useTileEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../dashboard.constants';
+import type { ITileEditForm } from '../../schemas/tiles.types';
 
 import type { ITileEditFormProps } from './tile-edit-form.types';
 
@@ -85,6 +96,9 @@ const props = withDefaults(defineProps<ITileEditFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
+	onlyDraft: false,
+	withPosition: true,
+	withSize: true,
 });
 
 const emit = defineEmits<{
@@ -96,7 +110,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = useTileEditForm({ tile: props.tile });
+const { model, formEl, formChanged, submit, formResult } = useTileEditForm({ tile: props.tile, onlyDraft: props.onlyDraft });
 
 const rules = reactive<FormRules<ITileEditForm>>({
 	row: [{ required: true, message: t('dashboardModule.fields.tiles.row.validation.required'), trigger: 'change' }],
@@ -117,7 +131,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

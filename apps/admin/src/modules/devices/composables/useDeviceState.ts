@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesChannelCategory, DevicesChannelPropertyCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
 import { ConnectionState } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { channelsPropertiesStoreKey, channelsStoreKey } from '../store/keys';
@@ -20,14 +20,16 @@ export const useDeviceState = ({ device }: IUseDeviceStateProps): IUseDeviceStat
 	const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
 	const state = computed<ConnectionState>((): ConnectionState => {
-		const channel = channelsStore.findForDevice(device.id).find((channel) => channel.category === DevicesChannelCategory.device_information) || null;
+		const channel =
+			channelsStore.findForDevice(device.id).find((channel) => channel.category === DevicesModuleChannelCategory.device_information) || null;
 
 		if (!channel) {
 			return ConnectionState.UNKNOWN;
 		}
 
 		const property =
-			channelsPropertiesStore.findForChannel(channel.id).find((property) => property.category === DevicesChannelPropertyCategory.status) || null;
+			channelsPropertiesStore.findForChannel(channel.id).find((property) => property.category === DevicesModuleChannelPropertyCategory.status) ||
+			null;
 
 		if (!property) {
 			return ConnectionState.UNKNOWN;

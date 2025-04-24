@@ -29,9 +29,9 @@ export const useCardsActions = (): IUseCardsActions => {
 			throw new DashboardException("Something went wrong, card can't be loaded");
 		}
 
-		ElMessageBox.confirm(t('dashboardModule.texts.cards.confirmRemove', { card: card.title }), t('dashboardModule.headings.cards.remove'), {
-			confirmButtonText: t('dashboardModule.buttons.yes.title'),
-			cancelButtonText: t('dashboardModule.buttons.no.title'),
+		ElMessageBox.confirm(t('pagesCardsPlugin.texts.cards.confirmRemove', { card: card.title }), t('pagesCardsPlugin.headings.cards.remove'), {
+			confirmButtonText: t('pagesCardsPlugin.buttons.yes.title'),
+			cancelButtonText: t('pagesCardsPlugin.buttons.no.title'),
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
@@ -39,13 +39,13 @@ export const useCardsActions = (): IUseCardsActions => {
 					await cardsStore.remove({ id: card.id, pageId: card.page });
 
 					flashMessage.success(
-						t('dashboardModule.messages.cards.removed', {
+						t('pagesCardsPlugin.messages.cards.removed', {
 							card: card.title,
 						})
 					);
 				} catch (error: unknown) {
 					if (error instanceof DashboardApiException && error.code === 404) {
-						const errorMessage = t('dashboardModule.messages.cards.notFound', {
+						const errorMessage = t('pagesCardsPlugin.messages.cards.notFound', {
 							card: card.title,
 						});
 
@@ -54,7 +54,7 @@ export const useCardsActions = (): IUseCardsActions => {
 						if (error instanceof DashboardApiException && error.code === 422) {
 							flashMessage.error(error.message);
 						} else {
-							const errorMessage = t('dashboardModule.messages.cards.notRemoved', {
+							const errorMessage = t('pagesCardsPlugin.messages.cards.notRemoved', {
 								card: card.title,
 							});
 
@@ -65,7 +65,7 @@ export const useCardsActions = (): IUseCardsActions => {
 			})
 			.catch((): void => {
 				flashMessage.info(
-					t('dashboardModule.messages.cards.removeCanceled', {
+					t('pagesCardsPlugin.messages.cards.removeCanceled', {
 						card: card.title,
 					})
 				);

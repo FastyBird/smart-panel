@@ -1,8 +1,8 @@
 import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
 import type { components } from '../../../openapi';
 
-type UpdateDayWeatherTile = components['schemas']['DashboardUpdateDayWeatherTile'];
-type UpdateForecastWeatherTile = components['schemas']['DashboardUpdateForecastWeatherTile'];
+type UpdateDayWeatherTile = components['schemas']['TilesWeatherPluginUpdateDayWeatherTile'];
+type UpdateForecastWeatherTile = components['schemas']['TilesWeatherPluginUpdateForecastWeatherTile'];
 
 export class UpdateDayWeatherTileDto extends UpdateTileDto implements UpdateDayWeatherTile {
 	readonly type: 'weather-day';

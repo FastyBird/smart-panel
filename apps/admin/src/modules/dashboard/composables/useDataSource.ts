@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import type { IDataSource } from '../store/dataSources.store.types';
+import type { IDataSource } from '../store/data-sources.store.types';
 import { dataSourcesStoreKey } from '../store/keys';
 
 import type { IUseDataSource } from './types';

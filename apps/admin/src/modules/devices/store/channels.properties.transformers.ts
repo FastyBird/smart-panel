@@ -28,6 +28,8 @@ export const transformChannelPropertyResponse = (response: IChannelPropertyRes):
 	});
 
 	if (!parsedProperty.success) {
+		console.error('Schema validation failed with:', parsedProperty.error);
+
 		throw new DevicesValidationException('Failed to validate received channel property data.');
 	}
 
@@ -51,6 +53,8 @@ export const transformChannelPropertyCreateRequest = (
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate create channel property request.');
 	}
 
@@ -68,6 +72,8 @@ export const transformChannelPropertyUpdateRequest = (property: IChannelsPropert
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate update channel property request.');
 	}
 

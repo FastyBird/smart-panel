@@ -3,8 +3,8 @@ import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested 
 
 import type { components } from '../../../openapi';
 
-type ReqUpdateCard = components['schemas']['DashboardReqUpdateCard'];
-type UpdateCard = components['schemas']['DashboardUpdateCard'];
+type ReqUpdateCard = components['schemas']['PagesCardsPluginReqUpdateCard'];
+type UpdateCard = components['schemas']['PagesCardsPluginUpdateCard'];
 
 export class UpdateCardDto implements UpdateCard {
 	@Expose()

@@ -16,8 +16,8 @@ import {
 import type { components } from '../../../openapi';
 import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
 
-type ReqCreateChannelProperty = components['schemas']['DevicesReqCreateChannelProperty'];
-type CreateChannelProperty = components['schemas']['DevicesCreateChannelProperty'];
+type ReqCreateChannelProperty = components['schemas']['DevicesModuleReqCreateChannelProperty'];
+type CreateChannelProperty = components['schemas']['DevicesModuleCreateChannelProperty'];
 
 export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 	@Expose()

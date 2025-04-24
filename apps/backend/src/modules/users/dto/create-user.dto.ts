@@ -4,8 +4,8 @@ import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, 
 import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
-type ReqCreateUser = components['schemas']['UsersReqCreateUser'];
-type CreateUser = components['schemas']['UsersCreateUser'];
+type ReqCreateUser = components['schemas']['UsersModuleReqCreateUser'];
+type CreateUser = components['schemas']['UsersModuleCreateUser'];
 
 export class CreateUserDto implements CreateUser {
 	@Expose()

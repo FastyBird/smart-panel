@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { IDataSource } from '../store/dataSources.store.types';
+import type { IDataSource } from '../store/data-sources.store.types';
 
 import { useDataSources } from './useDataSources';
 

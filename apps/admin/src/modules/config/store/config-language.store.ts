@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { ConfigLanguageType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleLanguageType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -44,9 +44,11 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 		let pendingGetPromises: Promise<IConfigLanguage> | null = null;
 
 		const set = (payload: IConfigLanguageSetActionPayload): IConfigLanguage => {
-			const parsedConfigLanguage = ConfigLanguageSchema.safeParse({ ...payload.data, type: ConfigLanguageType.language });
+			const parsedConfigLanguage = ConfigLanguageSchema.safeParse({ ...payload.data, type: ConfigModuleLanguageType.language });
 
 			if (!parsedConfigLanguage.success) {
+				console.error('Schema validation failed with:', parsedConfigLanguage.error);
+
 				throw new ConfigValidationException('Failed to insert language config.');
 			}
 
@@ -107,6 +109,8 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 			const parsedPayload = ConfigLanguageEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
 				throw new ConfigValidationException('Failed to edit language config.');
 			}
 
@@ -120,6 +124,8 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 			});
 
 			if (!parsedEditedConfig.success) {
+				console.error('Schema validation failed with:', parsedEditedConfig.error);
+
 				throw new ConfigValidationException('Failed to edit language config.');
 			}
 

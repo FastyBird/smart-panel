@@ -5,9 +5,9 @@ import type { components } from '../../../openapi';
 
 import { ParentDto } from './common.dto';
 
-type ReqCreateDataSource = components['schemas']['DashboardReqCreateDataSource'];
-type ReqCreateDataSourceWithParent = components['schemas']['DashboardReqCreateDataSourceWithParent'];
-type CreateDataSource = components['schemas']['DashboardCreateDataSource'];
+type ReqCreateDataSource = components['schemas']['DashboardModuleReqCreateDataSource'];
+type ReqCreateDataSourceWithParent = components['schemas']['DashboardModuleReqCreateDataSourceWithParent'];
+type CreateDataSource = components['schemas']['DashboardModuleCreateDataSource'];
 
 export abstract class CreateDataSourceDto implements CreateDataSource {
 	@Expose()

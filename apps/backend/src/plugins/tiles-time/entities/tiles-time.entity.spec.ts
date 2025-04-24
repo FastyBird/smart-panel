@@ -19,7 +19,7 @@ import { components } from '../../../openapi';
 
 import { TimeTileEntity } from './tiles-time.entity';
 
-type TimeTile = components['schemas']['DashboardTimeTile'];
+type TimeTile = components['schemas']['TilesTimePluginTimeTile'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -43,7 +43,7 @@ describe('Time tiles plugin entity and OpenAPI Model Synchronization', () => {
 	};
 
 	test('TimeTileEntity matches DashboardTimeTile', () => {
-		const openApiModel: TimeTile = {
+		const openApiModel: TimeTile & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
 			type: 'clock',
 			parent: {
@@ -54,9 +54,12 @@ describe('Time tiles plugin entity and OpenAPI Model Synchronization', () => {
 			col: 0,
 			row_span: 2,
 			col_span: 2,
+			hidden: false,
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			parent_type: 'page',
+			parent_id: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(TimeTileEntity, openApiModel, {
@@ -71,8 +74,6 @@ describe('Time tiles plugin entity and OpenAPI Model Synchronization', () => {
 			forbidNonWhitelisted: true,
 		});
 
-		const nonInternalErrors = errors.filter((error) => !['parentType', 'parentId'].includes(error.property));
-
-		expect(nonInternalErrors).toHaveLength(0);
+		expect(errors).toHaveLength(0);
 	});
 });

@@ -10,11 +10,11 @@ import {
 	TileCreateReqSchema,
 	TileResSchema,
 } from '../../../modules/dashboard';
-import { DashboardTilesPageType, type components } from '../../../openapi';
+import { PagesTilesPluginTilesPageType, type components } from '../../../openapi';
 
-type ApiCreateTilesPage = components['schemas']['DashboardCreateTilesPage'];
-type ApiUpdateTilesPage = components['schemas']['DashboardUpdateTilesPage'];
-type ApiTilesPage = components['schemas']['DashboardTilesPage'];
+type ApiCreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];
+type ApiUpdateTilesPage = components['schemas']['PagesTilesPluginUpdateTilesPage'];
+type ApiTilesPage = components['schemas']['PagesTilesPluginTilesPage'];
 
 // STORE STATE
 // ===========
@@ -26,7 +26,7 @@ export const TilesPageSchema = PageSchema.extend({});
 
 export const TilesPageCreateReqSchema: ZodType<ApiCreateTilesPage> = PageCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardTilesPageType),
+		type: z.nativeEnum(PagesTilesPluginTilesPageType),
 		tiles: z.array(TileCreateReqSchema).optional(),
 		data_source: z.array(DataSourceCreateReqSchema).optional(),
 	})
@@ -34,13 +34,13 @@ export const TilesPageCreateReqSchema: ZodType<ApiCreateTilesPage> = PageCreateR
 
 export const TilesPageUpdateReqSchema: ZodType<ApiUpdateTilesPage> = PageUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardTilesPageType),
+		type: z.nativeEnum(PagesTilesPluginTilesPageType),
 	})
 );
 
 export const TilesPageResSchema: ZodType<ApiTilesPage> = PageResSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardTilesPageType),
+		type: z.nativeEnum(PagesTilesPluginTilesPageType),
 		tiles: z.array(TileResSchema),
 		data_source: z.array(DataSourceResSchema),
 	})

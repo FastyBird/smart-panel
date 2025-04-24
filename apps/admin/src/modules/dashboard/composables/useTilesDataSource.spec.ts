@@ -41,6 +41,7 @@ describe('useTilesDataSource', () => {
 				col: 0,
 				rowSpan: 0,
 				colSpan: 0,
+				hidden: false,
 				draft: false,
 			} as ITile,
 			{
@@ -54,6 +55,7 @@ describe('useTilesDataSource', () => {
 				col: 0,
 				rowSpan: 0,
 				colSpan: 0,
+				hidden: false,
 				draft: false,
 			} as ITile,
 			{
@@ -67,6 +69,7 @@ describe('useTilesDataSource', () => {
 				col: 1,
 				rowSpan: 0,
 				colSpan: 0,
+				hidden: false,
 				draft: false,
 			} as ITile,
 			{
@@ -80,6 +83,7 @@ describe('useTilesDataSource', () => {
 				col: 1,
 				rowSpan: 0,
 				colSpan: 0,
+				hidden: false,
 				draft: true,
 			} as ITile,
 		];

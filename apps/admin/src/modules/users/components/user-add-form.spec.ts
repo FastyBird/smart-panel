@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
 import type { IUserAddForm } from '../composables/types';
 
@@ -26,7 +26,7 @@ const addFormMock = {
 		email: '',
 		firstName: '',
 		lastName: '',
-		role: UsersUserRole.user,
+		role: UsersModuleUserRole.user,
 	}),
 	formEl: ref({
 		clearValidate: vi.fn(),
@@ -81,11 +81,11 @@ describe('UserAddForm', (): void => {
 
 		const roleSelect = wrapper.findComponent(ElSelect);
 
-		await roleSelect.setValue(UsersUserRole.admin);
+		await roleSelect.setValue(UsersModuleUserRole.admin);
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.model.role).toBe(UsersUserRole.admin);
+		expect(wrapper.vm.model.role).toBe(UsersModuleUserRole.admin);
 
 		expect(wrapper.emitted('update:remote-form-changed')).toBeTruthy();
 	});

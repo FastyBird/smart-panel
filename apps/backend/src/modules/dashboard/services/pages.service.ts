@@ -175,7 +175,7 @@ export class PagesService {
 
 		const page = await this.getOneOrThrow<PageEntity>(id);
 
-		await this.repository.remove(page);
+		await this.repository.delete(page.id);
 
 		this.logger.log(`[DELETE] Successfully removed page with id=${id}`);
 

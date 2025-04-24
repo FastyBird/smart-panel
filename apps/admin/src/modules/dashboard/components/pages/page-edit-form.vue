@@ -36,7 +36,7 @@
 			:prop="['icon']"
 		>
 			<icon-picker
-				:model="model.icon"
+				v-model="model.icon"
 				:placeholder="t('dashboardModule.fields.pages.icon.placeholder')"
 			/>
 		</el-form-item>
@@ -62,8 +62,9 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import { ElForm, ElFormItem, ElInput, ElInputNumber, type FormRules } from 'element-plus';
 
 import { IconPicker } from '../../../../common';
-import { type IPageEditForm, usePageEditForm } from '../../composables/composables';
+import { usePageEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../dashboard.constants';
+import type { IPageEditForm } from '../../schemas/pages.types';
 
 import type { IPageEditFormProps } from './page-edit-form.types';
 
@@ -106,7 +107,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

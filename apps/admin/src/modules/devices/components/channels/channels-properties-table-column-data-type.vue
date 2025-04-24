@@ -100,7 +100,7 @@ import { ElButton, ElIcon, ElLink, ElPopover, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { DevicesChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
 
 import type { IChannelsPropertiesTableColumnDataTypeProps } from './channels-properties-table-column-data-type.types';
 
@@ -111,24 +111,24 @@ defineOptions({
 const props = defineProps<IChannelsPropertiesTableColumnDataTypeProps>();
 
 const emit = defineEmits<{
-	(e: 'filter-by', value: DevicesChannelPropertyData_type, add: boolean): void;
+	(e: 'filter-by', value: DevicesModuleChannelPropertyData_type, add: boolean): void;
 }>();
 
 const { t } = useI18n();
 
 const isEnum = computed<boolean>((): boolean => {
-	return props.property.dataType === DevicesChannelPropertyData_type.enum;
+	return props.property.dataType === DevicesModuleChannelPropertyData_type.enum;
 });
 
 const isNumeric = computed<boolean>((): boolean => {
 	return (
-		props.property.dataType === DevicesChannelPropertyData_type.char ||
-		props.property.dataType === DevicesChannelPropertyData_type.uchar ||
-		props.property.dataType === DevicesChannelPropertyData_type.short ||
-		props.property.dataType === DevicesChannelPropertyData_type.ushort ||
-		props.property.dataType === DevicesChannelPropertyData_type.int ||
-		props.property.dataType === DevicesChannelPropertyData_type.uint ||
-		props.property.dataType === DevicesChannelPropertyData_type.float
+		props.property.dataType === DevicesModuleChannelPropertyData_type.char ||
+		props.property.dataType === DevicesModuleChannelPropertyData_type.uchar ||
+		props.property.dataType === DevicesModuleChannelPropertyData_type.short ||
+		props.property.dataType === DevicesModuleChannelPropertyData_type.ushort ||
+		props.property.dataType === DevicesModuleChannelPropertyData_type.int ||
+		props.property.dataType === DevicesModuleChannelPropertyData_type.uint ||
+		props.property.dataType === DevicesModuleChannelPropertyData_type.float
 	);
 });
 

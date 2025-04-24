@@ -29,6 +29,7 @@ import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
+import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';
 import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
@@ -97,6 +98,10 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 			{
 				path: WEATHER_MODULE_PREFIX,
 				module: WeatherModule,
+			},
+			{
+				path: PAGES_CARDS_PLUGIN_PREFIX,
+				module: PagesCardsPlugin,
 			},
 		]),
 		AuthModule,

@@ -14,6 +14,7 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
@@ -21,7 +22,7 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateDataSourceDto, CreateSingleDataSourceDto } from '../dto/create-data-source.dto';
-import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
+import { UpdateDataSourceDto, UpdateSingleDataSourceDto } from '../dto/update-data-source.dto';
 import { DataSourceEntity } from '../entities/dashboard.entity';
 import { DataSourceTypeMapping, DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
 import { DataSourceService } from '../services/data-source.service';
@@ -36,10 +37,20 @@ export class DataSourceController {
 	) {}
 
 	@Get()
-	async findAll(): Promise<DataSourceEntity[]> {
+	async findAll(
+		@Query('parent_type') parentType?: string,
+		@Query('parent_id') parentId?: string,
+	): Promise<DataSourceEntity[]> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all data sources`);
 
-		const dataSources = await this.dataSourceService.findAll();
+		const dataSources = await this.dataSourceService.findAll(
+			parentType && parentId
+				? {
+						parentType,
+						parentId,
+					}
+				: undefined,
+		);
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${dataSources.length} data sources`);
 
@@ -83,7 +94,9 @@ export class DataSourceController {
 		});
 
 		if (baseErrors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] Validation failed for tile creation error=${JSON.stringify(baseErrors)}`);
+			this.logger.error(
+				`[VALIDATION FAILED] Validation failed for data source creation error=${JSON.stringify(baseErrors)}`,
+			);
 
 			throw ValidationExceptionFactory.createException(baseErrors);
 		}
@@ -111,9 +124,12 @@ export class DataSourceController {
 			throw error;
 		}
 
+		const { parent } = baseDtoInstance;
+
 		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
+			excludeExtraneousValues: true,
 		});
 
 		const errors = await validate(dtoInstance, {
@@ -131,8 +147,8 @@ export class DataSourceController {
 
 		try {
 			const dataSource = await this.dataSourceService.create(dtoInstance, {
-				parentType: baseDtoInstance.parent.type,
-				parentId: baseDtoInstance.parent.id,
+				parentType: parent.type,
+				parentId: parent.id,
 			});
 
 			this.logger.debug(`[CREATE] Successfully created data source id=${dataSource.id}`);
@@ -155,6 +171,23 @@ export class DataSourceController {
 		this.logger.debug(`[UPDATE] Incoming update request for data source id=${id}`);
 
 		const dataSource = await this.getOneOrThrow(id);
+
+		const baseDtoInstance = plainToInstance(UpdateSingleDataSourceDto, updateDto.data, {
+			enableImplicitConversion: true,
+			exposeUnsetFields: false,
+		});
+
+		const baseErrors = await validate(baseDtoInstance, {
+			whitelist: true,
+		});
+
+		if (baseErrors.length > 0) {
+			this.logger.error(
+				`[VALIDATION FAILED] Validation failed for data source modification error=${JSON.stringify(baseErrors)}`,
+			);
+
+			throw ValidationExceptionFactory.createException(baseErrors);
+		}
 
 		let mapping: DataSourceTypeMapping<DataSourceEntity, CreateDataSourceDto, UpdateDataSourceDto>;
 
@@ -182,6 +215,7 @@ export class DataSourceController {
 		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
+			excludeExtraneousValues: true,
 		});
 
 		const errors = await validate(dtoInstance, {

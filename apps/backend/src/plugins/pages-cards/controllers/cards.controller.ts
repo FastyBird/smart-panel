@@ -10,19 +10,20 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
-import { DASHBOARD_MODULE_PREFIX } from '../../../modules/dashboard/dashboard.constants';
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
 import { ReqCreateCardDto } from '../dto/create-card.dto';
 import { ReqUpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity } from '../entities/pages-cards.entity';
+import { PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.constants';
 import { CardsService } from '../services/cards.service';
 
-@Controller('pages/:pageId/cards')
+@Controller('cards')
 export class CardsController {
 	private readonly logger = new Logger(CardsController.name);
 
@@ -32,48 +33,38 @@ export class CardsController {
 	) {}
 
 	@Get()
-	async findAll(@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string): Promise<CardEntity[]> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all page cards for pageId=${pageId}`);
+	async findAll(@Query('page') page?: string): Promise<CardEntity[]> {
+		this.logger.debug(`[LOOKUP ALL] Fetching all page cards`);
 
-		const page = await this.getPageOrThrow(pageId);
+		const filterPage = page ? await this.getPageOrThrow(page) : undefined;
 
-		const cards = await this.cardsService.findAll(page.id);
+		const cards = await this.cardsService.findAll(filterPage?.id);
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${cards.length} page cards for pageId=${page.id}`);
+		this.logger.debug(`[LOOKUP ALL] Retrieved ${cards.length} page cards for pageId=${page}`);
 
 		return cards;
 	}
 
 	@Get(':id')
-	async findOne(
-		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
-		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-	): Promise<CardEntity> {
-		this.logger.debug(`[LOOKUP] Fetching page card id=${id} for pageId=${pageId}`);
+	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<CardEntity> {
+		this.logger.debug(`[LOOKUP] Fetching page card id=${id}`);
 
-		const page = await this.getPageOrThrow(pageId);
+		const card = await this.getOneOrThrow(id);
 
-		const card = await this.getOneOrThrow(id, page.id);
-
-		this.logger.debug(`[LOOKUP] Found page card id=${card.id} for pageId=${page.id}`);
+		this.logger.debug(`[LOOKUP] Found page card id=${card.id}`);
 
 		return card;
 	}
 
 	@Post()
-	@Header('Location', `:baseUrl/${DASHBOARD_MODULE_PREFIX}/pages/:page/cards/:id`)
-	async create(
-		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
-		@Body() createDto: ReqCreateCardDto,
-	): Promise<CardEntity> {
-		this.logger.debug(`[CREATE] Incoming request to create a new page card for pageId=${pageId}`);
-
-		const page = await this.getPageOrThrow(pageId);
+	@Header('Location', `:baseUrl/${PAGES_CARDS_PLUGIN_PREFIX}/cards/:id`)
+	async create(@Body() createDto: ReqCreateCardDto): Promise<CardEntity> {
+		this.logger.debug(`[CREATE] Incoming request to create a new page card`);
 
 		try {
-			const card = await this.cardsService.create(page.id, createDto.data);
+			const card = await this.cardsService.create(createDto.data);
 
-			this.logger.debug(`[CREATE] Successfully created page card id=${card.id} for pageId=${page.id}`);
+			this.logger.debug(`[CREATE] Successfully created page card id=${card.id}`);
 
 			return card;
 		} catch (error) {
@@ -87,19 +78,17 @@ export class CardsController {
 
 	@Patch(':id')
 	async update(
-		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateCardDto,
 	): Promise<CardEntity> {
-		this.logger.debug(`[UPDATE] Incoming update request for page card id=${id} for pageId=${pageId}`);
+		this.logger.debug(`[UPDATE] Incoming update request for page card id=${id}`);
 
-		const page = await this.getPageOrThrow(pageId);
-		const card = await this.getOneOrThrow(id, page.id);
+		const card = await this.getOneOrThrow(id);
 
 		try {
-			const updatedCard = await this.cardsService.update(card.id, page.id, updateDto.data);
+			const updatedCard = await this.cardsService.update(card.id, updateDto.data);
 
-			this.logger.debug(`[UPDATE] Successfully updated page card id=${updatedCard.id} for pageId=${page.id}`);
+			this.logger.debug(`[UPDATE] Successfully updated page card id=${updatedCard.id}`);
 
 			return updatedCard;
 		} catch (error) {
@@ -112,27 +101,23 @@ export class CardsController {
 	}
 
 	@Delete(':id')
-	async remove(
-		@Param('pageId', new ParseUUIDPipe({ version: '4' })) pageId: string,
-		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-	): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete page card id=${id} for pageId=${pageId}`);
+	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
+		this.logger.debug(`[DELETE] Incoming request to delete page card id=${id}`);
 
-		const page = await this.getPageOrThrow(pageId);
-		const card = await this.getOneOrThrow(id, page.id);
+		const card = await this.getOneOrThrow(id);
 
-		await this.cardsService.remove(card.id, page.id);
+		await this.cardsService.remove(card.id);
 
-		this.logger.debug(`[DELETE] Successfully deleted page card id=${id} for pageId=${page.id}`);
+		this.logger.debug(`[DELETE] Successfully deleted page card id=${id}`);
 	}
 
-	private async getOneOrThrow(id: string, pageId: string): Promise<CardEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of page card id=${id} for pageId=${pageId}`);
+	private async getOneOrThrow(id: string): Promise<CardEntity> {
+		this.logger.debug(`[LOOKUP] Checking existence of page card id=${id}`);
 
-		const card = await this.cardsService.findOne(id, pageId);
+		const card = await this.cardsService.findOne(id);
 
 		if (!card) {
-			this.logger.error(`[ERROR] Page card with id=${id} for pageId=${pageId} not found`);
+			this.logger.error(`[ERROR] Page card with id=${id} not found`);
 
 			throw new NotFoundException('Requested page card does not exist');
 		}

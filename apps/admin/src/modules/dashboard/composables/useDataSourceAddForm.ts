@@ -1,16 +1,18 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
-import { DataSourceCreateSchema } from '../schemas/dataSources.schemas';
-import type { IDataSource } from '../store/dataSources.store.types';
+import { DataSourceAddFormSchema } from '../schemas/dataSources.schemas';
+import type { IDataSourceAddForm } from '../schemas/dataSources.types';
+import type { IDataSource } from '../store/data-sources.store.types';
 import { dataSourcesStoreKey } from '../store/keys';
 
-import type { IDataSourceAddForm, IUseDataSourceAddForm } from './types';
+import type { IUseDataSourceAddForm } from './types';
 import { useDataSourcesPlugin } from './useDataSourcesPlugin';
 
 interface IUseDataSourceAddFormProps {
@@ -18,9 +20,16 @@ interface IUseDataSourceAddFormProps {
 	type: IPlugin['type'];
 	parent: string;
 	parentId: string;
+	onlyDraft?: boolean;
 }
 
-export const useDataSourceAddForm = ({ id, type, parent, parentId }: IUseDataSourceAddFormProps): IUseDataSourceAddForm => {
+export const useDataSourceAddForm = <TForm extends IDataSourceAddForm = IDataSourceAddForm>({
+	id,
+	type,
+	parent,
+	parentId,
+	onlyDraft = false,
+}: IUseDataSourceAddFormProps): IUseDataSourceAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
 	const { plugin } = useDataSourcesPlugin({ type });
@@ -35,10 +44,12 @@ export const useDataSourceAddForm = ({ id, type, parent, parentId }: IUseDataSou
 
 	let timer: number;
 
-	const model = reactive<IDataSourceAddForm>({
+	const model = reactive<TForm>({
 		id,
 		type,
-	});
+	} as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -51,9 +62,11 @@ export const useDataSourceAddForm = ({ id, type, parent, parentId }: IUseDataSou
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.dataSourceCreateSchema || DataSourceCreateSchema).safeParse(model);
+		const parsedModel = (plugin.value?.schemas?.dataSourceAddFormSchema || DataSourceAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
 			throw new DashboardValidationException('Failed to validate create data source model.');
 		}
 
@@ -68,7 +81,7 @@ export const useDataSourceAddForm = ({ id, type, parent, parentId }: IUseDataSou
 					type: parent,
 					id: parentId,
 				},
-				draft: false,
+				draft: onlyDraft,
 				data: {
 					...parsedModel.data,
 					type,
@@ -103,12 +116,8 @@ export const useDataSourceAddForm = ({ id, type, parent, parentId }: IUseDataSou
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: IDataSourceAddForm): void => {
-		if (val.type !== '') {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

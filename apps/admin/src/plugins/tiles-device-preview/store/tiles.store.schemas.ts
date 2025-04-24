@@ -1,11 +1,11 @@
 import { type ZodType, z } from 'zod';
 
 import { ItemIdSchema, TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { DashboardDevicePreviewTileType, type components } from '../../../openapi';
+import { TilesDevicePreviewPluginDevicePreviewTileType, type components } from '../../../openapi';
 
-type ApiCreateDevicePreviewTile = components['schemas']['DashboardCreateDevicePreviewTile'];
-type ApiUpdateDevicePreviewTile = components['schemas']['DashboardUpdateDevicePreviewTile'];
-type ApiDevicePreviewTile = components['schemas']['DashboardDevicePreviewTile'];
+type ApiCreateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginCreateDevicePreviewTile'];
+type ApiUpdateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginUpdateDevicePreviewTile'];
+type ApiDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginDevicePreviewTile'];
 
 // STORE STATE
 // ===========
@@ -18,25 +18,27 @@ export const DevicePreviewTileSchema = TileSchema.extend({
 // BACKEND API
 // ===========
 
-export const DevicePreviewTileCreateReqSchema: ZodType<ApiCreateDevicePreviewTile> = TileCreateReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDevicePreviewTileType),
-		device: z.string().uuid(),
-		icon: z.string().trim().nullable(),
-	})
-);
+export const DevicePreviewTileCreateReqSchema: ZodType<ApiCreateDevicePreviewTile & { parent: { type: string; id: string } }> =
+	TileCreateReqSchema.and(
+		z.object({
+			type: z.nativeEnum(TilesDevicePreviewPluginDevicePreviewTileType),
+			device: z.string().uuid(),
+			icon: z.string().trim().nullable(),
+		})
+	);
 
-export const DevicePreviewTileUpdateReqSchema: ZodType<ApiUpdateDevicePreviewTile> = TileUpdateReqSchema.and(
-	z.object({
-		type: z.nativeEnum(DashboardDevicePreviewTileType),
-		device: z.string().uuid().optional(),
-		icon: z.string().trim().nullable().optional(),
-	})
-);
+export const DevicePreviewTileUpdateReqSchema: ZodType<ApiUpdateDevicePreviewTile & { parent: { type: string; id: string } }> =
+	TileUpdateReqSchema.and(
+		z.object({
+			type: z.nativeEnum(TilesDevicePreviewPluginDevicePreviewTileType),
+			device: z.string().uuid().optional(),
+			icon: z.string().trim().nullable().optional(),
+		})
+	);
 
 export const DevicePreviewTileResSchema: ZodType<ApiDevicePreviewTile> = TileResSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardDevicePreviewTileType),
+		type: z.nativeEnum(TilesDevicePreviewPluginDevicePreviewTileType),
 		device: z.string().uuid(),
 		icon: z.string().trim().nullable(),
 	})

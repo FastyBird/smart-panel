@@ -1,4 +1,4 @@
-import type { ComputedRef, Ref } from 'vue';
+import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
@@ -7,12 +7,16 @@ import type { FormResultType } from '../dashboard.constants';
 import type {
 	IDataSourcePluginsComponents,
 	IDataSourcePluginsSchemas,
+	IPagePluginRoutes,
 	IPagePluginsComponents,
 	IPagePluginsSchemas,
 	ITilePluginsComponents,
 	ITilePluginsSchemas,
 } from '../dashboard.types';
-import type { IDataSource } from '../store/dataSources.store.types';
+import type { IDataSourceAddForm, IDataSourceEditForm } from '../schemas/dataSources.types';
+import type { IPageAddForm, IPageEditForm } from '../schemas/pages.types';
+import type { ITileAddForm, ITileEditForm } from '../schemas/tiles.types';
+import type { IDataSource } from '../store/data-sources.store.types';
 import type { IPage } from '../store/pages.store.types';
 import type { ITile } from '../store/tiles.store.types';
 
@@ -21,58 +25,14 @@ export interface IPagesFilter {
 	types: string[];
 }
 
-export interface IPageAddForm {
-	id: IPage['id'];
-	type: string;
-	title: string;
-	icon: string;
-	order: number;
-}
-
-export interface IPageEditForm {
-	id: IPage['id'];
-	type: string;
-	title: string;
-	icon: string;
-	order: number;
-}
-
 export interface ITilesFilter {
 	search: string | undefined;
 	types: string[];
 }
 
-export interface ITileAddForm {
-	id: ITile['id'];
-	type: string;
-	row: number;
-	col: number;
-	rowSpan: number;
-	colSpan: number;
-}
-
-export interface ITileEditForm {
-	id: ITile['id'];
-	type: string;
-	row: number;
-	col: number;
-	rowSpan: number;
-	colSpan: number;
-}
-
 export interface IDataSourcesFilter {
 	search: string | undefined;
 	types: string[];
-}
-
-export interface IDataSourceAddForm {
-	id: IDataSource['id'];
-	type: string;
-}
-
-export interface IDataSourceEditForm {
-	id: IDataSource['id'];
-	type: string;
 }
 
 export interface IUsePage {
@@ -112,8 +72,8 @@ export interface IUsePageIcon {
 	icon: ComputedRef<string>;
 }
 
-export interface IUsePageAddForm {
-	model: IPageAddForm;
+export interface IUsePageAddForm<TForm extends IPageAddForm = IPageAddForm> {
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added'>;
@@ -121,8 +81,8 @@ export interface IUsePageAddForm {
 	formResult: Ref<FormResultType>;
 }
 
-export interface IUsePageEditForm {
-	model: IPageEditForm;
+export interface IUsePageEditForm<TForm extends IPageEditForm = IPageEditForm> {
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added' | 'saved'>;
@@ -131,13 +91,13 @@ export interface IUsePageEditForm {
 }
 
 export interface IUsePagesPlugin {
-	plugin: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined>;
+	plugin: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>;
 }
 
 export interface IUsePagesPlugins {
-	plugins: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>[]>;
+	plugins: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes>[]>;
 	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined;
+	getByType: (type: IPlugin['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined;
 }
 
 export interface IUseTile {
@@ -164,7 +124,7 @@ export interface IUseTilesDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'row' | 'col' | 'rowSpan' | 'colSpan' | 'type'>;
+	sortBy: Ref<'row' | 'col' | 'rowSpan' | 'colSpan' | 'hidden' | 'type'>;
 	sortDir: Ref<'ascending' | 'descending' | null>;
 	resetFilter: () => void;
 }
@@ -173,8 +133,8 @@ export interface IUseTilesActions {
 	remove: (id: ITile['id']) => Promise<void>;
 }
 
-export interface IUseTileAddForm {
-	model: ITileAddForm;
+export interface IUseTileAddForm<TForm extends ITileAddForm = ITileAddForm> {
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added'>;
@@ -182,8 +142,8 @@ export interface IUseTileAddForm {
 	formResult: Ref<FormResultType>;
 }
 
-export interface IUseTileEditForm {
-	model: ITileEditForm;
+export interface IUseTileEditForm<TForm extends ITileEditForm = ITileEditForm> {
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added' | 'saved'>;
@@ -234,8 +194,8 @@ export interface IUseDataSourcesActions {
 	remove: (id: IDataSource['id']) => Promise<void>;
 }
 
-export interface IUseDataSourceAddForm {
-	model: IDataSourceAddForm;
+export interface IUseDataSourceAddForm<TForm extends IDataSourceAddForm = IDataSourceAddForm> {
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added'>;
@@ -243,8 +203,8 @@ export interface IUseDataSourceAddForm {
 	formResult: Ref<FormResultType>;
 }
 
-export interface IUseDataSourceEditForm {
-	model: IDataSourceEditForm;
+export interface IUseDataSourceEditForm<TForm extends IDataSourceEditForm = IDataSourceEditForm> {
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added' | 'saved'>;

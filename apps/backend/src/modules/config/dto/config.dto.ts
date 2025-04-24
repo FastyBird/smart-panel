@@ -10,11 +10,11 @@ import {
 	WeatherLocationTypeType,
 } from '../config.constants';
 
-type ReqUpdateSection = components['schemas']['ConfigReqUpdateSection'];
-type UpdateAudio = components['schemas']['ConfigUpdateAudio'];
-type UpdateDisplay = components['schemas']['ConfigUpdateDisplay'];
-type UpdateLanguage = components['schemas']['ConfigUpdateLanguage'];
-type UpdateWeather = components['schemas']['ConfigUpdateWeather'];
+type ReqUpdateSection = components['schemas']['ConfigModuleReqUpdateSection'];
+type UpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];
+type UpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];
+type UpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];
+type UpdateWeather = components['schemas']['ConfigModuleUpdateWeather'];
 
 const determineConfigDto = (obj: unknown): new () => object => {
 	if (

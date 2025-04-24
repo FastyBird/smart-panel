@@ -5,7 +5,7 @@ import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesApiException, DevicesValidationException, FormResult, type FormResultType, devicesStoreKey } from '../../../modules/devices';
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import type { IThirdPartyDeviceAddForm, IUseThirdPartyDeviceAddForm } from './types';
@@ -27,7 +27,7 @@ export const useThirdPartyDeviceAddForm = ({ id }: IUseThirdPartyDeviceAddFormPr
 
 	let timer: number;
 
-	const categoriesOptions: { value: DevicesDeviceCategory; label: string }[] = Object.values(DevicesDeviceCategory).map((value) => ({
+	const categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[] = Object.values(DevicesModuleDeviceCategory).map((value) => ({
 		value,
 		label: t(`devicesModule.categories.devices.${value}`),
 	}));
@@ -35,7 +35,7 @@ export const useThirdPartyDeviceAddForm = ({ id }: IUseThirdPartyDeviceAddFormPr
 	const model = reactive<IThirdPartyDeviceAddForm>({
 		id,
 		type: 'third-party',
-		category: DevicesDeviceCategory.generic,
+		category: DevicesModuleDeviceCategory.generic,
 		name: '',
 		description: '',
 		serviceAddress: '',
@@ -104,7 +104,7 @@ export const useThirdPartyDeviceAddForm = ({ id }: IUseThirdPartyDeviceAddFormPr
 	watch(model, (val: IThirdPartyDeviceAddForm): void => {
 		if (val.type !== '') {
 			formChanged.value = true;
-		} else if (val.category !== DevicesDeviceCategory.generic) {
+		} else if (val.category !== DevicesModuleDeviceCategory.generic) {
 			formChanged.value = true;
 		} else if (val.name !== '') {
 			formChanged.value = true;

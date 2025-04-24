@@ -2,6 +2,7 @@
 eslint-disable @typescript-eslint/no-empty-object-type
 */
 import type { ComponentOptionsMixin, DefineComponent } from 'vue';
+import type { RouteLocationResolvedGeneric } from 'vue-router';
 
 import { type IDataSourceAddFormProps, dataSourceAddFormEmits } from './components/data-sources/data-source-add-form.types';
 import { type IDataSourceEditFormProps, dataSourceEditFormEmits } from './components/data-sources/data-source-edit-form.types';
@@ -9,24 +10,69 @@ import { type IPageAddFormProps, pageAddFormEmits } from './components/pages/pag
 import { type IPageEditFormProps, pageEditFormEmits } from './components/pages/page-edit-form.types';
 import { type ITileAddFormProps, tileAddFormEmits } from './components/tiles/tile-add-form.types';
 import { type ITileEditFormProps, tileEditFormEmits } from './components/tiles/tile-edit-form.types';
-import { type DataSourceCreateSchema, DataSourceUpdateSchema } from './schemas/dataSources.schemas';
-import { PageCreateSchema, PageUpdateSchema } from './schemas/pages.schemas';
-import { type TileCreateSchema, TileUpdateSchema } from './schemas/tiles.schemas';
-import { DataSourceCreateReqSchema, type DataSourceSchema, DataSourceUpdateReqSchema } from './store/dataSources.store.schemas';
+import type { FormResultType } from './dashboard.constants';
+import { type DataSourceAddFormSchema, DataSourceEditFormSchema } from './schemas/dataSources.schemas';
+import { PageAddFormSchema, PageEditFormSchema } from './schemas/pages.schemas';
+import { type TileAddFormSchema, TileEditFormSchema } from './schemas/tiles.schemas';
+import { DataSourceCreateReqSchema, type DataSourceSchema, DataSourceUpdateReqSchema } from './store/data-sources.store.schemas';
 import { PageCreateReqSchema, PageSchema, PageUpdateReqSchema } from './store/pages.store.schemas';
+import type { IPage } from './store/pages.store.types';
 import { TileCreateReqSchema, type TileSchema, TileUpdateReqSchema } from './store/tiles.store.schemas';
 
+export interface IPageDetailProps {
+	page: IPage;
+}
+
+export interface IElementAddProps {
+	page: IPage;
+	type: string;
+	id: string;
+	remoteFormSubmit: boolean;
+	remoteFormResult: FormResultType;
+	remoteFormReset: boolean;
+	remoteFormChanged: boolean;
+}
+
+export const elementAddFormEmits = {
+	'update:remote-form-submit': (remoteFormSubmit: boolean): boolean => typeof remoteFormSubmit === 'boolean',
+	'update:remote-form-result': (remoteFormResult: FormResultType): boolean => typeof remoteFormResult === 'string',
+	'update:remote-form-reset': (remoteFormReset: boolean): boolean => typeof remoteFormReset === 'boolean',
+	'update:remote-form-changed': (formChanged: boolean): boolean => typeof formChanged === 'boolean',
+};
+
+export interface IElementEditProps {
+	page: IPage;
+	type: string;
+	id: string;
+	remoteFormSubmit: boolean;
+	remoteFormResult: FormResultType;
+	remoteFormReset: boolean;
+	remoteFormChanged: boolean;
+}
+
+export const elementEditFormEmits = {
+	'update:remote-form-submit': (remoteFormSubmit: boolean): boolean => typeof remoteFormSubmit === 'boolean',
+	'update:remote-form-result': (remoteFormResult: FormResultType): boolean => typeof remoteFormResult === 'string',
+	'update:remote-form-reset': (remoteFormReset: boolean): boolean => typeof remoteFormReset === 'boolean',
+	'update:remote-form-changed': (formChanged: boolean): boolean => typeof formChanged === 'boolean',
+};
+
 export type IPagePluginsComponents = {
+	pageDetail?: DefineComponent<IPageDetailProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
 	pageAddForm?: DefineComponent<IPageAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof pageAddFormEmits>;
 	pageEditForm?: DefineComponent<IPageEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof pageEditFormEmits>;
 };
 
 export type IPagePluginsSchemas = {
 	pageSchema?: typeof PageSchema;
-	pageCreateSchema?: typeof PageCreateSchema;
-	pageEditSchema?: typeof PageUpdateSchema;
+	pageAddFormSchema?: typeof PageAddFormSchema;
+	pageEditFormSchema?: typeof PageEditFormSchema;
 	pageCreateReqSchema?: typeof PageCreateReqSchema;
 	pageUpdateReqSchema?: typeof PageUpdateReqSchema;
+};
+
+export type IPagePluginRoutes = {
+	configure?: ((id: IPage['id']) => string | RouteLocationResolvedGeneric) | string | RouteLocationResolvedGeneric;
 };
 
 export type ITilePluginsComponents = {
@@ -36,8 +82,8 @@ export type ITilePluginsComponents = {
 
 export type ITilePluginsSchemas = {
 	tileSchema?: typeof TileSchema;
-	tileCreateSchema?: typeof TileCreateSchema;
-	tileEditSchema?: typeof TileUpdateSchema;
+	tileAddFormSchema?: typeof TileAddFormSchema;
+	tileEditFormSchema?: typeof TileEditFormSchema;
 	tileCreateReqSchema?: typeof TileCreateReqSchema;
 	tileUpdateReqSchema?: typeof TileUpdateReqSchema;
 };
@@ -67,8 +113,8 @@ export type IDataSourcePluginsComponents = {
 
 export type IDataSourcePluginsSchemas = {
 	dataSourceSchema?: typeof DataSourceSchema;
-	dataSourceCreateSchema?: typeof DataSourceCreateSchema;
-	dataSourceEditSchema?: typeof DataSourceUpdateSchema;
+	dataSourceAddFormSchema?: typeof DataSourceAddFormSchema;
+	dataSourceEditFormSchema?: typeof DataSourceEditFormSchema;
 	dataSourceCreateReqSchema?: typeof DataSourceCreateReqSchema;
 	dataSourceUpdateReqSchema?: typeof DataSourceUpdateReqSchema;
 };

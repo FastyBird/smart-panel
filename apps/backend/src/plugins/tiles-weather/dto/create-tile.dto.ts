@@ -1,8 +1,8 @@
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import type { components } from '../../../openapi';
 
-type CreateDayWeatherTile = components['schemas']['DashboardCreateDayWeatherTile'];
-type CreateForecastWeatherTile = components['schemas']['DashboardCreateForecastWeatherTile'];
+type CreateDayWeatherTile = components['schemas']['TilesWeatherPluginCreateDayWeatherTile'];
+type CreateForecastWeatherTile = components['schemas']['TilesWeatherPluginCreateForecastWeatherTile'];
 
 export class CreateDayWeatherTileDto extends CreateTileDto implements CreateDayWeatherTile {
 	readonly type: 'weather-day';

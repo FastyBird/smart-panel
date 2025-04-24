@@ -6,7 +6,7 @@ import type { components } from '../../../openapi';
 
 import { CreateCardDto } from './create-card.dto';
 
-type CreateCardsPage = components['schemas']['DashboardCreateCardsPage'];
+type CreateCardsPage = components['schemas']['PagesCardsPluginCreateCardsPage'];
 
 export class CreateCardsPageDto extends CreatePageDto implements CreateCardsPage {
 	readonly type: 'cards';

@@ -11,9 +11,9 @@ import { useTilesPlugins } from '../composables/useTilesPlugins';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
 
-import { DataSourceSchema } from './dataSources.store.schemas';
-import type { IDataSourceRes } from './dataSources.store.types';
-import { transformDataSourceResponse } from './dataSources.transformers';
+import { DataSourceSchema } from './data-sources.store.schemas';
+import type { IDataSourceRes } from './data-sources.store.types';
+import { transformDataSourceResponse } from './data-sources.transformers';
 import { dataSourcesStoreKey } from './keys';
 import {
 	TileCreateReqSchema,
@@ -221,11 +221,11 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/{parent}/{parentId}/tiles`, {
+			} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
 				params: {
-					path: {
-						parent: payload.parent.type,
-						parentId: payload.parent.id,
+					query: {
+						parent_type: payload.parent.type,
+						parent_id: payload.parent.id,
 					},
 				},
 			});
@@ -256,7 +256,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			let errorReason: string | null = 'Failed to fetch tiles.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['get-dashboard-module-parent-tiles']>(error, errorReason);
+				errorReason = getErrorReason<operations['get-dashboard-module-tiles']>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -275,6 +275,8 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const parsedPayload = TilesAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DashboardValidationException('Failed to add tile.');
 		}
 
@@ -290,6 +292,8 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		});
 
 		if (!parsedNewItem.success) {
+			console.error('Schema validation failed with:', parsedNewItem.error);
+
 			throw new DashboardValidationException('Failed to add tile.');
 		}
 
@@ -306,10 +310,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/{parent}/{parentId}/tiles`, {
-				params: {
-					path: { parent: payload.parent.type, parentId: payload.parent.id },
-				},
+			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
 				body: {
 					data: transformTileCreateRequest<ITileCreateReq>(parsedNewItem.data, plugin?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
 				},
@@ -333,7 +334,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			let errorReason: string | null = 'Failed to create tile.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-dashboard-module-parent-tile']>(error, errorReason);
+				errorReason = getErrorReason<operations['create-dashboard-module-tile']>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -352,6 +353,8 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const parsedPayload = TilesEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DashboardValidationException('Failed to edit tile.');
 		}
 
@@ -363,6 +366,8 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		});
 
 		if (!parsedEditedItem.success) {
+			console.error('Schema validation failed with:', parsedEditedItem.error);
+
 			throw new DashboardValidationException('Failed to edit tile.');
 		}
 
@@ -427,6 +432,8 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const parsedSaveItem = (plugin?.schemas?.tileSchema || TileSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
+			console.error('Schema validation failed with:', parsedSaveItem.error);
+
 			throw new DashboardValidationException('Failed to save tile.');
 		}
 
@@ -436,10 +443,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			data: responseData,
 			error,
 			response,
-		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/{parent}/{parentId}/tiles`, {
-			params: {
-				path: { parent: payload.parent.type, parentId: payload.parent.id },
-			},
+		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
 			body: {
 				data: transformTileCreateRequest<ITileCreateReq>(parsedSaveItem.data, plugin?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
 			},

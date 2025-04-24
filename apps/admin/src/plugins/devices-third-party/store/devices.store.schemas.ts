@@ -7,11 +7,11 @@ import {
 	DeviceControlResSchema,
 	DeviceSchema,
 } from '../../../modules/devices';
-import { DevicesDeviceCategory, type components } from '../../../openapi';
+import { DevicesModuleDeviceCategory, type components } from '../../../openapi';
 
-type ApiCreateDevice = components['schemas']['DevicesCreateDevice'];
-type ApiUpdateDevice = components['schemas']['DevicesUpdateDevice'];
-type ApiDevice = components['schemas']['DevicesDevice'];
+type ApiCreateDevice = components['schemas']['DevicesModuleCreateDevice'];
+type ApiUpdateDevice = components['schemas']['DevicesModuleUpdateDevice'];
+type ApiDevice = components['schemas']['DevicesModuleDevice'];
 
 export const ThirdPartyDeviceSchema = DeviceSchema.extend({
 	serviceAddress: z.string().trim().url(),
@@ -23,7 +23,7 @@ export const ThirdPartyDeviceSchema = DeviceSchema.extend({
 export const ThirdPartyDeviceCreateReqSchema: ZodType<ApiCreateDevice & { service_address: string }> = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
-	category: z.nativeEnum(DevicesDeviceCategory),
+	category: z.nativeEnum(DevicesModuleDeviceCategory),
 	name: z.string().trim().nonempty(),
 	description: z
 		.string()
@@ -51,7 +51,7 @@ export const ThirdPartyDeviceUpdateReqSchema: ZodType<ApiUpdateDevice & { servic
 export const ThirdPartyDeviceResSchema: ZodType<ApiDevice & { service_address: string }> = z.object({
 	id: z.string().uuid(),
 	type: z.string(),
-	category: z.nativeEnum(DevicesDeviceCategory),
+	category: z.nativeEnum(DevicesModuleDeviceCategory),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	created_at: z.string().date(),

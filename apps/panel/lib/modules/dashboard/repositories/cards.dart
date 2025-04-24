@@ -7,6 +7,13 @@ class CardsRepository extends Repository<CardModel> {
     required super.apiClient,
   });
 
+  List<CardModel> getForParent(String parentId) {
+    return data.entries
+        .where((entry) => entry.value.page == parentId)
+        .map((entry) => entry.value)
+        .toList();
+  }
+
   void insertCards(List<Map<String, dynamic>> json) {
     late Map<String, CardModel> insertData = {...data};
 

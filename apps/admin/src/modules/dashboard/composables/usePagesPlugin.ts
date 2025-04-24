@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 
 import { type IPlugin } from '../../../common';
-import type { IPagePluginsComponents, IPagePluginsSchemas } from '../dashboard.types';
+import type { IPagePluginRoutes, IPagePluginsComponents, IPagePluginsSchemas } from '../dashboard.types';
 
 import type { IUsePagesPlugin } from './types';
 import { usePagesPlugins } from './usePagesPlugins';
@@ -13,8 +13,8 @@ interface IUsePluginProps {
 export const usePagesPlugin = ({ type }: IUsePluginProps): IUsePagesPlugin => {
 	const { getByType } = usePagesPlugins();
 
-	const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(
-		(): IPlugin<IPagePluginsComponents, IPagePluginsSchemas> | undefined => {
+	const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>(
+		(): IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined => {
 			return getByType(type);
 		}
 	);

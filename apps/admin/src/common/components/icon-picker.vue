@@ -74,7 +74,7 @@ const props = withDefaults(defineProps<IIconPickerProps>(), {
 });
 
 const emit = defineEmits<{
-	(e: 'update:model', selected: string): void;
+	(e: 'update:modelValue', selected: string): void;
 }>();
 
 const iconNames = computed<string[]>((): string[] => {
@@ -85,7 +85,7 @@ const iconNames = computed<string[]>((): string[] => {
 	return Object.keys(mdiIcons.icons);
 });
 
-const selectedIcon = ref<string>(props.model);
+const selectedIcon = ref<string>(props.modelValue ?? '');
 
 const filteredIcons = ref(iconNames.value.slice(0, 1000));
 
@@ -96,7 +96,7 @@ const filterIcons = (query: string) => {
 watch(
 	(): string => selectedIcon.value,
 	(val: string) => {
-		emit('update:model', val);
+		emit('update:modelValue', val);
 	}
 );
 </script>

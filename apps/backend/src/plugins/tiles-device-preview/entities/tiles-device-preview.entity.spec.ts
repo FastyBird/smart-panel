@@ -19,7 +19,7 @@ import { components } from '../../../openapi';
 
 import { DevicePreviewTileEntity } from './tiles-device-preview.entity';
 
-type DevicePreviewTile = components['schemas']['DashboardDevicePreviewTile'];
+type DevicePreviewTile = components['schemas']['TilesDevicePreviewPluginDevicePreviewTile'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -43,7 +43,7 @@ describe('Device preview tiles plugin entity and OpenAPI Model Synchronization',
 	};
 
 	test('DevicePreviewTileEntity matches DashboardDevicePreviewTile', () => {
-		const openApiModel: DevicePreviewTile = {
+		const openApiModel: DevicePreviewTile & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
 			type: 'device-preview',
 			parent: {
@@ -55,10 +55,13 @@ describe('Device preview tiles plugin entity and OpenAPI Model Synchronization',
 			col: 0,
 			row_span: 2,
 			col_span: 2,
+			hidden: false,
 			icon: 'icon',
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			parent_type: 'page',
+			parent_id: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(DevicePreviewTileEntity, openApiModel, {
@@ -73,8 +76,6 @@ describe('Device preview tiles plugin entity and OpenAPI Model Synchronization',
 			forbidNonWhitelisted: true,
 		});
 
-		const nonInternalErrors = errors.filter((error) => !['parentType', 'parentId'].includes(error.property));
-
-		expect(nonInternalErrors).toHaveLength(0);
+		expect(errors).toHaveLength(0);
 	});
 });

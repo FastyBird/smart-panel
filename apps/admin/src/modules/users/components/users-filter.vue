@@ -59,7 +59,7 @@ import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElS
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import type { IUsersFilter } from '../composables/types';
 
 import type { IUsersFilterProps } from './users-filter.types';
@@ -82,17 +82,17 @@ const filterFormEl = ref<FormInstance | undefined>(undefined);
 
 const innerFilters = useVModel(props, 'filters', emit);
 
-const roleOptions: { value: UsersUserRole; label: string }[] = [
+const roleOptions: { value: UsersModuleUserRole; label: string }[] = [
 	{
-		value: UsersUserRole.user,
+		value: UsersModuleUserRole.user,
 		label: t('usersModule.fields.role.options.user'),
 	},
 	{
-		value: UsersUserRole.admin,
+		value: UsersModuleUserRole.admin,
 		label: t('usersModule.fields.role.options.admin'),
 	},
 	{
-		value: UsersUserRole.owner,
+		value: UsersModuleUserRole.owner,
 		label: t('usersModule.fields.role.options.owner'),
 	},
 ];

@@ -18,6 +18,8 @@ export const transformChannelControlResponse = (response: IChannelControlRes): I
 	});
 
 	if (!parsedChannelControl.success) {
+		console.error('Schema validation failed with:', parsedChannelControl.error);
+
 		throw new DevicesValidationException('Failed to validate received channel control data.');
 	}
 
@@ -34,6 +36,8 @@ export const transformChannelControlCreateRequest = (
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate create channel control request.');
 	}
 

@@ -1,5 +1,5 @@
 export interface IIconPickerProps {
 	placeholder: string;
-	model: string;
+	modelValue: string | null | undefined;
 	iconSet?: string;
 }

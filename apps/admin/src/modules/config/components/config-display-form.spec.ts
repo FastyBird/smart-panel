@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigDisplayType } from '../../../openapi';
+import { ConfigModuleDisplayType } from '../../../openapi';
 import type { IConfigDisplayEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
 import type { ConfigDisplayStore } from '../store/config-display.store.types';
@@ -54,7 +54,7 @@ describe('ConfigDisplayForm', (): void => {
 				remoteFormReset: false,
 				layout: Layout.DEFAULT,
 				config: {
-					type: ConfigDisplayType.display,
+					type: ConfigModuleDisplayType.display,
 					darkMode: true,
 					brightness: 80,
 					screenLockDuration: 300,

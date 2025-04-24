@@ -114,6 +114,7 @@ describe('DataSourceService', () => {
 			create: jest.fn(),
 			save: jest.fn(),
 			remove: jest.fn(),
+			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
@@ -403,11 +404,11 @@ describe('DataSourceService', () => {
 		it('should remove a data source', async () => {
 			jest.spyOn(dataSourceService, 'findOne').mockResolvedValue(plainToInstance(MockDataSourceEntity, mockDataSource));
 
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockDataSource);
+			jest.spyOn(repository, 'delete');
 
 			await dataSourceService.remove(mockDataSource.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(MockDataSourceEntity, mockDataSource));
+			expect(repository.delete).toHaveBeenCalledWith(mockDataSource.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DATA_SOURCE_DELETED,
 				plainToInstance(MockDataSourceEntity, mockDataSource),

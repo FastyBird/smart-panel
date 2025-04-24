@@ -31,11 +31,31 @@
 		</el-form-item>
 
 		<el-form-item
+			:label="t('pagesDeviceDetailPlugin.fields.device.title')"
+			:prop="['device']"
+		>
+			<el-select
+				v-model="model.device"
+				:placeholder="t('pagesDeviceDetailPlugin.fields.device.placeholder')"
+				name="device"
+				:loading="loadingDevices"
+				filterable
+			>
+				<el-option
+					v-for="item in devicesOptions"
+					:key="item.value"
+					:label="item.label"
+					:value="item.value"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('dashboardModule.fields.pages.icon.title')"
 			:prop="['icon']"
 		>
 			<icon-picker
-				:model="model.icon"
+				v-model="model.icon"
 				:placeholder="t('dashboardModule.fields.pages.icon.placeholder')"
 			/>
 		</el-form-item>
@@ -54,21 +74,22 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { orderBy } from 'natural-orderby';
 
 import { IconPicker } from '../../../common';
-import { FormResult, type FormResultType, type IPageAddForm, usePageAddForm } from '../../../modules/dashboard';
-
-import type { IDeviceDetailPageAddFormProps } from './device-detail-page-add-form.types';
+import { DashboardException, FormResult, type FormResultType, type IPageAddFormProps, usePageAddForm } from '../../../modules/dashboard';
+import { type IDevice, useDevices } from '../../../modules/devices';
+import type { IDeviceDetailPageAddForm } from '../schemas/pages.types';
 
 defineOptions({
 	name: 'DeviceDetailPageAddForm',
 });
 
-const props = withDefaults(defineProps<IDeviceDetailPageAddFormProps>(), {
+const props = withDefaults(defineProps<IPageAddFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
@@ -83,10 +104,25 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = usePageAddForm({ id: props.id, type: 'device-detail' });
+const { model, formEl, formChanged, submit, formResult } = usePageAddForm<IDeviceDetailPageAddForm>({ id: props.id, type: 'device-detail' });
 
-const rules = reactive<FormRules<IPageAddForm>>({
+const { devices, fetchDevices, areLoading: loadingDevices } = useDevices();
+
+const rules = reactive<FormRules<IDeviceDetailPageAddForm>>({
 	title: [{ required: true, message: t('dashboardModule.fields.pages.title.validation.required'), trigger: 'change' }],
+	device: [{ required: true, message: t('pagesDeviceDetailPlugin.fields.device.validation.required'), trigger: 'change' }],
+});
+
+const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] => {
+	return orderBy<IDevice>(devices.value, [(device: IDevice) => device.name], ['asc']).map((device) => ({ value: device.id, label: device.name }));
+});
+
+onBeforeMount((): void => {
+	fetchDevices().catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new DashboardException('Something went wrong', err);
+	});
 });
 
 watch(
@@ -103,7 +139,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

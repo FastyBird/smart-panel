@@ -7,6 +7,15 @@ import 'package:flutter/foundation.dart';
 class TilesRepository extends Repository<TileModel> {
   TilesRepository({required super.apiClient});
 
+  List<TileModel> getForParent(String parentId, String parentType) {
+    return data.entries
+        .where((entry) =>
+            entry.value.parentId == parentId &&
+            entry.value.parentType == parentType)
+        .map((entry) => entry.value)
+        .toList();
+  }
+
   void insertTiles(List<Map<String, dynamic>> json) {
     late Map<String, TileModel> insertData = {...data};
 
@@ -42,7 +51,6 @@ class TilesRepository extends Repository<TileModel> {
           debugPrint(
             '[DASHBOARD MODULE][TILES] Failed to create tile model: ${e.toString()}',
           );
-          print(row);
         }
 
         /// Failed to create new model

@@ -15,6 +15,8 @@ export const transformDeviceResponse = (response: IDeviceRes, schema: typeof Dev
 	const parsedDevice = schema.safeParse(snakeToCamel(response));
 
 	if (!parsedDevice.success) {
+		console.error('Schema validation failed with:', parsedDevice.error);
+
 		throw new DevicesValidationException('Failed to validate received device data.');
 	}
 
@@ -28,6 +30,8 @@ export const transformDeviceCreateRequest = (
 	const parsedRequest = schema.safeParse(camelToSnake(device));
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate create device request.');
 	}
 
@@ -42,6 +46,8 @@ export const transformDeviceUpdateRequest = (
 	const parsedRequest = schema.safeParse(camelToSnake(device));
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate update device request.');
 	}
 

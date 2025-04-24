@@ -88,7 +88,7 @@
       "list": "Manage smart panel devices",
       "add": "Add new smart panel device",
       "edit": "Edit smart panel device",
-      "detail": "Manager smart panel device",
+      "detail": "Manage smart panel device",
       "adjustFilters": "Adjust display filters"
     },
     "channels": {
@@ -138,8 +138,7 @@
       "noMoreAllowed": "All required and optional properties are assigned to the channel. No others can be added."
     },
     "misc": {
-      "requestError": "Something went wrong, please try again later.",
-      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+      "requestError": "Something went wrong, please try again later."
     }
   },
   "texts": {
@@ -259,7 +258,8 @@
     },
     "misc": {
       "notSet": "Not set",
-      "noValuesProvided": "No values provided"
+      "noValuesProvided": "No values provided",
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
     }
   },
   "fields": {

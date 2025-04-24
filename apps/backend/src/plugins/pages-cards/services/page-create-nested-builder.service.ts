@@ -5,7 +5,6 @@ import { DataSource as OrmDataSource } from 'typeorm/data-source/DataSource';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { DashboardValidationException } from '../../../modules/dashboard/dashboard.exceptions';
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
@@ -16,6 +15,7 @@ import { TilesTypeMapperService } from '../../../modules/dashboard/services/tile
 import { CreateCardDto } from '../dto/create-card.dto';
 import { CreateCardsPageDto } from '../dto/create-page.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
+import { PagesCardsValidationException } from '../pages-cards.exceptions';
 
 @Injectable()
 export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
@@ -128,7 +128,7 @@ export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
 		if (errors.length > 0) {
 			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
 
-			throw new DashboardValidationException('Provided card data are invalid.');
+			throw new PagesCardsValidationException('Provided card data are invalid.');
 		}
 
 		return dtoInstance;

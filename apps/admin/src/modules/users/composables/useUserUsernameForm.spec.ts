@@ -4,7 +4,7 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
 import type { IUser, UsersStore } from '../store/users.store.types';
 import { UsersApiException } from '../users.exceptions';
@@ -56,7 +56,7 @@ describe('useUserUsernameForm', (): void => {
 			email: 'test@example.com',
 			firstName: 'John',
 			lastName: 'Doe',
-			role: UsersUserRole.user,
+			role: UsersModuleUserRole.user,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),

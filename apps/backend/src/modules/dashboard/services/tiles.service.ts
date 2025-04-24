@@ -238,7 +238,7 @@ export class TilesService {
 
 		const tile = await this.getOneOrThrow<TileEntity>(id);
 
-		await this.repository.remove(tile);
+		await this.repository.delete(tile.id);
 
 		this.logger.log(`[DELETE] Successfully removed tile with id=${id}`);
 

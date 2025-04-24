@@ -3,8 +3,10 @@ import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
-type ReqUpdateDataSource = components['schemas']['DashboardReqUpdateDataSource'];
-type UpdateDataSource = components['schemas']['DashboardUpdateDataSource'];
+import { ParentDto } from './common.dto';
+
+type ReqUpdateDataSource = components['schemas']['DashboardModuleReqUpdateDataSource'];
+type UpdateDataSource = components['schemas']['DashboardModuleUpdateDataSource'];
 
 export abstract class UpdateDataSourceDto implements UpdateDataSource {
 	@Expose()
@@ -13,9 +15,23 @@ export abstract class UpdateDataSourceDto implements UpdateDataSource {
 	readonly type: string;
 }
 
+export class UpdateSingleDataSourceDto extends UpdateDataSourceDto {
+	@Expose()
+	@ValidateNested()
+	@Type(() => ParentDto)
+	readonly parent: ParentDto;
+}
+
 export class ReqUpdateDataSourceDto implements ReqUpdateDataSource {
 	@Expose()
 	@ValidateNested()
 	@Type(() => UpdateDataSourceDto)
 	data: UpdateDataSourceDto;
+}
+
+export class ReqUpdateDataSourceWithParentDto implements ReqUpdateDataSource {
+	@Expose()
+	@ValidateNested()
+	@Type(() => UpdateSingleDataSourceDto)
+	data: UpdateSingleDataSourceDto;
 }

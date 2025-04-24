@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
+import { DataSourceSchema } from '../store/data-sources.store.schemas';
 
 import { useDataSourcesPlugin } from './useDataSourcesPlugin';
+
+const dataSourceSchema = DataSourceSchema;
 
 const mockPluginList = [
 	{
@@ -14,6 +17,9 @@ const mockPluginList = [
 			documentation: '',
 			devDocumentation: '',
 			bugsTracking: '',
+		},
+		schemas: {
+			dataSourceSchema,
 		},
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],

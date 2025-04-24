@@ -5,7 +5,7 @@ import { UpdatePageDto } from '../../../modules/dashboard/dto/update-page.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
 import type { components } from '../../../openapi';
 
-type UpdateDeviceDetailPage = components['schemas']['DashboardUpdateDeviceDetailPage'];
+type UpdateDeviceDetailPage = components['schemas']['PagesDeviceDetailPluginUpdateDeviceDetailPage'];
 
 export class UpdateDeviceDetailPageDto extends UpdatePageDto implements UpdateDeviceDetailPage {
 	readonly type: 'device-detail';

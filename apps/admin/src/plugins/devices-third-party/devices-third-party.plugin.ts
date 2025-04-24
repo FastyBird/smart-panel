@@ -18,7 +18,7 @@ export default {
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
-			const mergedMessages = defaultsDeep(currentMessages, { thirdPartyDevicesPlugin: translations });
+			const mergedMessages = defaultsDeep(currentMessages, { devicesThirdPartyPlugin: translations });
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}

@@ -4,7 +4,7 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DashboardApiException, DashboardException } from '../dashboard.exceptions';
-import { type IDataSource } from '../store/dataSources.store.types';
+import { type IDataSource } from '../store/data-sources.store.types';
 import { dataSourcesStoreKey } from '../store/keys';
 
 import type { IUseDataSourcesActions } from './types';

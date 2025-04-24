@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import { FormResult } from '../../../modules/devices';
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import ThirdPartyDeviceEditForm from './third-party-device-edit-form.vue';
@@ -11,8 +11,8 @@ import ThirdPartyDeviceEditForm from './third-party-device-edit-form.vue';
 vi.mock('../composables/composables', () => ({
 	useThirdPartyDeviceEditForm: () => ({
 		categoriesOptions: [
-			{ value: 'generic', label: DevicesDeviceCategory.generic },
-			{ value: 'lighting', label: DevicesDeviceCategory.lighting },
+			{ value: 'generic', label: DevicesModuleDeviceCategory.generic },
+			{ value: 'lighting', label: DevicesModuleDeviceCategory.lighting },
 		],
 		model: {
 			id: '123',
@@ -47,7 +47,7 @@ describe('ThirdPartyDeviceEditForm', () => {
 				device: {
 					id: '123',
 					type: 'third-party',
-					category: DevicesDeviceCategory.generic,
+					category: DevicesModuleDeviceCategory.generic,
 					name: '',
 					description: '',
 					serviceAddress: '',

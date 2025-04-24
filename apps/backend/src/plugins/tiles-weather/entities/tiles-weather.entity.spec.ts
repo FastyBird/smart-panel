@@ -19,8 +19,8 @@ import { components } from '../../../openapi';
 
 import { DayWeatherTileEntity, ForecastWeatherTileEntity } from './tiles-weather.entity';
 
-type DayWeatherTile = components['schemas']['DashboardDayWeatherTile'];
-type ForecastWeatherTile = components['schemas']['DashboardForecastWeatherTile'];
+type DayWeatherTile = components['schemas']['TilesWeatherPluginDayWeatherTile'];
+type ForecastWeatherTile = components['schemas']['TilesWeatherPluginForecastWeatherTile'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -44,7 +44,7 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 	};
 
 	test('DayWeatherTileEntity matches DashboardDayWeatherTile', () => {
-		const openApiModel: DayWeatherTile = {
+		const openApiModel: DayWeatherTile & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
 			type: 'weather-day',
 			parent: {
@@ -55,9 +55,12 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 			col: 0,
 			row_span: 2,
 			col_span: 2,
+			hidden: false,
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			parent_type: 'page',
+			parent_id: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(DayWeatherTileEntity, openApiModel, {
@@ -72,13 +75,11 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 			forbidNonWhitelisted: true,
 		});
 
-		const nonInternalErrors = errors.filter((error) => !['parentType', 'parentId'].includes(error.property));
-
-		expect(nonInternalErrors).toHaveLength(0);
+		expect(errors).toHaveLength(0);
 	});
 
 	test('ForecastWeatherTileEntity matches DashboardForecastWeatherTile', () => {
-		const openApiModel: ForecastWeatherTile = {
+		const openApiModel: ForecastWeatherTile & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
 			type: 'weather-forecast',
 			parent: {
@@ -89,9 +90,12 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 			col: 0,
 			row_span: 2,
 			col_span: 2,
+			hidden: false,
 			data_source: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			parent_type: 'page',
+			parent_id: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(ForecastWeatherTileEntity, openApiModel, {
@@ -106,8 +110,6 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 			forbidNonWhitelisted: true,
 		});
 
-		const nonInternalErrors = errors.filter((error) => !['parentType', 'parentId'].includes(error.property));
-
-		expect(nonInternalErrors).toHaveLength(0);
+		expect(errors).toHaveLength(0);
 	});
 });

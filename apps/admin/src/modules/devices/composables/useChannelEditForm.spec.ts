@@ -1,7 +1,9 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import type { IChannel } from '../store/channels.store.types';
@@ -13,7 +15,7 @@ const mockChannel: IChannel = {
 	device: 'device-1',
 	name: 'Channel Name',
 	description: 'Some desc',
-	category: DevicesChannelCategory.light,
+	category: DevicesModuleChannelCategory.light,
 	draft: true,
 } as IChannel;
 
@@ -73,7 +75,7 @@ describe('useChannelEditForm', () => {
 		const form = useChannelEditForm({ channel: mockChannel });
 
 		form.model.name = 'Updated';
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});

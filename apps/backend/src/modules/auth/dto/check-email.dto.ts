@@ -3,8 +3,8 @@ import { IsEmail, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
-type ReqCheckEmail = components['schemas']['AuthReqCheckEmail'];
-type CheckEmail = components['schemas']['AuthCheckEmail'];
+type ReqCheckEmail = components['schemas']['AuthModuleReqCheckEmail'];
+type CheckEmail = components['schemas']['AuthModuleCheckEmail'];
 
 export class CheckEmailDto implements CheckEmail {
 	@Expose()

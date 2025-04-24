@@ -19,7 +19,7 @@ import { components } from '../../../openapi';
 
 import { TilesPageEntity } from './pages-tiles.entity';
 
-type TilesPage = components['schemas']['DashboardTilesPage'];
+type TilesPage = components['schemas']['PagesTilesPluginTilesPage'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 

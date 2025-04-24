@@ -1,15 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { DevicesChannelCategory, type components } from '../../../openapi';
+import { DevicesModuleChannelCategory, type components } from '../../../openapi';
 
 import { ChannelControlCreateReqSchema, ChannelControlResSchema } from './channels.controls.store.schemas';
 import { ChannelPropertyCreateReqSchema, ChannelPropertyResSchema } from './channels.properties.store.schemas';
 import { ItemIdSchema } from './types';
 
-type ApiCreateChannel = components['schemas']['DevicesCreateChannel'];
-type ApiUpdateChannel = components['schemas']['DevicesUpdateChannel'];
-type ApiChannel = components['schemas']['DevicesChannel'];
+type ApiCreateChannel = components['schemas']['DevicesModuleCreateChannel'];
+type ApiUpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
+type ApiChannel = components['schemas']['DevicesModuleChannel'];
 
 // STORE STATE
 // ===========
@@ -18,7 +18,7 @@ export const ChannelSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
 	device: ItemIdSchema,
-	category: z.nativeEnum(DevicesChannelCategory).default(DevicesChannelCategory.generic),
+	category: z.nativeEnum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
@@ -47,7 +47,7 @@ export const ChannelsSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	deviceId: ItemIdSchema,
 	data: z.object({
-		category: z.nativeEnum(DevicesChannelCategory).default(DevicesChannelCategory.generic),
+		category: z.nativeEnum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
 		name: z.string().trim().nonempty(),
 		description: z
 			.string()
@@ -77,7 +77,7 @@ export const ChannelsAddActionPayloadSchema = z.object({
 	deviceId: ItemIdSchema,
 	draft: z.boolean().optional().default(false),
 	data: z.object({
-		category: z.nativeEnum(DevicesChannelCategory).default(DevicesChannelCategory.generic),
+		category: z.nativeEnum(DevicesModuleChannelCategory).default(DevicesModuleChannelCategory.generic),
 		name: z.string().trim().nonempty(),
 		description: z
 			.string()
@@ -92,7 +92,7 @@ export const ChannelsEditActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	deviceId: ItemIdSchema.optional(),
 	data: z.object({
-		category: z.nativeEnum(DevicesChannelCategory).optional(),
+		category: z.nativeEnum(DevicesModuleChannelCategory).optional(),
 		name: z.string().trim().optional(),
 		description: z
 			.string()
@@ -119,7 +119,7 @@ export const ChannelsRemoveActionPayloadSchema = z.object({
 export const ChannelCreateReqSchema: ZodType<ApiCreateChannel> = z.object({
 	id: z.string().uuid().optional(),
 	device: z.string().uuid(),
-	category: z.nativeEnum(DevicesChannelCategory),
+	category: z.nativeEnum(DevicesModuleChannelCategory),
 	name: z.string().trim().nonempty(),
 	description: z
 		.string()
@@ -144,7 +144,7 @@ export const ChannelUpdateReqSchema: ZodType<ApiUpdateChannel> = z.object({
 export const ChannelResSchema: ZodType<ApiChannel> = z.object({
 	id: z.string().uuid(),
 	device: z.string().uuid(),
-	category: z.nativeEnum(DevicesChannelCategory),
+	category: z.nativeEnum(DevicesModuleChannelCategory),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	created_at: z.string().date(),

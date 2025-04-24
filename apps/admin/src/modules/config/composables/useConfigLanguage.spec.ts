@@ -5,16 +5,16 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigLanguageLanguage, ConfigLanguageTime_format, ConfigLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
 import type { IConfigLanguage } from '../store/config-language.store.types';
 
 import { useConfigLanguage } from './useConfigLanguage';
 
 const mockLanguage: IConfigLanguage = {
-	type: ConfigLanguageType.language,
-	language: ConfigLanguageLanguage.en_US,
+	type: ConfigModuleLanguageType.language,
+	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	timeFormat: ConfigLanguageTime_format.Value24h,
+	timeFormat: ConfigModuleLanguageTime_format.Value24h,
 };
 
 vi.mock('../../../common', async () => {

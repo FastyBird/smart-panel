@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
-export const DataSourceCreateSchema = z.object({
+export const DataSourceAddFormSchema = z.object({
 	id: z.string().uuid().optional(),
+	type: z.string().trim().nonempty(),
 });
 
-export const DataSourceUpdateSchema = z.object({});
+export const DataSourceEditFormSchema = z.object({
+	id: z.string().uuid(),
+	type: z.string().trim().nonempty(),
+});

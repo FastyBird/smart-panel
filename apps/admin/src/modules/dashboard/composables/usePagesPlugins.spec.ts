@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
+import { PageSchema } from '../store/pages.store.schemas';
 
 import { usePagesPlugins } from './usePagesPlugins';
+
+const pageSchema = PageSchema;
 
 const mockPluginList = [
 	{
@@ -14,6 +17,9 @@ const mockPluginList = [
 			documentation: '',
 			devDocumentation: '',
 			bugsTracking: '',
+		},
+		schemas: {
+			pageSchema,
 		},
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],

@@ -9,7 +9,7 @@ import { injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
-import { registerDataSourcesStore } from './store/dataSources.store';
+import { registerDataSourcesStore } from './store/data-sources.store';
 import { dataSourcesStoreKey, pagesStoreKey, tilesStoreKey } from './store/keys';
 import { registerPagesStore } from './store/pages.store';
 import { registerTilesStore } from './store/tiles.store';

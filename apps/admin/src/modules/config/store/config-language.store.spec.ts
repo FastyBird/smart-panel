@@ -2,24 +2,24 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigLanguageLanguage, ConfigLanguageTime_format, ConfigLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigLanguage } from './config-language.store';
 import type { IConfigLanguageEditActionPayload, IConfigLanguageSetActionPayload } from './config-language.store.types';
 
 const mockLanguageRes = {
-	type: ConfigLanguageType.language,
-	language: ConfigLanguageLanguage.en_US,
+	type: ConfigModuleLanguageType.language,
+	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	time_format: ConfigLanguageTime_format.Value24h,
+	time_format: ConfigModuleLanguageTime_format.Value24h,
 };
 
 const mockLanguage = {
-	type: ConfigLanguageType.language,
-	language: ConfigLanguageLanguage.en_US,
+	type: ConfigModuleLanguageType.language,
+	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	timeFormat: ConfigLanguageTime_format.Value24h,
+	timeFormat: ConfigModuleLanguageTime_format.Value24h,
 };
 
 const backendClient = {
@@ -90,17 +90,17 @@ describe('ConfigLanguage Store', () => {
 		store.data = { ...mockLanguage };
 
 		(backendClient.PATCH as Mock).mockResolvedValue({
-			data: { data: { ...mockLanguageRes, language: ConfigLanguageLanguage.cs_CZ } },
+			data: { data: { ...mockLanguageRes, language: ConfigModuleLanguageLanguage.cs_CZ } },
 			error: undefined,
 			response: { status: 200 },
 		});
 
 		const result = await store.edit({
-			data: { ...mockLanguage, language: ConfigLanguageLanguage.cs_CZ },
+			data: { ...mockLanguage, language: ConfigModuleLanguageLanguage.cs_CZ },
 		});
 
-		expect(result.language).toBe(ConfigLanguageLanguage.cs_CZ);
-		expect(store.data?.language).toBe(ConfigLanguageLanguage.cs_CZ);
+		expect(result.language).toBe(ConfigModuleLanguageLanguage.cs_CZ);
+		expect(store.data?.language).toBe(ConfigModuleLanguageLanguage.cs_CZ);
 	});
 
 	it('should throw validation error if edit payload is invalid', async () => {
@@ -112,7 +112,7 @@ describe('ConfigLanguage Store', () => {
 	});
 
 	it('should throw validation error if local data + edit is invalid', async () => {
-		store.data = { ...mockLanguage, language: ConfigLanguageLanguage.cs_CZ };
+		store.data = { ...mockLanguage, language: ConfigModuleLanguageLanguage.cs_CZ };
 
 		await expect(
 			store.edit({
@@ -136,6 +136,6 @@ describe('ConfigLanguage Store', () => {
 			response: { status: 200 },
 		});
 
-		await expect(store.edit({ data: { ...mockLanguage, language: ConfigLanguageLanguage.cs_CZ } })).rejects.toThrow(ConfigApiException);
+		await expect(store.edit({ data: { ...mockLanguage, language: ConfigModuleLanguageLanguage.cs_CZ } })).rejects.toThrow(ConfigApiException);
 	});
 });

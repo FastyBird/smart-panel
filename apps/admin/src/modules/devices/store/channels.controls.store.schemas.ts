@@ -5,8 +5,8 @@ import { type components } from '../../../openapi';
 
 import { ItemIdSchema } from './types';
 
-type ApiCreateChannelControl = components['schemas']['DevicesCreateChannelControl'];
-type ApiChannelControl = components['schemas']['DevicesChannelControl'];
+type ApiCreateChannelControl = components['schemas']['DevicesModuleCreateChannelControl'];
+type ApiChannelControl = components['schemas']['DevicesModuleChannelControl'];
 
 // STORE STATE
 // ===========

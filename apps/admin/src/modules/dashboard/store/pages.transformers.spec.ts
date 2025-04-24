@@ -17,6 +17,7 @@ const validPageResponse: IPageRes = {
 	icon: 'test',
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
+	data_source: [],
 };
 
 const validPageCreatePayload: IPagesAddActionPayload['data'] = {

@@ -94,6 +94,7 @@ describe('PagesService', () => {
 			create: jest.fn(),
 			save: jest.fn(),
 			remove: jest.fn(),
+			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
@@ -335,11 +336,11 @@ describe('PagesService', () => {
 	describe('remove', () => {
 		it('should delete a page', async () => {
 			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(MockPageEntity, mockPageOne));
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockPageOne);
+			jest.spyOn(repository, 'delete');
 
 			await service.remove(mockPageOne.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(MockPageEntity, mockPageOne));
+			expect(repository.delete).toHaveBeenCalledWith(mockPageOne.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_DELETED,
 				plainToInstance(MockPageEntity, mockPageOne),

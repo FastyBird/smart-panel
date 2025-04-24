@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { DevicesChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';
@@ -39,7 +39,7 @@ export const useChannelEditForm = ({ channel, messages }: IUseChannelEditFormPro
 		return devices.value.find((device) => device.id === channel.device) ?? null;
 	});
 
-	const existingChannels = computed<DevicesChannelCategory[]>((): DevicesChannelCategory[] => {
+	const existingChannels = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
 		return device.value
 			? channelsStore
 					.findForDevice(device.value.id)
@@ -49,34 +49,38 @@ export const useChannelEditForm = ({ channel, messages }: IUseChannelEditFormPro
 	});
 
 	const mappedCategories = computed<{
-		required: DevicesChannelCategory[];
-		optional: DevicesChannelCategory[];
-		multiple?: DevicesChannelCategory[];
-	} | null>((): { required: DevicesChannelCategory[]; optional: DevicesChannelCategory[]; multiple?: DevicesChannelCategory[] } | null => {
-		if (!device.value) {
-			return null;
+		required: DevicesModuleChannelCategory[];
+		optional: DevicesModuleChannelCategory[];
+		multiple?: DevicesModuleChannelCategory[];
+	} | null>(
+		(): { required: DevicesModuleChannelCategory[]; optional: DevicesModuleChannelCategory[]; multiple?: DevicesModuleChannelCategory[] } | null => {
+			if (!device.value) {
+				return null;
+			}
+
+			if (!(device.value.category in deviceChannelsSpecificationMappers)) {
+				return null;
+			}
+
+			return deviceChannelsSpecificationMappers[device.value.category];
 		}
+	);
 
-		if (!(device.value.category in deviceChannelsSpecificationMappers)) {
-			return null;
+	const categoriesOptions = computed<{ value: DevicesModuleChannelCategory; label: string }[]>(
+		(): { value: DevicesModuleChannelCategory; label: string }[] => {
+			if (mappedCategories.value === null) {
+				return [];
+			}
+
+			return Object.values(DevicesModuleChannelCategory)
+				.filter((value) => mappedCategories.value?.required.includes(value) || mappedCategories.value?.optional.includes(value))
+				.filter((value) => !existingChannels.value.includes(value) || mappedCategories.value?.multiple?.includes(value))
+				.map((value) => ({
+					value,
+					label: t(`devicesModule.categories.channels.${value}`),
+				}));
 		}
-
-		return deviceChannelsSpecificationMappers[device.value.category];
-	});
-
-	const categoriesOptions = computed<{ value: DevicesChannelCategory; label: string }[]>((): { value: DevicesChannelCategory; label: string }[] => {
-		if (mappedCategories.value === null) {
-			return [];
-		}
-
-		return Object.values(DevicesChannelCategory)
-			.filter((value) => mappedCategories.value?.required.includes(value) || mappedCategories.value?.optional.includes(value))
-			.filter((value) => !existingChannels.value.includes(value) || mappedCategories.value?.multiple?.includes(value))
-			.map((value) => ({
-				value,
-				label: t(`devicesModule.categories.channels.${value}`),
-			}));
-	});
+	);
 
 	const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] => {
 		return devices.value.map((device) => ({ value: device.id, label: device.name }));

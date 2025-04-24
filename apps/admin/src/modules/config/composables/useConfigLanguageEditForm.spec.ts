@@ -1,17 +1,19 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigLanguageLanguage, ConfigLanguageTime_format, ConfigLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigLanguageEditForm } from './useConfigLanguageEditForm';
 
 const mockConfig = {
-	type: ConfigLanguageType.language,
-	language: ConfigLanguageLanguage.en_US,
+	type: ConfigModuleLanguageType.language,
+	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	timeFormat: ConfigLanguageTime_format.Value24h,
+	timeFormat: ConfigModuleLanguageTime_format.Value24h,
 };
 
 const mockEdit = vi.fn();
@@ -50,16 +52,16 @@ describe('useConfigLanguageEditForm', () => {
 	it('initializes model with config data', () => {
 		const form = useConfigLanguageEditForm({ config: mockConfig });
 
-		expect(form.model.language).toBe(ConfigLanguageLanguage.en_US);
+		expect(form.model.language).toBe(ConfigModuleLanguageLanguage.en_US);
 		expect(form.model.timezone).toBe('Europe/Prague');
-		expect(form.model.timeFormat).toBe(ConfigLanguageTime_format.Value24h);
+		expect(form.model.timeFormat).toBe(ConfigModuleLanguageTime_format.Value24h);
 	});
 
 	it('sets formChanged to true when model changes', async () => {
 		const form = useConfigLanguageEditForm({ config: mockConfig });
 
-		form.model.language = ConfigLanguageLanguage.cs_CZ;
-		await Promise.resolve();
+		form.model.language = ConfigModuleLanguageLanguage.cs_CZ;
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});

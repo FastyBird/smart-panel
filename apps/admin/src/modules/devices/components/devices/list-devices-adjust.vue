@@ -109,7 +109,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { DevicesDeviceCategory } from '../../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../../openapi';
 import { type IDevicesFilter, usePlugins } from '../../composables/composables';
 import { ConnectionState } from '../../devices.constants';
 
@@ -143,7 +143,7 @@ const states: ConnectionState[] = [
 	ConnectionState.UNKNOWN,
 ];
 
-const categories: string[] = Object.values(DevicesDeviceCategory);
+const categories: string[] = Object.values(DevicesModuleDeviceCategory);
 
 const activeBoxes = ref<string[]>(['types', 'states', 'categories']);
 

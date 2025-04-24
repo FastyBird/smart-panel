@@ -106,6 +106,7 @@ export class PagesController {
 		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
+			excludeExtraneousValues: true,
 		});
 
 		const errors = await validate(dtoInstance, {
@@ -168,6 +169,7 @@ export class PagesController {
 		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
+			excludeExtraneousValues: true,
 		});
 
 		const errors = await validate(dtoInstance, {

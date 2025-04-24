@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import { ConfigLanguageLanguage, ConfigLanguageTime_format, ConfigLanguageType } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigLanguageEditActionPayload, IConfigLanguageRes } from './config-language.store.types';
 import { transformConfigLanguageResponse, transformConfigLanguageUpdateRequest } from './config-language.transformers';
 
 const validConfigLanguageResponse: IConfigLanguageRes = {
-	type: ConfigLanguageType.language,
-	language: ConfigLanguageLanguage.en_US,
+	type: ConfigModuleLanguageType.language,
+	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	time_format: ConfigLanguageTime_format.Value24h,
+	time_format: ConfigModuleLanguageTime_format.Value24h,
 };
 
 const validConfigLanguageUpdatePayload: IConfigLanguageEditActionPayload['data'] = {
-	language: ConfigLanguageLanguage.en_US,
+	language: ConfigModuleLanguageLanguage.en_US,
 	timezone: 'Europe/Prague',
-	timeFormat: ConfigLanguageTime_format.Value24h,
+	timeFormat: ConfigModuleLanguageTime_format.Value24h,
 };
 
 describe('Config Language Transformers', (): void => {
@@ -25,10 +25,10 @@ describe('Config Language Transformers', (): void => {
 			const result = transformConfigLanguageResponse(validConfigLanguageResponse);
 
 			expect(result).toEqual({
-				type: ConfigLanguageType.language,
-				language: ConfigLanguageLanguage.en_US,
+				type: ConfigModuleLanguageType.language,
+				language: ConfigModuleLanguageLanguage.en_US,
 				timezone: 'Europe/Prague',
-				timeFormat: ConfigLanguageTime_format.Value24h,
+				timeFormat: ConfigModuleLanguageTime_format.Value24h,
 			});
 		});
 
@@ -44,10 +44,10 @@ describe('Config Language Transformers', (): void => {
 			const result = transformConfigLanguageUpdateRequest(validConfigLanguageUpdatePayload);
 
 			expect(result).toEqual({
-				type: ConfigLanguageType.language,
-				language: ConfigLanguageLanguage.en_US,
+				type: ConfigModuleLanguageType.language,
+				language: ConfigModuleLanguageLanguage.en_US,
 				timezone: 'Europe/Prague',
-				time_format: ConfigLanguageTime_format.Value24h,
+				time_format: ConfigModuleLanguageTime_format.Value24h,
 			});
 		});
 

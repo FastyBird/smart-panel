@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { ConfigAudioType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleAudioType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -44,9 +44,11 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 		let pendingGetPromises: Promise<IConfigAudio> | null = null;
 
 		const set = (payload: IConfigAudioSetActionPayload): IConfigAudio => {
-			const parsedConfigAudio = ConfigAudioSchema.safeParse({ ...payload.data, type: ConfigAudioType.audio });
+			const parsedConfigAudio = ConfigAudioSchema.safeParse({ ...payload.data, type: ConfigModuleAudioType.audio });
 
 			if (!parsedConfigAudio.success) {
+				console.error('Schema validation failed with:', parsedConfigAudio.error);
+
 				throw new ConfigValidationException('Failed to insert audio config.');
 			}
 
@@ -107,6 +109,8 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 			const parsedPayload = ConfigAudioEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
 				throw new ConfigValidationException('Failed to edit audio config.');
 			}
 
@@ -120,6 +124,8 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 			});
 
 			if (!parsedEditedConfig.success) {
+				console.error('Schema validation failed with:', parsedEditedConfig.error);
+
 				throw new ConfigValidationException('Failed to edit audio config.');
 			}
 

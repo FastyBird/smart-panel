@@ -14,6 +14,7 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
@@ -21,7 +22,7 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateSingleTileDto, CreateTileDto } from '../dto/create-tile.dto';
-import { UpdateTileDto } from '../dto/update-tile.dto';
+import { UpdateSingleTileDto, UpdateTileDto } from '../dto/update-tile.dto';
 import { TileEntity } from '../entities/dashboard.entity';
 import { TileTypeMapping, TilesTypeMapperService } from '../services/tiles-type-mapper.service';
 import { TilesService } from '../services/tiles.service';
@@ -36,10 +37,20 @@ export class TilesController {
 	) {}
 
 	@Get()
-	async findAll(): Promise<TileEntity[]> {
+	async findAll(
+		@Query('parent_type') parentType?: string,
+		@Query('parent_id') parentId?: string,
+	): Promise<TileEntity[]> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all tiles`);
 
-		const tiles = await this.tilesService.findAll();
+		const tiles = await this.tilesService.findAll(
+			parentType && parentId
+				? {
+						parentType,
+						parentId,
+					}
+				: undefined,
+		);
 
 		this.logger.debug(`[LOOKUP ALL] Retrieved ${tiles.length} tiles`);
 
@@ -102,9 +113,12 @@ export class TilesController {
 			throw error;
 		}
 
+		const { parent } = baseDtoInstance;
+
 		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
+			excludeExtraneousValues: true,
 		});
 
 		const errors = await validate(dtoInstance, {
@@ -120,8 +134,8 @@ export class TilesController {
 
 		try {
 			const tile = await this.tilesService.create(dtoInstance, {
-				parentType: baseDtoInstance.parent.type,
-				parentId: baseDtoInstance.parent.id,
+				parentType: parent.type,
+				parentId: parent.id,
 			});
 
 			this.logger.debug(`[CREATE] Successfully created tile id=${tile.id}`);
@@ -144,6 +158,23 @@ export class TilesController {
 		this.logger.debug(`[UPDATE] Incoming update request for tile id=${id}`);
 
 		const tile = await this.getOneOrThrow(id);
+
+		const baseDtoInstance = plainToInstance(UpdateSingleTileDto, updateDto.data, {
+			enableImplicitConversion: true,
+			exposeUnsetFields: false,
+		});
+
+		const baseErrors = await validate(baseDtoInstance, {
+			whitelist: true,
+		});
+
+		if (baseErrors.length > 0) {
+			this.logger.error(
+				`[VALIDATION FAILED] Validation failed for tile modification error=${JSON.stringify(baseErrors)}`,
+			);
+
+			throw ValidationExceptionFactory.createException(baseErrors);
+		}
 
 		let mapping: TileTypeMapping<TileEntity, CreateTileDto, UpdateTileDto>;
 
@@ -169,6 +200,7 @@ export class TilesController {
 		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
+			excludeExtraneousValues: true,
 		});
 
 		const errors = await validate(dtoInstance, {

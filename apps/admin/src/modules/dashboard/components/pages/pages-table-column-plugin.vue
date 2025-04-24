@@ -17,7 +17,7 @@
 				/>
 			</el-icon>
 
-			{{ props.page.type }}
+			{{ plugin?.name || props.page.type }}
 		</el-link>
 	</el-text>
 </template>
@@ -28,6 +28,7 @@ import { ElIcon, ElLink, ElText } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import type { IPlugin } from '../../../../common';
+import { usePagesPlugin } from '../../composables/usePagesPlugin';
 
 import type { IPagesTableColumnPluginProps } from './pages-table-column-plugin.types';
 
@@ -40,4 +41,6 @@ const props = defineProps<IPagesTableColumnPluginProps>();
 const emit = defineEmits<{
 	(e: 'filter-by', value: IPlugin['type'], add: boolean): void;
 }>();
+
+const { plugin } = usePagesPlugin({ type: props.page.type });
 </script>

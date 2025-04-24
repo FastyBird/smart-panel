@@ -1,5 +1,5 @@
 import { camelToSnake, snakeToCamel } from '../../../common';
-import { ConfigWeatherType } from '../../../openapi';
+import { ConfigModuleWeatherType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioRes } from './config-audio.store.types';
@@ -14,6 +14,8 @@ export const transformConfigWeatherResponse = (
 	const parsed = ConfigWeatherSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
+
 		throw new ConfigValidationException('Failed to validate received weather config data.');
 	}
 
@@ -21,9 +23,11 @@ export const transformConfigWeatherResponse = (
 };
 
 export const transformConfigWeatherUpdateRequest = (config: IConfigWeatherEditActionPayload['data']): IConfigWeatherUpdateReq => {
-	const parsedRequest = ConfigWeatherUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigWeatherType.weather });
+	const parsedRequest = ConfigWeatherUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleWeatherType.weather });
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new ConfigValidationException('Failed to validate update weather config request.');
 	}
 

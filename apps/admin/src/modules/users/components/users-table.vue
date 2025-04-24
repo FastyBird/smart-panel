@@ -226,7 +226,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, UserAvatar, useBreakpoints } from '../../../common';
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import type { IUsersFilter } from '../composables/types';
 import type { IUser } from '../store/users.store.types';
 
@@ -280,7 +280,7 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		let filteredRoles = innerFilters.value.roles;
 
 		if (add === true) {
-			filteredRoles.push(data as UsersUserRole);
+			filteredRoles.push(data as UsersModuleUserRole);
 		} else {
 			filteredRoles = innerFilters.value.roles.filter((item) => item !== data);
 		}

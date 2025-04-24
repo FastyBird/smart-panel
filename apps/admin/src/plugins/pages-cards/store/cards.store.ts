@@ -20,8 +20,8 @@ import {
 	useDataSourcesPlugins,
 	useTilesPlugins,
 } from '../../../modules/dashboard';
-import { DASHBOARD_MODULE_PREFIX } from '../../../modules/dashboard';
 import type { operations } from '../../../openapi';
+import { PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.contants';
 
 import { CardSchema, CardsAddActionPayloadSchema, CardsEditActionPayloadSchema } from './cards.store.schemas';
 import type {
@@ -87,6 +87,8 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			const parsedCard = CardSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsedCard.success) {
+				console.error('Schema validation failed with:', parsedCard.error);
+
 				throw new DashboardValidationException('Failed to insert card.');
 			}
 
@@ -96,6 +98,8 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const parsedCard = CardSchema.safeParse({ ...payload.data, id: payload.id, page: payload.pageId });
 
 		if (!parsedCard.success) {
+			console.error('Schema validation failed with:', parsedCard.error);
+
 			throw new DashboardValidationException('Failed to insert card.');
 		}
 
@@ -140,7 +144,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 			semaphore.value.fetching.item.push(payload.id);
 
-			const apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{id}`, {
+			const apiResponse = await backend.client.GET(`/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
 				params: {
 					path: { pageId: payload.pageId, id: payload.id },
 				},
@@ -164,7 +168,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			let errorReason: string | null = 'Failed to fetch card.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['get-dashboard-module-page-card']>(error, errorReason);
+				errorReason = getErrorReason<operations['get-pages-cards-plugin-page-card']>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -194,9 +198,9 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			firstLoad.value = firstLoad.value.filter((item) => item !== payload.pageId);
 			firstLoad.value = [...new Set(firstLoad.value)];
 
-			const apiResponse = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards`, {
+			const apiResponse = await backend.client.GET(`/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
 				params: {
-					path: { pageId: payload.pageId },
+					query: { page: payload.pageId },
 				},
 			});
 
@@ -231,7 +235,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			let errorReason: string | null = 'Failed to fetch cards.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['get-dashboard-module-page-cards']>(error, errorReason);
+				errorReason = getErrorReason<operations['get-pages-cards-plugin-page-cards']>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -250,6 +254,8 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const parsedPayload = CardsAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DashboardValidationException('Failed to add card.');
 		}
 
@@ -262,6 +268,8 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		});
 
 		if (!parsedNewCard.success) {
+			console.error('Schema validation failed with:', parsedNewCard.error);
+
 			throw new DashboardValidationException('Failed to add card.');
 		}
 
@@ -278,12 +286,9 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				data: responseData,
 				error,
 				response,
-			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards`, {
-				params: {
-					path: { pageId: payload.pageId },
-				},
+			} = await backend.client.POST(`/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
 				body: {
-					data: transformCardCreateRequest({ ...parsedNewCard.data, ...{ id: payload.id, page: payload.pageId } }),
+					data: { ...transformCardCreateRequest({ ...parsedNewCard.data, ...{ id: payload.id } }), page: payload.pageId },
 				},
 			});
 
@@ -306,7 +311,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			let errorReason: string | null = 'Failed to create card.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['create-dashboard-module-page-card']>(error, errorReason);
+				errorReason = getErrorReason<operations['create-pages-cards-plugin-page-card']>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -317,6 +322,8 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const parsedPayload = CardsEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DashboardValidationException('Failed to edit card.');
 		}
 
@@ -334,6 +341,8 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		});
 
 		if (!parsedEditedCard.success) {
+			console.error('Schema validation failed with:', parsedEditedCard.error);
+
 			throw new DashboardValidationException('Failed to edit card.');
 		}
 
@@ -346,9 +355,9 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 			return parsedEditedCard.data;
 		} else {
-			const apiResponse = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{id}`, {
+			const apiResponse = await backend.client.PATCH(`/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
 				params: {
-					path: { pageId: payload.pageId, id: payload.id },
+					path: { id: payload.id },
 				},
 				body: {
 					data: transformCardUpdateRequest(parsedEditedCard.data),
@@ -373,7 +382,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			let errorReason: string | null = 'Failed to update card.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['update-dashboard-module-page-card']>(error, errorReason);
+				errorReason = getErrorReason<operations['update-pages-cards-plugin-page-card']>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);
@@ -392,6 +401,8 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const parsedSaveCard = CardSchema.safeParse(data.value[payload.id]);
 
 		if (!parsedSaveCard.success) {
+			console.error('Schema validation failed with:', parsedSaveCard.error);
+
 			throw new DashboardValidationException('Failed to save card.');
 		}
 
@@ -401,12 +412,9 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			data: responseData,
 			error,
 			response,
-		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards`, {
-			params: {
-				path: { pageId: parsedSaveCard.data.page },
-			},
+		} = await backend.client.POST(`/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
 			body: {
-				data: transformCardCreateRequest({ ...parsedSaveCard.data, ...{ id: payload.id, page: payload.pageId } }),
+				data: { ...transformCardCreateRequest({ ...parsedSaveCard.data, ...{ id: payload.id } }), page: payload.pageId },
 			},
 		});
 
@@ -426,7 +434,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		let errorReason: string | null = 'Failed to create card.';
 
 		if (error) {
-			errorReason = getErrorReason<operations['create-dashboard-module-page-card']>(error, errorReason);
+			errorReason = getErrorReason<operations['create-pages-cards-plugin-page-card']>(error, errorReason);
 		}
 
 		throw new DashboardApiException(errorReason, response.status);
@@ -450,7 +458,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		if (recordToRemove.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
-			const apiResponse = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{pageId}/cards/{id}`, {
+			const apiResponse = await backend.client.DELETE(`/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
 				params: {
 					path: { pageId: payload.pageId, id: payload.id },
 				},
@@ -483,7 +491,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			let errorReason: string | null = 'Remove card failed.';
 
 			if (error) {
-				errorReason = getErrorReason<operations['delete-dashboard-module-page-card']>(error, errorReason);
+				errorReason = getErrorReason<operations['delete-pages-cards-plugin-page-card']>(error, errorReason);
 			}
 
 			throw new DashboardApiException(errorReason, response.status);

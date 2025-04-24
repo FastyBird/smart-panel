@@ -1,5 +1,15 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import {
+	IsArray,
+	IsBoolean,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Min,
+	ValidateNested,
+} from 'class-validator';
 
 import type { components } from '../../../openapi';
 import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
@@ -7,9 +17,9 @@ import { ValidateDataSourceType } from '../validators/data-source-type-constrain
 import { ParentDto } from './common.dto';
 import { CreateDataSourceDto } from './create-data-source.dto';
 
-type ReqCreateTile = components['schemas']['DashboardReqCreateTile'];
-type ReqCreateTileWithParent = components['schemas']['DashboardReqCreateTileWithParent'];
-type CreateTile = components['schemas']['DashboardCreateTile'];
+type ReqCreateTile = components['schemas']['DashboardModuleReqCreateTile'];
+type ReqCreateTileWithParent = components['schemas']['DashboardModuleReqCreateTileWithParent'];
+type CreateTile = components['schemas']['DashboardModuleCreateTile'];
 
 export abstract class CreateTileDto implements CreateTile {
 	@Expose()
@@ -35,6 +45,7 @@ export abstract class CreateTileDto implements CreateTile {
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"row","reason":"Row must be a valid number."}]' },
 	)
+	@Min(1, { message: '[{"field":"col","reason":"Row minimum value must be greater than 0."}]' })
 	row: number;
 
 	@Expose()
@@ -42,6 +53,7 @@ export abstract class CreateTileDto implements CreateTile {
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"col","reason":"Column must be a valid number."}]' },
 	)
+	@Min(1, { message: '[{"field":"col","reason":"Column minimum value must be greater than 0."}]' })
 	col: number;
 
 	@Expose()
@@ -51,7 +63,7 @@ export abstract class CreateTileDto implements CreateTile {
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"row_span","reason":"Row span must be a valid number."}]' },
 	)
-	@Min(1, { message: '[{"field":"col_span","reason":"Row span minimum value must be greater than 0."}]' })
+	@Min(1, { message: '[{"field":"row_span","reason":"Row span minimum value must be greater than 0."}]' })
 	row_span?: number;
 
 	@Expose()
@@ -63,6 +75,11 @@ export abstract class CreateTileDto implements CreateTile {
 	)
 	@Min(1, { message: '[{"field":"col_span","reason":"Column span minimum value must be greater than 0."}]' })
 	col_span?: number;
+
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"hidden","reason":"Hidden attribute must be a valid true or false."}]' })
+	hidden?: boolean;
 }
 
 export class CreateSingleTileDto extends CreateTileDto {

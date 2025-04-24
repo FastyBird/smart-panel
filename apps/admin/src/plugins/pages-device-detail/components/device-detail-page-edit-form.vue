@@ -32,11 +32,31 @@
 		</el-form-item>
 
 		<el-form-item
+			:label="t('pagesDeviceDetailPlugin.fields.device.title')"
+			:prop="['device']"
+		>
+			<el-select
+				v-model="model.device"
+				:placeholder="t('pagesDeviceDetailPlugin.fields.device.placeholder')"
+				name="device"
+				:loading="loadingDevices"
+				filterable
+			>
+				<el-option
+					v-for="item in devicesOptions"
+					:key="item.value"
+					:label="item.label"
+					:value="item.value"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('dashboardModule.fields.pages.icon.title')"
 			:prop="['icon']"
 		>
 			<icon-picker
-				:model="model.icon"
+				v-model="model.icon"
 				:placeholder="t('dashboardModule.fields.pages.icon.placeholder')"
 			/>
 		</el-form-item>
@@ -55,22 +75,23 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { orderBy } from 'natural-orderby';
 
 import { IconPicker } from '../../../common';
-import { FormResult, type FormResultType, type IPageEditForm, usePageEditForm } from '../../../modules/dashboard';
-
-import type { IDeviceDetailPageEditFormProps } from './device-detail-page-edit-form.types';
+import { DashboardException, FormResult, type FormResultType, type IPageEditFormProps, usePageEditForm } from '../../../modules/dashboard';
+import { type IDevice, useDevices } from '../../../modules/devices';
+import type { IDeviceDetailPageEditForm } from '../schemas/pages.types';
 
 defineOptions({
 	name: 'DeviceDetailPageEditForm',
 });
 
-const props = withDefaults(defineProps<IDeviceDetailPageEditFormProps>(), {
+const props = withDefaults(defineProps<IPageEditFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
@@ -85,10 +106,25 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = usePageEditForm({ page: props.page });
+const { model, formEl, formChanged, submit, formResult } = usePageEditForm<IDeviceDetailPageEditForm>({ page: props.page });
 
-const rules = reactive<FormRules<IPageEditForm>>({
+const { devices, fetchDevices, areLoading: loadingDevices } = useDevices();
+
+const rules = reactive<FormRules<IDeviceDetailPageEditForm>>({
 	title: [{ required: true, message: t('dashboardModule.fields.pages.title.validation.required'), trigger: 'change' }],
+	device: [{ required: true, message: t('pagesDeviceDetailPlugin.fields.device.validation.required'), trigger: 'change' }],
+});
+
+const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] => {
+	return orderBy<IDevice>(devices.value, [(device: IDevice) => device.name], ['asc']).map((device) => ({ value: device.id, label: device.name }));
+});
+
+onBeforeMount((): void => {
+	fetchDevices().catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new DashboardException('Something went wrong', err);
+	});
 });
 
 watch(
@@ -105,7 +141,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

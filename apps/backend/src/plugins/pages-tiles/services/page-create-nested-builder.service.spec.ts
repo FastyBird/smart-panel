@@ -4,7 +4,6 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { DashboardValidationException } from '../../../modules/dashboard/dashboard.exceptions';
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { UpdateDataSourceDto } from '../../../modules/dashboard/dto/update-data-source.dto';
@@ -16,6 +15,7 @@ import { DataSourceTypeConstraintValidator } from '../../../modules/dashboard/va
 import { TileTypeConstraintValidator } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
 import { CreateTilesPageDto } from '../dto/create-page.dto';
 import { TilesPageEntity } from '../entities/pages-tiles.entity';
+import { PagesTilesValidationException } from '../pages-tiles.exceptions';
 
 import { TilesPageNestedBuilderService } from './page-create-nested-builder.service';
 
@@ -126,6 +126,6 @@ describe('TilesPageNestedBuilderService', () => {
 	});
 
 	it('should throw validation error for invalid DTO', async () => {
-		await expect(service['validateDto'](class {}, {})).rejects.toThrow(DashboardValidationException);
+		await expect(service['validateDto'](class {}, {})).rejects.toThrow(PagesTilesValidationException);
 	});
 });

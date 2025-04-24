@@ -23,6 +23,7 @@
 						</el-text>
 					</template>
 					<el-checkbox-group
+						v-if="typesOptions.length"
 						v-model="innerFilters.types"
 						class="flex flex-col px-4"
 					>
@@ -33,6 +34,15 @@
 							:value="type.value"
 						/>
 					</el-checkbox-group>
+
+					<div
+						v-else
+						class="px-2"
+					>
+						<el-alert :closable="false">
+							{{ t('dashboardModule.texts.pages.noPlugins') }}
+						</el-alert>
+					</div>
 				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
@@ -56,13 +66,14 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText } from 'element-plus';
+import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import { type IPagesFilter } from '../../composables/types';
+import { usePagesPlugins } from '../../composables/usePagesPlugins';
 
 import { type IListPagesAdjustProps } from './list-pages-adjust.types';
 
@@ -79,12 +90,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const typesOptions: { value: string; label: string }[] = [
-	{
-		value: 'value',
-		label: 'label',
-	},
-];
+const { options: typesOptions } = usePagesPlugins();
 
 const activeBoxes = ref<string[]>(['types']);
 

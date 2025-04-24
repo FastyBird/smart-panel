@@ -71,7 +71,7 @@ import { I18nT, useI18n } from 'vue-i18n';
 
 import { ElTag, ElText } from 'element-plus';
 
-import { DevicesChannelCategory } from '../../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../../openapi';
 import { useChannels, useDeviceState } from '../../composables/composables';
 import { ConnectionState, type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';
@@ -93,7 +93,7 @@ const { channels } = useChannels({ deviceId: props.device.id });
 const alerts: string[] = [];
 
 const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefined => {
-	return channels.value.find((channel) => channel.category === DevicesChannelCategory.device_information);
+	return channels.value.find((channel) => channel.category === DevicesModuleChannelCategory.device_information);
 });
 
 const stateColor = computed<StateColor>((): StateColor => {

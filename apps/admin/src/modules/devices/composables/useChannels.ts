@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { type ComputedRef, computed } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -10,7 +10,7 @@ import { channelsStoreKey } from '../store/keys';
 import type { IUseChannels } from './types';
 
 interface IUseChannelsProps {
-	deviceId?: IDevice['id'];
+	deviceId?: IDevice['id'] | ComputedRef<IDevice['id']>;
 }
 
 export const useChannels = (props: IUseChannelsProps = {}): IUseChannels => {
@@ -22,28 +22,31 @@ export const useChannels = (props: IUseChannelsProps = {}): IUseChannels => {
 
 	const { firstLoad, semaphore } = storeToRefs(channelsStore);
 
+	const device: ComputedRef<IDevice['id']> | undefined =
+		typeof deviceId === 'undefined' ? undefined : typeof deviceId === 'string' ? computed<IDevice['id']>((): IChannel['id'] => deviceId) : deviceId;
+
 	const channels = computed<IChannel[]>((): IChannel[] => {
-		return channelsStore.findAll().filter((channel) => !deviceId || channel.device === deviceId);
+		return channelsStore.findAll().filter((channel) => !device?.value || channel.device === device.value);
 	});
 
 	const fetchChannels = async (): Promise<void> => {
-		await channelsStore.fetch({ deviceId });
+		await channelsStore.fetch({ deviceId: device?.value });
 	};
 
 	const areLoading = computed<boolean>((): boolean => {
-		if (semaphore.value.fetching.items.includes(deviceId ?? 'all')) {
+		if (semaphore.value.fetching.items.includes(device?.value ?? 'all')) {
 			return true;
 		}
 
-		if (firstLoad.value.includes(deviceId ?? 'all')) {
+		if (firstLoad.value.includes(device?.value ?? 'all')) {
 			return false;
 		}
 
-		return semaphore.value.fetching.items.includes(deviceId ?? 'all');
+		return semaphore.value.fetching.items.includes(device?.value ?? 'all');
 	});
 
 	const loaded = computed<boolean>((): boolean => {
-		return firstLoad.value.includes(deviceId ?? 'all');
+		return firstLoad.value.includes(device?.value ?? 'all');
 	});
 
 	return {

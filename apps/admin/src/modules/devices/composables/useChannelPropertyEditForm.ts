@@ -4,7 +4,11 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { DevicesChannelPropertyCategory, DevicesChannelPropertyData_type, DevicesChannelPropertyPermissions } from '../../../openapi';
+import {
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyPermissions,
+} from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { channelChannelsPropertiesSpecificationMappers } from '../devices.mapping';
@@ -39,17 +43,17 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 	let minValue: string = '';
 	let maxValue: string = '';
 
-	if (property.dataType === DevicesChannelPropertyData_type.enum) {
+	if (property.dataType === DevicesModuleChannelPropertyData_type.enum) {
 		enumValues = property.format ? property.format.map((item) => item.toString()) : [];
 	} else if (
 		[
-			DevicesChannelPropertyData_type.char,
-			DevicesChannelPropertyData_type.uchar,
-			DevicesChannelPropertyData_type.short,
-			DevicesChannelPropertyData_type.ushort,
-			DevicesChannelPropertyData_type.int,
-			DevicesChannelPropertyData_type.uint,
-			DevicesChannelPropertyData_type.float,
+			DevicesModuleChannelPropertyData_type.char,
+			DevicesModuleChannelPropertyData_type.uchar,
+			DevicesModuleChannelPropertyData_type.short,
+			DevicesModuleChannelPropertyData_type.ushort,
+			DevicesModuleChannelPropertyData_type.int,
+			DevicesModuleChannelPropertyData_type.uint,
+			DevicesModuleChannelPropertyData_type.float,
 		].includes(property.dataType)
 	) {
 		if (Array.isArray(property.format) && property.format.length === 2) {
@@ -62,7 +66,7 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 		return channels.value.find((channel) => channel.id === property.channel) ?? null;
 	});
 
-	const existingProperties = computed<DevicesChannelPropertyCategory[]>((): DevicesChannelPropertyCategory[] => {
+	const existingProperties = computed<DevicesModuleChannelPropertyCategory[]>((): DevicesModuleChannelPropertyCategory[] => {
 		return channel.value
 			? propertiesStore
 					.findForChannel(channel.value.id)
@@ -71,8 +75,8 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 			: [];
 	});
 
-	const mappedCategories = computed<{ required: DevicesChannelPropertyCategory[]; optional: DevicesChannelPropertyCategory[] } | null>(
-		(): { required: DevicesChannelPropertyCategory[]; optional: DevicesChannelPropertyCategory[] } | null => {
+	const mappedCategories = computed<{ required: DevicesModuleChannelPropertyCategory[]; optional: DevicesModuleChannelPropertyCategory[] } | null>(
+		(): { required: DevicesModuleChannelPropertyCategory[]; optional: DevicesModuleChannelPropertyCategory[] } | null => {
 			if (!channel.value) {
 				return null;
 			}
@@ -85,13 +89,13 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 		}
 	);
 
-	const categoriesOptions = computed<{ value: DevicesChannelPropertyCategory; label: string }[]>(
-		(): { value: DevicesChannelPropertyCategory; label: string }[] => {
+	const categoriesOptions = computed<{ value: DevicesModuleChannelPropertyCategory; label: string }[]>(
+		(): { value: DevicesModuleChannelPropertyCategory; label: string }[] => {
 			if (mappedCategories.value === null) {
 				return [];
 			}
 
-			return Object.values(DevicesChannelPropertyCategory)
+			return Object.values(DevicesModuleChannelPropertyCategory)
 				.filter((value) => mappedCategories.value?.required.includes(value) || mappedCategories.value?.optional.includes(value))
 				.filter((value) => !existingProperties.value.includes(value))
 				.map((value) => ({
@@ -105,19 +109,19 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 		return channels.value.map((channel) => ({ value: channel.id, label: channel.name }));
 	});
 
-	const permissionsOptions: { value: DevicesChannelPropertyPermissions; label: string }[] = Object.values(DevicesChannelPropertyPermissions).map(
-		(value) => ({
-			value,
-			label: t(`devicesModule.permissions.${value}`),
-		})
-	);
+	const permissionsOptions: { value: DevicesModuleChannelPropertyPermissions; label: string }[] = Object.values(
+		DevicesModuleChannelPropertyPermissions
+	).map((value) => ({
+		value,
+		label: t(`devicesModule.permissions.${value}`),
+	}));
 
-	const dataTypesOptions: { value: DevicesChannelPropertyData_type; label: string }[] = Object.values(DevicesChannelPropertyData_type).map(
-		(value) => ({
-			value,
-			label: t(`devicesModule.dataTypes.${value}`),
-		})
-	);
+	const dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[] = Object.values(
+		DevicesModuleChannelPropertyData_type
+	).map((value) => ({
+		value,
+		label: t(`devicesModule.dataTypes.${value}`),
+	}));
 
 	const model = reactive<IChannelPropertyEditForm>({
 		channel: property.channel,
@@ -159,17 +163,17 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 
 		let format: string[] | number[] | null = null;
 
-		if (property.dataType === DevicesChannelPropertyData_type.enum) {
+		if (property.dataType === DevicesModuleChannelPropertyData_type.enum) {
 			format = model.enumValues;
 		} else if (
 			[
-				DevicesChannelPropertyData_type.char,
-				DevicesChannelPropertyData_type.uchar,
-				DevicesChannelPropertyData_type.short,
-				DevicesChannelPropertyData_type.ushort,
-				DevicesChannelPropertyData_type.int,
-				DevicesChannelPropertyData_type.uint,
-				DevicesChannelPropertyData_type.float,
+				DevicesModuleChannelPropertyData_type.char,
+				DevicesModuleChannelPropertyData_type.uchar,
+				DevicesModuleChannelPropertyData_type.short,
+				DevicesModuleChannelPropertyData_type.ushort,
+				DevicesModuleChannelPropertyData_type.int,
+				DevicesModuleChannelPropertyData_type.uint,
+				DevicesModuleChannelPropertyData_type.float,
 			].includes(property.dataType)
 		) {
 			format = [model.minValue, model.maxValue];

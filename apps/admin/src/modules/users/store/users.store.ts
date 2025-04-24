@@ -127,6 +127,8 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		const parsedPayload = UsersAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new UsersValidationException('Failed to add user.');
 		}
 
@@ -138,6 +140,8 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		});
 
 		if (!parsedNewUser.success) {
+			console.error('Schema validation failed with:', parsedNewUser.error);
+
 			throw new UsersValidationException('Failed to add user.');
 		}
 
@@ -193,6 +197,8 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		const parsedPayload = UsersEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new UsersValidationException('Failed to edit user.');
 		}
 
@@ -210,6 +216,8 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		});
 
 		if (!parsedEditedUser.success) {
+			console.error('Schema validation failed with:', parsedEditedUser.error);
+
 			throw new UsersValidationException('Failed to edit user.');
 		}
 
@@ -272,6 +280,8 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		const parsedSaveUser = UserSchema.safeParse(data.value[payload.id]);
 
 		if (!parsedSaveUser.success) {
+			console.error('Schema validation failed with:', parsedSaveUser.error);
+
 			throw new UsersValidationException('Failed to save user.');
 		}
 

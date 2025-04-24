@@ -1,14 +1,16 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigDisplayType } from '../../../openapi';
+import { ConfigModuleDisplayType } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigDisplayEditForm } from './useConfigDisplayEditForm';
 
 const mockConfig = {
-	type: ConfigDisplayType.display,
+	type: ConfigModuleDisplayType.display,
 	darkMode: true,
 	brightness: 80,
 	screenLockDuration: 300,
@@ -61,7 +63,7 @@ describe('useConfigDisplayEditForm', () => {
 		const form = useConfigDisplayEditForm({ config: mockConfig });
 
 		form.model.darkMode = false;
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});

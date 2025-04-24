@@ -71,7 +71,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { DevicesChannelCategory } from '../../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../../openapi';
 import type { IDevicesFilter } from '../../composables/composables';
 
 import { type IListChannelsAdjustProps } from './list-channels-adjust.types';
@@ -89,7 +89,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const categories: string[] = Object.values(DevicesChannelCategory);
+const categories: string[] = Object.values(DevicesModuleChannelCategory);
 
 const activeBoxes = ref<string[]>(['categories']);
 

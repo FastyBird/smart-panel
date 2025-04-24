@@ -43,6 +43,8 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 			const parsedThrottleStatus = ThrottleStatusSchema.safeParse(payload.data);
 
 			if (!parsedThrottleStatus.success) {
+				console.error('Schema validation failed with:', parsedThrottleStatus.error);
+
 				throw new SystemValidationException('Failed to insert throttle status.');
 			}
 

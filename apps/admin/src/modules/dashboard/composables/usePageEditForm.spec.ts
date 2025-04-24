@@ -1,14 +1,18 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
+import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DASHBOARD_MODULE_NAME, FormResult } from '../dashboard.constants';
 import { DashboardValidationException } from '../dashboard.exceptions';
+import { PageSchema } from '../store/pages.store.schemas';
 import type { IPage } from '../store/pages.store.types';
 
 import { usePageEditForm } from './usePageEditForm';
 
 const mockPage: IPage = {
-	id: 'page-1',
+	id: uuid().toString(),
 	type: 'test-plugin',
 	title: 'Test Page',
 	order: 99,
@@ -42,6 +46,8 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
+const pageSchema = PageSchema;
+
 const mockPluginList = [
 	{
 		type: 'test-plugin',
@@ -52,6 +58,9 @@ const mockPluginList = [
 			documentation: '',
 			devDocumentation: '',
 			bugsTracking: '',
+		},
+		schemas: {
+			pageSchema,
 		},
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
@@ -80,11 +89,11 @@ describe('usePageEditForm', () => {
 		expect(form.model.order).toBe(mockPage.order);
 	});
 
-	it('sets formChanged to true if name or description is edited', async () => {
+	it('sets formChanged to true if title is edited', async () => {
 		const form = usePageEditForm({ page: mockPage });
 
 		form.model.title = 'Updated';
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});
@@ -113,9 +122,9 @@ describe('usePageEditForm', () => {
 		expect(mockEdit).toHaveBeenCalledWith({
 			id: mockPage.id,
 			data: {
+				id: mockPage.id,
 				type: 'test-plugin',
 				title: mockPage.title,
-				icon: null,
 				order: mockPage.order,
 			},
 		});

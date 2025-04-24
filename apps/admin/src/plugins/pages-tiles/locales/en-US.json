@@ -1,1 +1,97 @@
-{}
+{
+  "meta": {
+    "pages": {
+      "configure": {
+        "title": "Configure page: {page}"
+      },
+      "edit": {
+        "title": "Edit page: {page}"
+      },
+      "editTile": {
+        "title": "Edit page tile"
+      },
+      "addTile": {
+        "title": "Add page tile"
+      },
+      "editDataSource": {
+        "title": "Edit page data source"
+      },
+      "addDataSource": {
+        "title": "Add page data source"
+      }
+    }
+  },
+  "breadcrumbs": {
+    "pages": {
+      "configure": "configure: {page}",
+      "edit": "edit page",
+      "addTile": "add page tile",
+      "editTile": "edit page tile",
+      "addDataSource": "add page data source",
+      "editDataSource": "edit page data source"
+    }
+  },
+  "headings": {
+    "pages": {
+      "configure": "Page: {page}",
+      "edit": "Edit page",
+      "addTile": "Add page tile",
+      "editTile": "Edit page tile",
+      "addDataSource": "Add page data source",
+      "editDataSource": "Edit page data source"
+    },
+    "misc": {
+      "discard": "Discard changes?"
+    }
+  },
+  "subHeadings": {
+    "pages": {
+      "configure": "Manage smart panel page",
+      "edit": "Edit smart panel page",
+      "addTile": "Add new smart panel page tile",
+      "editTile": "Edit smart panel page tile",
+      "addDataSource": "Add new smart panel page data source",
+      "editDataSource": "Edit smart panel page data source"
+    }
+  },
+  "texts": {
+    "misc": {
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    }
+  },
+  "buttons": {
+    "discard": {
+      "title": "Discard"
+    },
+    "cancel": {
+      "title": "Cancel"
+    },
+    "close": {
+      "title": "Close"
+    },
+    "add": {
+      "title": "Add"
+    },
+    "save": {
+      "title": "Save"
+    },
+    "update": {
+      "title": "Update"
+    },
+    "yes": {
+      "title": "Yes"
+    },
+    "no": {
+      "title": "No"
+    },
+    "manageElements": {
+      "title": "Manage elements"
+    },
+    "addPageTile": {
+      "title": "Add page tile"
+    },
+    "addPageDataSource": {
+      "title": "Add page data source"
+    }
+  }
+}

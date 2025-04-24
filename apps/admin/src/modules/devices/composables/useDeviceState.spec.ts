@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesChannelCategory, DevicesChannelPropertyCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
 import { ConnectionState } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 
@@ -66,7 +66,7 @@ describe('useDeviceState', () => {
 	});
 
 	it('returns UNKNOWN if no status property is found', () => {
-		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
+		findForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
 		findForChannel.mockReturnValue([]);
 
 		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
@@ -75,8 +75,8 @@ describe('useDeviceState', () => {
 	});
 
 	it('returns UNKNOWN if property value is invalid', () => {
-		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
-		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesChannelPropertyCategory.status, value: 'invalid_status' }]);
+		findForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
+		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: 'invalid_status' }]);
 
 		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
@@ -84,8 +84,8 @@ describe('useDeviceState', () => {
 	});
 
 	it('returns proper connection state if value is valid', () => {
-		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
-		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesChannelPropertyCategory.status, value: ConnectionState.CONNECTED }]);
+		findForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
+		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: ConnectionState.CONNECTED }]);
 
 		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
@@ -93,8 +93,8 @@ describe('useDeviceState', () => {
 	});
 
 	it('returns isReady = true for READY, CONNECTED, or RUNNING states', () => {
-		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
-		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesChannelPropertyCategory.status, value: ConnectionState.READY }]);
+		findForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
+		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: ConnectionState.READY }]);
 
 		const { isReady } = useDeviceState({ device: { id: deviceId } as IDevice });
 
@@ -102,8 +102,8 @@ describe('useDeviceState', () => {
 	});
 
 	it('returns isReady = false for other states', () => {
-		findForDevice.mockReturnValue([{ id: channelId, category: DevicesChannelCategory.device_information }]);
-		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesChannelPropertyCategory.status, value: ConnectionState.DISCONNECTED }]);
+		findForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
+		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: ConnectionState.DISCONNECTED }]);
 
 		const { isReady } = useDeviceState({ device: { id: deviceId } as IDevice });
 

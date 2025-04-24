@@ -1,11 +1,11 @@
 import { type ZodType, z } from 'zod';
 
 import { TileCreateReqSchema, TileResSchema, TileSchema, TileUpdateReqSchema } from '../../../modules/dashboard';
-import { DashboardTimeTileType, type components } from '../../../openapi';
+import { TilesTimePluginTimeTileType, type components } from '../../../openapi';
 
-type ApiCreateTimeTile = components['schemas']['DashboardCreateTimeTile'];
-type ApiUpdateTimeTile = components['schemas']['DashboardUpdateTimeTile'];
-type ApiTimeTile = components['schemas']['DashboardTimeTile'];
+type ApiCreateTimeTile = components['schemas']['TilesTimePluginCreateTimeTile'];
+type ApiUpdateTimeTile = components['schemas']['TilesTimePluginUpdateTimeTile'];
+type ApiTimeTile = components['schemas']['TilesTimePluginTimeTile'];
 
 // STORE STATE
 // ===========
@@ -15,20 +15,20 @@ export const TimeTileSchema = TileSchema.extend({});
 // BACKEND API
 // ===========
 
-export const TimeTileCreateReqSchema: ZodType<ApiCreateTimeTile> = TileCreateReqSchema.and(
+export const TimeTileCreateReqSchema: ZodType<ApiCreateTimeTile & { parent: { type: string; id: string } }> = TileCreateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardTimeTileType),
+		type: z.nativeEnum(TilesTimePluginTimeTileType),
 	})
 );
 
-export const TimeTileUpdateReqSchema: ZodType<ApiUpdateTimeTile> = TileUpdateReqSchema.and(
+export const TimeTileUpdateReqSchema: ZodType<ApiUpdateTimeTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardTimeTileType),
+		type: z.nativeEnum(TilesTimePluginTimeTileType),
 	})
 );
 
-export const TimeTileResSchema: ZodType<ApiTimeTile> = TileResSchema.and(
+export const TimeTileResSchema: ZodType<ApiTimeTile & { parent: { type: string; id: string } }> = TileResSchema.and(
 	z.object({
-		type: z.nativeEnum(DashboardTimeTileType),
+		type: z.nativeEnum(TilesTimePluginTimeTileType),
 	})
 );

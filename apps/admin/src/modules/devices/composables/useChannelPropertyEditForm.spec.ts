@@ -1,7 +1,9 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesChannelPropertyCategory, DevicesChannelPropertyData_type } from '../../../openapi';
+import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
@@ -12,8 +14,8 @@ const mockProperty: IChannelProperty = {
 	id: 'property-1',
 	channel: 'channel-1',
 	name: 'My Property',
-	category: DevicesChannelPropertyCategory.brightness,
-	dataType: DevicesChannelPropertyData_type.float,
+	category: DevicesModuleChannelPropertyCategory.brightness,
+	dataType: DevicesModuleChannelPropertyData_type.float,
 	permissions: [],
 	unit: '',
 	format: [],
@@ -81,7 +83,7 @@ describe('useChannelPropertyEditForm', () => {
 		const form = useChannelPropertyEditForm({ property: mockProperty });
 
 		form.model.name = 'Changed';
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});

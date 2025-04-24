@@ -19,7 +19,7 @@ import { components } from '../../../openapi';
 
 import { DeviceChannelDataSourceEntity } from './data-sources-device-channel.entity';
 
-type DeviceChannelDataSource = components['schemas']['DashboardDeviceChannelDataSource'];
+type DeviceChannelDataSource = components['schemas']['DataSourcesDeviceChannelPluginDeviceChannelDataSource'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -43,7 +43,7 @@ describe('Plugin entity and OpenAPI Model Synchronization', () => {
 	};
 
 	test('DeviceChannelDataSourceEntity matches DashboardDeviceChannelDataSource', () => {
-		const openApiModel: DeviceChannelDataSource = {
+		const openApiModel: DeviceChannelDataSource & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
 			type: 'device-channel',
 			parent: {
@@ -56,6 +56,8 @@ describe('Plugin entity and OpenAPI Model Synchronization', () => {
 			icon: 'icon',
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			parent_type: 'page',
+			parent_id: uuid().toString(),
 		};
 
 		const entityInstance = plainToInstance(DeviceChannelDataSourceEntity, openApiModel, {
@@ -70,8 +72,6 @@ describe('Plugin entity and OpenAPI Model Synchronization', () => {
 			forbidNonWhitelisted: true,
 		});
 
-		const nonInternalErrors = errors.filter((error) => !['parentType', 'parentId'].includes(error.property));
-
-		expect(nonInternalErrors).toHaveLength(0);
+		expect(errors).toHaveLength(0);
 	});
 });

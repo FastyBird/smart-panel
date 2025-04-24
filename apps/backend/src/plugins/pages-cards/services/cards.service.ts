@@ -8,20 +8,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import {
-	DashboardNotFoundException,
-	DashboardValidationException,
-} from '../../../modules/dashboard/dashboard.exceptions';
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { DataSourceEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { DataSourcesTypeMapperService } from '../../../modules/dashboard/services/data-source-type-mapper.service';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
 import { TilesTypeMapperService } from '../../../modules/dashboard/services/tiles-type-mapper.service';
-import { CreateCardDto } from '../dto/create-card.dto';
+import { CreateSingleCardDto } from '../dto/create-card.dto';
 import { UpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
 import { EventType } from '../pages-cards.constants';
+import { PagesCardsNotFoundException, PagesCardsValidationException } from '../pages-cards.exceptions';
 
 @Injectable()
 export class CardsService {
@@ -45,6 +42,7 @@ export class CardsService {
 
 			const cards = await this.repository
 				.createQueryBuilder('card')
+				.leftJoinAndSelect('card.page', 'page')
 				.where('page.id = :pageId', { pageId: page.id })
 				.getMany();
 
@@ -72,6 +70,7 @@ export class CardsService {
 
 			card = await this.repository
 				.createQueryBuilder('card')
+				.leftJoinAndSelect('card.page', 'page')
 				.where('card.id = :id', { id })
 				.andWhere('page.id = :pageId', { pageId: page.id })
 				.getOne();
@@ -86,9 +85,11 @@ export class CardsService {
 		} else {
 			this.logger.debug(`[LOOKUP] Fetching card with id=${id}`);
 
-			card = await this.repository.findOne({
-				where: { id },
-			});
+			card = await this.repository
+				.createQueryBuilder('card')
+				.leftJoinAndSelect('card.page', 'page')
+				.where('card.id = :id', { id })
+				.getOne();
 
 			if (!card) {
 				this.logger.warn(`[LOOKUP] Card with id=${id} not found`);
@@ -102,12 +103,12 @@ export class CardsService {
 		return card;
 	}
 
-	async create(pageId: string, createDto: CreateCardDto): Promise<CardEntity> {
-		this.logger.debug(`[CREATE] Creating new card for pageId=${pageId}`);
+	async create(createDto: CreateSingleCardDto): Promise<CardEntity> {
+		this.logger.debug(`[CREATE] Creating new card`);
 
-		const page = await this.pagesService.getOneOrThrow<CardsPageEntity>(pageId);
+		const page = await this.pagesService.getOneOrThrow<CardsPageEntity>(createDto.page);
 
-		const dtoInstance = await this.validateDto<CreateCardDto>(CreateCardDto, createDto);
+		const dtoInstance = await this.validateDto<CreateSingleCardDto>(CreateSingleCardDto, createDto);
 
 		const card = plainToInstance(
 			CardEntity,
@@ -185,18 +186,19 @@ export class CardsService {
 		// Retrieve the saved card with its full relations
 		const savedCard = await this.getOneOrThrow(created.id, page.id);
 
-		this.logger.debug(`[CREATE] Successfully created card with id=${savedCard.id} for pageId=${pageId}`);
+		this.logger.debug(
+			`[CREATE] Successfully created card with id=${savedCard.id} for pageId=${typeof savedCard.page === 'string' ? savedCard.page : savedCard.page.id}`,
+		);
 
 		this.eventEmitter.emit(EventType.CARD_CREATED, savedCard);
 
 		return savedCard;
 	}
 
-	async update(id: string, pageId: string, updateDto: UpdateCardDto): Promise<CardEntity> {
-		this.logger.debug(`[UPDATE] Updating data source with id=${id} for pageId=${pageId}`);
+	async update(id: string, updateDto: UpdateCardDto): Promise<CardEntity> {
+		this.logger.debug(`[UPDATE] Updating data source with id=${id}`);
 
-		const page = await this.pagesService.getOneOrThrow<CardsPageEntity>(pageId);
-		const card = await this.getOneOrThrow(id, page.id);
+		const card = await this.getOneOrThrow(id);
 
 		const dtoInstance = await this.validateDto<UpdateCardDto>(UpdateCardDto, updateDto);
 
@@ -214,9 +216,9 @@ export class CardsService {
 
 		await this.repository.save(card);
 
-		const updatedCard = await this.getOneOrThrow(card.id, page.id);
+		const updatedCard = await this.getOneOrThrow(card.id);
 
-		this.logger.debug(`[UPDATE] Successfully updated card with id=${updatedCard.id} for pageId=${pageId}`);
+		this.logger.debug(`[UPDATE] Successfully updated card with id=${updatedCard.id}`);
 
 		this.eventEmitter.emit(EventType.CARD_UPDATED, updatedCard);
 
@@ -242,7 +244,7 @@ export class CardsService {
 		if (!card) {
 			this.logger.error(`[ERROR] Card with id=${id} for pageId=${pageId} not found`);
 
-			throw new DashboardNotFoundException('Requested page card does not exist');
+			throw new PagesCardsNotFoundException('Requested page card does not exist');
 		}
 
 		return card;
@@ -263,7 +265,7 @@ export class CardsService {
 		if (errors.length > 0) {
 			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
 
-			throw new DashboardValidationException('Provided card data are invalid.');
+			throw new PagesCardsValidationException('Provided card data are invalid.');
 		}
 
 		return dtoInstance;

@@ -12,9 +12,9 @@ import { useTilesPlugins } from '../composables/useTilesPlugins';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
 
-import { DataSourceSchema } from './dataSources.store.schemas';
-import type { IDataSourceRes } from './dataSources.store.types';
-import { transformDataSourceResponse } from './dataSources.transformers';
+import { DataSourceSchema } from './data-sources.store.schemas';
+import type { IDataSourceRes } from './data-sources.store.types';
+import { transformDataSourceResponse } from './data-sources.transformers';
 import { dataSourcesStoreKey, tilesStoreKey } from './keys';
 import {
 	PageCreateReqSchema,
@@ -245,6 +245,8 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const parsedPayload = PagesAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DashboardValidationException('Failed to add page.');
 		}
 
@@ -258,6 +260,8 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		});
 
 		if (!parsedNewItem.success) {
+			console.error('Schema validation failed with:', parsedNewItem.error);
+
 			throw new DashboardValidationException('Failed to add page.');
 		}
 
@@ -323,6 +327,8 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const parsedPayload = PagesEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DashboardValidationException('Failed to edit page.');
 		}
 
@@ -334,6 +340,8 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		});
 
 		if (!parsedEditedItem.success) {
+			console.error('Schema validation failed with:', parsedEditedItem.error);
+
 			throw new DashboardValidationException('Failed to edit page.');
 		}
 
@@ -398,6 +406,8 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const parsedSaveItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
+			console.error('Schema validation failed with:', parsedSaveItem.error);
+
 			throw new DashboardValidationException('Failed to save page.');
 		}
 

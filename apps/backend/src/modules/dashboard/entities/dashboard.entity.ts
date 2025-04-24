@@ -1,5 +1,5 @@
 import { Exclude, Expose, Transform } from 'class-transformer';
-import { IsArray, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { BeforeInsert, BeforeUpdate, Column, Entity, TableInheritance } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
@@ -46,6 +46,7 @@ export abstract class PageEntity extends BaseEntity {
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class TileEntity extends BaseEntity {
 	@Exclude({ toPlainOnly: true })
+	@Expose({ toClassOnly: true })
 	@IsString()
 	@Transform(({ obj }: { obj: { parent_type?: number; parentType?: number } }) => obj.parent_type || obj.parentType, {
 		toClassOnly: true,
@@ -54,6 +55,7 @@ export abstract class TileEntity extends BaseEntity {
 	parentType: string;
 
 	@Exclude({ toPlainOnly: true })
+	@Expose({ toClassOnly: true })
 	@IsString()
 	@IsUUID()
 	@Transform(({ obj }: { obj: { parent_id?: number; parentId?: number } }) => obj.parent_id || obj.parentId, {
@@ -89,6 +91,11 @@ export abstract class TileEntity extends BaseEntity {
 	})
 	@Column({ type: 'int', nullable: false, default: 1 })
 	colSpan: number = 1;
+
+	@Expose()
+	@IsBoolean()
+	@Column({ default: false })
+	hidden: boolean = false;
 
 	@Expose({ name: 'data_source' })
 	@IsArray()
@@ -131,6 +138,7 @@ export abstract class TileEntity extends BaseEntity {
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class DataSourceEntity extends BaseEntity {
 	@Exclude({ toPlainOnly: true })
+	@Expose({ toClassOnly: true })
 	@IsString()
 	@Transform(({ obj }: { obj: { parent_type?: number; parentType?: number } }) => obj.parent_type || obj.parentType, {
 		toClassOnly: true,
@@ -139,6 +147,7 @@ export abstract class DataSourceEntity extends BaseEntity {
 	parentType: string;
 
 	@Exclude({ toPlainOnly: true })
+	@Expose({ toClassOnly: true })
 	@IsString()
 	@IsUUID()
 	@Transform(({ obj }: { obj: { parent_id?: number; parentId?: number } }) => obj.parent_id || obj.parentId, {

@@ -16,8 +16,8 @@ import { ValidateDataSourceType } from '../../../modules/dashboard/validators/da
 import { ValidateTileType } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
 import type { components } from '../../../openapi';
 
-type ReqCreateCard = components['schemas']['DashboardReqCreateCard'];
-type CreateCard = components['schemas']['DashboardCreateCard'];
+type ReqCreateCard = components['schemas']['PagesCardsPluginReqCreateCard'];
+type CreateCard = components['schemas']['PagesCardsPluginCreateCard'];
 
 export class CreateCardDto implements CreateCard {
 	@Expose()
@@ -61,9 +61,15 @@ export class CreateCardDto implements CreateCard {
 	data_source?: CreateDataSourceDto[] = [];
 }
 
+export class CreateSingleCardDto extends CreateCardDto {
+	@Expose()
+	@IsUUID('4', { message: '[{"field":"page","reason":"Page ID must be a valid UUID (version 4)."}]' })
+	readonly page: string;
+}
+
 export class ReqCreateCardDto implements ReqCreateCard {
 	@Expose()
 	@ValidateNested()
-	@Type(() => CreateCardDto)
-	data: CreateCardDto;
+	@Type(() => CreateSingleCardDto)
+	data: CreateSingleCardDto;
 }

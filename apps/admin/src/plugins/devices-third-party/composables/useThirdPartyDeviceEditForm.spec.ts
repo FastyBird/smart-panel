@@ -2,7 +2,7 @@ import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesValidationException, FormResult } from '../../../modules/devices';
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import { useThirdPartyDeviceEditForm } from './useThirdPartyDeviceEditForm';
@@ -10,7 +10,7 @@ import { useThirdPartyDeviceEditForm } from './useThirdPartyDeviceEditForm';
 const mockDevice: IThirdPartyDevice = {
 	id: 'device-1',
 	type: 'mock-type',
-	category: DevicesDeviceCategory.generic,
+	category: DevicesModuleDeviceCategory.generic,
 	name: 'Test Device',
 	description: 'Test Desc',
 	serviceAddress: 'http://localhost:8080',

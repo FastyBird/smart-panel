@@ -1,5 +1,5 @@
 import type { FormResultType } from '../../dashboard.constants';
-import type { IDataSource } from '../../store/dataSources.store.types';
+import type { IDataSource } from '../../store/data-sources.store.types';
 
 export interface IDataSourceEditFormProps {
 	dataSource: IDataSource;
@@ -7,6 +7,7 @@ export interface IDataSourceEditFormProps {
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;
 	remoteFormChanged?: boolean;
+	onlyDraft?: boolean;
 }
 
 export const dataSourceEditFormEmits = {
