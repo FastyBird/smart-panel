@@ -4,21 +4,22 @@
 
 # 📱 Smart Panel Display
 
-The **Smart Panel Display App** is the **interactive interface** of the **FastyBird Smart Panel**, providing seamless
-control and monitoring of smart home devices.
+The **Smart Panel Display App** is the **touchscreen interface** of your smart home dashboard.  
 
-Built with **Flutter**, it offers a **modern**, **customizable**, and **real-time** experience on dedicated touchscreens.
+It’s designed to run on embedded devices (like Raspberry Pi), giving users a **beautiful, real-time view** of their smart devices, tiles, and automations.
+
+Built with **Flutter**, it’s optimized for **performance**, **simplicity**, and **customization**.
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-- ✔ **Beautiful UI** – Clean, intuitive, and optimized for **touchscreens**
-- ✔ **Device Control** – Toggle lights, adjust temperatures, and monitor sensors
-- ✔ **Real-time Updates** – WebSocket integration for instant feedback
-- ✔ **Weather Forecast** – OpenWeather API integration for daily forecasts
-- ✔ **Multi-Screen Support** – Manage multiple dashboards efficiently
-- ✔ **Customizable Widgets** – Resize, rearrange, and personalize widgets  
+- 🖥️ **Touch-Optimized UI** – Built for embedded displays and full-screen kiosks
+- 📊 **Custom Dashboards** – Renders pages, tiles, and data in a compact, visual layout
+- 🔁 **Real-Time Updates** – WebSocket integration ensures instant sync with the backend
+- 🌤️ **Weather Forecast** – Integrates with OpenWeather for local conditions
+- 🧩 **Dynamic Tiles** – Modular tile system powered by backend plugins
+- 🧠 **Smart Display Logic** – Automatically refreshes content when data changes
 
 ---
 
@@ -32,12 +33,14 @@ lib/
 │   ├── repositories/      # Data repositories for configuration & devices
 │   ├── services/          # Global services (networking, storage, etc.)
 │   ├── utils/             # Helper functions (date, formatting, etc.)
-│   ├── widgets/           # Reusable UI components (cards, tiles, etc.)
+│   └── widgets/           # Reusable UI components (cards, tiles, etc.)
 │
 ├── features/              # Feature-based structure
 │   ├── dashboard/         # Dashboard UI and widgets
 │   ├── overlay/           # Overlay screens
-│   ├── settings/          # Application settings screens
+│   └── settings/          # Application settings screens
+│
+├── modules/               # 
 │
 ├── main.dart              # App entry point
 └── i10n/                  # Auto-generated localization files
@@ -46,10 +49,11 @@ lib/
 ## 🛠️ Tech Stack
 
 - 🖥️ Flutter – Cross-platform UI framework
-- 🛰️ WebSockets – Real-time communication with the backend
-- 📡 OpenWeather API – Weather forecasting
-- 🔗 Dio – Network requests and API communication
+- 🌐 WebSockets – Real-time backend communication
 - 📦 Provider – State management
+- 🛰️ Dio – API requests
+- 🌦️ OpenWeather – Weather integration
+- 🧪 Flutter Test – Unit testing framework
 
 ## 🚀 Getting Started
 
@@ -156,5 +160,4 @@ This project is licensed under the **Apache License 2.0**. See the [LICENSE](htt
 </table>
 
 ***
-Homepage [https://smart-panel.fastybird.com](https://smart-panel.fastybird.com) and
-repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).
+Homepage [https://www.fastybird.com](https://www.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).

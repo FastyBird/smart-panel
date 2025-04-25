@@ -2,36 +2,79 @@
   <img src="https://github.com/fastybird/.github/blob/main/assets/repo_title.png?raw=true" alt="FastyBird"/>
 </p>
 
-# 🌟 FastyBird Smart Panel – Your Smart Home, Simplified  
+<h1 align="center">🧠 FastyBird Smart Panel</h1>
 
-Welcome to **FastyBird Smart Panel** – an **intelligent, real-time, and beautifully designed** smart home control system.  
-Whether you're **tweaking device settings, automating routines, or managing your home from a sleek touchscreen**, FastyBird gives you **the power to do it all effortlessly!**
+<p align="center">A smart touchscreen interface for your smart home.</p>
 
----
+**FastyBird Smart Panel** is a modular and extensible **user interface platform** designed to bring your smart home system to life on touchscreen displays.  
 
-## 🏠 **One System, Three Powerful Components**
-
-### 🖥️ **Smart Panel Backend**
-⚡ The **brain** of the system – handling **device communication, automation, and data processing**.  
-🛠️ Built with **NestJS & TypeORM**, ensuring **scalability, flexibility, and real-time performance**.
-
-### ⚙️ **Admin Panel**
-🎛️ A **powerful web app** to **configure, customize, and fine-tune** your smart home setup.  
-🌍 Runs anywhere with a browser, powered by **Vue.js**.
-
-### 📱 **Display App**
-🖐️ A **beautiful touchscreen interface** for **Raspberry Pi & embedded displays**.  
-🚀 **Built with Flutter** for a **fast, smooth, and real-time** user experience.
+It provides a seamless way to interact with your home setup, acting as a **real-time control dashboard** for systems like Home Assistant, OpenHAB, Sonoff, and more.
 
 ---
 
-## ✨ **Why FastyBird Smart Panel?**
-✅ **Modern & Modular** – Fully customizable dashboards and widgets  
-✅ **Real-time Updates** – **Instant control** over your devices  
-✅ **Multi-Platform** – Works on **web, mobile, and embedded screens**  
-✅ **Seamless Automation** – **Easily configure** routines and actions  
-✅ **Open & Extensible** – **Integrates with multiple smart home ecosystems**
+## 🎯 What FastyBird Smart Panel Offers
 
-🌍 **Take control of your smart home today!**
+### ✨ **Elegant, User-Centric UI**
 
-🚀 **Powered by [FastyBird](https://fastybird.com)**
+Create dynamic dashboards with customizable tiles, icons, and layouts — all optimized for embedded screens and modern devices.
+
+### 🧩 **Modular Architecture**  
+Each feature — from tiles to data sources — is handled by independent plugins. This makes the platform easy to extend and tailor to any smart home setup.
+
+### ⚙️ **Built for Integration**  
+FastyBird Smart Panel is designed to connect with your existing smart home backend. It fetches data, executes commands, and displays device status in real-time.
+
+### 🖥️ **Touch-Optimized Display App**  
+Crafted with **Flutter**, the display app runs smoothly on Raspberry Pi and other embedded Linux devices with small screens (e.g., 4" or 7").
+
+---
+
+## 🧰 System Components
+
+### 🧠 **Smart Panel Backend**
+ 
+- Built with **NestJS & TypeORM**
+- Manages data sources, pages, tiles, and configuration
+- Plugin-based architecture for easy integration of device types and UI components
+
+### 🧑‍💼 **Admin Panel**
+
+- Built with **Vue 3 + Pinia + Element Plus**
+- Used for creating pages, configuring dashboard layout, and managing tiles & data sources
+- Fully responsive and works in any modern browser
+
+### 📱 **Touchscreen Display App**
+
+- Built in **Flutter** for smooth animations and real-time updates
+- Deploy on Raspberry Pi or any embedded Linux device with a screen
+- Shows your configured pages with support for multiple tile types (weather, devices, clocks, etc.)
+
+---
+
+## 📦 Features at a Glance
+
+- 📐 **Configurable Grid Layouts**
+- 🧱 **Customizable Tiles** (clocks, weather, device previews, and more)
+- 🔌 **Plugin Support** for extensibility (data sources, pages, tiles)
+- 🔄 **Real-Time Updates** via WebSockets
+- 🌐 **API-first Design** for easy third-party integration
+
+---
+
+## 📖 Documentation & Resources
+
+- 🌍 [Project Website](https://www.fastybird.com)
+- 📚 [User Documentation](https://docs.fastybird.com)
+- 💻 [Developer Docs](https://github.com/FastyBird/smart-panel/wiki)
+- 🐛 [Issue Tracker](https://github.com/FastyBird/smart-panel/issues)
+
+---
+
+## ❤️ Designed for Makers & Integrators
+
+Whether you're building a custom dashboard for your smart home setup, integrating device states into a centralized view, or simply want a beautiful touchscreen controller — **FastyBird Smart Panel is your canvas**.
+
+> **Ready to build your control center? Start with FastyBird.**
+
+***
+Homepage [https://www.fastybird.com](https://www.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).
