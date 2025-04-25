@@ -10,16 +10,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
-import { CreateCardDto } from '../dto/create-card.dto';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { CreatePageDto } from '../dto/create-page.dto';
-import { CreateTileDto } from '../dto/create-tile.dto';
 import { UpdatePageDto } from '../dto/update-page.dto';
-import { CardEntity, DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
+import { DataSourceEntity, PageEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
+import { DataSourceService } from './data-source.service';
+import { PageCreateBuilderRegistryService } from './page-create-builder-registry.service';
+import { PageRelationsLoaderRegistryService } from './page-relations-loader-registry.service';
 import { PagesTypeMapperService } from './pages-type-mapper.service';
-import { TilesTypeMapperService } from './tiles-type-mapper.service';
 
 @Injectable()
 export class PagesService {
@@ -28,9 +28,11 @@ export class PagesService {
 	constructor(
 		@InjectRepository(PageEntity)
 		private readonly repository: Repository<PageEntity>,
+		private readonly dataSourceService: DataSourceService,
 		private readonly pagesMapperService: PagesTypeMapperService,
-		private readonly tilesMapperService: TilesTypeMapperService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
+		private readonly relationsRegistryService: PageRelationsLoaderRegistryService,
+		private readonly nestedCreateBuilders: PageCreateBuilderRegistryService,
 		private readonly dataSource: OrmDataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -38,40 +40,13 @@ export class PagesService {
 	async findAll<TPage extends PageEntity>(): Promise<TPage[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all pages');
 
-		const pages = await this.repository.find({
-			relations: [
-				'cards',
-				'cards.page',
-				'cards.tiles',
-				'cards.tiles.card',
-				'cards.tiles.dataSource',
-				'cards.tiles.dataSource.tile',
-				'cards.tiles.dataSource.device',
-				'cards.tiles.dataSource.channel',
-				'cards.tiles.dataSource.property',
-				'cards.dataSource',
-				'cards.dataSource.card',
-				'cards.dataSource.device',
-				'cards.dataSource.channel',
-				'cards.dataSource.property',
-				'tiles',
-				'tiles.page',
-				'tiles.dataSource',
-				'tiles.dataSource.tile',
-				'tiles.dataSource.device',
-				'tiles.dataSource.channel',
-				'tiles.dataSource.property',
-				'tiles.device',
-				'device',
-				'dataSource',
-				'dataSource.page',
-				'dataSource.device',
-				'dataSource.channel',
-				'dataSource.property',
-			],
-		});
+		const pages = await this.repository.find();
 
 		this.logger.debug(`[LOOKUP ALL] Found ${pages.length} pages`);
+
+		for (const page of pages) {
+			await this.loadRelations(page);
+		}
 
 		return pages as TPage[];
 	}
@@ -81,36 +56,6 @@ export class PagesService {
 
 		const page = await this.repository.findOne({
 			where: { id },
-			relations: [
-				'cards',
-				'cards.page',
-				'cards.tiles',
-				'cards.tiles.card',
-				'cards.tiles.dataSource',
-				'cards.tiles.dataSource.tile',
-				'cards.tiles.dataSource.device',
-				'cards.tiles.dataSource.channel',
-				'cards.tiles.dataSource.property',
-				'cards.dataSource',
-				'cards.dataSource.card',
-				'cards.dataSource.device',
-				'cards.dataSource.channel',
-				'cards.dataSource.property',
-				'tiles',
-				'tiles.page',
-				'tiles.dataSource',
-				'tiles.dataSource.tile',
-				'tiles.dataSource.device',
-				'tiles.dataSource.channel',
-				'tiles.dataSource.property',
-				'tiles.device',
-				'device',
-				'dataSource',
-				'dataSource.page',
-				'dataSource.device',
-				'dataSource.channel',
-				'dataSource.property',
-			],
 		});
 
 		if (!page) {
@@ -120,6 +65,8 @@ export class PagesService {
 		}
 
 		this.logger.debug(`[LOOKUP] Successfully fetched page with id=${id}`);
+
+		await this.loadRelations(page);
 
 		return page as TPage;
 	}
@@ -147,87 +94,29 @@ export class PagesService {
 			exposeUnsetFields: false,
 		});
 
-		if ('tiles' in dtoInstance && Array.isArray(dtoInstance.tiles)) {
-			page['tiles'] = dtoInstance.tiles.map((createTileDto: CreateTileDto) => {
-				const tileMapping = this.tilesMapperService.getMapping(createTileDto.type);
-
-				const tileRepository: Repository<TileEntity> = this.dataSource.getRepository(tileMapping.class);
-
-				const tile = tileRepository.create(
-					plainToInstance(
-						tileMapping.class,
-						{ ...createTileDto, page: page.id },
-						{
-							enableImplicitConversion: true,
-							excludeExtraneousValues: true,
-							exposeUnsetFields: false,
-						},
-					),
-				);
-
-				tile.dataSource = (createTileDto.data_source ?? []).map((createDataSourceDto: CreateDataSourceDto) => {
-					const dataSourceMapping = this.dataSourcesMapperService.getMapping(createDataSourceDto.type);
-
-					const dataSourceRepository: Repository<DataSourceEntity> = this.dataSource.getRepository(
-						dataSourceMapping.class,
-					);
-
-					return dataSourceRepository.create(
-						plainToInstance(
-							dataSourceMapping.class,
-							{ ...createDataSourceDto, tile: tile.id },
-							{
-								enableImplicitConversion: true,
-								excludeExtraneousValues: true,
-								exposeUnsetFields: false,
-							},
-						),
-					);
-				});
-
-				return tile;
-			});
+		for (const builder of this.nestedCreateBuilders.getBuilders()) {
+			if (builder.supports(dtoInstance)) {
+				await builder.build(dtoInstance, page);
+			}
 		}
 
-		if ('data_source' in dtoInstance && Array.isArray(dtoInstance.data_source)) {
-			page['dataSource'] = dtoInstance.data_source.map((createDataSourceDto: CreateDataSourceDto) => {
-				const dataSourceMapping = this.dataSourcesMapperService.getMapping(createDataSourceDto.type);
+		page['dataSource'] = (dtoInstance.data_source || []).map((createDataSourceDto: CreateDataSourceDto) => {
+			const dataSourceMapping = this.dataSourcesMapperService.getMapping(createDataSourceDto.type);
 
-				const dataSourceRepository: Repository<DataSourceEntity> = this.dataSource.getRepository(
+			const dataSourceRepository: Repository<DataSourceEntity> = this.dataSource.getRepository(dataSourceMapping.class);
+
+			return dataSourceRepository.create(
+				plainToInstance(
 					dataSourceMapping.class,
-				);
-
-				return dataSourceRepository.create(
-					plainToInstance(
-						dataSourceMapping.class,
-						{ ...createDataSourceDto, tile: page.id },
-						{
-							enableImplicitConversion: true,
-							excludeExtraneousValues: true,
-							exposeUnsetFields: false,
-						},
-					),
-				);
-			});
-		}
-
-		if ('cards' in dtoInstance && Array.isArray(dtoInstance.cards)) {
-			page['cards'] = dtoInstance.cards.map((createCardDto: CreateCardDto) => {
-				const cardRepository: Repository<CardEntity> = this.dataSource.getRepository(CardEntity);
-
-				return cardRepository.create(
-					plainToInstance(
-						CardEntity,
-						{ ...createCardDto, tile: page.id },
-						{
-							enableImplicitConversion: true,
-							excludeExtraneousValues: true,
-							exposeUnsetFields: false,
-						},
-					),
-				);
-			});
-		}
+					{ ...createDataSourceDto, parentType: 'page', parentId: page.id },
+					{
+						enableImplicitConversion: true,
+						excludeExtraneousValues: true,
+						exposeUnsetFields: false,
+					},
+				),
+			);
+		});
 
 		const created = repository.create(page);
 
@@ -286,7 +175,7 @@ export class PagesService {
 
 		const page = await this.getOneOrThrow<PageEntity>(id);
 
-		await this.repository.remove(page);
+		await this.repository.delete(page.id);
 
 		this.logger.log(`[DELETE] Successfully removed page with id=${id}`);
 
@@ -324,5 +213,18 @@ export class PagesService {
 		}
 
 		return dtoInstance;
+	}
+
+	private async loadRelations(entity: PageEntity): Promise<void> {
+		entity.dataSource = await this.dataSourceService.findAll({
+			parentType: 'page',
+			parentId: entity.id,
+		});
+
+		for (const loader of this.relationsRegistryService.getLoaders()) {
+			if (loader.supports(entity)) {
+				await loader.loadRelations(entity);
+			}
+		}
 	}
 }

@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { IThrottleStatus } from '../store';
+import type { IThrottleStatus } from '../store/throttle-status.store.types';
 
 import { useThrottleStatus } from './useThrottleStatus';
 

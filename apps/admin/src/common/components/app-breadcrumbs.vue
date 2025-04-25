@@ -25,7 +25,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElBreadcrumb, ElBreadcrumbItem } from 'element-plus';
 
-import { useBreakpoints } from '../composables';
+import { useBreakpoints } from '../composables/useBreakpoints';
 
 import type { IAppBreadcrumbsProps } from './app-breadcrumbs.types';
 import { BREADCRUMBS_TARGET } from './app-top-bar.types';

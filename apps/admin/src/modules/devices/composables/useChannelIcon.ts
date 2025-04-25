@@ -1,11 +1,16 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { type IChannel, channelsStoreKey } from '../store';
+import type { IChannel } from '../store/channels.store.types';
+import { channelsStoreKey } from '../store/keys';
 
 import type { IUseChannelIcon } from './types';
 
-export function useChannelIcon(id: IChannel['id']): IUseChannelIcon {
+interface IUseChannelIconProps {
+	id: IChannel['id'];
+}
+
+export const useChannelIcon = ({ id }: IUseChannelIconProps): IUseChannelIcon => {
 	const storesManager = injectStoresManager();
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
@@ -22,4 +27,4 @@ export function useChannelIcon(id: IChannel['id']): IUseChannelIcon {
 	return {
 		icon,
 	};
-}
+};

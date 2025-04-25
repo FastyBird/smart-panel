@@ -1,18 +1,16 @@
 import { DevicesValidationException } from '../devices.exceptions';
 
-import {
-	ChannelPropertyCreateReqSchema,
-	ChannelPropertySchema,
-	ChannelPropertyUpdateReqSchema,
-	type IChannelProperty,
-	type IChannelPropertyCreateReq,
-	type IChannelPropertyRes,
-	type IChannelPropertyUpdateReq,
-	type IChannelsPropertiesAddActionPayload,
-	type IChannelsPropertiesEditActionPayload,
+import { ChannelPropertyCreateReqSchema, ChannelPropertySchema, ChannelPropertyUpdateReqSchema } from './channels.properties.store.schemas';
+import type {
+	IChannelProperty,
+	IChannelPropertyCreateReq,
+	IChannelPropertyRes,
+	IChannelPropertyUpdateReq,
+	IChannelsPropertiesAddActionPayload,
+	IChannelsPropertiesEditActionPayload,
 } from './channels.properties.store.types';
 
-export function transformChannelPropertyResponse(response: IChannelPropertyRes): IChannelProperty {
+export const transformChannelPropertyResponse = (response: IChannelPropertyRes): IChannelProperty => {
 	const parsedProperty = ChannelPropertySchema.safeParse({
 		id: response.id,
 		channel: response.channel,
@@ -30,15 +28,17 @@ export function transformChannelPropertyResponse(response: IChannelPropertyRes):
 	});
 
 	if (!parsedProperty.success) {
+		console.error('Schema validation failed with:', parsedProperty.error);
+
 		throw new DevicesValidationException('Failed to validate received channel property data.');
 	}
 
 	return parsedProperty.data;
-}
+};
 
-export function transformChannelPropertyCreateRequest(
+export const transformChannelPropertyCreateRequest = (
 	property: IChannelsPropertiesAddActionPayload['data'] & { id?: string; channel: string }
-): IChannelPropertyCreateReq {
+): IChannelPropertyCreateReq => {
 	const parsedRequest = ChannelPropertyCreateReqSchema.safeParse({
 		id: property.id,
 		category: property.category,
@@ -53,13 +53,15 @@ export function transformChannelPropertyCreateRequest(
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate create channel property request.');
 	}
 
 	return parsedRequest.data;
-}
+};
 
-export function transformChannelPropertyUpdateRequest(property: IChannelsPropertiesEditActionPayload['data']): IChannelPropertyUpdateReq {
+export const transformChannelPropertyUpdateRequest = (property: IChannelsPropertiesEditActionPayload['data']): IChannelPropertyUpdateReq => {
 	const parsedRequest = ChannelPropertyUpdateReqSchema.safeParse({
 		name: property.name,
 		unit: property.unit,
@@ -70,8 +72,10 @@ export function transformChannelPropertyUpdateRequest(property: IChannelsPropert
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate update channel property request.');
 	}
 
 	return parsedRequest.data;
-}
+};

@@ -43,11 +43,11 @@
 				<div class="flex items-center cursor-pointer">
 					<user-avatar
 						:size="32"
-						:email="profile?.email"
+						:email="accountManager?.details.value?.email"
 						class="w-[32px] rounded-[50%]"
 					/>
 
-					<span class="text-14px pl-[5px]">{{ name }}</span>
+					<span class="text-14px pl-[5px]">{{ accountManager?.details.value?.name }}</span>
 				</div>
 
 				<template #dropdown>
@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, nextTick, ref, watch } from 'vue';
+import { h, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -81,13 +81,12 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitc
 
 import { Icon } from '@iconify/vue';
 
-import { RouteNames, sessionStoreKey } from '../../modules/auth';
-import type { IUser } from '../../modules/users';
-import { UserAvatar } from '../components';
-import { useDarkMode } from '../composables';
-import { injectStoresManager } from '../services';
+import { RouteNames } from '../../app.constants';
+import { useDarkMode } from '../composables/useDarkMode';
+import { injectAccountManager } from '../services/account-manager';
 
 import { type AppTopBarProps, BREADCRUMBS_TARGET } from './app-top-bar.types';
+import UserAvatar from './user-avatar.vue';
 
 defineOptions({
 	name: 'TopBar',
@@ -107,19 +106,7 @@ const ns = useNamespace('app-top-bar');
 
 const { isDark, toggleDark } = useDarkMode();
 
-const storesManager = injectStoresManager();
-
-const sessionStore = storesManager.getStore(sessionStoreKey);
-
-const profile = computed<IUser | null>((): IUser | null => {
-	return sessionStore.profile;
-});
-
-const name = computed<string | null>((): string | null => {
-	return sessionStore.profile?.firstName && sessionStore.profile?.lastName
-		? `${sessionStore.profile?.firstName} ${sessionStore.profile?.lastName}`
-		: sessionStore.profile?.username || 'user';
-});
+const accountManager = injectAccountManager();
 
 const darkMode = ref<boolean>(isDark.value);
 
@@ -173,9 +160,9 @@ const onToggleMenu = (): void => {
 };
 
 const onSignOut = (): void => {
-	sessionStore.clear();
+	accountManager?.signOut();
 
-	router.push({ name: RouteNames.SIGN_IN });
+	router.push({ name: RouteNames.ROOT });
 };
 
 const onLock = (): void => {

@@ -1,5 +1,5 @@
-import type { IUsersFilter } from '../composables';
-import type { IUser } from '../store';
+import type { IUsersFilter } from '../composables/types';
+import type { IUser } from '../store/users.store.types';
 
 export interface IListUsersProps {
 	items: IUser[];

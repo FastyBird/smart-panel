@@ -13,11 +13,11 @@ import {
 	DeviceEntity,
 } from './devices.entity';
 
-type Device = components['schemas']['DevicesDevice'];
-type DeviceControl = components['schemas']['DevicesDeviceControl'];
-type Channel = components['schemas']['DevicesChannel'];
-type ChannelControl = components['schemas']['DevicesChannelControl'];
-type ChannelProperty = components['schemas']['DevicesChannelProperty'];
+type Device = components['schemas']['DevicesModuleDevice'];
+type DeviceControl = components['schemas']['DevicesModuleDeviceControl'];
+type Channel = components['schemas']['DevicesModuleChannel'];
+type ChannelControl = components['schemas']['DevicesModuleChannelControl'];
+type ChannelProperty = components['schemas']['DevicesModuleChannelProperty'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 

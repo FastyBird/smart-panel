@@ -7,7 +7,7 @@ import { UserRole } from '../users.constants';
 
 import { UserEntity } from './users.entity';
 
-type User = components['schemas']['UsersUser'];
+type User = components['schemas']['UsersModuleUser'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 

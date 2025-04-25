@@ -9,7 +9,9 @@ import { injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
-import { registerSystemInfoStore, registerThrottleStatusStore, systemInfoStoreKey, throttleStatusStoreKey } from './store';
+import { systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
+import { registerSystemInfoStore } from './store/system-info.store';
+import { registerThrottleStatusStore } from './store/throttle-status.store';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {

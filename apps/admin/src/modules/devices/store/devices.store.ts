@@ -6,42 +6,39 @@ import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import type { operations } from '../../../openapi';
-import { usePlugins } from '../composables';
+import { usePlugins } from '../composables/composables';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
+import { transformChannelControlResponse } from './channels.controls.transformers';
+import { transformChannelPropertyResponse } from './channels.properties.transformers';
+import type { IChannelRes } from './channels.store.types';
+import { transformChannelResponse } from './channels.transformers';
+import type { IDeviceControlRes } from './devices.controls.store.types';
+import { transformDeviceControlResponse } from './devices.controls.transformers';
 import {
 	DeviceCreateReqSchema,
 	DeviceSchema,
 	DeviceUpdateReqSchema,
 	DevicesAddActionPayloadSchema,
 	DevicesEditActionPayloadSchema,
-	type DevicesStoreSetup,
-	type IDevice,
-	type IDevicesAddActionPayload,
-	type IDevicesEditActionPayload,
-	type IDevicesGetActionPayload,
-	type IDevicesRemoveActionPayload,
-	type IDevicesSaveActionPayload,
-	type IDevicesSetActionPayload,
-	type IDevicesStateSemaphore,
-	type IDevicesStoreActions,
-	type IDevicesStoreState,
-	type IDevicesUnsetActionPayload,
+} from './devices.store.schemas';
+import type {
+	DevicesStoreSetup,
+	IDevice,
+	IDevicesAddActionPayload,
+	IDevicesEditActionPayload,
+	IDevicesGetActionPayload,
+	IDevicesRemoveActionPayload,
+	IDevicesSaveActionPayload,
+	IDevicesSetActionPayload,
+	IDevicesStateSemaphore,
+	IDevicesStoreActions,
+	IDevicesStoreState,
+	IDevicesUnsetActionPayload,
 } from './devices.store.types';
 import { transformDeviceCreateRequest, transformDeviceResponse, transformDeviceUpdateRequest } from './devices.transformers';
-import {
-	type IChannelRes,
-	type IDeviceControlRes,
-	channelsControlsStoreKey,
-	channelsPropertiesStoreKey,
-	channelsStoreKey,
-	devicesControlsStoreKey,
-	transformChannelControlResponse,
-	transformChannelPropertyResponse,
-	transformChannelResponse,
-	transformDeviceControlResponse,
-} from './index';
+import { channelsControlsStoreKey, channelsPropertiesStoreKey, channelsStoreKey, devicesControlsStoreKey } from './keys';
 
 const defaultSemaphore: IDevicesStateSemaphore = {
 	fetching: {
@@ -91,6 +88,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			const parsedDevice = pluginSchema ? pluginSchema.safeParse(merged) : DeviceSchema.safeParse(merged);
 
 			if (!parsedDevice.success) {
+				console.error('Schema validation failed with:', parsedDevice.error);
+
 				throw new DevicesValidationException('Failed to insert device.');
 			}
 
@@ -102,6 +101,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedDevice = pluginSchema ? pluginSchema.safeParse(merged) : DeviceSchema.safeParse(merged);
 
 		if (!parsedDevice.success) {
+			console.error('Schema validation failed with:', parsedDevice.error);
+
 			throw new DevicesValidationException('Failed to insert device.');
 		}
 
@@ -232,6 +233,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedPayload = DevicesAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DevicesValidationException('Failed to add device.');
 		}
 
@@ -249,6 +252,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedNewDevice = pluginSchema ? pluginSchema.safeParse(merged) : DeviceSchema.safeParse(merged);
 
 		if (!parsedNewDevice.success) {
+			console.error('Schema validation failed with:', parsedNewDevice.error);
+
 			throw new DevicesValidationException('Failed to add device.');
 		}
 
@@ -308,6 +313,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedPayload = DevicesEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
 			throw new DevicesValidationException('Failed to edit device.');
 		}
 
@@ -331,6 +338,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedEditedDevice = pluginSchema ? pluginSchema.safeParse(merged) : DeviceSchema.safeParse(merged);
 
 		if (!parsedEditedDevice.success) {
+			console.error('Schema validation failed with:', parsedEditedDevice.error);
+
 			throw new DevicesValidationException('Failed to edit device.');
 		}
 
@@ -403,6 +412,8 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedSaveDevice = pluginSchema ? pluginSchema.safeParse(data.value[payload.id]) : DeviceSchema.safeParse(data.value[payload.id]);
 
 		if (!parsedSaveDevice.success) {
+			console.error('Schema validation failed with:', parsedSaveDevice.error);
+
 			throw new DevicesValidationException('Failed to save device.');
 		}
 

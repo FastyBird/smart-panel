@@ -4,9 +4,9 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import type { IUser, UsersStore } from '../store';
+import type { IUser, UsersStore } from '../store/users.store.types';
 import { UsersApiException } from '../users.exceptions';
 
 import { useUserEditForm } from './useUserEditForm';
@@ -56,7 +56,7 @@ describe('useUserEditForm', (): void => {
 			email: 'test@example.com',
 			firstName: 'John',
 			lastName: 'Doe',
-			role: UsersUserRole.user,
+			role: UsersModuleUserRole.user,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -75,7 +75,7 @@ describe('useUserEditForm', (): void => {
 		(usersStoreMock.save as Mock).mockResolvedValue({});
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -85,7 +85,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'updated@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Smith';
-		formHandler.model.role = UsersUserRole.admin;
+		formHandler.model.role = UsersModuleUserRole.admin;
 
 		const result = await formHandler.submit();
 
@@ -97,7 +97,7 @@ describe('useUserEditForm', (): void => {
 				email: 'updated@example.com',
 				firstName: 'John',
 				lastName: 'Smith',
-				role: UsersUserRole.admin,
+				role: UsersModuleUserRole.admin,
 			},
 		});
 		expect(usersStoreMock.save).not.toHaveBeenCalled();
@@ -110,7 +110,7 @@ describe('useUserEditForm', (): void => {
 		mockUser.draft = true;
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 		(usersStoreMock.save as Mock).mockResolvedValue({});
@@ -123,7 +123,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'new@example.com';
 		formHandler.model.firstName = 'Jane';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		const result = await formHandler.submit();
 
@@ -140,7 +140,7 @@ describe('useUserEditForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new UsersApiException('Validation error', 422));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -150,7 +150,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'invalid-email';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(UsersApiException);
 
@@ -164,7 +164,7 @@ describe('useUserEditForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new Error('Failed to update user'));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -174,7 +174,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'test@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
@@ -187,7 +187,7 @@ describe('useUserEditForm', (): void => {
 	it('should trim empty optional fields before sending request', async (): Promise<void> => {
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -197,7 +197,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = '';
 		formHandler.model.firstName = '';
 		formHandler.model.lastName = '';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await formHandler.submit();
 
@@ -207,7 +207,7 @@ describe('useUserEditForm', (): void => {
 				email: null,
 				firstName: null,
 				lastName: null,
-				role: UsersUserRole.user,
+				role: UsersModuleUserRole.user,
 			},
 		});
 
@@ -221,7 +221,7 @@ describe('useUserEditForm', (): void => {
 		};
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserEditForm(mockUser, customMessages);
+		const formHandler = useUserEditForm({ user: mockUser, messages: customMessages });
 
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
@@ -233,7 +233,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'custom@example.com';
 		formHandler.model.firstName = 'Custom';
 		formHandler.model.lastName = 'User';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await formHandler.submit();
 
@@ -244,7 +244,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'custom@example.com';
 		formHandler.model.firstName = 'Custom';
 		formHandler.model.lastName = 'User';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
@@ -256,7 +256,7 @@ describe('useUserEditForm', (): void => {
 	it('should reset form result after timeout', async (): Promise<void> => {
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
-		const formHandler = useUserEditForm(mockUser);
+		const formHandler = useUserEditForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -266,7 +266,7 @@ describe('useUserEditForm', (): void => {
 		formHandler.model.email = 'test@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await formHandler.submit();
 

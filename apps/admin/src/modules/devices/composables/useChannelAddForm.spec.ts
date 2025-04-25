@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 
 import { useChannelAddForm } from './useChannelAddForm';
@@ -13,7 +13,7 @@ const mockAdd = vi.fn();
 vi.mock('./useDevices', () => ({
 	useDevices: () => ({
 		devices: {
-			value: [{ id: 'device-1', name: 'Device 1', category: DevicesChannelCategory.light }],
+			value: [{ id: 'device-1', name: 'Device 1', category: DevicesModuleChannelCategory.light }],
 		},
 		fetchDevices: vi.fn().mockResolvedValue(undefined),
 		areLoading: { value: false },
@@ -43,7 +43,7 @@ describe('useChannelAddForm', () => {
 	let form: ReturnType<typeof useChannelAddForm>;
 
 	beforeEach(() => {
-		form = useChannelAddForm('channel-123', 'device-123');
+		form = useChannelAddForm({ id: 'channel-123', deviceId: 'device-123' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -68,7 +68,7 @@ describe('useChannelAddForm', () => {
 
 	it('should submit and call store add method', async () => {
 		form.model.name = 'name';
-		form.model.category = DevicesChannelCategory.generic;
+		form.model.category = DevicesModuleChannelCategory.generic;
 
 		await form.submit();
 
@@ -77,7 +77,7 @@ describe('useChannelAddForm', () => {
 			deviceId: 'device-123',
 			draft: false,
 			data: {
-				category: DevicesChannelCategory.generic,
+				category: DevicesModuleChannelCategory.generic,
 				name: 'name',
 				description: null,
 			},

@@ -11,16 +11,16 @@ import { type IUser, transformUserResponse } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
 import { AuthApiException, AuthException } from '../auth.exceptions';
 
-import {
-	type ISessionCreateActionPayload,
-	type ISessionEditActionPayload,
-	type ISessionRegisterActionPayload,
-	type ISessionStateSemaphore,
-	type ITokenPair,
-	type ITokenPayload,
-	type SessionStore,
-	type SessionStoreSetup,
-	TokenPairSchema,
+import { TokenPairSchema } from './session.store.schemas';
+import type {
+	ISessionCreateActionPayload,
+	ISessionEditActionPayload,
+	ISessionRegisterActionPayload,
+	ISessionStateSemaphore,
+	ITokenPair,
+	ITokenPayload,
+	SessionStore,
+	SessionStoreSetup,
 } from './session.store.types';
 import { transformTokenPairResponse } from './session.transformers';
 
@@ -81,6 +81,8 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			});
 
 			if (parsedSession.success) {
+				console.error('Schema validation failed with:', parsedSession.error);
+
 				tokenPair.value = parsedSession.data;
 			} else {
 				clear();

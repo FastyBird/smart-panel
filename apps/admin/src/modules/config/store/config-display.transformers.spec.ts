@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { ConfigDisplayType } from '../../../openapi';
+import { ConfigModuleDisplayType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigDisplayEditActionPayload, IConfigDisplayRes } from './config-display.store.types';
 import { transformConfigDisplayResponse, transformConfigDisplayUpdateRequest } from './config-display.transformers';
 
 const validConfigDisplayResponse: IConfigDisplayRes = {
-	type: ConfigDisplayType.display,
+	type: ConfigModuleDisplayType.display,
 	dark_mode: true,
 	brightness: 80,
 	screen_lock_duration: 300,
@@ -27,7 +27,7 @@ describe('Config Display Transformers', (): void => {
 			const result = transformConfigDisplayResponse(validConfigDisplayResponse);
 
 			expect(result).toEqual({
-				type: ConfigDisplayType.display,
+				type: ConfigModuleDisplayType.display,
 				darkMode: true,
 				brightness: 80,
 				screenLockDuration: 300,
@@ -47,7 +47,7 @@ describe('Config Display Transformers', (): void => {
 			const result = transformConfigDisplayUpdateRequest(validConfigDisplayUpdatePayload);
 
 			expect(result).toEqual({
-				type: ConfigDisplayType.display,
+				type: ConfigModuleDisplayType.display,
 				dark_mode: true,
 				brightness: 80,
 				screen_lock_duration: 300,

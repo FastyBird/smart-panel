@@ -25,7 +25,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { type IUserUsernameForm, useUserUsernameForm } from '../composables';
+import { type IUserUsernameForm, useUserUsernameForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
 import type { IUsernameEditFormProps } from './username-edit-form.types';
@@ -47,9 +47,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, submit, formResult } = useUserUsernameForm(props.user, {
-	success: t('usersModule.messages.usernameEdited'),
-	error: t('usersModule.messages.usernameNotEdited'),
+const { model, formEl, submit, formResult } = useUserUsernameForm({
+	user: props.user,
+	messages: {
+		success: t('usersModule.messages.usernameEdited'),
+		error: t('usersModule.messages.usernameNotEdited'),
+	},
 });
 
 const rules = reactive<FormRules<IUserUsernameForm>>({
@@ -70,7 +73,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

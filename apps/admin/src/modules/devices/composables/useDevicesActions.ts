@@ -4,7 +4,8 @@ import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
-import { type IDevice, devicesStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { devicesStoreKey } from '../store/keys';
 
 import type { IUseDevicesActions } from './types';
 
@@ -24,7 +25,7 @@ export const useDevicesActions = (): IUseDevicesActions => {
 			throw new DevicesException("Something went wrong, device can't be loaded");
 		}
 
-		ElMessageBox.confirm(t('devicesModule.messages.devices.confirmRemove', { device: device.name }), t('devicesModule.headings.devices.remove'), {
+		ElMessageBox.confirm(t('devicesModule.texts.devices.confirmRemove', { device: device.name }), t('devicesModule.headings.devices.remove'), {
 			confirmButtonText: t('devicesModule.buttons.yes.title'),
 			cancelButtonText: t('devicesModule.buttons.no.title'),
 			type: 'warning',

@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type ISystemInfo, systemInfoStoreKey } from '../store';
+import { systemInfoStoreKey } from '../store/keys';
+import type { ISystemInfo } from '../store/system-info.store.types';
 
 import type { IUseSystemInfo } from './types';
 

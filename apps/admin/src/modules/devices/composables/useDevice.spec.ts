@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import type { IDevice } from '../store';
+import type { IDevice } from '../store/devices.store.types';
 
 import { useDevice } from './useDevice';
 
@@ -63,19 +63,19 @@ describe('useDevice', () => {
 	});
 
 	it('should return the correct device by ID', () => {
-		const { device } = useDevice(deviceId);
+		const { device } = useDevice({ id: deviceId });
 
 		expect(device.value).toEqual(data[deviceId]);
 	});
 
 	it('should return null if device ID is not found', () => {
-		const { device } = useDevice('nonexistent');
+		const { device } = useDevice({ id: 'nonexistent' });
 
 		expect(device.value).toBeNull();
 	});
 
 	it('should call get() only if device is not a draft', async () => {
-		const { fetchDevice } = useDevice(deviceId);
+		const { fetchDevice } = useDevice({ id: deviceId });
 
 		await fetchDevice();
 
@@ -85,7 +85,7 @@ describe('useDevice', () => {
 	it('should not call get() if device is a draft', async () => {
 		data[deviceId].draft = true;
 
-		const { fetchDevice } = useDevice(deviceId);
+		const { fetchDevice } = useDevice({ id: deviceId });
 
 		await fetchDevice();
 
@@ -95,13 +95,13 @@ describe('useDevice', () => {
 	it('should return isLoading = true if fetching by ID', () => {
 		semaphore.value.fetching.item.push(deviceId);
 
-		const { isLoading } = useDevice(deviceId);
+		const { isLoading } = useDevice({ id: deviceId });
 
 		expect(isLoading.value).toBe(true);
 	});
 
 	it('should return isLoading = false if device is already loaded', () => {
-		const { isLoading } = useDevice(deviceId);
+		const { isLoading } = useDevice({ id: deviceId });
 
 		expect(isLoading.value).toBe(false);
 	});
@@ -109,7 +109,7 @@ describe('useDevice', () => {
 	it('should return isLoading = true if device is missing and items are loading', () => {
 		semaphore.value.fetching.items.push('all');
 
-		const { isLoading } = useDevice('unknown');
+		const { isLoading } = useDevice({ id: 'unknown' });
 
 		expect(isLoading.value).toBeTruthy();
 	});

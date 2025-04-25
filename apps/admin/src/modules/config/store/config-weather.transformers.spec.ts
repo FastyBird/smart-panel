@@ -1,23 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { ConfigWeatherType, ConfigWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
+import { ConfigModuleWeatherType, ConfigModuleWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigWeatherEditActionPayload, IConfigWeatherRes } from './config-weather.store.types';
 import { transformConfigWeatherResponse, transformConfigWeatherUpdateRequest } from './config-weather.transformers';
 
 const validConfigWeatherResponse: IConfigWeatherRes = {
-	type: ConfigWeatherType.weather,
+	type: ConfigModuleWeatherType.weather,
 	location: 'Prague',
 	location_type: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
-	unit: ConfigWeatherUnit.celsius,
+	unit: ConfigModuleWeatherUnit.celsius,
 	open_weather_api_key: null,
 };
 
 const validConfigWeatherUpdatePayload: IConfigWeatherEditActionPayload['data'] = {
 	location: 'Prague',
 	locationType: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
-	unit: ConfigWeatherUnit.celsius,
+	unit: ConfigModuleWeatherUnit.celsius,
 	openWeatherApiKey: null,
 };
 
@@ -27,10 +27,10 @@ describe('Config Weather Transformers', (): void => {
 			const result = transformConfigWeatherResponse(validConfigWeatherResponse);
 
 			expect(result).toEqual({
-				type: ConfigWeatherType.weather,
+				type: ConfigModuleWeatherType.weather,
 				location: 'Prague',
 				locationType: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
-				unit: ConfigWeatherUnit.celsius,
+				unit: ConfigModuleWeatherUnit.celsius,
 				openWeatherApiKey: null,
 			});
 		});
@@ -47,10 +47,10 @@ describe('Config Weather Transformers', (): void => {
 			const result = transformConfigWeatherUpdateRequest(validConfigWeatherUpdatePayload);
 
 			expect(result).toEqual({
-				type: ConfigWeatherType.weather,
+				type: ConfigModuleWeatherType.weather,
 				location: 'Prague',
 				location_type: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
-				unit: ConfigWeatherUnit.celsius,
+				unit: ConfigModuleWeatherUnit.celsius,
 				open_weather_api_key: null,
 			});
 		});

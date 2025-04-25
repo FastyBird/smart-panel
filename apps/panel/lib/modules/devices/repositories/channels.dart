@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/devices/models/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
@@ -56,7 +54,9 @@ class ChannelsRepository extends Repository<ChannelModel> {
           id: id,
         );
 
-        insert([jsonDecode(jsonEncode(response.data.data))]);
+        final raw = response.response.data['data'] as Map<String, dynamic>;
+
+        insert([raw]);
       },
       'fetch channel',
     );
@@ -67,13 +67,9 @@ class ChannelsRepository extends Repository<ChannelModel> {
       () async {
         final response = await apiClient.getDevicesModuleChannels();
 
-        List<Map<String, dynamic>> channels = [];
+        final raw = response.response.data['data'] as List;
 
-        for (var channel in response.data.data) {
-          channels.add(jsonDecode(jsonEncode(channel)));
-        }
-
-        insert(channels);
+        insert(raw.cast<Map<String, dynamic>>());
       },
       'fetch channels',
     );

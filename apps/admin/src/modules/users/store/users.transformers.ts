@@ -1,18 +1,9 @@
 import { UsersValidationException } from '../users.exceptions';
 
-import {
-	type IUser,
-	type IUserCreateReq,
-	type IUserRes,
-	type IUserUpdateReq,
-	type IUsersAddActionPayload,
-	type IUsersEditActionPayload,
-	UserCreateReqSchema,
-	UserSchema,
-	UserUpdateReqSchema,
-} from './users.store.types';
+import { UserCreateReqSchema, UserSchema, UserUpdateReqSchema } from './users.store.schemas';
+import type { IUser, IUserCreateReq, IUserRes, IUserUpdateReq, IUsersAddActionPayload, IUsersEditActionPayload } from './users.store.types';
 
-export function transformUserResponse(response: IUserRes): IUser {
+export const transformUserResponse = (response: IUserRes): IUser => {
 	const parsedUser = UserSchema.safeParse({
 		id: response.id,
 		username: response.username,
@@ -30,9 +21,9 @@ export function transformUserResponse(response: IUserRes): IUser {
 	}
 
 	return parsedUser.data;
-}
+};
 
-export function transformUserCreateRequest(user: IUsersAddActionPayload['data'] & { id?: string }): IUserCreateReq {
+export const transformUserCreateRequest = (user: IUsersAddActionPayload['data'] & { id?: string }): IUserCreateReq => {
 	const parsedRequest = UserCreateReqSchema.safeParse({
 		id: user.id,
 		username: user.username,
@@ -48,9 +39,9 @@ export function transformUserCreateRequest(user: IUsersAddActionPayload['data'] 
 	}
 
 	return parsedRequest.data;
-}
+};
 
-export function transformUserUpdateRequest(user: IUsersEditActionPayload['data']): IUserUpdateReq {
+export const transformUserUpdateRequest = (user: IUsersEditActionPayload['data']): IUserUpdateReq => {
 	const parsedRequest = UserUpdateReqSchema.safeParse({
 		username: user.username,
 		password: user.password,
@@ -65,4 +56,4 @@ export function transformUserUpdateRequest(user: IUsersEditActionPayload['data']
 	}
 
 	return parsedRequest.data;
-}
+};

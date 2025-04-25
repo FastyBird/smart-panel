@@ -3,8 +3,8 @@ import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
-type ReqLogin = components['schemas']['AuthReqLogin'];
-type Login = components['schemas']['AuthLogin'];
+type ReqLogin = components['schemas']['AuthModuleReqLogin'];
+type Login = components['schemas']['AuthModuleLogin'];
 
 export class LoginDto implements Login {
 	@Expose()

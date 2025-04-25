@@ -6,7 +6,9 @@ import { cloneDeep, isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager } from '../../../common';
-import { type IChannel, type IDevice, channelsStoreKey } from '../store';
+import type { IChannel } from '../store/channels.store.types';
+import type { IDevice } from '../store/devices.store.types';
+import { channelsStoreKey } from '../store/keys';
 
 import type { IChannelsFilter, IUseChannelsDataSource } from './types';
 
@@ -16,7 +18,13 @@ export const defaultChannelsFilter: IChannelsFilter = {
 	categories: [],
 };
 
-export const useChannelsDataSource = (deviceId?: IDevice['id']): IUseChannelsDataSource => {
+interface IUseChannelsDataSourceProps {
+	deviceId?: IDevice['id'];
+}
+
+export const useChannelsDataSource = (props: IUseChannelsDataSourceProps = {}): IUseChannelsDataSource => {
+	const { deviceId } = props;
+
 	const storesManager = injectStoresManager();
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);

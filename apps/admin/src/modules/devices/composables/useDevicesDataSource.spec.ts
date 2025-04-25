@@ -5,8 +5,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesDeviceCategory } from '../../../openapi';
-import type { IDevice } from '../store';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
+import type { IDevice } from '../store/devices.store.types';
 
 import { defaultDevicesFilter, useDevicesDataSource } from './useDevicesDataSource';
 
@@ -35,7 +35,7 @@ describe('useDevicesDataSource', () => {
 				id: '1',
 				name: 'Light',
 				type: 'light',
-				category: DevicesDeviceCategory.lighting,
+				category: DevicesModuleDeviceCategory.lighting,
 				description: 'A smart light',
 				draft: false,
 			} as IDevice,
@@ -43,7 +43,7 @@ describe('useDevicesDataSource', () => {
 				id: '2',
 				name: 'Plug',
 				type: 'plug',
-				category: DevicesDeviceCategory.outlet,
+				category: DevicesModuleDeviceCategory.outlet,
 				description: 'Smart plug',
 				draft: false,
 			} as IDevice,
@@ -51,7 +51,7 @@ describe('useDevicesDataSource', () => {
 				id: '3',
 				name: 'Draft device',
 				type: 'draft',
-				category: DevicesDeviceCategory.generic,
+				category: DevicesModuleDeviceCategory.generic,
 				description: 'Should be filtered out',
 				draft: true,
 			} as IDevice,

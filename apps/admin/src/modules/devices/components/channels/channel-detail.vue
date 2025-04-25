@@ -88,8 +88,9 @@ import { ElAvatar, ElButton, ElCard, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useChannelSpecification, useChannelsPropertiesDataSource } from '../../composables';
-import type { IChannel, IChannelProperty } from '../../store';
+import { useChannelSpecification, useChannelsPropertiesDataSource } from '../../composables/composables';
+import type { IChannelProperty } from '../../store/channels.properties.store.types';
+import type { IChannel } from '../../store/channels.store.types';
 
 import type { IChannelDetailProps } from './channel-detail.types';
 import ChannelsPropertiesTable from './channels-properties-table.vue';
@@ -110,10 +111,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { properties, totalRows, sortBy, sortDir, filters, filtersActive, fetchProperties, areLoading, resetFilter } = useChannelsPropertiesDataSource(
-	props.channel.id
-);
-const { canAddAnotherProperty } = useChannelSpecification(props.channel.id);
+const { properties, totalRows, sortBy, sortDir, filters, filtersActive, fetchProperties, areLoading, resetFilter } = useChannelsPropertiesDataSource({
+	channelId: props.channel.id,
+});
+const { canAddAnotherProperty } = useChannelSpecification({ id: props.channel.id });
 
 const onResetFilters = (): void => {
 	resetFilter();

@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IConfigWeather, configWeatherStoreKey } from '../store';
+import type { IConfigWeather } from '../store/config-weather.store.types';
+import { configWeatherStoreKey } from '../store/keys';
 
 import type { IUseConfigWeather } from './types';
 

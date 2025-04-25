@@ -46,7 +46,7 @@ import { ElButton, ElForm, ElIcon, ElInput, type FormInstance } from 'element-pl
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import type { IChannelsPropertiesFilter } from '../../composables';
+import type { IChannelsPropertiesFilter } from '../../composables/composables';
 
 import type { IChannelsPropertiesFilterProps } from './channels-properties-filter.types';
 

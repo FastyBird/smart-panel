@@ -1,14 +1,16 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigAudioType } from '../../../openapi';
+import { ConfigModuleAudioType } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigAudioEditForm } from './useConfigAudioEditForm';
 
 const mockConfig = {
-	type: ConfigAudioType.audio,
+	type: ConfigModuleAudioType.audio,
 	speaker: true,
 	speakerVolume: 80,
 	microphone: false,
@@ -49,7 +51,7 @@ describe('useConfigAudioEditForm', () => {
 	});
 
 	it('initializes model with config data', () => {
-		const form = useConfigAudioEditForm(mockConfig);
+		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		expect(form.model.speaker).toBe(true);
 		expect(form.model.speakerVolume).toBe(80);
@@ -58,16 +60,16 @@ describe('useConfigAudioEditForm', () => {
 	});
 
 	it('sets formChanged to true when model changes', async () => {
-		const form = useConfigAudioEditForm(mockConfig);
+		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		form.model.speaker = false;
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});
 
 	it('throws if form is invalid', async () => {
-		const form = useConfigAudioEditForm(mockConfig);
+		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -78,7 +80,7 @@ describe('useConfigAudioEditForm', () => {
 	});
 
 	it('submits and edits successfully', async () => {
-		const form = useConfigAudioEditForm(mockConfig);
+		const form = useConfigAudioEditForm({ config: mockConfig });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -103,8 +105,11 @@ describe('useConfigAudioEditForm', () => {
 	it('handles edit failure with custom message', async () => {
 		mockEdit.mockRejectedValueOnce(new ConfigApiException('API error', 500));
 
-		const form = useConfigAudioEditForm(mockConfig, {
-			error: 'Something went wrong!',
+		const form = useConfigAudioEditForm({
+			config: mockConfig,
+			messages: {
+				error: 'Something went wrong!',
+			},
 		});
 
 		form.formEl.value = {

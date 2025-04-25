@@ -1,13 +1,11 @@
-import 'dart:convert';
-
-import 'package:fastybird_smart_panel/api/models/config_language_language.dart';
-import 'package:fastybird_smart_panel/api/models/config_language_time_format.dart';
-import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
-import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_update_language_language.dart';
-import 'package:fastybird_smart_panel/api/models/config_update_language_time_format.dart';
-import 'package:fastybird_smart_panel/api/models/config_update_language_type.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_language_language.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_language_time_format.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_req_update_section.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_req_update_section_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_update_language_language.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_update_language_time_format.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_update_language_type.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/language.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
@@ -110,8 +108,8 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
   }) async {
     final updated = await _updateConfiguration(
       section: Section.language,
-      data: ConfigReqUpdateSectionDataUnionLanguage(
-        type: ConfigUpdateLanguageType.language,
+      data: ConfigModuleReqUpdateSectionDataUnionLanguage(
+        type: ConfigModuleUpdateLanguageType.language,
         language: _convertLanguageToApi(language ?? _getConfig().language),
         timezone: timezone ?? _getConfig().timezone,
         timeFormat:
@@ -119,7 +117,7 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
       ),
     );
 
-    if (updated is ConfigResSectionDataUnionLanguage) {
+    if (updated is ConfigModuleResSectionDataUnionLanguage) {
       data = _getConfig().copyWith(
         language: _convertLanguageFromApi(updated.language),
         timezone: updated.timezone,
@@ -138,23 +136,25 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
 
         final data = response.data.data;
 
-        if (data is ConfigResSectionDataUnionLanguage) {
-          insertConfiguration(jsonDecode(jsonEncode(data)));
+        if (data is ConfigModuleResSectionDataUnionLanguage) {
+          final raw = response.response.data['data'] as Map<String, dynamic>;
+
+          insertConfiguration(raw);
         }
       },
       'fetch language configuration',
     );
   }
 
-  Future<ConfigResSectionDataUnion> _updateConfiguration({
+  Future<ConfigModuleResSectionDataUnion> _updateConfiguration({
     required Section section,
-    required ConfigReqUpdateSectionDataUnion data,
+    required ConfigModuleReqUpdateSectionDataUnion data,
   }) async {
     return await handleApiCall(
       () async {
         final response = await apiClient.updateConfigModuleConfigSection(
           section: section,
-          body: ConfigReqUpdateSection(data: data),
+          body: ConfigModuleReqUpdateSection(data: data),
         );
 
         return response.data.data;
@@ -163,40 +163,41 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
     );
   }
 
-  Language _convertLanguageFromApi(ConfigLanguageLanguage language) {
+  Language _convertLanguageFromApi(ConfigModuleLanguageLanguage language) {
     switch (language) {
-      case ConfigLanguageLanguage.csCZ:
+      case ConfigModuleLanguageLanguage.csCZ:
         return Language.czech;
       default:
         return Language.english;
     }
   }
 
-  ConfigUpdateLanguageLanguage _convertLanguageToApi(Language language) {
+  ConfigModuleUpdateLanguageLanguage _convertLanguageToApi(Language language) {
     switch (language) {
       case Language.czech:
-        return ConfigUpdateLanguageLanguage.csCZ;
+        return ConfigModuleUpdateLanguageLanguage.csCZ;
       default:
-        return ConfigUpdateLanguageLanguage.enUS;
+        return ConfigModuleUpdateLanguageLanguage.enUS;
     }
   }
 
-  TimeFormat _convertTimeFormatFromApi(ConfigLanguageTimeFormat language) {
+  TimeFormat _convertTimeFormatFromApi(
+      ConfigModuleLanguageTimeFormat language) {
     switch (language) {
-      case ConfigLanguageTimeFormat.value12h:
+      case ConfigModuleLanguageTimeFormat.value12h:
         return TimeFormat.twelveHour;
       default:
         return TimeFormat.twentyFourHour;
     }
   }
 
-  ConfigUpdateLanguageTimeFormat _convertTimeFormatToApi(
+  ConfigModuleUpdateLanguageTimeFormat _convertTimeFormatToApi(
       TimeFormat timeFormat) {
     switch (timeFormat) {
       case TimeFormat.twelveHour:
-        return ConfigUpdateLanguageTimeFormat.value12h;
+        return ConfigModuleUpdateLanguageTimeFormat.value12h;
       default:
-        return ConfigUpdateLanguageTimeFormat.value24h;
+        return ConfigModuleUpdateLanguageTimeFormat.value24h;
     }
   }
 }

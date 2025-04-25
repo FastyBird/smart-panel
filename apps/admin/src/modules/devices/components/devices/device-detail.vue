@@ -71,10 +71,10 @@ import { I18nT, useI18n } from 'vue-i18n';
 
 import { ElTag, ElText } from 'element-plus';
 
-import { DevicesChannelCategory } from '../../../../openapi';
-import { useChannels, useDeviceState } from '../../composables';
+import { DevicesModuleChannelCategory } from '../../../../openapi';
+import { useChannels, useDeviceState } from '../../composables/composables';
 import { ConnectionState, type StateColor } from '../../devices.constants';
-import type { IChannel } from '../../store';
+import type { IChannel } from '../../store/channels.store.types';
 
 import DeviceDetailDescription from './device-detail-description.vue';
 import type { IDeviceDetailProps } from './device-detail.types';
@@ -87,13 +87,13 @@ const props = defineProps<IDeviceDetailProps>();
 
 const { t } = useI18n();
 
-const { state: deviceState } = useDeviceState(props.device);
-const { channels } = useChannels(props.device.id);
+const { state: deviceState } = useDeviceState({ device: props.device });
+const { channels } = useChannels({ deviceId: props.device.id });
 
 const alerts: string[] = [];
 
 const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefined => {
-	return channels.value.find((channel) => channel.category === DevicesChannelCategory.device_information);
+	return channels.value.find((channel) => channel.category === DevicesModuleChannelCategory.device_information);
 });
 
 const stateColor = computed<StateColor>((): StateColor => {

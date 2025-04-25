@@ -4,7 +4,7 @@ import type { Emitter, Handler } from 'mitt';
 import type { Client } from 'openapi-fetch';
 
 import type { paths } from '../../openapi';
-import type { Events } from '../services';
+import type { Events } from '../services/event-bus';
 
 export interface IUseBackend {
 	pendingRequests: Ref<number>;

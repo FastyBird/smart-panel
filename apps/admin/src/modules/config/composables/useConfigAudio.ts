@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IConfigAudio, configAudioStoreKey } from '../store';
+import type { IConfigAudio } from '../store/config-audio.store.types';
+import { configAudioStoreKey } from '../store/keys';
 
 import type { IUseConfigAudio } from './types';
 

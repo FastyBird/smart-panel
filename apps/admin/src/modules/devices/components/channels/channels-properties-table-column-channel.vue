@@ -27,8 +27,8 @@ import { ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useChannel } from '../../composables';
-import type { IChannel } from '../../store';
+import { useChannel } from '../../composables/composables';
+import type { IChannel } from '../../store/channels.store.types';
 
 import type { IChannelsPropertiesTableColumnChannelProps } from './channels-properties-table-column-channel.types';
 
@@ -42,7 +42,7 @@ const emit = defineEmits<{
 	(e: 'filter-by', value: IChannel['id'], add: boolean): void;
 }>();
 
-const { channel, fetchChannel } = useChannel(props.property.channel);
+const { channel, fetchChannel } = useChannel({ id: props.property.channel });
 
 onMounted((): void => {
 	fetchChannel().catch(() => {

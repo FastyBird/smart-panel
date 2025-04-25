@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/devices/models/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
@@ -54,7 +52,9 @@ class DevicesRepository extends Repository<DeviceModel> {
           id: id,
         );
 
-        insert([jsonDecode(jsonEncode(response.data.data))]);
+        final raw = response.response.data['data'] as Map<String, dynamic>;
+
+        insert([raw]);
       },
       'fetch device',
     );
@@ -65,13 +65,9 @@ class DevicesRepository extends Repository<DeviceModel> {
       () async {
         final response = await apiClient.getDevicesModuleDevices();
 
-        List<Map<String, dynamic>> devices = [];
+        final raw = response.response.data['data'] as List;
 
-        for (var device in response.data.data) {
-          devices.add(jsonDecode(jsonEncode(device)));
-        }
-
-        insert(devices);
+        insert(raw.cast<Map<String, dynamic>>());
       },
       'fetch devices',
     );

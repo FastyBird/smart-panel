@@ -1,8 +1,9 @@
 import { type RouteRecordRaw, useRouter } from 'vue-router';
 
 import type { IAppUser } from '../../app.types';
-import { sessionStoreKey } from '../../modules/auth';
-import { RouterGuards, injectRouterGuard, injectStoresManager } from '../services';
+import { injectAccountManager } from '../services/account-manager';
+import type { RouterGuards } from '../services/router-guards';
+import { injectRouterGuard } from '../services/router-guards';
 
 declare type RouteRecord = Omit<RouteRecordRaw, 'children'> & {
 	children: { [key: string]: RouteRecord };
@@ -74,24 +75,19 @@ const findRoute = (search: string, routes: { [key: string]: RouteRecord }): bool
 	return false;
 };
 
-export function useMenu(): {
+export const useMenu = (): {
 	mainMenuItems: { [key: string]: RouteRecord };
-} {
+} => {
 	const router = useRouter();
 
-	const storesManager = injectStoresManager();
 	const routerGuard = injectRouterGuard();
 
-	const sessionStore = storesManager.getStore(sessionStoreKey);
-
-	const appUser = sessionStore.profile
-		? { id: sessionStore.profile.id, role: sessionStore.profile.role, email: sessionStore.profile.email }
-		: undefined;
+	const accountManager = injectAccountManager();
 
 	// Build route tree and filter based on `meta.menu: true`
-	const routesTree = filterRouteTree(buildRouteTree(appUser, routerGuard, router.getRoutes()));
+	const routesTree = filterRouteTree(buildRouteTree(accountManager?.details.value ?? undefined, routerGuard, router.getRoutes()));
 
 	return {
 		mainMenuItems: routesTree,
 	};
-}
+};

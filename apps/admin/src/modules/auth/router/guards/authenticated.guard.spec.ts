@@ -4,7 +4,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IStoresManager } from '../../../../common';
 import { RouteNames } from '../../auth.constants';
-import type { SessionStore } from '../../store';
+import type { SessionStore } from '../../store/session.store.types';
 
 import authenticatedGuard from './authenticated.guard';
 

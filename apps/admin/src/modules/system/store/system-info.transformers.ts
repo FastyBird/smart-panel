@@ -1,14 +1,17 @@
 import { snakeToCamel } from '../../../common';
 import { SystemValidationException } from '../system.exceptions';
 
-import { type ISystemInfo, type ISystemInfoRes, SystemInfoSchema } from './system-info.store.types';
+import { SystemInfoSchema } from './system-info.store.schemas';
+import type { ISystemInfo, ISystemInfoRes } from './system-info.store.types';
 
-export function transformSystemInfoResponse(response: ISystemInfoRes): ISystemInfo {
+export const transformSystemInfoResponse = (response: ISystemInfoRes): ISystemInfo => {
 	const parsed = SystemInfoSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
+
 		throw new SystemValidationException('Failed to validate received system info data.');
 	}
 
 	return parsed.data;
-}
+};

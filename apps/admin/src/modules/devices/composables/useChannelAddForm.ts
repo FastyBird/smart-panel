@@ -4,16 +4,23 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { DevicesChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';
-import { type IChannel, type IDevice, channelsStoreKey } from '../store';
+import type { IChannel } from '../store/channels.store.types';
+import type { IDevice } from '../store/devices.store.types';
+import { channelsStoreKey } from '../store/keys';
 
 import type { IChannelAddForm, IUseChannelAddForm } from './types';
 import { useDevices } from './useDevices';
 
-export const useChannelAddForm = (id: IChannel['id'], deviceId?: IDevice['id']): IUseChannelAddForm => {
+interface IUseChannelAddFormProps {
+	id: IChannel['id'];
+	deviceId?: IDevice['id'];
+}
+
+export const useChannelAddForm = ({ id, deviceId }: IUseChannelAddFormProps): IUseChannelAddForm => {
 	const storesManager = injectStoresManager();
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
@@ -32,39 +39,43 @@ export const useChannelAddForm = (id: IChannel['id'], deviceId?: IDevice['id']):
 		return model.device ? (devices.value.find((device) => device.id === model.device) ?? null) : null;
 	});
 
-	const existingChannels = computed<DevicesChannelCategory[]>((): DevicesChannelCategory[] => {
+	const existingChannels = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
 		return device.value ? channelsStore.findForDevice(device.value.id).map((row) => row.category) : [];
 	});
 
 	const mappedCategories = computed<{
-		required: DevicesChannelCategory[];
-		optional: DevicesChannelCategory[];
-		multiple?: DevicesChannelCategory[];
-	} | null>((): { required: DevicesChannelCategory[]; optional: DevicesChannelCategory[]; multiple?: DevicesChannelCategory[] } | null => {
-		if (!device.value) {
-			return null;
+		required: DevicesModuleChannelCategory[];
+		optional: DevicesModuleChannelCategory[];
+		multiple?: DevicesModuleChannelCategory[];
+	} | null>(
+		(): { required: DevicesModuleChannelCategory[]; optional: DevicesModuleChannelCategory[]; multiple?: DevicesModuleChannelCategory[] } | null => {
+			if (!device.value) {
+				return null;
+			}
+
+			if (!(device.value.category in deviceChannelsSpecificationMappers)) {
+				return null;
+			}
+
+			return deviceChannelsSpecificationMappers[device.value.category];
 		}
+	);
 
-		if (!(device.value.category in deviceChannelsSpecificationMappers)) {
-			return null;
+	const categoriesOptions = computed<{ value: DevicesModuleChannelCategory; label: string }[]>(
+		(): { value: DevicesModuleChannelCategory; label: string }[] => {
+			if (mappedCategories.value === null) {
+				return [];
+			}
+
+			return Object.values(DevicesModuleChannelCategory)
+				.filter((value) => mappedCategories.value?.required.includes(value) || mappedCategories.value?.optional.includes(value))
+				.filter((value) => !existingChannels.value.includes(value) || mappedCategories.value?.multiple?.includes(value))
+				.map((value) => ({
+					value,
+					label: t(`devicesModule.categories.channels.${value}`),
+				}));
 		}
-
-		return deviceChannelsSpecificationMappers[device.value.category];
-	});
-
-	const categoriesOptions = computed<{ value: DevicesChannelCategory; label: string }[]>((): { value: DevicesChannelCategory; label: string }[] => {
-		if (mappedCategories.value === null) {
-			return [];
-		}
-
-		return Object.values(DevicesChannelCategory)
-			.filter((value) => mappedCategories.value?.required.includes(value) || mappedCategories.value?.optional.includes(value))
-			.filter((value) => !existingChannels.value.includes(value) || mappedCategories.value?.multiple?.includes(value))
-			.map((value) => ({
-				value,
-				label: t(`devicesModule.categories.channels.${value}`),
-			}));
-	});
+	);
 
 	const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] => {
 		return devices.value.map((device) => ({ value: device.id, label: device.name }));
@@ -152,7 +163,7 @@ export const useChannelAddForm = (id: IChannel['id'], deviceId?: IDevice['id']):
 	});
 
 	watch(model, (val: IChannelAddForm): void => {
-		if (val.category !== DevicesChannelCategory.generic) {
+		if (val.category !== DevicesModuleChannelCategory.generic) {
 			formChanged.value = true;
 		} else if (val.device !== deviceId) {
 			formChanged.value = true;

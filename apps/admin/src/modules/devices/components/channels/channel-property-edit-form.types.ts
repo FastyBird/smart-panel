@@ -1,5 +1,5 @@
 import type { FormResultType } from '../../devices.constants';
-import type { IChannelProperty } from '../../store';
+import type { IChannelProperty } from '../../store/channels.properties.store.types';
 
 export interface IChannelPropertyEditFormProps {
 	property: IChannelProperty;

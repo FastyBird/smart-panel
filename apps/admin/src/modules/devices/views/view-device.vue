@@ -55,6 +55,7 @@
 				<el-button
 					type="primary"
 					plain
+					class="px-4! ml-2!"
 					:disabled="!canAddAnotherChannel"
 					@click="onChannelAdd"
 				>
@@ -276,13 +277,16 @@ import {
 	useFlashMessage,
 	useUuid,
 } from '../../../common';
-import type { DevicesChannelCategory } from '../../../openapi';
-import { ChannelDetail, DeviceDetail } from '../components';
-import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification } from '../composables';
+import type { DevicesModuleChannelCategory } from '../../../openapi';
+import { ChannelDetail, DeviceDetail } from '../components/components';
+import { useChannels, useChannelsActions, useChannelsPropertiesActions, useDevice, useDeviceSpecification } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { deviceChannelsSpecificationOrder } from '../devices.mapping';
-import type { IChannel, IChannelProperty, IDevice, IDeviceControl } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import type { IDeviceControl } from '../store/devices.controls.store.types';
+import type { IDevice } from '../store/devices.store.types';
 
 import type { IViewDeviceProps } from './view-device.types';
 
@@ -304,9 +308,9 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { device, isLoading, fetchDevice } = useDevice(props.id);
-const { canAddAnotherChannel } = useDeviceSpecification(props.id);
-const { channels, fetchChannels } = useChannels(props.id);
+const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
+const { canAddAnotherChannel } = useDeviceSpecification({ id: props.id });
+const { channels, fetchChannels } = useChannels({ deviceId: props.id });
 const channelsActions = useChannelsActions();
 const channelsPropertiesActions = useChannelsPropertiesActions();
 
@@ -324,7 +328,7 @@ const isDeviceRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.DEVICE;
 });
 
-const channelsSortOrder = computed<DevicesChannelCategory[]>((): DevicesChannelCategory[] => {
+const channelsSortOrder = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
 	if (!device.value) {
 		return [];
 	}
@@ -372,7 +376,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 
 const onCloseDrawer = (done?: () => void): void => {
 	if (remoteFormChanged.value) {
-		ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+		ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 			confirmButtonText: t('devicesModule.buttons.yes.title'),
 			cancelButtonText: t('devicesModule.buttons.no.title'),
 			type: 'warning',
@@ -441,14 +445,14 @@ const onDeviceEdit = (): void => {
 const onChannelAdd = (): void => {
 	if (isLGDevice.value) {
 		router.replace({
-			name: RouteNames.DEVICE_ADD_CHANEL,
+			name: RouteNames.DEVICE_ADD_CHANNEL,
 			params: {
 				id: props.id,
 			},
 		});
 	} else {
 		router.push({
-			name: RouteNames.DEVICE_ADD_CHANEL,
+			name: RouteNames.DEVICE_ADD_CHANNEL,
 			params: {
 				id: props.id,
 			},
@@ -459,7 +463,7 @@ const onChannelAdd = (): void => {
 const onChannelEdit = (id: IChannel['id']): void => {
 	if (isLGDevice.value) {
 		router.replace({
-			name: RouteNames.DEVICE_EDIT_CHANEL,
+			name: RouteNames.DEVICE_EDIT_CHANNEL,
 			params: {
 				id: props.id,
 				channelId: id,
@@ -467,7 +471,7 @@ const onChannelEdit = (id: IChannel['id']): void => {
 		});
 	} else {
 		router.push({
-			name: RouteNames.DEVICE_EDIT_CHANEL,
+			name: RouteNames.DEVICE_EDIT_CHANNEL,
 			params: {
 				id: props.id,
 				channelId: id,
@@ -483,7 +487,7 @@ const onChannelRemove = (id: IChannel['id']): void => {
 const onPropertyAdd = (channelId: IChannel['id']): void => {
 	if (isLGDevice.value) {
 		router.replace({
-			name: RouteNames.DEVICE_CHANEL_ADD_PROPERTY,
+			name: RouteNames.DEVICE_CHANNEL_ADD_PROPERTY,
 			params: {
 				id: props.id,
 				channelId: channelId,
@@ -491,7 +495,7 @@ const onPropertyAdd = (channelId: IChannel['id']): void => {
 		});
 	} else {
 		router.push({
-			name: RouteNames.DEVICE_CHANEL_ADD_PROPERTY,
+			name: RouteNames.DEVICE_CHANNEL_ADD_PROPERTY,
 			params: {
 				id: props.id,
 				channelId: channelId,
@@ -503,7 +507,7 @@ const onPropertyAdd = (channelId: IChannel['id']): void => {
 const onPropertyEdit = (channelId: IChannel['id'], id: IChannelProperty['id']): void => {
 	if (isLGDevice.value) {
 		router.replace({
-			name: RouteNames.DEVICE_CHANEL_EDIT_PROPERTY,
+			name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 			params: {
 				id: props.id,
 				channelId: channelId,
@@ -512,7 +516,7 @@ const onPropertyEdit = (channelId: IChannel['id'], id: IChannelProperty['id']): 
 		});
 	} else {
 		router.push({
-			name: RouteNames.DEVICE_CHANEL_EDIT_PROPERTY,
+			name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 			params: {
 				id: props.id,
 				channelId: channelId,
@@ -561,10 +565,10 @@ onBeforeMount((): void => {
 		route.matched.find(
 			(matched) =>
 				matched.name === RouteNames.DEVICE_EDIT ||
-				matched.name === RouteNames.DEVICE_ADD_CHANEL ||
-				matched.name === RouteNames.DEVICE_EDIT_CHANEL ||
-				matched.name === RouteNames.DEVICE_CHANEL_ADD_PROPERTY ||
-				matched.name === RouteNames.DEVICE_CHANEL_EDIT_PROPERTY
+				matched.name === RouteNames.DEVICE_ADD_CHANNEL ||
+				matched.name === RouteNames.DEVICE_EDIT_CHANNEL ||
+				matched.name === RouteNames.DEVICE_CHANNEL_ADD_PROPERTY ||
+				matched.name === RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY
 		) !== undefined;
 });
 
@@ -579,10 +583,10 @@ watch(
 			route.matched.find(
 				(matched) =>
 					matched.name === RouteNames.DEVICE_EDIT ||
-					matched.name === RouteNames.DEVICE_ADD_CHANEL ||
-					matched.name === RouteNames.DEVICE_EDIT_CHANEL ||
-					matched.name === RouteNames.DEVICE_CHANEL_ADD_PROPERTY ||
-					matched.name === RouteNames.DEVICE_CHANEL_EDIT_PROPERTY
+					matched.name === RouteNames.DEVICE_ADD_CHANNEL ||
+					matched.name === RouteNames.DEVICE_EDIT_CHANNEL ||
+					matched.name === RouteNames.DEVICE_CHANNEL_ADD_PROPERTY ||
+					matched.name === RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY
 			) !== undefined;
 	}
 );
@@ -612,7 +616,7 @@ watch(
 watch(
 	(): string => route.path,
 	(): void => {
-		if (route.matched.find((matched) => matched.name === RouteNames.DEVICE_ADD_CHANEL) !== undefined && !canAddAnotherChannel) {
+		if (route.matched.find((matched) => matched.name === RouteNames.DEVICE_ADD_CHANNEL) !== undefined && !canAddAnotherChannel) {
 			flashMessage.info(t('devicesModule.messages.channels.noMoreAllowed'));
 
 			if (isLGDevice.value) {

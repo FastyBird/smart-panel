@@ -10,12 +10,11 @@ import { SeedTools, Seeder } from '../../seed/services/seed.service';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { CreatePageDto } from '../dto/create-page.dto';
 import { CreateTileDto } from '../dto/create-tile.dto';
-import { UpdatePageDto } from '../dto/update-page.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
 import { DataSourceService } from './data-source.service';
-import { PageTypeMapping, PagesTypeMapperService } from './pages-type-mapper.service';
+import { PagesTypeMapperService } from './pages-type-mapper.service';
 import { PagesService } from './pages.service';
 import { TilesTypeMapperService } from './tiles-type-mapper.service';
 import { TilesService } from './tiles.service';
@@ -63,51 +62,45 @@ export class DashboardSeederService implements Seeder {
 			getEnvValue<string>(this.configService, 'FB_SEED_TILES_DATA_SOURCE_FILE', 'tiles_data_source.json'),
 		);
 
-		if (!pages.length) {
-			this.logger.warn('[SEED] No pages found in pages.json');
-			return;
-		}
-
-		for (const page of pages) {
-			try {
-				await this.createPage(page);
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error(`[SEED] Failed to create page: ${JSON.stringify(page)}`, {
-					message: err.message,
-					stack: err.stack,
-				});
-			}
-		}
-
-		// Process related entities
+		await this.seedPages(pages);
 		await this.seedTiles(tiles);
 		await this.seedDataSources(dataSources);
 
 		this.logger.log(`[SEED] Successfully seeded ${pages.length} pages.`);
 	}
 
-	private async createPage(page: Record<string, any>) {
-		if (!('type' in page) || typeof page.type !== 'string') {
-			this.logger.error('[SEED] Page definition is missing type definition');
+	private async seedPages(pages: Record<string, any>[]): Promise<void> {
+		for (const item of pages) {
+			if (!('type' in item) || typeof item.type !== 'string') {
+				this.logger.error(`[SEED] Page definition is missing type definition`);
 
-			return;
+				continue;
+			}
+
+			let mapping: {
+				type: string;
+				class: new (...args: any[]) => PageEntity;
+				createDto: new (...args: any[]) => CreatePageDto;
+			};
+
+			try {
+				mapping = this.pagesMapperService.getMapping(item.type);
+			} catch {
+				this.logger.error(`[SEED] Unknown Page type: ${item.type}`);
+
+				continue;
+			}
+
+			const dtoInstance = plainToInstance(mapping.createDto, item, { excludeExtraneousValues: true });
+
+			try {
+				await this.pagesService.create(dtoInstance);
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(`[SEED] Failed to create page: ${JSON.stringify(item)} error=${err.message}`, err.stack);
+			}
 		}
-
-		let mapping: PageTypeMapping<PageEntity, CreatePageDto, UpdatePageDto>;
-
-		try {
-			mapping = this.pagesMapperService.getMapping<PageEntity, CreatePageDto, UpdatePageDto>(page.type);
-		} catch {
-			this.logger.error(`[SEED] Unknown page type: ${page.type}`);
-
-			return;
-		}
-
-		const dtoInstance = plainToInstance(mapping.createDto, page, { excludeExtraneousValues: true });
-
-		await this.pagesService.create(dtoInstance);
 	}
 
 	private async seedTiles(tiles: Record<string, any>[]): Promise<void> {
@@ -122,6 +115,14 @@ export class DashboardSeederService implements Seeder {
 
 			if (!uuidValidate(pageId)) {
 				this.logger.error(`[SEED] Tile relation page is not a valid UUIDv4`);
+
+				continue;
+			}
+
+			const page = await this.pagesService.findOne(pageId);
+
+			if (!page) {
+				this.logger.error(`[SEED] Tile relation page is not present in database`);
 
 				continue;
 			}
@@ -143,7 +144,7 @@ export class DashboardSeederService implements Seeder {
 			const dtoInstance = plainToInstance(mapping.createDto, item, { excludeExtraneousValues: true });
 
 			try {
-				await this.tilesService.create(dtoInstance, { pageId });
+				await this.tilesService.create(dtoInstance, { parentType: 'page', parentId: page.id });
 			} catch (error) {
 				const err = error as Error;
 
@@ -168,6 +169,14 @@ export class DashboardSeederService implements Seeder {
 				continue;
 			}
 
+			const tile = await this.tilesService.findOne(tileId);
+
+			if (!tile) {
+				this.logger.error(`[SEED] Data source relation tile is not present in database`);
+
+				continue;
+			}
+
 			let mapping: {
 				type: string;
 				class: new (...args: any[]) => DataSourceEntity;
@@ -185,7 +194,7 @@ export class DashboardSeederService implements Seeder {
 			const dtoInstance = plainToInstance(mapping.createDto, item, { excludeExtraneousValues: true });
 
 			try {
-				await this.dataSourceService.create(dtoInstance, { tileId });
+				await this.dataSourceService.create(dtoInstance, { parentType: 'tile', parentId: tile.id });
 			} catch (error) {
 				const err = error as Error;
 

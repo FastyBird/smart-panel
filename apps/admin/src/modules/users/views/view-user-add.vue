@@ -114,7 +114,7 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
-import { UserAddForm } from '../components';
+import { UserAddForm } from '../components/components';
 import { FormResult, type FormResultType, RouteNames } from '../users.constants';
 
 import type { IViewUserAddProps } from './view-user-add.types';

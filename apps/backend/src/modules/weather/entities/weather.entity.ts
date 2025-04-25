@@ -1,5 +1,4 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { plainToInstance } from 'class-transformer';
 import { IsArray, IsDate, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class WindEntity {
@@ -96,20 +95,6 @@ export class ForecastDayEntity {
 	temperature: ForecastTemperatureEntity;
 
 	@Expose({ name: 'feels_like' })
-	@Transform(
-		({
-			obj,
-		}: {
-			obj: { feels_like?: object | ForecastFeelsLikeEntity; feelsLike?: object | ForecastFeelsLikeEntity };
-		}) => {
-			const feelsLikeData = obj.feels_like || obj.feelsLike;
-
-			return feelsLikeData instanceof ForecastFeelsLikeEntity
-				? feelsLikeData
-				: plainToInstance(ForecastFeelsLikeEntity, feelsLikeData);
-		},
-		{ toClassOnly: true },
-	)
 	@ValidateNested()
 	@Type(() => ForecastFeelsLikeEntity)
 	feelsLike: ForecastFeelsLikeEntity;

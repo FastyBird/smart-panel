@@ -5,13 +5,13 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { ConfigDisplayType } from '../../../openapi';
-import type { IConfigDisplay } from '../store';
+import { ConfigModuleDisplayType } from '../../../openapi';
+import type { IConfigDisplay } from '../store/config-display.store.types';
 
 import { useConfigDisplay } from './useConfigDisplay';
 
 const mockDisplay: IConfigDisplay = {
-	type: ConfigDisplayType.display,
+	type: ConfigModuleDisplayType.display,
 	darkMode: true,
 	brightness: 80,
 	screenLockDuration: 300,

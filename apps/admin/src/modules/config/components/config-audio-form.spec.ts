@@ -6,10 +6,10 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigAudioType } from '../../../openapi';
-import type { IConfigAudioEditForm } from '../composables';
+import { ConfigModuleAudioType } from '../../../openapi';
+import type { IConfigAudioEditForm } from '../composables/types';
 import { FormResult, Layout } from '../config.constants';
-import type { ConfigAudioStore } from '../store';
+import type { ConfigAudioStore } from '../store/config-audio.store.types';
 
 import type { IConfigAudioFormProps } from './config-audio-form.types';
 import ConfigAudioForm from './config-audio-form.vue';
@@ -54,7 +54,7 @@ describe('ConfigAudioForm', (): void => {
 				remoteFormReset: false,
 				layout: Layout.DEFAULT,
 				config: {
-					type: ConfigAudioType.audio,
+					type: ConfigModuleAudioType.audio,
 					speaker: true,
 					speakerVolume: 80,
 					microphone: false,

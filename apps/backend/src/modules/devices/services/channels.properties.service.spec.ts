@@ -65,6 +65,7 @@ describe('ChannelsPropertiesService', () => {
 			create: jest.fn(),
 			save: jest.fn(),
 			remove: jest.fn(),
+			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -319,11 +320,11 @@ describe('ChannelsPropertiesService', () => {
 				.spyOn(channelsPropertiesService, 'findOne')
 				.mockResolvedValue(plainToInstance(ChannelPropertyEntity, mockChannelProperty));
 
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockChannelProperty);
+			jest.spyOn(repository, 'delete');
 
 			await channelsPropertiesService.remove(mockChannelProperty.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(ChannelPropertyEntity, mockChannelProperty));
+			expect(repository.delete).toHaveBeenCalledWith(mockChannelProperty.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_DELETED,
 				plainToInstance(ChannelPropertyEntity, mockChannelProperty),

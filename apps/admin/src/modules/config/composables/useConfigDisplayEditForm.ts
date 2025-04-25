@@ -6,11 +6,17 @@ import type { FormInstance } from 'element-plus';
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
-import { type IConfigDisplay, configDisplayStoreKey } from '../store';
+import type { IConfigDisplay } from '../store/config-display.store.types';
+import { configDisplayStoreKey } from '../store/keys';
 
 import type { IConfigDisplayEditForm, IUseConfigDisplayEditForm } from './types';
 
-export const useConfigDisplayEditForm = (config: IConfigDisplay, messages?: { success?: string; error?: string }): IUseConfigDisplayEditForm => {
+interface IUseDisplayEditFormProps {
+	config: IConfigDisplay;
+	messages?: { success?: string; error?: string };
+}
+
+export const useConfigDisplayEditForm = ({ config, messages }: IUseDisplayEditFormProps): IUseConfigDisplayEditForm => {
 	const storesManager = injectStoresManager();
 
 	const configDisplayStore = storesManager.getStore(configDisplayStoreKey);

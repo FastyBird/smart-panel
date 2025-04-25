@@ -1,10 +1,12 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesChannelCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
-import type { IChannel } from '../store';
+import type { IChannel } from '../store/channels.store.types';
 
 import { useChannelEditForm } from './useChannelEditForm';
 
@@ -13,7 +15,7 @@ const mockChannel: IChannel = {
 	device: 'device-1',
 	name: 'Channel Name',
 	description: 'Some desc',
-	category: DevicesChannelCategory.light,
+	category: DevicesModuleChannelCategory.light,
 	draft: true,
 } as IChannel;
 
@@ -62,7 +64,7 @@ describe('useChannelEditForm', () => {
 	});
 
 	it('initializes model with channel data', () => {
-		const form = useChannelEditForm(mockChannel);
+		const form = useChannelEditForm({ channel: mockChannel });
 
 		expect(form.model.id).toBe(mockChannel.id);
 		expect(form.model.name).toBe(mockChannel.name);
@@ -70,16 +72,16 @@ describe('useChannelEditForm', () => {
 	});
 
 	it('sets formChanged to true when model changes', async () => {
-		const form = useChannelEditForm(mockChannel);
+		const form = useChannelEditForm({ channel: mockChannel });
 
 		form.model.name = 'Updated';
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});
 
 	it('throws if form is invalid', async () => {
-		const form = useChannelEditForm(mockChannel);
+		const form = useChannelEditForm({ channel: mockChannel });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -90,7 +92,7 @@ describe('useChannelEditForm', () => {
 	});
 
 	it('submits and saves if draft', async () => {
-		const form = useChannelEditForm(mockChannel);
+		const form = useChannelEditForm({ channel: mockChannel });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -106,7 +108,7 @@ describe('useChannelEditForm', () => {
 	});
 
 	it('submits and edits if not draft', async () => {
-		const form = useChannelEditForm({ ...mockChannel, draft: false });
+		const form = useChannelEditForm({ channel: { ...mockChannel, draft: false } });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),

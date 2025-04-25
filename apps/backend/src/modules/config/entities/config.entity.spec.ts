@@ -19,11 +19,11 @@ import {
 	WeatherConfigEntity,
 } from './config.entity';
 
-type Audio = components['schemas']['ConfigAudio'];
-type Display = components['schemas']['ConfigDisplay'];
-type Language = components['schemas']['ConfigLanguage'];
-type Weather = components['schemas']['ConfigWeather'];
-type App = components['schemas']['ConfigApp'];
+type Audio = components['schemas']['ConfigModuleAudio'];
+type Display = components['schemas']['ConfigModuleDisplay'];
+type Language = components['schemas']['ConfigModuleLanguage'];
+type Weather = components['schemas']['ConfigModuleWeather'];
+type App = components['schemas']['ConfigModuleApp'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 

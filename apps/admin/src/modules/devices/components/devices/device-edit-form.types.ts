@@ -1,5 +1,5 @@
 import type { FormResultType } from '../../devices.constants';
-import type { IDevice } from '../../store';
+import type { IDevice } from '../../store/devices.store.types';
 
 export interface IDeviceEditFormProps {
 	device: IDevice;

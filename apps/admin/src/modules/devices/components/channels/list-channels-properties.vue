@@ -53,8 +53,8 @@ import { ElCard, ElPagination } from 'element-plus';
 import { useVModel } from '@vueuse/core';
 
 import { useBreakpoints } from '../../../../common';
-import type { IChannelsPropertiesFilter } from '../../composables';
-import type { IChannelProperty } from '../../store';
+import type { IChannelsPropertiesFilter } from '../../composables/composables';
+import type { IChannelProperty } from '../../store/channels.properties.store.types';
 
 import ChannelsPropertiesFilter from './channels-properties-filter.vue';
 import ChannelsPropertiesTable from './channels-properties-table.vue';

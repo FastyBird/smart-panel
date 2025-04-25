@@ -1,15 +1,15 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
-import { ValidateDeviceChannelExists } from '../validators/device-channel-exists-constraint.validator';
-import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 
-type CreateDataSourceBase = components['schemas']['DashboardCreateDataSourceBase'];
-type CreateDeviceChannelDataSource = components['schemas']['DashboardCreateDeviceChannelDataSource'];
+import { ParentDto } from './common.dto';
 
-export abstract class CreateDataSourceDto implements CreateDataSourceBase {
+type ReqCreateDataSource = components['schemas']['DashboardModuleReqCreateDataSource'];
+type ReqCreateDataSourceWithParent = components['schemas']['DashboardModuleReqCreateDataSourceWithParent'];
+type CreateDataSource = components['schemas']['DashboardModuleCreateDataSource'];
+
+export abstract class CreateDataSourceDto implements CreateDataSource {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
@@ -21,30 +21,23 @@ export abstract class CreateDataSourceDto implements CreateDataSourceBase {
 	readonly type: string;
 }
 
-export class CreateDeviceChannelDataSourceDto extends CreateDataSourceDto implements CreateDeviceChannelDataSource {
-	readonly type: 'device-channel';
-
+export class CreateSingleDataSourceDto extends CreateDataSourceDto {
 	@Expose()
-	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
-	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
-	device: string;
+	@ValidateNested()
+	@Type(() => ParentDto)
+	readonly parent: ParentDto;
+}
 
+export class ReqCreateDataSourceDto implements ReqCreateDataSource {
 	@Expose()
-	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
-	@ValidateDeviceChannelExists({ message: '[{"field":"channel","reason":"The specified channel does not exist."}]' })
-	channel: string;
+	@ValidateNested()
+	@Type(() => CreateSingleDataSourceDto)
+	data: CreateSingleDataSourceDto;
+}
 
+export class ReqCreateDataSourceWithParentDto implements ReqCreateDataSourceWithParent {
 	@Expose()
-	@IsUUID('4', { message: '[{"field":"property","reason":"Property must be a valid UUID (version 4)."}]' })
-	@ValidateChannelPropertyExists({
-		message: '[{"field":"property","reason":"The specified property does not exist."}]',
-	})
-	property: string;
-
-	@Expose()
-	@IsOptional()
-	@IsNotEmpty({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
-	@IsString({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
-	@ValidateIf((_, value) => value !== null)
-	icon?: string | null;
+	@ValidateNested()
+	@Type(() => CreateDataSourceDto)
+	data: CreateDataSourceDto;
 }

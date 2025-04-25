@@ -1,17 +1,19 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesDeviceCategory } from '../../../openapi';
+import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
-import type { IDevice } from '../store';
+import type { IDevice } from '../store/devices.store.types';
 
 import { useDeviceEditForm } from './useDeviceEditForm';
 
 const mockDevice: IDevice = {
 	id: 'device-1',
 	type: 'mock-type',
-	category: DevicesDeviceCategory.generic,
+	category: DevicesModuleDeviceCategory.generic,
 	name: 'Test Device',
 	description: 'Test Desc',
 	draft: true,
@@ -53,7 +55,7 @@ describe('useDeviceEditForm', () => {
 	});
 
 	it('initializes model with device data', () => {
-		const form = useDeviceEditForm(mockDevice);
+		const form = useDeviceEditForm({ device: mockDevice });
 
 		expect(form.model.id).toBe(mockDevice.id);
 		expect(form.model.name).toBe(mockDevice.name);
@@ -61,16 +63,16 @@ describe('useDeviceEditForm', () => {
 	});
 
 	it('sets formChanged to true if name or description is edited', async () => {
-		const form = useDeviceEditForm(mockDevice);
+		const form = useDeviceEditForm({ device: mockDevice });
 
 		form.model.name = 'Updated';
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});
 
 	it('throws validation error if form is invalid', async () => {
-		const form = useDeviceEditForm(mockDevice);
+		const form = useDeviceEditForm({ device: mockDevice });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -81,7 +83,7 @@ describe('useDeviceEditForm', () => {
 	});
 
 	it('submits and saves if device is a draft', async () => {
-		const form = useDeviceEditForm(mockDevice);
+		const form = useDeviceEditForm({ device: mockDevice });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -104,7 +106,7 @@ describe('useDeviceEditForm', () => {
 
 	it('submits and edits if device is not a draft', async () => {
 		const device = { ...mockDevice, draft: false };
-		const form = useDeviceEditForm(device);
+		const form = useDeviceEditForm({ device });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),

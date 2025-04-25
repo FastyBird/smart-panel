@@ -55,6 +55,7 @@
 				<el-button
 					type="primary"
 					plain
+					class="px-4! ml-2!"
 					:disabled="!canAddAnotherProperty"
 					@click="onPropertyAdd"
 				>
@@ -191,11 +192,12 @@ import {
 	useBreakpoints,
 	useUuid,
 } from '../../../common';
-import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components';
-import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables';
+import { ListChannelsProperties, ListChannelsPropertiesAdjust } from '../components/components';
+import { useChannel, useChannelSpecification, useChannelsPropertiesActions, useChannelsPropertiesDataSource } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import type { IChannel, IChannelProperty } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
 
 import type { IViewChannelProps } from './view-channel.types';
 
@@ -214,8 +216,8 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { channel, isLoading, fetchChannel } = useChannel(props.id);
-const { canAddAnotherProperty } = useChannelSpecification(props.id);
+const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
+const { canAddAnotherProperty } = useChannelSpecification({ id: props.id });
 const {
 	properties,
 	propertiesPaginated,
@@ -229,7 +231,7 @@ const {
 	areLoading,
 	fetchProperties,
 	resetFilter,
-} = useChannelsPropertiesDataSource(props.id);
+} = useChannelsPropertiesDataSource({ channelId: props.id });
 const propertiesActions = useChannelsPropertiesActions();
 
 if (!validateUuid(props.id)) {
@@ -270,7 +272,7 @@ const onCloseDrawer = (done?: () => void): void => {
 		done?.();
 	} else {
 		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+			ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 				confirmButtonText: t('devicesModule.buttons.yes.title'),
 				cancelButtonText: t('devicesModule.buttons.no.title'),
 				type: 'warning',

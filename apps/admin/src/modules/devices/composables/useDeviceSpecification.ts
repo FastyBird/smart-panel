@@ -1,14 +1,19 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import type { DevicesChannelCategory } from '../../../openapi';
+import type { DevicesModuleChannelCategory } from '../../../openapi';
 import { DevicesException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';
-import { type IDevice, channelsStoreKey, devicesStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { channelsStoreKey, devicesStoreKey } from '../store/keys';
 
 import type { IUseDeviceSpecification } from './types';
 
-export const useDeviceSpecification = (id: IDevice['id']): IUseDeviceSpecification => {
+interface IUseDeviceSpecificationProps {
+	id: IDevice['id'];
+}
+
+export const useDeviceSpecification = ({ id }: IUseDeviceSpecificationProps): IUseDeviceSpecification => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
@@ -20,7 +25,7 @@ export const useDeviceSpecification = (id: IDevice['id']): IUseDeviceSpecificati
 
 	const getDeviceSpecification = (
 		device: IDevice
-	): { required: DevicesChannelCategory[]; optional: DevicesChannelCategory[]; multiple?: DevicesChannelCategory[] } | null => {
+	): { required: DevicesModuleChannelCategory[]; optional: DevicesModuleChannelCategory[]; multiple?: DevicesModuleChannelCategory[] } | null => {
 		if (!(device.category in deviceChannelsSpecificationMappers)) {
 			return null;
 		}
@@ -46,7 +51,7 @@ export const useDeviceSpecification = (id: IDevice['id']): IUseDeviceSpecificati
 		return remaining.length > 0 || (typeof multiple !== 'undefined' && multiple.length > 0);
 	});
 
-	const missingRequiredChannels = computed<DevicesChannelCategory[]>((): DevicesChannelCategory[] => {
+	const missingRequiredChannels = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
 		const device = getDevice(id);
 
 		if (device === null) {

@@ -1,9 +1,6 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/dashboard_module/dashboard_module_client.dart';
-import 'package:fastybird_smart_panel/api/models/dashboard_res_pages_data_union.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/constants.dart';
@@ -34,7 +31,7 @@ class DashboardModuleService {
       apiClient: apiClient.dashboardModule,
     );
     _cardsRepository = CardsRepository(
-      apiClient: apiClient.dashboardModule,
+      apiClient: apiClient.pagesCardsPlugin,
     );
     _tilesRepository = TilesRepository(
       apiClient: apiClient.dashboardModule,
@@ -72,86 +69,48 @@ class DashboardModuleService {
   }
 
   Future<void> _initializePages() async {
-    var apiPages = await _fetchPages();
-
-    List<Map<String, dynamic>> pages = [];
-
-    for (var page in apiPages) {
-      pages.add(jsonDecode(jsonEncode(page)));
-    }
+    var pages = await _fetchPages();
 
     _pagesRepository.insertPages(pages);
 
-    for (var apiPage in apiPages) {
-      if (apiPage is DashboardResPagesDataUnionCards) {
-        List<Map<String, dynamic>> cards = [];
+    for (var page in pages) {
+      final dataSources = (page['data_source'] ?? []) as List;
 
-        for (var card in apiPage.cards) {
-          cards.add(jsonDecode(jsonEncode(card)));
-        }
+      _dataSourcesRepository
+          .insertDataSources(dataSources.cast<Map<String, dynamic>>());
 
-        _cardsRepository.insertCards(cards);
+      if (page['type'] == 'cards') {
+        final cards = (page['cards'] ?? []) as List;
 
-        List<Map<String, dynamic>> pageDataSource = [];
+        _cardsRepository.insertCards(cards.cast<Map<String, dynamic>>());
 
-        for (var dataSource in apiPage.dataSource) {
-          pageDataSource.add(jsonDecode(jsonEncode(dataSource)));
-        }
+        for (var card in cards) {
+          final dataSources = (card['data_source'] ?? []) as List;
 
-        _dataSourcesRepository.insertPageDataSources(pageDataSource);
+          _dataSourcesRepository
+              .insertDataSources(dataSources.cast<Map<String, dynamic>>());
 
-        for (var apiCard in apiPage.cards) {
-          List<Map<String, dynamic>> cardDataSource = [];
+          final tiles = (card['tiles'] ?? []) as List;
 
-          for (var dataSource in apiCard.dataSource) {
-            cardDataSource.add(jsonDecode(jsonEncode(dataSource)));
-          }
+          _tilesRepository.insertTiles(tiles.cast<Map<String, dynamic>>());
 
-          _dataSourcesRepository.insertCardDataSources(cardDataSource);
+          for (var tile in tiles) {
+            final dataSources = (tile['data_source'] ?? []) as List;
 
-          List<Map<String, dynamic>> cardTiles = [];
-
-          for (var tile in apiCard.tiles) {
-            cardTiles.add(jsonDecode(jsonEncode(tile)));
-          }
-
-          _tilesRepository.insertCardTiles(cardTiles);
-
-          for (var apiTile in apiCard.tiles) {
-            List<Map<String, dynamic>> tileDataSource = [];
-
-            for (var dataSource in apiTile.dataSource) {
-              tileDataSource.add(jsonDecode(jsonEncode(dataSource)));
-            }
-
-            _dataSourcesRepository.insertTileDataSources(tileDataSource);
+            _dataSourcesRepository
+                .insertDataSources(dataSources.cast<Map<String, dynamic>>());
           }
         }
-      } else if (apiPage is DashboardResPagesDataUnionTiles) {
-        List<Map<String, dynamic>> pageTiles = [];
+      } else if (page['type'] == 'tiles') {
+        final tiles = (page['tiles'] ?? []) as List;
 
-        for (var tile in apiPage.tiles) {
-          pageTiles.add(jsonDecode(jsonEncode(tile)));
-        }
+        _tilesRepository.insertTiles(tiles.cast<Map<String, dynamic>>());
 
-        _tilesRepository.insertPageTiles(pageTiles);
+        for (var tile in tiles) {
+          final dataSources = (tile['data_source'] ?? []) as List;
 
-        List<Map<String, dynamic>> pageDataSource = [];
-
-        for (var dataSource in apiPage.dataSource) {
-          pageDataSource.add(jsonDecode(jsonEncode(dataSource)));
-        }
-
-        _dataSourcesRepository.insertPageDataSources(pageDataSource);
-
-        for (var apiTile in apiPage.tiles) {
-          List<Map<String, dynamic>> tileDataSource = [];
-
-          for (var dataSource in apiTile.dataSource) {
-            tileDataSource.add(jsonDecode(jsonEncode(dataSource)));
-          }
-
-          _dataSourcesRepository.insertTileDataSources(tileDataSource);
+          _dataSourcesRepository
+              .insertDataSources(dataSources.cast<Map<String, dynamic>>());
         }
       }
     }
@@ -161,12 +120,14 @@ class DashboardModuleService {
   /// API HANDLERS
   /// ////////////
 
-  Future<List<DashboardResPagesDataUnion>> _fetchPages() async {
+  Future<List<Map<String, dynamic>>> _fetchPages() async {
     return _handleApiCall(
       () async {
         final response = await _apiClient.getDashboardModulePages();
 
-        return response.data.data;
+        final raw = response.response.data['data'] as List;
+
+        return raw.cast<Map<String, dynamic>>();
       },
       'fetch pages',
     );
@@ -225,19 +186,7 @@ class DashboardModuleService {
       /// Tile CREATE/UPDATE
     } else if (event == DashboardModuleConstants.tileCreatedEvent ||
         event == DashboardModuleConstants.tileUpdatedEvent) {
-      if (payload.containsKey('page')) {
-        _tilesRepository.insertPageTiles([payload]);
-      } else if (payload.containsKey('card')) {
-        _tilesRepository.insertCardTiles([payload]);
-      } else {
-        /// Invalid tile type
-
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][SOCKETS] Received unsupported tile',
-          );
-        }
-      }
+      _tilesRepository.insertTiles([payload]);
 
       /// Tile DELETE
     } else if (event == DashboardModuleConstants.tileDeletedEvent &&
@@ -247,21 +196,7 @@ class DashboardModuleService {
       /// Data source CREATE/UPDATE
     } else if (event == DashboardModuleConstants.dataSourceCreatedEvent ||
         event == DashboardModuleConstants.dataSourceUpdatedEvent) {
-      if (payload.containsKey('page')) {
-        _dataSourcesRepository.insertPageDataSources([payload]);
-      } else if (payload.containsKey('card')) {
-        _dataSourcesRepository.insertCardDataSources([payload]);
-      } else if (payload.containsKey('tile')) {
-        _dataSourcesRepository.insertTileDataSources([payload]);
-      } else {
-        /// Invalid data source type
-
-        if (kDebugMode) {
-          debugPrint(
-            '[DASHBOARD MODULE][SOCKETS] Received unsupported data source',
-          );
-        }
-      }
+      _dataSourcesRepository.insertDataSources([payload]);
 
       /// Data source DELETE
     } else if (event == DashboardModuleConstants.dataSourceDeletedEvent &&

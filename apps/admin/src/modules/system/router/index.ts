@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { RouteNames } from '../system.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
@@ -11,7 +11,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		meta: {
 			guards: {
 				authenticated: true,
-				roles: [UsersUserRole.admin, UsersUserRole.owner],
+				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'System',
 			icon: 'mdi:hammer',
@@ -27,7 +27,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'System information',
 					icon: 'mdi:cellphone-information',

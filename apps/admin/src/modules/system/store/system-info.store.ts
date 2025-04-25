@@ -7,14 +7,14 @@ import type { operations } from '../../../openapi';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
 
-import {
-	type ISystemInfo,
-	type ISystemInfoSetActionPayload,
-	type ISystemInfoStateSemaphore,
-	type ISystemInfoStoreActions,
-	type ISystemInfoStoreState,
-	SystemInfoSchema,
-	type SystemInfoStoreSetup,
+import { SystemInfoSchema } from './system-info.store.schemas';
+import type {
+	ISystemInfo,
+	ISystemInfoSetActionPayload,
+	ISystemInfoStateSemaphore,
+	ISystemInfoStoreActions,
+	ISystemInfoStoreState,
+	SystemInfoStoreSetup,
 } from './system-info.store.types';
 import { transformSystemInfoResponse } from './system-info.transformers';
 
@@ -41,6 +41,8 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 		const parsedSystemInfo = SystemInfoSchema.safeParse(payload.data);
 
 		if (!parsedSystemInfo.success) {
+			console.error('Schema validation failed with:', parsedSystemInfo.error);
+
 			throw new SystemValidationException('Failed to insert system info.');
 		}
 

@@ -170,7 +170,7 @@ export class ChannelsPropertiesService {
 
 		const property = await this.getOneOrThrow(id);
 
-		await this.repository.remove(property);
+		await this.repository.delete(property.id);
 
 		this.logger.log(`[DELETE] Successfully removed property with id=${id}`);
 

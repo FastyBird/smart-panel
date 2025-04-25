@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import { useUserUsernameForm } from '../composables';
+import { useUserUsernameForm } from '../composables/composables';
 
 import type { IUsernameEditFormProps } from './username-edit-form.types';
 import UsernameEditForm from './username-edit-form.vue';
@@ -29,7 +29,7 @@ const editFormMock = {
 	formResult: ref(FormResult.NONE),
 };
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useUserUsernameForm: vi.fn(() => editFormMock),
 }));
 
@@ -44,7 +44,7 @@ describe('UsernameEditForm', (): void => {
 		firstName: 'Admin',
 		lastName: 'User',
 		email: 'admin@example.com',
-		role: UsersUserRole.admin,
+		role: UsersModuleUserRole.admin,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),
@@ -80,7 +80,7 @@ describe('UsernameEditForm', (): void => {
 	});
 
 	it('calls submit when the form is submitted', async (): Promise<void> => {
-		const { submit } = useUserUsernameForm(mockUser);
+		const { submit } = useUserUsernameForm({ user: mockUser });
 
 		await wrapper.setProps({ remoteFormSubmit: true });
 
@@ -90,7 +90,7 @@ describe('UsernameEditForm', (): void => {
 	});
 
 	it('emits `update:remote-form-result` on form result change', async (): Promise<void> => {
-		const { formResult } = useUserUsernameForm(mockUser);
+		const { formResult } = useUserUsernameForm({ user: mockUser });
 
 		formResult.value = FormResult.OK;
 

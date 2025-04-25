@@ -18,117 +18,18 @@ class _WeatherModuleClient implements WeatherModuleClient {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<HttpResponse<WeatherResLocationWeather>>
+  Future<HttpResponse<WeatherModuleResLocationWeather>>
       getWeatherModuleWeather() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<WeatherResLocationWeather>>(
+    final _options =
+        _setStreamType<HttpResponse<WeatherModuleResLocationWeather>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
             '/weather-module/weather',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late WeatherResLocationWeather _value;
-    try {
-      _value = WeatherResLocationWeather.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<WeatherResLocationCurrent>> getWeatherModuleCurrent({
-    LocationType locationType = LocationType.cityName,
-    String? location,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{
-      r'location_type': locationType.name,
-      r'location': location,
-    };
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<WeatherResLocationCurrent>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/weather-module/weather/current',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late WeatherResLocationCurrent _value;
-    try {
-      _value = WeatherResLocationCurrent.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<WeatherResLocationForecast>> getWeatherModuleForecast({
-    LocationType locationType = LocationType.cityName,
-    String? location,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{
-      r'location_type': locationType.name,
-      r'location': location,
-    };
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<WeatherResLocationForecast>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/weather-module/weather/forecast',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late WeatherResLocationForecast _value;
-    try {
-      _value = WeatherResLocationForecast.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<WeatherResGeolocationCityToCoordinates>>
-      getWeatherModuleGeolocation({required String city}) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{r'city': city};
-    final _headers = <String, dynamic>{};
-    const Map<String, dynamic>? _data = null;
-    final _options =
-        _setStreamType<HttpResponse<WeatherResGeolocationCityToCoordinates>>(
-      Options(method: 'GET', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/weather-module/geolocation/city-to-coordinates',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -137,9 +38,9 @@ class _WeatherModuleClient implements WeatherModuleClient {
           ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late WeatherResGeolocationCityToCoordinates _value;
+    late WeatherModuleResLocationWeather _value;
     try {
-      _value = WeatherResGeolocationCityToCoordinates.fromJson(_result.data!);
+      _value = WeatherModuleResLocationWeather.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -149,7 +50,117 @@ class _WeatherModuleClient implements WeatherModuleClient {
   }
 
   @override
-  Future<HttpResponse<WeatherResGeolocationCoordinatesToCity>>
+  Future<HttpResponse<WeatherModuleResLocationCurrent>>
+      getWeatherModuleCurrent({
+    LocationType locationType = LocationType.cityName,
+    String? location,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'location_type': locationType.name,
+      r'location': location,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options =
+        _setStreamType<HttpResponse<WeatherModuleResLocationCurrent>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/weather-module/weather/current',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late WeatherModuleResLocationCurrent _value;
+    try {
+      _value = WeatherModuleResLocationCurrent.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<WeatherModuleResLocationForecast>>
+      getWeatherModuleForecast({
+    LocationType locationType = LocationType.cityName,
+    String? location,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'location_type': locationType.name,
+      r'location': location,
+    };
+    queryParameters.removeWhere((k, v) => v == null);
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options =
+        _setStreamType<HttpResponse<WeatherModuleResLocationForecast>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/weather-module/weather/forecast',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late WeatherModuleResLocationForecast _value;
+    try {
+      _value = WeatherModuleResLocationForecast.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<WeatherModuleResGeolocationCityToCoordinates>>
+      getWeatherModuleGeolocation({required String city}) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{r'city': city};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<
+        HttpResponse<WeatherModuleResGeolocationCityToCoordinates>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/weather-module/geolocation/city-to-coordinates',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late WeatherModuleResGeolocationCityToCoordinates _value;
+    try {
+      _value = WeatherModuleResGeolocationCityToCoordinates.fromJson(
+        _result.data!,
+      );
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<WeatherModuleResGeolocationCoordinatesToCity>>
       getWeatherModuleGeolocationCoordinatesToCity({
     required double lat,
     required double lon,
@@ -158,8 +169,8 @@ class _WeatherModuleClient implements WeatherModuleClient {
     final queryParameters = <String, dynamic>{r'lat': lat, r'lon': lon};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options =
-        _setStreamType<HttpResponse<WeatherResGeolocationCoordinatesToCity>>(
+    final _options = _setStreamType<
+        HttpResponse<WeatherModuleResGeolocationCoordinatesToCity>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -167,14 +178,14 @@ class _WeatherModuleClient implements WeatherModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(
-            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
-          ),
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late WeatherResGeolocationCoordinatesToCity _value;
+    late WeatherModuleResGeolocationCoordinatesToCity _value;
     try {
-      _value = WeatherResGeolocationCoordinatesToCity.fromJson(_result.data!);
+      _value = WeatherModuleResGeolocationCoordinatesToCity.fromJson(
+        _result.data!,
+      );
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

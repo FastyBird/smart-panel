@@ -9,18 +9,12 @@ import { injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
-import {
-	channelsControlsStoreKey,
-	channelsPropertiesStoreKey,
-	channelsStoreKey,
-	devicesControlsStoreKey,
-	devicesStoreKey,
-	registerChannelsControlsStore,
-	registerChannelsPropertiesStore,
-	registerChannelsStore,
-	registerDevicesControlsStore,
-	registerDevicesStore,
-} from './store';
+import { registerChannelsControlsStore } from './store/channels.controls.store';
+import { registerChannelsPropertiesStore } from './store/channels.properties.store';
+import { registerChannelsStore } from './store/channels.store';
+import { registerDevicesControlsStore } from './store/devices.controls.store';
+import { registerDevicesStore } from './store/devices.store';
+import { channelsControlsStoreKey, channelsPropertiesStoreKey, channelsStoreKey, devicesControlsStoreKey, devicesStoreKey } from './store/keys';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {

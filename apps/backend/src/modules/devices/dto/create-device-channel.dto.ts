@@ -8,8 +8,8 @@ import { UniqueControlNames } from '../validators/unique-control-names-constrain
 import { CreateDeviceChannelControlDto } from './create-device-channel-control.dto';
 import { CreateDeviceChannelPropertyDto } from './create-device-channel-property.dto';
 
-type ReqCreateDeviceChannel = components['schemas']['DevicesReqCreateDeviceChannel'];
-type CreateDeviceChannel = components['schemas']['DevicesCreateDeviceChannel'];
+type ReqCreateDeviceChannel = components['schemas']['DevicesModuleReqCreateDeviceChannel'];
+type CreateDeviceChannel = components['schemas']['DevicesModuleCreateDeviceChannel'];
 
 export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	@Expose()

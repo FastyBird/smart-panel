@@ -109,8 +109,12 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
-import { DevicesChannelPropertyCategory, DevicesChannelPropertyData_type, DevicesChannelPropertyPermissions } from '../../../../openapi';
-import type { IDevicesFilter } from '../../composables';
+import {
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyPermissions,
+} from '../../../../openapi';
+import type { IDevicesFilter } from '../../composables/composables';
 
 import { type IListChannelsPropertiesAdjustProps } from './list-channels-properties-adjust.types';
 
@@ -127,11 +131,11 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const categories: string[] = Object.values(DevicesChannelPropertyCategory);
+const categories: string[] = Object.values(DevicesModuleChannelPropertyCategory);
 
-const dataTypes: string[] = Object.values(DevicesChannelPropertyData_type);
+const dataTypes: string[] = Object.values(DevicesModuleChannelPropertyData_type);
 
-const permissions: string[] = Object.values(DevicesChannelPropertyPermissions);
+const permissions: string[] = Object.values(DevicesModuleChannelPropertyPermissions);
 
 const activeBoxes = ref<string[]>(['categories', 'dataTypes', 'permissions']);
 

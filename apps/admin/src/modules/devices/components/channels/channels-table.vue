@@ -228,9 +228,10 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
-import { DevicesChannelCategory } from '../../../../openapi';
-import type { IChannelsFilter } from '../../composables';
-import type { IChannel, IDevice } from '../../store';
+import { DevicesModuleChannelCategory } from '../../../../openapi';
+import type { IChannelsFilter } from '../../composables/types';
+import type { IChannel } from '../../store/channels.store.types';
+import type { IDevice } from '../../store/devices.store.types';
 
 import ChannelsTableColumnDevice from './channels-table-column-device.vue';
 import ChannelsTableColumnIcon from './channels-table-column-icon.vue';
@@ -289,7 +290,7 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		let filteredCategories = innerFilters.value.categories;
 
 		if (add === true) {
-			filteredCategories.push(data as DevicesChannelCategory);
+			filteredCategories.push(data as DevicesModuleChannelCategory);
 		} else {
 			filteredCategories = innerFilters.value.categories.filter((item) => item !== data);
 		}

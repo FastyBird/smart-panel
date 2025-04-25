@@ -1,13 +1,11 @@
-import 'dart:convert';
-
-import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
-import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_update_weather_location_type.dart';
-import 'package:fastybird_smart_panel/api/models/config_update_weather_type.dart';
-import 'package:fastybird_smart_panel/api/models/config_update_weather_unit.dart';
-import 'package:fastybird_smart_panel/api/models/config_weather_location_type.dart';
-import 'package:fastybird_smart_panel/api/models/config_weather_unit.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_req_update_section.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_req_update_section_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_update_weather_location_type.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_update_weather_type.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_update_weather_unit.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_weather_location_type.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_weather_unit.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/weather.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
@@ -85,15 +83,15 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
   }) async {
     final updated = await _updateConfiguration(
       section: Section.weather,
-      data: ConfigReqUpdateSectionDataUnionWeather(
-          type: ConfigUpdateWeatherType.weather,
+      data: ConfigModuleReqUpdateSectionDataUnionWeather(
+          type: ConfigModuleUpdateWeatherType.weather,
           locationType: _convertWeatherLocationTypeToApi(
             locationType ?? _getConfig().locationType,
           ),
           unit: _convertWeatherUnitToApi(unit ?? _getConfig().unit)),
     );
 
-    if (updated is ConfigResSectionDataUnionWeather) {
+    if (updated is ConfigModuleResSectionDataUnionWeather) {
       data = _getConfig().copyWith(
         locationType: _convertWeatherLocationTypeFromApi(updated.locationType),
         unit: _convertWeatherUnitFromApi(updated.unit),
@@ -112,23 +110,25 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
 
         final data = response.data.data;
 
-        if (data is ConfigResSectionDataUnionWeather) {
-          insertConfiguration(jsonDecode(jsonEncode(data)));
+        if (data is ConfigModuleResSectionDataUnionWeather) {
+          final raw = response.response.data['data'] as Map<String, dynamic>;
+
+          insertConfiguration(raw);
         }
       },
       'fetch weather configuration',
     );
   }
 
-  Future<ConfigResSectionDataUnion> _updateConfiguration({
+  Future<ConfigModuleResSectionDataUnion> _updateConfiguration({
     required Section section,
-    required ConfigReqUpdateSectionDataUnion data,
+    required ConfigModuleReqUpdateSectionDataUnion data,
   }) async {
     return await handleApiCall(
       () async {
         final response = await apiClient.updateConfigModuleConfigSection(
           section: section,
-          body: ConfigReqUpdateSection(data: data),
+          body: ConfigModuleReqUpdateSection(data: data),
         );
 
         return response.data.data;
@@ -138,50 +138,50 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
   }
 
   WeatherLocationType _convertWeatherLocationTypeFromApi(
-    ConfigWeatherLocationType locationType,
+    ConfigModuleWeatherLocationType locationType,
   ) {
     switch (locationType) {
-      case ConfigWeatherLocationType.latLon:
+      case ConfigModuleWeatherLocationType.latLon:
         return WeatherLocationType.latLon;
-      case ConfigWeatherLocationType.cityId:
+      case ConfigModuleWeatherLocationType.cityId:
         return WeatherLocationType.cityId;
-      case ConfigWeatherLocationType.zipCode:
+      case ConfigModuleWeatherLocationType.zipCode:
         return WeatherLocationType.zipCode;
       default:
         return WeatherLocationType.cityName;
     }
   }
 
-  ConfigUpdateWeatherLocationType _convertWeatherLocationTypeToApi(
+  ConfigModuleUpdateWeatherLocationType _convertWeatherLocationTypeToApi(
     WeatherLocationType locationType,
   ) {
     switch (locationType) {
       case WeatherLocationType.latLon:
-        return ConfigUpdateWeatherLocationType.latLon;
+        return ConfigModuleUpdateWeatherLocationType.latLon;
       case WeatherLocationType.cityId:
-        return ConfigUpdateWeatherLocationType.cityId;
+        return ConfigModuleUpdateWeatherLocationType.cityId;
       case WeatherLocationType.zipCode:
-        return ConfigUpdateWeatherLocationType.zipCode;
+        return ConfigModuleUpdateWeatherLocationType.zipCode;
       default:
-        return ConfigUpdateWeatherLocationType.cityName;
+        return ConfigModuleUpdateWeatherLocationType.cityName;
     }
   }
 
-  WeatherUnit _convertWeatherUnitFromApi(ConfigWeatherUnit unit) {
+  WeatherUnit _convertWeatherUnitFromApi(ConfigModuleWeatherUnit unit) {
     switch (unit) {
-      case ConfigWeatherUnit.fahrenheit:
+      case ConfigModuleWeatherUnit.fahrenheit:
         return WeatherUnit.fahrenheit;
       default:
         return WeatherUnit.celsius;
     }
   }
 
-  ConfigUpdateWeatherUnit _convertWeatherUnitToApi(WeatherUnit unit) {
+  ConfigModuleUpdateWeatherUnit _convertWeatherUnitToApi(WeatherUnit unit) {
     switch (unit) {
       case WeatherUnit.fahrenheit:
-        return ConfigUpdateWeatherUnit.fahrenheit;
+        return ConfigModuleUpdateWeatherUnit.fahrenheit;
       default:
-        return ConfigUpdateWeatherUnit.celsius;
+        return ConfigModuleUpdateWeatherUnit.celsius;
     }
   }
 }

@@ -9,7 +9,7 @@ const clientMock = {
 	DELETE: vi.fn(),
 };
 
-vi.mock('../services', () => ({
+vi.mock('../services/backend', () => ({
 	injectBackendClient: vi.fn(() => clientMock),
 }));
 

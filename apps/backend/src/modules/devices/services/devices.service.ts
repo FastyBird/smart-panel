@@ -198,7 +198,7 @@ export class DevicesService {
 
 		const device = await this.getOneOrThrow(id);
 
-		await this.repository.remove(device);
+		await this.repository.delete(device.id);
 
 		this.logger.log(`[DELETE] Successfully removed device with id=${id}`);
 

@@ -41,6 +41,7 @@
 				<el-button
 					type="primary"
 					plain
+					class="px-4! ml-2!"
 					@click="onDeviceCreate"
 				>
 					<template #icon>
@@ -153,11 +154,11 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
-import { ListDevices, ListDevicesAdjust } from '../components';
-import { useDevicesActions, useDevicesDataSource } from '../composables';
+import { ListDevices, ListDevicesAdjust } from '../components/components';
+import { useDevicesActions, useDevicesDataSource } from '../composables/composables';
 import { RouteNames } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import type { IDevice } from '../store';
+import type { IDevice } from '../store/devices.store.types';
 
 import type { IViewDevicesProps } from './view-devices.types';
 
@@ -223,7 +224,7 @@ const onCloseDrawer = (done?: () => void): void => {
 		done?.();
 	} else {
 		if (remoteFormChanged.value) {
-			ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+			ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 				confirmButtonText: t('devicesModule.buttons.yes.title'),
 				cancelButtonText: t('devicesModule.buttons.no.title'),
 				type: 'warning',

@@ -64,7 +64,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElSlider, ElSwitch } from 'element-plus';
 
-import { useConfigAudioEditForm } from '../composables';
+import { useConfigAudioEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
 import type { IConfigAudioFormProps } from './config-audio-form.types';
@@ -89,7 +89,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = useConfigAudioEditForm(props.config);
+const { model, formEl, formChanged, submit, formResult } = useConfigAudioEditForm({ config: props.config });
 
 watch(
 	(): FormResultType => formResult.value,
@@ -105,7 +105,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

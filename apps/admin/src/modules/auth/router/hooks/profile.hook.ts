@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/vue';
 
 import type { IStoresManager } from '../../../../common';
-import { sessionStoreKey } from '../../store';
+import { sessionStoreKey } from '../../store/keys';
 
 const profileHook = (storesManager: IStoresManager): boolean | { name: string } | undefined => {
 	const sessionStore = storesManager.getStore(sessionStoreKey);

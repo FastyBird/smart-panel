@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import type { IUserEditForm } from '../composables';
+import type { IUserEditForm } from '../composables/types';
 
 import type { IUserEditFormProps } from './user-edit-form.types';
 import UserEditForm from './user-edit-form.vue';
@@ -24,7 +24,7 @@ const editFormMock = {
 		firstName: 'Admin',
 		lastName: 'User',
 		email: 'admin@example.com',
-		role: UsersUserRole.admin,
+		role: UsersModuleUserRole.admin,
 	}),
 	formEl: ref({
 		clearValidate: vi.fn(),
@@ -56,7 +56,7 @@ const passwordFormMock = {
 	formResult: ref(FormResult.NONE),
 };
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useUserEditForm: vi.fn(() => editFormMock),
 	useUserUsernameForm: vi.fn(() => usernameFormMock),
 	useUserPasswordForm: vi.fn(() => passwordFormMock),
@@ -77,7 +77,7 @@ describe('UserEditForm', (): void => {
 		firstName: 'Admin',
 		lastName: 'User',
 		email: 'admin@example.com',
-		role: UsersUserRole.admin,
+		role: UsersModuleUserRole.admin,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),
@@ -146,11 +146,11 @@ describe('UserEditForm', (): void => {
 
 		const roleSelect = wrapper.findComponent(ElSelect);
 
-		await roleSelect.setValue(UsersUserRole.user);
+		await roleSelect.setValue(UsersModuleUserRole.user);
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.model.role).toBe(UsersUserRole.user);
+		expect(wrapper.vm.model.role).toBe(UsersModuleUserRole.user);
 
 		expect(wrapper.emitted('update:remote-form-changed')).toBeTruthy();
 	});

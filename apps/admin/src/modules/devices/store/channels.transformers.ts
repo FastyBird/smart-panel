@@ -1,18 +1,16 @@
 import { DevicesValidationException } from '../devices.exceptions';
 
-import {
-	ChannelCreateReqSchema,
-	ChannelSchema,
-	ChannelUpdateReqSchema,
-	type IChannel,
-	type IChannelCreateReq,
-	type IChannelRes,
-	type IChannelUpdateReq,
-	type IChannelsAddActionPayload,
-	type IChannelsEditActionPayload,
+import { ChannelCreateReqSchema, ChannelSchema, ChannelUpdateReqSchema } from './channels.store.schemas';
+import type {
+	IChannel,
+	IChannelCreateReq,
+	IChannelRes,
+	IChannelUpdateReq,
+	IChannelsAddActionPayload,
+	IChannelsEditActionPayload,
 } from './channels.store.types';
 
-export function transformChannelResponse(response: IChannelRes): IChannel {
+export const transformChannelResponse = (response: IChannelRes): IChannel => {
 	const parsedChannel = ChannelSchema.safeParse({
 		id: response.id,
 		device: response.device,
@@ -26,13 +24,15 @@ export function transformChannelResponse(response: IChannelRes): IChannel {
 	});
 
 	if (!parsedChannel.success) {
+		console.error('Schema validation failed with:', parsedChannel.error);
+
 		throw new DevicesValidationException('Failed to validate received channel data.');
 	}
 
 	return parsedChannel.data;
-}
+};
 
-export function transformChannelCreateRequest(channel: IChannelsAddActionPayload['data'] & { id?: string; device: string }): IChannelCreateReq {
+export const transformChannelCreateRequest = (channel: IChannelsAddActionPayload['data'] & { id?: string; device: string }): IChannelCreateReq => {
 	const parsedRequest = ChannelCreateReqSchema.safeParse({
 		id: channel.id,
 		device: channel.device,
@@ -42,21 +42,25 @@ export function transformChannelCreateRequest(channel: IChannelsAddActionPayload
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate create channel request.');
 	}
 
 	return parsedRequest.data;
-}
+};
 
-export function transformChannelUpdateRequest(channel: IChannelsEditActionPayload['data']): IChannelUpdateReq {
+export const transformChannelUpdateRequest = (channel: IChannelsEditActionPayload['data']): IChannelUpdateReq => {
 	const parsedRequest = ChannelUpdateReqSchema.safeParse({
 		name: channel.name,
 		description: channel.description,
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate update channel request.');
 	}
 
 	return parsedRequest.data;
-}
+};

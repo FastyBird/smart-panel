@@ -4,14 +4,20 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigLanguageLanguage, ConfigLanguageTime_format } from '../../../openapi';
+import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format } from '../../../openapi';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
-import { type IConfigLanguage, configLanguageStoreKey } from '../store';
+import type { IConfigLanguage } from '../store/config-language.store.types';
+import { configLanguageStoreKey } from '../store/keys';
 
 import type { IConfigLanguageEditForm, IUseConfigLanguageEditForm } from './types';
 
-export const useConfigLanguageEditForm = (config: IConfigLanguage, messages?: { success?: string; error?: string }): IUseConfigLanguageEditForm => {
+interface IUseLanguageEditFormProps {
+	config: IConfigLanguage;
+	messages?: { success?: string; error?: string };
+}
+
+export const useConfigLanguageEditForm = ({ config, messages }: IUseLanguageEditFormProps): IUseConfigLanguageEditForm => {
 	const storesManager = injectStoresManager();
 
 	const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
@@ -24,15 +30,17 @@ export const useConfigLanguageEditForm = (config: IConfigLanguage, messages?: { 
 
 	let timer: number;
 
-	const languageOptions: { value: ConfigLanguageLanguage; label: string }[] = Object.values(ConfigLanguageLanguage).map((value) => ({
+	const languageOptions: { value: ConfigModuleLanguageLanguage; label: string }[] = Object.values(ConfigModuleLanguageLanguage).map((value) => ({
 		value,
 		label: t(`configModule.languages.${value}`),
 	}));
 
-	const timeFormatOptions: { value: ConfigLanguageTime_format; label: string }[] = Object.values(ConfigLanguageTime_format).map((value) => ({
-		value,
-		label: t(`configModule.timeFormats.${value}`),
-	}));
+	const timeFormatOptions: { value: ConfigModuleLanguageTime_format; label: string }[] = Object.values(ConfigModuleLanguageTime_format).map(
+		(value) => ({
+			value,
+			label: t(`configModule.timeFormats.${value}`),
+		})
+	);
 
 	const timezoneOptions: { value: string; label: string }[] = [
 		{

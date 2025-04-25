@@ -1,13 +1,18 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesChannelCategory, DevicesChannelPropertyCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
 import { ConnectionState } from '../devices.constants';
-import { type IDevice, channelsPropertiesStoreKey, channelsStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { channelsPropertiesStoreKey, channelsStoreKey } from '../store/keys';
 
 import type { IUseDeviceState } from './types';
 
-export function useDeviceState(device: IDevice): IUseDeviceState {
+interface IUseDeviceStateProps {
+	device: IDevice;
+}
+
+export const useDeviceState = ({ device }: IUseDeviceStateProps): IUseDeviceState => {
 	const storesManager = injectStoresManager();
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
@@ -15,14 +20,16 @@ export function useDeviceState(device: IDevice): IUseDeviceState {
 	const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
 	const state = computed<ConnectionState>((): ConnectionState => {
-		const channel = channelsStore.findForDevice(device.id).find((channel) => channel.category === DevicesChannelCategory.device_information) || null;
+		const channel =
+			channelsStore.findForDevice(device.id).find((channel) => channel.category === DevicesModuleChannelCategory.device_information) || null;
 
 		if (!channel) {
 			return ConnectionState.UNKNOWN;
 		}
 
 		const property =
-			channelsPropertiesStore.findForChannel(channel.id).find((property) => property.category === DevicesChannelPropertyCategory.status) || null;
+			channelsPropertiesStore.findForChannel(channel.id).find((property) => property.category === DevicesModuleChannelPropertyCategory.status) ||
+			null;
 
 		if (!property) {
 			return ConnectionState.UNKNOWN;
@@ -43,4 +50,4 @@ export function useDeviceState(device: IDevice): IUseDeviceState {
 		state,
 		isReady,
 	};
-}
+};

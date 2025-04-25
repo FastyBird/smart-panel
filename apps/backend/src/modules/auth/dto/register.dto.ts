@@ -3,8 +3,8 @@ import { IsEmail, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested }
 
 import type { components } from '../../../openapi';
 
-type ReqRegister = components['schemas']['AuthReqRegister'];
-type Register = components['schemas']['AuthRegister'];
+type ReqRegister = components['schemas']['AuthModuleReqRegister'];
+type Register = components['schemas']['AuthModuleRegister'];
 
 export class RegisterDto implements Register {
 	@Expose()

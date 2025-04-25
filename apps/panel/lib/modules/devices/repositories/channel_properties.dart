@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
@@ -302,7 +301,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
           id: id,
         );
 
-        insert([jsonDecode(jsonEncode(response.data.data))]);
+        final raw = response.response.data['data'] as Map<String, dynamic>;
+
+        insert([raw]);
       },
       'fetch channel property',
     );
@@ -317,13 +318,9 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
           channelId: channelId,
         );
 
-        List<Map<String, dynamic>> properties = [];
+        final raw = response.response.data['data'] as List;
 
-        for (var property in response.data.data) {
-          properties.add(jsonDecode(jsonEncode(property)));
-        }
-
-        insert(properties);
+        insert(raw.cast<Map<String, dynamic>>());
       },
       'fetch channel properties',
     );

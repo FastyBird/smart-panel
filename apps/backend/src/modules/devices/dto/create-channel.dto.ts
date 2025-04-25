@@ -6,8 +6,8 @@ import { ValidateDeviceExists } from '../validators/device-exists-constraint.val
 
 import { CreateDeviceChannelDto } from './create-device-channel.dto';
 
-type ReqCreateChannel = components['schemas']['DevicesReqCreateChannel'];
-type CreateChannel = components['schemas']['DevicesCreateChannel'];
+type ReqCreateChannel = components['schemas']['DevicesModuleReqCreateChannel'];
+type CreateChannel = components['schemas']['DevicesModuleCreateChannel'];
 
 export class CreateChannelDto extends CreateDeviceChannelDto implements CreateChannel {
 	@Expose()

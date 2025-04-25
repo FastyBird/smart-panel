@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { RouteNames } from '../config.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
@@ -11,7 +11,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 		meta: {
 			guards: {
 				authenticated: true,
-				roles: [UsersUserRole.admin, UsersUserRole.owner],
+				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Configuration',
 			icon: 'mdi:cog',
@@ -27,7 +27,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Audio',
 					icon: 'mdi:monitor-speaker',
@@ -42,7 +42,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Display',
 					icon: 'mdi:monitor-dashboard',
@@ -57,7 +57,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Language',
 					icon: 'mdi:translate',
@@ -72,7 +72,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				meta: {
 					guards: {
 						authenticated: true,
-						roles: [UsersUserRole.admin, UsersUserRole.owner],
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 					},
 					title: 'Weather',
 					icon: 'mdi:weather-partly-cloudy',

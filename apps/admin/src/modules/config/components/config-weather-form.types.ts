@@ -1,5 +1,5 @@
 import type { FormResultType, LayoutType } from '../config.constants';
-import type { IConfigWeather } from '../store';
+import type { IConfigWeather } from '../store/config-weather.store.types';
 
 export type IConfigWeatherFormProps = {
 	config: IConfigWeather;

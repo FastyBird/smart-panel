@@ -7,21 +7,20 @@ import type { operations } from '../../../openapi';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
-import {
-	ChannelControlSchema,
-	ChannelsControlsAddActionPayloadSchema,
-	type ChannelsControlsStoreSetup,
-	type IChannelControl,
-	type IChannelsControlsAddActionPayload,
-	type IChannelsControlsFetchActionPayload,
-	type IChannelsControlsGetActionPayload,
-	type IChannelsControlsRemoveActionPayload,
-	type IChannelsControlsSaveActionPayload,
-	type IChannelsControlsSetActionPayload,
-	type IChannelsControlsStateSemaphore,
-	type IChannelsControlsStoreActions,
-	type IChannelsControlsStoreState,
-	type IChannelsControlsUnsetActionPayload,
+import { ChannelControlSchema, ChannelsControlsAddActionPayloadSchema } from './channels.controls.store.schemas';
+import type {
+	ChannelsControlsStoreSetup,
+	IChannelControl,
+	IChannelsControlsAddActionPayload,
+	IChannelsControlsFetchActionPayload,
+	IChannelsControlsGetActionPayload,
+	IChannelsControlsRemoveActionPayload,
+	IChannelsControlsSaveActionPayload,
+	IChannelsControlsSetActionPayload,
+	IChannelsControlsStateSemaphore,
+	IChannelsControlsStoreActions,
+	IChannelsControlsStoreState,
+	IChannelsControlsUnsetActionPayload,
 } from './channels.controls.store.types';
 import { transformChannelControlCreateRequest, transformChannelControlResponse } from './channels.controls.transformers';
 import type { IChannel } from './channels.store.types';
@@ -69,6 +68,8 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 				const parsedChannelControl = ChannelControlSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 				if (!parsedChannelControl.success) {
+					console.error('Schema validation failed with:', parsedChannelControl.error);
+
 					throw new DevicesValidationException('Failed to insert channel control.');
 				}
 
@@ -78,6 +79,8 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 			const parsedChannelControl = ChannelControlSchema.safeParse({ ...payload.data, id: payload.id, channel: payload.channelId });
 
 			if (!parsedChannelControl.success) {
+				console.error('Schema validation failed with:', parsedChannelControl.error);
+
 				throw new DevicesValidationException('Failed to insert channel control.');
 			}
 
@@ -226,6 +229,8 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 			const parsedPayload = ChannelsControlsAddActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
 				throw new DevicesValidationException('Failed to add channel control.');
 			}
 
@@ -238,6 +243,8 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 			});
 
 			if (!parsedNewChannelControl.success) {
+				console.error('Schema validation failed with:', parsedNewChannelControl.error);
+
 				throw new DevicesValidationException('Failed to add channel control.');
 			}
 
@@ -298,6 +305,8 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 			const parsedSaveChannelControl = ChannelControlSchema.safeParse(data.value[payload.id]);
 
 			if (!parsedSaveChannelControl.success) {
+				console.error('Schema validation failed with:', parsedSaveChannelControl.error);
+
 				throw new DevicesValidationException('Failed to save channel control.');
 			}
 

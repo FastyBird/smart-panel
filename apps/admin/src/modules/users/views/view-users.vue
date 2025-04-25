@@ -41,6 +41,7 @@
 				<el-button
 					type="primary"
 					plain
+					class="px-4! ml-2!"
 					@click="onUserCreate"
 				>
 					<template #icon>
@@ -145,8 +146,8 @@ import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
 import ListUsers from '../components/list-users.vue';
-import { useUsersActions, useUsersDataSource } from '../composables';
-import type { IUser } from '../store';
+import { useUsersActions, useUsersDataSource } from '../composables/composables';
+import type { IUser } from '../store/users.store.types';
 import { RouteNames } from '../users.constants';
 import { UsersException } from '../users.exceptions';
 

@@ -4,14 +4,20 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
+import { ConfigModuleWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
-import { type IConfigWeather, configWeatherStoreKey } from '../store';
+import type { IConfigWeather } from '../store/config-weather.store.types';
+import { configWeatherStoreKey } from '../store/keys';
 
 import type { IConfigWeatherEditForm, IUseConfigWeatherEditForm } from './types';
 
-export const useConfigWeatherEditForm = (config: IConfigWeather, messages?: { success?: string; error?: string }): IUseConfigWeatherEditForm => {
+interface IUseLanguageEditFormProps {
+	config: IConfigWeather;
+	messages?: { success?: string; error?: string };
+}
+
+export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditFormProps): IUseConfigWeatherEditForm => {
 	const storesManager = injectStoresManager();
 
 	const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
@@ -31,7 +37,7 @@ export const useConfigWeatherEditForm = (config: IConfigWeather, messages?: { su
 		label: t(`configModule.locationTypes.${value}`),
 	}));
 
-	const unitOptions: { value: ConfigWeatherUnit; label: string }[] = Object.values(ConfigWeatherUnit).map((value) => ({
+	const unitOptions: { value: ConfigModuleWeatherUnit; label: string }[] = Object.values(ConfigModuleWeatherUnit).map((value) => ({
 		value,
 		label: t(`configModule.weatherUnits.${value}`),
 	}));

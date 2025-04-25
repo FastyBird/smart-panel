@@ -3,8 +3,8 @@ import { type Ref, nextTick, ref } from 'vue';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { UsersUserRole } from '../../../openapi';
-import type { IUsersStateSemaphore, UsersStore } from '../store';
+import { UsersModuleUserRole } from '../../../openapi';
+import type { IUsersStateSemaphore, UsersStore } from '../store/users.store.types';
 
 import { useUsersDataSource } from './useUsersDataSource';
 
@@ -59,8 +59,8 @@ describe('useUsers', (): void => {
 
 	it('should return sorted users', async (): Promise<void> => {
 		(usersStoreMock.findAll as Mock).mockReturnValue([
-			{ id: '1', username: 'zack', firstName: 'Zack', lastName: 'Doe', email: 'zack@example.com', role: UsersUserRole.user, draft: false },
-			{ id: '2', username: 'anna', firstName: 'Anna', lastName: 'Smith', email: 'anna@example.com', role: UsersUserRole.admin, draft: false },
+			{ id: '1', username: 'zack', firstName: 'Zack', lastName: 'Doe', email: 'zack@example.com', role: UsersModuleUserRole.user, draft: false },
+			{ id: '2', username: 'anna', firstName: 'Anna', lastName: 'Smith', email: 'anna@example.com', role: UsersModuleUserRole.admin, draft: false },
 		]);
 
 		const usersHandler = useUsersDataSource();
@@ -77,8 +77,8 @@ describe('useUsers', (): void => {
 
 	it('should filter users by search query', async (): Promise<void> => {
 		(usersStoreMock.findAll as Mock).mockReturnValue([
-			{ id: '1', username: 'john', firstName: 'John', lastName: 'Doe', email: 'john@example.com', role: UsersUserRole.user, draft: false },
-			{ id: '2', username: 'jane', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', role: UsersUserRole.admin, draft: false },
+			{ id: '1', username: 'john', firstName: 'John', lastName: 'Doe', email: 'john@example.com', role: UsersModuleUserRole.user, draft: false },
+			{ id: '2', username: 'jane', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', role: UsersModuleUserRole.admin, draft: false },
 		]);
 
 		const usersHandler = useUsersDataSource();
@@ -91,16 +91,16 @@ describe('useUsers', (): void => {
 
 	it('should filter users by role', async (): Promise<void> => {
 		(usersStoreMock.findAll as Mock).mockReturnValue([
-			{ id: '1', username: 'john', firstName: 'John', lastName: 'Doe', email: 'john@example.com', role: UsersUserRole.user, draft: false },
-			{ id: '2', username: 'admin', firstName: 'Admin', lastName: 'User', email: 'admin@example.com', role: UsersUserRole.admin, draft: false },
+			{ id: '1', username: 'john', firstName: 'John', lastName: 'Doe', email: 'john@example.com', role: UsersModuleUserRole.user, draft: false },
+			{ id: '2', username: 'admin', firstName: 'Admin', lastName: 'User', email: 'admin@example.com', role: UsersModuleUserRole.admin, draft: false },
 		]);
 
 		const usersHandler = useUsersDataSource();
 
-		usersHandler.filters.value.roles = [UsersUserRole.admin];
+		usersHandler.filters.value.roles = [UsersModuleUserRole.admin];
 
 		expect(usersHandler.users.value.length).toBe(1);
-		expect(usersHandler.users.value[0].role).toBe(UsersUserRole.admin);
+		expect(usersHandler.users.value[0].role).toBe(UsersModuleUserRole.admin);
 	});
 
 	it('should paginate users correctly', async (): Promise<void> => {
@@ -153,7 +153,7 @@ describe('useUsers', (): void => {
 		const usersHandler = useUsersDataSource();
 
 		usersHandler.filters.value.search = 'test';
-		usersHandler.filters.value.roles = [UsersUserRole.admin];
+		usersHandler.filters.value.roles = [UsersModuleUserRole.admin];
 
 		usersHandler.resetFilter();
 

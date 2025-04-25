@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/get.dart';
 
-abstract class DeviceChannelDataSourceModel extends DataSourceModel {
+class DeviceChannelDataSourceModel extends DataSourceModel {
   final String _device;
   final String _channel;
   final String _property;
@@ -17,7 +17,8 @@ abstract class DeviceChannelDataSourceModel extends DataSourceModel {
     required String property,
     IconData? icon,
     required super.id,
-    required super.parent,
+    required super.parentType,
+    required super.parentId,
     super.createdAt,
     super.updatedAt,
   })  : _device = UuidUtils.validateUuid(device),
@@ -35,24 +36,12 @@ abstract class DeviceChannelDataSourceModel extends DataSourceModel {
   String get property => _property;
 
   IconData? get icon => _icon;
-}
 
-class PageDeviceChannelDataSourceModel extends DeviceChannelDataSourceModel {
-  PageDeviceChannelDataSourceModel({
-    required super.device,
-    required super.channel,
-    required super.property,
-    super.icon,
-    required super.id,
-    required super.parent,
-    super.createdAt,
-    super.updatedAt,
-  });
-
-  factory PageDeviceChannelDataSourceModel.fromJson(Map<String, dynamic> json) {
-    return PageDeviceChannelDataSourceModel(
+  factory DeviceChannelDataSourceModel.fromJson(Map<String, dynamic> json) {
+    return DeviceChannelDataSourceModel(
       id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['page']),
+      parentType: json['parent']['type'],
+      parentId: UuidUtils.validateUuid(json['parent']['id']),
       device: UuidUtils.validateUuid(json['device']),
       channel: UuidUtils.validateUuid(json['channel']),
       property: UuidUtils.validateUuid(json['property']),
@@ -62,66 +51,6 @@ class PageDeviceChannelDataSourceModel extends DeviceChannelDataSourceModel {
               SymbolStyle.outlined,
             )
           : null,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-    );
-  }
-}
-
-class CardDeviceChannelDataSourceModel extends DeviceChannelDataSourceModel {
-  CardDeviceChannelDataSourceModel({
-    required super.device,
-    required super.channel,
-    required super.property,
-    super.icon,
-    required super.id,
-    required super.parent,
-    super.createdAt,
-    super.updatedAt,
-  });
-
-  factory CardDeviceChannelDataSourceModel.fromJson(Map<String, dynamic> json) {
-    return CardDeviceChannelDataSourceModel(
-      id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['card']),
-      device: UuidUtils.validateUuid(json['device']),
-      channel: UuidUtils.validateUuid(json['channel']),
-      property: UuidUtils.validateUuid(json['property']),
-      icon: json['icon'],
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-    );
-  }
-}
-
-class TileDeviceChannelDataSourceModel extends DeviceChannelDataSourceModel {
-  TileDeviceChannelDataSourceModel({
-    required super.device,
-    required super.channel,
-    required super.property,
-    super.icon,
-    required super.id,
-    required super.parent,
-    super.createdAt,
-    super.updatedAt,
-  });
-
-  factory TileDeviceChannelDataSourceModel.fromJson(Map<String, dynamic> json) {
-    return TileDeviceChannelDataSourceModel(
-      id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['tile']),
-      device: UuidUtils.validateUuid(json['device']),
-      channel: UuidUtils.validateUuid(json['channel']),
-      property: UuidUtils.validateUuid(json['property']),
-      icon: json['icon'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

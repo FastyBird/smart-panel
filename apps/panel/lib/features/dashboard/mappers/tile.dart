@@ -1,9 +1,9 @@
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/device.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/device_preview.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/forecast.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/time.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/weather.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/device_tile.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/device_preview_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/time_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/weather_tile.dart';
@@ -21,8 +21,8 @@ Map<String, Widget Function(TileModel, List<DataSourceModel>)>
   TileType.weatherForecast.value: (model, data) {
     return ForecastTileWidget(model as ForecastWeatherTileModel, data);
   },
-  TileType.device.value: (model, data) {
-    return DeviceTileWidget(model as DeviceTileModel, data);
+  TileType.devicePreview.value: (model, data) {
+    return DevicePreviewTileWidget(model as DevicePreviewTileModel, data);
   },
 };
 

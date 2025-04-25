@@ -118,9 +118,9 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules, vLoading } from 'element-plus';
 
-import { type IChannelAddForm, useChannelAddForm, useDevices } from '../../composables';
+import { type IChannelAddForm, useChannelAddForm, useDevices } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
-import type { IDevice } from '../../store';
+import type { IDevice } from '../../store/devices.store.types';
 
 import type { IChannelAddFormProps } from './channel-add-form.types';
 
@@ -144,10 +144,10 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { devices } = useDevices();
-const { categoriesOptions, devicesOptions, model, formEl, formChanged, submit, formResult, loadingDevices } = useChannelAddForm(
-	props.id,
-	props.device?.id
-);
+const { categoriesOptions, devicesOptions, model, formEl, formChanged, submit, formResult, loadingDevices } = useChannelAddForm({
+	id: props.id,
+	deviceId: props.device?.id,
+});
 
 const rules = reactive<FormRules<IChannelAddForm>>({
 	device: [{ required: true, message: t('devicesModule.fields.channels.device.validation.required'), trigger: 'change' }],
@@ -173,7 +173,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

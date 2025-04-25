@@ -3,8 +3,8 @@ import { IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'cl
 
 import type { components } from '../../../openapi';
 
-type ReqUpdateDeviceChannel = components['schemas']['DevicesReqUpdateChannel'];
-type UpdateChannel = components['schemas']['DevicesUpdateChannel'];
+type ReqUpdateDeviceChannel = components['schemas']['DevicesModuleReqUpdateChannel'];
+type UpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
 
 export class UpdateDeviceChannelDto implements UpdateChannel {
 	@Expose()

@@ -53,8 +53,8 @@ import { ElCard, ElPagination } from 'element-plus';
 import { useVModel } from '@vueuse/core';
 
 import { useBreakpoints } from '../../../../common';
-import type { IDevicesFilter } from '../../composables';
-import type { IDevice } from '../../store';
+import type { IDevicesFilter } from '../../composables/composables';
+import type { IDevice } from '../../store/devices.store.types';
 
 import DevicesFilter from './devices-filter.vue';
 import DevicesTable from './devices-table.vue';

@@ -4,13 +4,19 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { type IUser, usersStoreKey } from '../store';
+import { usersStoreKey } from '../store/keys';
+import type { IUser } from '../store/users.store.types';
 import { FormResult, type FormResultType } from '../users.constants';
 import { UsersApiException, UsersValidationException } from '../users.exceptions';
 
 import type { IUseUserEditForm, IUserEditForm } from './types';
 
-export const useUserEditForm = (user: IUser, messages?: { success?: string; error?: string }): IUseUserEditForm => {
+interface IUseUserEditFormProps {
+	user: IUser;
+	messages?: { success?: string; error?: string };
+}
+
+export const useUserEditForm = ({ user, messages }: IUseUserEditFormProps): IUseUserEditForm => {
 	const storesManager = injectStoresManager();
 
 	const usersStore = storesManager.getStore(usersStoreKey);

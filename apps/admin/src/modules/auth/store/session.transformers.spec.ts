@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { AuthValidationException } from '../auth.exceptions';
 
-import { type IAuthTokenPairRes, type ISessionLoginReq } from './session.store.types';
+import type { IAuthTokenPairRes, ISessionLoginReq } from './session.store.types';
 import { transformLoginRequest, transformTokenPairResponse } from './session.transformers';
 
 describe('Session Transformers', (): void => {

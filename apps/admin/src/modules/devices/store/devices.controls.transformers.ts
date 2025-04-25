@@ -1,15 +1,9 @@
 import { DevicesValidationException } from '../devices.exceptions';
 
-import {
-	DeviceControlCreateReqSchema,
-	DeviceControlSchema,
-	type IDeviceControl,
-	type IDeviceControlCreateReq,
-	type IDeviceControlRes,
-	type IDevicesControlsAddActionPayload,
-} from './devices.controls.store.types';
+import { DeviceControlCreateReqSchema, DeviceControlSchema } from './devices.controls.store.schemas';
+import type { IDeviceControl, IDeviceControlCreateReq, IDeviceControlRes, IDevicesControlsAddActionPayload } from './devices.controls.store.types';
 
-export function transformDeviceControlResponse(response: IDeviceControlRes): IDeviceControl {
+export const transformDeviceControlResponse = (response: IDeviceControlRes): IDeviceControl => {
 	const parsedDeviceControl = DeviceControlSchema.safeParse({
 		id: response.id,
 		device: response.device,
@@ -19,15 +13,17 @@ export function transformDeviceControlResponse(response: IDeviceControlRes): IDe
 	});
 
 	if (!parsedDeviceControl.success) {
+		console.error('Schema validation failed with:', parsedDeviceControl.error);
+
 		throw new DevicesValidationException('Failed to validate received device control data.');
 	}
 
 	return parsedDeviceControl.data;
-}
+};
 
-export function transformDeviceControlCreateRequest(
+export const transformDeviceControlCreateRequest = (
 	control: IDevicesControlsAddActionPayload['data'] & { id?: string; device: string }
-): IDeviceControlCreateReq {
+): IDeviceControlCreateReq => {
 	const parsedRequest = DeviceControlCreateReqSchema.safeParse({
 		id: control.id,
 		device: control.device,
@@ -35,8 +31,10 @@ export function transformDeviceControlCreateRequest(
 	});
 
 	if (!parsedRequest.success) {
+		console.error('Schema validation failed with:', parsedRequest.error);
+
 		throw new DevicesValidationException('Failed to validate create device control request.');
 	}
 
 	return parsedRequest.data;
-}
+};

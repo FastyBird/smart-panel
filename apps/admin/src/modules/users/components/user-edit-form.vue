@@ -175,8 +175,8 @@ import { ElButton, ElDialog, ElDivider, ElForm, ElFormItem, ElInput, ElOption, E
 
 import { Icon } from '@iconify/vue';
 
-import { UsersUserRole } from '../../../openapi';
-import { type IUserEditForm, useUserEditForm } from '../composables';
+import { UsersModuleUserRole } from '../../../openapi';
+import { type IUserEditForm, useUserEditForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
 import PasswordEditForm from './password-edit-form.vue';
@@ -202,7 +202,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = useUserEditForm(props.user);
+const { model, formEl, formChanged, submit, formResult } = useUserEditForm({ user: props.user });
 
 const usernameFormVisible = ref(false);
 
@@ -220,17 +220,17 @@ const rules = reactive<FormRules<IUserEditForm>>({
 	email: [{ type: 'email', message: t('usersModule.fields.email.validation.email'), trigger: 'change' }],
 });
 
-const roleOptions: { value: UsersUserRole; label: string }[] = [
+const roleOptions: { value: UsersModuleUserRole; label: string }[] = [
 	{
-		value: UsersUserRole.user,
+		value: UsersModuleUserRole.user,
 		label: t('usersModule.fields.role.options.user'),
 	},
 	{
-		value: UsersUserRole.admin,
+		value: UsersModuleUserRole.admin,
 		label: t('usersModule.fields.role.options.admin'),
 	},
 	{
-		value: UsersUserRole.owner,
+		value: UsersModuleUserRole.owner,
 		label: t('usersModule.fields.role.options.owner'),
 	},
 ];
@@ -275,7 +275,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

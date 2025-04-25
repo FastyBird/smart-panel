@@ -4,26 +4,28 @@ import type { FormInstance } from 'element-plus';
 
 import type { IPlugin } from '../../../common';
 import {
-	DevicesChannelCategory,
-	DevicesChannelPropertyCategory,
-	DevicesChannelPropertyData_type,
-	DevicesChannelPropertyPermissions,
-	DevicesDeviceCategory,
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyPermissions,
+	DevicesModuleDeviceCategory,
 } from '../../../openapi';
 import type { ConnectionState, FormResultType } from '../devices.constants';
-import type { IPluginsComponents, IPluginsSchemas } from '../index';
-import type { IChannel, IChannelProperty, IDevice } from '../store';
+import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import type { IDevice } from '../store/devices.store.types';
 
 export interface IChannelsFilter {
 	search: string | undefined;
 	devices: IDevice['id'][];
-	categories: DevicesChannelCategory[];
+	categories: DevicesModuleChannelCategory[];
 }
 
 export interface IChannelAddForm {
 	id: IChannel['id'];
 	device?: IDevice['id'];
-	category?: DevicesChannelCategory;
+	category?: DevicesModuleChannelCategory;
 	name: string;
 	description: string;
 }
@@ -31,7 +33,7 @@ export interface IChannelAddForm {
 export interface IChannelEditForm {
 	id: IChannel['id'];
 	device: IDevice['id'];
-	category: DevicesChannelCategory;
+	category: DevicesModuleChannelCategory;
 	name: string;
 	description: string;
 }
@@ -39,18 +41,18 @@ export interface IChannelEditForm {
 export interface IChannelsPropertiesFilter {
 	search: string | undefined;
 	channels: IChannel['id'][];
-	categories: DevicesChannelPropertyCategory[];
-	permissions: DevicesChannelPropertyPermissions[];
-	dataTypes: DevicesChannelPropertyData_type[];
+	categories: DevicesModuleChannelPropertyCategory[];
+	permissions: DevicesModuleChannelPropertyPermissions[];
+	dataTypes: DevicesModuleChannelPropertyData_type[];
 }
 
 export interface IChannelPropertyAddForm {
 	id: IChannelProperty['id'];
 	channel?: IChannel['id'];
-	category?: DevicesChannelPropertyCategory;
+	category?: DevicesModuleChannelPropertyCategory;
 	name: string;
-	permissions: DevicesChannelPropertyPermissions[];
-	dataType: DevicesChannelPropertyData_type;
+	permissions: DevicesModuleChannelPropertyPermissions[];
+	dataType: DevicesModuleChannelPropertyData_type;
 	unit: string;
 	format: string[] | number[] | null;
 	invalid: string;
@@ -63,10 +65,10 @@ export interface IChannelPropertyAddForm {
 export interface IChannelPropertyEditForm {
 	id: IChannelProperty['id'];
 	channel: IChannel['id'];
-	category: DevicesChannelPropertyCategory;
+	category: DevicesModuleChannelPropertyCategory;
 	name: string;
-	permissions: DevicesChannelPropertyPermissions[];
-	dataType: DevicesChannelPropertyData_type;
+	permissions: DevicesModuleChannelPropertyPermissions[];
+	dataType: DevicesModuleChannelPropertyData_type;
 	unit: string;
 	format: string[] | number[] | null;
 	invalid: string;
@@ -81,13 +83,13 @@ export interface IDevicesFilter {
 	types: IPlugin['type'][];
 	state: 'all' | 'offline' | 'online';
 	states: ConnectionState[];
-	categories: DevicesDeviceCategory[];
+	categories: DevicesModuleDeviceCategory[];
 }
 
 export interface IDeviceAddForm {
 	id: IDevice['id'];
 	type: string;
-	category: DevicesDeviceCategory;
+	category: DevicesModuleDeviceCategory;
 	name: string;
 	description: string;
 }
@@ -95,7 +97,7 @@ export interface IDeviceAddForm {
 export interface IDeviceEditForm {
 	id: IDevice['id'];
 	type: string;
-	category: DevicesDeviceCategory;
+	category: DevicesModuleDeviceCategory;
 	name: string;
 	description: string;
 }
@@ -139,11 +141,11 @@ export interface IUseChannelIcon {
 
 export interface IUseChannelSpecification {
 	canAddAnotherProperty: ComputedRef<boolean>;
-	missingRequiredProperties: ComputedRef<DevicesChannelPropertyCategory[]>;
+	missingRequiredProperties: ComputedRef<DevicesModuleChannelPropertyCategory[]>;
 }
 
 export interface IUseChannelAddForm {
-	categoriesOptions: ComputedRef<{ value: DevicesChannelCategory; label: string }[]>;
+	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelCategory; label: string }[]>;
 	devicesOptions: ComputedRef<{ value: IDevice['id']; label: string }[]>;
 	model: IChannelAddForm;
 	formEl: Ref<FormInstance | undefined>;
@@ -155,7 +157,7 @@ export interface IUseChannelAddForm {
 }
 
 export interface IUseChannelEditForm {
-	categoriesOptions: ComputedRef<{ value: DevicesChannelCategory; label: string }[]>;
+	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelCategory; label: string }[]>;
 	devicesOptions: ComputedRef<{ value: IDevice['id']; label: string }[]>;
 	model: IChannelEditForm;
 	formEl: Ref<FormInstance | undefined>;
@@ -204,10 +206,10 @@ export interface IUseChannelPropertyIcon {
 }
 
 export interface IUseChannelPropertyAddForm {
-	categoriesOptions: ComputedRef<{ value: DevicesChannelPropertyCategory; label: string }[]>;
+	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelPropertyCategory; label: string }[]>;
 	channelsOptions: ComputedRef<{ value: IChannel['id']; label: string }[]>;
-	permissionsOptions: { value: DevicesChannelPropertyPermissions; label: string }[];
-	dataTypesOptions: { value: DevicesChannelPropertyData_type; label: string }[];
+	permissionsOptions: { value: DevicesModuleChannelPropertyPermissions; label: string }[];
+	dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[];
 	model: IChannelPropertyAddForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -218,10 +220,10 @@ export interface IUseChannelPropertyAddForm {
 }
 
 export interface IUseChannelPropertyEditForm {
-	categoriesOptions: ComputedRef<{ value: DevicesChannelPropertyCategory; label: string }[]>;
+	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelPropertyCategory; label: string }[]>;
 	channelsOptions: ComputedRef<{ value: IChannel['id']; label: string }[]>;
-	permissionsOptions: { value: DevicesChannelPropertyPermissions; label: string }[];
-	dataTypesOptions: { value: DevicesChannelPropertyData_type; label: string }[];
+	permissionsOptions: { value: DevicesModuleChannelPropertyPermissions; label: string }[];
+	dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[];
 	model: IChannelPropertyEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -270,7 +272,7 @@ export interface IUseDeviceIcon {
 
 export interface IUseDeviceSpecification {
 	canAddAnotherChannel: ComputedRef<boolean>;
-	missingRequiredChannels: ComputedRef<DevicesChannelCategory[]>;
+	missingRequiredChannels: ComputedRef<DevicesModuleChannelCategory[]>;
 }
 
 export interface IUseDeviceState {
@@ -279,7 +281,7 @@ export interface IUseDeviceState {
 }
 
 export interface IUseDeviceAddForm {
-	categoriesOptions: { value: DevicesDeviceCategory; label: string }[];
+	categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[];
 	model: IDeviceAddForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -289,7 +291,7 @@ export interface IUseDeviceAddForm {
 }
 
 export interface IUseDeviceEditForm {
-	categoriesOptions: { value: DevicesDeviceCategory; label: string }[];
+	categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[];
 	model: IDeviceEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;

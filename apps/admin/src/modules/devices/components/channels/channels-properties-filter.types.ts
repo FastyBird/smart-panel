@@ -1,4 +1,4 @@
-import type { IChannelsPropertiesFilter } from '../../composables';
+import type { IChannelsPropertiesFilter } from '../../composables/composables';
 
 export interface IChannelsPropertiesFilterProps {
 	filters: IChannelsPropertiesFilter;

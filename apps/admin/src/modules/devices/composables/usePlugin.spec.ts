@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { DEVICES_MODULE_NAME } from '../index';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
 
 import { usePlugin } from './usePlugin';
 
@@ -28,12 +28,12 @@ vi.mock('./usePlugins', () => ({
 
 describe('usePlugin', () => {
 	it('returns plugin by type', () => {
-		const { plugin } = usePlugin('test-plugin');
+		const { plugin } = usePlugin({ type: 'test-plugin' });
 		expect(plugin.value?.name).toBe('Test Plugin');
 	});
 
 	it('returns undefined for unknown type', () => {
-		const { plugin } = usePlugin('unknown-plugin');
+		const { plugin } = usePlugin({ type: 'unknown-plugin' });
 		expect(plugin.value).toBeUndefined();
 	});
 });

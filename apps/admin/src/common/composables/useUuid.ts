@@ -2,7 +2,7 @@ import { v4 as uuid, validate as uuidValidate, version as uuidVersion } from 'uu
 
 import type { IUseUuid } from './types';
 
-export function useUuid(): IUseUuid {
+export const useUuid = (): IUseUuid => {
 	const generate = (): string => {
 		return uuid();
 	};
@@ -15,4 +15,4 @@ export function useUuid(): IUseUuid {
 		generate,
 		validate,
 	};
-}
+};

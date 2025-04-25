@@ -31,8 +31,8 @@ import { ElCard } from 'element-plus';
 import { injectStoresManager, useBreakpoints } from '../../../common';
 import type { IUser } from '../../users';
 import { FormResult, type FormResultType, Layout } from '../auth.constants';
-import { SettingsProfileForm } from '../components';
-import { sessionStoreKey } from '../store';
+import { SettingsProfileForm } from '../components/components';
+import { sessionStoreKey } from '../store/keys';
 
 import type { ViewProfileGeneralProps } from './view-profile-general.types';
 

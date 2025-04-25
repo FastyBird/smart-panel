@@ -51,7 +51,7 @@ import { ElButton, ElForm, ElFormItem, ElInput, type FormInstance, type FormRule
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { FormResult, type FormResultType } from '../../auth.constants';
-import { sessionStoreKey } from '../../store';
+import { sessionStoreKey } from '../../store/keys';
 
 import type { SignInFormFields, SignInFormProps } from './sign-in-form.types';
 

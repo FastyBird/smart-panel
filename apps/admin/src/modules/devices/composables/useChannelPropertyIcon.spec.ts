@@ -42,7 +42,7 @@ describe('useChannelPropertyIcon', () => {
 	it('returns default icon if no category is found', () => {
 		findById.mockReturnValue({ id: propertyId });
 
-		const { icon } = useChannelPropertyIcon(propertyId);
+		const { icon } = useChannelPropertyIcon({ id: propertyId });
 
 		expect(icon.value).toBe('mdi:tune');
 	});
@@ -50,7 +50,7 @@ describe('useChannelPropertyIcon', () => {
 	it('returns default icon if property is null', () => {
 		findById.mockReturnValue(null);
 
-		const { icon } = useChannelPropertyIcon(propertyId);
+		const { icon } = useChannelPropertyIcon({ id: propertyId });
 
 		expect(icon.value).toBe('mdi:tune');
 	});
@@ -58,7 +58,7 @@ describe('useChannelPropertyIcon', () => {
 	it('returns default icon for unknown category', () => {
 		findById.mockReturnValue({ id: propertyId, category: 'unknown' });
 
-		const { icon } = useChannelPropertyIcon(propertyId);
+		const { icon } = useChannelPropertyIcon({ id: propertyId });
 
 		expect(icon.value).toBe('mdi:tune');
 	});

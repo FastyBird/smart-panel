@@ -12,7 +12,7 @@ import { ElAvatar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useChannelPropertyIcon } from '../../composables';
+import { useChannelPropertyIcon } from '../../composables/composables';
 
 import type { IChannelsPropertiesTableColumnIconProps } from './channels-properties-table-column-icon.types';
 
@@ -22,5 +22,5 @@ defineOptions({
 
 const props = defineProps<IChannelsPropertiesTableColumnIconProps>();
 
-const { icon: iconName } = useChannelPropertyIcon(props.property.id);
+const { icon: iconName } = useChannelPropertyIcon({ id: props.property.id });
 </script>

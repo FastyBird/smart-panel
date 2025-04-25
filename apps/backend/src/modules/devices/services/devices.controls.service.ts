@@ -130,7 +130,7 @@ export class DevicesControlsService {
 		const device = await this.devicesService.getOneOrThrow(deviceId);
 		const control = await this.getOneOrThrow(id, device.id);
 
-		await this.repository.remove(control);
+		await this.repository.delete(control.id);
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for deviceId=${deviceId}`);
 

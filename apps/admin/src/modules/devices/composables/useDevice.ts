@@ -3,11 +3,16 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IDevice, devicesStoreKey } from '../store';
+import type { IDevice } from '../store/devices.store.types';
+import { devicesStoreKey } from '../store/keys';
 
 import type { IUseDevice } from './types';
 
-export const useDevice = (id: IDevice['id']): IUseDevice => {
+interface IUseDeviceProps {
+	id: IDevice['id'];
+}
+
+export const useDevice = ({ id }: IUseDeviceProps): IUseDevice => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);

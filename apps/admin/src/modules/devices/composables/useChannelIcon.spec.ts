@@ -42,7 +42,7 @@ describe('useChannelIcon', () => {
 	it('returns default icon if no category is found', () => {
 		findById.mockReturnValue({ id: channelId });
 
-		const { icon } = useChannelIcon(channelId);
+		const { icon } = useChannelIcon({ id: channelId });
 
 		expect(icon.value).toBe('mdi:chip');
 	});
@@ -50,7 +50,7 @@ describe('useChannelIcon', () => {
 	it('returns default icon if channel is null', () => {
 		findById.mockReturnValue(null);
 
-		const { icon } = useChannelIcon(channelId);
+		const { icon } = useChannelIcon({ id: channelId });
 
 		expect(icon.value).toBe('mdi:chip');
 	});
@@ -58,7 +58,7 @@ describe('useChannelIcon', () => {
 	it('returns default icon for unknown category', () => {
 		findById.mockReturnValue({ id: channelId, category: 'unknown' });
 
-		const { icon } = useChannelIcon(channelId);
+		const { icon } = useChannelIcon({ id: channelId });
 
 		expect(icon.value).toBe('mdi:chip');
 	});

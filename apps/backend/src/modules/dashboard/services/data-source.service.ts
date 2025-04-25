@@ -12,17 +12,15 @@ import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
-import { DataSourceEntity, TileEntity, TilesPageEntity } from '../entities/dashboard.entity';
+import { DataSourceEntity } from '../entities/dashboard.entity';
 
-import { CardsService } from './cards.service';
+import { DataSourceCreateBuilderRegistryService } from './data-source-create-builder-registry.service';
+import { DataSourceRelationsLoaderRegistryService } from './data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
-import { PagesService } from './pages.service';
-import { TilesService } from './tiles.service';
 
-interface FilterBy {
-	pageId?: string;
-	cardId?: string;
-	tileId?: string;
+interface Relation {
+	parentType: string;
+	parentId: string;
 }
 
 @Injectable()
@@ -32,154 +30,80 @@ export class DataSourceService {
 	constructor(
 		@InjectRepository(DataSourceEntity)
 		private readonly repository: Repository<DataSourceEntity>,
-		private readonly pagesService: PagesService,
-		private readonly cardsService: CardsService,
-		private readonly tilesService: TilesService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
+		private readonly relationsRegistryService: DataSourceRelationsLoaderRegistryService,
+		private readonly nestedCreateBuilders: DataSourceCreateBuilderRegistryService,
 		private readonly dataSource: OrmDataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async findAll<TDataSource extends DataSourceEntity>(filterBy?: FilterBy): Promise<TDataSource[]> {
-		if (filterBy?.pageId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all data sources for pageId=${filterBy.pageId}`);
-
-			const tile = await this.tilesService.getOneOrThrow(filterBy.pageId);
-
-			const dataSources = await this.repository
-				.createQueryBuilder('dataSource')
-				.innerJoinAndSelect('dataSource.page', 'page')
-				.leftJoinAndSelect('dataSource.device', 'device')
-				.leftJoinAndSelect('dataSource.channel', 'channel')
-				.leftJoinAndSelect('dataSource.property', 'property')
-				.where('tile.id = :pageId', { pageId: tile.id })
-				.getMany();
-
-			this.logger.debug(`[LOOKUP ALL] Found ${dataSources.length} data sources for pageId=${filterBy.pageId}`);
-
-			return dataSources as TDataSource[];
-		} else if (filterBy?.cardId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all data sources for cardId=${filterBy.cardId}`);
-
-			const tile = await this.tilesService.getOneOrThrow(filterBy.cardId);
+	async findAll<TDataSource extends DataSourceEntity>(relation?: Relation): Promise<TDataSource[]> {
+		if (relation) {
+			this.logger.debug(
+				`[LOOKUP ALL] Fetching all data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
 
 			const dataSources = await this.repository
 				.createQueryBuilder('dataSource')
-				.innerJoinAndSelect('dataSource.card', 'card')
-				.leftJoinAndSelect('dataSource.device', 'device')
-				.leftJoinAndSelect('dataSource.channel', 'channel')
-				.leftJoinAndSelect('dataSource.property', 'property')
-				.where('tile.id = :cardId', { cardId: tile.id })
+				.where('dataSource.parentType = :parentType', { parentType: relation.parentType })
+				.andWhere('dataSource.parentId = :parentId', { parentId: relation.parentId })
 				.getMany();
 
-			this.logger.debug(`[LOOKUP ALL] Found ${dataSources.length} data sources for cardId=${filterBy.cardId}`);
+			this.logger.debug(
+				`[LOOKUP ALL] Found ${dataSources.length} data sources for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
 
-			return dataSources as TDataSource[];
-		} else if (filterBy?.tileId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all data sources for tileId=${filterBy.tileId}`);
-
-			const tile = await this.tilesService.getOneOrThrow(filterBy.tileId);
-
-			const dataSources = await this.repository
-				.createQueryBuilder('dataSource')
-				.innerJoinAndSelect('dataSource.tile', 'tile')
-				.leftJoinAndSelect('dataSource.device', 'device')
-				.leftJoinAndSelect('dataSource.channel', 'channel')
-				.leftJoinAndSelect('dataSource.property', 'property')
-				.where('tile.id = :tileId', { tileId: tile.id })
-				.getMany();
-
-			this.logger.debug(`[LOOKUP ALL] Found ${dataSources.length} data sources for tileId=${filterBy.tileId}`);
+			for (const dataSource of dataSources) {
+				await this.loadRelations(dataSource);
+			}
 
 			return dataSources as TDataSource[];
 		}
 
 		this.logger.debug('[LOOKUP ALL] Fetching all data sources');
 
-		const dataSources = await this.repository.find({
-			relations: ['tile', 'tile.page', 'device', 'channel', 'property'],
-		});
+		const dataSources = await this.repository.find();
 
 		this.logger.debug(`[LOOKUP ALL] Found ${dataSources.length} data sources`);
+
+		for (const dataSource of dataSources) {
+			await this.loadRelations(dataSource);
+		}
 
 		return dataSources as TDataSource[];
 	}
 
-	async findOne<TDataSource extends DataSourceEntity>(id: string, filterBy?: FilterBy): Promise<TDataSource | null> {
+	async findOne<TDataSource extends DataSourceEntity>(id: string, relation?: Relation): Promise<TDataSource | null> {
 		let dataSource: DataSourceEntity | null;
 
-		if (filterBy?.pageId) {
-			this.logger.debug(`[LOOKUP] Fetching data source with id=${id} for pageId=${filterBy.pageId}`);
-
-			const tile = await this.tilesService.getOneOrThrow(filterBy.pageId);
+		if (relation) {
+			this.logger.debug(
+				`[LOOKUP] Fetching data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
 
 			dataSource = await this.repository
 				.createQueryBuilder('dataSource')
-				.innerJoinAndSelect('dataSource.page', 'page')
-				.leftJoinAndSelect('dataSource.device', 'device')
-				.leftJoinAndSelect('dataSource.channel', 'channel')
-				.leftJoinAndSelect('dataSource.property', 'property')
 				.where('dataSource.id = :id', { id })
-				.andWhere('tile.id = :pageId', { pageId: tile.id })
+				.andWhere('dataSource.parentType = :parentType', { parentType: relation.parentType })
+				.andWhere('dataSource.parentId = :parentId', { parentId: relation.parentId })
 				.getOne();
 
 			if (!dataSource) {
-				this.logger.warn(`[LOOKUP] Data source with id=${id} for pageId=${filterBy.pageId} not found`);
+				this.logger.warn(
+					`[LOOKUP] Data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
+				);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched data source with id=${id} for pageId=${filterBy.pageId}`);
-		} else if (filterBy?.cardId) {
-			this.logger.debug(`[LOOKUP] Fetching data source with id=${id} for cardId=${filterBy.cardId}`);
-
-			const tile = await this.tilesService.getOneOrThrow(filterBy.cardId);
-
-			dataSource = await this.repository
-				.createQueryBuilder('dataSource')
-				.innerJoinAndSelect('dataSource.card', 'card')
-				.leftJoinAndSelect('dataSource.device', 'device')
-				.leftJoinAndSelect('dataSource.channel', 'channel')
-				.leftJoinAndSelect('dataSource.property', 'property')
-				.where('dataSource.id = :id', { id })
-				.andWhere('tile.id = :cardId', { cardId: tile.id })
-				.getOne();
-
-			if (!dataSource) {
-				this.logger.warn(`[LOOKUP] Data source with id=${id} for cardId=${filterBy.cardId} not found`);
-
-				return null;
-			}
-
-			this.logger.debug(`[LOOKUP] Successfully fetched data source with id=${id} for cardId=${filterBy.cardId}`);
-		} else if (filterBy?.tileId) {
-			this.logger.debug(`[LOOKUP] Fetching data source with id=${id} for tileId=${filterBy.tileId}`);
-
-			const tile = await this.tilesService.getOneOrThrow(filterBy.tileId);
-
-			dataSource = await this.repository
-				.createQueryBuilder('dataSource')
-				.innerJoinAndSelect('dataSource.tile', 'tile')
-				.leftJoinAndSelect('dataSource.device', 'device')
-				.leftJoinAndSelect('dataSource.channel', 'channel')
-				.leftJoinAndSelect('dataSource.property', 'property')
-				.where('dataSource.id = :id', { id })
-				.andWhere('tile.id = :tileId', { tileId: tile.id })
-				.getOne();
-
-			if (!dataSource) {
-				this.logger.warn(`[LOOKUP] Data source with id=${id} for tileId=${filterBy.tileId} not found`);
-
-				return null;
-			}
-
-			this.logger.debug(`[LOOKUP] Successfully fetched data source with id=${id} for tileId=${filterBy.tileId}`);
+			this.logger.debug(
+				`[LOOKUP] Successfully fetched data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
 		} else {
 			this.logger.debug(`[LOOKUP] Fetching data source with id=${id}`);
 
 			dataSource = await this.repository.findOne({
 				where: { id },
-				relations: ['tile', 'tile.page', 'device', 'channel', 'property'],
 			});
 
 			if (!dataSource) {
@@ -191,24 +115,18 @@ export class DataSourceService {
 			this.logger.debug(`[LOOKUP] Successfully fetched data source with id=${id}`);
 		}
 
+		await this.loadRelations(dataSource);
+
 		return dataSource as TDataSource;
 	}
 
 	async create<TDataSource extends DataSourceEntity, TCreateDTO extends CreateDataSourceDto>(
 		createDto: CreateDataSourceDto,
-		relation: FilterBy,
+		relation: Relation,
 	): Promise<TDataSource> {
 		this.logger.debug(
-			`[CREATE] Creating new data source for pageId=${relation.pageId} cardId=${relation.cardId} tileId=${relation.tileId}`,
+			`[CREATE] Creating new data source for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 		);
-
-		const page = relation.pageId ? await this.pagesService.getOneOrThrow<TilesPageEntity>(relation.pageId) : undefined;
-		const card = relation.cardId ? await this.cardsService.getOneOrThrow(relation.cardId) : undefined;
-		const tile = relation.tileId ? await this.tilesService.getOneOrThrow<TileEntity>(relation.tileId) : undefined;
-
-		if (!page && !card && !tile) {
-			throw new DashboardException('The page or card or tile relation have to be provided.');
-		}
 
 		const { type } = createDto;
 
@@ -227,7 +145,7 @@ export class DataSourceService {
 		const dataSource = repository.create(
 			plainToInstance(
 				mapping.class,
-				{ ...dtoInstance, page: page?.id, card: card?.id, tile: tile?.id },
+				{ ...dtoInstance, parentType: relation.parentType, parentId: relation.parentId },
 				{
 					enableImplicitConversion: true,
 					excludeExtraneousValues: true,
@@ -236,11 +154,17 @@ export class DataSourceService {
 			),
 		);
 
+		for (const builder of this.nestedCreateBuilders.getBuilders()) {
+			if (builder.supports(dtoInstance)) {
+				await builder.build(dtoInstance, dataSource);
+			}
+		}
+
 		// Save the dataSource
 		await repository.save(dataSource);
 
 		// Retrieve the saved dataSource with its full relations
-		const savedDataSource = await this.getOneOrThrow<TDataSource>(dataSource.id);
+		const savedDataSource = await this.getOneOrThrow<TDataSource>(dataSource.id, relation);
 
 		this.logger.debug(`[CREATE] Successfully created data source with id=${savedDataSource.id}`);
 
@@ -291,19 +215,19 @@ export class DataSourceService {
 
 		const dataSource = await this.getOneOrThrow<DataSourceEntity>(id);
 
-		await this.repository.remove(dataSource);
+		await this.repository.delete(dataSource.id);
 
 		this.logger.log(`[DELETE] Successfully removed data source with id=${id}`);
 
 		this.eventEmitter.emit(EventType.DATA_SOURCE_DELETED, dataSource);
 	}
 
-	async getOneOrThrow<TDataSource extends DataSourceEntity>(id: string, filterBy?: FilterBy): Promise<TDataSource> {
-		const dataSource = await this.findOne<TDataSource>(id, filterBy);
+	async getOneOrThrow<TDataSource extends DataSourceEntity>(id: string, relation?: Relation): Promise<TDataSource> {
+		const dataSource = await this.findOne<TDataSource>(id, relation);
 
 		if (!dataSource) {
 			this.logger.error(
-				`[ERROR] Data source with id=${id} for pageId=${filterBy?.pageId} cardId=${filterBy?.cardId} tileId=${filterBy?.tileId} not found`,
+				`[ERROR] Data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
 			);
 
 			throw new DashboardNotFoundException('Requested data source does not exist');
@@ -331,5 +255,13 @@ export class DataSourceService {
 		}
 
 		return dtoInstance;
+	}
+
+	private async loadRelations(entity: DataSourceEntity): Promise<void> {
+		for (const loader of this.relationsRegistryService.getLoaders()) {
+			if (loader.supports(entity)) {
+				await loader.loadRelations(entity);
+			}
+		}
 	}
 }

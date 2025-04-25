@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 
 import type { IListUsersProps } from './list-users.types';
 import ListUsers from './list-users.vue';
@@ -13,7 +13,7 @@ import UsersFilter from './users-filter.vue';
 import UsersTable from './users-table.vue';
 
 type ListUsersInstance = ComponentPublicInstance<IListUsersProps> & {
-	innerFilters: { search: string | undefined; roles: UsersUserRole[] };
+	innerFilters: { search: string | undefined; roles: UsersModuleUserRole[] };
 };
 
 vi.mock('vue-i18n', () => ({
@@ -91,12 +91,12 @@ describe('ListUsers', (): void => {
 	});
 
 	it('updates internal filters when v-model:filters changes', async (): Promise<void> => {
-		await wrapper.setProps({ filters: { search: 'admin', roles: [UsersUserRole.admin] } });
+		await wrapper.setProps({ filters: { search: 'admin', roles: [UsersModuleUserRole.admin] } });
 
 		expect(wrapper.vm.innerFilters.search).toBe('admin');
-		expect(wrapper.vm.innerFilters.roles).toEqual([UsersUserRole.admin]);
+		expect(wrapper.vm.innerFilters.roles).toEqual([UsersModuleUserRole.admin]);
 
-		expect(wrapper.findComponent(UsersFilter).props('filters')).toEqual({ search: 'admin', roles: [UsersUserRole.admin] });
+		expect(wrapper.findComponent(UsersFilter).props('filters')).toEqual({ search: 'admin', roles: [UsersModuleUserRole.admin] });
 	});
 
 	it('emits "update:sort-by" when sortBy changes', async (): Promise<void> => {

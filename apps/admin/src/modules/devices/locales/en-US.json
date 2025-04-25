@@ -88,7 +88,7 @@
       "list": "Manage smart panel devices",
       "add": "Add new smart panel device",
       "edit": "Edit smart panel device",
-      "detail": "Manager smart panel device",
+      "detail": "Manage smart panel device",
       "adjustFilters": "Adjust display filters"
     },
     "channels": {
@@ -107,7 +107,6 @@
   "messages": {
     "devices": {
       "notFound": "The device you are looking for doesn’t exist or may have been removed.",
-      "confirmRemove": "Are you sure you want to remove device: {device}? This cannot be reversed.",
       "created": "New device added successfully.",
       "notCreated": "Something went wrong. Unable to create the device.",
       "edited": "Changes saved! The device: {device} has been updated.",
@@ -118,7 +117,6 @@
     },
     "channels": {
       "notFound": "The channel you are looking for doesn’t exist or may have been removed.",
-      "confirmRemove": "Are you sure you want to remove channel: {channel}? This cannot be reversed.",
       "created": "New channel added successfully.",
       "notCreated": "Something went wrong. Unable to create the channel.",
       "edited": "Changes saved! The channel: {channel} has been updated.",
@@ -130,7 +128,6 @@
     },
     "channelsProperties": {
       "notFound": "The channel property you are looking for doesn’t exist or may have been removed.",
-      "confirmRemove": "Are you sure you want to remove channel property: {property}? This cannot be reversed.",
       "created": "New channel property added successfully.",
       "notCreated": "Something went wrong. Unable to create the channel property.",
       "edited": "Changes saved! The channel property: {property} has been updated.",
@@ -141,8 +138,7 @@
       "noMoreAllowed": "All required and optional properties are assigned to the channel. No others can be added."
     },
     "misc": {
-      "requestError": "Something went wrong, please try again later.",
-      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+      "requestError": "Something went wrong, please try again later."
     }
   },
   "texts": {
@@ -151,6 +147,7 @@
       "noFilteredDevices": "No devices found matching the active filter criteria",
       "loadingDevices": "Loading devices...",
       "loadingDevice": "Loading device...",
+      "confirmRemove": "Are you sure you want to remove device: {device}? This cannot be reversed.",
       "description": {
         "generic": "",
         "air_conditioner": "The Air Conditioner device represents a cooling system with additional features for environmental monitoring and energy management.",
@@ -191,6 +188,7 @@
       "noFilteredChannels": "No channels found matching the active filter criteria",
       "loadingChannels": "Loading channels...",
       "loadingChannel": "Loading channel...",
+      "confirmRemove": "Are you sure you want to remove channel: {channel}? This cannot be reversed.",
       "description": {
         "generic": "",
         "air_particulate": "Monitors the concentration of particulate matter (e.g., PM2.5 and PM10) in the air, providing insights into air quality and pollution levels.",
@@ -243,6 +241,7 @@
       "loadingProperty": "Loading channel property...",
       "loadingChannels": "Loading channels...",
       "loadingChannel": "Loading channel...",
+      "confirmRemove": "Are you sure you want to remove channel property: {property}? This cannot be reversed.",
       "dataTypes": {
         "char": "Signed 8-bit integer (-128 to 127).",
         "uchar": "Unsigned 8-bit integer (0 to 255).",
@@ -259,7 +258,8 @@
     },
     "misc": {
       "notSet": "Not set",
-      "noValuesProvided": "No values provided"
+      "noValuesProvided": "No values provided",
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
     }
   },
   "fields": {

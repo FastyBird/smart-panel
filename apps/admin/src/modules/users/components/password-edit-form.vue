@@ -40,7 +40,7 @@ import { useI18n } from 'vue-i18n';
 import type { InternalRuleItem } from 'async-validator';
 import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
 
-import { type IUserPasswordForm, useUserPasswordForm } from '../composables';
+import { type IUserPasswordForm, useUserPasswordForm } from '../composables/composables';
 import { FormResult, type FormResultType } from '../users.constants';
 
 import type { IPasswordEditFormProps } from './password-edit-form.types';
@@ -62,9 +62,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, submit, formResult } = useUserPasswordForm(props.user, {
-	success: t('usersModule.messages.passwordEdited'),
-	error: t('usersModule.messages.passwordNotEdited'),
+const { model, formEl, submit, formResult } = useUserPasswordForm({
+	user: props.user,
+	messages: {
+		success: t('usersModule.messages.passwordEdited'),
+		error: t('usersModule.messages.passwordNotEdited'),
+	},
 });
 
 const rules = reactive<FormRules<IUserPasswordForm>>({
@@ -100,7 +103,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

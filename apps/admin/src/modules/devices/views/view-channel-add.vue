@@ -115,7 +115,7 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
-import { ChannelAddForm } from '../components';
+import { ChannelAddForm } from '../components/components';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 
 import type { IViewChannelAddProps } from './view-channel-add.types';
@@ -171,7 +171,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channels.add'),
-				route: router.resolve({ name: RouteNames.DEVICE_ADD_CHANEL, params: { id: props.device?.id } }),
+				route: router.resolve({ name: RouteNames.DEVICE_ADD_CHANNEL, params: { id: props.device?.id } }),
 			});
 		} else {
 			items.push({
@@ -189,7 +189,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onDiscard = (): void => {
-	ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+	ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 		confirmButtonText: t('devicesModule.buttons.yes.title'),
 		cancelButtonText: t('devicesModule.buttons.no.title'),
 		type: 'warning',
@@ -244,9 +244,9 @@ watch(
 		if (val === FormResult.OK) {
 			if (isDeviceDetailRoute.value) {
 				if (isLGDevice.value) {
-					router.replace({ name: RouteNames.DEVICE_EDIT_CHANEL, params: { id: props.device?.id, channelId: newChannelId } });
+					router.replace({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { id: props.device?.id, channelId: newChannelId } });
 				} else {
-					router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id, channelId: newChannelId } });
+					router.push({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { id: props.device?.id, channelId: newChannelId } });
 				}
 			} else {
 				if (isLGDevice.value) {

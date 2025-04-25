@@ -1,10 +1,12 @@
+import { nextTick } from 'vue';
+
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesChannelPropertyCategory, DevicesChannelPropertyData_type } from '../../../openapi';
+import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
-import type { IChannelProperty } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
 
 import { useChannelPropertyEditForm } from './useChannelPropertyEditForm';
 
@@ -12,8 +14,8 @@ const mockProperty: IChannelProperty = {
 	id: 'property-1',
 	channel: 'channel-1',
 	name: 'My Property',
-	category: DevicesChannelPropertyCategory.brightness,
-	dataType: DevicesChannelPropertyData_type.float,
+	category: DevicesModuleChannelPropertyCategory.brightness,
+	dataType: DevicesModuleChannelPropertyData_type.float,
 	permissions: [],
 	unit: '',
 	format: [],
@@ -70,7 +72,7 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('initializes model from property', () => {
-		const form = useChannelPropertyEditForm(mockProperty);
+		const form = useChannelPropertyEditForm({ property: mockProperty });
 
 		expect(form.model.id).toBe(mockProperty.id);
 		expect(form.model.channel).toBe(mockProperty.channel);
@@ -78,16 +80,16 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('detects form changes', async () => {
-		const form = useChannelPropertyEditForm(mockProperty);
+		const form = useChannelPropertyEditForm({ property: mockProperty });
 
 		form.model.name = 'Changed';
-		await Promise.resolve();
+		await nextTick();
 
 		expect(form.formChanged.value).toBe(true);
 	});
 
 	it('throws on invalid form', async () => {
-		const form = useChannelPropertyEditForm(mockProperty);
+		const form = useChannelPropertyEditForm({ property: mockProperty });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(false),
@@ -97,7 +99,7 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('submits and saves when draft', async () => {
-		const form = useChannelPropertyEditForm(mockProperty);
+		const form = useChannelPropertyEditForm({ property: mockProperty });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),
@@ -113,7 +115,7 @@ describe('useChannelPropertyEditForm', () => {
 	});
 
 	it('submits and edits when not draft', async () => {
-		const form = useChannelPropertyEditForm({ ...mockProperty, draft: false });
+		const form = useChannelPropertyEditForm({ property: { ...mockProperty, draft: false } });
 
 		form.formEl.value = {
 			clearValidate: vi.fn(),

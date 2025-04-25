@@ -1,0 +1,563 @@
+import { ref } from 'vue';
+
+import { type Pinia, type Store, defineStore } from 'pinia';
+
+import { isUndefined, omitBy } from 'lodash';
+
+import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
+import type { operations } from '../../../openapi';
+import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
+import { usePagesPlugins } from '../composables/usePagesPlugins';
+import { useTilesPlugins } from '../composables/useTilesPlugins';
+import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
+import { DashboardApiException, DashboardException, DashboardValidationException } from '../dashboard.exceptions';
+
+import { DataSourceSchema } from './data-sources.store.schemas';
+import type { IDataSourceRes } from './data-sources.store.types';
+import { transformDataSourceResponse } from './data-sources.transformers';
+import { dataSourcesStoreKey, tilesStoreKey } from './keys';
+import {
+	PageCreateReqSchema,
+	PageSchema,
+	PageUpdateReqSchema,
+	PagesAddActionPayloadSchema,
+	PagesEditActionPayloadSchema,
+} from './pages.store.schemas';
+import type {
+	IPage,
+	IPageCreateReq,
+	IPageUpdateReq,
+	IPagesAddActionPayload,
+	IPagesEditActionPayload,
+	IPagesGetActionPayload,
+	IPagesRemoveActionPayload,
+	IPagesSaveActionPayload,
+	IPagesSetActionPayload,
+	IPagesStateSemaphore,
+	IPagesStoreActions,
+	IPagesStoreState,
+	IPagesUnsetActionPayload,
+	PagesStoreSetup,
+} from './pages.store.types';
+import { transformPageCreateRequest, transformPageResponse, transformPageUpdateRequest } from './pages.transformers';
+import { TileSchema } from './tiles.store.schemas';
+import type { ITileRes } from './tiles.store.types';
+import { transformTileResponse } from './tiles.transformers';
+
+const defaultSemaphore: IPagesStateSemaphore = {
+	fetching: {
+		items: false,
+		item: [],
+	},
+	creating: [],
+	updating: [],
+	deleting: [],
+};
+
+export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('dashboard_module-pages', (): PagesStoreSetup => {
+	const backend = useBackend();
+
+	const { getByType: getPluginByType } = usePagesPlugins();
+	const { getByType: getTilePluginByType } = useTilesPlugins();
+	const { getByType: getDataSourcePluginByType } = useDataSourcesPlugins();
+
+	const storesManager = injectStoresManager();
+
+	const semaphore = ref<IPagesStateSemaphore>(defaultSemaphore);
+
+	const firstLoad = ref<boolean>(false);
+
+	const data = ref<{ [key: IPage['id']]: IPage }>({});
+
+	const firstLoadFinished = (): boolean => firstLoad.value;
+
+	const getting = (id: IPage['id']): boolean => semaphore.value.fetching.item.includes(id);
+
+	const fetching = (): boolean => semaphore.value.fetching.items;
+
+	const findAll = (): IPage[] => Object.values(data.value);
+
+	const findById = (id: IPage['id']): IPage | null => (id in data.value ? data.value[id] : null);
+
+	const pendingGetPromises: Record<string, Promise<IPage>> = {};
+
+	const pendingFetchPromises: Record<string, Promise<IPage[]>> = {};
+
+	const set = (payload: IPagesSetActionPayload): IPage => {
+		const plugin = getPluginByType(payload.data.type);
+
+		if (payload.id && data.value && payload.id in data.value) {
+			const parsed = (plugin?.schemas?.pageSchema || PageSchema).safeParse({ ...data.value[payload.id], ...payload.data });
+
+			if (!parsed.success) {
+				console.error('Schema validation failed with:', parsed.error);
+
+				throw new DashboardValidationException('Failed to insert page.');
+			}
+
+			return (data.value[parsed.data.id] = parsed.data);
+		}
+
+		const parsed = (plugin?.schemas?.pageSchema || PageSchema).safeParse({ ...payload.data, id: payload.id });
+
+		if (!parsed.success) {
+			console.error('Schema validation failed with:', parsed.error);
+
+			throw new DashboardValidationException('Failed to insert page.');
+		}
+
+		data.value = data.value ?? {};
+
+		return (data.value[parsed.data.id] = parsed.data);
+	};
+
+	const unset = (payload: IPagesUnsetActionPayload): void => {
+		if (!data.value) {
+			return;
+		}
+
+		delete data.value[payload.id];
+
+		return;
+	};
+
+	const get = async (payload: IPagesGetActionPayload): Promise<IPage> => {
+		if (payload.id in pendingGetPromises) {
+			return pendingGetPromises[payload.id];
+		}
+
+		const fetchPromise = (async (): Promise<IPage> => {
+			if (semaphore.value.fetching.item.includes(payload.id)) {
+				throw new DashboardApiException('Already fetching page.');
+			}
+
+			semaphore.value.fetching.item.push(payload.id);
+
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+				params: {
+					path: { id: payload.id },
+				},
+			});
+
+			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+
+			if (typeof responseData !== 'undefined') {
+				const plugin = getPluginByType(responseData.data.type);
+
+				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
+
+				data.value[transformed.id] = transformed;
+
+				if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+					insertDataSourceRelations(transformed, responseData.data.data_source);
+				}
+
+				if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+					insertTilesRelations(transformed, responseData.data.tiles);
+				}
+
+				return transformed;
+			}
+
+			let errorReason: string | null = 'Failed to fetch page.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['get-dashboard-module-page']>(error, errorReason);
+			}
+
+			throw new DashboardApiException(errorReason, response.status);
+		})();
+
+		pendingGetPromises[payload.id] = fetchPromise;
+
+		try {
+			return await fetchPromise;
+		} finally {
+			delete pendingGetPromises[payload.id];
+		}
+	};
+
+	const fetch = async (): Promise<IPage[]> => {
+		if ('all' in pendingFetchPromises) {
+			return pendingFetchPromises['all'];
+		}
+
+		const fetchPromise = (async (): Promise<IPage[]> => {
+			if (semaphore.value.fetching.items) {
+				throw new DashboardApiException('Already fetching pages.');
+			}
+
+			semaphore.value.fetching.items = true;
+
+			firstLoad.value = false;
+
+			const { data: responseData, error, response } = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages`);
+
+			semaphore.value.fetching.items = false;
+
+			if (typeof responseData !== 'undefined') {
+				firstLoad.value = true;
+
+				data.value = Object.fromEntries(
+					responseData.data.map((page) => {
+						const plugin = getPluginByType(page.type);
+
+						const transformed = transformPageResponse(page, plugin?.schemas?.pageSchema || PageSchema);
+
+						if ('data_source' in page && Array.isArray(page.data_source)) {
+							insertDataSourceRelations(transformed, page.data_source);
+						}
+
+						if ('tiles' in page && Array.isArray(page.tiles)) {
+							insertTilesRelations(transformed, page.tiles);
+						}
+
+						return [transformed.id, transformed];
+					})
+				);
+
+				return Object.values(data.value);
+			}
+
+			let errorReason: string | null = 'Failed to fetch pages.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['get-dashboard-module-pages']>(error, errorReason);
+			}
+
+			throw new DashboardApiException(errorReason, response.status);
+		})();
+
+		pendingFetchPromises['all'] = fetchPromise;
+
+		try {
+			return await fetchPromise;
+		} finally {
+			delete pendingFetchPromises['all'];
+		}
+	};
+
+	const add = async (payload: IPagesAddActionPayload): Promise<IPage> => {
+		const parsedPayload = PagesAddActionPayloadSchema.safeParse(payload);
+
+		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
+			throw new DashboardValidationException('Failed to add page.');
+		}
+
+		const plugin = getPluginByType(payload.data.type);
+
+		const parsedNewItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse({
+			...payload.data,
+			id: parsedPayload.data.id,
+			draft: parsedPayload.data.draft,
+			createdAt: new Date(),
+		});
+
+		if (!parsedNewItem.success) {
+			console.error('Schema validation failed with:', parsedNewItem.error);
+
+			throw new DashboardValidationException('Failed to add page.');
+		}
+
+		semaphore.value.creating.push(parsedNewItem.data.id);
+
+		data.value[parsedNewItem.data.id] = parsedNewItem.data;
+
+		if (parsedNewItem.data.draft) {
+			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
+
+			return parsedNewItem.data;
+		} else {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
+				body: {
+					data: transformPageCreateRequest<IPageCreateReq>(parsedNewItem.data, plugin?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
+				},
+			});
+
+			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
+
+			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
+
+				data.value[transformed.id] = transformed;
+
+				if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+					insertDataSourceRelations(transformed, responseData.data.data_source);
+				}
+
+				if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+					insertTilesRelations(transformed, responseData.data.tiles);
+				}
+
+				return transformed;
+			}
+
+			// Record could not be created on api, we have to remove it from database
+			delete data.value[parsedNewItem.data.id];
+
+			let errorReason: string | null = 'Failed to create page.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['create-dashboard-module-page']>(error, errorReason);
+			}
+
+			throw new DashboardApiException(errorReason, response.status);
+		}
+	};
+
+	const edit = async (payload: IPagesEditActionPayload): Promise<IPage> => {
+		if (semaphore.value.updating.includes(payload.id)) {
+			throw new DashboardException('Page is already being updated.');
+		}
+
+		if (!(payload.id in data.value)) {
+			throw new DashboardException('Failed to get page data to update.');
+		}
+
+		const parsedPayload = PagesEditActionPayloadSchema.safeParse(payload);
+
+		if (!parsedPayload.success) {
+			console.error('Schema validation failed with:', parsedPayload.error);
+
+			throw new DashboardValidationException('Failed to edit page.');
+		}
+
+		const plugin = getPluginByType(payload.data.type);
+
+		const parsedEditedItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse({
+			...data.value[payload.id],
+			...omitBy(parsedPayload.data.data, isUndefined),
+		});
+
+		if (!parsedEditedItem.success) {
+			console.error('Schema validation failed with:', parsedEditedItem.error);
+
+			throw new DashboardValidationException('Failed to edit page.');
+		}
+
+		semaphore.value.updating.push(payload.id);
+
+		data.value[parsedEditedItem.data.id] = parsedEditedItem.data;
+
+		if (parsedEditedItem.data.draft) {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedItem.data.id);
+
+			return parsedEditedItem.data;
+		} else {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+				params: {
+					path: {
+						id: payload.id,
+					},
+				},
+				body: {
+					data: transformPageUpdateRequest<IPageUpdateReq>(parsedEditedItem.data, plugin?.schemas?.pageUpdateReqSchema || PageUpdateReqSchema),
+				},
+			});
+
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+
+			if (typeof responseData !== 'undefined') {
+				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
+
+				data.value[transformed.id] = transformed;
+
+				return transformed;
+			}
+
+			// Updating record on api failed, we need to refresh record
+			await get({ id: payload.id });
+
+			let errorReason: string | null = 'Failed to update page.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['update-dashboard-module-page']>(error, errorReason);
+			}
+
+			throw new DashboardApiException(errorReason, response.status);
+		}
+	};
+
+	const save = async (payload: IPagesSaveActionPayload): Promise<IPage> => {
+		if (semaphore.value.updating.includes(payload.id)) {
+			throw new DashboardException('Page is already being saved.');
+		}
+
+		if (!(payload.id in data.value)) {
+			throw new DashboardException('Failed to get page data to save.');
+		}
+
+		const plugin = getPluginByType(data.value[payload.id].type);
+
+		const parsedSaveItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse(data.value[payload.id]);
+
+		if (!parsedSaveItem.success) {
+			console.error('Schema validation failed with:', parsedSaveItem.error);
+
+			throw new DashboardValidationException('Failed to save page.');
+		}
+
+		semaphore.value.updating.push(payload.id);
+
+		const {
+			data: responseData,
+			error,
+			response,
+		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
+			body: {
+				data: transformPageCreateRequest<IPageCreateReq>(parsedSaveItem.data, plugin?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
+			},
+		});
+
+		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+
+		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+			const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
+
+			data.value[transformed.id] = transformed;
+
+			if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+				insertDataSourceRelations(transformed, responseData.data.data_source);
+			}
+
+			if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+				insertTilesRelations(transformed, responseData.data.tiles);
+			}
+
+			return transformed;
+		}
+
+		let errorReason: string | null = 'Failed to create page.';
+
+		if (error) {
+			errorReason = getErrorReason<operations['create-dashboard-module-page']>(error, errorReason);
+		}
+
+		throw new DashboardApiException(errorReason, response.status);
+	};
+
+	const remove = async (payload: IPagesRemoveActionPayload): Promise<boolean> => {
+		if (semaphore.value.deleting.includes(payload.id)) {
+			throw new DashboardException('Page is already being removed.');
+		}
+
+		if (!Object.keys(data.value).includes(payload.id)) {
+			return true;
+		}
+
+		semaphore.value.deleting.push(payload.id);
+
+		const recordToRemove = data.value[payload.id];
+
+		delete data.value[payload.id];
+
+		if (recordToRemove.draft) {
+			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+		} else {
+			const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+				params: {
+					path: {
+						id: payload.id,
+					},
+				},
+			});
+
+			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+
+			if (response.status === 204) {
+				const tilesStore = storesManager.getStore(tilesStoreKey);
+				const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
+
+				dataSourcesStore.unset({ parent: { type: 'page', id: payload.id } });
+
+				const tiles = tilesStore.findForParent('page', payload.id);
+
+				tiles.forEach((tile) => {
+					dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
+				});
+
+				tilesStore.unset({ parent: { type: 'page', id: payload.id } });
+
+				return true;
+			}
+
+			// Deleting record on api failed, we need to refresh record
+			await get({ id: payload.id });
+
+			let errorReason: string | null = 'Remove account failed.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['delete-dashboard-module-page']>(error, errorReason);
+			}
+
+			throw new DashboardApiException(errorReason, response.status);
+		}
+
+		return true;
+	};
+
+	const insertDataSourceRelations = (page: IPage, dataSources: IDataSourceRes[]): void => {
+		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
+
+		dataSources.forEach((dataSource) => {
+			const plugin = getDataSourcePluginByType(dataSource.type);
+
+			dataSourcesStore.set({
+				id: dataSource.id,
+				parent: { type: 'page', id: page.id },
+				data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+			});
+		});
+
+		dataSourcesStore.firstLoad.push(page.id);
+	};
+
+	const insertTilesRelations = (page: IPage, tiles: ITileRes[]): void => {
+		const tilesStore = storesManager.getStore(tilesStoreKey);
+		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
+
+		tiles.forEach((tile) => {
+			const plugin = getTilePluginByType(tile.type);
+
+			tilesStore.set({
+				id: tile.id,
+				parent: { type: 'page', id: page.id },
+				data: transformTileResponse(tile, plugin?.schemas?.tileSchema || TileSchema),
+			});
+
+			tile.data_source.forEach((dataSource) => {
+				const plugin = getDataSourcePluginByType(dataSource.type);
+
+				dataSourcesStore.set({
+					id: dataSource.id,
+					parent: { type: 'tile', id: tile.id },
+					data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+				});
+			});
+
+			dataSourcesStore.firstLoad.push(tile.id);
+		});
+
+		tilesStore.firstLoad.push(page.id);
+	};
+
+	return { semaphore, firstLoad, data, firstLoadFinished, getting, fetching, findAll, findById, set, unset, get, fetch, add, edit, save, remove };
+});
+
+export const registerPagesStore = (pinia: Pinia): Store<string, IPagesStoreState, object, IPagesStoreActions> => {
+	return usePages(pinia);
+};

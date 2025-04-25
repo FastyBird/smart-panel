@@ -27,8 +27,8 @@ import { ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useDevice } from '../../composables';
-import type { IDevice } from '../../store';
+import { useDevice } from '../../composables/composables';
+import type { IDevice } from '../../store/devices.store.types';
 
 import type { IChannelsTableColumnDeviceProps } from './channels-table-column-device.types';
 
@@ -42,7 +42,7 @@ const emit = defineEmits<{
 	(e: 'filter-by', value: IDevice['id'], add: boolean): void;
 }>();
 
-const { device, fetchDevice } = useDevice(props.channel.device);
+const { device, fetchDevice } = useDevice({ id: props.channel.device });
 
 onMounted((): void => {
 	fetchDevice().catch(() => {

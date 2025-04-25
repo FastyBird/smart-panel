@@ -7,14 +7,14 @@ import type { operations } from '../../../openapi';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
 
-import {
-	type IThrottleStatus,
-	type IThrottleStatusSetActionPayload,
-	type IThrottleStatusStateSemaphore,
-	type IThrottleStatusStoreActions,
-	type IThrottleStatusStoreState,
-	ThrottleStatusSchema,
-	type ThrottleStatusStoreSetup,
+import { ThrottleStatusSchema } from './throttle-status.store.schemas';
+import type {
+	IThrottleStatus,
+	IThrottleStatusSetActionPayload,
+	IThrottleStatusStateSemaphore,
+	IThrottleStatusStoreActions,
+	IThrottleStatusStoreState,
+	ThrottleStatusStoreSetup,
 } from './throttle-status.store.types';
 import { transformThrottleStatusResponse } from './throttle-status.transformers';
 
@@ -43,6 +43,8 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 			const parsedThrottleStatus = ThrottleStatusSchema.safeParse(payload.data);
 
 			if (!parsedThrottleStatus.success) {
+				console.error('Schema validation failed with:', parsedThrottleStatus.error);
+
 				throw new SystemValidationException('Failed to insert throttle status.');
 			}
 

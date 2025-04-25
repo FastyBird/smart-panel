@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesChannelCategory, DevicesChannelPropertyCategory } from '../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
 import { FormResult } from '../devices.constants';
 
 import { useChannelPropertyAddForm } from './useChannelPropertyAddForm';
@@ -13,7 +13,7 @@ const mockAdd = vi.fn();
 vi.mock('./useChannels', () => ({
 	useChannels: () => ({
 		channels: {
-			value: [{ id: 'channel-1', name: 'Channel 1', category: DevicesChannelCategory.light }],
+			value: [{ id: 'channel-1', name: 'Channel 1', category: DevicesModuleChannelCategory.light }],
 		},
 		fetchChannels: vi.fn().mockResolvedValue(undefined),
 		areLoading: { value: false },
@@ -43,7 +43,7 @@ describe('useChannelPropertyAddForm', () => {
 	let form: ReturnType<typeof useChannelPropertyAddForm>;
 
 	beforeEach(() => {
-		form = useChannelPropertyAddForm('property-123', 'channel-123');
+		form = useChannelPropertyAddForm({ id: 'property-123', channelId: 'channel-123' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -68,7 +68,7 @@ describe('useChannelPropertyAddForm', () => {
 
 	it('should submit and call store add method', async () => {
 		form.model.name = 'name';
-		form.model.category = DevicesChannelPropertyCategory.generic;
+		form.model.category = DevicesModuleChannelPropertyCategory.generic;
 
 		await form.submit();
 
@@ -77,7 +77,7 @@ describe('useChannelPropertyAddForm', () => {
 			channelId: 'channel-123',
 			draft: false,
 			data: {
-				category: DevicesChannelPropertyCategory.generic,
+				category: DevicesModuleChannelPropertyCategory.generic,
 				name: 'name',
 				dataType: 'unknown',
 				format: null,

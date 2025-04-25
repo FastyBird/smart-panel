@@ -8,7 +8,7 @@ import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 import { RouteNames as AppRouteNames } from '../../../../app.constants';
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { FormResult, RouteNames } from '../../auth.constants';
-import type { SessionStore } from '../../store';
+import type { SessionStore } from '../../store/session.store.types';
 
 import SignUpForm from './sign-up-form.vue';
 

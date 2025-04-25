@@ -5,9 +5,9 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
-import '../models/config_req_update_section.dart';
-import '../models/config_res_app.dart';
-import '../models/config_res_section.dart';
+import '../models/config_module_req_update_section.dart';
+import '../models/config_module_res_app.dart';
+import '../models/config_module_res_section.dart';
 import '../models/section.dart';
 
 part 'configuration_module_client.g.dart';
@@ -20,7 +20,7 @@ abstract class ConfigurationModuleClient {
   ///
   /// Retrieves the complete smart panel configuration, including audio, display, language, and weather settings.
   @GET('/config-module/config')
-  Future<HttpResponse<ConfigResApp>> getConfigModuleConfig();
+  Future<HttpResponse<ConfigModuleResApp>> getConfigModuleConfig();
 
   /// Retrieve specific configuration section.
   ///
@@ -28,7 +28,7 @@ abstract class ConfigurationModuleClient {
   ///
   /// [section] - The configuration section name.
   @GET('/config-module/config/{section}')
-  Future<HttpResponse<ConfigResSection>> getConfigModuleConfigSection({
+  Future<HttpResponse<ConfigModuleResSection>> getConfigModuleConfigSection({
     @Path('section') required Section section,
   });
 
@@ -38,8 +38,8 @@ abstract class ConfigurationModuleClient {
   ///
   /// [section] - The configuration section name.
   @PATCH('/config-module/config/{section}')
-  Future<HttpResponse<ConfigResSection>> updateConfigModuleConfigSection({
+  Future<HttpResponse<ConfigModuleResSection>> updateConfigModuleConfigSection({
     @Path('section') required Section section,
-    @Body() ConfigReqUpdateSection? body,
+    @Body() ConfigModuleReqUpdateSection? body,
   });
 }

@@ -1,6 +1,6 @@
 import { instanceToPlain } from 'class-transformer';
 import { plainToInstance } from 'class-transformer';
-import { isArray, isObject } from 'class-validator';
+import { isArray } from 'class-validator';
 import { Server, Socket } from 'socket.io';
 
 import { Logger } from '@nestjs/common';
@@ -125,7 +125,6 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 							return response !== null ? { handler: name, ...response } : null;
 						} catch (error) {
-							console.log(error);
 							const err = error as Error;
 
 							this.logger.error(`[COMMAND HANDLER] Error in '${name}'`, { message: err.message, stack: err.stack });
@@ -202,7 +201,13 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		// Helper function to check and transform a single item
 		const transformItem = (item: unknown) =>
 			item?.constructor?.name && typeof item === 'object' && item.constructor.name !== 'Object'
-				? instanceToPlain(item, { exposeUnsetFields: false })
+				? instanceToPlain(item, {
+						excludeExtraneousValues: true,
+						exposeUnsetFields: false,
+						ignoreDecorators: false,
+						groups: ['api'],
+						enableCircularCheck: true,
+					})
 				: item;
 
 		// Handle arrays by mapping each item through the transformation logic
@@ -211,6 +216,6 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		}
 
 		// Handle single objects
-		return isObject(payload) ? transformItem(payload) : payload;
+		return transformItem(payload);
 	}
 }

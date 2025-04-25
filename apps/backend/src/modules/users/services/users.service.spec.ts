@@ -53,6 +53,7 @@ describe('UsersService', () => {
 			create: jest.fn(),
 			save: jest.fn(),
 			remove: jest.fn(),
+			delete: jest.fn(),
 		});
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -237,11 +238,11 @@ describe('UsersService', () => {
 			delete mockUser.password;
 
 			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(UserEntity, mockUser));
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockUser);
+			jest.spyOn(repository, 'delete');
 
 			await service.remove(mockUser.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(mockUser);
+			expect(repository.delete).toHaveBeenCalledWith(mockUser.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_DELETED, plainToInstance(UserEntity, mockUser));
 		});
 

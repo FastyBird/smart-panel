@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
-import type { ISystemInfo, IThrottleStatus } from '../store';
+import type { ISystemInfo } from '../store/system-info.store.types';
+import type { IThrottleStatus } from '../store/throttle-status.store.types';
 
 import type { ISystemInfoDetailProps } from './system-info-detail.types';
 import SystemInfoDetail from './system-info-detail.vue';

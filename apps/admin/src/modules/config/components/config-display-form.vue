@@ -80,7 +80,7 @@ import { ElForm, ElFormItem, ElOption, ElSelect, ElSlider, ElSwitch } from 'elem
 
 import { Icon } from '@iconify/vue';
 
-import { useConfigDisplayEditForm } from '../composables';
+import { useConfigDisplayEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
 import type { IConfigDisplayFormProps } from './config-display-form.types';
@@ -105,7 +105,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { screenLockDurationOptions, model, formEl, formChanged, submit, formResult } = useConfigDisplayEditForm(props.config);
+const { screenLockDurationOptions, model, formEl, formChanged, submit, formResult } = useConfigDisplayEditForm({ config: props.config });
 
 watch(
 	(): FormResultType => formResult.value,
@@ -121,7 +121,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

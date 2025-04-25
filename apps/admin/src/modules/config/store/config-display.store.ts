@@ -5,20 +5,19 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { ConfigDisplayType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleDisplayType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
-import {
-	ConfigDisplayEditActionPayloadSchema,
-	ConfigDisplaySchema,
-	type ConfigDisplayStoreSetup,
-	type IConfigDisplay,
-	type IConfigDisplayEditActionPayload,
-	type IConfigDisplaySetActionPayload,
-	type IConfigDisplayStateSemaphore,
-	type IConfigDisplayStoreActions,
-	type IConfigDisplayStoreState,
+import { ConfigDisplayEditActionPayloadSchema, ConfigDisplaySchema } from './config-display.store.schemas';
+import type {
+	ConfigDisplayStoreSetup,
+	IConfigDisplay,
+	IConfigDisplayEditActionPayload,
+	IConfigDisplaySetActionPayload,
+	IConfigDisplayStateSemaphore,
+	IConfigDisplayStoreActions,
+	IConfigDisplayStoreState,
 } from './config-display.store.types';
 import { transformConfigDisplayResponse, transformConfigDisplayUpdateRequest } from './config-display.transformers';
 
@@ -45,9 +44,11 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 		let pendingGetPromises: Promise<IConfigDisplay> | null = null;
 
 		const set = (payload: IConfigDisplaySetActionPayload): IConfigDisplay => {
-			const parsedConfigDisplay = ConfigDisplaySchema.safeParse({ ...payload.data, type: ConfigDisplayType.display });
+			const parsedConfigDisplay = ConfigDisplaySchema.safeParse({ ...payload.data, type: ConfigModuleDisplayType.display });
 
 			if (!parsedConfigDisplay.success) {
+				console.error('Schema validation failed with:', parsedConfigDisplay.error);
+
 				throw new ConfigValidationException('Failed to insert display config.');
 			}
 
@@ -108,6 +109,8 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 			const parsedPayload = ConfigDisplayEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
 				throw new ConfigValidationException('Failed to edit display config.');
 			}
 
@@ -121,6 +124,8 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 			});
 
 			if (!parsedEditedConfig.success) {
+				console.error('Schema validation failed with:', parsedEditedConfig.error);
+
 				throw new ConfigValidationException('Failed to edit display config.');
 			}
 

@@ -1,4 +1,4 @@
-import type { IChannelsFilter } from '../../composables';
+import type { IChannelsFilter } from '../../composables/composables';
 
 export interface IListChannelsAdjustProps {
 	filters: IChannelsFilter;

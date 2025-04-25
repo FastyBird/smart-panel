@@ -4,7 +4,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import type { UsersStore } from '../store';
+import type { UsersStore } from '../store/users.store.types';
 import { UsersApiException, UsersException } from '../users.exceptions';
 
 import { useUsersActions } from './useUsersActions';
@@ -67,7 +67,7 @@ describe('useUsersActions', (): void => {
 
 		await flushPromises();
 
-		expect(ElMessageBox.confirm).toHaveBeenCalledWith('usersModule.messages.confirmRemove testuser', 'usersModule.headings.remove', {
+		expect(ElMessageBox.confirm).toHaveBeenCalledWith('usersModule.texts.confirmRemove testuser', 'usersModule.headings.remove', {
 			confirmButtonText: 'usersModule.buttons.yes.title',
 			cancelButtonText: 'usersModule.buttons.no.title',
 			type: 'warning',

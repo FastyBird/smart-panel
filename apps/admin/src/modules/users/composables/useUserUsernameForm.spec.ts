@@ -4,9 +4,9 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import type { IUser, UsersStore } from '../store';
+import type { IUser, UsersStore } from '../store/users.store.types';
 import { UsersApiException } from '../users.exceptions';
 
 import { useUserUsernameForm } from './useUserUsernameForm';
@@ -56,7 +56,7 @@ describe('useUserUsernameForm', (): void => {
 			email: 'test@example.com',
 			firstName: 'John',
 			lastName: 'Doe',
-			role: UsersUserRole.user,
+			role: UsersModuleUserRole.user,
 			draft: false,
 			isHidden: false,
 			createdAt: new Date(),
@@ -75,7 +75,7 @@ describe('useUserUsernameForm', (): void => {
 		(usersStoreMock.save as Mock).mockResolvedValue({});
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserUsernameForm(mockUser);
+		const formHandler = useUserUsernameForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -104,7 +104,7 @@ describe('useUserUsernameForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new UsersApiException('Validation error', 422));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserUsernameForm(mockUser);
+		const formHandler = useUserUsernameForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -125,7 +125,7 @@ describe('useUserUsernameForm', (): void => {
 		(usersStoreMock.edit as Mock).mockRejectedValue(new Error('Failed to update user'));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserUsernameForm(mockUser);
+		const formHandler = useUserUsernameForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -149,7 +149,7 @@ describe('useUserUsernameForm', (): void => {
 		};
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserUsernameForm(mockUser, customMessages);
+		const formHandler = useUserUsernameForm({ user: mockUser, messages: customMessages });
 
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
@@ -178,7 +178,7 @@ describe('useUserUsernameForm', (): void => {
 	it('should reset form result after timeout', async (): Promise<void> => {
 		(usersStoreMock.edit as Mock).mockResolvedValue({});
 
-		const formHandler = useUserUsernameForm(mockUser);
+		const formHandler = useUserUsernameForm({ user: mockUser });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),

@@ -49,7 +49,7 @@ import { ElAvatar, ElPageHeader } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useBreakpoints } from '../composables';
+import { useBreakpoints } from '../composables/useBreakpoints';
 
 import type { IViewHeaderProps } from './view-header.types';
 

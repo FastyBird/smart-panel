@@ -135,12 +135,12 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
-import { DeviceEditForm } from '../components';
-import { useDevice, useDeviceIcon, usePlugins } from '../composables';
+import { DeviceEditForm } from '../components/components';
+import { useDevice, useDeviceIcon, usePlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
-import type { IPluginsComponents, IPluginsSchemas } from '../index';
-import type { IDevice } from '../store';
+import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
+import type { IDevice } from '../store/devices.store.types';
 
 import type { IViewDeviceEditProps } from './view-device-edit.types';
 
@@ -163,8 +163,8 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { device, isLoading, fetchDevice } = useDevice(props.id);
-const { icon: deviceIcon } = useDeviceIcon(props.id);
+const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
+const { icon: deviceIcon } = useDeviceIcon({ id: props.id });
 
 if (!validateUuid(props.id)) {
 	throw new Error('Device identifier is not valid');
@@ -218,7 +218,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onDiscard = (): void => {
-	ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+	ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 		confirmButtonText: t('devicesModule.buttons.yes.title'),
 		cancelButtonText: t('devicesModule.buttons.no.title'),
 		type: 'warning',

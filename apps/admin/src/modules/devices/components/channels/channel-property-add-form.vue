@@ -148,13 +148,13 @@
 		<div
 			v-if="
 				[
-					DevicesChannelPropertyData_type.char,
-					DevicesChannelPropertyData_type.uchar,
-					DevicesChannelPropertyData_type.short,
-					DevicesChannelPropertyData_type.ushort,
-					DevicesChannelPropertyData_type.int,
-					DevicesChannelPropertyData_type.uint,
-					DevicesChannelPropertyData_type.float,
+					DevicesModuleChannelPropertyData_type.char,
+					DevicesModuleChannelPropertyData_type.uchar,
+					DevicesModuleChannelPropertyData_type.short,
+					DevicesModuleChannelPropertyData_type.ushort,
+					DevicesModuleChannelPropertyData_type.int,
+					DevicesModuleChannelPropertyData_type.uint,
+					DevicesModuleChannelPropertyData_type.float,
 				].includes(model.dataType)
 			"
 			class="flex flex-row gap-4"
@@ -185,7 +185,7 @@
 		</div>
 
 		<el-form-item
-			v-if="[DevicesChannelPropertyData_type.enum].includes(model.dataType)"
+			v-if="[DevicesModuleChannelPropertyData_type.enum].includes(model.dataType)"
 			:label="t('devicesModule.fields.channelsProperties.format.title.enum')"
 			:prop="['format']"
 		>
@@ -210,13 +210,13 @@
 		<el-form-item
 			v-if="
 				[
-					DevicesChannelPropertyData_type.char,
-					DevicesChannelPropertyData_type.uchar,
-					DevicesChannelPropertyData_type.short,
-					DevicesChannelPropertyData_type.ushort,
-					DevicesChannelPropertyData_type.int,
-					DevicesChannelPropertyData_type.uint,
-					DevicesChannelPropertyData_type.float,
+					DevicesModuleChannelPropertyData_type.char,
+					DevicesModuleChannelPropertyData_type.uchar,
+					DevicesModuleChannelPropertyData_type.short,
+					DevicesModuleChannelPropertyData_type.ushort,
+					DevicesModuleChannelPropertyData_type.int,
+					DevicesModuleChannelPropertyData_type.uint,
+					DevicesModuleChannelPropertyData_type.float,
 				].includes(model.dataType)
 			"
 			:label="t('devicesModule.fields.channelsProperties.step.title')"
@@ -237,8 +237,8 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputTag, ElOption, ElSelect, type FormRules, vLoading } from 'element-plus';
 
-import { DevicesChannelPropertyData_type } from '../../../../openapi';
-import { type IChannelPropertyAddForm, useChannelPropertyAddForm } from '../../composables';
+import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { type IChannelPropertyAddForm, useChannelPropertyAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 
 import type { IChannelPropertyAddFormProps } from './channel-property-add-form.types';
@@ -263,7 +263,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
-	useChannelPropertyAddForm(props.id, props.channel?.id);
+	useChannelPropertyAddForm({ id: props.id, channelId: props.channel?.id });
 
 const rules = reactive<FormRules<IChannelPropertyAddForm>>({
 	channel: [{ required: true, message: t('devicesModule.fields.channelsProperties.channel.validation.required'), trigger: 'change' }],
@@ -286,7 +286,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

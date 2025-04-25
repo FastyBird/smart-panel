@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IConfigLanguage, configLanguageStoreKey } from '../store';
+import type { IConfigLanguage } from '../store/config-language.store.types';
+import { configLanguageStoreKey } from '../store/keys';
 
 import type { IUseConfigLanguage } from './types';
 

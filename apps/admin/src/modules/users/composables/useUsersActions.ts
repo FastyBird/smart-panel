@@ -3,7 +3,8 @@ import { useI18n } from 'vue-i18n';
 import { ElMessageBox } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { type IUser, usersStoreKey } from '../store';
+import { usersStoreKey } from '../store/keys';
+import type { IUser } from '../store/users.store.types';
 import { UsersApiException, UsersException } from '../users.exceptions';
 
 import type { IUseUsersActions } from './types';
@@ -24,7 +25,7 @@ export const useUsersActions = (): IUseUsersActions => {
 			throw new UsersException("Something went wrong, user can't be loaded");
 		}
 
-		ElMessageBox.confirm(t('usersModule.messages.confirmRemove', { user: user.username }), t('usersModule.headings.remove'), {
+		ElMessageBox.confirm(t('usersModule.texts.confirmRemove', { user: user.username }), t('usersModule.headings.remove'), {
 			confirmButtonText: t('usersModule.buttons.yes.title'),
 			cancelButtonText: t('usersModule.buttons.no.title'),
 			type: 'warning',

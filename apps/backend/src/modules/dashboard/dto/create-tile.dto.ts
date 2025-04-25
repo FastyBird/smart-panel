@@ -1,28 +1,27 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
+	IsBoolean,
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
 	IsString,
 	IsUUID,
-	ValidateIf,
+	Min,
 	ValidateNested,
 } from 'class-validator';
 
 import type { components } from '../../../openapi';
-import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
-import { ValidateTileDataSources } from '../validators/tile-data-source-type-constraint.validator';
+import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
 
-import { CreateDeviceChannelDataSourceDto } from './create-data-source.dto';
+import { ParentDto } from './common.dto';
+import { CreateDataSourceDto } from './create-data-source.dto';
 
-type CreateTileBase = components['schemas']['DashboardCreateTileBase'];
-type CreateDeviceTile = components['schemas']['DashboardCreateDeviceTile'];
-type CreateTimeTile = components['schemas']['DashboardCreateTimeTile'];
-type CreateDayWeatherTile = components['schemas']['DashboardCreateDayWeatherTile'];
-type CreateForecastWeatherTile = components['schemas']['DashboardCreateForecastWeatherTile'];
+type ReqCreateTile = components['schemas']['DashboardModuleReqCreateTile'];
+type ReqCreateTileWithParent = components['schemas']['DashboardModuleReqCreateTileWithParent'];
+type CreateTile = components['schemas']['DashboardModuleCreateTile'];
 
-export abstract class CreateTileDto implements CreateTileBase {
+export abstract class CreateTileDto implements CreateTile {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
@@ -37,14 +36,16 @@ export abstract class CreateTileDto implements CreateTileBase {
 	@IsOptional()
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
 	@ValidateNested({ each: true })
-	@ValidateTileDataSources()
-	data_source?: CreateDeviceChannelDataSourceDto[] = [];
+	@ValidateDataSourceType()
+	@Type(() => CreateDataSourceDto)
+	data_source?: CreateDataSourceDto[];
 
 	@Expose()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"row","reason":"Row must be a valid number."}]' },
 	)
+	@Min(1, { message: '[{"field":"col","reason":"Row minimum value must be greater than 0."}]' })
 	row: number;
 
 	@Expose()
@@ -52,6 +53,7 @@ export abstract class CreateTileDto implements CreateTileBase {
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"col","reason":"Column must be a valid number."}]' },
 	)
+	@Min(1, { message: '[{"field":"col","reason":"Column minimum value must be greater than 0."}]' })
 	col: number;
 
 	@Expose()
@@ -61,6 +63,7 @@ export abstract class CreateTileDto implements CreateTileBase {
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"row_span","reason":"Row span must be a valid number."}]' },
 	)
+	@Min(1, { message: '[{"field":"row_span","reason":"Row span minimum value must be greater than 0."}]' })
 	row_span?: number;
 
 	@Expose()
@@ -70,33 +73,32 @@ export abstract class CreateTileDto implements CreateTileBase {
 		{ allowNaN: false, allowInfinity: false },
 		{ each: false, message: '[{"field":"col_span","reason":"Column span must be a valid number."}]' },
 	)
+	@Min(1, { message: '[{"field":"col_span","reason":"Column span minimum value must be greater than 0."}]' })
 	col_span?: number;
-}
-
-export class CreateDeviceTileDto extends CreateTileDto implements CreateDeviceTile {
-	readonly type: 'device';
-
-	@Expose()
-	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
-	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
-	device: string;
 
 	@Expose()
 	@IsOptional()
-	@IsNotEmpty({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
-	@IsString({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
-	@ValidateIf((_, value) => value !== null)
-	icon?: string | null;
+	@IsBoolean({ message: '[{"field":"hidden","reason":"Hidden attribute must be a valid true or false."}]' })
+	hidden?: boolean;
 }
 
-export class CreateTimeTileDto extends CreateTileDto implements CreateTimeTile {
-	readonly type: 'clock';
+export class CreateSingleTileDto extends CreateTileDto {
+	@Expose()
+	@ValidateNested()
+	@Type(() => ParentDto)
+	readonly parent: ParentDto;
 }
 
-export class CreateDayWeatherTileDto extends CreateTileDto implements CreateDayWeatherTile {
-	readonly type: 'weather-day';
+export class ReqCreateTileDto implements ReqCreateTile {
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateSingleTileDto)
+	data: CreateSingleTileDto;
 }
 
-export class CreateForecastWeatherTileDto extends CreateTileDto implements CreateForecastWeatherTile {
-	readonly type: 'weather-forecast';
+export class ReqCreateTileWithParentDto implements ReqCreateTileWithParent {
+	@Expose()
+	@ValidateNested()
+	@Type(() => CreateSingleTileDto)
+	data: CreateSingleTileDto;
 }

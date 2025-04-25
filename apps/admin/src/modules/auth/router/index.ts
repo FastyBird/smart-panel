@@ -2,8 +2,8 @@ import type { RouteRecordRaw } from 'vue-router';
 
 import { RouteNames } from '../auth.constants';
 
-export * from './guards';
-export * from './hooks';
+export * from './guards/guards';
+export * from './hooks/hooks';
 
 export const ModuleAnonymousRoutes: RouteRecordRaw[] = [
 	{

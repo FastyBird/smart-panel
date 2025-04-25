@@ -2,14 +2,14 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigDisplayType } from '../../../openapi';
+import { ConfigModuleDisplayType } from '../../../openapi';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigDisplay } from './config-display.store';
 import type { IConfigDisplayEditActionPayload, IConfigDisplaySetActionPayload } from './config-display.store.types';
 
 const mockDisplayRes = {
-	type: ConfigDisplayType.display,
+	type: ConfigModuleDisplayType.display,
 	dark_mode: true,
 	brightness: 80,
 	screen_lock_duration: 300,
@@ -17,7 +17,7 @@ const mockDisplayRes = {
 };
 
 const mockDisplay = {
-	type: ConfigDisplayType.display,
+	type: ConfigModuleDisplayType.display,
 	darkMode: true,
 	brightness: 80,
 	screenLockDuration: 300,

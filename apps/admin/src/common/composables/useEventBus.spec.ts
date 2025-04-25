@@ -8,7 +8,7 @@ vi.spyOn(mockEventBus, 'on');
 vi.spyOn(mockEventBus, 'off');
 vi.spyOn(mockEventBus, 'emit');
 
-vi.mock('../services', () => ({
+vi.mock('../services/event-bus', () => ({
 	injectEventBus: vi.fn(() => mockEventBus),
 }));
 

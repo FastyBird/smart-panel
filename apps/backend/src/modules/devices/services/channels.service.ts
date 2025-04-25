@@ -175,7 +175,7 @@ export class ChannelsService {
 
 		const channel = await this.getOneOrThrow(id);
 
-		await this.repository.remove(channel);
+		await this.repository.delete(channel.id);
 
 		this.logger.log(`[DELETE] Successfully removed channel with id=${id}`);
 

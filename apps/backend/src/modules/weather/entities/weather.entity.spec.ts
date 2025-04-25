@@ -6,7 +6,7 @@ import type { components } from '../../../openapi';
 
 import { LocationWeatherEntity } from './weather.entity';
 
-type LocationWeather = components['schemas']['WeatherLocationWeather'];
+type LocationWeather = components['schemas']['WeatherModuleLocationWeather'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 

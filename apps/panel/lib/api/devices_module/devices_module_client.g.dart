@@ -18,12 +18,13 @@ class _DevicesModuleClient implements DevicesModuleClient {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<HttpResponse<DevicesResDevices>> getDevicesModuleDevices() async {
+  Future<HttpResponse<DevicesModuleResDevices>>
+      getDevicesModuleDevices() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResDevices>>(
+    final _options = _setStreamType<HttpResponse<DevicesModuleResDevices>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -34,9 +35,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDevices _value;
+    late DevicesModuleResDevices _value;
     try {
-      _value = DevicesResDevices.fromJson(_result.data!);
+      _value = DevicesModuleResDevices.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -46,15 +47,15 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDevice>> createDevicesModuleDevice({
-    DevicesReqCreateDevice? body,
+  Future<HttpResponse<DevicesModuleResDevice>> createDevicesModuleDevice({
+    DevicesModuleReqCreateDevice? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResDevice>>(
+    final _options = _setStreamType<HttpResponse<DevicesModuleResDevice>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -65,9 +66,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDevice _value;
+    late DevicesModuleResDevice _value;
     try {
-      _value = DevicesResDevice.fromJson(_result.data!);
+      _value = DevicesModuleResDevice.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -77,14 +78,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDevice>> getDevicesModuleDevice({
+  Future<HttpResponse<DevicesModuleResDevice>> getDevicesModuleDevice({
     required String id,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResDevice>>(
+    final _options = _setStreamType<HttpResponse<DevicesModuleResDevice>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -95,9 +96,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDevice _value;
+    late DevicesModuleResDevice _value;
     try {
-      _value = DevicesResDevice.fromJson(_result.data!);
+      _value = DevicesModuleResDevice.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -107,16 +108,16 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDevice>> updateDevicesModuleDevice({
+  Future<HttpResponse<DevicesModuleResDevice>> updateDevicesModuleDevice({
     required String id,
-    DevicesReqUpdateDevice? body,
+    DevicesModuleReqUpdateDevice? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResDevice>>(
+    final _options = _setStreamType<HttpResponse<DevicesModuleResDevice>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -127,9 +128,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDevice _value;
+    late DevicesModuleResDevice _value;
     try {
-      _value = DevicesResDevice.fromJson(_result.data!);
+      _value = DevicesModuleResDevice.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -162,13 +163,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDeviceControls>> getDevicesModuleDeviceControls(
-      {required String deviceId}) async {
+  Future<HttpResponse<DevicesModuleResDeviceControls>>
+      getDevicesModuleDeviceControls({required String deviceId}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResDeviceControls>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResDeviceControls>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -176,12 +178,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDeviceControls _value;
+    late DevicesModuleResDeviceControls _value;
     try {
-      _value = DevicesResDeviceControls.fromJson(_result.data!);
+      _value = DevicesModuleResDeviceControls.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -191,17 +195,18 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDeviceControl>>
+  Future<HttpResponse<DevicesModuleResDeviceControl>>
       createDevicesModuleDeviceControl({
     required String deviceId,
-    DevicesReqCreateDeviceControl? body,
+    DevicesModuleReqCreateDeviceControl? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResDeviceControl>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResDeviceControl>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -209,12 +214,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDeviceControl _value;
+    late DevicesModuleResDeviceControl _value;
     try {
-      _value = DevicesResDeviceControl.fromJson(_result.data!);
+      _value = DevicesModuleResDeviceControl.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -224,7 +231,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDeviceControl>> getDevicesModuleDeviceControl({
+  Future<HttpResponse<DevicesModuleResDeviceControl>>
+      getDevicesModuleDeviceControl({
     required String deviceId,
     required String id,
   }) async {
@@ -232,7 +240,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResDeviceControl>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResDeviceControl>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -240,12 +249,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDeviceControl _value;
+    late DevicesModuleResDeviceControl _value;
     try {
-      _value = DevicesResDeviceControl.fromJson(_result.data!);
+      _value = DevicesModuleResDeviceControl.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -279,13 +290,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDeviceChannels>> getDevicesModuleDeviceChannels(
-      {required String deviceId}) async {
+  Future<HttpResponse<DevicesModuleResDeviceChannels>>
+      getDevicesModuleDeviceChannels({required String deviceId}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResDeviceChannels>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResDeviceChannels>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -293,12 +305,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDeviceChannels _value;
+    late DevicesModuleResDeviceChannels _value;
     try {
-      _value = DevicesResDeviceChannels.fromJson(_result.data!);
+      _value = DevicesModuleResDeviceChannels.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -308,17 +322,18 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDeviceChannel>>
+  Future<HttpResponse<DevicesModuleResDeviceChannel>>
       createDevicesModuleDeviceChannel({
     required String deviceId,
-    DevicesReqCreateDeviceChannel? body,
+    DevicesModuleReqCreateDeviceChannel? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResDeviceChannel>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResDeviceChannel>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -326,12 +341,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDeviceChannel _value;
+    late DevicesModuleResDeviceChannel _value;
     try {
-      _value = DevicesResDeviceChannel.fromJson(_result.data!);
+      _value = DevicesModuleResDeviceChannel.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -341,7 +358,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDeviceChannel>> getDevicesModuleDeviceChannel({
+  Future<HttpResponse<DevicesModuleResDeviceChannel>>
+      getDevicesModuleDeviceChannel({
     required String deviceId,
     required String id,
   }) async {
@@ -349,7 +367,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResDeviceChannel>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResDeviceChannel>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -357,12 +376,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDeviceChannel _value;
+    late DevicesModuleResDeviceChannel _value;
     try {
-      _value = DevicesResDeviceChannel.fromJson(_result.data!);
+      _value = DevicesModuleResDeviceChannel.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -372,18 +393,19 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResDeviceChannel>>
+  Future<HttpResponse<DevicesModuleResDeviceChannel>>
       updateDevicesModuleDeviceChannel({
     required String deviceId,
     required String id,
-    DevicesReqUpdateChannel? body,
+    DevicesModuleReqUpdateChannel? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResDeviceChannel>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResDeviceChannel>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -391,12 +413,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResDeviceChannel _value;
+    late DevicesModuleResDeviceChannel _value;
     try {
-      _value = DevicesResDeviceChannel.fromJson(_result.data!);
+      _value = DevicesModuleResDeviceChannel.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -430,7 +454,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelControls>>
+  Future<HttpResponse<DevicesModuleResChannelControls>>
       getDevicesModuleDeviceChannelControls({
     required String deviceId,
     required String channelId,
@@ -439,7 +463,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelControls>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelControls>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -450,9 +475,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelControls _value;
+    late DevicesModuleResChannelControls _value;
     try {
-      _value = DevicesResChannelControls.fromJson(_result.data!);
+      _value = DevicesModuleResChannelControls.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -462,18 +487,19 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelControl>>
+  Future<HttpResponse<DevicesModuleResChannelControl>>
       createDevicesModuleDeviceChannelControl({
     required String deviceId,
     required String channelId,
-    DevicesReqCreateChannelControl? body,
+    DevicesModuleReqCreateChannelControl? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelControl>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelControl>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -484,9 +510,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelControl _value;
+    late DevicesModuleResChannelControl _value;
     try {
-      _value = DevicesResChannelControl.fromJson(_result.data!);
+      _value = DevicesModuleResChannelControl.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -496,7 +522,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelControl>>
+  Future<HttpResponse<DevicesModuleResChannelControl>>
       getDevicesModuleDeviceChannelControl({
     required String deviceId,
     required String channelId,
@@ -506,7 +532,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelControl>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelControl>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -517,9 +544,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelControl _value;
+    late DevicesModuleResChannelControl _value;
     try {
-      _value = DevicesResChannelControl.fromJson(_result.data!);
+      _value = DevicesModuleResChannelControl.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -554,7 +581,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelProperties>>
+  Future<HttpResponse<DevicesModuleResChannelProperties>>
       getDevicesModuleDeviceChannelProperties({
     required String deviceId,
     required String channelId,
@@ -563,7 +590,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelProperties>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelProperties>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -574,9 +602,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelProperties _value;
+    late DevicesModuleResChannelProperties _value;
     try {
-      _value = DevicesResChannelProperties.fromJson(_result.data!);
+      _value = DevicesModuleResChannelProperties.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -586,18 +614,19 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelProperty>>
+  Future<HttpResponse<DevicesModuleResChannelProperty>>
       createDevicesModuleDeviceChannelProperty({
     required String deviceId,
     required String channelId,
-    DevicesReqCreateChannelProperty? body,
+    DevicesModuleReqCreateChannelProperty? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelProperty>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelProperty>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -608,9 +637,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelProperty _value;
+    late DevicesModuleResChannelProperty _value;
     try {
-      _value = DevicesResChannelProperty.fromJson(_result.data!);
+      _value = DevicesModuleResChannelProperty.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -620,7 +649,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelProperty>>
+  Future<HttpResponse<DevicesModuleResChannelProperty>>
       getDevicesModuleDeviceChannelProperty({
     required String deviceId,
     required String channelId,
@@ -630,7 +659,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelProperty>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelProperty>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -641,9 +671,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelProperty _value;
+    late DevicesModuleResChannelProperty _value;
     try {
-      _value = DevicesResChannelProperty.fromJson(_result.data!);
+      _value = DevicesModuleResChannelProperty.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -653,19 +683,20 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelProperty>>
+  Future<HttpResponse<DevicesModuleResChannelProperty>>
       updateDevicesModuleDeviceChannelProperty({
     required String deviceId,
     required String channelId,
     required String id,
-    DevicesReqUpdateChannelProperty? body,
+    DevicesModuleReqUpdateChannelProperty? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelProperty>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelProperty>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -676,9 +707,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelProperty _value;
+    late DevicesModuleResChannelProperty _value;
     try {
-      _value = DevicesResChannelProperty.fromJson(_result.data!);
+      _value = DevicesModuleResChannelProperty.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -713,12 +744,13 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannels>> getDevicesModuleChannels() async {
+  Future<HttpResponse<DevicesModuleResChannels>>
+      getDevicesModuleChannels() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannels>>(
+    final _options = _setStreamType<HttpResponse<DevicesModuleResChannels>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -729,9 +761,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannels _value;
+    late DevicesModuleResChannels _value;
     try {
-      _value = DevicesResChannels.fromJson(_result.data!);
+      _value = DevicesModuleResChannels.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -741,15 +773,15 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannel>> createDevicesModuleChannel({
-    DevicesReqCreateChannel? body,
+  Future<HttpResponse<DevicesModuleResChannel>> createDevicesModuleChannel({
+    DevicesModuleReqCreateChannel? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResChannel>>(
+    final _options = _setStreamType<HttpResponse<DevicesModuleResChannel>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -760,9 +792,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannel _value;
+    late DevicesModuleResChannel _value;
     try {
-      _value = DevicesResChannel.fromJson(_result.data!);
+      _value = DevicesModuleResChannel.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -772,14 +804,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannel>> getDevicesModuleChannel({
+  Future<HttpResponse<DevicesModuleResChannel>> getDevicesModuleChannel({
     required String id,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannel>>(
+    final _options = _setStreamType<HttpResponse<DevicesModuleResChannel>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -790,9 +822,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannel _value;
+    late DevicesModuleResChannel _value;
     try {
-      _value = DevicesResChannel.fromJson(_result.data!);
+      _value = DevicesModuleResChannel.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -802,16 +834,16 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannel>> updateDevicesModuleChannel({
+  Future<HttpResponse<DevicesModuleResChannel>> updateDevicesModuleChannel({
     required String id,
-    DevicesReqUpdateChannel? body,
+    DevicesModuleReqUpdateChannel? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResChannel>>(
+    final _options = _setStreamType<HttpResponse<DevicesModuleResChannel>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -822,9 +854,9 @@ class _DevicesModuleClient implements DevicesModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannel _value;
+    late DevicesModuleResChannel _value;
     try {
-      _value = DevicesResChannel.fromJson(_result.data!);
+      _value = DevicesModuleResChannel.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -857,13 +889,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelControls>>
+  Future<HttpResponse<DevicesModuleResChannelControls>>
       getDevicesModuleChannelControls({required String channelId}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelControls>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelControls>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -871,12 +904,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelControls _value;
+    late DevicesModuleResChannelControls _value;
     try {
-      _value = DevicesResChannelControls.fromJson(_result.data!);
+      _value = DevicesModuleResChannelControls.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -886,17 +921,18 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelControl>>
+  Future<HttpResponse<DevicesModuleResChannelControl>>
       createDevicesModuleChannelControl({
     required String channelId,
-    DevicesReqCreateChannelControl? body,
+    DevicesModuleReqCreateChannelControl? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelControl>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelControl>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -904,12 +940,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelControl _value;
+    late DevicesModuleResChannelControl _value;
     try {
-      _value = DevicesResChannelControl.fromJson(_result.data!);
+      _value = DevicesModuleResChannelControl.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -919,7 +957,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelControl>>
+  Future<HttpResponse<DevicesModuleResChannelControl>>
       getDevicesModuleChannelControl({
     required String channelId,
     required String id,
@@ -928,7 +966,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelControl>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelControl>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -936,12 +975,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelControl _value;
+    late DevicesModuleResChannelControl _value;
     try {
-      _value = DevicesResChannelControl.fromJson(_result.data!);
+      _value = DevicesModuleResChannelControl.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -975,13 +1016,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelProperties>>
+  Future<HttpResponse<DevicesModuleResChannelProperties>>
       getDevicesModuleChannelProperties({required String channelId}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelProperties>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelProperties>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -989,12 +1031,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelProperties _value;
+    late DevicesModuleResChannelProperties _value;
     try {
-      _value = DevicesResChannelProperties.fromJson(_result.data!);
+      _value = DevicesModuleResChannelProperties.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -1004,17 +1048,18 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelProperty>>
+  Future<HttpResponse<DevicesModuleResChannelProperty>>
       createDevicesModuleChannelProperty({
     required String channelId,
-    DevicesReqCreateChannelProperty? body,
+    DevicesModuleReqCreateChannelProperty? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelProperty>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelProperty>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -1022,12 +1067,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelProperty _value;
+    late DevicesModuleResChannelProperty _value;
     try {
-      _value = DevicesResChannelProperty.fromJson(_result.data!);
+      _value = DevicesModuleResChannelProperty.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -1037,7 +1084,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelProperty>>
+  Future<HttpResponse<DevicesModuleResChannelProperty>>
       getDevicesModuleChannelProperty({
     required String channelId,
     required String id,
@@ -1046,7 +1093,8 @@ class _DevicesModuleClient implements DevicesModuleClient {
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelProperty>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelProperty>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -1054,12 +1102,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelProperty _value;
+    late DevicesModuleResChannelProperty _value;
     try {
-      _value = DevicesResChannelProperty.fromJson(_result.data!);
+      _value = DevicesModuleResChannelProperty.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -1069,18 +1119,19 @@ class _DevicesModuleClient implements DevicesModuleClient {
   }
 
   @override
-  Future<HttpResponse<DevicesResChannelProperty>>
+  Future<HttpResponse<DevicesModuleResChannelProperty>>
       updateDevicesModuleChannelProperty({
     required String channelId,
     required String id,
-    DevicesReqUpdateChannelProperty? body,
+    DevicesModuleReqUpdateChannelProperty? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<DevicesResChannelProperty>>(
+    final _options =
+        _setStreamType<HttpResponse<DevicesModuleResChannelProperty>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -1088,12 +1139,14 @@ class _DevicesModuleClient implements DevicesModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late DevicesResChannelProperty _value;
+    late DevicesModuleResChannelProperty _value;
     try {
-      _value = DevicesResChannelProperty.fromJson(_result.data!);
+      _value = DevicesModuleResChannelProperty.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -1128,7 +1181,7 @@ class _DevicesModuleClient implements DevicesModuleClient {
 
   @override
   Future<HttpResponse<void>> putThirdPartyWebhook({
-    DevicesThirdPartyDevicePropertiesUpdateRequest? body,
+    DevicesThirdPartyPluginPropertiesUpdateRequest? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};

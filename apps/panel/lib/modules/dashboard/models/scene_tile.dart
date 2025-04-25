@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/get.dart';
 
-abstract class SceneTileModel extends TileModel {
+class SceneTileModel extends TileModel {
   final String _scene;
   final IconData? _icon;
   final String _label;
@@ -18,7 +18,8 @@ abstract class SceneTileModel extends TileModel {
     required String status,
     required bool isOn,
     required super.id,
-    required super.parent,
+    required super.parentType,
+    required super.parentId,
     super.dataSource,
     required super.row,
     required super.col,
@@ -44,27 +45,8 @@ abstract class SceneTileModel extends TileModel {
   String get status => _status;
 
   bool get isOn => _isOn;
-}
 
-class PageSceneTileModel extends SceneTileModel {
-  PageSceneTileModel({
-    required super.scene,
-    required super.icon,
-    required super.label,
-    required super.status,
-    required super.isOn,
-    required super.id,
-    required super.parent,
-    super.dataSource,
-    required super.row,
-    required super.col,
-    super.rowSpan,
-    super.colSpan,
-    super.createdAt,
-    super.updatedAt,
-  });
-
-  factory PageSceneTileModel.fromJson(Map<String, dynamic> json) {
+  factory SceneTileModel.fromJson(Map<String, dynamic> json) {
     List<String> dataSources = [];
 
     if (json['data_source'] is List) {
@@ -78,69 +60,10 @@ class PageSceneTileModel extends SceneTileModel {
       }
     }
 
-    return PageSceneTileModel(
+    return SceneTileModel(
       id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['page']),
-      dataSource: UuidUtils.validateUuidList(dataSources),
-      row: json['row'],
-      col: json['col'],
-      rowSpan: json['row_span'],
-      scene: UuidUtils.validateUuid(json['scene']),
-      label: json['label'],
-      icon: json['icon'] != null && json['icon'] is String
-          ? SymbolsGet.get(
-              json['icon'],
-              SymbolStyle.outlined,
-            )
-          : null,
-      status: json['status'],
-      isOn: json['is_on'],
-      colSpan: json['col_span'],
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-    );
-  }
-}
-
-class CardSceneTileModel extends SceneTileModel {
-  CardSceneTileModel({
-    required super.scene,
-    required super.icon,
-    required super.label,
-    required super.status,
-    required super.isOn,
-    required super.id,
-    required super.parent,
-    super.dataSource,
-    required super.row,
-    required super.col,
-    super.rowSpan,
-    super.colSpan,
-    super.createdAt,
-    super.updatedAt,
-  });
-
-  factory CardSceneTileModel.fromJson(Map<String, dynamic> json) {
-    List<String> dataSources = [];
-
-    if (json['data_source'] is List) {
-      for (var dataSource in json['data_source']) {
-        if (dataSource is String) {
-          dataSources.add(dataSource);
-        } else if (dataSource is Map<String, dynamic> &&
-            dataSource.containsKey('id')) {
-          dataSources.add(dataSource['id']);
-        }
-      }
-    }
-
-    return CardSceneTileModel(
-      id: UuidUtils.validateUuid(json['id']),
-      parent: UuidUtils.validateUuid(json['card']),
+      parentType: json['parent']['type'],
+      parentId: UuidUtils.validateUuid(json['parent']['id']),
       dataSource: UuidUtils.validateUuidList(dataSources),
       row: json['row'],
       col: json['col'],

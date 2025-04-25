@@ -4,9 +4,9 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { flushPromises } from '@vue/test-utils';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import type { UsersStore } from '../store';
+import type { UsersStore } from '../store/users.store.types';
 import { UsersApiException } from '../users.exceptions';
 
 import { useUserAddForm } from './useUserAddForm';
@@ -58,7 +58,7 @@ describe('useUserAddForm', (): void => {
 		(usersStoreMock.add as Mock).mockResolvedValue({});
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -71,7 +71,7 @@ describe('useUserAddForm', (): void => {
 		formHandler.model.email = 'test@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		const result = await formHandler.submit();
 
@@ -86,7 +86,7 @@ describe('useUserAddForm', (): void => {
 		(usersStoreMock.add as Mock).mockRejectedValue(new UsersApiException('Validation error', 422));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -99,7 +99,7 @@ describe('useUserAddForm', (): void => {
 		formHandler.model.email = 'invalid-email';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(UsersApiException);
 
@@ -113,7 +113,7 @@ describe('useUserAddForm', (): void => {
 		(usersStoreMock.add as Mock).mockRejectedValue(new Error('Failed to add user'));
 
 		const flashMessageMock = useFlashMessage();
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -126,7 +126,7 @@ describe('useUserAddForm', (): void => {
 		formHandler.model.email = 'test@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await expect(formHandler.submit()).rejects.toThrow(Error);
 
@@ -139,7 +139,7 @@ describe('useUserAddForm', (): void => {
 	it('should trim empty optional fields before sending the request', async (): Promise<void> => {
 		(usersStoreMock.add as Mock).mockResolvedValue({});
 
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -152,7 +152,7 @@ describe('useUserAddForm', (): void => {
 		formHandler.model.email = 'invalid-email';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = '';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await formHandler.submit();
 
@@ -165,7 +165,7 @@ describe('useUserAddForm', (): void => {
 				email: 'invalid-email',
 				firstName: 'John',
 				lastName: null,
-				role: UsersUserRole.user,
+				role: UsersModuleUserRole.user,
 			},
 		});
 
@@ -175,7 +175,7 @@ describe('useUserAddForm', (): void => {
 	it('should reset form result after timeout', async (): Promise<void> => {
 		(usersStoreMock.add as Mock).mockResolvedValue({});
 
-		const formHandler = useUserAddForm('test-id');
+		const formHandler = useUserAddForm({ id: 'test-id' });
 
 		formHandler.formEl.value = {
 			clearValidate: vi.fn(),
@@ -188,7 +188,7 @@ describe('useUserAddForm', (): void => {
 		formHandler.model.email = 'test@example.com';
 		formHandler.model.firstName = 'John';
 		formHandler.model.lastName = 'Doe';
-		formHandler.model.role = UsersUserRole.user;
+		formHandler.model.role = UsersModuleUserRole.user;
 
 		await formHandler.submit();
 

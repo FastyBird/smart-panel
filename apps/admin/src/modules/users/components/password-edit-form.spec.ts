@@ -5,12 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, flushPromises, mount } from '@vue/test-utils';
 
-import { UsersUserRole } from '../../../openapi';
+import { UsersModuleUserRole } from '../../../openapi';
 import { FormResult } from '../../auth';
-import { useUserPasswordForm } from '../composables';
+import { useUserPasswordForm } from '../composables/composables';
 
-import { PasswordEditForm } from './index';
 import type { IPasswordEditFormProps } from './password-edit-form.types';
+import PasswordEditForm from './password-edit-form.vue';
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -29,7 +29,7 @@ const editFormMock = {
 	formResult: ref(FormResult.NONE),
 };
 
-vi.mock('../composables', () => ({
+vi.mock('../composables/composables', () => ({
 	useUserPasswordForm: vi.fn(() => editFormMock),
 }));
 
@@ -44,7 +44,7 @@ describe('PasswordEditForm', (): void => {
 		firstName: 'Admin',
 		lastName: 'User',
 		email: 'admin@example.com',
-		role: UsersUserRole.admin,
+		role: UsersModuleUserRole.admin,
 		draft: false,
 		isHidden: false,
 		createdAt: new Date(),
@@ -80,7 +80,7 @@ describe('PasswordEditForm', (): void => {
 	});
 
 	it('calls submit when the form is submitted', async (): Promise<void> => {
-		const { submit } = useUserPasswordForm(mockUser);
+		const { submit } = useUserPasswordForm({ user: mockUser });
 
 		const form = wrapper.findComponent(ElForm);
 
@@ -102,7 +102,7 @@ describe('PasswordEditForm', (): void => {
 	});
 
 	it('submits the form when valid', async (): Promise<void> => {
-		const { submit } = useUserPasswordForm(mockUser);
+		const { submit } = useUserPasswordForm({ user: mockUser });
 
 		const form = wrapper.findComponent(ElForm);
 

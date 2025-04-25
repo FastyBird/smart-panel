@@ -122,11 +122,11 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
-import { ChannelPropertyAddForm } from '../components';
-import { useChannel, useChannelSpecification } from '../composables';
+import { ChannelPropertyAddForm } from '../components/components';
+import { useChannel, useChannelSpecification } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
-import type { IChannel } from '../store';
+import type { IChannel } from '../store/channels.store.types';
 
 import type { IViewChannelPropertyAddProps } from './view-channel-property-add.types';
 
@@ -156,8 +156,8 @@ const newPropertyId = uuidGenerate();
 
 const flashMessage = useFlashMessage();
 
-const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel(props.channelId);
-const { canAddAnotherProperty } = useChannelSpecification(props.channelId);
+const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel({ id: props.channelId });
+const { canAddAnotherProperty } = useChannelSpecification({ id: props.channelId });
 
 if (!validateUuid(props.channelId)) {
 	throw new Error('Channel identifier is not valid');
@@ -197,12 +197,12 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channels.edit', { channel: channel.value?.name }),
-				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANEL, params: { channelId: props.channelId, id: props.device?.id } }),
+				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { channelId: props.channelId, id: props.device?.id } }),
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channelsProperties.add'),
 				route: router.resolve({
-					name: RouteNames.DEVICE_CHANEL_ADD_PROPERTY,
+					name: RouteNames.DEVICE_CHANNEL_ADD_PROPERTY,
 					params: { channelId: props.channelId, id: props.device?.id },
 				}),
 			});
@@ -226,7 +226,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onDiscard = (): void => {
-	ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+	ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 		confirmButtonText: t('devicesModule.buttons.yes.title'),
 		cancelButtonText: t('devicesModule.buttons.no.title'),
 		type: 'warning',
@@ -348,12 +348,12 @@ watch(
 			} else if (isDeviceDetailRoute.value) {
 				if (isLGDevice.value) {
 					router.replace({
-						name: RouteNames.DEVICE_CHANEL_EDIT_PROPERTY,
+						name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 						params: { id: channel.value?.device, channelId: props.channelId, propertyId: newPropertyId },
 					});
 				} else {
 					router.push({
-						name: RouteNames.DEVICE_CHANEL_EDIT_PROPERTY,
+						name: RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY,
 						params: { id: channel.value?.device, channelId: props.channelId, propertyId: newPropertyId },
 					});
 				}

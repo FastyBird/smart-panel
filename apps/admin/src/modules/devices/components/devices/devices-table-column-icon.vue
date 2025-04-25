@@ -12,7 +12,7 @@ import { ElAvatar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useDeviceIcon } from '../../composables';
+import { useDeviceIcon } from '../../composables/composables';
 
 import type { IDevicesTableColumnIconProps } from './devices-table-column-icon.types';
 
@@ -22,5 +22,5 @@ defineOptions({
 
 const props = defineProps<IDevicesTableColumnIconProps>();
 
-const { icon: iconName } = useDeviceIcon(props.device.id);
+const { icon: iconName } = useDeviceIcon({ id: props.device.id });
 </script>

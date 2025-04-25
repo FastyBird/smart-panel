@@ -3,13 +3,16 @@ import type { ComputedRef, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import {
-	ConfigLanguageLanguage,
-	ConfigLanguageTime_format,
-	ConfigWeatherUnit,
+	ConfigModuleLanguageLanguage,
+	ConfigModuleLanguageTime_format,
+	ConfigModuleWeatherUnit,
 	PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type,
 } from '../../../openapi';
 import type { FormResultType } from '../config.constants';
-import type { IConfigAudio, IConfigDisplay, IConfigLanguage, IConfigWeather } from '../store';
+import type { IConfigAudio } from '../store/config-audio.store.types';
+import type { IConfigDisplay } from '../store/config-display.store.types';
+import type { IConfigLanguage } from '../store/config-language.store.types';
+import type { IConfigWeather } from '../store/config-weather.store.types';
 
 export interface IConfigAudioEditForm {
 	speaker: boolean;
@@ -26,15 +29,15 @@ export interface IConfigDisplayEditForm {
 }
 
 export interface IConfigLanguageEditForm {
-	language: ConfigLanguageLanguage;
+	language: ConfigModuleLanguageLanguage;
 	timezone: string;
-	timeFormat: ConfigLanguageTime_format;
+	timeFormat: ConfigModuleLanguageTime_format;
 }
 
 export interface IConfigWeatherEditForm {
 	location: string;
 	locationType: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type;
-	unit: ConfigWeatherUnit;
+	unit: ConfigModuleWeatherUnit;
 	openWeatherApiKey: string;
 }
 
@@ -76,9 +79,9 @@ export interface IUseConfigLanguage {
 }
 
 export interface IUseConfigLanguageEditForm {
-	languageOptions: { value: ConfigLanguageLanguage; label: string }[];
+	languageOptions: { value: ConfigModuleLanguageLanguage; label: string }[];
 	timezoneOptions: { value: string; label: string }[];
-	timeFormatOptions: { value: ConfigLanguageTime_format; label: string }[];
+	timeFormatOptions: { value: ConfigModuleLanguageTime_format; label: string }[];
 	model: IConfigLanguageEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
@@ -95,7 +98,7 @@ export interface IUseConfigWeather {
 
 export interface IUseConfigWeatherEditForm {
 	locationTypeOptions: { value: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type; label: string }[];
-	unitOptions: { value: ConfigWeatherUnit; label: string }[];
+	unitOptions: { value: ConfigModuleWeatherUnit; label: string }[];
 	model: IConfigWeatherEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;

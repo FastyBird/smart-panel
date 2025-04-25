@@ -18,12 +18,12 @@ class _ConfigurationModuleClient implements ConfigurationModuleClient {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<HttpResponse<ConfigResApp>> getConfigModuleConfig() async {
+  Future<HttpResponse<ConfigModuleResApp>> getConfigModuleConfig() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<ConfigResApp>>(
+    final _options = _setStreamType<HttpResponse<ConfigModuleResApp>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -34,9 +34,9 @@ class _ConfigurationModuleClient implements ConfigurationModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late ConfigResApp _value;
+    late ConfigModuleResApp _value;
     try {
-      _value = ConfigResApp.fromJson(_result.data!);
+      _value = ConfigModuleResApp.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -46,14 +46,14 @@ class _ConfigurationModuleClient implements ConfigurationModuleClient {
   }
 
   @override
-  Future<HttpResponse<ConfigResSection>> getConfigModuleConfigSection({
+  Future<HttpResponse<ConfigModuleResSection>> getConfigModuleConfigSection({
     required Section section,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<ConfigResSection>>(
+    final _options = _setStreamType<HttpResponse<ConfigModuleResSection>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -64,9 +64,9 @@ class _ConfigurationModuleClient implements ConfigurationModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late ConfigResSection _value;
+    late ConfigModuleResSection _value;
     try {
-      _value = ConfigResSection.fromJson(_result.data!);
+      _value = ConfigModuleResSection.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -76,16 +76,16 @@ class _ConfigurationModuleClient implements ConfigurationModuleClient {
   }
 
   @override
-  Future<HttpResponse<ConfigResSection>> updateConfigModuleConfigSection({
+  Future<HttpResponse<ConfigModuleResSection>> updateConfigModuleConfigSection({
     required Section section,
-    ConfigReqUpdateSection? body,
+    ConfigModuleReqUpdateSection? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<ConfigResSection>>(
+    final _options = _setStreamType<HttpResponse<ConfigModuleResSection>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -96,9 +96,9 @@ class _ConfigurationModuleClient implements ConfigurationModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late ConfigResSection _value;
+    late ConfigModuleResSection _value;
     try {
-      _value = ConfigResSection.fromJson(_result.data!);
+      _value = ConfigModuleResSection.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

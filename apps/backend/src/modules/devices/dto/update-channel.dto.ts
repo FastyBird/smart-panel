@@ -5,8 +5,8 @@ import type { components } from '../../../openapi';
 
 import { UpdateDeviceChannelDto } from './update-device-channel.dto';
 
-type ReqUpdateChannel = components['schemas']['DevicesReqUpdateChannel'];
-type UpdateChannel = components['schemas']['DevicesUpdateChannel'];
+type ReqUpdateChannel = components['schemas']['DevicesModuleReqUpdateChannel'];
+type UpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
 
 export class UpdateChannelDto extends UpdateDeviceChannelDto implements UpdateChannel {}
 

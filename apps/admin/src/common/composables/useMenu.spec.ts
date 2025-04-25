@@ -4,14 +4,21 @@ import { type Mock, describe, expect, it, vi } from 'vitest';
 
 import { useMenu } from './useMenu';
 
-vi.mock('vue-router', () => ({
-	useRouter: vi.fn(),
-}));
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
 
-vi.mock('../services', () => ({
+	return {
+		...actual,
+		useRouter: vi.fn(),
+	};
+});
+
+vi.mock('../services/store', () => ({
 	injectStoresManager: vi.fn(() => ({
 		getStore: vi.fn(() => ({})),
 	})),
+}));
+vi.mock('../services/router-guards', () => ({
 	injectRouterGuard: vi.fn(() => ({
 		handle: vi.fn(() => ({})).mockReturnValue(true),
 	})),

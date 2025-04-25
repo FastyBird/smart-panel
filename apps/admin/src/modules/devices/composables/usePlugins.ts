@@ -1,11 +1,14 @@
 import { computed } from 'vue';
 
+import { orderBy } from 'natural-orderby';
+
 import { type IPlugin, injectPluginsManager } from '../../../common';
-import { DEVICES_MODULE_NAME, type IPluginsComponents, type IPluginsSchemas } from '../index';
+import { DEVICES_MODULE_NAME } from '../devices.constants';
+import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
 
 import type { IUsePlugins } from './types';
 
-export function usePlugins(): IUsePlugins {
+export const usePlugins = (): IUsePlugins => {
 	const pluginsManager = injectPluginsManager();
 
 	const plugins = computed<IPlugin<IPluginsComponents, IPluginsSchemas>[]>((): IPlugin<IPluginsComponents, IPluginsSchemas>[] => {
@@ -15,7 +18,7 @@ export function usePlugins(): IUsePlugins {
 	});
 
 	const options = computed<{ value: IPlugin['type']; label: IPlugin['name'] }[]>((): { value: IPlugin['type']; label: IPlugin['name'] }[] => {
-		return plugins.value.map((plugin) => ({
+		return orderBy<IPlugin>(plugins.value, [(plugin) => plugin.name], ['asc']).map((plugin) => ({
 			value: plugin.type,
 			label: plugin.name,
 		}));
@@ -30,4 +33,4 @@ export function usePlugins(): IUsePlugins {
 		options,
 		getByType,
 	};
-}
+};

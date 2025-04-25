@@ -124,11 +124,11 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
-import { ChannelEditForm } from '../components';
-import { useChannel, useChannelIcon } from '../composables';
+import { ChannelEditForm } from '../components/components';
+import { useChannel, useChannelIcon } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
-import type { IChannel } from '../store';
+import type { IChannel } from '../store/channels.store.types';
 
 import type { IViewChannelEditProps } from './view-channel-edit.types';
 
@@ -151,8 +151,8 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { channel, isLoading, fetchChannel } = useChannel(props.id);
-const { icon: channelIcon } = useChannelIcon(props.id);
+const { channel, isLoading, fetchChannel } = useChannel({ id: props.id });
+const { icon: channelIcon } = useChannelIcon({ id: props.id });
 
 if (!validateUuid(props.id)) {
 	throw new Error('Channel identifier is not valid');
@@ -192,7 +192,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 			});
 			items.push({
 				label: t('devicesModule.breadcrumbs.channels.edit', { channel: channel.value?.name }),
-				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANEL, params: { channelId: props.id, id: props.device?.id } }),
+				route: router.resolve({ name: RouteNames.DEVICE_EDIT_CHANNEL, params: { channelId: props.id, id: props.device?.id } }),
 			});
 		} else {
 			items.push({
@@ -222,7 +222,7 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 );
 
 const onDiscard = (): void => {
-	ElMessageBox.confirm(t('devicesModule.messages.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
+	ElMessageBox.confirm(t('devicesModule.texts.misc.confirmDiscard'), t('devicesModule.headings.misc.discard'), {
 		confirmButtonText: t('devicesModule.buttons.yes.title'),
 		cancelButtonText: t('devicesModule.buttons.no.title'),
 		type: 'warning',

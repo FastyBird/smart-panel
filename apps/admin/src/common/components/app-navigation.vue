@@ -59,34 +59,6 @@
 					<span>{{ typeof item.meta?.title === 'function' ? item.meta?.title() : item.meta?.title }}</span>
 				</el-menu-item>
 			</template>
-
-			<el-menu-item-group
-				v-if="!isMDDevice"
-				:class="[ns.e('group'), ns.is('phone', !isMDDevice)]"
-				class="mt-5"
-			>
-				<template
-					v-if="!props.collapsed"
-					#title
-				>
-					{{ t('application.menu.user') }}
-				</template>
-
-				<el-menu-item
-					v-for="(item, index) in userMenuItems"
-					:key="index"
-					:index="item.route"
-					:route="{ name: item.route }"
-					@click="emit('click')"
-				>
-					<el-icon>
-						<icon :icon="item.icon" />
-					</el-icon>
-					<template #title>
-						{{ item.title }}
-					</template>
-				</el-menu-item>
-			</el-menu-item-group>
 		</el-menu>
 
 		<el-menu
@@ -123,9 +95,10 @@ import { ElIcon, ElMenu, ElMenuItem, ElMenuItemGroup, ElScrollbar, ElSubMenu, us
 
 import { Icon } from '@iconify/vue';
 
-import { RouteNames, sessionStoreKey } from '../../modules/auth';
-import { useBreakpoints, useMenu } from '../composables';
-import { injectStoresManager } from '../services';
+import { RouteNames } from '../../app.constants';
+import { useBreakpoints } from '../composables/useBreakpoints';
+import { useMenu } from '../composables/useMenu';
+import { injectAccountManager } from '../services/account-manager';
 
 import type { AppNavigationProps } from './app-navigation.types';
 
@@ -150,22 +123,7 @@ const ns = useNamespace('app-navigation');
 const { isMDDevice } = useBreakpoints();
 const { mainMenuItems } = useMenu();
 
-const storesManager = injectStoresManager();
-
-const sessionStore = storesManager.getStore(sessionStoreKey);
-
-const userMenuItems = [
-	{
-		title: t('application.userMenu.profileGeneralSettings'),
-		icon: 'mdi:user-edit',
-		route: RouteNames.PROFILE_GENERAL,
-	},
-	{
-		title: t('application.userMenu.profileSecuritySettings'),
-		icon: 'mdi:user-lock',
-		route: RouteNames.PROFILE_SECURITY,
-	},
-];
+const accountManager = injectAccountManager();
 
 const activeIndex = computed<string | undefined>((): string | undefined => {
 	for (const name of Object.keys(mainMenuItems)) {
@@ -186,9 +144,9 @@ const activeIndex = computed<string | undefined>((): string | undefined => {
 });
 
 const onSignOut = (): void => {
-	sessionStore.clear();
+	accountManager?.signOut();
 
-	router.push({ name: RouteNames.SIGN_IN });
+	router.push({ name: RouteNames.ROOT });
 };
 </script>
 

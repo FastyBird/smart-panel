@@ -30,6 +30,7 @@
 			<div class="flex items-center">
 				<el-button
 					plain
+					class="px-4! ml-2!"
 					@click="onAboutInfo"
 				>
 					<template #icon>
@@ -41,6 +42,7 @@
 				<el-button
 					type="danger"
 					plain
+					class="px-4! ml-2!"
 					@click="onManageSystem"
 				>
 					<template #icon>
@@ -98,7 +100,7 @@ import { ElButton, ElDialog } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { AboutApplication, SystemReset } from '../components';
+import { AboutApplication, SystemReset } from '../components/components';
 import { RouteNames } from '../system.constants';
 
 defineOptions({

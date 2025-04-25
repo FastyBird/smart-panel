@@ -3,8 +3,8 @@ import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
-type ReqCheckUsername = components['schemas']['AuthReqCheckUsername'];
-type CheckUsername = components['schemas']['AuthCheckUsername'];
+type ReqCheckUsername = components['schemas']['AuthModuleReqCheckUsername'];
+type CheckUsername = components['schemas']['AuthModuleCheckUsername'];
 
 export class CheckUsernameDto implements CheckUsername {
 	@Expose()

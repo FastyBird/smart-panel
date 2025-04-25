@@ -9,7 +9,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { plainToInstance } from 'class-transformer';
 import { Expose, Transform } from 'class-transformer';
-import { IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -18,21 +18,54 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { DeviceCategory } from '../../devices/devices.constants';
-import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
-import { CreateTimeTileDto } from '../dto/create-tile.dto';
-import { UpdateTimeTileDto } from '../dto/update-tile.dto';
-import { DevicePageEntity, TileEntity, TilesPageEntity, TimeTileEntity } from '../entities/dashboard.entity';
+import { CreateSingleTileDto } from '../dto/create-tile.dto';
+import { UpdateTileDto } from '../dto/update-tile.dto';
+import { PageEntity, TileEntity } from '../entities/dashboard.entity';
 
-import { CardsService } from './cards.service';
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
-import { PagesService } from './pages.service';
+import { DataSourceService } from './data-source.service';
+import { TileCreateBuilderRegistryService } from './tile-create-builder-registry.service';
+import { TileRelationsLoaderRegistryService } from './tile-relations-loader-registry.service';
 import { TilesTypeMapperService } from './tiles-type-mapper.service';
 import { TilesService } from './tiles.service';
 
-class MockDevice extends DeviceEntity {
+class CreateMockTileDto extends CreateSingleTileDto {
+	@Expose()
+	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
+	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
+	mockValue: string;
+}
+
+class UpdateMockTileDto extends UpdateTileDto {
+	@Expose()
+	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
+	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
+	mockValue?: string;
+}
+
+class MockPageEntity extends PageEntity {
+	@Expose({ name: 'mock_value' })
+	@IsString()
+	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
+		toClassOnly: true,
+	})
+	mockValue: string;
+
+	@Expose()
+	@IsArray()
+	@ValidateNested({ each: true })
+	tiles: TileEntity[];
+
+	@Expose()
+	get type(): string {
+		return 'mock';
+	}
+}
+
+class MockTileEntity extends TileEntity {
 	@Expose({ name: 'mock_value' })
 	@IsString()
 	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
@@ -47,7 +80,6 @@ class MockDevice extends DeviceEntity {
 }
 
 describe('TilesService', () => {
-	let pagesService: PagesService;
 	let tilesService: TilesService;
 	let repository: Repository<TileEntity>;
 	let tilesMapper: TilesTypeMapperService;
@@ -55,54 +87,33 @@ describe('TilesService', () => {
 	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 
-	const mockDevice: MockDevice = {
+	const mockPage: MockPageEntity = {
 		id: uuid().toString(),
 		type: 'mock',
-		category: DeviceCategory.GENERIC,
-		name: 'Test Device',
-		description: null,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		controls: [],
-		channels: [],
-		mockValue: 'Some value',
-	};
-
-	const mockDevicePage: DevicePageEntity = {
-		id: uuid().toString(),
-		type: 'device',
-		title: 'Device detail',
-		order: 0,
-		device: mockDevice.id,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-	};
-
-	const mockTilesPage: TilesPageEntity = {
-		id: uuid().toString(),
-		type: 'tiles',
 		title: 'Tiles detail',
 		order: 0,
-		tiles: [],
 		dataSource: [],
 		createdAt: new Date(),
 		updatedAt: new Date(),
+		mockValue: 'Some mock value',
+		tiles: [],
 	};
 
-	const mockTimeTile: TimeTileEntity = {
+	const mockTile: MockTileEntity = {
 		id: uuid().toString(),
-		type: 'clock',
-		page: mockDevicePage.id,
-		card: null,
-		dataSource: [],
-		row: 0,
-		col: 0,
-		rowSpan: 0,
-		colSpan: 0,
+		type: 'mock',
+		parentType: 'page',
+		parentId: mockPage.id,
+		row: 1,
+		col: 1,
+		rowSpan: 1,
+		colSpan: 1,
+		hidden: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
-		validateOwnership: (): void => {},
-	};
+		dataSource: [],
+		mockValue: 'Some mock value',
+	} as MockTileEntity;
 
 	beforeEach(async () => {
 		const mockRepository = () => ({
@@ -111,9 +122,8 @@ describe('TilesService', () => {
 			create: jest.fn(),
 			save: jest.fn(),
 			remove: jest.fn(),
+			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getMany: jest.fn(),
@@ -126,15 +136,9 @@ describe('TilesService', () => {
 				TilesService,
 				{ provide: getRepositoryToken(TileEntity), useFactory: mockRepository },
 				{
-					provide: PagesService,
+					provide: DataSourceService,
 					useValue: {
-						getOneOrThrow: jest.fn(() => {}),
-					},
-				},
-				{
-					provide: CardsService,
-					useValue: {
-						getOneOrThrow: jest.fn(() => {}),
+						findAll: jest.fn().mockResolvedValue([]),
 					},
 				},
 				{
@@ -152,6 +156,18 @@ describe('TilesService', () => {
 					},
 				},
 				{
+					provide: TileRelationsLoaderRegistryService,
+					useValue: {
+						getLoaders: jest.fn().mockReturnValue([]),
+					},
+				},
+				{
+					provide: TileCreateBuilderRegistryService,
+					useValue: {
+						getBuilders: jest.fn().mockReturnValue([]),
+					},
+				},
+				{
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(() => {}),
@@ -166,7 +182,6 @@ describe('TilesService', () => {
 			],
 		}).compile();
 
-		pagesService = module.get<PagesService>(PagesService);
 		tilesService = module.get<TilesService>(TilesService);
 		repository = module.get<Repository<TileEntity>>(getRepositoryToken(TileEntity));
 		tilesMapper = module.get<TilesTypeMapperService>(TilesTypeMapperService);
@@ -181,7 +196,6 @@ describe('TilesService', () => {
 	});
 
 	it('should be defined', () => {
-		expect(pagesService).toBeDefined();
 		expect(tilesService).toBeDefined();
 		expect(repository).toBeDefined();
 		expect(tilesMapper).toBeDefined();
@@ -191,68 +205,53 @@ describe('TilesService', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all tiles with relations', async () => {
-			const mockTiles: TileEntity[] = [mockTimeTile];
-
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
+		it('should return all tiles', async () => {
+			const mockTiles: TileEntity[] = [mockTile];
 
 			const queryBuilderMock: any = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getMany: jest.fn().mockResolvedValue(mockTiles.map((entity) => plainToInstance(TilesPageEntity, entity))),
+				andWhere: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue(mockTiles.map((entity) => plainToInstance(MockTileEntity, entity))),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
-			const result = await tilesService.findAll({ pageId: mockTilesPage.id });
+			const result = await tilesService.findAll({ parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(mockTiles.map((entity) => plainToInstance(TilesPageEntity, entity)));
+			expect(result).toEqual(mockTiles.map((entity) => plainToInstance(MockTileEntity, entity)));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('tile');
-			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('tile.page', 'page');
-			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('tile.dataSource', 'dataSource');
-			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('tile.device', 'device');
-			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockTilesPage.id });
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.parentType = :parentType', { parentType: 'page' });
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('tile.parentId = :parentId', { parentId: mockPage.id });
 			expect(queryBuilderMock.getMany).toHaveBeenCalled();
 		});
 	});
 
 	describe('findOne', () => {
 		it('should return a tile by ID', async () => {
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-
 			const queryBuilderMock: any = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(TimeTileEntity, mockTimeTile)),
+				getOne: jest.fn().mockResolvedValue(plainToInstance(MockTileEntity, mockTile)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
-			const result = await tilesService.findOne(mockTimeTile.id, { pageId: mockTilesPage.id });
+			const result = await tilesService.findOne(mockTile.id, { parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(plainToInstance(TimeTileEntity, mockTimeTile));
+			expect(result).toEqual(plainToInstance(MockTileEntity, mockTile));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('tile');
-			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('tile.page', 'page');
-			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('tile.dataSource', 'dataSource');
-			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('tile.device', 'device');
-			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.id = :id', { id: mockTimeTile.id });
-			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockTilesPage.id });
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.id = :id', { id: mockTile.id });
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('tile.parentType = :parentType', { parentType: 'page' });
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('tile.parentId = :parentId', { parentId: mockPage.id });
 			expect(queryBuilderMock.getOne).toHaveBeenCalled();
 		});
 
 		it('should return null if page not found', async () => {
 			const tileId = uuid().toString();
 
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-
 			const queryBuilderMock: any = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
 				getOne: jest.fn().mockResolvedValue(null),
@@ -260,58 +259,68 @@ describe('TilesService', () => {
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
-			const result = await tilesService.findOne(tileId, { pageId: mockTilesPage.id });
+			const result = await tilesService.findOne(tileId, { parentType: 'page', parentId: mockPage.id });
 
 			expect(result).toEqual(null);
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('tile');
-			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('tile.page', 'page');
-			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('tile.dataSource', 'dataSource');
-			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('tile.device', 'device');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.id = :id', { id: tileId });
-			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockTilesPage.id });
+			expect(queryBuilderMock.andWhere).toHaveBeenNthCalledWith(1, 'tile.parentType = :parentType', {
+				parentType: 'page',
+			});
+			expect(queryBuilderMock.andWhere).toHaveBeenNthCalledWith(2, 'tile.parentId = :parentId', {
+				parentId: mockPage.id,
+			});
 			expect(queryBuilderMock.getOne).toHaveBeenCalled();
 		});
 	});
 
 	describe('create', () => {
 		it('should create and return a new tile', async () => {
-			const createDto: CreateTimeTileDto = { type: 'clock', row: 0, col: 1 };
-			const mockCrateTile: Partial<TimeTileEntity> = {
+			const createDto: CreateMockTileDto = {
+				type: 'mock',
+				row: 1,
+				col: 1,
+				mockValue: 'New mock value',
+				parent: { type: 'page', id: mockPage.id },
+			};
+			const mockCrateTile: Partial<MockTileEntity> = {
 				type: createDto.type,
 				row: createDto.row,
 				col: createDto.col,
-				page: mockTilesPage.id,
-				dataSource: [],
+				parentType: createDto.parent.type,
+				parentId: createDto.parent.id,
+				mockValue: createDto.mockValue,
 			};
-			const mockCratedTile: TimeTileEntity = {
+			const mockCratedTile: MockTileEntity = {
 				id: uuid().toString(),
 				type: mockCrateTile.type,
+				parentType: mockCrateTile.parentType,
+				parentId: mockCrateTile.parentId,
 				row: mockCrateTile.row,
 				col: mockCrateTile.col,
-				page: mockTilesPage.id,
-				card: null,
-				dataSource: [],
+				rowSpan: mockCrateTile.rowSpan,
+				colSpan: mockCrateTile.colSpan,
+				hidden: mockCrateTile.hidden,
 				createdAt: new Date(),
 				updatedAt: null,
 				validateOwnership: (): void => {},
+				dataSource: [],
+				parent: { type: 'page', id: mockPage.id },
+				mockValue: mockCrateTile.mockValue,
 			};
 
 			const queryBuilderMock: any = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValueOnce(plainToInstance(TimeTileEntity, mockCratedTile)),
+				getOne: jest.fn().mockResolvedValueOnce(plainToInstance(MockTileEntity, mockCratedTile)),
 			};
 
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-
 			jest.spyOn(tilesMapper, 'getMapping').mockReturnValue({
-				type: 'clock',
-				class: TimeTileEntity,
-				createDto: CreateTimeTileDto,
-				updateDto: UpdateTimeTileDto,
+				type: 'mock',
+				class: MockTileEntity,
+				createDto: CreateMockTileDto,
+				updateDto: UpdateMockTileDto,
 			});
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
@@ -320,11 +329,11 @@ describe('TilesService', () => {
 			jest.spyOn(repository, 'create').mockReturnValue(mockCratedTile);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedTile);
 
-			const result = await tilesService.create(createDto, { pageId: mockTilesPage.id });
+			const result = await tilesService.create(createDto, { parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(plainToInstance(TimeTileEntity, mockCratedTile));
+			expect(result).toEqual(plainToInstance(MockTileEntity, mockCratedTile));
 			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(TimeTileEntity, mockCrateTile, {
+				plainToInstance(MockTileEntity, mockCrateTile, {
 					enableImplicitConversion: true,
 					excludeExtraneousValues: true,
 					exposeUnsetFields: false,
@@ -333,110 +342,108 @@ describe('TilesService', () => {
 			expect(repository.save).toHaveBeenCalledWith(mockCratedTile);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.TILE_CREATED,
-				plainToInstance(TimeTileEntity, mockCratedTile),
+				plainToInstance(MockTileEntity, mockCratedTile),
 			);
-			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('tile.page', 'page');
-			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('tile.dataSource', 'dataSource');
-			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('tile.device', 'device');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.id = :id', { id: mockCratedTile.id });
-			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockTilesPage.id });
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('tile.parentType = :parentType', { parentType: 'page' });
+			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('tile.parentId = :parentId', { parentId: mockPage.id });
 			expect(queryBuilderMock.getOne).toHaveBeenCalled();
 		});
 
 		it('should throw validation exception for invalid data', async () => {
-			const createDto: Partial<CreateTimeTileDto> = {
+			const createDto: Partial<CreateMockTileDto> = {
 				row: 1,
 				col: 2,
 			};
 
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-
-			await expect(tilesService.create(createDto as CreateTimeTileDto, { pageId: mockTilesPage.id })).rejects.toThrow(
-				DashboardException,
-			);
+			await expect(
+				tilesService.create(createDto as CreateMockTileDto, { parentType: 'page', parentId: mockPage.id }),
+			).rejects.toThrow(DashboardException);
 		});
 	});
 
 	describe('update', () => {
 		it('should update a tile', async () => {
-			const updateDto: UpdateTimeTileDto = {
-				type: 'clock',
+			const updateDto: UpdateMockTileDto = {
+				type: 'mock',
 				row: 10,
 				col: 10,
+				mockValue: 'Updated mock value',
 			};
-			const mockUpdateTile: TimeTileEntity = {
-				id: mockTimeTile.id,
-				type: mockTimeTile.type,
+			const mockUpdateTile: MockTileEntity = {
+				id: mockTile.id,
+				type: mockTile.type,
+				parentType: mockTile.parentType,
+				parentId: mockTile.parentId,
 				row: updateDto.row,
 				col: updateDto.col,
-				page: mockTimeTile.page,
-				card: null,
-				dataSource: mockTimeTile.dataSource,
-				createdAt: mockTimeTile.createdAt,
-				updatedAt: mockTimeTile.updatedAt,
+				rowSpan: mockTile.rowSpan,
+				colSpan: mockTile.colSpan,
+				hidden: mockTile.hidden,
+				createdAt: mockTile.createdAt,
+				updatedAt: mockTile.updatedAt,
 				validateOwnership: (): void => {},
+				dataSource: mockTile.dataSource,
+				parent: mockTile.parent,
+				mockValue: updateDto.mockValue,
 			};
-			const mockUpdatedTile: TimeTileEntity = {
+			const mockUpdatedTile: MockTileEntity = {
 				id: mockUpdateTile.id,
 				type: mockUpdateTile.type,
+				parentType: mockUpdateTile.parentType,
+				parentId: mockUpdateTile.parentId,
 				row: mockUpdateTile.row,
 				col: mockUpdateTile.col,
-				rowSpan: mockTimeTile.rowSpan,
-				colSpan: mockTimeTile.colSpan,
-				page: mockUpdateTile.page,
-				card: null,
-				dataSource: mockUpdateTile.dataSource,
+				rowSpan: mockUpdateTile.rowSpan,
+				colSpan: mockUpdateTile.colSpan,
+				hidden: mockUpdateTile.hidden,
 				createdAt: mockUpdateTile.createdAt,
 				updatedAt: mockUpdateTile.updatedAt,
 				validateOwnership: (): void => {},
+				dataSource: mockUpdateTile.dataSource,
+				parent: mockUpdateTile.parent,
+				mockValue: mockUpdateTile.mockValue,
 			};
 
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-
 			jest.spyOn(tilesMapper, 'getMapping').mockReturnValue({
-				type: 'clock',
-				class: TimeTileEntity,
-				createDto: CreateTimeTileDto,
-				updateDto: UpdateTimeTileDto,
+				type: 'mock',
+				class: MockTileEntity,
+				createDto: CreateMockTileDto,
+				updateDto: UpdateMockTileDto,
 			});
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
 			jest
 				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(TimeTileEntity, mockTimeTile))
-				.mockResolvedValueOnce(plainToInstance(TimeTileEntity, mockUpdatedTile));
+				.mockResolvedValueOnce(plainToInstance(MockTileEntity, mockTile))
+				.mockResolvedValueOnce(plainToInstance(MockTileEntity, mockUpdatedTile));
 			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedTile);
 
-			const result = await tilesService.update(mockTimeTile.id, updateDto);
+			const result = await tilesService.update(mockTile.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(TimeTileEntity, mockUpdatedTile));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(TimeTileEntity, mockUpdatedTile));
+			expect(result).toEqual(plainToInstance(MockTileEntity, mockUpdatedTile));
+			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockTileEntity, mockUpdatedTile));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.TILE_UPDATED,
-				plainToInstance(TimeTileEntity, mockUpdatedTile),
+				plainToInstance(MockTileEntity, mockUpdatedTile),
 			);
 			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockTimeTile.id },
-				relations: ['page', 'card', 'dataSource', 'dataSource.tile', 'device'],
+				where: { id: mockTile.id },
 			});
 		});
 	});
 
 	describe('remove', () => {
 		it('should remove a tile', async () => {
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(TilesPageEntity, mockTilesPage));
-			jest.spyOn(tilesService, 'findOne').mockResolvedValue(plainToInstance(TimeTileEntity, mockTimeTile));
+			jest.spyOn(tilesService, 'findOne').mockResolvedValue(plainToInstance(MockTileEntity, mockTile));
 
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockTimeTile);
+			jest.spyOn(repository, 'delete');
 
-			await tilesService.remove(mockTimeTile.id);
+			await tilesService.remove(mockTile.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(TimeTileEntity, mockTimeTile));
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				EventType.TILE_DELETED,
-				plainToInstance(TimeTileEntity, mockTimeTile),
-			);
+			expect(repository.delete).toHaveBeenCalledWith(mockTile.id);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.TILE_DELETED, plainToInstance(MockTileEntity, mockTile));
 		});
 	});
 });

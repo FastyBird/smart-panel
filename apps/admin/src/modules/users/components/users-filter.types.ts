@@ -1,4 +1,4 @@
-import type { IUsersFilter } from '../composables';
+import type { IUsersFilter } from '../composables/types';
 
 export interface IUsersFilterProps {
 	filters: IUsersFilter;

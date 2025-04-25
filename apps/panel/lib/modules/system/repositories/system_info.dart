@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fastybird_smart_panel/modules/system/models/default_network.dart';
 import 'package:fastybird_smart_panel/modules/system/models/display_info.dart';
 import 'package:fastybird_smart_panel/modules/system/models/memory_info.dart';
@@ -71,7 +69,9 @@ class SystemInfoRepository extends Repository<SystemInfoModel> {
       () async {
         final response = await apiClient.getSystemModuleSystemInfo();
 
-        insertSystemInfo(jsonDecode(jsonEncode(response.data.data)));
+        final raw = response.response.data['data'] as Map<String, dynamic>;
+
+        insertSystemInfo(raw);
       },
       'fetch system info',
     );

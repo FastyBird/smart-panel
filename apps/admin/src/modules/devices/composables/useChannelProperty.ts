@@ -3,11 +3,18 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IChannel, type IChannelProperty, channelsPropertiesStoreKey } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import { channelsPropertiesStoreKey } from '../store/keys';
 
 import type { IUseChannelProperty } from './types';
 
-export const useChannelProperty = (channelId: IChannel['id'], id: IChannelProperty['id']): IUseChannelProperty => {
+interface IUseChannelPropertyProps {
+	channelId: IChannel['id'];
+	id: IChannelProperty['id'];
+}
+
+export const useChannelProperty = ({ channelId, id }: IUseChannelPropertyProps): IUseChannelProperty => {
 	const storesManager = injectStoresManager();
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);

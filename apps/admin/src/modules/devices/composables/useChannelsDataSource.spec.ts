@@ -5,8 +5,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesChannelCategory } from '../../../openapi';
-import type { IChannel } from '../store';
+import { DevicesModuleChannelCategory } from '../../../openapi';
+import type { IChannel } from '../store/channels.store.types';
 
 import { defaultChannelsFilter, useChannelsDataSource } from './useChannelsDataSource';
 
@@ -35,7 +35,7 @@ describe('useChannelsDataSource', () => {
 				id: '1',
 				name: 'Main Light',
 				description: 'Ceiling light',
-				category: DevicesChannelCategory.light,
+				category: DevicesModuleChannelCategory.light,
 				device: 'device-1',
 				draft: false,
 			} as IChannel,
@@ -43,7 +43,7 @@ describe('useChannelsDataSource', () => {
 				id: '2',
 				name: 'Fan',
 				description: 'Cooling fan',
-				category: DevicesChannelCategory.fan,
+				category: DevicesModuleChannelCategory.fan,
 				device: 'device-2',
 				draft: false,
 			} as IChannel,
@@ -51,7 +51,7 @@ describe('useChannelsDataSource', () => {
 				id: '3',
 				name: 'Draft Channel',
 				description: 'Ignore me',
-				category: DevicesChannelCategory.generic,
+				category: DevicesModuleChannelCategory.generic,
 				device: 'device-1',
 				draft: true,
 			} as IChannel,
@@ -88,7 +88,7 @@ describe('useChannelsDataSource', () => {
 	});
 
 	it('returns only channels for deviceId if passed', () => {
-		const { channels } = useChannelsDataSource('device-1');
+		const { channels } = useChannelsDataSource({ deviceId: 'device-1' });
 		expect(channels.value.length).toBe(1);
 		expect(channels.value[0].id).toBe('1');
 	});
@@ -133,13 +133,13 @@ describe('useChannelsDataSource', () => {
 
 	it('sets areLoading true if fetching includes deviceId', () => {
 		mockStore.semaphore.value.fetching.items = ['device-1'];
-		const { areLoading } = useChannelsDataSource('device-1');
+		const { areLoading } = useChannelsDataSource({ deviceId: 'device-1' });
 		expect(areLoading.value).toBe(true);
 	});
 
 	it('sets loaded true if firstLoad includes deviceId', () => {
 		mockStore.firstLoad.value = ['device-1'];
-		const { loaded } = useChannelsDataSource('device-1');
+		const { loaded } = useChannelsDataSource({ deviceId: 'device-1' });
 		expect(loaded.value).toBe(true);
 	});
 

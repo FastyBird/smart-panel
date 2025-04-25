@@ -6,7 +6,9 @@ import { cloneDeep, isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager } from '../../../common';
-import { type IChannel, type IChannelProperty, channelsPropertiesStoreKey } from '../store';
+import type { IChannelProperty } from '../store/channels.properties.store.types';
+import type { IChannel } from '../store/channels.store.types';
+import { channelsPropertiesStoreKey } from '../store/keys';
 
 import type { IChannelsPropertiesFilter, IUseChannelsPropertiesDataSource } from './types';
 
@@ -18,7 +20,11 @@ export const defaultChannelsPropertiesFilter: IChannelsPropertiesFilter = {
 	dataTypes: [],
 };
 
-export const useChannelsPropertiesDataSource = (channelId: IChannel['id']): IUseChannelsPropertiesDataSource => {
+interface IUseChannelsPropertiesDataSourceProps {
+	channelId: IChannel['id'];
+}
+
+export const useChannelsPropertiesDataSource = ({ channelId }: IUseChannelsPropertiesDataSourceProps): IUseChannelsPropertiesDataSource => {
 	const storesManager = injectStoresManager();
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
@@ -49,8 +55,10 @@ export const useChannelsPropertiesDataSource = (channelId: IChannel['id']): IUse
 		return orderBy<IChannelProperty>(
 			propertiesStore
 				.findAll()
-				.filter((channel) => !channelId || channel.channel === channelId)
-				.filter((channel) => !channel.draft && (!filters.value.search || channel.name?.toLowerCase().includes(filters.value.search.toLowerCase()))),
+				.filter((property) => !channelId || property.channel === channelId)
+				.filter(
+					(property) => !property.draft && (!filters.value.search || property.name?.toLowerCase().includes(filters.value.search.toLowerCase()))
+				),
 			[(property: IChannelProperty) => property[sortBy.value as keyof IChannelProperty] ?? ''],
 			[sortDir.value === 'ascending' ? 'asc' : 'desc']
 		);
@@ -87,8 +95,8 @@ export const useChannelsPropertiesDataSource = (channelId: IChannel['id']): IUse
 		() =>
 			propertiesStore
 				.findAll()
-				.filter((channel) => !channelId || channel.channel === channelId)
-				.filter((channel) => !channel.draft).length
+				.filter((property) => !channelId || property.channel === channelId)
+				.filter((property) => !property.draft).length
 	);
 
 	const resetFilter = (): void => {

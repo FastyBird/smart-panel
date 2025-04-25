@@ -26,7 +26,7 @@ class TilesPage extends StatelessWidget {
       tilesRepository,
       _,
     ) {
-      final tiles = tilesRepository.getItems(page.tiles);
+      final tiles = tilesRepository.getForParent(page.id, 'page');
 
       if (tiles.isEmpty) {
         final localizations = AppLocalizations.of(context)!;
@@ -134,9 +134,7 @@ class TilesPage extends StatelessWidget {
       ) {
         return buildTileWidget(
           tile,
-          dataSourcesRepository.getItems(
-            tile.dataSource,
-          ),
+          dataSourcesRepository.getForParent(tile.id, 'tile'),
         );
       }),
     );

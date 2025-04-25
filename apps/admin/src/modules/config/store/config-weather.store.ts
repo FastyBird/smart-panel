@@ -5,20 +5,19 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { ConfigWeatherType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleWeatherType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
-import {
-	ConfigWeatherEditActionPayloadSchema,
-	ConfigWeatherSchema,
-	type ConfigWeatherStoreSetup,
-	type IConfigWeather,
-	type IConfigWeatherEditActionPayload,
-	type IConfigWeatherSetActionPayload,
-	type IConfigWeatherStateSemaphore,
-	type IConfigWeatherStoreActions,
-	type IConfigWeatherStoreState,
+import { ConfigWeatherEditActionPayloadSchema, ConfigWeatherSchema } from './config-weather.store.schemas';
+import type {
+	ConfigWeatherStoreSetup,
+	IConfigWeather,
+	IConfigWeatherEditActionPayload,
+	IConfigWeatherSetActionPayload,
+	IConfigWeatherStateSemaphore,
+	IConfigWeatherStoreActions,
+	IConfigWeatherStoreState,
 } from './config-weather.store.types';
 import { transformConfigWeatherResponse, transformConfigWeatherUpdateRequest } from './config-weather.transformers';
 
@@ -45,9 +44,11 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 		let pendingGetPromises: Promise<IConfigWeather> | null = null;
 
 		const set = (payload: IConfigWeatherSetActionPayload): IConfigWeather => {
-			const parsedConfigWeather = ConfigWeatherSchema.safeParse({ ...payload.data, type: ConfigWeatherType.weather });
+			const parsedConfigWeather = ConfigWeatherSchema.safeParse({ ...payload.data, type: ConfigModuleWeatherType.weather });
 
 			if (!parsedConfigWeather.success) {
+				console.error('Schema validation failed with:', parsedConfigWeather.error);
+
 				throw new ConfigValidationException('Failed to insert weather config.');
 			}
 
@@ -108,6 +109,8 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 			const parsedPayload = ConfigWeatherEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
 				throw new ConfigValidationException('Failed to edit weather config.');
 			}
 
@@ -121,6 +124,8 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 			});
 
 			if (!parsedEditedConfig.success) {
+				console.error('Schema validation failed with:', parsedEditedConfig.error);
+
 				throw new ConfigValidationException('Failed to edit weather config.');
 			}
 

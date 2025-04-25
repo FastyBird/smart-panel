@@ -3,7 +3,8 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
-import { type IThrottleStatus, throttleStatusStoreKey } from '../store';
+import { throttleStatusStoreKey } from '../store/keys';
+import type { IThrottleStatus } from '../store/throttle-status.store.types';
 
 import type { IUseThrottleStatus } from './types';
 

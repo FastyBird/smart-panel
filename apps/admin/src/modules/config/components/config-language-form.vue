@@ -74,7 +74,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElForm, ElFormItem, ElOption, ElSelect } from 'element-plus';
 
-import { useConfigLanguageEditForm } from '../composables';
+import { useConfigLanguageEditForm } from '../composables/composables';
 import { FormResult, type FormResultType, Layout } from '../config.constants';
 
 import type { IConfigLanguageFormProps } from './config-language-form.types';
@@ -99,9 +99,9 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { languageOptions, timezoneOptions, timeFormatOptions, model, formEl, formChanged, submit, formResult } = useConfigLanguageEditForm(
-	props.config
-);
+const { languageOptions, timezoneOptions, timeFormatOptions, model, formEl, formChanged, submit, formResult } = useConfigLanguageEditForm({
+	config: props.config,
+});
 
 watch(
 	(): FormResultType => formResult.value,
@@ -117,7 +117,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}

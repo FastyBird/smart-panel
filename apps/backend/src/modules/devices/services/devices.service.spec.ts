@@ -80,6 +80,7 @@ describe('DevicesService', () => {
 			create: jest.fn(),
 			save: jest.fn(),
 			remove: jest.fn(),
+			delete: jest.fn(),
 			createQueryBuilder: jest.fn(() => ({
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -357,11 +358,11 @@ describe('DevicesService', () => {
 	describe('remove', () => {
 		it('should remove a device', async () => {
 			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
-			jest.spyOn(repository, 'remove').mockResolvedValue(mockDevice);
+			jest.spyOn(repository, 'delete');
 
 			await service.remove(mockDevice.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(MockDevice, mockDevice));
+			expect(repository.delete).toHaveBeenCalledWith(mockDevice.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DEVICE_DELETED, plainToInstance(MockDevice, mockDevice));
 		});
 	});

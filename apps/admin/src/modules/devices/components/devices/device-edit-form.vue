@@ -83,7 +83,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import { type IDeviceEditForm, useDeviceEditForm } from '../../composables';
+import { type IDeviceEditForm, useDeviceEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 
 import type { IDeviceEditFormProps } from './device-edit-form.types';
@@ -107,7 +107,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceEditForm(props.device);
+const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceEditForm({ device: props.device });
 
 const rules = reactive<FormRules<IDeviceEditForm>>({
 	name: [{ required: true, message: t('devicesModule.fields.devices.name.validation.required'), trigger: 'change' }],
@@ -127,7 +127,7 @@ watch(
 			emit('update:remote-form-submit', false);
 
 			submit().catch(() => {
-				// Form is not valid
+				// The form is not valid
 			});
 		}
 	}
