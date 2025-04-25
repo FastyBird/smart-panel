@@ -4,19 +4,20 @@
 
 # 🚀 Smart Panel Backend
 
-The **Smart Panel Backend** is the powerhouse behind the **FastyBird Smart Panel**, ensuring smooth communication between devices and the user interface.
+The **FastyBird Smart Panel Backend** is the core service powering the user interface layer of smart home platforms.
 
-Built on **NestJS**, **TypeORM**, and modern technologies, it delivers a **scalable**, **real-time**, and **developer-friendly** experience.
+It is responsible for managing **dashboards, pages, tiles, and data sources**—delivering data in real-time and supporting seamless integration with smart home systems like Home Assistant, OpenHAB, and Sonoff.
 
-## ✨ Features
+---
 
-- ✔ **Device Management** – Control devices, channels, properties, and automation.
-- ✔ **Real-time Updates** – Instant state changes via WebSockets.
-- ✔ **Dashboard & UI** – Organize information with **pages, cards, and tiles**.
-- ✔ **Weather & System Info** – Display **current weather, forecasts, and device stats**.
-- ✔ **Robust Validation & Error Handling** – Ensures reliability and security.
-- ✔ **Database Integration** – Supports SQL databases via TypeORM.
-- ✔ **Modular Architecture** – Scalable and maintainable design.
+## ✨ Key Features
+
+- ✅ **Plugin-Based Architecture** – Easily extend with new tile types, data sources, or custom pages
+- ✅ **Modular Design** – Cleanly separated `modules/` and `plugins/` to support scalable growth
+- ✅ **Real-Time WebSocket Communication** – Instant updates for connected frontend apps
+- ✅ **Flexible Page Layouts** – Support for tile-based, card-based, and detail-style views
+- ✅ **Built-In Validation & Error Handling** – Strong type safety and detailed errors
+- ✅ **Database Integration** – Works with relational databases via TypeORM
 
 ## 📂 Project Structure
 
@@ -68,18 +69,22 @@ src/
 │   │   ├── services/
 │   │   └── websocket.module.ts
 │   │
-│   ├── <other-modules>/     # Additional modules for extendability
-│   │   ├── controllers/
-│   │   ├── dto/
-│   │   ├── entities/
-│   │   ├── services/
-│   │   ├── events/
-│   │   ├── utils/
-│   │   └── <module-name>.module.ts
+│   └── <other-modules>/     # Additional modules for extendability
+│       ├── controllers/
+│       ├── dto/
+│       ├── entities/
+│       ├── services/
+│       ├── events/
+│       ├── utils/
+│       └── <module-name>.module.ts
 │
-├── cli.ts                # Command-line interface for administration
-├── main.ts               # Application entry point
+├── plugins/                 # Pluggable logic for tiles, pages, data sources
+│
+├── cli.ts                   # Command-line interface for administration
+├── main.ts                  # Application entry point
 ```
+
+💡 Each plugin or module may define its own entities, services, and OpenAPI schemas.
 
 ## 🛠️ Tech Stack
 
@@ -179,5 +184,4 @@ This project is licensed under the **Apache License 2.0**. See the [LICENSE](htt
 </table>
 
 ***
-Homepage [https://smart-panel.fastybird.com](https://smart-panel.fastybird.com) and
-repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).
+Homepage [https://www.fastybird.com](https://www.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).

@@ -4,45 +4,59 @@
 
 # 🚀 Smart Panel Admin
 
-The **Smart Panel Admin** is the frontend interface for managing the **FastyBird Smart Panel**. It provides an intuitive **dashboard**, **device management**, **real-time monitoring**, and a **customizable UI**.
+The **Smart Panel Admin** is a web-based interface for configuring the **FastyBird Smart Panel**.
 
-Built with **Vue 3**, **Vite**, and **Element Plus**, it delivers a **fast**, **scalable**, and **developer-friendly** experience.
+It lets you **design dashboards**, manage **tiles, data sources, and pages**, and connect with various **smart home systems** like Home Assistant, OpenHAB, and Sonoff.
+
+---
 
 ## ✨ Features
 
-- ✔ **Device & User Management** – Add, edit, and remove users and devices.
-- ✔ **Real-time Data** – WebSocket-based updates for instant changes.
-- ✔ **Dashboard UI** – Customize pages, cards, and tiles for efficient control.
-- ✔ **Responsive Design** – Optimized for mobile, tablet, and desktop.
-- ✔ **Authentication & Authorization** – Secure access to features.
-- ✔ **REST & WebSocket API** – Seamless backend communication.
-- ✔ **Optimized Performance** – Built with Vite for blazing-fast builds.
+- 🧩 **Plugin Support** – Extend UI with custom page, tile, or data source plugins
+- 🧱 **Dashboard Configuration** – Manage layouts using pages, cards, tiles, and more
+- ⚙️ **Device Integration** – Seamless control of devices, channels, and properties
+- 🔁 **Real-Time Updates** – Powered by WebSockets for instant feedback
+- 📱 **Responsive UI** – Built for desktops and tablets with adaptive layout
+- 🔐 **Authentication Support** – Secure access and user role control
+- 🌍 **Internationalization** – Ready for multi-language setups
+
+---
 
 ## 📂 Project Structure
 
 ```plaintext
 src/
-├── assets/            # Static files (images, icons, etc.)
-├── common/            # Shared utilities and helpers
-│   ├── components/    # Reusable UI components
-│   ├── composables/   # Vue 3 composables (hooks)
-│   ├── services/      # Application services
-│   └── utils/         # Helper functions
+├── assets/               # Static files (images, icons, etc.)
+├── common/               # Shared utilities and helpers
+│   ├── components/       # Reusable UI components
+│   ├── composables/      # Vue 3 composables (hooks)
+│   ├── services/         # Application services
+│   └── utils/            # Helper functions
 │
-├── layouts/           # Page layouts
-├── locales/           # Internationalization files
+├── layouts/              # Page layouts
+├── locales/              # Internationalization files
 │
-├── modules/           # Feature-based modules
-│   ├── auth-module/   # Authentication logic
-│   └── users-module/  # User management
+├── modules/              # Feature-based modules
+│   ├── auth/             # Authentication logic
+│   ├── dashboard/        # Authentication logic
+│   ├── devices/          # Authentication logic
+│   ├── users/            # User management
+│   └── <other-modules>/  # User management
 │
-└── views/             # Main application views
-    ├── app.constants.ts # Constants for app-wide configuration
-    ├── app.main.ts      # Main entry file
-    ├── app.main.vue     # Root Vue component
-    ├── app.types.ts     # TypeScript type definitions
-    └── openapi.ts       # OpenAPI-generated API client
+├── plugins/              # Optional plugin extensions (tiles, pages, etc.)
+│   ├── pages-tiles/      #
+│   └── <other-plugins>/  #
+│
+├── views/                # Main application views
+│
+├── app.constants.ts      # Constants for app-wide configuration
+├── app.main.ts           # Main entry file
+├── app.main.vue          # Root Vue component
+├── app.types.ts          # TypeScript type definitions
+└── openapi.ts            # OpenAPI-generated API client
 ```
+
+💡 Each plugin can define its own forms, UI logic, and schemas to seamlessly integrate with the Admin Panel.
 
 ## 🛠️ Tech Stack
 
@@ -145,5 +159,4 @@ This project is licensed under the **Apache License 2.0**. See the [LICENSE](htt
 </table>
 
 ***
-Homepage [https://smart-panel.fastybird.com](https://smart-panel.fastybird.com) and
-repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).
+Homepage [https://www.fastybird.com](https://www.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).
