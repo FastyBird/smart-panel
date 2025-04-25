@@ -1,7 +1,7 @@
-import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
-import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_update_audio_type.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_req_update_section.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_req_update_section_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_update_audio_type.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/audio.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
@@ -110,8 +110,8 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
   }) async {
     final updated = await _updateConfiguration(
       section: Section.audio,
-      data: ConfigReqUpdateSectionDataUnionAudio(
-        type: ConfigUpdateAudioType.audio,
+      data: ConfigModuleReqUpdateSectionDataUnionAudio(
+        type: ConfigModuleUpdateAudioType.audio,
         speaker: speaker ?? _getConfig().hasSpeakerEnabled,
         speakerVolume: speakerVolume ?? _getConfig().speakerVolume,
         microphone: microphone ?? _getConfig().hasMicrophoneEnabled,
@@ -119,7 +119,7 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
       ),
     );
 
-    if (updated is ConfigResSectionDataUnionAudio) {
+    if (updated is ConfigModuleResSectionDataUnionAudio) {
       data = _getConfig().copyWith(
         speaker: updated.speaker,
         speakerVolume: updated.speakerVolume,
@@ -141,7 +141,7 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
 
         final data = response.data.data;
 
-        if (data is ConfigResSectionDataUnionAudio) {
+        if (data is ConfigModuleResSectionDataUnionAudio) {
           final raw = response.response.data['data'] as Map<String, dynamic>;
 
           insertConfiguration(raw);
@@ -151,15 +151,15 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
     );
   }
 
-  Future<ConfigResSectionDataUnion> _updateConfiguration({
+  Future<ConfigModuleResSectionDataUnion> _updateConfiguration({
     required Section section,
-    required ConfigReqUpdateSectionDataUnion data,
+    required ConfigModuleReqUpdateSectionDataUnion data,
   }) async {
     return await handleApiCall(
       () async {
         final response = await apiClient.updateConfigModuleConfigSection(
           section: section,
-          body: ConfigReqUpdateSection(data: data),
+          body: ConfigModuleReqUpdateSection(data: data),
         );
 
         return response.data.data;

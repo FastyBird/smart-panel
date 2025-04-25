@@ -1,0 +1,67 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'devices_module_create_device.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+_$DevicesModuleCreateDeviceImpl _$$DevicesModuleCreateDeviceImplFromJson(
+        Map<String, dynamic> json) =>
+    _$DevicesModuleCreateDeviceImpl(
+      id: json['id'] as String,
+      category:
+          DevicesModuleDeviceCategory.fromJson(json['category'] as String),
+      name: json['name'] as String,
+      controls: (json['controls'] as List<dynamic>)
+          .map((e) => DevicesModuleCreateDeviceControl.fromJson(
+              e as Map<String, dynamic>))
+          .toList(),
+      channels: (json['channels'] as List<dynamic>)
+          .map((e) => DevicesModuleCreateDeviceChannel.fromJson(
+              e as Map<String, dynamic>))
+          .toList(),
+      description: json['description'] as String?,
+      type: json['type'] as String? ?? 'third-party',
+    );
+
+Map<String, dynamic> _$$DevicesModuleCreateDeviceImplToJson(
+        _$DevicesModuleCreateDeviceImpl instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'category': _$DevicesModuleDeviceCategoryEnumMap[instance.category]!,
+      'name': instance.name,
+      'controls': instance.controls,
+      'channels': instance.channels,
+      'description': instance.description,
+      'type': instance.type,
+    };
+
+const _$DevicesModuleDeviceCategoryEnumMap = {
+  DevicesModuleDeviceCategory.generic: 'generic',
+  DevicesModuleDeviceCategory.airConditioner: 'air_conditioner',
+  DevicesModuleDeviceCategory.airDehumidifier: 'air_dehumidifier',
+  DevicesModuleDeviceCategory.airHumidifier: 'air_humidifier',
+  DevicesModuleDeviceCategory.airPurifier: 'air_purifier',
+  DevicesModuleDeviceCategory.alarm: 'alarm',
+  DevicesModuleDeviceCategory.camera: 'camera',
+  DevicesModuleDeviceCategory.door: 'door',
+  DevicesModuleDeviceCategory.doorbell: 'doorbell',
+  DevicesModuleDeviceCategory.fan: 'fan',
+  DevicesModuleDeviceCategory.heater: 'heater',
+  DevicesModuleDeviceCategory.lighting: 'lighting',
+  DevicesModuleDeviceCategory.lock: 'lock',
+  DevicesModuleDeviceCategory.media: 'media',
+  DevicesModuleDeviceCategory.outlet: 'outlet',
+  DevicesModuleDeviceCategory.pump: 'pump',
+  DevicesModuleDeviceCategory.robotVacuum: 'robot_vacuum',
+  DevicesModuleDeviceCategory.sensor: 'sensor',
+  DevicesModuleDeviceCategory.speaker: 'speaker',
+  DevicesModuleDeviceCategory.sprinkler: 'sprinkler',
+  DevicesModuleDeviceCategory.switcher: 'switcher',
+  DevicesModuleDeviceCategory.television: 'television',
+  DevicesModuleDeviceCategory.thermostat: 'thermostat',
+  DevicesModuleDeviceCategory.valve: 'valve',
+  DevicesModuleDeviceCategory.windowCovering: 'window_covering',
+  DevicesModuleDeviceCategory.$unknown: r'$unknown',
+};

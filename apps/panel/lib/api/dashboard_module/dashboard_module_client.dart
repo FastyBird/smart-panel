@@ -5,24 +5,18 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
-import '../models/dashboard_req_create_card.dart';
-import '../models/dashboard_req_create_data_source.dart';
-import '../models/dashboard_req_create_data_source_with_parent.dart';
-import '../models/dashboard_req_create_page.dart';
-import '../models/dashboard_req_create_tile.dart';
-import '../models/dashboard_req_create_tile_with_parent.dart';
-import '../models/dashboard_req_update_card.dart';
-import '../models/dashboard_req_update_data_source.dart';
-import '../models/dashboard_req_update_page.dart';
-import '../models/dashboard_req_update_tile.dart';
-import '../models/dashboard_res_card.dart';
-import '../models/dashboard_res_cards.dart';
-import '../models/dashboard_res_data_source.dart';
-import '../models/dashboard_res_data_sources.dart';
-import '../models/dashboard_res_page.dart';
-import '../models/dashboard_res_pages.dart';
-import '../models/dashboard_res_tile.dart';
-import '../models/dashboard_res_tiles.dart';
+import '../models/dashboard_module_req_create_data_source.dart';
+import '../models/dashboard_module_req_create_page.dart';
+import '../models/dashboard_module_req_create_tile_with_parent.dart';
+import '../models/dashboard_module_req_update_data_source.dart';
+import '../models/dashboard_module_req_update_page.dart';
+import '../models/dashboard_module_req_update_tile.dart';
+import '../models/dashboard_module_res_data_source.dart';
+import '../models/dashboard_module_res_data_sources.dart';
+import '../models/dashboard_module_res_page.dart';
+import '../models/dashboard_module_res_pages.dart';
+import '../models/dashboard_module_res_tile.dart';
+import '../models/dashboard_module_res_tiles.dart';
 
 part 'dashboard_module_client.g.dart';
 
@@ -34,14 +28,14 @@ abstract class DashboardModuleClient {
   ///
   /// Fetches a list of all pages currently registered in the system. Each pages includes its metadata (e.g., ID, title), along with associated tiles and data sources.
   @GET('/dashboard-module/pages')
-  Future<HttpResponse<DashboardResPages>> getDashboardModulePages();
+  Future<HttpResponse<DashboardModuleResPages>> getDashboardModulePages();
 
   /// Create a new page.
   ///
   /// Creates a new page resource in the system. The request requires page-specific attributes such as title. The response includes the full representation of the created page, including its associated tiles and data sources. Additionally, a Location header is provided with the URI of the newly created resource.
   @POST('/dashboard-module/pages')
-  Future<HttpResponse<DashboardResPage>> createDashboardModulePage({
-    @Body() DashboardReqCreatePage? body,
+  Future<HttpResponse<DashboardModuleResPage>> createDashboardModulePage({
+    @Body() DashboardModuleReqCreatePage? body,
   });
 
   /// Retrieve details of a specific page.
@@ -50,7 +44,7 @@ abstract class DashboardModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/dashboard-module/pages/{id}')
-  Future<HttpResponse<DashboardResPage>> getDashboardModulePage({
+  Future<HttpResponse<DashboardModuleResPage>> getDashboardModulePage({
     @Path('id') required String id,
   });
 
@@ -60,9 +54,9 @@ abstract class DashboardModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/dashboard-module/pages/{id}')
-  Future<HttpResponse<DashboardResPage>> updateDashboardModulePage({
+  Future<HttpResponse<DashboardModuleResPage>> updateDashboardModulePage({
     @Path('id') required String id,
-    @Body() DashboardReqUpdatePage? body,
+    @Body() DashboardModuleReqUpdatePage? body,
   });
 
   /// Delete an existing page.
@@ -78,42 +72,22 @@ abstract class DashboardModuleClient {
   /// Retrieve a list of all available tiles.
   ///
   /// Fetches a list of tiles. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.
+  ///
+  /// [parentType] - Filter tiles by the parent resource type (e.g., 'page', 'card').
+  ///
+  /// [parentId] - Filter tiles by the parent resource ID.
   @GET('/dashboard-module/tiles')
-  Future<HttpResponse<DashboardResTiles>> getDashboardModuleTiles();
+  Future<HttpResponse<DashboardModuleResTiles>> getDashboardModuleTiles({
+    @Query('parent_type') String? parentType,
+    @Query('parent_id') String? parentId,
+  });
 
   /// Create a new tile.
   ///
   /// Creates a new tile. Tiles represent widgets that can display device state or actual clock.
   @POST('/dashboard-module/tiles')
-  Future<HttpResponse<DashboardResTile>> createDashboardModuleTile({
-    @Body() DashboardReqCreateTileWithParent? body,
-  });
-
-  /// Retrieve a list of all available tiles for given parent.
-  ///
-  /// Fetches a list of tiles for given parent. Tiles represent widgets that can be used for displaying data, such as device state, actual clock.
-  ///
-  /// [parent] - The ID of the type of the parent resource.
-  ///
-  /// [parentId] - The ID of the parent resource.
-  @GET('/dashboard-module/{parent}/{parentId}/tiles')
-  Future<HttpResponse<DashboardResTiles>> getDashboardModuleParentTiles({
-    @Path('parent') required String parent,
-    @Path('parentId') required String parentId,
-  });
-
-  /// Create a new tile for given parent.
-  ///
-  /// Creates a new tile for given parent. Tiles represent widgets that can display device state or actual clock.
-  ///
-  /// [parent] - The ID of the type of the parent resource.
-  ///
-  /// [parentId] - The ID of the parent resource.
-  @POST('/dashboard-module/{parent}/{parentId}/tiles')
-  Future<HttpResponse<DashboardResTile>> createDashboardModuleParentTile({
-    @Path('parent') required String parent,
-    @Path('parentId') required String parentId,
-    @Body() DashboardReqCreateTile? body,
+  Future<HttpResponse<DashboardModuleResTile>> createDashboardModuleTile({
+    @Body() DashboardModuleReqCreateTileWithParent? body,
   });
 
   /// Retrieve details of a specific tile.
@@ -122,7 +96,7 @@ abstract class DashboardModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/dashboard-module/tiles/{id}')
-  Future<HttpResponse<DashboardResTile>> getDashboardModuleTile({
+  Future<HttpResponse<DashboardModuleResTile>> getDashboardModuleTile({
     @Path('id') required String id,
   });
 
@@ -132,9 +106,9 @@ abstract class DashboardModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/dashboard-module/tiles/{id}')
-  Future<HttpResponse<DashboardResTile>> updateDashboardModuleTile({
+  Future<HttpResponse<DashboardModuleResTile>> updateDashboardModuleTile({
     @Path('id') required String id,
-    @Body() DashboardReqUpdateTile? body,
+    @Body() DashboardModuleReqUpdateTile? body,
   });
 
   /// Delete a specific tile.
@@ -150,42 +124,22 @@ abstract class DashboardModuleClient {
   /// Retrieve a list of all available data sources.
   ///
   /// Fetches a list of data sources. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.
+  ///
+  /// [parentType] - Filter data sources by the parent resource type (e.g., 'page', 'card').
+  ///
+  /// [parentId] - Filter data sources by the parent resource ID.
   @GET('/dashboard-module/data-source')
-  Future<HttpResponse<DashboardResDataSources>> getDashboardModuleDataSources();
+  Future<HttpResponse<DashboardModuleResDataSources>> getDashboardModuleDataSources({
+    @Query('parent_type') String? parentType,
+    @Query('parent_id') String? parentId,
+  });
 
   /// Create a new data source.
   ///
   /// Creates a new data source. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.
   @POST('/dashboard-module/data-source')
-  Future<HttpResponse<DashboardResDataSource>> createDashboardModuleDataSource({
-    @Body() DashboardReqCreateDataSource? body,
-  });
-
-  /// Retrieve a list of all available data sources for given parent.
-  ///
-  /// Fetches a list of data sources for given parent. Data sources represent attributes or measurements related to the tile, such as device state, weather location, or timezone.
-  ///
-  /// [parent] - The ID of the type of the parent resource.
-  ///
-  /// [parentId] - The ID of the parent resource.
-  @GET('/dashboard-module/{parent}/{parentId}/data-source')
-  Future<HttpResponse<DashboardResDataSources>> getDashboardModuleParentDataSources({
-    @Path('parent') required String parent,
-    @Path('parentId') required String parentId,
-  });
-
-  /// Create a new data source for given parent.
-  ///
-  /// Creates a new data source. The data source can include metadata such as associated device, timezone and weather location. The response contains the full representation of the created data source, including its unique identifier, associated tile, and metadata.
-  ///
-  /// [parent] - The ID of the type of the parent resource.
-  ///
-  /// [parentId] - The ID of the parent resource.
-  @POST('/dashboard-module/{parent}/{parentId}/data-source')
-  Future<HttpResponse<DashboardResDataSource>> createDashboardModuleParentDataSource({
-    @Path('parent') required String parent,
-    @Path('parentId') required String parentId,
-    @Body() DashboardReqCreateDataSourceWithParent? body,
+  Future<HttpResponse<DashboardModuleResDataSource>> createDashboardModuleDataSource({
+    @Body() DashboardModuleReqCreateDataSource? body,
   });
 
   /// Retrieve details of a specific data source.
@@ -194,7 +148,7 @@ abstract class DashboardModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/dashboard-module/data-source/{id}')
-  Future<HttpResponse<DashboardResDataSource>> getDashboardModuleDataSource({
+  Future<HttpResponse<DashboardModuleResDataSource>> getDashboardModuleDataSource({
     @Path('id') required String id,
   });
 
@@ -204,9 +158,9 @@ abstract class DashboardModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/dashboard-module/data-source/{id}')
-  Future<HttpResponse<DashboardResDataSource>> updateDashboardModuleDataSource({
+  Future<HttpResponse<DashboardModuleResDataSource>> updateDashboardModuleDataSource({
     @Path('id') required String id,
-    @Body() DashboardReqUpdateDataSource? body,
+    @Body() DashboardModuleReqUpdateDataSource? body,
   });
 
   /// Delete a specific data source.
@@ -216,67 +170,6 @@ abstract class DashboardModuleClient {
   /// [id] - The ID of the resource to retrieve.
   @DELETE('/dashboard-module/data-source/{id}')
   Future<HttpResponse<void>> deleteDashboardModuleDataSource({
-    @Path('id') required String id,
-  });
-
-  /// Retrieve a list of all available page cards.
-  ///
-  /// Fetches a list of cards associated with a specific page. Cards represent widgets that can be used for displaying data, such as device state, actual clock.
-  ///
-  /// [pageId] - The ID of the page to retrieve.
-  @GET('/dashboard-module/pages/{pageId}/cards')
-  Future<HttpResponse<DashboardResCards>> getDashboardModulePageCards({
-    @Path('pageId') required String pageId,
-  });
-
-  /// Create a new card for a page.
-  ///
-  /// Creates a new card associated with a specific page. Cards represent widgets that can display device state or actual clock.
-  ///
-  /// [pageId] - The ID of the page to retrieve.
-  @POST('/dashboard-module/pages/{pageId}/cards')
-  Future<HttpResponse<DashboardResCard>> createDashboardModulePageCard({
-    @Path('pageId') required String pageId,
-    @Body() DashboardReqCreateCard? body,
-  });
-
-  /// Retrieve details of a specific card for a page.
-  ///
-  /// Fetches detailed information about a specific card associated with a page using its unique ID. The response includes metadata such as the card’s position, ID, associated page, and tiles.
-  ///
-  /// [pageId] - The ID of the page to retrieve.
-  ///
-  /// [id] - The ID of the resource to retrieve.
-  @GET('/dashboard-module/pages/{pageId}/cards/{id}')
-  Future<HttpResponse<DashboardResCard>> getDashboardModulePageCard({
-    @Path('pageId') required String pageId,
-    @Path('id') required String id,
-  });
-
-  /// Update an existing card for a page.
-  ///
-  /// Partially updates the attributes of a specific card associated with a page using its unique ID. The update can modify metadata, such as the card’s position or title, without requiring the full object.
-  ///
-  /// [pageId] - The ID of the page to retrieve.
-  ///
-  /// [id] - The ID of the resource to retrieve.
-  @PATCH('/dashboard-module/pages/{pageId}/cards/{id}')
-  Future<HttpResponse<DashboardResCard>> updateDashboardModulePageCard({
-    @Path('pageId') required String pageId,
-    @Path('id') required String id,
-    @Body() DashboardReqUpdateCard? body,
-  });
-
-  /// Delete a specific card for a page.
-  ///
-  /// Deletes a specific card associated with a page using its unique ID. This action is irreversible and will remove the card and its associated data from the system.
-  ///
-  /// [pageId] - The ID of the page to retrieve.
-  ///
-  /// [id] - The ID of the resource to retrieve.
-  @DELETE('/dashboard-module/pages/{pageId}/cards/{id}')
-  Future<HttpResponse<void>> deleteDashboardModulePageCard({
-    @Path('pageId') required String pageId,
     @Path('id') required String id,
   });
 }

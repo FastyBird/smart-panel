@@ -18,12 +18,13 @@ class _SystemModuleClient implements SystemModuleClient {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<HttpResponse<SystemResSystemInfo>> getSystemModuleSystemInfo() async {
+  Future<HttpResponse<SystemModuleResSystemInfo>>
+      getSystemModuleSystemInfo() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<SystemResSystemInfo>>(
+    final _options = _setStreamType<HttpResponse<SystemModuleResSystemInfo>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -34,9 +35,9 @@ class _SystemModuleClient implements SystemModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late SystemResSystemInfo _value;
+    late SystemModuleResSystemInfo _value;
     try {
-      _value = SystemResSystemInfo.fromJson(_result.data!);
+      _value = SystemModuleResSystemInfo.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -46,13 +47,14 @@ class _SystemModuleClient implements SystemModuleClient {
   }
 
   @override
-  Future<HttpResponse<SystemResThrottleStatus>>
+  Future<HttpResponse<SystemModuleResThrottleStatus>>
       getSystemModuleSystemThrottle() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<SystemResThrottleStatus>>(
+    final _options =
+        _setStreamType<HttpResponse<SystemModuleResThrottleStatus>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -60,12 +62,14 @@ class _SystemModuleClient implements SystemModuleClient {
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late SystemResThrottleStatus _value;
+    late SystemModuleResThrottleStatus _value;
     try {
-      _value = SystemResThrottleStatus.fromJson(_result.data!);
+      _value = SystemModuleResThrottleStatus.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

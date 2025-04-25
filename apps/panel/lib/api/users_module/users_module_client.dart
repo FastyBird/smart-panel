@@ -5,10 +5,10 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
-import '../models/users_req_create_user.dart';
-import '../models/users_req_update_user.dart';
-import '../models/users_res_user.dart';
-import '../models/users_res_users.dart';
+import '../models/users_module_req_create_user.dart';
+import '../models/users_module_req_update_user.dart';
+import '../models/users_module_res_user.dart';
+import '../models/users_module_res_users.dart';
 
 part 'users_module_client.g.dart';
 
@@ -20,14 +20,14 @@ abstract class UsersModuleClient {
   ///
   /// Fetch a paginated list of users, including details such as usernames, emails, and roles.
   @GET('/users-module/users')
-  Future<HttpResponse<UsersResUsers>> getUsersModuleUsers();
+  Future<HttpResponse<UsersModuleResUsers>> getUsersModuleUsers();
 
   /// Create a new user.
   ///
   /// Register a new user by providing necessary details such as username, password, and optional profile information.
   @POST('/users-module/users')
-  Future<HttpResponse<UsersResUser>> createUsersModuleUser({
-    @Body() UsersReqCreateUser? body,
+  Future<HttpResponse<UsersModuleResUser>> createUsersModuleUser({
+    @Body() UsersModuleReqCreateUser? body,
   });
 
   /// Retrieve details of a specific user.
@@ -36,7 +36,7 @@ abstract class UsersModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/users-module/users/{id}')
-  Future<HttpResponse<UsersResUser>> getUsersModuleUser({
+  Future<HttpResponse<UsersModuleResUser>> getUsersModuleUser({
     @Path('id') required String id,
   });
 
@@ -46,9 +46,9 @@ abstract class UsersModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/users-module/users/{id}')
-  Future<HttpResponse<UsersResUser>> updateUsersModuleUser({
+  Future<HttpResponse<UsersModuleResUser>> updateUsersModuleUser({
     @Path('id') required String id,
-    @Body() UsersReqUpdateUser? body,
+    @Body() UsersModuleReqUpdateUser? body,
   });
 
   /// Delete an existing user.

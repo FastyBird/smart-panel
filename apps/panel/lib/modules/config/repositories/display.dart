@@ -1,7 +1,7 @@
-import 'package:fastybird_smart_panel/api/models/config_req_update_section.dart';
-import 'package:fastybird_smart_panel/api/models/config_req_update_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_res_section_data_union.dart';
-import 'package:fastybird_smart_panel/api/models/config_update_display_type.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_req_update_section.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_req_update_section_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
+import 'package:fastybird_smart_panel/api/models/config_module_update_display_type.dart';
 import 'package:fastybird_smart_panel/api/models/section.dart';
 import 'package:fastybird_smart_panel/modules/config/models/display.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/repository.dart';
@@ -118,8 +118,8 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
   }) async {
     final updated = await _updateConfiguration(
       section: Section.display,
-      data: ConfigReqUpdateSectionDataUnionDisplay(
-        type: ConfigUpdateDisplayType.display,
+      data: ConfigModuleReqUpdateSectionDataUnionDisplay(
+        type: ConfigModuleUpdateDisplayType.display,
         darkMode: darkMode ?? _getConfig().hasDarkMode,
         brightness: brightness ?? _getConfig().brightness,
         screenLockDuration:
@@ -128,7 +128,7 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
       ),
     );
 
-    if (updated is ConfigResSectionDataUnionDisplay) {
+    if (updated is ConfigModuleResSectionDataUnionDisplay) {
       data = _getConfig().copyWith(
         darkMode: updated.darkMode,
         brightness: updated.brightness,
@@ -148,7 +148,7 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
 
         final data = response.data.data;
 
-        if (data is ConfigResSectionDataUnionDisplay) {
+        if (data is ConfigModuleResSectionDataUnionDisplay) {
           final raw = response.response.data['data'] as Map<String, dynamic>;
 
           insertConfiguration(raw);
@@ -158,15 +158,15 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
     );
   }
 
-  Future<ConfigResSectionDataUnion> _updateConfiguration({
+  Future<ConfigModuleResSectionDataUnion> _updateConfiguration({
     required Section section,
-    required ConfigReqUpdateSectionDataUnion data,
+    required ConfigModuleReqUpdateSectionDataUnion data,
   }) async {
     return await handleApiCall(
       () async {
         final response = await apiClient.updateConfigModuleConfigSection(
           section: section,
-          body: ConfigReqUpdateSection(data: data),
+          body: ConfigModuleReqUpdateSection(data: data),
         );
 
         return response.data.data;

@@ -91,23 +91,4 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
       'fetch data source',
     );
   }
-
-  Future<void> fetchDataSourceForParent(
-    String parentType,
-    String parentId,
-  ) async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getDashboardModuleParentDataSources(
-          parent: parentType,
-          parentId: parentId,
-        );
-
-        final raw = response.response.data['data'] as List;
-
-        insertDataSources(raw.cast<Map<String, dynamic>>());
-      },
-      'fetch data sources',
-    );
-  }
 }

@@ -5,28 +5,28 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
-import '../models/devices_req_create_channel.dart';
-import '../models/devices_req_create_channel_control.dart';
-import '../models/devices_req_create_channel_property.dart';
-import '../models/devices_req_create_device.dart';
-import '../models/devices_req_create_device_channel.dart';
-import '../models/devices_req_create_device_control.dart';
-import '../models/devices_req_update_channel.dart';
-import '../models/devices_req_update_channel_property.dart';
-import '../models/devices_req_update_device.dart';
-import '../models/devices_res_channel.dart';
-import '../models/devices_res_channel_control.dart';
-import '../models/devices_res_channel_controls.dart';
-import '../models/devices_res_channel_properties.dart';
-import '../models/devices_res_channel_property.dart';
-import '../models/devices_res_channels.dart';
-import '../models/devices_res_device.dart';
-import '../models/devices_res_device_channel.dart';
-import '../models/devices_res_device_channels.dart';
-import '../models/devices_res_device_control.dart';
-import '../models/devices_res_device_controls.dart';
-import '../models/devices_res_devices.dart';
-import '../models/devices_third_party_device_properties_update_request.dart';
+import '../models/devices_module_req_create_channel.dart';
+import '../models/devices_module_req_create_channel_control.dart';
+import '../models/devices_module_req_create_channel_property.dart';
+import '../models/devices_module_req_create_device.dart';
+import '../models/devices_module_req_create_device_channel.dart';
+import '../models/devices_module_req_create_device_control.dart';
+import '../models/devices_module_req_update_channel.dart';
+import '../models/devices_module_req_update_channel_property.dart';
+import '../models/devices_module_req_update_device.dart';
+import '../models/devices_module_res_channel.dart';
+import '../models/devices_module_res_channel_control.dart';
+import '../models/devices_module_res_channel_controls.dart';
+import '../models/devices_module_res_channel_properties.dart';
+import '../models/devices_module_res_channel_property.dart';
+import '../models/devices_module_res_channels.dart';
+import '../models/devices_module_res_device.dart';
+import '../models/devices_module_res_device_channel.dart';
+import '../models/devices_module_res_device_channels.dart';
+import '../models/devices_module_res_device_control.dart';
+import '../models/devices_module_res_device_controls.dart';
+import '../models/devices_module_res_devices.dart';
+import '../models/devices_third_party_plugin_properties_update_request.dart';
 
 part 'devices_module_client.g.dart';
 
@@ -38,14 +38,14 @@ abstract class DevicesModuleClient {
   ///
   /// Fetches a list of all devices currently registered in the system. Each device includes its metadata (e.g., ID, name, and category), along with associated channels, controls, and properties.
   @GET('/devices-module/devices')
-  Future<HttpResponse<DevicesResDevices>> getDevicesModuleDevices();
+  Future<HttpResponse<DevicesModuleResDevices>> getDevicesModuleDevices();
 
   /// Create a new device.
   ///
   /// Creates a new device resource in the system. The request requires device-specific attributes such as category and name. The response includes the full representation of the created device, including its associated channels, controls, and properties. Additionally, a Location header is provided with the URI of the newly created resource.
   @POST('/devices-module/devices')
-  Future<HttpResponse<DevicesResDevice>> createDevicesModuleDevice({
-    @Body() DevicesReqCreateDevice? body,
+  Future<HttpResponse<DevicesModuleResDevice>> createDevicesModuleDevice({
+    @Body() DevicesModuleReqCreateDevice? body,
   });
 
   /// Retrieve details of a specific device.
@@ -54,7 +54,7 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/devices-module/devices/{id}')
-  Future<HttpResponse<DevicesResDevice>> getDevicesModuleDevice({
+  Future<HttpResponse<DevicesModuleResDevice>> getDevicesModuleDevice({
     @Path('id') required String id,
   });
 
@@ -64,9 +64,9 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/devices-module/devices/{id}')
-  Future<HttpResponse<DevicesResDevice>> updateDevicesModuleDevice({
+  Future<HttpResponse<DevicesModuleResDevice>> updateDevicesModuleDevice({
     @Path('id') required String id,
-    @Body() DevicesReqUpdateDevice? body,
+    @Body() DevicesModuleReqUpdateDevice? body,
   });
 
   /// Delete an existing device.
@@ -85,7 +85,7 @@ abstract class DevicesModuleClient {
   ///
   /// [deviceId] - The ID of the device to retrieve.
   @GET('/devices-module/devices/{deviceId}/controls')
-  Future<HttpResponse<DevicesResDeviceControls>> getDevicesModuleDeviceControls({
+  Future<HttpResponse<DevicesModuleResDeviceControls>> getDevicesModuleDeviceControls({
     @Path('deviceId') required String deviceId,
   });
 
@@ -95,9 +95,9 @@ abstract class DevicesModuleClient {
   ///
   /// [deviceId] - The ID of the device to retrieve.
   @POST('/devices-module/devices/{deviceId}/controls')
-  Future<HttpResponse<DevicesResDeviceControl>> createDevicesModuleDeviceControl({
+  Future<HttpResponse<DevicesModuleResDeviceControl>> createDevicesModuleDeviceControl({
     @Path('deviceId') required String deviceId,
-    @Body() DevicesReqCreateDeviceControl? body,
+    @Body() DevicesModuleReqCreateDeviceControl? body,
   });
 
   /// Retrieve details of a specific control for a device.
@@ -108,7 +108,7 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/devices-module/devices/{deviceId}/controls/{id}')
-  Future<HttpResponse<DevicesResDeviceControl>> getDevicesModuleDeviceControl({
+  Future<HttpResponse<DevicesModuleResDeviceControl>> getDevicesModuleDeviceControl({
     @Path('deviceId') required String deviceId,
     @Path('id') required String id,
   });
@@ -132,7 +132,7 @@ abstract class DevicesModuleClient {
   ///
   /// [deviceId] - The ID of the device to retrieve.
   @GET('/devices-module/devices/{deviceId}/channels')
-  Future<HttpResponse<DevicesResDeviceChannels>> getDevicesModuleDeviceChannels({
+  Future<HttpResponse<DevicesModuleResDeviceChannels>> getDevicesModuleDeviceChannels({
     @Path('deviceId') required String deviceId,
   });
 
@@ -142,9 +142,9 @@ abstract class DevicesModuleClient {
   ///
   /// [deviceId] - The ID of the device to retrieve.
   @POST('/devices-module/devices/{deviceId}/channels')
-  Future<HttpResponse<DevicesResDeviceChannel>> createDevicesModuleDeviceChannel({
+  Future<HttpResponse<DevicesModuleResDeviceChannel>> createDevicesModuleDeviceChannel({
     @Path('deviceId') required String deviceId,
-    @Body() DevicesReqCreateDeviceChannel? body,
+    @Body() DevicesModuleReqCreateDeviceChannel? body,
   });
 
   /// Retrieve details of a specific channel for a device.
@@ -155,7 +155,7 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/devices-module/devices/{deviceId}/channels/{id}')
-  Future<HttpResponse<DevicesResDeviceChannel>> getDevicesModuleDeviceChannel({
+  Future<HttpResponse<DevicesModuleResDeviceChannel>> getDevicesModuleDeviceChannel({
     @Path('deviceId') required String deviceId,
     @Path('id') required String id,
   });
@@ -168,10 +168,10 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/devices-module/devices/{deviceId}/channels/{id}')
-  Future<HttpResponse<DevicesResDeviceChannel>> updateDevicesModuleDeviceChannel({
+  Future<HttpResponse<DevicesModuleResDeviceChannel>> updateDevicesModuleDeviceChannel({
     @Path('deviceId') required String deviceId,
     @Path('id') required String id,
-    @Body() DevicesReqUpdateChannel? body,
+    @Body() DevicesModuleReqUpdateChannel? body,
   });
 
   /// Delete a specific channel for a device.
@@ -195,7 +195,7 @@ abstract class DevicesModuleClient {
   ///
   /// [channelId] - The ID of the channel to retrieve.
   @GET('/devices-module/devices/{deviceId}/channels/{channelId}/controls')
-  Future<HttpResponse<DevicesResChannelControls>> getDevicesModuleDeviceChannelControls({
+  Future<HttpResponse<DevicesModuleResChannelControls>> getDevicesModuleDeviceChannelControls({
     @Path('deviceId') required String deviceId,
     @Path('channelId') required String channelId,
   });
@@ -208,10 +208,10 @@ abstract class DevicesModuleClient {
   ///
   /// [channelId] - The ID of the channel to retrieve.
   @POST('/devices-module/devices/{deviceId}/channels/{channelId}/controls')
-  Future<HttpResponse<DevicesResChannelControl>> createDevicesModuleDeviceChannelControl({
+  Future<HttpResponse<DevicesModuleResChannelControl>> createDevicesModuleDeviceChannelControl({
     @Path('deviceId') required String deviceId,
     @Path('channelId') required String channelId,
-    @Body() DevicesReqCreateChannelControl? body,
+    @Body() DevicesModuleReqCreateChannelControl? body,
   });
 
   /// Retrieve details of a specific control for a device’s channel.
@@ -224,7 +224,7 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/devices-module/devices/{deviceId}/channels/{channelId}/controls/{id}')
-  Future<HttpResponse<DevicesResChannelControl>> getDevicesModuleDeviceChannelControl({
+  Future<HttpResponse<DevicesModuleResChannelControl>> getDevicesModuleDeviceChannelControl({
     @Path('deviceId') required String deviceId,
     @Path('channelId') required String channelId,
     @Path('id') required String id,
@@ -254,7 +254,7 @@ abstract class DevicesModuleClient {
   ///
   /// [channelId] - The ID of the channel to retrieve.
   @GET('/devices-module/devices/{deviceId}/channels/{channelId}/properties')
-  Future<HttpResponse<DevicesResChannelProperties>> getDevicesModuleDeviceChannelProperties({
+  Future<HttpResponse<DevicesModuleResChannelProperties>> getDevicesModuleDeviceChannelProperties({
     @Path('deviceId') required String deviceId,
     @Path('channelId') required String channelId,
   });
@@ -267,10 +267,10 @@ abstract class DevicesModuleClient {
   ///
   /// [channelId] - The ID of the channel to retrieve.
   @POST('/devices-module/devices/{deviceId}/channels/{channelId}/properties')
-  Future<HttpResponse<DevicesResChannelProperty>> createDevicesModuleDeviceChannelProperty({
+  Future<HttpResponse<DevicesModuleResChannelProperty>> createDevicesModuleDeviceChannelProperty({
     @Path('deviceId') required String deviceId,
     @Path('channelId') required String channelId,
-    @Body() DevicesReqCreateChannelProperty? body,
+    @Body() DevicesModuleReqCreateChannelProperty? body,
   });
 
   /// Retrieve details of a specific property for a device’s channel.
@@ -283,7 +283,7 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/devices-module/devices/{deviceId}/channels/{channelId}/properties/{id}')
-  Future<HttpResponse<DevicesResChannelProperty>> getDevicesModuleDeviceChannelProperty({
+  Future<HttpResponse<DevicesModuleResChannelProperty>> getDevicesModuleDeviceChannelProperty({
     @Path('deviceId') required String deviceId,
     @Path('channelId') required String channelId,
     @Path('id') required String id,
@@ -299,11 +299,11 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/devices-module/devices/{deviceId}/channels/{channelId}/properties/{id}')
-  Future<HttpResponse<DevicesResChannelProperty>> updateDevicesModuleDeviceChannelProperty({
+  Future<HttpResponse<DevicesModuleResChannelProperty>> updateDevicesModuleDeviceChannelProperty({
     @Path('deviceId') required String deviceId,
     @Path('channelId') required String channelId,
     @Path('id') required String id,
-    @Body() DevicesReqUpdateChannelProperty? body,
+    @Body() DevicesModuleReqUpdateChannelProperty? body,
   });
 
   /// Delete a specific property from a device’s channel.
@@ -326,14 +326,14 @@ abstract class DevicesModuleClient {
   ///
   /// Fetches a list of channels in the system. The response includes metadata for each channel, such as its ID, name, category, associated device, controls, and properties.
   @GET('/devices-module/channels')
-  Future<HttpResponse<DevicesResChannels>> getDevicesModuleChannels();
+  Future<HttpResponse<DevicesModuleResChannels>> getDevicesModuleChannels();
 
   /// Create a new channel.
   ///
   /// Creates a new channel in the system. The channel can have attributes such as name, category, description, and an associated device. Optionally, controls and properties can also be defined during creation.
   @POST('/devices-module/channels')
-  Future<HttpResponse<DevicesResChannel>> createDevicesModuleChannel({
-    @Body() DevicesReqCreateChannel? body,
+  Future<HttpResponse<DevicesModuleResChannel>> createDevicesModuleChannel({
+    @Body() DevicesModuleReqCreateChannel? body,
   });
 
   /// Retrieve details of a specific channel.
@@ -342,7 +342,7 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/devices-module/channels/{id}')
-  Future<HttpResponse<DevicesResChannel>> getDevicesModuleChannel({
+  Future<HttpResponse<DevicesModuleResChannel>> getDevicesModuleChannel({
     @Path('id') required String id,
   });
 
@@ -352,9 +352,9 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/devices-module/channels/{id}')
-  Future<HttpResponse<DevicesResChannel>> updateDevicesModuleChannel({
+  Future<HttpResponse<DevicesModuleResChannel>> updateDevicesModuleChannel({
     @Path('id') required String id,
-    @Body() DevicesReqUpdateChannel? body,
+    @Body() DevicesModuleReqUpdateChannel? body,
   });
 
   /// Delete an existing channel.
@@ -373,7 +373,7 @@ abstract class DevicesModuleClient {
   ///
   /// [channelId] - The ID of the channel to retrieve.
   @GET('/devices-module/channels/{channelId}/controls')
-  Future<HttpResponse<DevicesResChannelControls>> getDevicesModuleChannelControls({
+  Future<HttpResponse<DevicesModuleResChannelControls>> getDevicesModuleChannelControls({
     @Path('channelId') required String channelId,
   });
 
@@ -383,9 +383,9 @@ abstract class DevicesModuleClient {
   ///
   /// [channelId] - The ID of the channel to retrieve.
   @POST('/devices-module/channels/{channelId}/controls')
-  Future<HttpResponse<DevicesResChannelControl>> createDevicesModuleChannelControl({
+  Future<HttpResponse<DevicesModuleResChannelControl>> createDevicesModuleChannelControl({
     @Path('channelId') required String channelId,
-    @Body() DevicesReqCreateChannelControl? body,
+    @Body() DevicesModuleReqCreateChannelControl? body,
   });
 
   /// Retrieve details of a specific control for a channel.
@@ -396,7 +396,7 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/devices-module/channels/{channelId}/controls/{id}')
-  Future<HttpResponse<DevicesResChannelControl>> getDevicesModuleChannelControl({
+  Future<HttpResponse<DevicesModuleResChannelControl>> getDevicesModuleChannelControl({
     @Path('channelId') required String channelId,
     @Path('id') required String id,
   });
@@ -420,7 +420,7 @@ abstract class DevicesModuleClient {
   ///
   /// [channelId] - The ID of the channel to retrieve.
   @GET('/devices-module/channels/{channelId}/properties')
-  Future<HttpResponse<DevicesResChannelProperties>> getDevicesModuleChannelProperties({
+  Future<HttpResponse<DevicesModuleResChannelProperties>> getDevicesModuleChannelProperties({
     @Path('channelId') required String channelId,
   });
 
@@ -430,9 +430,9 @@ abstract class DevicesModuleClient {
   ///
   /// [channelId] - The ID of the channel to retrieve.
   @POST('/devices-module/channels/{channelId}/properties')
-  Future<HttpResponse<DevicesResChannelProperty>> createDevicesModuleChannelProperty({
+  Future<HttpResponse<DevicesModuleResChannelProperty>> createDevicesModuleChannelProperty({
     @Path('channelId') required String channelId,
-    @Body() DevicesReqCreateChannelProperty? body,
+    @Body() DevicesModuleReqCreateChannelProperty? body,
   });
 
   /// Retrieve details of a specific property for a channel.
@@ -443,7 +443,7 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @GET('/devices-module/channels/{channelId}/properties/{id}')
-  Future<HttpResponse<DevicesResChannelProperty>> getDevicesModuleChannelProperty({
+  Future<HttpResponse<DevicesModuleResChannelProperty>> getDevicesModuleChannelProperty({
     @Path('channelId') required String channelId,
     @Path('id') required String id,
   });
@@ -456,10 +456,10 @@ abstract class DevicesModuleClient {
   ///
   /// [id] - The ID of the resource to retrieve.
   @PATCH('/devices-module/channels/{channelId}/properties/{id}')
-  Future<HttpResponse<DevicesResChannelProperty>> updateDevicesModuleChannelProperty({
+  Future<HttpResponse<DevicesModuleResChannelProperty>> updateDevicesModuleChannelProperty({
     @Path('channelId') required String channelId,
     @Path('id') required String id,
-    @Body() DevicesReqUpdateChannelProperty? body,
+    @Body() DevicesModuleReqUpdateChannelProperty? body,
   });
 
   /// Delete an existing property for a channel.
@@ -482,6 +482,6 @@ abstract class DevicesModuleClient {
   /// **The actual webhook path must be defined on the third-party device level**, and the backend must be configured accordingly to call the correct endpoint.
   @PUT('/third-party/webhook')
   Future<HttpResponse<void>> putThirdPartyWebhook({
-    @Body() DevicesThirdPartyDevicePropertiesUpdateRequest? body,
+    @Body() DevicesThirdPartyPluginPropertiesUpdateRequest? body,
   });
 }

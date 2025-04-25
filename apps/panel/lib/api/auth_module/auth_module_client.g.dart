@@ -19,7 +19,7 @@ class _AuthModuleClient implements AuthModuleClient {
 
   @override
   Future<HttpResponse<void>> createAuthModuleRegister({
-    AuthReqRegister? body,
+    AuthModuleReqRegister? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
@@ -42,15 +42,14 @@ class _AuthModuleClient implements AuthModuleClient {
   }
 
   @override
-  Future<HttpResponse<AuthResRegisterDisplay>> createAuthModuleRegisterDisplay({
-    required String userAgent,
-  }) async {
+  Future<HttpResponse<AuthModuleResRegisterDisplay>>
+      createAuthModuleRegisterDisplay({required String userAgent}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{r'User-Agent': userAgent};
     _headers.removeWhere((k, v) => v == null);
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<AuthResRegisterDisplay>>(
+    final _options = _setStreamType<HttpResponse<AuthModuleResRegisterDisplay>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -61,9 +60,9 @@ class _AuthModuleClient implements AuthModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late AuthResRegisterDisplay _value;
+    late AuthModuleResRegisterDisplay _value;
     try {
-      _value = AuthResRegisterDisplay.fromJson(_result.data!);
+      _value = AuthModuleResRegisterDisplay.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -73,15 +72,15 @@ class _AuthModuleClient implements AuthModuleClient {
   }
 
   @override
-  Future<HttpResponse<AuthResLogin>> createAuthModuleLogin({
-    AuthReqLogin? body,
+  Future<HttpResponse<AuthModuleResLogin>> createAuthModuleLogin({
+    AuthModuleReqLogin? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<AuthResLogin>>(
+    final _options = _setStreamType<HttpResponse<AuthModuleResLogin>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -92,9 +91,9 @@ class _AuthModuleClient implements AuthModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late AuthResLogin _value;
+    late AuthModuleResLogin _value;
     try {
-      _value = AuthResLogin.fromJson(_result.data!);
+      _value = AuthModuleResLogin.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -104,15 +103,15 @@ class _AuthModuleClient implements AuthModuleClient {
   }
 
   @override
-  Future<HttpResponse<AuthResCheckUsername>> validateAuthModuleCheckUsername({
-    AuthReqCheckUsername? body,
-  }) async {
+  Future<HttpResponse<AuthModuleResCheckUsername>>
+      validateAuthModuleCheckUsername(
+          {AuthModuleReqCheckUsername? body}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<AuthResCheckUsername>>(
+    final _options = _setStreamType<HttpResponse<AuthModuleResCheckUsername>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -123,9 +122,9 @@ class _AuthModuleClient implements AuthModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late AuthResCheckUsername _value;
+    late AuthModuleResCheckUsername _value;
     try {
-      _value = AuthResCheckUsername.fromJson(_result.data!);
+      _value = AuthModuleResCheckUsername.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -135,15 +134,15 @@ class _AuthModuleClient implements AuthModuleClient {
   }
 
   @override
-  Future<HttpResponse<AuthResCheckEmail>> validateAuthModuleCheckEmail({
-    AuthReqCheckEmail? body,
+  Future<HttpResponse<AuthModuleResCheckEmail>> validateAuthModuleCheckEmail({
+    AuthModuleReqCheckEmail? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<AuthResCheckEmail>>(
+    final _options = _setStreamType<HttpResponse<AuthModuleResCheckEmail>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -154,9 +153,9 @@ class _AuthModuleClient implements AuthModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late AuthResCheckEmail _value;
+    late AuthModuleResCheckEmail _value;
     try {
-      _value = AuthResCheckEmail.fromJson(_result.data!);
+      _value = AuthModuleResCheckEmail.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -166,12 +165,12 @@ class _AuthModuleClient implements AuthModuleClient {
   }
 
   @override
-  Future<HttpResponse<AuthResProfile>> getAuthModuleProfile() async {
+  Future<HttpResponse<AuthModuleResProfile>> getAuthModuleProfile() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<AuthResProfile>>(
+    final _options = _setStreamType<HttpResponse<AuthModuleResProfile>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -182,9 +181,9 @@ class _AuthModuleClient implements AuthModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late AuthResProfile _value;
+    late AuthModuleResProfile _value;
     try {
-      _value = AuthResProfile.fromJson(_result.data!);
+      _value = AuthModuleResProfile.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -194,15 +193,15 @@ class _AuthModuleClient implements AuthModuleClient {
   }
 
   @override
-  Future<HttpResponse<AuthResRefresh>> updateAuthModuleRefresh({
-    AuthReqRefreshToken? body,
+  Future<HttpResponse<AuthModuleResRefresh>> updateAuthModuleRefresh({
+    AuthModuleReqRefreshToken? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<AuthResRefresh>>(
+    final _options = _setStreamType<HttpResponse<AuthModuleResRefresh>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -213,9 +212,9 @@ class _AuthModuleClient implements AuthModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late AuthResRefresh _value;
+    late AuthModuleResRefresh _value;
     try {
-      _value = AuthResRefresh.fromJson(_result.data!);
+      _value = AuthModuleResRefresh.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

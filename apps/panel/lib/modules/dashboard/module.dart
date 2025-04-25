@@ -31,7 +31,7 @@ class DashboardModuleService {
       apiClient: apiClient.dashboardModule,
     );
     _cardsRepository = CardsRepository(
-      apiClient: apiClient.dashboardModule,
+      apiClient: apiClient.pagesCardsPlugin,
     );
     _tilesRepository = TilesRepository(
       apiClient: apiClient.dashboardModule,

@@ -11,6 +11,7 @@ import 'dashboard_module/dashboard_module_client.dart';
 import 'configuration_module/configuration_module_client.dart';
 import 'system_module/system_module_client.dart';
 import 'weather_module/weather_module_client.dart';
+import 'pages_cards_plugin/pages_cards_plugin_client.dart';
 
 /// 🖥️ FastyBird Smart Panel API 🚀 `v1.0`.
 ///
@@ -142,6 +143,7 @@ class ApiClient {
   ConfigurationModuleClient? _configurationModule;
   SystemModuleClient? _systemModule;
   WeatherModuleClient? _weatherModule;
+  PagesCardsPluginClient? _pagesCardsPlugin;
 
   AuthModuleClient get authModule => _authModule ??= AuthModuleClient(_dio, baseUrl: _baseUrl);
 
@@ -156,4 +158,6 @@ class ApiClient {
   SystemModuleClient get systemModule => _systemModule ??= SystemModuleClient(_dio, baseUrl: _baseUrl);
 
   WeatherModuleClient get weatherModule => _weatherModule ??= WeatherModuleClient(_dio, baseUrl: _baseUrl);
+
+  PagesCardsPluginClient get pagesCardsPlugin => _pagesCardsPlugin ??= PagesCardsPluginClient(_dio, baseUrl: _baseUrl);
 }

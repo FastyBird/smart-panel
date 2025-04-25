@@ -18,12 +18,12 @@ class _UsersModuleClient implements UsersModuleClient {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<HttpResponse<UsersResUsers>> getUsersModuleUsers() async {
+  Future<HttpResponse<UsersModuleResUsers>> getUsersModuleUsers() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<UsersResUsers>>(
+    final _options = _setStreamType<HttpResponse<UsersModuleResUsers>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -34,9 +34,9 @@ class _UsersModuleClient implements UsersModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late UsersResUsers _value;
+    late UsersModuleResUsers _value;
     try {
-      _value = UsersResUsers.fromJson(_result.data!);
+      _value = UsersModuleResUsers.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -46,15 +46,15 @@ class _UsersModuleClient implements UsersModuleClient {
   }
 
   @override
-  Future<HttpResponse<UsersResUser>> createUsersModuleUser({
-    UsersReqCreateUser? body,
+  Future<HttpResponse<UsersModuleResUser>> createUsersModuleUser({
+    UsersModuleReqCreateUser? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<UsersResUser>>(
+    final _options = _setStreamType<HttpResponse<UsersModuleResUser>>(
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -65,9 +65,9 @@ class _UsersModuleClient implements UsersModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late UsersResUser _value;
+    late UsersModuleResUser _value;
     try {
-      _value = UsersResUser.fromJson(_result.data!);
+      _value = UsersModuleResUser.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -77,14 +77,14 @@ class _UsersModuleClient implements UsersModuleClient {
   }
 
   @override
-  Future<HttpResponse<UsersResUser>> getUsersModuleUser({
+  Future<HttpResponse<UsersModuleResUser>> getUsersModuleUser({
     required String id,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<UsersResUser>>(
+    final _options = _setStreamType<HttpResponse<UsersModuleResUser>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -95,9 +95,9 @@ class _UsersModuleClient implements UsersModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late UsersResUser _value;
+    late UsersModuleResUser _value;
     try {
-      _value = UsersResUser.fromJson(_result.data!);
+      _value = UsersModuleResUser.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -107,16 +107,16 @@ class _UsersModuleClient implements UsersModuleClient {
   }
 
   @override
-  Future<HttpResponse<UsersResUser>> updateUsersModuleUser({
+  Future<HttpResponse<UsersModuleResUser>> updateUsersModuleUser({
     required String id,
-    UsersReqUpdateUser? body,
+    UsersModuleReqUpdateUser? body,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
     final _data = body;
-    final _options = _setStreamType<HttpResponse<UsersResUser>>(
+    final _options = _setStreamType<HttpResponse<UsersModuleResUser>>(
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
@@ -127,9 +127,9 @@ class _UsersModuleClient implements UsersModuleClient {
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late UsersResUser _value;
+    late UsersModuleResUser _value;
     try {
-      _value = UsersResUser.fromJson(_result.data!);
+      _value = UsersModuleResUser.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

@@ -90,23 +90,4 @@ class TilesRepository extends Repository<TileModel> {
       'fetch tile',
     );
   }
-
-  Future<void> fetchTiles(
-    String parentType,
-    String parentId,
-  ) async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getDashboardModuleParentTiles(
-          parent: parentType,
-          parentId: parentId,
-        );
-
-        final raw = response.response.data['data'] as List;
-
-        insertTiles(raw.cast<Map<String, dynamic>>());
-      },
-      'fetch tiles',
-    );
-  }
 }
