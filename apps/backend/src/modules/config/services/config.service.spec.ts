@@ -380,8 +380,6 @@ describe('ConfigService', () => {
 
 			service['loadConfig']();
 
-			class MockConfig extends BaseConfigEntity {}
-
 			expect(() => service.getPluginConfig('invalid')).toThrow(ConfigNotFoundException);
 
 			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
@@ -394,7 +392,7 @@ describe('ConfigService', () => {
 	});
 
 	describe('setPluginConfig', () => {
-		it('should update a plugin configuration and save it to YAML', async () => {
+		it('should update a plugin configuration and save it to YAML', () => {
 			const updatedPluginConfig: PluginConfigDto = {
 				type: 'mock',
 				mock_value: 'Updated value',
@@ -418,7 +416,7 @@ describe('ConfigService', () => {
 			const mockYamlStringify = jest.spyOn(yaml, 'stringify');
 			const mockFsWriteFileSync = jest.spyOn(fs, 'writeFileSync');
 
-			await service.setPluginConfig('mock', updatedPluginConfig);
+			service.setPluginConfig('mock', updatedPluginConfig);
 
 			expect(service['config'].plugins[0]).toEqual(mergedConfig);
 
@@ -434,7 +432,7 @@ describe('ConfigService', () => {
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CONFIG_UPDATED, service['config']);
 		});
 
-		it('should throw validation errors for an invalid update', async () => {
+		it('should throw validation errors for an invalid update', () => {
 			const invalidUpdateDto: PluginConfigDto & { invalidField: string } = {
 				type: 'mock',
 				invalidField: 'value',
