@@ -31,6 +31,7 @@ mixin _$ConfigModuleApp {
 
   /// Weather settings, including location, unit preferences, and API integration.
   ConfigModuleWeather get weather => throw _privateConstructorUsedError;
+  List<ConfigModulePlugin> get plugins => throw _privateConstructorUsedError;
 
   /// Serializes this ConfigModuleApp to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -52,7 +53,8 @@ abstract class $ConfigModuleAppCopyWith<$Res> {
       {ConfigModuleAudio audio,
       ConfigModuleDisplay display,
       ConfigModuleLanguage language,
-      ConfigModuleWeather weather});
+      ConfigModuleWeather weather,
+      List<ConfigModulePlugin> plugins});
 
   $ConfigModuleAudioCopyWith<$Res> get audio;
   $ConfigModuleDisplayCopyWith<$Res> get display;
@@ -79,6 +81,7 @@ class _$ConfigModuleAppCopyWithImpl<$Res, $Val extends ConfigModuleApp>
     Object? display = null,
     Object? language = null,
     Object? weather = null,
+    Object? plugins = null,
   }) {
     return _then(_value.copyWith(
       audio: null == audio
@@ -97,6 +100,10 @@ class _$ConfigModuleAppCopyWithImpl<$Res, $Val extends ConfigModuleApp>
           ? _value.weather
           : weather // ignore: cast_nullable_to_non_nullable
               as ConfigModuleWeather,
+      plugins: null == plugins
+          ? _value.plugins
+          : plugins // ignore: cast_nullable_to_non_nullable
+              as List<ConfigModulePlugin>,
     ) as $Val);
   }
 
@@ -153,7 +160,8 @@ abstract class _$$ConfigModuleAppImplCopyWith<$Res>
       {ConfigModuleAudio audio,
       ConfigModuleDisplay display,
       ConfigModuleLanguage language,
-      ConfigModuleWeather weather});
+      ConfigModuleWeather weather,
+      List<ConfigModulePlugin> plugins});
 
   @override
   $ConfigModuleAudioCopyWith<$Res> get audio;
@@ -182,6 +190,7 @@ class __$$ConfigModuleAppImplCopyWithImpl<$Res>
     Object? display = null,
     Object? language = null,
     Object? weather = null,
+    Object? plugins = null,
   }) {
     return _then(_$ConfigModuleAppImpl(
       audio: null == audio
@@ -200,6 +209,10 @@ class __$$ConfigModuleAppImplCopyWithImpl<$Res>
           ? _value.weather
           : weather // ignore: cast_nullable_to_non_nullable
               as ConfigModuleWeather,
+      plugins: null == plugins
+          ? _value._plugins
+          : plugins // ignore: cast_nullable_to_non_nullable
+              as List<ConfigModulePlugin>,
     ));
   }
 }
@@ -211,7 +224,9 @@ class _$ConfigModuleAppImpl implements _ConfigModuleApp {
       {required this.audio,
       required this.display,
       required this.language,
-      required this.weather});
+      required this.weather,
+      required final List<ConfigModulePlugin> plugins})
+      : _plugins = plugins;
 
   factory _$ConfigModuleAppImpl.fromJson(Map<String, dynamic> json) =>
       _$$ConfigModuleAppImplFromJson(json);
@@ -231,10 +246,17 @@ class _$ConfigModuleAppImpl implements _ConfigModuleApp {
   /// Weather settings, including location, unit preferences, and API integration.
   @override
   final ConfigModuleWeather weather;
+  final List<ConfigModulePlugin> _plugins;
+  @override
+  List<ConfigModulePlugin> get plugins {
+    if (_plugins is EqualUnmodifiableListView) return _plugins;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_plugins);
+  }
 
   @override
   String toString() {
-    return 'ConfigModuleApp(audio: $audio, display: $display, language: $language, weather: $weather)';
+    return 'ConfigModuleApp(audio: $audio, display: $display, language: $language, weather: $weather, plugins: $plugins)';
   }
 
   @override
@@ -246,13 +268,14 @@ class _$ConfigModuleAppImpl implements _ConfigModuleApp {
             (identical(other.display, display) || other.display == display) &&
             (identical(other.language, language) ||
                 other.language == language) &&
-            (identical(other.weather, weather) || other.weather == weather));
+            (identical(other.weather, weather) || other.weather == weather) &&
+            const DeepCollectionEquality().equals(other._plugins, _plugins));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, audio, display, language, weather);
+  int get hashCode => Object.hash(runtimeType, audio, display, language,
+      weather, const DeepCollectionEquality().hash(_plugins));
 
   /// Create a copy of ConfigModuleApp
   /// with the given fields replaced by the non-null parameter values.
@@ -276,7 +299,8 @@ abstract class _ConfigModuleApp implements ConfigModuleApp {
       {required final ConfigModuleAudio audio,
       required final ConfigModuleDisplay display,
       required final ConfigModuleLanguage language,
-      required final ConfigModuleWeather weather}) = _$ConfigModuleAppImpl;
+      required final ConfigModuleWeather weather,
+      required final List<ConfigModulePlugin> plugins}) = _$ConfigModuleAppImpl;
 
   factory _ConfigModuleApp.fromJson(Map<String, dynamic> json) =
       _$ConfigModuleAppImpl.fromJson;
@@ -296,6 +320,8 @@ abstract class _ConfigModuleApp implements ConfigModuleApp {
   /// Weather settings, including location, unit preferences, and API integration.
   @override
   ConfigModuleWeather get weather;
+  @override
+  List<ConfigModulePlugin> get plugins;
 
   /// Create a copy of ConfigModuleApp
   /// with the given fields replaced by the non-null parameter values.

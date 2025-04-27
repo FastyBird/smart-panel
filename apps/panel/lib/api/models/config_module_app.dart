@@ -7,6 +7,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'config_module_audio.dart';
 import 'config_module_display.dart';
 import 'config_module_language.dart';
+import 'config_module_plugin.dart';
 import 'config_module_weather.dart';
 
 part 'config_module_app.freezed.dart';
@@ -27,6 +28,7 @@ class ConfigModuleApp with _$ConfigModuleApp {
 
     /// Weather settings, including location, unit preferences, and API integration.
     required ConfigModuleWeather weather,
+    required List<ConfigModulePlugin> plugins,
   }) = _ConfigModuleApp;
   
   factory ConfigModuleApp.fromJson(Map<String, Object?> json) => _$ConfigModuleAppFromJson(json);

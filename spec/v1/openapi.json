@@ -4721,7 +4721,8 @@
                           "location_type": "city_name",
                           "unit": "celsius",
                           "open_weather_api_key": "string"
-                        }
+                        },
+                        "plugins": []
                       },
                       "metadata": {
                         "request_duration_ms": 57,
@@ -4838,7 +4839,7 @@
         "description": "Updates a specific configuration section, such as audio, display, language, or weather. Only the provided fields will be modified.",
         "operationId": "update-config-module-config-section",
         "requestBody": {
-          "description": "Request body for updating audio configuration, allowing modifications to speaker and microphone settings.",
+          "description": "Request body for updating configuration section.",
           "content": {
             "application/json": {
               "schema": {
@@ -4882,6 +4883,151 @@
                         "speaker_volume": 50,
                         "microphone": false,
                         "microphone_volume": 50
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/config-module/config/plugin/{plugin}": {
+      "parameters": [
+        {
+          "schema": {
+            "type": "string",
+            "example": "custom-plugin"
+          },
+          "name": "plugin",
+          "in": "path",
+          "required": true,
+          "description": "The configuration plugin name."
+        }
+      ],
+      "get": {
+        "tags": [
+          "Configuration module"
+        ],
+        "summary": "Retrieve specific plugin configuration",
+        "description": "Retrieves a specific plugin configuration.",
+        "operationId": "get-config-module-config-plugin",
+        "responses": {
+          "200": {
+            "description": "Response containing the current plugin configuration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigModuleResPlugin"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/config-module/plugin/custom-plugin",
+                      "method": "GET",
+                      "data": {
+                        "type": "custom-plugin"
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Configuration module"
+        ],
+        "summary": "Update specific plugin configuration",
+        "description": "Updates a specific plugin configuration. Only the provided fields will be modified.",
+        "operationId": "update-config-module-config-plugin",
+        "requestBody": {
+          "description": "Request body for updating plugin configuration.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigModuleReqUpdatePlugin"
+              },
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "data": {
+                      "type": "custom-plugin"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response containing the current plugin configuration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigModuleResPlugin"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/config-module/plugin/custom-plugin",
+                      "method": "PATCH",
+                      "data": {
+                        "type": "custom-plugin"
                       },
                       "metadata": {
                         "request_duration_ms": 57,
@@ -5693,10 +5839,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "r0r4asewwzff6"
-        }
+        ]
       },
       "post": {
         "summary": "Create a new card for a page",
@@ -5752,10 +5895,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "byzz3hb8ofsng"
-        }
+        ]
       }
     },
     "/pages-cards-plugin/cards/{id}": {
@@ -5799,10 +5939,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "zg2byzr3wlyvo"
-        }
+        ]
       },
       "patch": {
         "summary": "Update an existing card for a page",
@@ -5860,10 +5997,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "s3daf6yxw8mng"
-        }
+        ]
       },
       "delete": {
         "summary": "Delete a specific card for a page",
@@ -5893,10 +6027,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "qg2xlduh6nefe"
-        }
+        ]
       }
     }
   },
@@ -5904,9 +6035,6 @@
     "schemas": {
       "AuthModuleRegister": {
         "title": "Register",
-        "x-stoplight": {
-          "id": "05cf32c62d885"
-        },
         "description": "Schema for user registration.",
         "type": "object",
         "required": [
@@ -5954,9 +6082,6 @@
       },
       "AuthModuleCheckUsername": {
         "title": "Check Username",
-        "x-stoplight": {
-          "id": "4eea7b7e335fd"
-        },
         "description": "Schema for checking username availability.",
         "type": "object",
         "required": [
@@ -5977,9 +6102,6 @@
       },
       "AuthModuleCheckEmail": {
         "title": "Check Email",
-        "x-stoplight": {
-          "id": "e297cb1b703a1"
-        },
         "description": "Schema for checking email availability.",
         "type": "object",
         "required": [
@@ -6001,9 +6123,6 @@
       },
       "AuthModuleLogin": {
         "title": "Login",
-        "x-stoplight": {
-          "id": "3cd4c3cf9a07a"
-        },
         "description": "Schema for user authentication.",
         "type": "object",
         "required": [
@@ -6032,9 +6151,6 @@
       },
       "AuthModuleRefreshToken": {
         "title": "Refresh Access Token",
-        "x-stoplight": {
-          "id": "0762d24825723"
-        },
         "description": "Schema for refreshing user access token.",
         "type": "object",
         "required": [
@@ -6055,9 +6171,6 @@
       },
       "AuthModuleTokenPair": {
         "title": "Token Pair",
-        "x-stoplight": {
-          "id": "f692a82ea55c6"
-        },
         "description": "Schema for access and refresh tokens for an authenticated session.",
         "type": "object",
         "required": [
@@ -6101,9 +6214,6 @@
       },
       "AuthModuleValidation": {
         "title": "Validation",
-        "x-stoplight": {
-          "id": "36744685bf3b4"
-        },
         "description": "Schema for validation result.",
         "type": "object",
         "required": [
@@ -6124,9 +6234,6 @@
       },
       "AuthModuleDisplaySecret": {
         "title": "Display Secret",
-        "x-stoplight": {
-          "id": "3e35b20c8f82c"
-        },
         "description": "Schema for display registration result.",
         "type": "object",
         "required": [
@@ -6147,9 +6254,6 @@
       },
       "AuthModuleReqRegister": {
         "title": "Register Request",
-        "x-stoplight": {
-          "id": "607afe1568691"
-        },
         "description": "Request schema for user registration.",
         "type": "object",
         "required": [
@@ -6174,9 +6278,6 @@
       },
       "AuthModuleReqCheckUsername": {
         "title": "Check Username Request",
-        "x-stoplight": {
-          "id": "a3d6a402e20d9"
-        },
         "description": "Request schema for username validation.",
         "type": "object",
         "required": [
@@ -6197,9 +6298,6 @@
       },
       "AuthModuleReqCheckEmail": {
         "title": "Check Email Request",
-        "x-stoplight": {
-          "id": "ccc4af3444982"
-        },
         "description": "Request schema for email validation.",
         "type": "object",
         "required": [
@@ -6220,9 +6318,6 @@
       },
       "AuthModuleReqLogin": {
         "title": "Login Request",
-        "x-stoplight": {
-          "id": "a9a6c325050ba"
-        },
         "description": "Request schema for user authentication.",
         "type": "object",
         "required": [
@@ -6244,9 +6339,6 @@
       },
       "AuthModuleReqRefreshToken": {
         "title": "Refresh Access Token Request",
-        "x-stoplight": {
-          "id": "7678831c0e681"
-        },
         "description": "Request schema for user access token refresh.",
         "type": "object",
         "required": [
@@ -6267,9 +6359,6 @@
       },
       "AuthModuleResCheckUsername": {
         "title": "Validation Response",
-        "x-stoplight": {
-          "id": "39e18afdb1a9d"
-        },
         "description": "Response schema indicating the result of a username validation request.",
         "type": "object",
         "required": [
@@ -6349,9 +6438,6 @@
       },
       "AuthModuleResCheckEmail": {
         "title": "Validation Response",
-        "x-stoplight": {
-          "id": "c953cafe7cb94"
-        },
         "description": "Response schema indicating the result of a email validation request.",
         "type": "object",
         "required": [
@@ -6431,9 +6517,6 @@
       },
       "AuthModuleResLogin": {
         "title": "Login Response",
-        "x-stoplight": {
-          "id": "755f119d70616"
-        },
         "description": "Response schema returned after successful user authentication.",
         "type": "object",
         "required": [
@@ -6516,9 +6599,6 @@
       },
       "AuthModuleResRefresh": {
         "title": "Refresh Access Token Response",
-        "x-stoplight": {
-          "id": "370aa70d0ff82"
-        },
         "description": "Response schema returned after successful user access token refresh.",
         "type": "object",
         "required": [
@@ -6601,9 +6681,6 @@
       },
       "AuthModuleResRegisterDisplay": {
         "title": "Register Display Response",
-        "x-stoplight": {
-          "id": "ab28954846d42"
-        },
         "description": "Response returned after successfully registering a display.",
         "type": "object",
         "required": [
@@ -6683,9 +6760,6 @@
       },
       "AuthModuleResProfile": {
         "title": "Profile Response",
-        "x-stoplight": {
-          "id": "3fb26da0c8595"
-        },
         "description": "Response schema containing details about the authenticated user's profile.",
         "type": "object",
         "required": [
@@ -6773,9 +6847,6 @@
       },
       "UsersModuleUser": {
         "title": "User",
-        "x-stoplight": {
-          "id": "96a6666b4835d"
-        },
         "description": "Schema for a registered user within the system.",
         "type": "object",
         "required": [
@@ -6868,9 +6939,6 @@
       },
       "UsersModuleCreateUser": {
         "title": "Create User",
-        "x-stoplight": {
-          "id": "7c005b584d8ae"
-        },
         "description": "Schema for creating a new user account.",
         "type": "object",
         "required": [
@@ -6942,9 +7010,6 @@
       },
       "UsersModuleUpdateUser": {
         "title": "Update User",
-        "x-stoplight": {
-          "id": "c7ba70c1b9375"
-        },
         "description": "Schema for modifying an existing user account.",
         "type": "object",
         "properties": {
@@ -6997,9 +7062,6 @@
       },
       "UsersModuleReqCreateUser": {
         "title": "Create User Request",
-        "x-stoplight": {
-          "id": "470f6227616d2"
-        },
         "description": "Request schema for creating new user.",
         "type": "object",
         "required": [
@@ -7026,9 +7088,6 @@
       },
       "UsersModuleReqUpdateUser": {
         "title": "Update User Request",
-        "x-stoplight": {
-          "id": "34751787b97a6"
-        },
         "description": "Request schema for updating an existing user.",
         "type": "object",
         "required": [
@@ -7468,36 +7527,29 @@
           }
         ]
       },
-      "ConfigModuleApp": {
-        "title": "Configuration",
-        "x-stoplight": {
-          "id": "c023099ddd28d"
-        },
+      "ConfigModulePlugin": {
+        "title": "Plugin",
+        "description": "Schema for plugin configuration.",
         "type": "object",
         "required": [
-          "audio",
-          "display",
-          "language",
-          "weather"
+          "type"
         ],
         "properties": {
-          "audio": {
-            "$ref": "#/components/schemas/ConfigModuleAudio",
-            "description": "Audio configuration settings, including speaker and microphone options."
-          },
-          "display": {
-            "$ref": "#/components/schemas/ConfigModuleDisplay",
-            "description": "Display settings, including brightness, dark mode, and screen lock duration."
-          },
-          "language": {
-            "$ref": "#/components/schemas/ConfigModuleLanguage",
-            "description": "Language and localization settings, including time zone and time format."
-          },
-          "weather": {
-            "$ref": "#/components/schemas/ConfigModuleWeather",
-            "description": "Weather settings, including location, unit preferences, and API integration."
+          "type": {
+            "type": "string",
+            "description": "Configuration plugin type",
+            "default": "custom-plugin"
           }
         },
+        "examples": [
+          {
+            "type": "custom-plugin"
+          }
+        ]
+      },
+      "ConfigModuleApp": {
+        "title": "Configuration",
+        "type": "object",
         "description": "Schema for the complete configuration settings for the smart panel, including audio, display, language, and weather settings.",
         "examples": [
           {
@@ -7529,7 +7581,38 @@
               "open_weather_api_key": "string"
             }
           }
-        ]
+        ],
+        "required": [
+          "audio",
+          "display",
+          "language",
+          "weather",
+          "plugins"
+        ],
+        "properties": {
+          "audio": {
+            "$ref": "#/components/schemas/ConfigModuleAudio",
+            "description": "Audio configuration settings, including speaker and microphone options."
+          },
+          "display": {
+            "$ref": "#/components/schemas/ConfigModuleDisplay",
+            "description": "Display settings, including brightness, dark mode, and screen lock duration."
+          },
+          "language": {
+            "$ref": "#/components/schemas/ConfigModuleLanguage",
+            "description": "Language and localization settings, including time zone and time format."
+          },
+          "weather": {
+            "$ref": "#/components/schemas/ConfigModuleWeather",
+            "description": "Weather settings, including location, unit preferences, and API integration."
+          },
+          "plugins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigModulePlugin"
+            }
+          }
+        }
       },
       "ConfigModuleUpdateAudio": {
         "title": "Update Audio",
@@ -7744,11 +7827,27 @@
           }
         ]
       },
+      "ConfigModuleUpdatePlugin": {
+        "title": "Update Plugin",
+        "description": "Schema for partial update settings for plugin configuration.",
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Configuration plugin type"
+          }
+        },
+        "examples": [
+          {
+            "type": "custom-plugin"
+          }
+        ]
+      },
       "ConfigModuleReqUpdateSection": {
         "title": "Update Section",
-        "x-stoplight": {
-          "id": "0129d2337ee6e"
-        },
         "type": "object",
         "required": [
           "data"
@@ -7793,11 +7892,28 @@
           }
         ]
       },
+      "ConfigModuleReqUpdatePlugin": {
+        "title": "Update Plugin",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConfigModuleUpdatePlugin"
+          }
+        },
+        "description": "Request schema for partial updating a configuration plugin.",
+        "examples": [
+          {
+            "data": {
+              "type": "custom-plugin"
+            }
+          }
+        ]
+      },
       "ConfigModuleResApp": {
         "title": "Configuration Response",
-        "x-stoplight": {
-          "id": "3f442903867f5"
-        },
         "description": "Response schema containing complete configuration settings for the smart panel, including audio, display, language, and weather settings.",
         "type": "object",
         "required": [
@@ -7903,9 +8019,6 @@
       },
       "ConfigModuleResSection": {
         "title": "Configuration Section Response",
-        "x-stoplight": {
-          "id": "ade02b431fe71"
-        },
         "type": "object",
         "required": [
           "status",
@@ -7999,6 +8112,84 @@
               "speaker_volume": 50,
               "microphone": false,
               "microphone_volume": 50
+            },
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "ConfigModuleResPlugin": {
+        "title": "Configuration Plugin Response",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/config-module/config/plugin/custom-plugin",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/ConfigModulePlugin"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "description": "Response containing a specific plugin of the smart panel configuration, like custom-plugin.",
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/config-module/config/audio",
+            "method": "GET",
+            "data": {
+              "type": "custom-plugin"
             },
             "metadata": {
               "request_duration_ms": 57,
@@ -8693,9 +8884,6 @@
       },
       "DevicesModuleUpdateDevice": {
         "title": "Update Device",
-        "x-stoplight": {
-          "id": "04ec273e5b9b7"
-        },
         "description": "Schema for updating basic details of a device, including its name and description.",
         "type": "object",
         "properties": {
@@ -8872,9 +9060,6 @@
       },
       "DevicesModuleReqUpdateDevice": {
         "title": "Update Device Request",
-        "x-stoplight": {
-          "id": "b534f3b13fa0d"
-        },
         "description": "Request schema for updating an existing device.",
         "type": "object",
         "required": [
@@ -10382,9 +10567,6 @@
       },
       "DashboardModuleReqCreatePage": {
         "title": "Create Page Request",
-        "x-stoplight": {
-          "id": "a80bf6a049118"
-        },
         "description": "Request schema for creating new page.",
         "type": "object",
         "required": [
@@ -10516,9 +10698,6 @@
       },
       "DashboardModuleReqUpdatePage": {
         "title": "Update Page Request",
-        "x-stoplight": {
-          "id": "351522775cdfb"
-        },
         "description": "Request schema for updating an existing page.",
         "type": "object",
         "required": [
@@ -10532,9 +10711,6 @@
       },
       "DashboardModuleReqUpdateTile": {
         "title": "Update Tile Request",
-        "x-stoplight": {
-          "id": "d91761d2945e9"
-        },
         "description": "Request schema for updating an existing tile.",
         "type": "object",
         "required": [
@@ -10548,9 +10724,6 @@
       },
       "DashboardModuleReqUpdateDataSource": {
         "title": "Update Data Source Request",
-        "x-stoplight": {
-          "id": "212b6d6e14b5b"
-        },
         "description": "Request schema for updating an existing data source.",
         "type": "object",
         "required": [
@@ -10945,9 +11118,6 @@
       },
       "SystemModuleMemoryInfo": {
         "title": "Memory Info",
-        "x-stoplight": {
-          "id": "1f8a0e952545f"
-        },
         "description": "Schema for a details about total, used, and free memory on the system.",
         "type": "object",
         "required": [
@@ -10985,9 +11155,6 @@
       },
       "SystemModuleStorageInfo": {
         "title": "Storage Info",
-        "x-stoplight": {
-          "id": "2e12b8f3b2c73"
-        },
         "description": "Schema for a details about system storage, including file system, usage, and available space.",
         "type": "object",
         "required": [
@@ -11033,9 +11200,6 @@
       },
       "SystemModuleTemperatureInfo": {
         "title": "Temperature Info",
-        "x-stoplight": {
-          "id": "8d79dc0b6a611"
-        },
         "description": "Schema for the current temperature of system components like CPU and GPU.",
         "type": "object",
         "properties": {
@@ -11063,9 +11227,6 @@
       },
       "SystemModuleOperatingSystemInfo": {
         "title": "Operating System Info",
-        "x-stoplight": {
-          "id": "b8c13d4cd58cc"
-        },
         "description": "Schema for a information about the operating system, including distribution, version, and uptime.",
         "type": "object",
         "required": [
@@ -11111,9 +11272,6 @@
       },
       "SystemModuleDisplayInfo": {
         "title": "Display Info",
-        "x-stoplight": {
-          "id": "8027fbf8b9877"
-        },
         "description": "Schema for a information about the display resolution and current screen resolution.",
         "type": "object",
         "required": [
@@ -11159,9 +11317,6 @@
       },
       "SystemModuleNetworkStats": {
         "title": "Network Stats",
-        "x-stoplight": {
-          "id": "0a4f8a68bf022"
-        },
         "description": "Schema for a network statistics, including interface, received/transmitted bytes, and speed.",
         "type": "object",
         "required": [
@@ -11192,9 +11347,6 @@
       },
       "SystemModuleDefaultNetwork": {
         "title": "Default Network Info",
-        "x-stoplight": {
-          "id": "354be2229a257"
-        },
         "description": "Schema for a default network info, including interface, ip addresses and mac address.",
         "type": "object",
         "required": [
@@ -11232,9 +11384,6 @@
       },
       "SystemModuleSystemInfo": {
         "title": "System Info",
-        "x-stoplight": {
-          "id": "4cba62691b349"
-        },
         "description": "Schema for a detailed information about the system, including CPU load, memory, storage, temperature, operating system, network, and display.",
         "type": "object",
         "required": [
@@ -11338,9 +11487,6 @@
       },
       "SystemModuleThrottleStatus": {
         "title": "Throttle Status",
-        "x-stoplight": {
-          "id": "38fb4beaa612d"
-        },
         "description": "Schema that indicates whether the system has encountered throttling, frequency capping, or undervoltage conditions.",
         "type": "object",
         "required": [
@@ -11386,9 +11532,6 @@
       },
       "SystemModuleResSystemInfo": {
         "title": "System Info Response",
-        "x-stoplight": {
-          "id": "09b3edaeaf33f"
-        },
         "description": "Response containing detailed system information, including CPU load, memory usage, storage, temperature, OS, network, and display details.",
         "type": "object",
         "required": [
@@ -11510,9 +11653,6 @@
       },
       "SystemModuleResThrottleStatus": {
         "title": "Throttle Status Response",
-        "x-stoplight": {
-          "id": "05ddc00e34d15"
-        },
         "description": "Response indicating whether the system has experienced any throttling, frequency capping, or undervoltage conditions.",
         "type": "object",
         "required": [
@@ -11595,9 +11735,6 @@
       },
       "WeatherModuleWeather": {
         "title": "Weather Condition",
-        "x-stoplight": {
-          "id": "5969c160d79b5"
-        },
         "description": "Schema for the current weather condition, including description and icon.",
         "type": "object",
         "required": [
@@ -11639,9 +11776,6 @@
       },
       "WeatherModuleWind": {
         "title": "Wind Conditions",
-        "x-stoplight": {
-          "id": "44a2f69cda008"
-        },
         "description": "Schema for describing the wind conditions at the specified location.",
         "type": "object",
         "required": [
@@ -11677,9 +11811,6 @@
       },
       "WeatherModuleLocation": {
         "title": "Location Details",
-        "x-stoplight": {
-          "id": "0935db440b996"
-        },
         "description": "Schema for the geographical location of the weather data.",
         "type": "object",
         "required": [
@@ -11707,9 +11838,6 @@
       },
       "WeatherModuleCurrentDay": {
         "description": "Schema for a specific day, including temperature, wind, and precipitation.",
-        "x-stoplight": {
-          "id": "38dd61a7eea96"
-        },
         "type": "object",
         "title": "Daily Weather Report",
         "required": [
@@ -11834,9 +11962,6 @@
       },
       "WeatherModuleForecastDay": {
         "description": "Schema for a forecasted day, including temperature, wind, and precipitation.",
-        "x-stoplight": {
-          "id": "adb2731b333a7"
-        },
         "type": "object",
         "title": "Forecast Weather Report",
         "required": [
@@ -12049,9 +12174,6 @@
       },
       "WeatherModuleLocationWeather": {
         "title": "Location Weather",
-        "x-stoplight": {
-          "id": "052ce606c69b0"
-        },
         "description": "Schema form current weather conditions and forecast details for a specific location.",
         "type": "object",
         "required": [
@@ -12151,9 +12273,6 @@
       },
       "WeatherModuleGeolocation": {
         "title": "Geolocation",
-        "x-stoplight": {
-          "id": "25d0abd213329"
-        },
         "description": "Represents geographical location details, including city name, coordinates, and country information.",
         "type": "object",
         "required": [
@@ -12215,9 +12334,6 @@
       },
       "WeatherModuleResLocationWeather": {
         "title": "Location Weather Response",
-        "x-stoplight": {
-          "id": "ee2b55527fb5f"
-        },
         "description": "Response containing detailed weather conditions and forecast for a specified location.",
         "type": "object",
         "required": [
@@ -12364,9 +12480,6 @@
       },
       "WeatherModuleResLocationCurrent": {
         "title": "Location Current Day Response",
-        "x-stoplight": {
-          "id": "43531a0e1f284"
-        },
         "type": "object",
         "description": "Response containing detailed weather conditions for a current day and for a specified location.",
         "properties": {
@@ -12459,9 +12572,6 @@
       },
       "WeatherModuleResLocationForecast": {
         "title": "LocationForecast",
-        "x-stoplight": {
-          "id": "c3371785b439f"
-        },
         "type": "object",
         "description": "Response containing detailed weather conditions forecast for a specified location.",
         "properties": {
@@ -12571,9 +12681,6 @@
       },
       "WeatherModuleResGeolocationCityToCoordinates": {
         "title": "City to Coordinates Geolocation Response",
-        "x-stoplight": {
-          "id": "fa8861ec6ff08"
-        },
         "description": "Response providing latitude and longitude coordinates for a given city name.",
         "type": "object",
         "required": [
@@ -12661,9 +12768,6 @@
       },
       "WeatherModuleResGeolocationCoordinatesToCity": {
         "title": "Coordinates to City Geolocation Response",
-        "x-stoplight": {
-          "id": "ad20aa5cb6340"
-        },
         "description": "Response providing city details for a given latitude and longitude.",
         "type": "object",
         "required": [
@@ -12751,9 +12855,6 @@
       },
       "DevicesThirdPartyPluginPropertyUpdateRequest": {
         "title": "Third-Party Device Property Update",
-        "x-stoplight": {
-          "id": "b4c6df1661422"
-        },
         "description": "Represents a request to update a specific property on a third-party device.",
         "type": "object",
         "required": [
@@ -12802,9 +12903,6 @@
       },
       "DevicesThirdPartyPluginPropertiesUpdateRequest": {
         "title": "Third-Party Device Property Update Request",
-        "x-stoplight": {
-          "id": "a1b0bda719be5"
-        },
         "description": "Represents a request to update one or more properties on a third-party device.",
         "type": "object",
         "properties": {
@@ -12819,9 +12917,6 @@
       },
       "DevicesThirdPartyPluginPropertyUpdateResult": {
         "title": "Third-Party Device Property Update Result",
-        "x-stoplight": {
-          "id": "520764cdee1e8"
-        },
         "description": "Represents the result of an update operation for a specific property on a third-party device.",
         "type": "object",
         "required": [
@@ -12859,9 +12954,6 @@
       },
       "DevicesThirdPartyPluginPropertiesUpdateResult": {
         "title": "Third-Party Device Property Update Result",
-        "x-stoplight": {
-          "id": "00aecf7f238bd"
-        },
         "description": "Represents the overall response from a third-party device after processing an update request.",
         "type": "object",
         "required": [
@@ -12880,9 +12972,6 @@
       },
       "DevicesThirdPartyPluginErrorCode": {
         "title": "Third-Party Error Code",
-        "x-stoplight": {
-          "id": "71d7d4735acbd"
-        },
         "description": "Error codes returned by third-party devices when processing requests.",
         "type": "number",
         "enum": [
@@ -12916,9 +13005,6 @@
       },
       "PagesTilesPluginTilesPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "5c366063ab5af"
-        },
         "title": "Tiles Page",
         "description": "A tiles page dashboard type, displaying a grid of customizable tiles.",
         "allOf": [
@@ -12944,9 +13030,6 @@
       },
       "PagesTilesPluginCreateTilesPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "b6ad9311a3e26"
-        },
         "title": "Create Tiles Page",
         "description": "The schema for creating a tiles dashboard page.",
         "allOf": [
@@ -12969,9 +13052,6 @@
       },
       "PagesTilesPluginUpdateTilesPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "43e7e2451e499"
-        },
         "title": "Update Tiles Page",
         "description": "Schema for updating a tiles page in the dashboard.",
         "allOf": [
@@ -12982,9 +13062,6 @@
       },
       "PagesDeviceDetailPluginDeviceDetailPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "7eb4b38287d4e"
-        },
         "title": "Device Page",
         "description": "A dashboard page type associated with a specific device.",
         "allOf": [
@@ -13009,9 +13086,6 @@
       },
       "PagesDeviceDetailPluginCreateDeviceDetailPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "4ce421443c418"
-        },
         "title": "Create Device Page",
         "description": "The schema for creating a device dashboard page.",
         "allOf": [
@@ -13036,9 +13110,6 @@
       },
       "PagesDeviceDetailPluginUpdateDeviceDetailPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "9ec7912b8711c"
-        },
         "title": "Update Device Page",
         "description": "Schema for updating a device page in the dashboard.",
         "allOf": [
@@ -13060,9 +13131,6 @@
       },
       "TilesDevicePreviewPluginDevicePreviewTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "a07053527275b"
-        },
         "title": "Device Tile",
         "description": "A dashboard tile associated with a specific device.",
         "allOf": [
@@ -13094,9 +13162,6 @@
       },
       "TilesDevicePreviewPluginCreateDevicePreviewTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "d7f12f904c7c8"
-        },
         "title": "Create Device Tile",
         "description": "Schema for creating a dashboard tile representing a device.",
         "allOf": [
@@ -13127,9 +13192,6 @@
       },
       "TilesDevicePreviewPluginUpdateDevicePreviewTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "d8cea65f6e619"
-        },
         "title": "Update Device Tile",
         "description": "Schema for updating a device tile in the dashboard.",
         "allOf": [
@@ -13157,9 +13219,6 @@
       },
       "TilesTimePluginTimeTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "81edbbb33920d"
-        },
         "title": "Time Tile",
         "description": "A dashboard tile displaying a clock.",
         "allOf": [
@@ -13170,9 +13229,6 @@
       },
       "TilesTimePluginCreateTimeTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "61dffca531235"
-        },
         "title": "Create Time Tile",
         "description": "Schema for creating a dashboard tile representing a clock.",
         "allOf": [
@@ -13183,9 +13239,6 @@
       },
       "TilesTimePluginUpdateTimeTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "cc388ae833a0c"
-        },
         "title": "Update Time Tile",
         "description": "Schema for updating a time tile (clock) in the dashboard.",
         "allOf": [
@@ -13196,9 +13249,6 @@
       },
       "TilesWeatherPluginDayWeatherTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "16a6f5546ceb1"
-        },
         "title": "Day Weather Tile",
         "description": "A dashboard tile displaying the weather for a specific day.",
         "allOf": [
@@ -13209,9 +13259,6 @@
       },
       "TilesWeatherPluginForecastWeatherTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "da5907b47e9cc"
-        },
         "title": "Forecast Weather Tile",
         "description": "A dashboard tile displaying a weather forecast.",
         "allOf": [
@@ -13222,9 +13269,6 @@
       },
       "TilesWeatherPluginCreateDayWeatherTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "b38317b6e2aa1"
-        },
         "title": "Create Day Weather Tile",
         "description": "Schema for creating a dashboard tile representing day weather.",
         "allOf": [
@@ -13235,9 +13279,6 @@
       },
       "TilesWeatherPluginCreateForecastWeatherTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "1e2267877de3f"
-        },
         "title": "Create Forecast Weather Tile",
         "description": "Schema for creating a dashboard tile representing weather forecast.",
         "allOf": [
@@ -13248,9 +13289,6 @@
       },
       "TilesWeatherPluginUpdateDayWeatherTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "68583b8a3a767"
-        },
         "title": "Update Day Weather Tile",
         "description": "Schema for updating a day weather tile in the dashboard.",
         "allOf": [
@@ -13261,9 +13299,6 @@
       },
       "TilesWeatherPluginUpdateForecastWeatherTile": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "f7a3a56bd6420"
-        },
         "title": "Update Forecast Weather Tile",
         "description": "Schema for updating a forecast weather tile in the dashboard.",
         "allOf": [
@@ -13274,9 +13309,6 @@
       },
       "DataSourcesDeviceChannelPluginDeviceChannelDataSource": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "ddb6a50fecbbc"
-        },
         "title": "Device Channel Data Source",
         "description": "A data source linked to a specific device channel and property.",
         "allOf": [
@@ -13323,9 +13355,6 @@
       },
       "DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "022ec181dd208"
-        },
         "title": "Create Device Channel Data Source",
         "description": "Schema for creating a data source linked to a device channel and property.",
         "allOf": [
@@ -13370,9 +13399,6 @@
       },
       "DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "bf5db65e17dd5"
-        },
         "title": "Update Device Channel Data Source",
         "description": "Schema for updating a device channel data source in the dashboard.",
         "allOf": [
@@ -13412,9 +13438,6 @@
       },
       "PagesCardsPluginCardsPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "26bf7e18ec0a1"
-        },
         "title": "Cards Page",
         "description": "A cards page dashboard type, displaying an overview with associated cards.",
         "allOf": [
@@ -13522,9 +13545,6 @@
       },
       "PagesCardsPluginCreateCardsPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "45e51104c057f"
-        },
         "title": "Create Cards Page",
         "description": "The schema for creating a cards dashboard page.",
         "allOf": [
@@ -13597,9 +13617,6 @@
       },
       "PagesCardsPluginUpdateCardsPage": {
         "x-internal": true,
-        "x-stoplight": {
-          "id": "f3f1108a30da7"
-        },
         "title": "Update Cards Page",
         "description": "Schema for updating a cards page in the dashboard.",
         "allOf": [
@@ -13610,9 +13627,6 @@
       },
       "PagesCardsPluginUpdateCard": {
         "title": "Update Card",
-        "x-stoplight": {
-          "id": "867b4b67b67a7"
-        },
         "description": "Schema for updating a card in the dashboard.",
         "type": "object",
         "properties": {
@@ -13640,9 +13654,6 @@
       },
       "PagesCardsPluginReqCreateCard": {
         "title": "Create Page Card Request",
-        "x-stoplight": {
-          "id": "f05237f64db4c"
-        },
         "description": "Request schema for creating new page card.",
         "type": "object",
         "required": [
@@ -13675,9 +13686,6 @@
       },
       "PagesCardsPluginReqUpdateCard": {
         "title": "Update Card Request",
-        "x-stoplight": {
-          "id": "a34cf2afce583"
-        },
         "description": "Request schema for updating an existing card.",
         "type": "object",
         "required": [

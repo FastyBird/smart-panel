@@ -12,8 +12,10 @@ import { getEnvValue } from '../../../common/utils/config.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import { EventType, SectionType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
-import { BaseConfigDto } from '../dto/config.dto';
-import { AppConfigEntity, BaseConfigEntity } from '../entities/config.entity';
+import { BaseConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
+import { AppConfigEntity, BaseConfigEntity, PluginConfigEntity } from '../entities/config.entity';
+
+import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
 @Injectable()
 export class ConfigService {
@@ -23,6 +25,7 @@ export class ConfigService {
 
 	constructor(
 		private readonly configService: NestConfigService,
+		private readonly pluginsMapperService: PluginsTypeMapperService,
 		private readonly platform: PlatformService,
 		private readonly eventEmitter: EventEmitter2,
 	) {
@@ -53,6 +56,7 @@ export class ConfigService {
 				enableImplicitConversion: true,
 				exposeUnsetFields: false,
 			});
+			appConfigInstance.plugins = this.loadPlugins(parsedConfig);
 
 			// Validate the transformed configuration
 			const errors = validateSync(appConfigInstance, {
@@ -72,7 +76,15 @@ export class ConfigService {
 		} else {
 			this.logger.warn('[LOAD] Configuration file not found. Initializing default configuration');
 
-			this.config = new AppConfigEntity();
+			this.config = plainToInstance(
+				AppConfigEntity,
+				{},
+				{
+					enableImplicitConversion: true,
+					exposeUnsetFields: false,
+				},
+			);
+			this.config.plugins = this.loadPlugins({});
 			this.saveConfig();
 		}
 	}
@@ -80,10 +92,75 @@ export class ConfigService {
 	private saveConfig() {
 		this.logger.log('[SAVE] Writing configuration to file');
 
-		const yamlContent = yaml.stringify(instanceToPlain(this.config));
+		// Prepare main app config
+		const appConfig = instanceToPlain(this.config);
+
+		// Transform plugins
+		appConfig.plugins = this.config.plugins.reduce(
+			(acc, plugin) => {
+				acc[plugin.type] = instanceToPlain(plugin);
+
+				return acc;
+			},
+			{} as Record<string, any>,
+		);
+
+		const yamlContent = yaml.stringify(appConfig);
 		fs.writeFileSync(path.resolve(this.getConfigPath(), this.filename), yamlContent, 'utf8');
 
 		this.logger.log('[SAVE] Configuration saved successfully');
+	}
+
+	private loadPlugins(parsedConfig: Partial<AppConfigEntity>): PluginConfigEntity[] {
+		const pluginsArray: PluginConfigEntity[] = [];
+
+		const existingPlugins =
+			parsedConfig.plugins && typeof parsedConfig.plugins === 'object' ? parsedConfig.plugins : {};
+
+		for (const mapping of this.pluginsMapperService.getMappings()) {
+			const pluginType = mapping.type;
+			const pluginConfig = existingPlugins?.[pluginType] as object | undefined;
+
+			try {
+				const instance = plainToInstance(
+					mapping.class,
+					{ ...pluginConfig, type: pluginType }, // if pluginConfig is undefined, it still works
+					{
+						enableImplicitConversion: true,
+						exposeUnsetFields: false,
+					},
+				);
+
+				const errors = validateSync(instance, {
+					whitelist: true,
+					forbidNonWhitelisted: true,
+				});
+
+				if (errors.length > 0) {
+					this.logger.warn(`[VALIDATION] Plugin '${pluginType}' is invalid, initializing with defaults`);
+
+					// If validation fails, still push a default
+					pluginsArray.push(
+						plainToInstance(
+							mapping.class,
+							{},
+							{
+								enableImplicitConversion: true,
+								exposeUnsetFields: false,
+							},
+						),
+					);
+
+					continue;
+				}
+
+				pluginsArray.push(instance);
+			} catch {
+				this.logger.warn(`[MAPPING] Plugin '${pluginType}' mapping failed, skipping`);
+			}
+		}
+
+		return pluginsArray;
 	}
 
 	getConfig(): AppConfigEntity {
@@ -202,5 +279,93 @@ export class ConfigService {
 		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.config);
 
 		this.logger.log(`[UPDATE] Configuration update for section=${key} completed successfully`);
+	}
+
+	getPluginConfig<TConfig extends PluginConfigEntity>(plugin: string): TConfig {
+		this.logger.log(`[LOOKUP] Fetching configuration plugin=${plugin}`);
+
+		const configSection = this.config['plugins'];
+
+		if (!configSection) {
+			this.logger.error(`[ERROR] Configuration section=plugins not found`);
+
+			throw new ConfigNotFoundException(`Configuration section 'plugins' not found.`);
+		}
+
+		const mapping = this.pluginsMapperService.getMapping<TConfig, UpdatePluginConfigDto>(plugin);
+
+		const pluginConfig = configSection.find((cfg) => cfg.type === plugin);
+
+		if (!pluginConfig) {
+			this.logger.error(`[ERROR] Configuration plugin=${plugin} not found`);
+
+			throw new ConfigNotFoundException(`Configuration plugin '${plugin}' not found.`);
+		}
+
+		const instance = plainToInstance(mapping.class, pluginConfig, {
+			enableImplicitConversion: true,
+			exposeUnsetFields: false,
+		});
+
+		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true });
+
+		if (errors.length > 0) {
+			this.logger.error(`[VALIDATION] Configuration plugin=${plugin} is corrupted error=${JSON.stringify(errors)}`);
+
+			throw new ConfigCorruptedException(`Configuration plugin '${plugin}' is corrupted and can not be loaded.`);
+		}
+
+		this.logger.log(`[LOOKUP] Successfully retrieved configuration plugin=${plugin}`);
+
+		return instance;
+	}
+
+	setPluginConfig<TUpdateDto extends UpdatePluginConfigDto>(plugin: string, value: TUpdateDto): void {
+		const mapping = this.pluginsMapperService.getMapping<PluginConfigEntity, TUpdateDto>(plugin);
+
+		const existingPlugin = (this.config.plugins ?? []).find((existingPlugin) => existingPlugin.type === plugin);
+
+		const instance = plainToInstance(mapping.configDto, value, {
+			enableImplicitConversion: true,
+			exposeUnsetFields: false,
+		});
+
+		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true });
+
+		if (errors.length > 0) {
+			this.logger.error(`[VALIDATION] Validation failed for plugin=${plugin} error=${JSON.stringify(errors)}`);
+
+			throw new ConfigValidationException(`New configuration for plugin '${plugin}' is invalid.`);
+		}
+
+		this.logger.log(`[UPDATE] Updating configuration for plugin=${plugin}`);
+		// Remove the old plugin if it exists
+		this.config.plugins = (this.config.plugins ?? []).filter((existingPlugin) => existingPlugin.type !== plugin);
+		// Add the new plugin config
+		this.config.plugins.push(
+			plainToInstance(
+				mapping.class,
+				{
+					type: plugin,
+					...instanceToPlain(existingPlugin),
+					...instance,
+				},
+				{
+					enableImplicitConversion: true,
+					exposeUnsetFields: false,
+				},
+			),
+		);
+
+		this.logger.log(`[SAVE] Saving updated configuration for plugin=${plugin}`);
+		this.saveConfig();
+
+		this.logger.log(`[LOAD] Reloading configuration after update to plugin=${plugin}`);
+		this.loadConfig();
+
+		this.logger.log(`[EVENT] Broadcasting configuration change for plugin=${plugin}`);
+		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.config);
+
+		this.logger.log(`[UPDATE] Configuration update for plugin=${plugin} completed successfully`);
 	}
 }

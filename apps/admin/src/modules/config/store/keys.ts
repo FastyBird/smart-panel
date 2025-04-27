@@ -3,6 +3,7 @@ import type { StoreInjectionKey } from '../../../common';
 import type { IConfigAudioStoreActions, IConfigAudioStoreState } from './config-audio.store.types';
 import type { IConfigDisplayStoreActions, IConfigDisplayStoreState } from './config-display.store.types';
 import type { IConfigLanguageStoreActions, IConfigLanguageStoreState } from './config-language.store.types';
+import type { IConfigPluginsStoreActions, IConfigPluginsStoreState } from './config-plugins.store.types';
 import type { IConfigWeatherStoreActions, IConfigWeatherStoreState } from './config-weather.store.types';
 
 export const configAudioStoreKey: StoreInjectionKey<string, IConfigAudioStoreState, object, IConfigAudioStoreActions> =
@@ -16,3 +17,6 @@ export const configLanguageStoreKey: StoreInjectionKey<string, IConfigLanguageSt
 
 export const configWeatherStoreKey: StoreInjectionKey<string, IConfigWeatherStoreState, object, IConfigWeatherStoreActions> =
 	Symbol('FB-Module-Config-ConfigWeather');
+
+export const configPluginsStoreKey: StoreInjectionKey<string, IConfigPluginsStoreState, object, IConfigPluginsStoreActions> =
+	Symbol('FB-Module-Config-ConfigPlugins');

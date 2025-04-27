@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, Logger, Param, Patch } from
 
 import { SectionType } from '../config.constants';
 import {
+	ReqUpdatePluginDto,
 	ReqUpdateSectionDto,
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
@@ -14,6 +15,7 @@ import {
 	BaseConfigEntity,
 	DisplayConfigEntity,
 	LanguageConfigEntity,
+	PluginConfigEntity,
 	WeatherConfigEntity,
 } from '../entities/config.entity';
 import { ConfigService } from '../services/config.service';
@@ -75,7 +77,7 @@ export class ConfigController {
 
 	@Patch(SectionType.AUDIO)
 	async updateAudioConfig(@Body() audioConfig: ReqUpdateSectionDto): Promise<AudioConfigEntity> {
-		this.logger.debug(`[UPDATE] Incoming update request for page section=${SectionType.AUDIO}`);
+		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.AUDIO}`);
 
 		await this.service.setConfigSection(SectionType.AUDIO, audioConfig.data, UpdateAudioConfigDto);
 
@@ -88,7 +90,7 @@ export class ConfigController {
 
 	@Patch(SectionType.DISPLAY)
 	async updateDisplayConfig(@Body() displayConfig: ReqUpdateSectionDto): Promise<DisplayConfigEntity> {
-		this.logger.debug(`[UPDATE] Incoming update request for page section=${SectionType.DISPLAY}`);
+		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.DISPLAY}`);
 
 		await this.service.setConfigSection(SectionType.DISPLAY, displayConfig.data, UpdateDisplayConfigDto);
 
@@ -101,7 +103,7 @@ export class ConfigController {
 
 	@Patch(SectionType.LANGUAGE)
 	async updateLanguageConfig(@Body() languageConfig: ReqUpdateSectionDto): Promise<LanguageConfigEntity> {
-		this.logger.debug(`[UPDATE] Incoming update request for page section=${SectionType.LANGUAGE}`);
+		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.LANGUAGE}`);
 
 		await this.service.setConfigSection(SectionType.LANGUAGE, languageConfig.data, UpdateLanguageConfigDto);
 
@@ -114,13 +116,37 @@ export class ConfigController {
 
 	@Patch(SectionType.WEATHER)
 	async updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): Promise<WeatherConfigEntity> {
-		this.logger.debug(`[UPDATE] Incoming update request for page section=${SectionType.WEATHER}`);
+		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.WEATHER}`);
 
 		await this.service.setConfigSection(SectionType.WEATHER, weatherConfig.data, UpdateWeatherConfigDto);
 
 		const config = this.service.getConfigSection<WeatherConfigEntity>(SectionType.WEATHER, WeatherConfigEntity);
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.WEATHER}`);
+
+		return config;
+	}
+
+	@Get('plugin/:plugin')
+	getPluginConfig(@Param('plugin') plugin: string): PluginConfigEntity {
+		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
+
+		const config: PluginConfigEntity = this.service.getPluginConfig(plugin);
+
+		this.logger.debug(`[LOOKUP] Found configuration plugin=${plugin}`);
+
+		return config;
+	}
+
+	@Patch('plugin/:plugin')
+	updatePluginConfig(@Param('plugin') plugin: string, @Body() pluginConfig: ReqUpdatePluginDto): PluginConfigEntity {
+		this.logger.debug(`[UPDATE] Incoming update request for plugin=${plugin}`);
+
+		this.service.setPluginConfig(plugin, pluginConfig.data);
+
+		const config = this.service.getPluginConfig(plugin);
+
+		this.logger.debug(`[UPDATE] Successfully updated configuration plugin=${plugin}`);
 
 		return config;
 	}

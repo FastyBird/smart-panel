@@ -961,6 +961,33 @@ export interface paths {
         patch: operations["update-config-module-config-section"];
         trace?: never;
     };
+    "/config-module/config/plugin/{plugin}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The configuration plugin name. */
+                plugin: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Retrieve specific plugin configuration
+         * @description Retrieves a specific plugin configuration.
+         */
+        get: operations["get-config-module-config-plugin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update specific plugin configuration
+         * @description Updates a specific plugin configuration. Only the provided fields will be modified.
+         */
+        patch: operations["update-config-module-config-plugin"];
+        trace?: never;
+    };
     "/system-module/system/info": {
         parameters: {
             query?: never;
@@ -1941,6 +1968,17 @@ export interface components {
             open_weather_api_key: string | null;
         };
         /**
+         * Plugin
+         * @description Schema for plugin configuration.
+         */
+        ConfigModulePlugin: {
+            /**
+             * @description Configuration plugin type
+             * @default custom-plugin
+             */
+            type: string;
+        };
+        /**
          * Configuration
          * @description Schema for the complete configuration settings for the smart panel, including audio, display, language, and weather settings.
          */
@@ -1953,6 +1991,7 @@ export interface components {
             language: components["schemas"]["ConfigModuleLanguage"];
             /** @description Weather settings, including location, unit preferences, and API integration. */
             weather: components["schemas"]["ConfigModuleWeather"];
+            plugins: components["schemas"]["ConfigModulePlugin"][];
         };
         /**
          * Update Audio
@@ -2079,11 +2118,26 @@ export interface components {
             open_weather_api_key?: string | null;
         };
         /**
+         * Update Plugin
+         * @description Schema for partial update settings for plugin configuration.
+         */
+        ConfigModuleUpdatePlugin: {
+            /** @description Configuration plugin type */
+            type: string;
+        };
+        /**
          * Update Section
          * @description Request schema for partial updating a configuration section.
          */
         ConfigModuleReqUpdateSection: {
             data: components["schemas"]["ConfigModuleUpdateAudio"] | components["schemas"]["ConfigModuleUpdateDisplay"] | components["schemas"]["ConfigModuleUpdateLanguage"] | components["schemas"]["ConfigModuleUpdateWeather"];
+        };
+        /**
+         * Update Plugin
+         * @description Request schema for partial updating a configuration plugin.
+         */
+        ConfigModuleReqUpdatePlugin: {
+            data: components["schemas"]["ConfigModuleUpdatePlugin"];
         };
         /**
          * Configuration Response
@@ -2157,6 +2211,43 @@ export interface components {
              */
             readonly method: AuthModuleResCheckUsernameMethod;
             data: components["schemas"]["ConfigModuleAudio"] | components["schemas"]["ConfigModuleDisplay"] | components["schemas"]["ConfigModuleLanguage"] | components["schemas"]["ConfigModuleWeather"];
+            /** @description Additional metadata about the request and server performance metrics. */
+            metadata: components["schemas"]["CommonResMetadata"];
+        };
+        /**
+         * Configuration Plugin Response
+         * @description Response containing a specific plugin of the smart panel configuration, like custom-plugin.
+         */
+        ConfigModuleResPlugin: {
+            /**
+             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+             * @example success
+             */
+            readonly status: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+             * @example 2025-01-18T12:00:00Z
+             */
+            readonly timestamp: string;
+            /**
+             * Format: uuid
+             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+             */
+            readonly request_id: string;
+            /**
+             * @description The API endpoint that was requested, including any dynamic parameters.
+             * @example /api/v1/config-module/config/plugin/custom-plugin
+             */
+            readonly path: string;
+            /**
+             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+             * @example GET
+             * @enum {string}
+             */
+            readonly method: AuthModuleResCheckUsernameMethod;
+            data: components["schemas"]["ConfigModulePlugin"];
             /** @description Additional metadata about the request and server performance metrics. */
             metadata: components["schemas"]["CommonResMetadata"];
         };
@@ -5593,14 +5684,18 @@ export type SchemaConfigModuleAudio = components['schemas']['ConfigModuleAudio']
 export type SchemaConfigModuleDisplay = components['schemas']['ConfigModuleDisplay'];
 export type SchemaConfigModuleLanguage = components['schemas']['ConfigModuleLanguage'];
 export type SchemaConfigModuleWeather = components['schemas']['ConfigModuleWeather'];
+export type SchemaConfigModulePlugin = components['schemas']['ConfigModulePlugin'];
 export type SchemaConfigModuleApp = components['schemas']['ConfigModuleApp'];
 export type SchemaConfigModuleUpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];
 export type SchemaConfigModuleUpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];
 export type SchemaConfigModuleUpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];
 export type SchemaConfigModuleUpdateWeather = components['schemas']['ConfigModuleUpdateWeather'];
+export type SchemaConfigModuleUpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
 export type SchemaConfigModuleReqUpdateSection = components['schemas']['ConfigModuleReqUpdateSection'];
+export type SchemaConfigModuleReqUpdatePlugin = components['schemas']['ConfigModuleReqUpdatePlugin'];
 export type SchemaConfigModuleResApp = components['schemas']['ConfigModuleResApp'];
 export type SchemaConfigModuleResSection = components['schemas']['ConfigModuleResSection'];
+export type SchemaConfigModuleResPlugin = components['schemas']['ConfigModuleResPlugin'];
 export type SchemaDevicesModuleDevice = components['schemas']['DevicesModuleDevice'];
 export type SchemaDevicesModuleDeviceControl = components['schemas']['DevicesModuleDeviceControl'];
 export type SchemaDevicesModuleChannel = components['schemas']['DevicesModuleChannel'];
@@ -7777,7 +7872,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        /** @description Request body for updating audio configuration, allowing modifications to speaker and microphone settings. */
+        /** @description Request body for updating configuration section. */
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["ConfigModuleReqUpdateSection"];
@@ -7791,6 +7886,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigModuleResSection"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "get-config-module-config-plugin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The configuration plugin name. */
+                plugin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Response containing the current plugin configuration. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigModuleResPlugin"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "update-config-module-config-plugin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The configuration plugin name. */
+                plugin: string;
+            };
+            cookie?: never;
+        };
+        /** @description Request body for updating plugin configuration. */
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConfigModuleReqUpdatePlugin"];
+            };
+        };
+        responses: {
+            /** @description Response containing the current plugin configuration. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigModuleResPlugin"];
                 };
             };
             400: components["responses"]["BadRequestError"];

@@ -1,7 +1,8 @@
-import type { ComputedRef, Ref } from 'vue';
+import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
+import type { IPlugin } from '../../../common';
 import {
 	ConfigModuleLanguageLanguage,
 	ConfigModuleLanguageTime_format,
@@ -9,9 +10,12 @@ import {
 	PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type,
 } from '../../../openapi';
 import type { FormResultType } from '../config.constants';
+import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
+import type { IConfigPluginEditForm } from '../schemas/plugins.types';
 import type { IConfigAudio } from '../store/config-audio.store.types';
 import type { IConfigDisplay } from '../store/config-display.store.types';
 import type { IConfigLanguage } from '../store/config-language.store.types';
+import type { IConfigPlugin } from '../store/config-plugins.store.types';
 import type { IConfigWeather } from '../store/config-weather.store.types';
 
 export interface IConfigAudioEditForm {
@@ -105,4 +109,29 @@ export interface IUseConfigWeatherEditForm {
 	submit: () => Promise<'saved'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
+}
+
+export interface IUseConfigPlugin {
+	configPlugin: ComputedRef<IConfigPlugin | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchConfigPlugin: () => Promise<void>;
+}
+
+export interface IUseConfigPluginEditForm<TForm extends IConfigPluginEditForm = IConfigPluginEditForm> {
+	model: Reactive<TForm>;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'saved'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUsePlugin {
+	plugin: ComputedRef<IPlugin<IPluginsComponents, IPluginsSchemas> | undefined>;
+}
+
+export interface IUsePlugins {
+	plugins: ComputedRef<IPlugin<IPluginsComponents, IPluginsSchemas>[]>;
+	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
+	getByType: (type: IPlugin['type']) => IPlugin<IPluginsComponents, IPluginsSchemas> | undefined;
 }

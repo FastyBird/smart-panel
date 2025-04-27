@@ -166,6 +166,7 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 				unit: TemperatureUnitType.CELSIUS,
 				open_weather_api_key: null,
 			},
+			plugins: [],
 		};
 
 		const entityInstance = plainToInstance(AppConfigEntity, openApiModel, {

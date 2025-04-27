@@ -16,6 +16,9 @@ _$ConfigModuleAppImpl _$$ConfigModuleAppImplFromJson(
           json['language'] as Map<String, dynamic>),
       weather:
           ConfigModuleWeather.fromJson(json['weather'] as Map<String, dynamic>),
+      plugins: (json['plugins'] as List<dynamic>)
+          .map((e) => ConfigModulePlugin.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
 
 Map<String, dynamic> _$$ConfigModuleAppImplToJson(
@@ -25,4 +28,5 @@ Map<String, dynamic> _$$ConfigModuleAppImplToJson(
       'display': instance.display,
       'language': instance.language,
       'weather': instance.weather,
+      'plugins': instance.plugins,
     };
