@@ -109,6 +109,12 @@ export class WeatherConfigEntity extends BaseConfigEntity {
 	openWeatherApiKey: string | null = null;
 }
 
+export abstract class PluginConfigEntity {
+	@Expose({ groups: ['api'] })
+	@IsString()
+	type: string;
+}
+
 export class AppConfigEntity {
 	@Expose()
 	@ValidateNested()
@@ -129,4 +135,8 @@ export class AppConfigEntity {
 	@ValidateNested()
 	@Type(() => WeatherConfigEntity)
 	weather: WeatherConfigEntity = new WeatherConfigEntity();
+
+	@Expose()
+	@ValidateNested({ each: true })
+	plugins: PluginConfigEntity[] = [];
 }

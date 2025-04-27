@@ -336,7 +336,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 		const parsedEditedItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse({
 			...data.value[payload.id],
-			...omitBy(parsedPayload.data.data, isUndefined),
+			...omitBy(payload.data, isUndefined),
 		});
 
 		if (!parsedEditedItem.success) {

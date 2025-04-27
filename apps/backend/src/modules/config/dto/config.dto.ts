@@ -11,10 +11,12 @@ import {
 } from '../config.constants';
 
 type ReqUpdateSection = components['schemas']['ConfigModuleReqUpdateSection'];
+type ReqUpdatePlugin = components['schemas']['ConfigModuleReqUpdatePlugin'];
 type UpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];
 type UpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];
 type UpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];
 type UpdateWeather = components['schemas']['ConfigModuleUpdateWeather'];
+type UpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
 
 const determineConfigDto = (obj: unknown): new () => object => {
 	if (
@@ -191,4 +193,17 @@ export class ReqUpdateSectionDto implements ReqUpdateSection {
 	@ValidateNested()
 	@Type((options) => determineConfigDto(options?.object ?? {}))
 	data: UpdateAudioConfigDto | UpdateDisplayConfigDto | UpdateLanguageConfigDto | UpdateWeatherConfigDto;
+}
+
+export class UpdatePluginConfigDto implements UpdatePlugin {
+	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
+	type: string;
+}
+
+export class ReqUpdatePluginDto implements ReqUpdatePlugin {
+	@Expose()
+	@ValidateNested()
+	@Type(() => UpdatePluginConfigDto)
+	data: UpdatePluginConfigDto;
 }

@@ -5,8 +5,10 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
+import '../models/config_module_req_update_plugin.dart';
 import '../models/config_module_req_update_section.dart';
 import '../models/config_module_res_app.dart';
+import '../models/config_module_res_plugin.dart';
 import '../models/config_module_res_section.dart';
 import '../models/section.dart';
 
@@ -41,5 +43,26 @@ abstract class ConfigurationModuleClient {
   Future<HttpResponse<ConfigModuleResSection>> updateConfigModuleConfigSection({
     @Path('section') required Section section,
     @Body() ConfigModuleReqUpdateSection? body,
+  });
+
+  /// Retrieve specific plugin configuration.
+  ///
+  /// Retrieves a specific plugin configuration.
+  ///
+  /// [plugin] - The configuration plugin name.
+  @GET('/config-module/config/plugin/{plugin}')
+  Future<HttpResponse<ConfigModuleResPlugin>> getConfigModuleConfigPlugin({
+    @Path('plugin') required String plugin,
+  });
+
+  /// Update specific plugin configuration.
+  ///
+  /// Updates a specific plugin configuration. Only the provided fields will be modified.
+  ///
+  /// [plugin] - The configuration plugin name.
+  @PATCH('/config-module/config/plugin/{plugin}')
+  Future<HttpResponse<ConfigModuleResPlugin>> updateConfigModuleConfigPlugin({
+    @Path('plugin') required String plugin,
+    @Body() ConfigModuleReqUpdatePlugin? body,
   });
 }

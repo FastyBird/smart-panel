@@ -120,7 +120,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		if (!parsed.success) {
 			console.error('Schema validation failed with:', parsed.error);
 
-			throw new DashboardValidationException('Failed to insert tileSchema.');
+			throw new DashboardValidationException('Failed to insert tile.');
 		}
 
 		data.value ??= {};
@@ -343,7 +343,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 	const edit = async (payload: ITilesEditActionPayload): Promise<ITile> => {
 		if (semaphore.value.updating.includes(payload.id)) {
-			throw new DashboardException('Data source is already being updated.');
+			throw new DashboardException('Tile is already being updated.');
 		}
 
 		if (!(payload.id in data.value)) {
@@ -362,7 +362,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 		const parsedEditedItem = (plugin?.schemas?.tileSchema || TileSchema).safeParse({
 			...data.value[payload.id],
-			...omitBy(parsedPayload.data.data, isUndefined),
+			...omitBy(payload.data, isUndefined),
 		});
 
 		if (!parsedEditedItem.success) {
@@ -420,7 +420,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 	const save = async (payload: ITilesSaveActionPayload): Promise<ITile> => {
 		if (semaphore.value.updating.includes(payload.id)) {
-			throw new DashboardException('Data source is already being saved.');
+			throw new DashboardException('Tile is already being saved.');
 		}
 
 		if (!(payload.id in data.value)) {
@@ -472,7 +472,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 	const remove = async (payload: ITilesRemoveActionPayload): Promise<boolean> => {
 		if (semaphore.value.deleting.includes(payload.id)) {
-			throw new DashboardException('Data source is already being removed.');
+			throw new DashboardException('Tile is already being removed.');
 		}
 
 		if (!Object.keys(data.value).includes(payload.id)) {

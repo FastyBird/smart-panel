@@ -64,6 +64,7 @@ describe('ConfigController', () => {
 			unit: TemperatureUnitType.CELSIUS,
 			openWeatherApiKey: 'dummy-api-key',
 		},
+		plugins: [],
 	};
 
 	beforeEach(async () => {

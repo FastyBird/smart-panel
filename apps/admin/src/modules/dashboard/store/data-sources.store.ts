@@ -353,7 +353,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 
 			const parsedEditedItem = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({
 				...data.value[payload.id],
-				...omitBy(parsedPayload.data.data, isUndefined),
+				...omitBy(payload.data, isUndefined),
 			});
 
 			if (!parsedEditedItem.success) {
