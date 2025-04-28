@@ -27,6 +27,17 @@ export class CreateDeviceChannelPropertyDto implements CreateChannelProperty {
 
 	@Expose()
 	@IsNotEmpty({
+		message:
+			'[{"field":"type","reason":"Type must be a valid string representing a supported channel property type."}]',
+	})
+	@IsString({
+		message:
+			'[{"field":"type","reason":"Type must be a valid string representing a supported channel property type."}]',
+	})
+	type: string;
+
+	@Expose()
+	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid property category."}]',
 	})
 	@IsEnum(PropertyCategory, {

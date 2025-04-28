@@ -7,7 +7,8 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { plainToInstance } from 'class-transformer';
+import { Expose, Transform, plainToInstance } from 'class-transformer';
+import { IsString } from 'class-validator';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -23,14 +24,29 @@ import { ChannelControlEntity, ChannelEntity } from '../entities/devices.entity'
 import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsService } from './channels.service';
 
+class MockChannel extends ChannelEntity {
+	@Expose({ name: 'mock_value' })
+	@IsString()
+	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
+		toClassOnly: true,
+	})
+	mockValue: string;
+
+	@Expose()
+	get type(): string {
+		return 'mock';
+	}
+}
+
 describe('ChannelsControlsService', () => {
 	let channelsService: ChannelsService;
 	let channelsControlsService: ChannelsControlsService;
 	let repository: Repository<ChannelControlEntity>;
 	let eventEmitter: EventEmitter2;
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel: MockChannel = {
 		id: uuid().toString(),
+		type: 'mock',
 		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
@@ -39,6 +55,7 @@ describe('ChannelsControlsService', () => {
 		device: uuid().toString(),
 		controls: [],
 		properties: [],
+		mockValue: 'Some value',
 	};
 
 	const mockChannelControl: ChannelControlEntity = {

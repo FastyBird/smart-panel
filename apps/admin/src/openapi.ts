@@ -2345,6 +2345,11 @@ export interface components {
              * @example 568e43e9-c9da-4a4e-ac7c-9904b42730c6
              */
             readonly id: string;
+            /**
+             * @description Specifies the type of channel.
+             * @example third-party
+             */
+            readonly type: string;
             /** @description Type of the channel, indicating its functional category (e.g., temperature, light). */
             category: components["schemas"]["DevicesModuleChannelCategory"];
             /**
@@ -2429,6 +2434,11 @@ export interface components {
              * @example 208f4790-21b0-4927-8835-7302d883a141
              */
             readonly id: string;
+            /**
+             * @description Specifies the type of channel property.
+             * @example third-party
+             */
+            readonly type: string;
             /** @description Defines the category of the property, representing its functionality or characteristic. */
             readonly category: components["schemas"]["DevicesModuleChannelPropertyCategory"];
             /**
@@ -2566,6 +2576,12 @@ export interface components {
              * @example 568e43e9-c9da-4a4e-ac7c-9904b42730c6
              */
             id?: string;
+            /**
+             * @description Specifies the type of channel.
+             * @default third-party
+             * @example third-party
+             */
+            type: string;
             /** @description Type of the channel, indicating its functional category (e.g., temperature, light). */
             category: components["schemas"]["DevicesModuleChannelCategory"];
             /**
@@ -2623,6 +2639,12 @@ export interface components {
              * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
              */
             id?: string;
+            /**
+             * @description Specifies the type of channel property.
+             * @default third-party
+             * @example third-party
+             */
+            type: string;
             /** @description Defines the category of the property, representing its functionality or characteristic. */
             category: components["schemas"]["DevicesModuleChannelPropertyCategory"];
             /**
@@ -2678,6 +2700,12 @@ export interface components {
          */
         DevicesModuleUpdateDevice: {
             /**
+             * @description Specifies the type of device.
+             * @default third-party
+             * @example third-party
+             */
+            type: string;
+            /**
              * @description Human-readable name of the device.
              * @example Thermostat
              */
@@ -2694,6 +2722,12 @@ export interface components {
          */
         DevicesModuleUpdateChannel: {
             /**
+             * @description Specifies the type of channel.
+             * @default third-party
+             * @example third-party
+             */
+            type: string;
+            /**
              * @description Human-readable name of the channel.
              * @example Temperature Sensor
              */
@@ -2709,6 +2743,12 @@ export interface components {
          * @description Schema for updating a channel property, allowing updates to its name, unit, format, invalid state, step, and value.
          */
         DevicesModuleUpdateChannelProperty: {
+            /**
+             * @description Specifies the type of channel property.
+             * @default third-party
+             * @example third-party
+             */
+            type: string;
             /**
              * @description Optional name of the property for easier identification.
              * @example Thermostat mode

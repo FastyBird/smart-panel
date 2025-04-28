@@ -15,8 +15,8 @@ import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 
+import { ChannelsService } from './channels.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
-import { PropertyValueService } from './property-value.service';
 
 @Injectable()
 export class DevicesService {
@@ -26,7 +26,7 @@ export class DevicesService {
 		@InjectRepository(DeviceEntity)
 		private readonly repository: Repository<DeviceEntity>,
 		private readonly devicesMapperService: DevicesTypeMapperService,
-		private readonly propertyValueService: PropertyValueService,
+		private readonly channelsService: ChannelsService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -89,9 +89,9 @@ export class DevicesService {
 		const { type } = createDto;
 
 		if (!type) {
-			this.logger.error('[CREATE] Validation failed: Missing required "type" property in data.');
+			this.logger.error('[CREATE] Validation failed: Missing required "type" attribute in data.');
 
-			throw new DevicesException('Device property type is required.');
+			throw new DevicesException('Device type attribute is required.');
 		}
 
 		const mapping = this.devicesMapperService.getMapping<TDevice, TCreateDTO, any>(type);
@@ -105,6 +105,10 @@ export class DevicesService {
 				property.id = property.id ?? uuid().toString();
 			});
 		});
+
+		const channels = dtoInstance.channels || [];
+
+		delete dtoInstance.channels;
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
@@ -130,20 +134,13 @@ export class DevicesService {
 		// Save the device
 		const raw = await repository.save(device);
 
-		for (const channelDtoInstance of dtoInstance.channels || []) {
-			const rawChannel = raw.channels.find((entity) => entity.id === channelDtoInstance.id);
+		for (const channelDtoInstance of channels) {
+			this.logger.debug(`[CREATE] Creating new channel for deviceId=${raw.id}`);
 
-			if (rawChannel) {
-				for (const propertyDtoInstance of channelDtoInstance.properties || []) {
-					if (propertyDtoInstance.value && propertyDtoInstance.id) {
-						const rawProperty = rawChannel.properties.find((entity) => entity.id === propertyDtoInstance.id);
-
-						if (rawProperty) {
-							await this.propertyValueService.write(rawProperty, propertyDtoInstance.value);
-						}
-					}
-				}
-			}
+			await this.channelsService.create({
+				...channelDtoInstance,
+				device: raw.id,
+			});
 		}
 
 		// Retrieve the saved device with its full relations

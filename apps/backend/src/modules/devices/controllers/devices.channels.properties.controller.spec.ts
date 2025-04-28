@@ -5,6 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { useContainer } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -13,9 +14,9 @@ import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, Property
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelsPropertiesTypeMapperService } from '../services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
-import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
 
 import { DevicesChannelsPropertiesController } from './devices.channels.properties.controller';
@@ -25,7 +26,7 @@ describe('DevicesChannelsPropertiesController', () => {
 	let devicesService: DevicesService;
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
-	let mapper: DevicesTypeMapperService;
+	let mapper: ChannelsPropertiesTypeMapperService;
 
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
@@ -41,6 +42,7 @@ describe('DevicesChannelsPropertiesController', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
+		type: 'mock',
 		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
@@ -53,6 +55,7 @@ describe('DevicesChannelsPropertiesController', () => {
 
 	const mockChannelProperty: ChannelPropertyEntity = {
 		id: uuid().toString(),
+		type: 'mock',
 		name: 'Test Property',
 		category: PropertyCategory.GENERIC,
 		permissions: [PermissionType.READ_ONLY],
@@ -72,7 +75,7 @@ describe('DevicesChannelsPropertiesController', () => {
 			controllers: [DevicesChannelsPropertiesController],
 			providers: [
 				{
-					provide: DevicesTypeMapperService,
+					provide: ChannelsPropertiesTypeMapperService,
 					useValue: {
 						registerMapping: jest.fn(() => {}),
 						getMapping: jest.fn(() => {}),
@@ -111,11 +114,13 @@ describe('DevicesChannelsPropertiesController', () => {
 			],
 		}).compile();
 
+		useContainer(module, { fallbackOnErrors: true });
+
 		controller = module.get<DevicesChannelsPropertiesController>(DevicesChannelsPropertiesController);
 		devicesService = module.get<DevicesService>(DevicesService);
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
-		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
+		mapper = module.get<ChannelsPropertiesTypeMapperService>(ChannelsPropertiesTypeMapperService);
 	});
 
 	it('should be defined', () => {
@@ -143,11 +148,19 @@ describe('DevicesChannelsPropertiesController', () => {
 
 		it('should create a new property', async () => {
 			const createDto: CreateChannelPropertyDto = {
+				type: 'mock',
 				category: PropertyCategory.GENERIC,
 				name: 'New Property',
 				permissions: [PermissionType.READ_ONLY],
 				data_type: DataTypeType.UNKNOWN,
 			};
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: ChannelPropertyEntity,
+				createDto: CreateChannelPropertyDto,
+				updateDto: UpdateChannelPropertyDto,
+			});
 
 			const result = await controller.create(mockDevice.id, mockChannel.id, { data: createDto });
 
@@ -156,7 +169,17 @@ describe('DevicesChannelsPropertiesController', () => {
 		});
 
 		it('should update a property', async () => {
-			const updateDto: UpdateChannelPropertyDto = { name: 'Updated Property' };
+			const updateDto: UpdateChannelPropertyDto = {
+				type: 'mock',
+				name: 'Updated Property',
+			};
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: ChannelPropertyEntity,
+				createDto: CreateChannelPropertyDto,
+				updateDto: UpdateChannelPropertyDto,
+			});
 
 			const result = await controller.update(mockDevice.id, mockChannel.id, mockChannelProperty.id, {
 				data: updateDto,

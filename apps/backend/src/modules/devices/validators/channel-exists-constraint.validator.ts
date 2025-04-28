@@ -13,10 +13,10 @@ import { DevicesService } from '../services/devices.service';
 
 @Injectable()
 @ValidatorConstraint({ name: 'DeviceChannelExistsValidation', async: false })
-export class DeviceChannelExistsConstraintValidator implements ValidatorConstraintInterface {
+export class ChannelExistsConstraintValidator implements ValidatorConstraintInterface {
 	constructor(
-		private readonly deviceService: DevicesService,
-		private readonly channelService: ChannelsService,
+		private readonly devicesService: DevicesService,
+		private readonly channelsService: ChannelsService,
 	) {}
 
 	async validate(channelId: string | undefined, args: ValidationArguments): Promise<boolean> {
@@ -29,17 +29,17 @@ export class DeviceChannelExistsConstraintValidator implements ValidatorConstrai
 
 		if (!deviceId) {
 			// Check if the channel exists
-			const channelExists = await this.channelService.findOne(channelId);
+			const channelExists = await this.channelsService.findOne(channelId);
 
 			return !!channelExists;
 		}
 
 		// Check if the device exists
-		const deviceExists = await this.deviceService.findOne(deviceId);
+		const deviceExists = await this.devicesService.findOne(deviceId);
 		if (!deviceExists) return false;
 
 		// Check if the channel exists and belongs to the device
-		const channelExists = await this.channelService.findOne(channelId, deviceId);
+		const channelExists = await this.channelsService.findOne(channelId, deviceId);
 
 		return !!channelExists;
 	}
@@ -49,15 +49,15 @@ export class DeviceChannelExistsConstraintValidator implements ValidatorConstrai
 	}
 }
 
-export const ValidateDeviceChannelExists = (validationOptions?: ValidationOptions) => {
+export const ValidateChannelExists = (validationOptions?: ValidationOptions) => {
 	return function (object: object, propertyName: string) {
 		registerDecorator({
-			name: 'ValidateDeviceChannelExists',
+			name: 'ValidateChannelExists',
 			target: object.constructor,
 			propertyName,
 			options: validationOptions,
 			constraints: [],
-			validator: DeviceChannelExistsConstraintValidator,
+			validator: ChannelExistsConstraintValidator,
 		});
 	};
 };

@@ -68,7 +68,7 @@ export class DevicesController {
 		if (!type) {
 			this.logger.error('[VALIDATION] Missing required field: type');
 
-			throw new BadRequestException([JSON.stringify({ field: 'type', reason: 'Device property type is required.' })]);
+			throw new BadRequestException([JSON.stringify({ field: 'type', reason: 'Device type attribute is required.' })]);
 		}
 
 		let mapping: DeviceTypeMapping<DeviceEntity, CreateDeviceDto, UpdateDeviceDto>;
@@ -134,7 +134,7 @@ export class DevicesController {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[ERROR] Unsupported device type for update: ${device.type}`, {
+			this.logger.error(`[ERROR] Unsupported device type for update: ${device.type} id=${id} `, {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -160,7 +160,7 @@ export class DevicesController {
 
 		if (errors.length > 0) {
 			this.logger.error(
-				`[VALIDATION FAILED] Validation failed for device modification error=${JSON.stringify(errors)}`,
+				`[VALIDATION FAILED] Validation failed for device modification error=${JSON.stringify(errors)} id=${id} `,
 			);
 
 			throw ValidationExceptionFactory.createException(errors);

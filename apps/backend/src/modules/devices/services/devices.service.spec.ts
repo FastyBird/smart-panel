@@ -22,9 +22,9 @@ import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 
+import { ChannelsService } from './channels.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesService } from './devices.service';
-import { PropertyValueService } from './property-value.service';
 
 class MockDevice extends DeviceEntity {
 	@Expose({ name: 'mock_value' })
@@ -108,9 +108,9 @@ describe('DevicesService', () => {
 					},
 				},
 				{
-					provide: PropertyValueService,
+					provide: ChannelsService,
 					useValue: {
-						write: jest.fn(() => {}),
+						create: jest.fn(() => {}),
 					},
 				},
 				{
@@ -240,8 +240,8 @@ describe('DevicesService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedDevice);
 			jest.spyOn(repository, 'create').mockReturnValue(mockCratedDevice);
+			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedDevice);
 			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockDevice, mockCratedDevice));
 
 			const result = await service.create(createDto);
@@ -287,7 +287,7 @@ describe('DevicesService', () => {
 	describe('update', () => {
 		it('should update and return the device', async () => {
 			const updateDto: UpdateMockDeviceDto = {
-				type: 'device',
+				type: 'mock',
 				name: 'Updated device',
 				mock_value: 'Changed text',
 			};

@@ -15,7 +15,7 @@ import { ChannelsService } from '../services/channels.service';
 @ValidatorConstraint({ name: 'ChannelPropertyExistsValidation', async: true })
 export class ChannelPropertyExistsConstraintValidator implements ValidatorConstraintInterface {
 	constructor(
-		private readonly channelService: ChannelsService,
+		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 	) {}
 
@@ -35,7 +35,7 @@ export class ChannelPropertyExistsConstraintValidator implements ValidatorConstr
 		}
 
 		// Check if the channel exists
-		const channelExists = await this.channelService.findOne(channelId);
+		const channelExists = await this.channelsService.findOne(channelId);
 		if (!channelExists) return false;
 
 		// Check if the channel property exists and belongs to the channel

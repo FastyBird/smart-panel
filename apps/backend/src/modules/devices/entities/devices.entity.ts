@@ -83,6 +83,7 @@ export class DeviceControlEntity extends BaseEntity {
 }
 
 @Entity('devices_module_channels')
+@TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class ChannelEntity extends BaseEntity {
 	@Expose()
 	@IsEnum(ChannelCategory)
@@ -128,6 +129,12 @@ export class ChannelEntity extends BaseEntity {
 	@Type(() => ChannelPropertyEntity)
 	@OneToMany(() => ChannelPropertyEntity, (property) => property.channel, { cascade: true, onDelete: 'CASCADE' })
 	properties: ChannelPropertyEntity[];
+
+	@Expose()
+	get type(): string {
+		const constructorName = (this.constructor as { name: string }).name;
+		return constructorName.toLowerCase();
+	}
 }
 
 @Entity('devices_module_channels_controls')
@@ -149,6 +156,7 @@ export class ChannelControlEntity extends BaseEntity {
 }
 
 @Entity('devices_module_channels_properties')
+@TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class ChannelPropertyEntity extends BaseEntity {
 	@Expose()
 	@IsEnum(PropertyCategory)
@@ -230,4 +238,10 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@Transform(({ value }: { value: ChannelEntity }) => value.id, { toPlainOnly: true })
 	@ManyToOne(() => ChannelEntity, (channel) => channel.properties, { onDelete: 'CASCADE' })
 	channel: ChannelEntity | string;
+
+	@Expose()
+	get type(): string {
+		const constructorName = (this.constructor as { name: string }).name;
+		return constructorName.toLowerCase();
+	}
 }

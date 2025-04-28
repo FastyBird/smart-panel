@@ -49,10 +49,10 @@ export class DeviceChannelExistsConstraintValidator implements ValidatorConstrai
 	}
 }
 
-export const ValidateDeviceChannelExists = (validationOptions?: ValidationOptions) => {
+export const ValidateChannelExists = (validationOptions?: ValidationOptions) => {
 	return function (object: object, propertyName: string) {
 		registerDecorator({
-			name: 'ValidateDeviceChannelExists',
+			name: 'ValidateChannelExists',
 			target: object.constructor,
 			propertyName,
 			options: validationOptions,

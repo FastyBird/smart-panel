@@ -5,16 +5,21 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { useContainer } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory } from '../devices.constants';
+import { CreateChannelDto } from '../dto/create-channel.dto';
 import { CreateDeviceChannelDto } from '../dto/create-device-channel.dto';
+import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
 import { ChannelsService } from '../services/channels.service';
-import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
 import { DevicesService } from '../services/devices.service';
+import { ChannelExistsConstraintValidator } from '../validators/channel-exists-constraint.validator';
+import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
 
 import { DevicesChannelsController } from './devices.channels.controller';
 
@@ -22,7 +27,7 @@ describe('DevicesChannelsController', () => {
 	let controller: DevicesChannelsController;
 	let devicesService: DevicesService;
 	let channelsService: ChannelsService;
-	let mapper: DevicesTypeMapperService;
+	let mapper: ChannelsTypeMapperService;
 
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
@@ -38,6 +43,7 @@ describe('DevicesChannelsController', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
+		type: 'mock',
 		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
@@ -52,8 +58,10 @@ describe('DevicesChannelsController', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [DevicesChannelsController],
 			providers: [
+				DeviceExistsConstraintValidator,
+				ChannelExistsConstraintValidator,
 				{
-					provide: DevicesTypeMapperService,
+					provide: ChannelsTypeMapperService,
 					useValue: {
 						registerMapping: jest.fn(() => {}),
 						getMapping: jest.fn(() => {}),
@@ -82,10 +90,12 @@ describe('DevicesChannelsController', () => {
 			],
 		}).compile();
 
+		useContainer(module, { fallbackOnErrors: true });
+
 		controller = module.get<DevicesChannelsController>(DevicesChannelsController);
 		devicesService = module.get<DevicesService>(DevicesService);
 		channelsService = module.get<ChannelsService>(ChannelsService);
-		mapper = module.get<DevicesTypeMapperService>(DevicesTypeMapperService);
+		mapper = module.get<ChannelsTypeMapperService>(ChannelsTypeMapperService);
 	});
 
 	it('should be defined', () => {
@@ -111,7 +121,18 @@ describe('DevicesChannelsController', () => {
 		});
 
 		it('should create a new device channel', async () => {
-			const createDto: CreateDeviceChannelDto = { category: ChannelCategory.GENERIC, name: 'New Channel' };
+			const createDto: CreateDeviceChannelDto = {
+				type: 'mock',
+				category: ChannelCategory.GENERIC,
+				name: 'New Channel',
+			};
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: ChannelEntity,
+				createDto: CreateChannelDto,
+				updateDto: UpdateChannelDto,
+			});
 
 			const result = await controller.create(mockDevice.id, { data: createDto });
 

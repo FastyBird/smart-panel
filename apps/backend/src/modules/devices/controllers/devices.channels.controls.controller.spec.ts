@@ -40,6 +40,7 @@ describe('DevicesChannelsControlsController', () => {
 
 	const mockChannel: ChannelEntity = {
 		id: uuid().toString(),
+		type: 'mock',
 		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',

@@ -1,4 +1,8 @@
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	Delete,
@@ -13,11 +17,16 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
+import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
-import { ReqCreateChannelPropertyDto } from '../dto/create-channel-property.dto';
-import { ReqUpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
+import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
+import {
+	ChannelPropertyTypeMapping,
+	ChannelsPropertiesTypeMapperService,
+} from '../services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
 
@@ -28,6 +37,7 @@ export class ChannelsPropertiesController {
 	constructor(
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly channelsPropertiesMapperService: ChannelsPropertiesTypeMapperService,
 	) {}
 
 	@Get()
@@ -65,14 +75,68 @@ export class ChannelsPropertiesController {
 	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/channels/:channel/properties/:id`)
 	async create(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-		@Body() createDto: ReqCreateChannelPropertyDto,
+		@Body() createDto: { data: object },
 	): Promise<ChannelPropertyEntity> {
 		this.logger.debug(`[CREATE] Incoming request to create a new property for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
 
+		const type: string | undefined =
+			'type' in createDto.data && typeof createDto.data.type === 'string' ? createDto.data.type : undefined;
+
+		if (!type) {
+			this.logger.error(`[VALIDATION] Missing required field: type for channelId=${channel.id}`);
+
+			throw new BadRequestException([
+				JSON.stringify({ field: 'type', reason: 'Channel property type attribute is required.' }),
+			]);
+		}
+
+		let mapping: ChannelPropertyTypeMapping<ChannelPropertyEntity, CreateChannelPropertyDto, UpdateChannelPropertyDto>;
+
 		try {
-			const property = await this.channelsPropertiesService.create(channel.id, createDto.data);
+			mapping = this.channelsPropertiesMapperService.getMapping<
+				ChannelPropertyEntity,
+				CreateChannelPropertyDto,
+				UpdateChannelPropertyDto
+			>(type);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`[ERROR] Unsupported channel property type: ${type} for channelId=${channel.id}`, {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			if (error instanceof DevicesException) {
+				throw new BadRequestException([
+					JSON.stringify({ field: 'type', reason: `Unsupported channel property type: ${type}` }),
+				]);
+			}
+
+			throw error;
+		}
+
+		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
+			enableImplicitConversion: true,
+			exposeUnsetFields: false,
+		});
+
+		const errors = await validate(dtoInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+
+		if (errors.length > 0) {
+			this.logger.error(
+				`[VALIDATION FAILED] Validation failed for channel creation error=${JSON.stringify(errors)} for channelId=${channel.id}`,
+			);
+
+			throw ValidationExceptionFactory.createException(errors);
+		}
+
+		try {
+			const property = await this.channelsPropertiesService.create(channel.id, dtoInstance);
 
 			this.logger.debug(`[CREATE] Successfully created property id=${property.id} for channelId=${channel.id}`);
 
@@ -90,14 +154,61 @@ export class ChannelsPropertiesController {
 	async update(
 		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: ReqUpdateChannelPropertyDto,
+		@Body() updateDto: { data: object },
 	): Promise<ChannelPropertyEntity> {
 		this.logger.debug(`[UPDATE] Incoming update request for property id=${id} for channelId=${channelId}`);
 
 		const channel = await this.getChannelOrThrow(channelId);
+		const property = await this.getOneOrThrow(id, channel.id);
+
+		let mapping: ChannelPropertyTypeMapping<ChannelPropertyEntity, CreateChannelPropertyDto, UpdateChannelPropertyDto>;
 
 		try {
-			const updatedProperty = await this.channelsPropertiesService.update(id, updateDto.data);
+			mapping = this.channelsPropertiesMapperService.getMapping<
+				ChannelPropertyEntity,
+				CreateChannelPropertyDto,
+				UpdateChannelPropertyDto
+			>(property.type);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(
+				`[ERROR] Unsupported channel property type for update: ${channel.type} id=${id} for channelId=${channelId}`,
+				{
+					message: err.message,
+					stack: err.stack,
+				},
+			);
+
+			if (error instanceof DevicesException) {
+				throw new BadRequestException([
+					JSON.stringify({ field: 'type', reason: `Unsupported channel property type: ${channel.type}` }),
+				]);
+			}
+
+			throw error;
+		}
+
+		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
+			enableImplicitConversion: true,
+			exposeUnsetFields: false,
+		});
+
+		const errors = await validate(dtoInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+
+		if (errors.length > 0) {
+			this.logger.error(
+				`[VALIDATION FAILED] Validation failed for device modification error=${JSON.stringify(errors)} id=${id} for channelId=${channelId}`,
+			);
+
+			throw ValidationExceptionFactory.createException(errors);
+		}
+
+		try {
+			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance);
 
 			this.logger.debug(`[UPDATE] Successfully updated property id=${updatedProperty.id} for channelId=${channel.id}`);
 

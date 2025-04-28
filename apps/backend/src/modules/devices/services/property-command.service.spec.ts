@@ -11,8 +11,8 @@ import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, Property
 import { PropertyCommandDto } from '../dto/property-command.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
+import { ChannelExistsConstraintValidator } from '../validators/channel-exists-constraint.validator';
 import { ChannelPropertyExistsConstraintValidator } from '../validators/channel-property-exists-constraint.validator';
-import { DeviceChannelExistsConstraintValidator } from '../validators/device-channel-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
@@ -22,6 +22,34 @@ import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandService } from './property-command.service';
 
 class MockDevice extends DeviceEntity {
+	@Expose({ name: 'mock_value' })
+	@IsString()
+	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
+		toClassOnly: true,
+	})
+	mockValue: string;
+
+	@Expose()
+	get type(): string {
+		return 'mock';
+	}
+}
+
+class MockChannel extends ChannelEntity {
+	@Expose({ name: 'mock_value' })
+	@IsString()
+	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
+		toClassOnly: true,
+	})
+	mockValue: string;
+
+	@Expose()
+	get type(): string {
+		return 'mock';
+	}
+}
+
+class MockChannelProperty extends ChannelPropertyEntity {
 	@Expose({ name: 'mock_value' })
 	@IsString()
 	@Transform(({ obj }: { obj: { mock_value?: string; mockValue?: string } }) => obj.mock_value || obj.mockValue, {
@@ -59,8 +87,9 @@ describe('PropertyCommandService', () => {
 		mockValue: 'Some value',
 	};
 
-	const mockChannel: ChannelEntity = {
+	const mockChannel: MockChannel = {
 		id: uuid().toString(),
+		type: 'mock',
 		category: ChannelCategory.GENERIC,
 		name: 'Test Channel',
 		description: 'Test description',
@@ -69,10 +98,12 @@ describe('PropertyCommandService', () => {
 		device: mockDevice.id,
 		controls: [],
 		properties: [],
+		mockValue: 'Some value',
 	};
 
-	const mockChannelProperty: ChannelPropertyEntity = {
+	const mockChannelProperty: MockChannelProperty = {
 		id: uuid().toString(),
+		type: 'mock',
 		name: 'Test Property',
 		category: PropertyCategory.GENERIC,
 		permissions: [PermissionType.READ_WRITE],
@@ -85,6 +116,7 @@ describe('PropertyCommandService', () => {
 		channel: mockChannel.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
+		mockValue: 'Some value',
 	};
 
 	const mockWsUser: ClientUserDto = {
@@ -97,7 +129,7 @@ describe('PropertyCommandService', () => {
 			providers: [
 				PropertyCommandService,
 				DeviceExistsConstraintValidator,
-				DeviceChannelExistsConstraintValidator,
+				ChannelExistsConstraintValidator,
 				ChannelPropertyExistsConstraintValidator,
 				{
 					provide: DevicesService,

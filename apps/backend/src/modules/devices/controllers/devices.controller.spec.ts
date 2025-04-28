@@ -25,7 +25,7 @@ describe('DevicesController', () => {
 
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
-		type: 'device',
+		type: 'mock',
 		category: DeviceCategory.GENERIC,
 		name: 'Test Device',
 		description: null,
@@ -87,13 +87,13 @@ describe('DevicesController', () => {
 
 		it('should create a new device', async () => {
 			const createDto: CreateDeviceDto = {
-				type: 'device',
+				type: 'mock',
 				category: DeviceCategory.GENERIC,
 				name: 'New Device',
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'device',
+				type: 'mock',
 				class: DeviceEntity,
 				createDto: CreateDeviceDto,
 				updateDto: UpdateDeviceDto,
@@ -107,12 +107,12 @@ describe('DevicesController', () => {
 
 		it('should update a device', async () => {
 			const updateDto: UpdateDeviceDto = {
-				type: 'device',
+				type: 'mock',
 				name: 'Updated Device',
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'device',
+				type: 'mock',
 				class: DeviceEntity,
 				createDto: CreateDeviceDto,
 				updateDto: UpdateDeviceDto,
