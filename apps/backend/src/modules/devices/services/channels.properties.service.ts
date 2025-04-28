@@ -15,7 +15,6 @@ import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
-import { ChannelsService } from './channels.service';
 import { PropertyValueService } from './property-value.service';
 
 @Injectable()
@@ -26,7 +25,6 @@ export class ChannelsPropertiesService {
 		@InjectRepository(ChannelPropertyEntity)
 		private readonly repository: Repository<ChannelPropertyEntity>,
 		private readonly propertiesMapperService: ChannelsPropertiesTypeMapperService,
-		private readonly channelsService: ChannelsService,
 		private readonly propertyValueService: PropertyValueService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
@@ -36,12 +34,10 @@ export class ChannelsPropertiesService {
 		if (channelId) {
 			this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelId=${channelId}`);
 
-			const channel = await this.channelsService.getOneOrThrow(channelId);
-
 			const properties = await this.repository
 				.createQueryBuilder('property')
 				.innerJoinAndSelect('property.channel', 'channel')
-				.where('channel.id = :channelId', { channelId: channel.id })
+				.where('channel.id = :channelId', { channelId })
 				.getMany();
 
 			this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties for channelId=${channelId}`);
@@ -64,13 +60,11 @@ export class ChannelsPropertiesService {
 		if (channelId) {
 			this.logger.debug(`[LOOKUP] Fetching property with id=${id} for channelId=${channelId}`);
 
-			const channel = await this.channelsService.getOneOrThrow(channelId);
-
 			property = await this.repository
 				.createQueryBuilder('property')
 				.innerJoinAndSelect('property.channel', 'channel')
 				.where('property.id = :id', { id })
-				.andWhere('channel.id = :channelId', { channelId: channel.id })
+				.andWhere('channel.id = :channelId', { channelId })
 				.getOne();
 
 			if (!property) {
@@ -114,8 +108,6 @@ export class ChannelsPropertiesService {
 
 		const mapping = this.propertiesMapperService.getMapping<TProperty, TCreateDTO, any>(type);
 
-		const channel = await this.channelsService.getOneOrThrow(channelId);
-
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
 		const errors = await validate(dtoInstance, {
@@ -138,7 +130,7 @@ export class ChannelsPropertiesService {
 				mapping.class,
 				{
 					...dtoInstance,
-					channel: channel.id,
+					channel: channelId,
 				},
 				{
 					enableImplicitConversion: true,
