@@ -469,7 +469,6 @@ export class WeatherService {
 		});
 
 		return Object.entries(dailyData).map(([date, data]) =>
-			//return dto.list.map((forecast) =>
 			plainToInstance(ForecastDayEntity, {
 				temperature: {
 					day: this.average(data.segments.day),

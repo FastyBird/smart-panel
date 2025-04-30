@@ -95,6 +95,9 @@ export class ForecastDayEntity {
 	temperature: ForecastTemperatureEntity;
 
 	@Expose({ name: 'feels_like' })
+	@Transform(({ obj }: { obj: { feels_like?: number; feelsLike?: number } }) => obj.feels_like || obj.feelsLike, {
+		toClassOnly: true,
+	})
 	@ValidateNested()
 	@Type(() => ForecastFeelsLikeEntity)
 	feelsLike: ForecastFeelsLikeEntity;
