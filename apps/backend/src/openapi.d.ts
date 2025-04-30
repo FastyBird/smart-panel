@@ -2527,7 +2527,6 @@ export interface components {
             id?: string;
             /**
              * @description Specifies the type of device.
-             * @default third-party
              * @example third-party
              */
             type: string;
@@ -2578,7 +2577,6 @@ export interface components {
             id?: string;
             /**
              * @description Specifies the type of channel.
-             * @default third-party
              * @example third-party
              */
             type: string;
@@ -2641,7 +2639,6 @@ export interface components {
             id?: string;
             /**
              * @description Specifies the type of channel property.
-             * @default third-party
              * @example third-party
              */
             type: string;
@@ -2701,7 +2698,6 @@ export interface components {
         DevicesModuleUpdateDevice: {
             /**
              * @description Specifies the type of device.
-             * @default third-party
              * @example third-party
              */
             type: string;
@@ -2723,7 +2719,6 @@ export interface components {
         DevicesModuleUpdateChannel: {
             /**
              * @description Specifies the type of channel.
-             * @default third-party
              * @example third-party
              */
             type: string;
@@ -2745,7 +2740,6 @@ export interface components {
         DevicesModuleUpdateChannelProperty: {
             /**
              * @description Specifies the type of channel property.
-             * @default third-party
              * @example third-party
              */
             type: string;

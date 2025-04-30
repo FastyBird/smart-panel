@@ -8686,7 +8686,6 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of device.",
-            "default": "third-party",
             "example": "third-party"
           },
           "category": {
@@ -8760,7 +8759,6 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel.",
-            "default": "third-party",
             "example": "third-party"
           },
           "category": {
@@ -8858,7 +8856,6 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel property.",
-            "default": "third-party",
             "example": "third-party"
           },
           "category": {
@@ -8968,7 +8965,6 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of device.",
-            "default": "third-party",
             "example": "third-party"
           },
           "name": {
@@ -8995,7 +8991,6 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel.",
-            "default": "third-party",
             "example": "third-party"
           },
           "name": {
@@ -9022,7 +9017,6 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel property.",
-            "default": "third-party",
             "example": "third-party"
           },
           "name": {

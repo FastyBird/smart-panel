@@ -24,6 +24,9 @@ mixin _$DevicesModuleCreateChannelProperty {
   /// Unique identifier for the property. Optional during creation and system-generated if not provided.
   String get id => throw _privateConstructorUsedError;
 
+  /// Specifies the type of channel property.
+  String get type => throw _privateConstructorUsedError;
+
   /// Defines the category of the property, representing its functionality or characteristic.
   DevicesModuleChannelPropertyCategory get category =>
       throw _privateConstructorUsedError;
@@ -76,6 +79,7 @@ abstract class $DevicesModuleCreateChannelPropertyCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       DevicesModuleChannelPropertyCategory category,
       List<DevicesModuleCreateChannelPropertyPermissions> permissions,
       @JsonKey(name: 'data_type')
@@ -105,6 +109,7 @@ class _$DevicesModuleCreateChannelPropertyCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? category = null,
     Object? permissions = null,
     Object? dataType = null,
@@ -119,6 +124,10 @@ class _$DevicesModuleCreateChannelPropertyCopyWithImpl<$Res,
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       category: null == category
           ? _value.category
@@ -171,6 +180,7 @@ abstract class _$$DevicesModuleCreateChannelPropertyImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       DevicesModuleChannelPropertyCategory category,
       List<DevicesModuleCreateChannelPropertyPermissions> permissions,
       @JsonKey(name: 'data_type')
@@ -199,6 +209,7 @@ class __$$DevicesModuleCreateChannelPropertyImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? category = null,
     Object? permissions = null,
     Object? dataType = null,
@@ -213,6 +224,10 @@ class __$$DevicesModuleCreateChannelPropertyImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       category: null == category
           ? _value.category
@@ -260,6 +275,7 @@ class _$DevicesModuleCreateChannelPropertyImpl
     implements _DevicesModuleCreateChannelProperty {
   const _$DevicesModuleCreateChannelPropertyImpl(
       {required this.id,
+      required this.type,
       required this.category,
       required final List<DevicesModuleCreateChannelPropertyPermissions>
           permissions,
@@ -280,6 +296,10 @@ class _$DevicesModuleCreateChannelPropertyImpl
   /// Unique identifier for the property. Optional during creation and system-generated if not provided.
   @override
   final String id;
+
+  /// Specifies the type of channel property.
+  @override
+  final String type;
 
   /// Defines the category of the property, representing its functionality or characteristic.
   @override
@@ -336,7 +356,7 @@ class _$DevicesModuleCreateChannelPropertyImpl
 
   @override
   String toString() {
-    return 'DevicesModuleCreateChannelProperty(id: $id, category: $category, permissions: $permissions, dataType: $dataType, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
+    return 'DevicesModuleCreateChannelProperty(id: $id, type: $type, category: $category, permissions: $permissions, dataType: $dataType, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
   }
 
   @override
@@ -345,6 +365,7 @@ class _$DevicesModuleCreateChannelPropertyImpl
         (other.runtimeType == runtimeType &&
             other is _$DevicesModuleCreateChannelPropertyImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.category, category) ||
                 other.category == category) &&
             const DeepCollectionEquality()
@@ -364,6 +385,7 @@ class _$DevicesModuleCreateChannelPropertyImpl
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       category,
       const DeepCollectionEquality().hash(_permissions),
       dataType,
@@ -396,6 +418,7 @@ abstract class _DevicesModuleCreateChannelProperty
     implements DevicesModuleCreateChannelProperty {
   const factory _DevicesModuleCreateChannelProperty(
       {required final String id,
+      required final String type,
       required final DevicesModuleChannelPropertyCategory category,
       required final List<DevicesModuleCreateChannelPropertyPermissions>
           permissions,
@@ -415,6 +438,10 @@ abstract class _DevicesModuleCreateChannelProperty
   /// Unique identifier for the property. Optional during creation and system-generated if not provided.
   @override
   String get id;
+
+  /// Specifies the type of channel property.
+  @override
+  String get type;
 
   /// Defines the category of the property, representing its functionality or characteristic.
   @override

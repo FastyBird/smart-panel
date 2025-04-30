@@ -10,6 +10,7 @@ _$DevicesModuleChannelPropertyImpl _$$DevicesModuleChannelPropertyImplFromJson(
         Map<String, dynamic> json) =>
     _$DevicesModuleChannelPropertyImpl(
       id: json['id'] as String,
+      type: json['type'] as String,
       category: DevicesModuleChannelPropertyCategory.fromJson(
           json['category'] as String),
       name: json['name'] as String?,
@@ -37,6 +38,7 @@ Map<String, dynamic> _$$DevicesModuleChannelPropertyImplToJson(
         _$DevicesModuleChannelPropertyImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'category':
           _$DevicesModuleChannelPropertyCategoryEnumMap[instance.category]!,
       'name': instance.name,

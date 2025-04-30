@@ -21,6 +21,9 @@ DevicesModuleUpdateChannelProperty _$DevicesModuleUpdateChannelPropertyFromJson(
 
 /// @nodoc
 mixin _$DevicesModuleUpdateChannelProperty {
+  /// Specifies the type of channel property.
+  String get type => throw _privateConstructorUsedError;
+
   /// Optional name of the property for easier identification.
   String? get name => throw _privateConstructorUsedError;
 
@@ -59,7 +62,8 @@ abstract class $DevicesModuleUpdateChannelPropertyCopyWith<$Res> {
           DevicesModuleUpdateChannelProperty>;
   @useResult
   $Res call(
-      {String? name,
+      {String type,
+      String? name,
       String? unit,
       List<dynamic>? format,
       dynamic invalid,
@@ -83,6 +87,7 @@ class _$DevicesModuleUpdateChannelPropertyCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? name = freezed,
     Object? unit = freezed,
     Object? format = freezed,
@@ -91,6 +96,10 @@ class _$DevicesModuleUpdateChannelPropertyCopyWithImpl<$Res,
     Object? value = freezed,
   }) {
     return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       name: freezed == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
@@ -129,7 +138,8 @@ abstract class _$$DevicesModuleUpdateChannelPropertyImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {String? name,
+      {String type,
+      String? name,
       String? unit,
       List<dynamic>? format,
       dynamic invalid,
@@ -152,6 +162,7 @@ class __$$DevicesModuleUpdateChannelPropertyImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? name = freezed,
     Object? unit = freezed,
     Object? format = freezed,
@@ -160,6 +171,10 @@ class __$$DevicesModuleUpdateChannelPropertyImplCopyWithImpl<$Res>
     Object? value = freezed,
   }) {
     return _then(_$DevicesModuleUpdateChannelPropertyImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       name: freezed == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
@@ -193,7 +208,8 @@ class __$$DevicesModuleUpdateChannelPropertyImplCopyWithImpl<$Res>
 class _$DevicesModuleUpdateChannelPropertyImpl
     implements _DevicesModuleUpdateChannelProperty {
   const _$DevicesModuleUpdateChannelPropertyImpl(
-      {this.name,
+      {required this.type,
+      this.name,
       this.unit,
       final List<dynamic>? format,
       this.invalid,
@@ -204,6 +220,10 @@ class _$DevicesModuleUpdateChannelPropertyImpl
   factory _$DevicesModuleUpdateChannelPropertyImpl.fromJson(
           Map<String, dynamic> json) =>
       _$$DevicesModuleUpdateChannelPropertyImplFromJson(json);
+
+  /// Specifies the type of channel property.
+  @override
+  final String type;
 
   /// Optional name of the property for easier identification.
   @override
@@ -240,7 +260,7 @@ class _$DevicesModuleUpdateChannelPropertyImpl
 
   @override
   String toString() {
-    return 'DevicesModuleUpdateChannelProperty(name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
+    return 'DevicesModuleUpdateChannelProperty(type: $type, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
   }
 
   @override
@@ -248,6 +268,7 @@ class _$DevicesModuleUpdateChannelPropertyImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DevicesModuleUpdateChannelPropertyImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.unit, unit) || other.unit == unit) &&
             const DeepCollectionEquality().equals(other._format, _format) &&
@@ -260,6 +281,7 @@ class _$DevicesModuleUpdateChannelPropertyImpl
   @override
   int get hashCode => Object.hash(
       runtimeType,
+      type,
       name,
       unit,
       const DeepCollectionEquality().hash(_format),
@@ -288,7 +310,8 @@ class _$DevicesModuleUpdateChannelPropertyImpl
 abstract class _DevicesModuleUpdateChannelProperty
     implements DevicesModuleUpdateChannelProperty {
   const factory _DevicesModuleUpdateChannelProperty(
-      {final String? name,
+      {required final String type,
+      final String? name,
       final String? unit,
       final List<dynamic>? format,
       final dynamic invalid,
@@ -298,6 +321,10 @@ abstract class _DevicesModuleUpdateChannelProperty
   factory _DevicesModuleUpdateChannelProperty.fromJson(
           Map<String, dynamic> json) =
       _$DevicesModuleUpdateChannelPropertyImpl.fromJson;
+
+  /// Specifies the type of channel property.
+  @override
+  String get type;
 
   /// Optional name of the property for easier identification.
   @override

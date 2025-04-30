@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
@@ -28,8 +29,19 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     late Map<String, ChannelPropertyModel> insertData = {...data};
 
     for (var row in json) {
+      if (!row.containsKey('type')) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNELS PROPERTIES] Missing required attribute: "type" for property: "${row['id']}"',
+          );
+        }
+
+        continue;
+      }
+
       try {
-        ChannelPropertyModel property = ChannelPropertyModel.fromJson(row);
+        ChannelPropertyModel property =
+            buildChannelPropertyModel(row['type'], row);
 
         insertData[property.id] = property;
       } catch (e) {

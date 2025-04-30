@@ -18,6 +18,9 @@ class DevicesModuleChannel with _$DevicesModuleChannel {
     /// System-generated unique identifier for the channel.
     required String id,
 
+    /// Specifies the type of channel.
+    required String type,
+
     /// Type of the channel, indicating its functional category (e.g., temperature, light).
     required DevicesModuleChannelCategory category,
 

@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
-class ChannelPropertyModel extends Model {
+abstract class ChannelPropertyModel extends Model {
   final String _channel;
 
   final PropertyCategory _category;
@@ -87,63 +87,8 @@ class ChannelPropertyModel extends Model {
     );
   }
 
-  factory ChannelPropertyModel.fromJson(Map<String, dynamic> json) {
-    return ChannelPropertyModel(
-      channel: json['channel'],
-      id: json['id'],
-      category: PropertyCategory.fromValue(json['category']) ??
-          PropertyCategory.generic,
-      name: json['name'],
-      permission: (json['permission'] as List<dynamic>? ?? [])
-          .map((e) => Permission.fromValue(e.toString()))
-          .whereType<Permission>()
-          .toList(),
-      dataType: DataType.fromValue(json['data_type']) ?? DataType.unknown,
-      unit: json['unit'],
-      format:
-          json['format'] != null ? FormatType.fromJson(json['format']) : null,
-      invalid: json['invalid'] != null
-          ? InvalidValueType.fromJson(json['invalid'])
-          : null,
-      step: json['step'] != null ? (json['step'] as num).toDouble() : null,
-      defaultValue: json['default_value'] != null
-          ? ValueType.fromJson(json['default_value'])
-          : null,
-      value: json['value'] != null ? ValueType.fromJson(json['value']) : null,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-    );
-  }
-
   ChannelPropertyModel copyWith({
     ValueType? value,
     bool? clearValue,
-  }) {
-    ValueType? setValue = value ?? _value;
-
-    if (clearValue != null) {
-      setValue = null;
-    }
-
-    return ChannelPropertyModel(
-      channel: _channel,
-      id: id,
-      category: _category,
-      name: _name,
-      permission: _permission,
-      dataType: _dataType,
-      unit: _unit,
-      format: _format,
-      invalid: _invalid,
-      step: _step,
-      defaultValue: _defaultValue,
-      value: setValue,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
-    );
-  }
+  });
 }

@@ -10,6 +10,7 @@ _$DevicesModuleUpdateChannelPropertyImpl
     _$$DevicesModuleUpdateChannelPropertyImplFromJson(
             Map<String, dynamic> json) =>
         _$DevicesModuleUpdateChannelPropertyImpl(
+          type: json['type'] as String,
           name: json['name'] as String?,
           unit: json['unit'] as String?,
           format: json['format'] as List<dynamic>?,
@@ -21,6 +22,7 @@ _$DevicesModuleUpdateChannelPropertyImpl
 Map<String, dynamic> _$$DevicesModuleUpdateChannelPropertyImplToJson(
         _$DevicesModuleUpdateChannelPropertyImpl instance) =>
     <String, dynamic>{
+      'type': instance.type,
       'name': instance.name,
       'unit': instance.unit,
       'format': instance.format,

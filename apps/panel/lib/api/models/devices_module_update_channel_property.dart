@@ -11,6 +11,9 @@ part 'devices_module_update_channel_property.g.dart';
 @Freezed()
 class DevicesModuleUpdateChannelProperty with _$DevicesModuleUpdateChannelProperty {
   const factory DevicesModuleUpdateChannelProperty({
+    /// Specifies the type of channel property.
+    required String type,
+
     /// Optional name of the property for easier identification.
     String? name,
 

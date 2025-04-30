@@ -11,6 +11,7 @@ _$DevicesModuleCreateDeviceChannelImpl
             Map<String, dynamic> json) =>
         _$DevicesModuleCreateDeviceChannelImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           category:
               DevicesModuleChannelCategory.fromJson(json['category'] as String),
           name: json['name'] as String,
@@ -29,6 +30,7 @@ Map<String, dynamic> _$$DevicesModuleCreateDeviceChannelImplToJson(
         _$DevicesModuleCreateDeviceChannelImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'category': _$DevicesModuleChannelCategoryEnumMap[instance.category]!,
       'name': instance.name,
       'controls': instance.controls,

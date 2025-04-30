@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
@@ -11,8 +12,18 @@ class ChannelsRepository extends Repository<ChannelModel> {
     late Map<String, ChannelModel> insertData = {...data};
 
     for (var row in json) {
+      if (!row.containsKey('type')) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][CHANNELS] Missing required attribute: "type" for channel: "${row['id']}"',
+          );
+        }
+
+        continue;
+      }
+
       try {
-        ChannelModel channel = ChannelModel.fromJson(row);
+        ChannelModel channel = buildChannelModel(row['type'], row);
 
         insertData[channel.id] = channel;
       } catch (e) {
