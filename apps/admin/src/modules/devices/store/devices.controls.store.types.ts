@@ -1,21 +1,23 @@
 import type { Ref } from 'vue';
 
-
-
 import type { Store } from 'pinia';
-
-
 
 import { z } from 'zod';
 
-
-
-import { DeviceControlCreateReqSchema, DeviceControlResSchema, DeviceControlSchema, DevicesControlsAddActionPayloadSchema, DevicesControlsFetchActionPayloadSchema, DevicesControlsGetActionPayloadSchema, DevicesControlsRemoveActionPayloadSchema, DevicesControlsSaveActionPayloadSchema, DevicesControlsSetActionPayloadSchema, DevicesControlsStateSemaphoreSchema, DevicesControlsUnsetActionPayloadSchema } from './devices.controls.store.schemas';
+import {
+	DeviceControlCreateReqSchema,
+	DeviceControlResSchema,
+	DeviceControlSchema,
+	DevicesControlsAddActionPayloadSchema,
+	DevicesControlsFetchActionPayloadSchema,
+	DevicesControlsGetActionPayloadSchema,
+	DevicesControlsRemoveActionPayloadSchema,
+	DevicesControlsSaveActionPayloadSchema,
+	DevicesControlsSetActionPayloadSchema,
+	DevicesControlsStateSemaphoreSchema,
+	DevicesControlsUnsetActionPayloadSchema,
+} from './devices.controls.store.schemas';
 import { type IDevice } from './devices.store.types';
-
-
-
-
 
 // STORE STATE
 // ===========

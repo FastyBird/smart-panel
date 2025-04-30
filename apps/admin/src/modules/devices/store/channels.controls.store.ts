@@ -118,7 +118,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 				return pendingGetPromises[payload.id];
 			}
 
-			const fetchPromise = (async (): Promise<IChannelControl> => {
+			const getPromise = (async (): Promise<IChannelControl> => {
 				if (semaphore.value.fetching.item.includes(payload.id)) {
 					throw new DevicesApiException('Already fetching channel control.');
 				}
@@ -154,10 +154,10 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 				throw new DevicesApiException(errorReason, response.status);
 			})();
 
-			pendingGetPromises[payload.id] = fetchPromise;
+			pendingGetPromises[payload.id] = getPromise;
 
 			try {
-				return await fetchPromise;
+				return await getPromise;
 			} finally {
 				delete pendingGetPromises[payload.id];
 			}

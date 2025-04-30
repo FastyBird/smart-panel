@@ -17,10 +17,10 @@ export const transformPageResponse = <T extends IPage = IPage>(response: IPageRe
 };
 
 export const transformPageCreateRequest = <T extends IPageCreateReq = IPageCreateReq>(
-	property: IPagesAddActionPayload['data'],
+	data: IPagesAddActionPayload['data'],
 	schema: typeof PageCreateReqSchema
 ): T => {
-	const parsed = schema.safeParse(camelToSnake(property));
+	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
 		console.error('Schema validation failed with:', parsed.error);
@@ -32,10 +32,10 @@ export const transformPageCreateRequest = <T extends IPageCreateReq = IPageCreat
 };
 
 export const transformPageUpdateRequest = <T extends IPageUpdateReq = IPageUpdateReq>(
-	property: IPagesEditActionPayload['data'],
+	data: IPagesEditActionPayload['data'],
 	schema: typeof PageUpdateReqSchema
 ): T => {
-	const parsed = schema.safeParse(camelToSnake(property));
+	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
 		console.error('Schema validation failed with:', parsed.error);

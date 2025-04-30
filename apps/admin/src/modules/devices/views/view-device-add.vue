@@ -44,32 +44,7 @@
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar class="grow-1 p-2 md:px-4">
-			<el-form-item
-				:label="t('devicesModule.fields.devices.plugin.title')"
-				label-position="top"
-			>
-				<el-select
-					v-model="selectedType"
-					:placeholder="t('devicesModule.fields.devices.plugin.placeholder')"
-					name="plugin"
-					filterable
-				>
-					<el-option
-						v-for="item in typesOptions"
-						:key="item.value"
-						:label="item.label"
-						:value="item.value"
-					/>
-				</el-select>
-			</el-form-item>
-
-			<el-alert
-				v-if="plugin"
-				:description="plugin.description"
-				:closable="false"
-				show-icon
-				type="info"
-			/>
+			<select-device-plugin v-model="selectedType" />
 
 			<el-divider />
 
@@ -82,6 +57,7 @@
 					v-model:remote-form-result="remoteFormResult"
 					v-model:remote-form-reset="remoteFormReset"
 					v-model:remote-form-changed="remoteFormChanged"
+					:type="selectedType"
 				/>
 
 				<device-add-form
@@ -161,15 +137,16 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElAlert, ElButton, ElDivider, ElFormItem, ElIcon, ElMessageBox, ElOption, ElScrollbar, ElSelect } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
 import { DeviceAddForm } from '../components/components';
-import { usePlugins } from '../composables/composables';
+import SelectDevicePlugin from '../components/devices/select-device-plugin.vue';
+import { useDevicesPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
-import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
+import type { IDevicePluginsComponents, IDevicePluginsSchemas } from '../devices.types';
 
 import type { IViewDeviceAddProps } from './view-device-add.types';
 
@@ -196,16 +173,16 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const newDeviceId = uuidGenerate();
 
-const { plugins, options: typesOptions } = usePlugins();
+const { plugins } = useDevicesPlugins();
 
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
-const selectedType = ref<string | undefined>(undefined);
+const selectedType = ref<IPlugin['type'] | undefined>(undefined);
 
-const plugin = computed<IPlugin<IPluginsComponents, IPluginsSchemas> | undefined>(() => {
+const plugin = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
 	return plugins.value.find((plugin) => plugin.type === selectedType.value);
 });
 

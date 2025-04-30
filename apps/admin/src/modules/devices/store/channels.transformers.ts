@@ -1,3 +1,4 @@
+import { camelToSnake, snakeToCamel } from '../../../common';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { ChannelCreateReqSchema, ChannelSchema, ChannelUpdateReqSchema } from './channels.store.schemas';
@@ -10,57 +11,44 @@ import type {
 	IChannelsEditActionPayload,
 } from './channels.store.types';
 
-export const transformChannelResponse = (response: IChannelRes): IChannel => {
-	const parsedChannel = ChannelSchema.safeParse({
-		id: response.id,
-		device: response.device,
-		category: response.category,
-		name: response.name,
-		description: response.description,
-		controls: response.controls,
-		properties: response.properties,
-		createdAt: response.created_at,
-		updatedAt: response.updated_at,
-	});
+export const transformChannelResponse = <T extends IChannel = IChannel>(response: IChannelRes, schema: typeof ChannelSchema): T => {
+	const parsed = schema.safeParse(snakeToCamel(response));
 
-	if (!parsedChannel.success) {
-		console.error('Schema validation failed with:', parsedChannel.error);
+	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate received channel data.');
 	}
 
-	return parsedChannel.data;
+	return parsed.data as T;
 };
 
-export const transformChannelCreateRequest = (channel: IChannelsAddActionPayload['data'] & { id?: string; device: string }): IChannelCreateReq => {
-	const parsedRequest = ChannelCreateReqSchema.safeParse({
-		id: channel.id,
-		device: channel.device,
-		category: channel.category,
-		name: channel.name,
-		description: channel.description,
-	});
+export const transformChannelCreateRequest = <T extends IChannelCreateReq = IChannelCreateReq>(
+	data: IChannelsAddActionPayload['data'],
+	schema: typeof ChannelCreateReqSchema
+): T => {
+	const parsed = schema.safeParse(camelToSnake(data));
 
-	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate create channel request.');
 	}
 
-	return parsedRequest.data;
+	return parsed.data as T;
 };
 
-export const transformChannelUpdateRequest = (channel: IChannelsEditActionPayload['data']): IChannelUpdateReq => {
-	const parsedRequest = ChannelUpdateReqSchema.safeParse({
-		name: channel.name,
-		description: channel.description,
-	});
+export const transformChannelUpdateRequest = <T extends IChannelUpdateReq = IChannelUpdateReq>(
+	data: IChannelsEditActionPayload['data'],
+	schema: typeof ChannelUpdateReqSchema
+): T => {
+	const parsed = schema.safeParse(camelToSnake(data));
 
-	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate update channel request.');
 	}
 
-	return parsedRequest.data;
+	return parsed.data as T;
 };

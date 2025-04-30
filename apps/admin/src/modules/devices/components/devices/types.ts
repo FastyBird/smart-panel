@@ -8,3 +8,4 @@ export * from './devices-table-column-icon.types';
 export * from './devices-table-column-state.types';
 export * from './list-devices.types';
 export * from './list-devices-adjust.types';
+export * from './select-device-plugin.types';

@@ -1,12 +1,4 @@
 {
-  "messages": {
-    "devices": {
-      "created": "New third party device added successfully.",
-      "notCreated": "Something went wrong. Unable to create the third party device.",
-      "edited": "Changes saved! The third party device: {device} has been updated.",
-      "notEdited": "Something went wrong. Third party device update was not successful."
-    }
-  },
   "fields": {
     "devices": {
       "id": {

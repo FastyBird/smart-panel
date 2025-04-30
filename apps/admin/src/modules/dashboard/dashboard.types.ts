@@ -10,7 +10,6 @@ import { type IPageAddFormProps, pageAddFormEmits } from './components/pages/pag
 import { type IPageEditFormProps, pageEditFormEmits } from './components/pages/page-edit-form.types';
 import { type ITileAddFormProps, tileAddFormEmits } from './components/tiles/tile-add-form.types';
 import { type ITileEditFormProps, tileEditFormEmits } from './components/tiles/tile-edit-form.types';
-import type { FormResultType } from './dashboard.constants';
 import { type DataSourceAddFormSchema, DataSourceEditFormSchema } from './schemas/dataSources.schemas';
 import { PageAddFormSchema, PageEditFormSchema } from './schemas/pages.schemas';
 import { type TileAddFormSchema, TileEditFormSchema } from './schemas/tiles.schemas';
@@ -22,40 +21,6 @@ import { TileCreateReqSchema, type TileSchema, TileUpdateReqSchema } from './sto
 export interface IPageDetailProps {
 	page: IPage;
 }
-
-export interface IElementAddProps {
-	page: IPage;
-	type: string;
-	id: string;
-	remoteFormSubmit: boolean;
-	remoteFormResult: FormResultType;
-	remoteFormReset: boolean;
-	remoteFormChanged: boolean;
-}
-
-export const elementAddFormEmits = {
-	'update:remote-form-submit': (remoteFormSubmit: boolean): boolean => typeof remoteFormSubmit === 'boolean',
-	'update:remote-form-result': (remoteFormResult: FormResultType): boolean => typeof remoteFormResult === 'string',
-	'update:remote-form-reset': (remoteFormReset: boolean): boolean => typeof remoteFormReset === 'boolean',
-	'update:remote-form-changed': (formChanged: boolean): boolean => typeof formChanged === 'boolean',
-};
-
-export interface IElementEditProps {
-	page: IPage;
-	type: string;
-	id: string;
-	remoteFormSubmit: boolean;
-	remoteFormResult: FormResultType;
-	remoteFormReset: boolean;
-	remoteFormChanged: boolean;
-}
-
-export const elementEditFormEmits = {
-	'update:remote-form-submit': (remoteFormSubmit: boolean): boolean => typeof remoteFormSubmit === 'boolean',
-	'update:remote-form-result': (remoteFormResult: FormResultType): boolean => typeof remoteFormResult === 'string',
-	'update:remote-form-reset': (remoteFormReset: boolean): boolean => typeof remoteFormReset === 'boolean',
-	'update:remote-form-changed': (formChanged: boolean): boolean => typeof formChanged === 'boolean',
-};
 
 export type IPagePluginsComponents = {
 	pageDetail?: DefineComponent<IPageDetailProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;

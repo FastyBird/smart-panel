@@ -1,24 +1,30 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
+import { DeviceAddFormSchema } from '../schemas/devices.schemas';
+import type { IDeviceAddForm } from '../schemas/devices.types';
 import type { IDevice } from '../store/devices.store.types';
 import { devicesStoreKey } from '../store/keys';
 
-import type { IDeviceAddForm, IUseDeviceAddForm } from './types';
+import type { IUseDeviceAddForm } from './types';
+import { useDevicesPlugin } from './useDevicesPlugin';
 
 interface IUseDeviceAddFormProps {
 	id: IDevice['id'];
 	type: IPlugin['type'];
 }
 
-export const useDeviceAddForm = ({ id, type }: IUseDeviceAddFormProps): IUseDeviceAddForm => {
+export const useDeviceAddForm = <TForm extends IDeviceAddForm = IDeviceAddForm>({ id, type }: IUseDeviceAddFormProps): IUseDeviceAddForm<TForm> => {
 	const storesManager = injectStoresManager();
+
+	const { plugin } = useDevicesPlugin({ type });
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 
@@ -35,13 +41,15 @@ export const useDeviceAddForm = ({ id, type }: IUseDeviceAddFormProps): IUseDevi
 		label: t(`devicesModule.categories.devices.${value}`),
 	}));
 
-	const model = reactive<IDeviceAddForm>({
+	const model = reactive<TForm>({
 		id,
 		type,
 		category: DevicesModuleDeviceCategory.generic,
 		name: '',
 		description: '',
-	});
+	} as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -54,6 +62,14 @@ export const useDeviceAddForm = ({ id, type }: IUseDeviceAddFormProps): IUseDevi
 
 		if (!valid) throw new DevicesValidationException('Form not valid');
 
+		const parsedModel = (plugin.value?.schemas?.deviceAddFormSchema || DeviceAddFormSchema).safeParse(model);
+
+		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
+			throw new DevicesValidationException('Failed to validate create device model.');
+		}
+
 		formResult.value = FormResult.WORKING;
 
 		const errorMessage = t('devicesModule.messages.devices.notCreated', { device: model.name });
@@ -63,10 +79,8 @@ export const useDeviceAddForm = ({ id, type }: IUseDeviceAddFormProps): IUseDevi
 				id,
 				draft: false,
 				data: {
+					...parsedModel.data,
 					type,
-					category: model.category,
-					name: model.name,
-					description: model.description?.trim() === '' ? null : model.description,
 				},
 			});
 		} catch (error: unknown) {
@@ -102,18 +116,8 @@ export const useDeviceAddForm = ({ id, type }: IUseDeviceAddFormProps): IUseDevi
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: IDeviceAddForm): void => {
-		if (val.type !== '') {
-			formChanged.value = true;
-		} else if (val.category !== DevicesModuleDeviceCategory.generic) {
-			formChanged.value = true;
-		} else if (val.name !== '') {
-			formChanged.value = true;
-		} else if (val.description !== '') {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

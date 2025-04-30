@@ -2475,7 +2475,7 @@ export interface components {
              *       "auto"
              *     ]
              */
-            format: (string | number)[] | null;
+            format: (string | number | null)[] | null;
             /**
              * @description Value to represent an invalid state for the property.
              * @default null
@@ -2677,7 +2677,7 @@ export interface components {
              *       "auto"
              *     ]
              */
-            format?: (string | number)[] | null;
+            format?: (string | number | null)[] | null;
             /**
              * @description Value to represent an invalid state for the property.
              * @example -999
@@ -2766,7 +2766,7 @@ export interface components {
              *       "auto"
              *     ]
              */
-            format?: (string | number)[] | null;
+            format?: (string | number | null)[] | null;
             /**
              * @description Value to represent an invalid state for the property.
              * @example -999

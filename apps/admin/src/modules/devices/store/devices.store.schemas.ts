@@ -17,7 +17,7 @@ type ApiDevice = components['schemas']['DevicesModuleDevice'];
 export const DeviceSchema = z.object({
 	id: ItemIdSchema,
 	draft: z.boolean().default(false),
-	type: z.string(),
+	type: z.string().trim().nonempty(),
 	category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
@@ -47,7 +47,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	data: z
 		.object({
-			type: z.string(),
+			type: z.string().trim().nonempty(),
 			category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 			name: z.string().trim().nonempty(),
 			description: z
@@ -73,7 +73,7 @@ export const DevicesAddActionPayloadSchema = z.object({
 	draft: z.boolean().optional().default(false),
 	data: z
 		.object({
-			type: z.string(),
+			type: z.string().trim().nonempty(),
 			category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
 			name: z.string().trim().nonempty(),
 			description: z
@@ -90,6 +90,7 @@ export const DevicesEditActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	data: z
 		.object({
+			type: z.string().trim().nonempty(),
 			name: z.string().trim().optional(),
 			description: z
 				.string()

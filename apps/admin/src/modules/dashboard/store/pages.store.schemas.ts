@@ -91,7 +91,7 @@ export const PagesEditActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	data: z
 		.object({
-			type: z.string().trim(),
+			type: z.string().trim().nonempty(),
 			title: z.string().trim().optional(),
 			icon: z
 				.string()

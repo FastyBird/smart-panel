@@ -166,7 +166,7 @@
 			>
 				<el-input
 					v-model="model.minValue"
-					:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder')"
+					:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder.min')"
 					name="format"
 				/>
 			</el-form-item>
@@ -178,7 +178,7 @@
 			>
 				<el-input
 					v-model="model.maxValue"
-					:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder')"
+					:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder.max')"
 					name="format"
 				/>
 			</el-form-item>
@@ -191,7 +191,7 @@
 		>
 			<el-input-tag
 				v-model="model.enumValues"
-				:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder')"
+				:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder.enum')"
 				name="format"
 			/>
 		</el-form-item>
@@ -201,7 +201,7 @@
 			:prop="['invalid']"
 		>
 			<el-input
-				v-model="model.invalid"
+				v-model="model.invalid as string | number | null"
 				:placeholder="t('devicesModule.fields.channelsProperties.invalid.placeholder')"
 				name="invalid"
 			/>
@@ -238,8 +238,9 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputTag, ElOption, ElSelect, type FormRules, vLoading } from 'element-plus';
 
 import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
-import { type IChannelPropertyAddForm, useChannelPropertyAddForm } from '../../composables/composables';
+import { useChannelPropertyAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
+import type { IChannelPropertyAddForm } from '../../schemas/channels.properties.types';
 
 import type { IChannelPropertyAddFormProps } from './channel-property-add-form.types';
 
@@ -263,7 +264,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
-	useChannelPropertyAddForm({ id: props.id, channelId: props.channel?.id });
+	useChannelPropertyAddForm({ id: props.id, type: props.type, channelId: props.channel?.id });
 
 const rules = reactive<FormRules<IChannelPropertyAddForm>>({
 	channel: [{ required: true, message: t('devicesModule.fields.channelsProperties.channel.validation.required'), trigger: 'change' }],

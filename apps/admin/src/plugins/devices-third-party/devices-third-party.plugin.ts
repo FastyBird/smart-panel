@@ -4,13 +4,29 @@ import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
-import { DEVICES_MODULE_NAME, type IPluginsComponents, type IPluginsSchemas } from '../../modules/devices';
+import {
+	ChannelPropertySchema,
+	ChannelSchema,
+	DEVICES_MODULE_NAME,
+	type IChannelPluginsComponents,
+	type IChannelPluginsSchemas,
+	type IChannelPropertyPluginsComponents,
+	type IChannelPropertyPluginsSchemas,
+	type IDevicePluginsComponents,
+	type IDevicePluginsSchemas,
+} from '../../modules/devices';
 
 import { ThirdPartyDeviceAddForm, ThirdPartyDeviceEditForm } from './components/components';
 import enUS from './locales/en-US.json';
+import { ThirdPartyDeviceAddFormSchema, ThirdPartyDeviceEditFormSchema } from './schemas/devices.schemas';
 import { ThirdPartyDeviceCreateReqSchema, ThirdPartyDeviceSchema, ThirdPartyDeviceUpdateReqSchema } from './store/devices.store.schemas';
 
-export const devicesThirdPartyPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol('FB-Plugin-DevicesThirdParty');
+export const devicesThirdPartyPluginKey: PluginInjectionKey<
+	IPlugin<
+		IDevicePluginsComponents & IChannelPluginsComponents & IChannelPropertyPluginsComponents,
+		IDevicePluginsSchemas & IChannelPluginsSchemas & IChannelPropertyPluginsSchemas
+	>
+> = Symbol('FB-Plugin-DevicesThirdParty');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -39,8 +55,12 @@ export default {
 			},
 			schemas: {
 				deviceSchema: ThirdPartyDeviceSchema,
+				deviceAddFormSchema: ThirdPartyDeviceAddFormSchema,
+				deviceEditFormSchema: ThirdPartyDeviceEditFormSchema,
 				deviceCreateReqSchema: ThirdPartyDeviceCreateReqSchema,
 				deviceUpdateReqSchema: ThirdPartyDeviceUpdateReqSchema,
+				channelSchema: ChannelSchema,
+				channelPropertySchema: ChannelPropertySchema,
 			},
 			modules: [DEVICES_MODULE_NAME],
 			isCore: true,

@@ -81,10 +81,10 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			});
 
 			if (parsedSession.success) {
-				console.error('Schema validation failed with:', parsedSession.error);
-
 				tokenPair.value = parsedSession.data;
 			} else {
+				console.error('Schema validation failed with:', parsedSession.error);
+
 				clear();
 
 				return false;

@@ -1,4 +1,4 @@
-import type { ComputedRef, Ref } from 'vue';
+import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
@@ -11,7 +11,17 @@ import {
 	DevicesModuleDeviceCategory,
 } from '../../../openapi';
 import type { ConnectionState, FormResultType } from '../devices.constants';
-import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
+import type {
+	IChannelPluginsComponents,
+	IChannelPluginsSchemas,
+	IChannelPropertyPluginsComponents,
+	IChannelPropertyPluginsSchemas,
+	IDevicePluginsComponents,
+	IDevicePluginsSchemas,
+} from '../devices.types';
+import type { IChannelPropertyAddForm, IChannelPropertyEditForm } from '../schemas/channels.properties.types';
+import type { IChannelAddForm, IChannelEditForm } from '../schemas/channels.types';
+import type { IDeviceAddForm, IDeviceEditForm } from '../schemas/devices.types';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
 import type { IDevice } from '../store/devices.store.types';
@@ -22,22 +32,6 @@ export interface IChannelsFilter {
 	categories: DevicesModuleChannelCategory[];
 }
 
-export interface IChannelAddForm {
-	id: IChannel['id'];
-	device?: IDevice['id'];
-	category?: DevicesModuleChannelCategory;
-	name: string;
-	description: string;
-}
-
-export interface IChannelEditForm {
-	id: IChannel['id'];
-	device: IDevice['id'];
-	category: DevicesModuleChannelCategory;
-	name: string;
-	description: string;
-}
-
 export interface IChannelsPropertiesFilter {
 	search: string | undefined;
 	channels: IChannel['id'][];
@@ -46,60 +40,12 @@ export interface IChannelsPropertiesFilter {
 	dataTypes: DevicesModuleChannelPropertyData_type[];
 }
 
-export interface IChannelPropertyAddForm {
-	id: IChannelProperty['id'];
-	channel?: IChannel['id'];
-	category?: DevicesModuleChannelPropertyCategory;
-	name: string;
-	permissions: DevicesModuleChannelPropertyPermissions[];
-	dataType: DevicesModuleChannelPropertyData_type;
-	unit: string;
-	format: string[] | number[] | null;
-	invalid: string;
-	step: string;
-	enumValues: string[];
-	minValue: string;
-	maxValue: string;
-}
-
-export interface IChannelPropertyEditForm {
-	id: IChannelProperty['id'];
-	channel: IChannel['id'];
-	category: DevicesModuleChannelPropertyCategory;
-	name: string;
-	permissions: DevicesModuleChannelPropertyPermissions[];
-	dataType: DevicesModuleChannelPropertyData_type;
-	unit: string;
-	format: string[] | number[] | null;
-	invalid: string;
-	step: string;
-	enumValues: string[];
-	minValue: string;
-	maxValue: string;
-}
-
 export interface IDevicesFilter {
 	search: string | undefined;
 	types: IPlugin['type'][];
 	state: 'all' | 'offline' | 'online';
 	states: ConnectionState[];
 	categories: DevicesModuleDeviceCategory[];
-}
-
-export interface IDeviceAddForm {
-	id: IDevice['id'];
-	type: string;
-	category: DevicesModuleDeviceCategory;
-	name: string;
-	description: string;
-}
-
-export interface IDeviceEditForm {
-	id: IDevice['id'];
-	type: string;
-	category: DevicesModuleDeviceCategory;
-	name: string;
-	description: string;
 }
 
 export interface IUseChannel {
@@ -144,10 +90,10 @@ export interface IUseChannelSpecification {
 	missingRequiredProperties: ComputedRef<DevicesModuleChannelPropertyCategory[]>;
 }
 
-export interface IUseChannelAddForm {
+export interface IUseChannelAddForm<TForm extends IChannelAddForm = IChannelAddForm> {
 	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelCategory; label: string }[]>;
 	devicesOptions: ComputedRef<{ value: IDevice['id']; label: string }[]>;
-	model: IChannelAddForm;
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added'>;
@@ -156,16 +102,26 @@ export interface IUseChannelAddForm {
 	loadingDevices: ComputedRef<boolean>;
 }
 
-export interface IUseChannelEditForm {
+export interface IUseChannelEditForm<TForm extends IChannelEditForm = IChannelEditForm> {
 	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelCategory; label: string }[]>;
 	devicesOptions: ComputedRef<{ value: IDevice['id']; label: string }[]>;
-	model: IChannelEditForm;
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added' | 'saved'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
 	loadingDevices: ComputedRef<boolean>;
+}
+
+export interface IUseChannelsPlugin {
+	plugin: ComputedRef<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>;
+}
+
+export interface IUseChannelsPlugins {
+	plugins: ComputedRef<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas>[]>;
+	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
+	getByType: (type: IPlugin['type']) => IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined;
 }
 
 export interface IUseChannelProperty {
@@ -205,12 +161,12 @@ export interface IUseChannelPropertyIcon {
 	icon: ComputedRef<string>;
 }
 
-export interface IUseChannelPropertyAddForm {
+export interface IUseChannelPropertyAddForm<TForm extends IChannelPropertyAddForm = IChannelPropertyAddForm> {
 	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelPropertyCategory; label: string }[]>;
 	channelsOptions: ComputedRef<{ value: IChannel['id']; label: string }[]>;
 	permissionsOptions: { value: DevicesModuleChannelPropertyPermissions; label: string }[];
 	dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[];
-	model: IChannelPropertyAddForm;
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added'>;
@@ -219,18 +175,28 @@ export interface IUseChannelPropertyAddForm {
 	loadingChannels: ComputedRef<boolean>;
 }
 
-export interface IUseChannelPropertyEditForm {
+export interface IUseChannelPropertyEditForm<TForm extends IChannelPropertyEditForm = IChannelPropertyEditForm> {
 	categoriesOptions: ComputedRef<{ value: DevicesModuleChannelPropertyCategory; label: string }[]>;
 	channelsOptions: ComputedRef<{ value: IChannel['id']; label: string }[]>;
 	permissionsOptions: { value: DevicesModuleChannelPropertyPermissions; label: string }[];
 	dataTypesOptions: { value: DevicesModuleChannelPropertyData_type; label: string }[];
-	model: IChannelPropertyEditForm;
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added' | 'saved'>;
 	clear: () => void;
 	formResult: Ref<FormResultType>;
 	loadingChannels: ComputedRef<boolean>;
+}
+
+export interface IUseChannelsPropertiesPlugin {
+	plugin: ComputedRef<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>;
+}
+
+export interface IUseChannelsPropertiesPlugins {
+	plugins: ComputedRef<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas>[]>;
+	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
+	getByType: (type: IPlugin['type']) => IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined;
 }
 
 export interface IUseDevice {
@@ -280,9 +246,9 @@ export interface IUseDeviceState {
 	isReady: ComputedRef<boolean>;
 }
 
-export interface IUseDeviceAddForm {
+export interface IUseDeviceAddForm<TForm extends IDeviceAddForm = IDeviceAddForm> {
 	categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[];
-	model: IDeviceAddForm;
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added'>;
@@ -290,9 +256,9 @@ export interface IUseDeviceAddForm {
 	formResult: Ref<FormResultType>;
 }
 
-export interface IUseDeviceEditForm {
+export interface IUseDeviceEditForm<TForm extends IDeviceEditForm = IDeviceEditForm> {
 	categoriesOptions: { value: DevicesModuleDeviceCategory; label: string }[];
-	model: IDeviceEditForm;
+	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'added' | 'saved'>;
@@ -300,12 +266,12 @@ export interface IUseDeviceEditForm {
 	formResult: Ref<FormResultType>;
 }
 
-export interface IUsePlugin {
-	plugin: ComputedRef<IPlugin<IPluginsComponents, IPluginsSchemas> | undefined>;
+export interface IUseDevicesPlugin {
+	plugin: ComputedRef<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>;
 }
 
-export interface IUsePlugins {
-	plugins: ComputedRef<IPlugin<IPluginsComponents, IPluginsSchemas>[]>;
+export interface IUseDevicesPlugins {
+	plugins: ComputedRef<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas>[]>;
 	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<IPluginsComponents, IPluginsSchemas> | undefined;
+	getByType: (type: IPlugin['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
 }

@@ -126,7 +126,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			return pendingGetPromises[payload.id];
 		}
 
-		const fetchPromise = (async (): Promise<IPage> => {
+		const getPromise = (async (): Promise<IPage> => {
 			if (semaphore.value.fetching.item.includes(payload.id)) {
 				throw new DashboardApiException('Already fetching page.');
 			}
@@ -172,10 +172,10 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			throw new DashboardApiException(errorReason, response.status);
 		})();
 
-		pendingGetPromises[payload.id] = fetchPromise;
+		pendingGetPromises[payload.id] = getPromise;
 
 		try {
-			return await fetchPromise;
+			return await getPromise;
 		} finally {
 			delete pendingGetPromises[payload.id];
 		}

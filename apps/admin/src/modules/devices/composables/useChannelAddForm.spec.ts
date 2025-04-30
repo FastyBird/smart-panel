@@ -1,10 +1,12 @@
 import { nextTick } from 'vue';
 
 import type { FormInstance } from 'element-plus';
+import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesModuleChannelCategory } from '../../../openapi';
-import { FormResult } from '../devices.constants';
+import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
+import { ChannelSchema } from '../store/channels.store.schemas';
 
 import { useChannelAddForm } from './useChannelAddForm';
 
@@ -39,11 +41,41 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+const channelSchema = ChannelSchema;
+
+const mockPluginList = [
+	{
+		type: 'test-plugin',
+		source: 'source',
+		name: 'Test Plugin',
+		description: 'Description',
+		links: {
+			documentation: '',
+			devDocumentation: '',
+			bugsTracking: '',
+		},
+		schemas: {
+			channelSchema,
+		},
+		isCore: false,
+		modules: [DEVICES_MODULE_NAME],
+	},
+];
+
+vi.mock('./useChannelsPlugins', () => ({
+	useChannelsPlugins: () => ({
+		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+	}),
+}));
+
 describe('useChannelAddForm', () => {
 	let form: ReturnType<typeof useChannelAddForm>;
 
+	const channelId = uuid().toString();
+	const deviceId = uuid().toString();
+
 	beforeEach(() => {
-		form = useChannelAddForm({ id: 'channel-123', deviceId: 'device-123' });
+		form = useChannelAddForm({ id: channelId.toString(), type: 'test-plugin', deviceId: deviceId.toString() });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -51,8 +83,9 @@ describe('useChannelAddForm', () => {
 	});
 
 	it('initializes the form with provided id and deviceId', () => {
-		expect(form.model.id).toBe('channel-123');
-		expect(form.model.device).toBe('device-123');
+		expect(form.model.id).toBe(channelId.toString());
+		expect(form.model.type).toBe('test-plugin');
+		expect(form.model.device).toBe(deviceId.toString());
 		expect(form.formResult.value).toBe(FormResult.NONE);
 		expect(form.formChanged.value).toBe(false);
 	});
@@ -73,10 +106,13 @@ describe('useChannelAddForm', () => {
 		await form.submit();
 
 		expect(mockAdd).toHaveBeenCalledWith({
-			id: 'channel-123',
-			deviceId: 'device-123',
+			id: channelId.toString(),
+			deviceId: deviceId.toString(),
 			draft: false,
 			data: {
+				type: 'test-plugin',
+				id: channelId.toString(),
+				device: deviceId.toString(),
 				category: DevicesModuleChannelCategory.generic,
 				name: 'name',
 				description: null,

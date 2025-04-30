@@ -17,10 +17,10 @@ export const transformTileResponse = <T extends ITile = ITile>(response: ITileRe
 };
 
 export const transformTileCreateRequest = <T extends ITileCreateReq = ITileCreateReq>(
-	property: ITilesAddActionPayload['data'],
+	data: ITilesAddActionPayload['data'],
 	schema: typeof TileCreateReqSchema
 ): T => {
-	const parsedRequest = schema.safeParse(camelToSnake(property));
+	const parsedRequest = schema.safeParse(camelToSnake(data));
 
 	if (!parsedRequest.success) {
 		console.error('Schema validation failed with:', parsedRequest.error);
@@ -32,10 +32,10 @@ export const transformTileCreateRequest = <T extends ITileCreateReq = ITileCreat
 };
 
 export const transformTileUpdateRequest = <T extends ITileUpdateReq = ITileUpdateReq>(
-	property: ITilesEditActionPayload['data'],
+	data: ITilesEditActionPayload['data'],
 	schema: typeof TileUpdateReqSchema
 ): T => {
-	const parsedRequest = schema.safeParse(camelToSnake(property));
+	const parsedRequest = schema.safeParse(camelToSnake(data));
 
 	if (!parsedRequest.success) {
 		console.error('Schema validation failed with:', parsedRequest.error);

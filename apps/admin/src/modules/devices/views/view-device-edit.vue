@@ -136,10 +136,10 @@ import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
 import { DeviceEditForm } from '../components/components';
-import { useDevice, useDeviceIcon, usePlugins } from '../composables/composables';
+import { useDevice, useDeviceIcon, useDevicesPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
-import type { IPluginsComponents, IPluginsSchemas } from '../devices.types';
+import type { IDevicePluginsComponents, IDevicePluginsSchemas } from '../devices.types';
 import type { IDevice } from '../store/devices.store.types';
 
 import type { IViewDeviceEditProps } from './view-device-edit.types';
@@ -170,7 +170,7 @@ if (!validateUuid(props.id)) {
 	throw new Error('Device identifier is not valid');
 }
 
-const { plugins } = usePlugins();
+const { plugins } = useDevicesPlugins();
 
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
@@ -184,7 +184,7 @@ const isDetailRoute = computed<boolean>(
 		}) !== undefined
 );
 
-const plugin = computed<IPlugin<IPluginsComponents, IPluginsSchemas> | undefined>(() => {
+const plugin = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
 	return plugins.value.find((plugin) => plugin.type === device.value?.type);
 });
 

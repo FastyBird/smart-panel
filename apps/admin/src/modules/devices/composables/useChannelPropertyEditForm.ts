@@ -1,7 +1,8 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import {
@@ -12,20 +13,28 @@ import {
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { channelChannelsPropertiesSpecificationMappers } from '../devices.mapping';
+import { ChannelPropertyEditFormSchema } from '../schemas/channels.properties.schemas';
+import type { IChannelPropertyEditForm } from '../schemas/channels.properties.types';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
 import { channelsPropertiesStoreKey } from '../store/keys';
 
-import type { IChannelPropertyEditForm, IUseChannelPropertyEditForm } from './types';
+import type { IUseChannelPropertyEditForm } from './types';
 import { useChannels } from './useChannels';
+import { useChannelsPropertiesPlugin } from './useChannelsPropertiesPlugin';
 
 interface IUseChannelPropertyEditFormProps {
 	property: IChannelProperty;
 	messages?: { success?: string; error?: string };
 }
 
-export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPropertyEditFormProps): IUseChannelPropertyEditForm => {
+export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditForm = IChannelPropertyEditForm>({
+	property,
+	messages,
+}: IUseChannelPropertyEditFormProps): IUseChannelPropertyEditForm<TForm> => {
 	const storesManager = injectStoresManager();
+
+	const { plugin } = useChannelsPropertiesPlugin({ type: property.type });
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
@@ -40,11 +49,11 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 	let timer: number;
 
 	let enumValues: string[] = [];
-	let minValue: string = '';
-	let maxValue: string = '';
+	let minValue: number | undefined = undefined;
+	let maxValue: number | undefined = undefined;
 
 	if (property.dataType === DevicesModuleChannelPropertyData_type.enum) {
-		enumValues = property.format ? property.format.map((item) => item.toString()) : [];
+		enumValues = property.format ? property.format.map((item) => item?.toString() || '') : [];
 	} else if (
 		[
 			DevicesModuleChannelPropertyData_type.char,
@@ -57,8 +66,8 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 		].includes(property.dataType)
 	) {
 		if (Array.isArray(property.format) && property.format.length === 2) {
-			minValue = property.format[0] as string;
-			maxValue = property.format[1] as string;
+			minValue = property.format[0] as number;
+			maxValue = property.format[1] as number;
 		}
 	}
 
@@ -123,21 +132,9 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 		label: t(`devicesModule.dataTypes.${value}`),
 	}));
 
-	const model = reactive<IChannelPropertyEditForm>({
-		channel: property.channel,
-		id: property.id,
-		category: property.category,
-		permissions: property.permissions,
-		dataType: property.dataType,
-		name: property.name ?? '',
-		unit: property.unit ?? '',
-		format: [],
-		invalid: property.invalid ? property.invalid.toString() : '',
-		step: property.step ? property.step.toString() : '',
-		enumValues,
-		minValue,
-		maxValue,
-	});
+	const model = reactive<TForm>({ ...property, enumValues, minValue, maxValue } as unknown as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -161,10 +158,12 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 
 		if (!valid) throw new DevicesValidationException('Form not valid');
 
-		let format: string[] | number[] | null = null;
+		if (model.name === '') {
+			model.name = null;
+		}
 
 		if (property.dataType === DevicesModuleChannelPropertyData_type.enum) {
-			format = model.enumValues;
+			model.format = model.enumValues;
 		} else if (
 			[
 				DevicesModuleChannelPropertyData_type.char,
@@ -176,7 +175,15 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 				DevicesModuleChannelPropertyData_type.float,
 			].includes(property.dataType)
 		) {
-			format = [model.minValue, model.maxValue];
+			model.format = [model.minValue ?? null, model.maxValue ?? null];
+		}
+
+		const parsedModel = (plugin.value?.schemas?.channelPropertyEditFormSchema || ChannelPropertyEditFormSchema).safeParse(model);
+
+		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
+			throw new DevicesValidationException('Failed to validate edit channel property model.');
 		}
 
 		try {
@@ -184,11 +191,8 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 				id: property.id,
 				channelId: property.channel,
 				data: {
-					name: model.name?.trim() === '' ? null : model.name,
-					unit: model.unit?.trim() === '' ? null : model.unit,
-					format: format,
-					invalid: model.invalid?.toString().trim() === '' ? null : model.invalid,
-					step: model.step?.trim() === '' ? null : Number(model.step),
+					...parsedModel.data,
+					type: property.type,
 				},
 			});
 
@@ -245,24 +249,8 @@ export const useChannelPropertyEditForm = ({ property, messages }: IUseChannelPr
 		// Could be ignored
 	});
 
-	watch(model, (val: IChannelPropertyEditForm): void => {
-		if (val.name !== (property.name ?? '')) {
-			formChanged.value = true;
-		} else if (val.unit !== '') {
-			formChanged.value = true;
-		} else if (val.enumValues.length > 0) {
-			formChanged.value = true;
-		} else if (val.minValue.toString() !== '') {
-			formChanged.value = true;
-		} else if (val.maxValue.toString() !== '') {
-			formChanged.value = true;
-		} else if (val.invalid !== '') {
-			formChanged.value = true;
-		} else if (val.step !== null) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

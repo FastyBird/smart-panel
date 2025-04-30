@@ -56,7 +56,18 @@
 			v-if="property !== null"
 			class="grow-1 p-2 md:px-4"
 		>
+			<component
+				:is="plugin?.components?.channelPropertyEditForm"
+				v-if="typeof plugin?.components?.channelPropertyEditForm !== 'undefined'"
+				v-model:remote-form-submit="remoteFormSubmit"
+				v-model:remote-form-result="remoteFormResult"
+				v-model:remote-form-reset="remoteFormReset"
+				v-model:remote-form-changed="remoteFormChanged"
+				:property="property"
+			/>
+
 			<channel-property-edit-form
+				v-else
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
@@ -125,11 +136,12 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
 import { ChannelPropertyEditForm } from '../components/components';
-import { useChannel, useChannelProperty, useChannelPropertyIcon } from '../composables/composables';
+import { useChannel, useChannelProperty, useChannelPropertyIcon, useChannelsPropertiesPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
+import type { IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas } from '../devices.types';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
 
@@ -166,6 +178,8 @@ if (!validateUuid(props.id)) {
 	throw new Error('Channel property identifier is not valid');
 }
 
+const { plugins } = useChannelsPropertiesPlugins();
+
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
@@ -184,6 +198,10 @@ const isChannelDetailRoute = computed<boolean>(
 			return matched.name === RouteNames.CHANNEL;
 		}) !== undefined
 );
+
+const plugin = computed<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
+	return plugins.value.find((plugin) => plugin.type === property.value?.type);
+});
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {

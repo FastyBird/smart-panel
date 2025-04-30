@@ -1,27 +1,38 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesModuleChannelCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';
+import { ChannelAddFormSchema } from '../schemas/channels.schemas';
+import type { IChannelAddForm } from '../schemas/channels.types';
 import type { IChannel } from '../store/channels.store.types';
 import type { IDevice } from '../store/devices.store.types';
 import { channelsStoreKey } from '../store/keys';
 
-import type { IChannelAddForm, IUseChannelAddForm } from './types';
+import type { IUseChannelAddForm } from './types';
+import { useChannelsPlugin } from './useChannelsPlugin';
 import { useDevices } from './useDevices';
 
 interface IUseChannelAddFormProps {
 	id: IChannel['id'];
+	type: IPlugin['type'];
 	deviceId?: IDevice['id'];
 }
 
-export const useChannelAddForm = ({ id, deviceId }: IUseChannelAddFormProps): IUseChannelAddForm => {
+export const useChannelAddForm = <TForm extends IChannelAddForm = IChannelAddForm>({
+	id,
+	type,
+	deviceId,
+}: IUseChannelAddFormProps): IUseChannelAddForm<TForm> => {
 	const storesManager = injectStoresManager();
+
+	const { plugin } = useChannelsPlugin({ type });
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
 
@@ -78,16 +89,19 @@ export const useChannelAddForm = ({ id, deviceId }: IUseChannelAddFormProps): IU
 	);
 
 	const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): { value: IDevice['id']; label: string }[] => {
-		return devices.value.map((device) => ({ value: device.id, label: device.name }));
+		return devices.value.filter((device) => device.type === type).map((device) => ({ value: device.id, label: device.name }));
 	});
 
-	const model = reactive<IChannelAddForm>({
-		id: id,
+	const model = reactive<TForm>({
+		id,
+		type,
 		device: deviceId,
-		category: undefined,
+		category: DevicesModuleChannelCategory.generic,
 		name: '',
 		description: '',
-	});
+	} as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -110,6 +124,14 @@ export const useChannelAddForm = ({ id, deviceId }: IUseChannelAddFormProps): IU
 			throw new DevicesValidationException('Missing data type definition');
 		}
 
+		const parsedModel = (plugin.value?.schemas?.channelAddFormSchema || ChannelAddFormSchema).safeParse(model);
+
+		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
+			throw new DevicesValidationException('Failed to validate create channel model.');
+		}
+
 		formResult.value = FormResult.WORKING;
 
 		const errorMessage = t('devicesModule.messages.channels.notCreated', { device: model.name });
@@ -120,9 +142,8 @@ export const useChannelAddForm = ({ id, deviceId }: IUseChannelAddFormProps): IU
 				deviceId: assignToDevice,
 				draft: false,
 				data: {
-					category: model.category,
-					name: model.name,
-					description: model.description?.trim() === '' ? null : model.description,
+					...parsedModel.data,
+					type,
 				},
 			});
 		} catch (error: unknown) {
@@ -162,19 +183,21 @@ export const useChannelAddForm = ({ id, deviceId }: IUseChannelAddFormProps): IU
 		// Could be ignored
 	});
 
-	watch(model, (val: IChannelAddForm): void => {
-		if (val.category !== DevicesModuleChannelCategory.generic) {
-			formChanged.value = true;
-		} else if (val.device !== deviceId) {
-			formChanged.value = true;
-		} else if (val.name !== '') {
-			formChanged.value = true;
-		} else if (val.description !== '') {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
+
+	watch(
+		() => categoriesOptions.value,
+		(categories): void => {
+			if (categories.length) {
+				model.category = categoriesOptions.value[0].value;
+
+				initialModel.category = categoriesOptions.value[0].value;
+			}
+		},
+		{ immediate: true }
+	);
 
 	return {
 		categoriesOptions,

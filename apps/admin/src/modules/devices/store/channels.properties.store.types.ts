@@ -1,21 +1,25 @@
 import type { Ref } from 'vue';
 
-
-
 import type { Store } from 'pinia';
-
-
 
 import { z } from 'zod';
 
-
-
-import { ChannelPropertyCreateReqSchema, ChannelPropertyResSchema, ChannelPropertySchema, ChannelPropertyUpdateReqSchema, ChannelsPropertiesAddActionPayloadSchema, ChannelsPropertiesEditActionPayloadSchema, ChannelsPropertiesFetchActionPayloadSchema, ChannelsPropertiesGetActionPayloadSchema, ChannelsPropertiesRemoveActionPayloadSchema, ChannelsPropertiesSaveActionPayloadSchema, ChannelsPropertiesSetActionPayloadSchema, ChannelsPropertiesStateSemaphoreSchema, ChannelsPropertiesUnsetActionPayloadSchema } from './channels.properties.store.schemas';
-import { type IChannel } from './channels.store.types';
-
-
-
-
+import {
+	ChannelPropertyCreateReqSchema,
+	ChannelPropertyResSchema,
+	ChannelPropertySchema,
+	ChannelPropertyUpdateReqSchema,
+	ChannelsPropertiesAddActionPayloadSchema,
+	ChannelsPropertiesEditActionPayloadSchema,
+	ChannelsPropertiesFetchActionPayloadSchema,
+	ChannelsPropertiesGetActionPayloadSchema,
+	ChannelsPropertiesRemoveActionPayloadSchema,
+	ChannelsPropertiesSaveActionPayloadSchema,
+	ChannelsPropertiesSetActionPayloadSchema,
+	ChannelsPropertiesStateSemaphoreSchema,
+	ChannelsPropertiesUnsetActionPayloadSchema,
+} from './channels.properties.store.schemas';
+import type { IChannel } from './channels.store.types';
 
 // STORE STATE
 // ===========

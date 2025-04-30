@@ -8600,7 +8600,8 @@
             "items": {
               "type": [
                 "string",
-                "number"
+                "number",
+                "null"
               ]
             },
             "description": "List of valid values or states for the property, where applicable.",
@@ -8916,7 +8917,8 @@
             "items": {
               "type": [
                 "string",
-                "number"
+                "number",
+                "null"
               ]
             },
             "description": "List of valid values or states for the property, where applicable.",
@@ -9041,7 +9043,8 @@
             "items": {
               "type": [
                 "string",
-                "number"
+                "number",
+                "null"
               ]
             },
             "description": "List of valid values or states for the property, where applicable.",

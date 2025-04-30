@@ -71,7 +71,8 @@
       "edit": "Edit channel",
       "detail": "Channel: {channel}",
       "remove": "Remove channel?",
-      "adjustFilters": "Filter channels"
+      "adjustFilters": "Filter channels",
+      "selectPlugin": "Channel plugin required"
     },
     "channelsProperties": {
       "add": "Add channel property",
@@ -175,8 +176,9 @@
         "valve": "The Valve device represents a controllable valve used for managing the flow of liquids or gases in various systems.",
         "window_covering": "The Window Covering device represents automated window treatments such as blinds, shades, or curtains."
       },
-      "selectPlugin": "To create a new device, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific device types.",
+      "selectPlugin": "To create a new device, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific device type.",
       "noChannels": "This device doesn't have any channels yet. Channels define the inputs or outputs of a device. Create a new channel to start interacting with this device.",
+      "category": "Category",
       "channelsCount": "No channels configured | One channel configured | {count} channels configured",
       "alertsCount": "No alerts detected | One alert detected | {count} alerts detected",
       "channels": "Channels",
@@ -232,7 +234,8 @@
         "valve": "Controls fluid or gas valves, managing open/close states or flow rates.",
         "volatile_organic_compounds": "Monitors the concentration of VOCs in the air to track pollution or air quality.",
         "window_covering": "Controls coverings like blinds, curtains, and shutters, including position and tilt adjustments."
-      }
+      },
+      "selectPlugin": "To create a new channel, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific channel type."
     },
     "channelsProperties": {
       "noProperties": "You don't have configured any channel property",
@@ -302,6 +305,10 @@
     "channels": {
       "search": {
         "placeholder": "Search for channel"
+      },
+      "plugin": {
+        "title": "Channel plugin",
+        "placeholder": "Select channel plugin"
       },
       "device": {
         "title": "Device",

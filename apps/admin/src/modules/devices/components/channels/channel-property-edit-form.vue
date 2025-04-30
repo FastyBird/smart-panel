@@ -205,7 +205,7 @@
 			:prop="['invalid']"
 		>
 			<el-input
-				v-model="model.invalid"
+				v-model="model.invalid as string | number | null"
 				:placeholder="t('devicesModule.fields.channelsProperties.invalid.placeholder')"
 				name="invalid"
 			/>

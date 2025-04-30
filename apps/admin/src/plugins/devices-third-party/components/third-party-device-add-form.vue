@@ -7,12 +7,12 @@
 		status-icon
 	>
 		<el-form-item
-			:label="t('thirdPartyDevicesPlugin.fields.devices.id.title')"
+			:label="t('devicesThirdPartyPlugin.fields.devices.id.title')"
 			:prop="['id']"
 		>
 			<el-input
 				v-model="model.id"
-				:placeholder="t('thirdPartyDevicesPlugin.fields.devices.id.placeholder')"
+				:placeholder="t('devicesThirdPartyPlugin.fields.devices.id.placeholder')"
 				name="id"
 				required
 				disabled
@@ -20,23 +20,23 @@
 		</el-form-item>
 
 		<el-form-item
-			:label="t('thirdPartyDevicesPlugin.fields.devices.name.title')"
+			:label="t('devicesThirdPartyPlugin.fields.devices.name.title')"
 			:prop="['name']"
 		>
 			<el-input
 				v-model="model.name"
-				:placeholder="t('thirdPartyDevicesPlugin.fields.devices.name.placeholder')"
+				:placeholder="t('devicesThirdPartyPlugin.fields.devices.name.placeholder')"
 				name="name"
 			/>
 		</el-form-item>
 
 		<el-form-item
-			:label="t('thirdPartyDevicesPlugin.fields.devices.category.title')"
+			:label="t('devicesThirdPartyPlugin.fields.devices.category.title')"
 			:prop="['category']"
 		>
 			<el-select
 				v-model="model.category"
-				:placeholder="t('thirdPartyDevicesPlugin.fields.devices.category.placeholder')"
+				:placeholder="t('devicesThirdPartyPlugin.fields.devices.category.placeholder')"
 				name="category"
 				filterable
 			>
@@ -61,12 +61,12 @@
 		<el-divider />
 
 		<el-form-item
-			:label="t('thirdPartyDevicesPlugin.fields.devices.description.title')"
+			:label="t('devicesThirdPartyPlugin.fields.devices.description.title')"
 			:prop="['description']"
 		>
 			<el-input
 				v-model="model.description"
-				:placeholder="t('thirdPartyDevicesPlugin.fields.devices.description.placeholder')"
+				:placeholder="t('devicesThirdPartyPlugin.fields.devices.description.placeholder')"
 				:rows="4"
 				type="textarea"
 				name="description"
@@ -76,12 +76,12 @@
 		<el-divider />
 
 		<el-form-item
-			:label="t('thirdPartyDevicesPlugin.fields.devices.serviceAddress.title')"
+			:label="t('devicesThirdPartyPlugin.fields.devices.serviceAddress.title')"
 			:prop="['serviceAddress']"
 		>
 			<el-input
 				v-model="model.serviceAddress"
-				:placeholder="t('thirdPartyDevicesPlugin.fields.devices.serviceAddress.placeholder')"
+				:placeholder="t('devicesThirdPartyPlugin.fields.devices.serviceAddress.placeholder')"
 				name="serviceAddress"
 			/>
 		</el-form-item>
@@ -94,8 +94,8 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType } from '../../../modules/devices';
-import { type IThirdPartyDeviceAddForm, useThirdPartyDeviceAddForm } from '../composables/composables';
+import { FormResult, type FormResultType, useDeviceAddForm } from '../../../modules/devices';
+import type { IThirdPartyDeviceAddForm } from '../schemas/devices.types';
 
 import type { IThirdPartyDeviceAddFormProps } from './third-party-device-add-form.types';
 
@@ -118,14 +118,17 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useThirdPartyDeviceAddForm({ id: props.id });
+const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm<IThirdPartyDeviceAddForm>({
+	id: props.id,
+	type: 'third-party',
+});
 
 const rules = reactive<FormRules<IThirdPartyDeviceAddForm>>({
-	category: [{ required: true, message: t('thirdPartyDevicesPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
-	name: [{ required: true, message: t('thirdPartyDevicesPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
+	category: [{ required: true, message: t('devicesThirdPartyPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
+	name: [{ required: true, message: t('devicesThirdPartyPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
 	serviceAddress: [
-		{ required: true, message: t('thirdPartyDevicesPlugin.fields.devices.serviceAddress.validation.required'), trigger: 'change' },
-		{ type: 'url', message: t('thirdPartyDevicesPlugin.fields.devices.serviceAddress.validation.url'), trigger: 'change' },
+		{ required: true, message: t('devicesThirdPartyPlugin.fields.devices.serviceAddress.validation.required'), trigger: 'change' },
+		{ type: 'url', message: t('devicesThirdPartyPlugin.fields.devices.serviceAddress.validation.url'), trigger: 'change' },
 	],
 });
 

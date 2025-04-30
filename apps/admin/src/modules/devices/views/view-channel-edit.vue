@@ -54,7 +54,18 @@
 			v-if="channel !== null"
 			class="grow-1 p-2 md:px-4"
 		>
+			<component
+				:is="plugin?.components?.channelEditForm"
+				v-if="typeof plugin?.components?.channelEditForm !== 'undefined'"
+				v-model:remote-form-submit="remoteFormSubmit"
+				v-model:remote-form-result="remoteFormResult"
+				v-model:remote-form-reset="remoteFormReset"
+				v-model:remote-form-changed="remoteFormChanged"
+				:channel="channel"
+			/>
+
 			<channel-edit-form
+				v-else
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
@@ -123,11 +134,12 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
 import { ChannelEditForm } from '../components/components';
-import { useChannel, useChannelIcon } from '../composables/composables';
+import { useChannel, useChannelIcon, useChannelsPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
+import type { IChannelPluginsComponents, IChannelPluginsSchemas } from '../devices.types';
 import type { IChannel } from '../store/channels.store.types';
 
 import type { IViewChannelEditProps } from './view-channel-edit.types';
@@ -158,6 +170,8 @@ if (!validateUuid(props.id)) {
 	throw new Error('Channel identifier is not valid');
 }
 
+const { plugins } = useChannelsPlugins();
+
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
@@ -176,6 +190,10 @@ const isChannelDetailRoute = computed<boolean>(
 			return matched.name === RouteNames.CHANNEL;
 		}) !== undefined
 );
+
+const plugin = computed<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
+	return plugins.value.find((plugin) => plugin.type === channel.value?.type);
+});
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -228,7 +246,13 @@ const onDiscard = (): void => {
 		type: 'warning',
 	})
 		.then((): void => {
-			if (isChannelDetailRoute.value) {
+			if (isDeviceDetailRoute.value) {
+				if (isLGDevice.value) {
+					router.replace({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
+				} else {
+					router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
+				}
+			} else if (isChannelDetailRoute.value) {
 				if (isLGDevice.value) {
 					router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
 				} else {
@@ -252,7 +276,13 @@ const onSubmit = (): void => {
 };
 
 const onClose = (): void => {
-	if (isChannelDetailRoute.value) {
+	if (isDeviceDetailRoute.value) {
+		if (isLGDevice.value) {
+			router.replace({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
+		} else {
+			router.push({ name: RouteNames.DEVICE, params: { id: props.device?.id } });
+		}
+	} else if (isChannelDetailRoute.value) {
 		if (isLGDevice.value) {
 			router.replace({ name: RouteNames.CHANNEL, params: { id: props.id } });
 		} else {

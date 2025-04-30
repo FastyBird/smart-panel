@@ -6,29 +6,34 @@ import ThirdPartyDeviceAddForm from './third-party-device-add-form.vue';
 
 const mockSubmit = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../composables/composables', () => ({
-	useThirdPartyDeviceAddForm: () => ({
-		categoriesOptions: [
-			{ value: 'generic', label: 'Generic' },
-			{ value: 'lighting', label: 'Lighting' },
-		],
-		model: {
-			id: 'abc123',
-			name: '',
-			category: '',
-			description: '',
-			serviceAddress: '',
-		},
-		formEl: {
-			clearValidate: vi.fn(),
-			resetFields: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		},
-		formChanged: { value: false },
-		formResult: { value: 'none' },
-		submit: mockSubmit, // make sure this is defined!
-	}),
-}));
+vi.mock('../../../modules/devices', async () => {
+	const actual = await vi.importActual('../../../modules/devices');
+
+	return {
+		...actual,
+		useDeviceAddForm: () => ({
+			categoriesOptions: [
+				{ value: 'generic', label: 'Generic' },
+				{ value: 'lighting', label: 'Lighting' },
+			],
+			model: {
+				id: 'abc123',
+				name: '',
+				category: '',
+				description: '',
+				serviceAddress: '',
+			},
+			formEl: {
+				clearValidate: vi.fn(),
+				resetFields: vi.fn(),
+				validate: vi.fn().mockResolvedValue(true),
+			},
+			formChanged: { value: false },
+			formResult: { value: 'none' },
+			submit: mockSubmit, // make sure this is defined!
+		}),
+	};
+});
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
