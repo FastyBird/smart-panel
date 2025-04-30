@@ -118,7 +118,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 				return pendingGetPromises[payload.id];
 			}
 
-			const fetchPromise = (async (): Promise<IDeviceControl> => {
+			const getPromise = (async (): Promise<IDeviceControl> => {
 				if (semaphore.value.fetching.item.includes(payload.id)) {
 					throw new DevicesApiException('Already fetching device control.');
 				}
@@ -154,10 +154,10 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 				throw new DevicesApiException(errorReason, response.status);
 			})();
 
-			pendingGetPromises[payload.id] = fetchPromise;
+			pendingGetPromises[payload.id] = getPromise;
 
 			try {
-				return await fetchPromise;
+				return await getPromise;
 			} finally {
 				delete pendingGetPromises[payload.id];
 			}

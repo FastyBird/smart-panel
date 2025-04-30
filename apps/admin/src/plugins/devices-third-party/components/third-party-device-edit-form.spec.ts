@@ -8,29 +8,34 @@ import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import ThirdPartyDeviceEditForm from './third-party-device-edit-form.vue';
 
-vi.mock('../composables/composables', () => ({
-	useThirdPartyDeviceEditForm: () => ({
-		categoriesOptions: [
-			{ value: 'generic', label: DevicesModuleDeviceCategory.generic },
-			{ value: 'lighting', label: DevicesModuleDeviceCategory.lighting },
-		],
-		model: {
-			id: '123',
-			name: '',
-			category: 'generic',
-			description: '',
-			serviceAddress: '',
-		},
-		formEl: {
-			clearValidate: vi.fn(),
-			resetFields: vi.fn(),
-			validate: vi.fn().mockResolvedValue(true),
-		},
-		formChanged: { value: false },
-		formResult: { value: FormResult.NONE },
-		submit: vi.fn(),
-	}),
-}));
+vi.mock('../../../modules/devices', async () => {
+	const actual = await vi.importActual('../../../modules/devices');
+
+	return {
+		...actual,
+		useDeviceEditForm: () => ({
+			categoriesOptions: [
+				{ value: 'generic', label: DevicesModuleDeviceCategory.generic },
+				{ value: 'lighting', label: DevicesModuleDeviceCategory.lighting },
+			],
+			model: {
+				id: '123',
+				name: '',
+				category: 'generic',
+				description: '',
+				serviceAddress: '',
+			},
+			formEl: {
+				clearValidate: vi.fn(),
+				resetFields: vi.fn(),
+				validate: vi.fn().mockResolvedValue(true),
+			},
+			formChanged: { value: false },
+			formResult: { value: FormResult.NONE },
+			submit: vi.fn(),
+		}),
+	};
+});
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({

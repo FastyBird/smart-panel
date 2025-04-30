@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
@@ -11,8 +12,18 @@ class DevicesRepository extends Repository<DeviceModel> {
     late Map<String, DeviceModel> insertData = {...data};
 
     for (var row in json) {
+      if (!row.containsKey('type')) {
+        if (kDebugMode) {
+          debugPrint(
+            '[DEVICES MODULE][DEVICES] Missing required attribute: "type" for device: "${row['id']}"',
+          );
+        }
+
+        continue;
+      }
+
       try {
-        DeviceModel device = DeviceModel.fromJson(row);
+        DeviceModel device = buildDeviceModel(row['type'], row);
 
         insertData[device.id] = device;
       } catch (e) {

@@ -13,10 +13,17 @@ import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { CreateDeviceDto } from '../dto/create-device.dto';
+import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
-import { DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
+import { ChannelTypeMapping, ChannelsTypeMapperService } from './channels-type-mapper.service';
 import { ChannelsControlsService } from './channels.controls.service';
+import {
+	ChannelPropertyTypeMapping,
+	ChannelsPropertiesTypeMapperService,
+} from './channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceTypeMapping, DevicesTypeMapperService } from './devices-type-mapper.service';
@@ -35,6 +42,8 @@ export class DevicesSeederService implements Seeder {
 		private readonly channelsControlService: ChannelsControlsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly devicesMapperService: DevicesTypeMapperService,
+		private readonly channelsMapperService: ChannelsTypeMapperService,
+		private readonly channelsPropertiesMapperService: ChannelsPropertiesTypeMapperService,
 		private readonly seedTools: SeedTools,
 	) {}
 
@@ -127,13 +136,28 @@ export class DevicesSeederService implements Seeder {
 				'channel',
 				'Channel Control',
 			);
-			await this.seedRelatedEntities(
-				channelsProperties,
-				this.channelsPropertiesService,
-				CreateChannelPropertyDto,
-				'channel',
-				'Channel Property',
-			);
+
+			for (const channelProperty of channelsProperties) {
+				const channelId = channelProperty['channel'] as string | undefined;
+
+				if (typeof channelId !== 'string' || !uuidValidate(channelId)) {
+					this.logger.error(`[SEED] Channel property relation channel=${channelId} is not a valid UUIDv4`);
+
+					continue;
+				}
+
+				try {
+					await this.createChannelProperty(channelId, channelProperty);
+					seededChannels++;
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.error(
+						`[SEED] Failed to create channel property: ${JSON.stringify(channelProperty)} error=${err.message}`,
+						err.stack,
+					);
+				}
+			}
 		}
 
 		this.logger.log(`[SEED] Successfully seeded ${seededDevices} devices and ${seededChannels} channels.`);
@@ -162,9 +186,51 @@ export class DevicesSeederService implements Seeder {
 	}
 
 	private async createChannel(channel: Record<string, any>) {
-		const dtoInstance = plainToInstance(CreateChannelDto, channel, { excludeExtraneousValues: true });
+		if (!('type' in channel) || typeof channel.type !== 'string') {
+			this.logger.error('[SEED] Channel definition is missing type definition');
+
+			return;
+		}
+
+		let mapping: ChannelTypeMapping<ChannelEntity, CreateChannelDto, UpdateChannelDto>;
+
+		try {
+			mapping = this.channelsMapperService.getMapping<ChannelEntity, CreateChannelDto, UpdateChannelDto>(channel.type);
+		} catch {
+			this.logger.error(`[SEED] Unknown channel type: ${channel.type}`);
+
+			return;
+		}
+
+		const dtoInstance = plainToInstance(mapping.createDto, channel, { excludeExtraneousValues: true });
 
 		await this.channelsService.create(dtoInstance);
+	}
+
+	private async createChannelProperty(channelId: ChannelEntity['id'], property: Record<string, any>) {
+		if (!('type' in property) || typeof property.type !== 'string') {
+			this.logger.error('[SEED] Channel definition is missing type definition');
+
+			return;
+		}
+
+		let mapping: ChannelPropertyTypeMapping<ChannelPropertyEntity, CreateChannelPropertyDto, UpdateChannelPropertyDto>;
+
+		try {
+			mapping = this.channelsPropertiesMapperService.getMapping<
+				ChannelPropertyEntity,
+				CreateChannelPropertyDto,
+				UpdateChannelPropertyDto
+			>(property.type);
+		} catch {
+			this.logger.error(`[SEED] Unknown channel property type: ${property.type}`);
+
+			return;
+		}
+
+		const dtoInstance = plainToInstance(mapping.createDto, property, { excludeExtraneousValues: true });
+
+		await this.channelsPropertiesService.create(channelId, dtoInstance);
 	}
 
 	private async seedRelatedEntities<

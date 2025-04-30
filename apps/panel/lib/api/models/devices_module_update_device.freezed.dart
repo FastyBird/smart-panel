@@ -21,6 +21,9 @@ DevicesModuleUpdateDevice _$DevicesModuleUpdateDeviceFromJson(
 
 /// @nodoc
 mixin _$DevicesModuleUpdateDevice {
+  /// Specifies the type of device.
+  String get type => throw _privateConstructorUsedError;
+
   /// Human-readable name of the device.
   String get name => throw _privateConstructorUsedError;
 
@@ -43,7 +46,7 @@ abstract class $DevicesModuleUpdateDeviceCopyWith<$Res> {
           $Res Function(DevicesModuleUpdateDevice) then) =
       _$DevicesModuleUpdateDeviceCopyWithImpl<$Res, DevicesModuleUpdateDevice>;
   @useResult
-  $Res call({String name, String? description});
+  $Res call({String type, String name, String? description});
 }
 
 /// @nodoc
@@ -62,10 +65,15 @@ class _$DevicesModuleUpdateDeviceCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? name = null,
     Object? description = freezed,
   }) {
     return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       name: null == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
@@ -87,7 +95,7 @@ abstract class _$$DevicesModuleUpdateDeviceImplCopyWith<$Res>
       __$$DevicesModuleUpdateDeviceImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String name, String? description});
+  $Res call({String type, String name, String? description});
 }
 
 /// @nodoc
@@ -105,10 +113,15 @@ class __$$DevicesModuleUpdateDeviceImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? name = null,
     Object? description = freezed,
   }) {
     return _then(_$DevicesModuleUpdateDeviceImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       name: null == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
@@ -124,10 +137,15 @@ class __$$DevicesModuleUpdateDeviceImplCopyWithImpl<$Res>
 /// @nodoc
 @JsonSerializable()
 class _$DevicesModuleUpdateDeviceImpl implements _DevicesModuleUpdateDevice {
-  const _$DevicesModuleUpdateDeviceImpl({required this.name, this.description});
+  const _$DevicesModuleUpdateDeviceImpl(
+      {required this.type, required this.name, this.description});
 
   factory _$DevicesModuleUpdateDeviceImpl.fromJson(Map<String, dynamic> json) =>
       _$$DevicesModuleUpdateDeviceImplFromJson(json);
+
+  /// Specifies the type of device.
+  @override
+  final String type;
 
   /// Human-readable name of the device.
   @override
@@ -139,7 +157,7 @@ class _$DevicesModuleUpdateDeviceImpl implements _DevicesModuleUpdateDevice {
 
   @override
   String toString() {
-    return 'DevicesModuleUpdateDevice(name: $name, description: $description)';
+    return 'DevicesModuleUpdateDevice(type: $type, name: $name, description: $description)';
   }
 
   @override
@@ -147,6 +165,7 @@ class _$DevicesModuleUpdateDeviceImpl implements _DevicesModuleUpdateDevice {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DevicesModuleUpdateDeviceImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.description, description) ||
                 other.description == description));
@@ -154,7 +173,7 @@ class _$DevicesModuleUpdateDeviceImpl implements _DevicesModuleUpdateDevice {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, name, description);
+  int get hashCode => Object.hash(runtimeType, type, name, description);
 
   /// Create a copy of DevicesModuleUpdateDevice
   /// with the given fields replaced by the non-null parameter values.
@@ -175,11 +194,16 @@ class _$DevicesModuleUpdateDeviceImpl implements _DevicesModuleUpdateDevice {
 
 abstract class _DevicesModuleUpdateDevice implements DevicesModuleUpdateDevice {
   const factory _DevicesModuleUpdateDevice(
-      {required final String name,
+      {required final String type,
+      required final String name,
       final String? description}) = _$DevicesModuleUpdateDeviceImpl;
 
   factory _DevicesModuleUpdateDevice.fromJson(Map<String, dynamic> json) =
       _$DevicesModuleUpdateDeviceImpl.fromJson;
+
+  /// Specifies the type of device.
+  @override
+  String get type;
 
   /// Human-readable name of the device.
   @override

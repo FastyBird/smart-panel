@@ -1,18 +1,22 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesModuleChannelCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { deviceChannelsSpecificationMappers } from '../devices.mapping';
+import { ChannelEditFormSchema } from '../schemas/channels.schemas';
+import type { IChannelEditForm } from '../schemas/channels.types';
 import type { IChannel } from '../store/channels.store.types';
 import type { IDevice } from '../store/devices.store.types';
 import { channelsStoreKey } from '../store/keys';
 
-import type { IChannelEditForm, IUseChannelEditForm } from './types';
+import type { IUseChannelEditForm } from './types';
+import { useChannelsPlugin } from './useChannelsPlugin';
 import { useDevices } from './useDevices';
 
 interface IUseChannelEditFormProps {
@@ -20,8 +24,13 @@ interface IUseChannelEditFormProps {
 	messages?: { success?: string; error?: string };
 }
 
-export const useChannelEditForm = ({ channel, messages }: IUseChannelEditFormProps): IUseChannelEditForm => {
+export const useChannelEditForm = <TForm extends IChannelEditForm = IChannelEditForm>({
+	channel,
+	messages,
+}: IUseChannelEditFormProps): IUseChannelEditForm<TForm> => {
 	const storesManager = injectStoresManager();
+
+	const { plugin } = useChannelsPlugin({ type: channel.type });
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
 
@@ -86,13 +95,9 @@ export const useChannelEditForm = ({ channel, messages }: IUseChannelEditFormPro
 		return devices.value.map((device) => ({ value: device.id, label: device.name }));
 	});
 
-	const model = reactive<IChannelEditForm>({
-		device: channel.device,
-		id: channel.id,
-		category: channel.category,
-		name: channel.name,
-		description: channel.description ?? '',
-	});
+	const model = reactive<TForm>(channel as unknown as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -116,12 +121,20 @@ export const useChannelEditForm = ({ channel, messages }: IUseChannelEditFormPro
 
 		if (!valid) throw new DevicesValidationException('Form not valid');
 
+		const parsedModel = (plugin.value?.schemas?.channelEditFormSchema || ChannelEditFormSchema).safeParse(model);
+
+		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
+			throw new DevicesValidationException('Failed to validate edit channel model.');
+		}
+
 		try {
 			await channelsStore.edit({
 				id: channel.id,
 				data: {
-					name: model.name,
-					description: model.description?.trim() === '' ? null : model.description,
+					...parsedModel.data,
+					type: channel.type,
 				},
 			});
 
@@ -178,14 +191,8 @@ export const useChannelEditForm = ({ channel, messages }: IUseChannelEditFormPro
 		// Could be ignored
 	});
 
-	watch(model, (val: IChannelEditForm): void => {
-		if (val.name !== channel.name) {
-			formChanged.value = true;
-		} else if (val.description !== channel.description) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

@@ -2,7 +2,7 @@ import { Expose, Transform } from 'class-transformer';
 import { IsString } from 'class-validator';
 import { ChildEntity, Column } from 'typeorm';
 
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
 @ChildEntity()
 export class ThirdPartyDeviceEntity extends DeviceEntity {
@@ -16,6 +16,22 @@ export class ThirdPartyDeviceEntity extends DeviceEntity {
 	)
 	serviceAddress: string;
 
+	@Expose()
+	get type(): string {
+		return 'third-party';
+	}
+}
+
+@ChildEntity()
+export class ThirdPartyChannelEntity extends ChannelEntity {
+	@Expose()
+	get type(): string {
+		return 'third-party';
+	}
+}
+
+@ChildEntity()
+export class ThirdPartyChannelPropertyEntity extends ChannelPropertyEntity {
 	@Expose()
 	get type(): string {
 		return 'third-party';

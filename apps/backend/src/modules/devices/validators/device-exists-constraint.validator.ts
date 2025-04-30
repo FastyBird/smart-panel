@@ -13,13 +13,13 @@ import { DevicesService } from '../services/devices.service';
 @Injectable()
 @ValidatorConstraint({ name: 'DeviceExistsValidation', async: false })
 export class DeviceExistsConstraintValidator implements ValidatorConstraintInterface {
-	constructor(private readonly deviceService: DevicesService) {}
+	constructor(private readonly devicesService: DevicesService) {}
 
 	async validate(deviceId: string | undefined): Promise<boolean> {
 		if (!deviceId) return false; // Prevent empty values
 
 		// Check if the channel exists and belongs to the device
-		const deviceExists = await this.deviceService.findOne(deviceId);
+		const deviceExists = await this.devicesService.findOne(deviceId);
 
 		return !!deviceExists;
 	}

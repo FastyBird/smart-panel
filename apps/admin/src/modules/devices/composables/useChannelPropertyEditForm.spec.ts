@@ -1,18 +1,24 @@
 import { nextTick } from 'vue';
 
 import type { FormInstance } from 'element-plus';
+import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesModuleChannelPropertyCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
-import { FormResult } from '../devices.constants';
+import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
+import { ChannelPropertySchema } from '../store/channels.properties.store.schemas';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 
 import { useChannelPropertyEditForm } from './useChannelPropertyEditForm';
 
+const channelId = uuid().toString();
+const propertyId = uuid().toString();
+
 const mockProperty: IChannelProperty = {
-	id: 'property-1',
-	channel: 'channel-1',
+	id: propertyId.toString(),
+	type: 'test-plugin',
+	channel: channelId.toString(),
 	name: 'My Property',
 	category: DevicesModuleChannelPropertyCategory.brightness,
 	dataType: DevicesModuleChannelPropertyData_type.float,
@@ -56,10 +62,37 @@ vi.mock('../../../common', () => ({
 vi.mock('./useChannels', () => ({
 	useChannels: () => ({
 		channels: {
-			value: [{ id: 'channel-1', category: 'light', name: 'Channel A' }],
+			value: [{ id: channelId.toString(), category: 'light', name: 'Channel A' }],
 		},
 		fetchChannels: vi.fn().mockResolvedValue(undefined),
 		areLoading: false,
+	}),
+}));
+
+const channelPropertySchema = ChannelPropertySchema;
+
+const mockPluginList = [
+	{
+		type: 'test-plugin',
+		source: 'source',
+		name: 'Test Plugin',
+		description: 'Description',
+		links: {
+			documentation: '',
+			devDocumentation: '',
+			bugsTracking: '',
+		},
+		schemas: {
+			channelPropertySchema,
+		},
+		isCore: false,
+		modules: [DEVICES_MODULE_NAME],
+	},
+];
+
+vi.mock('./useChannelsPropertiesPlugins', () => ({
+	useChannelsPropertiesPlugins: () => ({
+		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
 	}),
 }));
 

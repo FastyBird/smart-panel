@@ -6,17 +6,22 @@ import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
 import type { operations } from '../../../openapi';
+import { useChannelsPropertiesPlugins } from '../composables/useChannelsPropertiesPlugins';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
 
 import {
+	ChannelPropertyCreateReqSchema,
 	ChannelPropertySchema,
+	ChannelPropertyUpdateReqSchema,
 	ChannelsPropertiesAddActionPayloadSchema,
 	ChannelsPropertiesEditActionPayloadSchema,
 } from './channels.properties.store.schemas';
 import type {
 	ChannelsPropertiesStoreSetup,
 	IChannelProperty,
+	IChannelPropertyCreateReq,
+	IChannelPropertyUpdateReq,
 	IChannelsPropertiesAddActionPayload,
 	IChannelsPropertiesEditActionPayload,
 	IChannelsPropertiesFetchActionPayload,
@@ -51,6 +56,8 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 	(): ChannelsPropertiesStoreSetup => {
 		const backend = useBackend();
 
+		const { getByType: getPluginByType } = useChannelsPropertiesPlugins();
+
 		const semaphore = ref<IChannelsPropertiesStateSemaphore>(defaultSemaphore);
 
 		const firstLoad = ref<IChannel['id'][]>([]);
@@ -75,29 +82,31 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 		const pendingFetchPromises: Record<string, Promise<IChannelProperty[]>> = {};
 
 		const set = (payload: IChannelsPropertiesSetActionPayload): IChannelProperty => {
-			if (payload.id && data.value && payload.id in data.value) {
-				const parsedChannelProperty = ChannelPropertySchema.safeParse({ ...data.value[payload.id], ...payload.data });
+			const plugin = getPluginByType(payload.data.type);
 
-				if (!parsedChannelProperty.success) {
-					console.error('Schema validation failed with:', parsedChannelProperty.error);
+			if (payload.id && data.value && payload.id in data.value) {
+				const parsed = (plugin?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({ ...data.value[payload.id], ...payload.data });
+
+				if (!parsed.success) {
+					console.error('Schema validation failed with:', parsed.error);
 
 					throw new DevicesValidationException('Failed to insert channel property.');
 				}
 
-				return (data.value[parsedChannelProperty.data.id] = parsedChannelProperty.data);
+				return (data.value[parsed.data.id] = parsed.data);
 			}
 
-			const parsedChannelProperty = ChannelPropertySchema.safeParse({ ...payload.data, id: payload.id, channel: payload.channelId });
+			const parsed = (plugin?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({ ...payload.data, id: payload.id });
 
-			if (!parsedChannelProperty.success) {
-				console.error('Schema validation failed with:', parsedChannelProperty.error);
+			if (!parsed.success) {
+				console.error('Schema validation failed with:', parsed.error);
 
 				throw new DevicesValidationException('Failed to insert channel property.');
 			}
 
 			data.value = data.value ?? {};
 
-			return (data.value[parsedChannelProperty.data.id] = parsedChannelProperty.data);
+			return (data.value[parsed.data.id] = parsed.data);
 		};
 
 		const unset = (payload: IChannelsPropertiesUnsetActionPayload): void => {
@@ -129,9 +138,9 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				return pendingGetPromises[payload.id];
 			}
 
-			const fetchPromise = (async (): Promise<IChannelProperty> => {
+			const getPromise = (async (): Promise<IChannelProperty> => {
 				if (semaphore.value.fetching.item.includes(payload.id)) {
-					throw new DevicesApiException('Already fetching property.');
+					throw new DevicesApiException('Already fetching channel property.');
 				}
 
 				semaphore.value.fetching.item.push(payload.id);
@@ -149,14 +158,16 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
 				if (typeof responseData !== 'undefined') {
-					const property = transformChannelPropertyResponse(responseData.data);
+					const plugin = getPluginByType(responseData.data.type);
 
-					data.value[property.id] = property;
+					const transformed = transformChannelPropertyResponse(responseData.data, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-					return property;
+					data.value[transformed.id] = transformed;
+
+					return transformed;
 				}
 
-				let errorReason: string | null = 'Failed to fetch property.';
+				let errorReason: string | null = 'Failed to fetch channel property.';
 
 				if (error) {
 					errorReason = getErrorReason<operations['get-devices-module-channel-property']>(error, errorReason);
@@ -165,10 +176,10 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				throw new DevicesApiException(errorReason, response.status);
 			})();
 
-			pendingGetPromises[payload.id] = fetchPromise;
+			pendingGetPromises[payload.id] = getPromise;
 
 			try {
-				return await fetchPromise;
+				return await getPromise;
 			} finally {
 				delete pendingGetPromises[payload.id];
 			}
@@ -207,9 +218,11 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 
 					const properties = Object.fromEntries(
 						responseData.data.map((property) => {
-							const transformedProperty = transformChannelPropertyResponse(property);
+							const plugin = getPluginByType(property.type);
 
-							return [transformedProperty.id, transformedProperty];
+							const transformed = transformChannelPropertyResponse(property, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema);
+
+							return [transformed.id, transformed];
 						})
 					);
 
@@ -218,7 +231,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					return Object.values(data.value);
 				}
 
-				let errorReason: string | null = 'Failed to fetch properties.';
+				let errorReason: string | null = 'Failed to fetch channel properties.';
 
 				if (error) {
 					errorReason = getErrorReason<operations['get-devices-module-channel-properties']>(error, errorReason);
@@ -245,29 +258,37 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				throw new DevicesValidationException('Failed to add property.');
 			}
 
-			const parsedNewProperty = ChannelPropertySchema.safeParse({
-				...parsedPayload.data.data,
+			const plugin = getPluginByType(payload.data.type);
+
+			const parsedNewItem = (plugin?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({
+				...payload.data,
 				id: parsedPayload.data.id,
 				channel: parsedPayload.data.channelId,
 				draft: parsedPayload.data.draft,
 				createdAt: new Date(),
-				value: null,
 			});
 
-			if (!parsedNewProperty.success) {
-				console.error('Schema validation failed with:', parsedNewProperty.error);
+			if (!parsedNewItem.success) {
+				console.log({
+					...payload.data,
+					id: parsedPayload.data.id,
+					channel: parsedPayload.data.channelId,
+					draft: parsedPayload.data.draft,
+					createdAt: new Date(),
+				});
+				console.error('Schema validation failed with:', parsedNewItem.error);
 
-				throw new DevicesValidationException('Failed to add property.');
+				throw new DevicesValidationException('Failed to add channel property.');
 			}
 
-			semaphore.value.creating.push(parsedNewProperty.data.id);
+			semaphore.value.creating.push(parsedNewItem.data.id);
 
-			data.value[parsedNewProperty.data.id] = parsedNewProperty.data;
+			data.value[parsedNewItem.data.id] = parsedNewItem.data;
 
-			if (parsedNewProperty.data.draft) {
-				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewProperty.data.id);
+			if (parsedNewItem.data.draft) {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
-				return parsedNewProperty.data;
+				return parsedNewItem.data;
 			} else {
 				const {
 					data: responseData,
@@ -278,24 +299,29 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 						path: { channelId: payload.channelId },
 					},
 					body: {
-						data: transformChannelPropertyCreateRequest({ ...parsedNewProperty.data, ...{ id: payload.id, channel: payload.channelId } }),
+						data: transformChannelPropertyCreateRequest<IChannelPropertyCreateReq>(
+							parsedNewItem.data,
+							plugin?.schemas?.channelPropertyCreateReqSchema || ChannelPropertyCreateReqSchema
+						),
 					},
 				});
 
-				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewProperty.data.id);
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
 				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const property = transformChannelPropertyResponse(responseData.data);
+					const plugin = getPluginByType(responseData.data.type);
 
-					data.value[property.id] = property;
+					const transformed = transformChannelPropertyResponse(responseData.data, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-					return property;
+					data.value[transformed.id] = transformed;
+
+					return transformed;
 				}
 
 				// Record could not be created on api, we have to remove it from database
-				delete data.value[parsedNewProperty.data.id];
+				delete data.value[parsedNewItem.data.id];
 
-				let errorReason: string | null = 'Failed to create property.';
+				let errorReason: string | null = 'Failed to create channel property.';
 
 				if (error) {
 					errorReason = getErrorReason<operations['create-devices-module-channel-property']>(error, errorReason);
@@ -306,41 +332,43 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 		};
 
 		const edit = async (payload: IChannelsPropertiesEditActionPayload): Promise<IChannelProperty> => {
-			const parsedPayload = ChannelsPropertiesEditActionPayloadSchema.safeParse(payload);
-
-			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
-
-				throw new DevicesValidationException('Failed to edit property.');
-			}
-
 			if (semaphore.value.updating.includes(payload.id)) {
 				throw new DevicesException('Property is already being updated.');
 			}
 
 			if (!(payload.id in data.value)) {
-				throw new DevicesException('Failed to get property data to update.');
+				throw new DevicesException('Failed to get channel property data to update.');
 			}
 
-			const parsedEditedProperty = ChannelPropertySchema.safeParse({
+			const parsedPayload = ChannelsPropertiesEditActionPayloadSchema.safeParse(payload);
+
+			if (!parsedPayload.success) {
+				console.error('Schema validation failed with:', parsedPayload.error);
+
+				throw new DevicesValidationException('Failed to edit channel property.');
+			}
+
+			const plugin = getPluginByType(payload.data.type);
+
+			const parsedEditedItem = (plugin?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({
 				...data.value[payload.id],
-				...omitBy(parsedPayload.data.data, isUndefined),
+				...omitBy(payload.data, isUndefined),
 			});
 
-			if (!parsedEditedProperty.success) {
-				console.error('Schema validation failed with:', parsedEditedProperty.error);
+			if (!parsedEditedItem.success) {
+				console.error('Schema validation failed with:', parsedEditedItem.error);
 
-				throw new DevicesValidationException('Failed to edit property.');
+				throw new DevicesValidationException('Failed to edit channel property.');
 			}
 
 			semaphore.value.updating.push(payload.id);
 
-			data.value[parsedEditedProperty.data.id] = parsedEditedProperty.data;
+			data.value[parsedEditedItem.data.id] = parsedEditedItem.data;
 
-			if (parsedEditedProperty.data.draft) {
-				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedProperty.data.id);
+			if (parsedEditedItem.data.draft) {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== parsedEditedItem.data.id);
 
-				return parsedEditedProperty.data;
+				return parsedEditedItem.data;
 			} else {
 				const {
 					data: responseData,
@@ -351,24 +379,29 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 						path: { channelId: payload.channelId, id: payload.id },
 					},
 					body: {
-						data: transformChannelPropertyUpdateRequest(parsedEditedProperty.data),
+						data: transformChannelPropertyUpdateRequest<IChannelPropertyUpdateReq>(
+							parsedEditedItem.data,
+							plugin?.schemas?.channelPropertyUpdateReqSchema || ChannelPropertyUpdateReqSchema
+						),
 					},
 				});
 
 				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 				if (typeof responseData !== 'undefined') {
-					const property = transformChannelPropertyResponse(responseData.data);
+					const plugin = getPluginByType(responseData.data.type);
 
-					data.value[property.id] = property;
+					const transformed = transformChannelPropertyResponse(responseData.data, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-					return property;
+					data.value[transformed.id] = transformed;
+
+					return transformed;
 				}
 
 				// Updating record on api failed, we need to refresh record
 				await get({ id: payload.id, channelId: payload.channelId });
 
-				let errorReason: string | null = 'Failed to update property.';
+				let errorReason: string | null = 'Failed to update channel property.';
 
 				if (error) {
 					errorReason = getErrorReason<operations['update-devices-module-channel-property']>(error, errorReason);
@@ -380,19 +413,21 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 
 		const save = async (payload: IChannelsPropertiesSaveActionPayload): Promise<IChannelProperty> => {
 			if (semaphore.value.updating.includes(payload.id)) {
-				throw new DevicesException('Properties is already being saved.');
+				throw new DevicesException('Property is already being saved.');
 			}
 
 			if (!(payload.id in data.value)) {
-				throw new DevicesException('Failed to get property data to save.');
+				throw new DevicesException('Failed to get channel property data to save.');
 			}
 
-			const parsedSaveProperty = ChannelPropertySchema.safeParse(data.value[payload.id]);
+			const plugin = getPluginByType(data.value[payload.id].type);
 
-			if (!parsedSaveProperty.success) {
-				console.error('Schema validation failed with:', parsedSaveProperty.error);
+			const parsedSaveItem = (plugin?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse(data.value[payload.id]);
 
-				throw new DevicesValidationException('Failed to save property.');
+			if (!parsedSaveItem.success) {
+				console.error('Schema validation failed with:', parsedSaveItem.error);
+
+				throw new DevicesValidationException('Failed to save channel property.');
 			}
 
 			semaphore.value.updating.push(payload.id);
@@ -403,24 +438,29 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				response,
 			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/properties`, {
 				params: {
-					path: { channelId: parsedSaveProperty.data.channel },
+					path: { channelId: parsedSaveItem.data.channel },
 				},
 				body: {
-					data: transformChannelPropertyCreateRequest({ ...parsedSaveProperty.data, ...{ id: payload.id, channel: payload.channelId } }),
+					data: transformChannelPropertyCreateRequest<IChannelPropertyCreateReq>(
+						parsedSaveItem.data,
+						plugin?.schemas?.channelPropertyCreateReqSchema || ChannelPropertyCreateReqSchema
+					),
 				},
 			});
 
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const property = transformChannelPropertyResponse(responseData.data);
+				const plugin = getPluginByType(responseData.data.type);
 
-				data.value[property.id] = property;
+				const transformed = transformChannelPropertyResponse(responseData.data, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema);
 
-				return property;
+				data.value[transformed.id] = transformed;
+
+				return transformed;
 			}
 
-			let errorReason: string | null = 'Failed to create property.';
+			let errorReason: string | null = 'Failed to create channel property.';
 
 			if (error) {
 				errorReason = getErrorReason<operations['create-devices-module-channel-property']>(error, errorReason);

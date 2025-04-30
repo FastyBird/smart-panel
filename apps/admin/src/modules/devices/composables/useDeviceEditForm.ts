@@ -1,24 +1,33 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
+import { DeviceEditFormSchema } from '../schemas/devices.schemas';
+import type { IDeviceEditForm } from '../schemas/devices.types';
 import type { IDevice } from '../store/devices.store.types';
 import { devicesStoreKey } from '../store/keys';
 
-import type { IDeviceEditForm, IUseDeviceEditForm } from './types';
+import type { IUseDeviceEditForm } from './types';
+import { useDevicesPlugin } from './useDevicesPlugin';
 
 interface IUseDeviceEditFormProps {
 	device: IDevice;
 	messages?: { success?: string; error?: string };
 }
 
-export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps): IUseDeviceEditForm => {
+export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditForm>({
+	device,
+	messages,
+}: IUseDeviceEditFormProps): IUseDeviceEditForm<TForm> => {
 	const storesManager = injectStoresManager();
+
+	const { plugin } = useDevicesPlugin({ type: device.type });
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 
@@ -35,13 +44,9 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		label: t(`devicesModule.categories.devices.${value}`),
 	}));
 
-	const model = reactive<IDeviceEditForm>({
-		id: device.id,
-		type: device.type,
-		category: device.category,
-		name: device.name,
-		description: device.description ?? '',
-	});
+	const model = reactive<TForm>(device as unknown as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -65,12 +70,20 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 
 		if (!valid) throw new DevicesValidationException('Form not valid');
 
+		const parsedModel = (plugin.value?.schemas?.deviceEditFormSchema || DeviceEditFormSchema).safeParse(model);
+
+		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
+			throw new DevicesValidationException('Failed to validate edit device model.');
+		}
+
 		try {
 			await devicesStore.edit({
 				id: device.id,
 				data: {
-					name: model.name,
-					description: model.description?.trim() === '' ? null : model.description,
+					...parsedModel.data,
+					type: device.type,
 				},
 			});
 
@@ -122,14 +135,8 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: IDeviceEditForm): void => {
-		if (val.name !== device.name) {
-			formChanged.value = true;
-		} else if (val.description !== device.description) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 
 	return {

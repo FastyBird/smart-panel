@@ -17,3 +17,4 @@ export * from './list-channels.types';
 export * from './list-channels-adjust.types';
 export * from './list-channels-properties.types';
 export * from './list-channels-properties-adjust.types';
+export * from './select-channel-plugin.types';

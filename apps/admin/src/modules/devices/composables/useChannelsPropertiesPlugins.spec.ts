@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEVICES_MODULE_NAME } from '../devices.constants';
+import { ChannelPropertySchema } from '../store/channels.properties.store.schemas';
 
-import { usePlugins } from './usePlugins';
+import { useChannelsPropertiesPlugins } from './useChannelsPropertiesPlugins';
+
+const channelPropertySchema = ChannelPropertySchema;
 
 const mockPluginList = [
 	{
@@ -14,6 +17,9 @@ const mockPluginList = [
 			documentation: '',
 			devDocumentation: '',
 			bugsTracking: '',
+		},
+		schemas: {
+			channelPropertySchema,
 		},
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
@@ -39,15 +45,15 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
-describe('usePlugins', () => {
-	it('returns only plugins related to devices module', () => {
-		const { plugins } = usePlugins();
+describe('useChannelsPropertiesPlugins', () => {
+	it('returns only plugins related to channels module', () => {
+		const { plugins } = useChannelsPropertiesPlugins();
 		expect(plugins.value.length).toBe(1);
 		expect(plugins.value[0].type).toBe('test-plugin');
 	});
 
 	it('returns correct options list', () => {
-		const { options } = usePlugins();
+		const { options } = useChannelsPropertiesPlugins();
 		expect(options.value).toEqual([
 			{
 				value: 'test-plugin',
@@ -57,13 +63,13 @@ describe('usePlugins', () => {
 	});
 
 	it('getByType returns correct plugin', () => {
-		const { getByType } = usePlugins();
+		const { getByType } = useChannelsPropertiesPlugins();
 		const plugin = getByType('test-plugin');
 		expect(plugin?.name).toBe('Test Plugin');
 	});
 
 	it('getByType returns undefined for unknown plugin', () => {
-		const { getByType } = usePlugins();
+		const { getByType } = useChannelsPropertiesPlugins();
 		const plugin = getByType('nonexistent');
 		expect(plugin).toBeUndefined();
 	});

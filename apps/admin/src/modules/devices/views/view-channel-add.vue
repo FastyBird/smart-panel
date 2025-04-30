@@ -44,13 +44,69 @@
 
 	<div class="flex flex-col overflow-hidden h-full">
 		<el-scrollbar class="grow-1 p-2 md:px-4">
-			<channel-add-form
-				:id="newChannelId"
-				v-model:remote-form-submit="remoteFormSubmit"
-				v-model:remote-form-result="remoteFormResult"
-				v-model:remote-form-reset="remoteFormReset"
-				v-model:remote-form-changed="remoteFormChanged"
-				:device="props.device"
+			<template v-if="!props.device">
+				<select-channel-plugin v-model="selectedType" />
+
+				<el-divider />
+			</template>
+
+			<template v-if="selectedType">
+				<component
+					:is="plugin?.components?.channelAddForm"
+					v-if="typeof plugin?.components?.channelAddForm !== 'undefined'"
+					:id="newChannelId"
+					v-model:remote-form-submit="remoteFormSubmit"
+					v-model:remote-form-result="remoteFormResult"
+					v-model:remote-form-reset="remoteFormReset"
+					v-model:remote-form-changed="remoteFormChanged"
+					:type="selectedType"
+					:device="props.device"
+				/>
+
+				<channel-add-form
+					v-else
+					:id="newChannelId"
+					v-model:remote-form-submit="remoteFormSubmit"
+					v-model:remote-form-result="remoteFormResult"
+					v-model:remote-form-reset="remoteFormReset"
+					v-model:remote-form-changed="remoteFormChanged"
+					:type="selectedType"
+					:device="props.device"
+				/>
+			</template>
+
+			<template v-else-if="props.device">
+				<component
+					:is="plugin?.components?.channelAddForm"
+					v-if="typeof plugin?.components?.channelAddForm !== 'undefined'"
+					:id="newChannelId"
+					v-model:remote-form-submit="remoteFormSubmit"
+					v-model:remote-form-result="remoteFormResult"
+					v-model:remote-form-reset="remoteFormReset"
+					v-model:remote-form-changed="remoteFormChanged"
+					:type="props.device.type"
+					:device="props.device"
+				/>
+
+				<channel-add-form
+					v-else
+					:id="newChannelId"
+					v-model:remote-form-submit="remoteFormSubmit"
+					v-model:remote-form-result="remoteFormResult"
+					v-model:remote-form-reset="remoteFormReset"
+					v-model:remote-form-changed="remoteFormChanged"
+					:type="props.device.type"
+					:device="props.device"
+				/>
+			</template>
+
+			<el-alert
+				v-else
+				:title="t('devicesModule.headings.channels.selectPlugin')"
+				:description="t('devicesModule.texts.channels.selectPlugin')"
+				:closable="false"
+				show-icon
+				type="info"
 			/>
 		</el-scrollbar>
 
@@ -110,13 +166,16 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useUuid } from '../../../common';
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import SelectChannelPlugin from '../components/channels/select-channel-plugin.vue';
 import { ChannelAddForm } from '../components/components';
+import { useChannelsPlugins } from '../composables/useChannelsPlugins';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
+import type { IChannelPluginsComponents, IChannelPluginsSchemas } from '../devices.types';
 
 import type { IViewChannelAddProps } from './view-channel-add.types';
 
@@ -144,10 +203,20 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const newChannelId = uuidGenerate();
 
+const { plugins } = useChannelsPlugins();
+
 const remoteFormSubmit = ref<boolean>(false);
 const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
+
+const selectedType = ref<IPlugin['type'] | undefined>(undefined);
+
+const plugin = computed<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
+	const deviceType = props.device?.type;
+
+	return deviceType ? plugins.value.find((plugin) => plugin.type === deviceType) : plugins.value.find((plugin) => plugin.type === selectedType.value);
+});
 
 const isDeviceDetailRoute = computed<boolean>(
 	(): boolean =>

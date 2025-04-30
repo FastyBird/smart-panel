@@ -134,7 +134,7 @@ const isNumeric = computed<boolean>((): boolean => {
 
 const enumValues = computed<string[]>((): string[] => {
 	if (isEnum.value && Array.isArray(props.property.format)) {
-		return props.property.format.map((value: string | number) => value.toString());
+		return props.property.format.filter((value: string | number | null) => value !== null).map((value: string | number) => value.toString());
 	}
 
 	return [];

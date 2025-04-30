@@ -51,12 +51,26 @@
 			v-if="channel !== null"
 			class="grow-1 p-2 md:px-4"
 		>
-			<channel-property-add-form
+			<component
+				:is="plugin?.components?.channelPropertyAddForm"
+				v-if="typeof plugin?.components?.channelPropertyAddForm !== 'undefined'"
 				:id="newPropertyId"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
 				v-model:remote-form-changed="remoteFormChanged"
+				:type="channel.type"
+				:channel="channel"
+			/>
+
+			<channel-property-add-form
+				v-else
+				:id="newPropertyId"
+				v-model:remote-form-submit="remoteFormSubmit"
+				v-model:remote-form-result="remoteFormResult"
+				v-model:remote-form-reset="remoteFormReset"
+				v-model:remote-form-changed="remoteFormChanged"
+				:type="channel.type"
 				:channel="channel"
 			/>
 		</el-scrollbar>
@@ -121,11 +135,21 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, useBreakpoints, useFlashMessage, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	useBreakpoints,
+	useFlashMessage,
+	useUuid,
+} from '../../../common';
 import { ChannelPropertyAddForm } from '../components/components';
-import { useChannel, useChannelSpecification } from '../composables/composables';
+import { useChannel, useChannelSpecification, useChannelsPropertiesPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
 import { DevicesApiException, DevicesException } from '../devices.exceptions';
+import type { IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas } from '../devices.types';
 import type { IChannel } from '../store/channels.store.types';
 
 import type { IViewChannelPropertyAddProps } from './view-channel-property-add.types';
@@ -154,6 +178,8 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const newPropertyId = uuidGenerate();
 
+const { plugins } = useChannelsPropertiesPlugins();
+
 const flashMessage = useFlashMessage();
 
 const { channel, isLoading: isLoadingChannel, fetchChannel } = useChannel({ id: props.channelId });
@@ -181,6 +207,12 @@ const isChannelDetailRoute = computed<boolean>(
 			return matched.name === RouteNames.CHANNEL;
 		}) !== undefined
 );
+
+const plugin = computed<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
+	const channelType = props.channel?.type;
+
+	return channelType ? plugins.value.find((plugin) => plugin.type === channelType) : undefined;
+});
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {

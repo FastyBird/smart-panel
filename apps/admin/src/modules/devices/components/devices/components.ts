@@ -9,5 +9,6 @@ export { default as DevicesTableColumnPlugin } from './devices-table-column-plug
 export { default as DevicesTableColumnState } from './devices-table-column-state.vue';
 export { default as ListDevices } from './list-devices.vue';
 export { default as ListDevicesAdjust } from './list-devices-adjust.vue';
+export { default as SelectDevicePlugin } from './select-device-plugin.vue';
 
 export * from './types';

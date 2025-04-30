@@ -18,6 +18,9 @@ class DevicesModuleCreateChannelProperty with _$DevicesModuleCreateChannelProper
     /// Unique identifier for the property. Optional during creation and system-generated if not provided.
     required String id,
 
+    /// Specifies the type of channel property.
+    required String type,
+
     /// Defines the category of the property, representing its functionality or characteristic.
     required DevicesModuleChannelPropertyCategory category,
 

@@ -1,9 +1,10 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep, isEqual } from 'lodash';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
@@ -12,20 +13,30 @@ import {
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
 import { channelChannelsPropertiesSpecificationMappers } from '../devices.mapping';
+import { ChannelPropertyAddFormSchema } from '../schemas/channels.properties.schemas';
+import type { IChannelPropertyAddForm } from '../schemas/channels.properties.types';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
 import type { IChannel } from '../store/channels.store.types';
 import { channelsPropertiesStoreKey } from '../store/keys';
 
-import type { IChannelPropertyAddForm, IUseChannelPropertyAddForm } from './types';
+import type { IUseChannelPropertyAddForm } from './types';
 import { useChannels } from './useChannels';
+import { useChannelsPropertiesPlugin } from './useChannelsPropertiesPlugin';
 
 interface IUseChannelPropertyAddFormProps {
 	id: IChannelProperty['id'];
+	type: IPlugin['type'];
 	channelId?: IChannel['id'];
 }
 
-export const useChannelPropertyAddForm = ({ id, channelId }: IUseChannelPropertyAddFormProps): IUseChannelPropertyAddForm => {
+export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm = IChannelPropertyAddForm>({
+	id,
+	type,
+	channelId,
+}: IUseChannelPropertyAddFormProps): IUseChannelPropertyAddForm<TForm> => {
 	const storesManager = injectStoresManager();
+
+	const { plugin } = useChannelsPropertiesPlugin({ type });
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
@@ -95,21 +106,24 @@ export const useChannelPropertyAddForm = ({ id, channelId }: IUseChannelProperty
 		label: t(`devicesModule.dataTypes.${value}`),
 	}));
 
-	const model = reactive<IChannelPropertyAddForm>({
-		id: id,
+	const model = reactive<TForm>({
+		id,
+		type,
 		channel: channelId,
-		category: undefined,
+		category: DevicesModuleChannelPropertyCategory.generic,
 		name: '',
-		permissions: [],
+		permissions: [] as DevicesModuleChannelPropertyPermissions[],
 		dataType: DevicesModuleChannelPropertyData_type.unknown,
-		unit: '',
+		unit: null,
 		format: null,
-		invalid: '',
-		step: '',
-		enumValues: [],
-		minValue: '',
-		maxValue: '',
-	});
+		invalid: null,
+		step: null,
+		enumValues: [] as string[],
+		minValue: undefined,
+		maxValue: undefined,
+	} as TForm);
+
+	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -128,18 +142,16 @@ export const useChannelPropertyAddForm = ({ id, channelId }: IUseChannelProperty
 			throw new DevicesValidationException('Missing channel identifier');
 		}
 
+		if (model.name === '') {
+			model.name = null;
+		}
+
 		if (!model.category) {
 			throw new DevicesValidationException('Missing data type definition');
 		}
 
-		formResult.value = FormResult.WORKING;
-
-		const errorMessage = t('devicesModule.messages.channelsProperties.notCreated', { device: model.name });
-
-		let format: string[] | (number | null)[] | null = null;
-
 		if (model.dataType === DevicesModuleChannelPropertyData_type.enum) {
-			format = model.enumValues;
+			model.format = model.enumValues;
 		} else if (
 			[
 				DevicesModuleChannelPropertyData_type.char,
@@ -151,8 +163,23 @@ export const useChannelPropertyAddForm = ({ id, channelId }: IUseChannelProperty
 				DevicesModuleChannelPropertyData_type.float,
 			].includes(model.dataType)
 		) {
-			format = [model.minValue !== '' ? Number(model.minValue) : null, model.maxValue !== '' ? Number(model.maxValue) : null];
+			model.format = [
+				typeof model.minValue === 'string' && model.minValue !== '' ? Number(model.minValue) : null,
+				typeof model.maxValue === 'string' && model.maxValue !== '' ? Number(model.maxValue) : null,
+			];
 		}
+
+		const parsedModel = (plugin.value?.schemas?.channelPropertyAddFormSchema || ChannelPropertyAddFormSchema).safeParse(model);
+
+		if (!parsedModel.success) {
+			console.error('Schema validation failed with:', parsedModel.error);
+
+			throw new DevicesValidationException('Failed to validate create channel property model.');
+		}
+
+		formResult.value = FormResult.WORKING;
+
+		const errorMessage = t('devicesModule.messages.channelsProperties.notCreated', { device: model.name });
 
 		try {
 			await propertiesStore.add({
@@ -160,14 +187,8 @@ export const useChannelPropertyAddForm = ({ id, channelId }: IUseChannelProperty
 				channelId: assignToChannel,
 				draft: false,
 				data: {
-					category: model.category,
-					name: model.name?.trim() === '' ? null : model.name,
-					permissions: model.permissions,
-					dataType: model.dataType,
-					unit: model.unit?.trim() === '' ? null : model.unit,
-					format,
-					invalid: model.invalid?.toString().trim() === '' ? null : model.invalid,
-					step: model.step?.trim() === '' ? null : Number(model.step),
+					...parsedModel.data,
+					type,
 				},
 			});
 		} catch (error: unknown) {
@@ -207,33 +228,21 @@ export const useChannelPropertyAddForm = ({ id, channelId }: IUseChannelProperty
 		// Could be ignored
 	});
 
-	watch(model, (val: IChannelPropertyAddForm): void => {
-		if (val.category !== DevicesModuleChannelPropertyCategory.generic) {
-			formChanged.value = true;
-		} else if (val.channel !== channelId) {
-			formChanged.value = true;
-		} else if (val.name !== '') {
-			formChanged.value = true;
-		} else if (val.permissions.length > 0) {
-			formChanged.value = true;
-		} else if (val.dataType !== DevicesModuleChannelPropertyData_type.unknown) {
-			formChanged.value = true;
-		} else if (val.unit !== '') {
-			formChanged.value = true;
-		} else if (val.enumValues.length > 0) {
-			formChanged.value = true;
-		} else if (val.minValue.toString() !== '') {
-			formChanged.value = true;
-		} else if (val.maxValue.toString() !== '') {
-			formChanged.value = true;
-		} else if (val.invalid !== '') {
-			formChanged.value = true;
-		} else if (val.step !== null) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
+	watch(model, (): void => {
+		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
+
+	watch(
+		() => categoriesOptions.value,
+		(categories): void => {
+			if (categories.length) {
+				model.category = categoriesOptions.value[0].value;
+
+				initialModel.category = categoriesOptions.value[0].value;
+			}
+		},
+		{ immediate: true }
+	);
 
 	return {
 		categoriesOptions,

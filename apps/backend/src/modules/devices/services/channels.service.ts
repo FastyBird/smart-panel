@@ -2,7 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -10,12 +10,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { EventType } from '../devices.constants';
-import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
+import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity } from '../entities/devices.entity';
 
-import { PropertyValueService } from './property-value.service';
+import { ChannelsTypeMapperService } from './channels-type-mapper.service';
+import { ChannelsPropertiesService } from './channels.properties.service';
 
 @Injectable()
 export class ChannelsService {
@@ -24,7 +25,9 @@ export class ChannelsService {
 	constructor(
 		@InjectRepository(ChannelEntity)
 		private readonly repository: Repository<ChannelEntity>,
-		private readonly propertyValueService: PropertyValueService,
+		private readonly channelsMapperService: ChannelsTypeMapperService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -101,17 +104,46 @@ export class ChannelsService {
 		return channel;
 	}
 
-	async create(createDto: CreateChannelDto): Promise<ChannelEntity> {
+	async create<TChannel extends ChannelEntity, TCreateDTO extends CreateChannelDto>(
+		createDto: TCreateDTO,
+	): Promise<TChannel> {
 		this.logger.debug(`[CREATE] Creating new channel`);
 
-		const dtoInstance = await this.validateDto<CreateChannelDto>(CreateChannelDto, createDto);
+		const { type } = createDto;
+
+		if (!type) {
+			this.logger.error('[CREATE] Validation failed: Missing required "type" attribute in data.');
+
+			throw new DevicesException('Channel type attribute is required.');
+		}
+
+		const mapping = this.channelsMapperService.getMapping<TChannel, TCreateDTO, any>(type);
+
+		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
 		(dtoInstance.properties || []).forEach((property) => {
 			property.id = property.id ?? uuid().toString();
 		});
 
-		const channel = this.repository.create(
-			plainToInstance(ChannelEntity, dtoInstance, {
+		const properties = dtoInstance.properties || [];
+
+		delete dtoInstance.properties;
+
+		const errors = await validate(dtoInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+
+		if (errors.length > 0) {
+			this.logger.error(`[VALIDATION FAILED] Validation failed for channel creation error=${JSON.stringify(errors)}`);
+
+			throw new DevicesValidationException('Provided channel data are invalid.');
+		}
+
+		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
+
+		const channel = repository.create(
+			plainToInstance(mapping.class, dtoInstance, {
 				enableImplicitConversion: true,
 				excludeExtraneousValues: true,
 				exposeUnsetFields: false,
@@ -119,19 +151,15 @@ export class ChannelsService {
 		);
 
 		// Save the channel
-		const raw = await this.repository.save(channel);
+		const raw = await repository.save(channel);
 
-		for (const propertyDtoInstance of dtoInstance.properties || []) {
-			if (propertyDtoInstance.value && propertyDtoInstance.id) {
-				const rawProperty = raw.properties.find((entity) => entity.id === propertyDtoInstance.id);
+		for (const propertyDtoInstance of properties) {
+			this.logger.debug(`[CREATE] Creating new property for channelId=${raw.id}`);
 
-				if (rawProperty) {
-					await this.propertyValueService.write(rawProperty, propertyDtoInstance.value);
-				}
-			}
+			await this.channelsPropertiesService.create(raw.id, propertyDtoInstance);
 		}
 
-		const savedChannel = await this.getOneOrThrow(channel.id);
+		const savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 
 		this.logger.debug(`[CREATE] Successfully created channel with id=${savedChannel.id}`);
 
@@ -140,17 +168,24 @@ export class ChannelsService {
 		return savedChannel;
 	}
 
-	async update(id: string, updateDto: UpdateChannelDto): Promise<ChannelEntity> {
+	async update<TChannel extends ChannelEntity, TUpdateDTO extends UpdateChannelDto>(
+		id: string,
+		updateDto: TUpdateDTO,
+	): Promise<TChannel> {
 		this.logger.debug(`[UPDATE] Updating data source with id=${id}`);
 
 		const channel = await this.getOneOrThrow(id);
 
-		const dtoInstance = await this.validateDto<UpdateChannelDto>(UpdateChannelDto, updateDto);
+		const mapping = this.channelsMapperService.getMapping<TChannel, any, TUpdateDTO>(channel.type);
+
+		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
+
+		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
 
 		Object.assign(
 			channel,
 			omitBy(
-				plainToInstance(ChannelEntity, dtoInstance, {
+				plainToInstance(mapping.class, dtoInstance, {
 					enableImplicitConversion: true,
 					excludeExtraneousValues: true,
 					exposeDefaultValues: false,
@@ -159,9 +194,9 @@ export class ChannelsService {
 			),
 		);
 
-		await this.repository.save(channel);
+		await repository.save(channel as TChannel);
 
-		const updatedChannel = await this.getOneOrThrow(channel.id);
+		const updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
 
 		this.logger.debug(`[UPDATE] Successfully updated channel with id=${updatedChannel.id}`);
 

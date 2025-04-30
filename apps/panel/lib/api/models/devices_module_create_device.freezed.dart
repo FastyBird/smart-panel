@@ -24,6 +24,9 @@ mixin _$DevicesModuleCreateDevice {
   /// Unique identifier for the device. Optional during creation and system-generated if not provided.
   String get id => throw _privateConstructorUsedError;
 
+  /// Specifies the type of device.
+  String get type => throw _privateConstructorUsedError;
+
   /// Type of the device, defining its purpose or category (e.g., thermostat, lighting).
   DevicesModuleDeviceCategory get category =>
       throw _privateConstructorUsedError;
@@ -41,9 +44,6 @@ mixin _$DevicesModuleCreateDevice {
 
   /// Optional detailed description of the device.
   String? get description => throw _privateConstructorUsedError;
-
-  /// Specifies the type of device.
-  String get type => throw _privateConstructorUsedError;
 
   /// Serializes this DevicesModuleCreateDevice to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -63,12 +63,12 @@ abstract class $DevicesModuleCreateDeviceCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       DevicesModuleDeviceCategory category,
       String name,
       List<DevicesModuleCreateDeviceControl> controls,
       List<DevicesModuleCreateDeviceChannel> channels,
-      String? description,
-      String type});
+      String? description});
 }
 
 /// @nodoc
@@ -88,17 +88,21 @@ class _$DevicesModuleCreateDeviceCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? category = null,
     Object? name = null,
     Object? controls = null,
     Object? channels = null,
     Object? description = freezed,
-    Object? type = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       category: null == category
           ? _value.category
@@ -120,10 +124,6 @@ class _$DevicesModuleCreateDeviceCopyWithImpl<$Res,
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -139,12 +139,12 @@ abstract class _$$DevicesModuleCreateDeviceImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       DevicesModuleDeviceCategory category,
       String name,
       List<DevicesModuleCreateDeviceControl> controls,
       List<DevicesModuleCreateDeviceChannel> channels,
-      String? description,
-      String type});
+      String? description});
 }
 
 /// @nodoc
@@ -163,17 +163,21 @@ class __$$DevicesModuleCreateDeviceImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? category = null,
     Object? name = null,
     Object? controls = null,
     Object? channels = null,
     Object? description = freezed,
-    Object? type = null,
   }) {
     return _then(_$DevicesModuleCreateDeviceImpl(
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       category: null == category
           ? _value.category
@@ -195,10 +199,6 @@ class __$$DevicesModuleCreateDeviceImplCopyWithImpl<$Res>
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
               as String?,
-      type: null == type
-          ? _value.type
-          : type // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -208,12 +208,12 @@ class __$$DevicesModuleCreateDeviceImplCopyWithImpl<$Res>
 class _$DevicesModuleCreateDeviceImpl implements _DevicesModuleCreateDevice {
   const _$DevicesModuleCreateDeviceImpl(
       {required this.id,
+      required this.type,
       required this.category,
       required this.name,
       required final List<DevicesModuleCreateDeviceControl> controls,
       required final List<DevicesModuleCreateDeviceChannel> channels,
-      this.description,
-      this.type = 'third-party'})
+      this.description})
       : _controls = controls,
         _channels = channels;
 
@@ -223,6 +223,10 @@ class _$DevicesModuleCreateDeviceImpl implements _DevicesModuleCreateDevice {
   /// Unique identifier for the device. Optional during creation and system-generated if not provided.
   @override
   final String id;
+
+  /// Specifies the type of device.
+  @override
+  final String type;
 
   /// Type of the device, defining its purpose or category (e.g., thermostat, lighting).
   @override
@@ -258,14 +262,9 @@ class _$DevicesModuleCreateDeviceImpl implements _DevicesModuleCreateDevice {
   @override
   final String? description;
 
-  /// Specifies the type of device.
-  @override
-  @JsonKey()
-  final String type;
-
   @override
   String toString() {
-    return 'DevicesModuleCreateDevice(id: $id, category: $category, name: $name, controls: $controls, channels: $channels, description: $description, type: $type)';
+    return 'DevicesModuleCreateDevice(id: $id, type: $type, category: $category, name: $name, controls: $controls, channels: $channels, description: $description)';
   }
 
   @override
@@ -274,14 +273,14 @@ class _$DevicesModuleCreateDeviceImpl implements _DevicesModuleCreateDevice {
         (other.runtimeType == runtimeType &&
             other is _$DevicesModuleCreateDeviceImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.category, category) ||
                 other.category == category) &&
             (identical(other.name, name) || other.name == name) &&
             const DeepCollectionEquality().equals(other._controls, _controls) &&
             const DeepCollectionEquality().equals(other._channels, _channels) &&
             (identical(other.description, description) ||
-                other.description == description) &&
-            (identical(other.type, type) || other.type == type));
+                other.description == description));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -289,12 +288,12 @@ class _$DevicesModuleCreateDeviceImpl implements _DevicesModuleCreateDevice {
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       category,
       name,
       const DeepCollectionEquality().hash(_controls),
       const DeepCollectionEquality().hash(_channels),
-      description,
-      type);
+      description);
 
   /// Create a copy of DevicesModuleCreateDevice
   /// with the given fields replaced by the non-null parameter values.
@@ -316,12 +315,12 @@ class _$DevicesModuleCreateDeviceImpl implements _DevicesModuleCreateDevice {
 abstract class _DevicesModuleCreateDevice implements DevicesModuleCreateDevice {
   const factory _DevicesModuleCreateDevice(
       {required final String id,
+      required final String type,
       required final DevicesModuleDeviceCategory category,
       required final String name,
       required final List<DevicesModuleCreateDeviceControl> controls,
       required final List<DevicesModuleCreateDeviceChannel> channels,
-      final String? description,
-      final String type}) = _$DevicesModuleCreateDeviceImpl;
+      final String? description}) = _$DevicesModuleCreateDeviceImpl;
 
   factory _DevicesModuleCreateDevice.fromJson(Map<String, dynamic> json) =
       _$DevicesModuleCreateDeviceImpl.fromJson;
@@ -329,6 +328,10 @@ abstract class _DevicesModuleCreateDevice implements DevicesModuleCreateDevice {
   /// Unique identifier for the device. Optional during creation and system-generated if not provided.
   @override
   String get id;
+
+  /// Specifies the type of device.
+  @override
+  String get type;
 
   /// Type of the device, defining its purpose or category (e.g., thermostat, lighting).
   @override
@@ -349,10 +352,6 @@ abstract class _DevicesModuleCreateDevice implements DevicesModuleCreateDevice {
   /// Optional detailed description of the device.
   @override
   String? get description;
-
-  /// Specifies the type of device.
-  @override
-  String get type;
 
   /// Create a copy of DevicesModuleCreateDevice
   /// with the given fields replaced by the non-null parameter values.

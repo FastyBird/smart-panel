@@ -23,6 +23,9 @@ mixin _$DevicesModuleChannel {
   /// System-generated unique identifier for the channel.
   String get id => throw _privateConstructorUsedError;
 
+  /// Specifies the type of channel.
+  String get type => throw _privateConstructorUsedError;
+
   /// Type of the channel, indicating its functional category (e.g., temperature, light).
   DevicesModuleChannelCategory get category =>
       throw _privateConstructorUsedError;
@@ -70,6 +73,7 @@ abstract class $DevicesModuleChannelCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       DevicesModuleChannelCategory category,
       String name,
       String? description,
@@ -97,6 +101,7 @@ class _$DevicesModuleChannelCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? category = null,
     Object? name = null,
     Object? description = freezed,
@@ -110,6 +115,10 @@ class _$DevicesModuleChannelCopyWithImpl<$Res,
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       category: null == category
           ? _value.category
@@ -157,6 +166,7 @@ abstract class _$$DevicesModuleChannelImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       DevicesModuleChannelCategory category,
       String name,
       String? description,
@@ -181,6 +191,7 @@ class __$$DevicesModuleChannelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? category = null,
     Object? name = null,
     Object? description = freezed,
@@ -194,6 +205,10 @@ class __$$DevicesModuleChannelImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       category: null == category
           ? _value.category
@@ -236,6 +251,7 @@ class __$$DevicesModuleChannelImplCopyWithImpl<$Res>
 class _$DevicesModuleChannelImpl implements _DevicesModuleChannel {
   const _$DevicesModuleChannelImpl(
       {required this.id,
+      required this.type,
       required this.category,
       required this.name,
       required this.description,
@@ -253,6 +269,10 @@ class _$DevicesModuleChannelImpl implements _DevicesModuleChannel {
   /// System-generated unique identifier for the channel.
   @override
   final String id;
+
+  /// Specifies the type of channel.
+  @override
+  final String type;
 
   /// Type of the channel, indicating its functional category (e.g., temperature, light).
   @override
@@ -304,7 +324,7 @@ class _$DevicesModuleChannelImpl implements _DevicesModuleChannel {
 
   @override
   String toString() {
-    return 'DevicesModuleChannel(id: $id, category: $category, name: $name, description: $description, device: $device, controls: $controls, properties: $properties, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'DevicesModuleChannel(id: $id, type: $type, category: $category, name: $name, description: $description, device: $device, controls: $controls, properties: $properties, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -313,6 +333,7 @@ class _$DevicesModuleChannelImpl implements _DevicesModuleChannel {
         (other.runtimeType == runtimeType &&
             other is _$DevicesModuleChannelImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.category, category) ||
                 other.category == category) &&
             (identical(other.name, name) || other.name == name) &&
@@ -333,6 +354,7 @@ class _$DevicesModuleChannelImpl implements _DevicesModuleChannel {
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       category,
       name,
       description,
@@ -363,6 +385,7 @@ class _$DevicesModuleChannelImpl implements _DevicesModuleChannel {
 abstract class _DevicesModuleChannel implements DevicesModuleChannel {
   const factory _DevicesModuleChannel(
           {required final String id,
+          required final String type,
           required final DevicesModuleChannelCategory category,
           required final String name,
           required final String? description,
@@ -379,6 +402,10 @@ abstract class _DevicesModuleChannel implements DevicesModuleChannel {
   /// System-generated unique identifier for the channel.
   @override
   String get id;
+
+  /// Specifies the type of channel.
+  @override
+  String get type;
 
   /// Type of the channel, indicating its functional category (e.g., temperature, light).
   @override

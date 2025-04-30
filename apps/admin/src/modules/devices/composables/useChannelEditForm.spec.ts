@@ -1,18 +1,24 @@
 import { nextTick } from 'vue';
 
 import type { FormInstance } from 'element-plus';
+import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesModuleChannelCategory } from '../../../openapi';
-import { FormResult } from '../devices.constants';
+import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
+import { ChannelSchema } from '../store/channels.store.schemas';
 import type { IChannel } from '../store/channels.store.types';
 
 import { useChannelEditForm } from './useChannelEditForm';
 
+const channelId = uuid().toString();
+const deviceId = uuid().toString();
+
 const mockChannel: IChannel = {
-	id: 'channel-1',
-	device: 'device-1',
+	id: channelId.toString(),
+	type: 'test-plugin',
+	device: deviceId.toString(),
 	name: 'Channel Name',
 	description: 'Some desc',
 	category: DevicesModuleChannelCategory.light,
@@ -49,9 +55,36 @@ vi.mock('../../../common', () => ({
 
 vi.mock('./useDevices', () => ({
 	useDevices: () => ({
-		devices: { value: [{ id: 'device-1', category: 'generic', name: 'Device 1' }] },
+		devices: { value: [{ id: deviceId.toString(), category: 'generic', name: 'Device 1' }] },
 		fetchDevices: vi.fn().mockResolvedValue(undefined),
 		areLoading: false,
+	}),
+}));
+
+const channelSchema = ChannelSchema;
+
+const mockPluginList = [
+	{
+		type: 'test-plugin',
+		source: 'source',
+		name: 'Test Plugin',
+		description: 'Description',
+		links: {
+			documentation: '',
+			devDocumentation: '',
+			bugsTracking: '',
+		},
+		schemas: {
+			channelSchema,
+		},
+		isCore: false,
+		modules: [DEVICES_MODULE_NAME],
+	},
+];
+
+vi.mock('./useChannelsPlugins', () => ({
+	useChannelsPlugins: () => ({
+		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
 	}),
 }));
 

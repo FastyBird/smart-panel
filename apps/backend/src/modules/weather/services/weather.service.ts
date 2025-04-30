@@ -85,7 +85,8 @@ export class WeatherService {
 						location: current.location,
 					},
 					{
-						excludeExtraneousValues: true,
+						enableImplicitConversion: true,
+						exposeUnsetFields: false,
 					},
 				);
 			}
@@ -116,7 +117,8 @@ export class WeatherService {
 
 			if (current) {
 				return plainToInstance(CurrentDayEntity, current.current, {
-					excludeExtraneousValues: true,
+					enableImplicitConversion: true,
+					exposeUnsetFields: false,
 				});
 			}
 		} catch (error) {
@@ -147,7 +149,8 @@ export class WeatherService {
 			if (forecast) {
 				return forecast.map((day) =>
 					plainToInstance(ForecastDayEntity, day, {
-						excludeExtraneousValues: true,
+						enableImplicitConversion: true,
+						exposeUnsetFields: false,
 					}),
 				);
 			}
@@ -234,7 +237,8 @@ export class WeatherService {
 					country: cachedData.sys.country,
 				},
 				{
-					excludeExtraneousValues: true,
+					enableImplicitConversion: true,
+					exposeUnsetFields: false,
 				},
 			);
 
@@ -259,7 +263,10 @@ export class WeatherService {
 				return null;
 			}
 
-			const weather = plainToInstance(WeatherDto, data, { excludeExtraneousValues: true });
+			const weather = plainToInstance(WeatherDto, data, {
+				enableImplicitConversion: true,
+				exposeUnsetFields: false,
+			});
 
 			const errors = await validate(weather);
 
@@ -280,7 +287,8 @@ export class WeatherService {
 					country: weather.sys.country,
 				},
 				{
-					excludeExtraneousValues: true,
+					enableImplicitConversion: true,
+					exposeUnsetFields: false,
 				},
 			);
 
@@ -304,7 +312,10 @@ export class WeatherService {
 		if (cachedData && !force) {
 			this.logger.debug(`[WEATHER] Returning cached forecast weather data for location=${this.location}`);
 
-			const forecast = plainToInstance(ForecastDto, cachedData, { excludeExtraneousValues: true });
+			const forecast = plainToInstance(ForecastDto, cachedData, {
+				enableImplicitConversion: true,
+				exposeUnsetFields: false,
+			});
 
 			const errors = await validate(forecast);
 
@@ -332,7 +343,10 @@ export class WeatherService {
 				return null;
 			}
 
-			const forecast = plainToInstance(ForecastDto, data, { excludeExtraneousValues: true });
+			const forecast = plainToInstance(ForecastDto, data, {
+				enableImplicitConversion: true,
+				exposeUnsetFields: false,
+			});
 
 			const errors = await validate(forecast);
 
@@ -409,7 +423,8 @@ export class WeatherService {
 				dayTime: new Date(dto.dt * 1000),
 			},
 			{
-				excludeExtraneousValues: true,
+				enableImplicitConversion: true,
+				exposeUnsetFields: false,
 			},
 		);
 	}
@@ -469,44 +484,47 @@ export class WeatherService {
 		});
 
 		return Object.entries(dailyData).map(([date, data]) =>
-			//return dto.list.map((forecast) =>
-			plainToInstance(ForecastDayEntity, {
-				temperature: {
-					day: this.average(data.segments.day),
-					min: Math.min(...data.temps),
-					max: Math.max(...data.temps),
-					night: this.average(data.segments.night),
-					eve: this.average(data.segments.eve),
-					morn: this.average(data.segments.morn),
+			plainToInstance(
+				ForecastDayEntity,
+				{
+					temperature: {
+						day: this.average(data.segments.day),
+						min: Math.min(...data.temps),
+						max: Math.max(...data.temps),
+						night: this.average(data.segments.night),
+						eve: this.average(data.segments.eve),
+						morn: this.average(data.segments.morn),
+					},
+					feelsLike: {
+						day: this.average(data.segments.day),
+						night: this.average(data.segments.night),
+						eve: this.average(data.segments.eve),
+						morn: this.average(data.segments.morn),
+					},
+					pressure: data.item.main.pressure,
+					humidity: data.item.main.humidity,
+					weather: {
+						code: data.item.weather[0].id,
+						main: data.item.weather[0].main,
+						description: data.item.weather[0].description,
+						icon: data.item.weather[0].icon,
+					},
+					wind: {
+						speed: data.item.wind.speed,
+						deg: data.item.wind.deg,
+						gust: data.item.wind.gust,
+					},
+					clouds: data.item.clouds.all,
+					rain: data.item.rain && '3h' in data.item.rain ? data.item.rain['3h'] : undefined,
+					snow: data.item.snow && '3h' in data.item.snow ? data.item.snow['3h'] : undefined,
+					sunrise: undefined,
+					sunset: undefined,
+					moonrise: undefined,
+					moonset: undefined,
+					dayTime: new Date(date),
 				},
-				feelsLike: {
-					day: this.average(data.segments.day),
-					night: this.average(data.segments.night),
-					eve: this.average(data.segments.eve),
-					morn: this.average(data.segments.morn),
-				},
-				pressure: data.item.main.pressure,
-				humidity: data.item.main.humidity,
-				weather: {
-					code: data.item.weather[0].id,
-					main: data.item.weather[0].main,
-					description: data.item.weather[0].description,
-					icon: data.item.weather[0].icon,
-				},
-				wind: {
-					speed: data.item.wind.speed,
-					deg: data.item.wind.deg,
-					gust: data.item.wind.gust,
-				},
-				clouds: data.item.clouds.all,
-				rain: data.item.rain && '3h' in data.item.rain ? data.item.rain['3h'] : undefined,
-				snow: data.item.snow && '3h' in data.item.snow ? data.item.snow['3h'] : undefined,
-				sunrise: undefined,
-				sunset: undefined,
-				moonrise: undefined,
-				moonset: undefined,
-				dayTime: new Date(date),
-			}),
+				{ enableImplicitConversion: true, exposeUnsetFields: false },
+			),
 		);
 	}
 

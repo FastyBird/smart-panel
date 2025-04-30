@@ -10,6 +10,7 @@ _$DevicesModuleCreateDeviceImpl _$$DevicesModuleCreateDeviceImplFromJson(
         Map<String, dynamic> json) =>
     _$DevicesModuleCreateDeviceImpl(
       id: json['id'] as String,
+      type: json['type'] as String,
       category:
           DevicesModuleDeviceCategory.fromJson(json['category'] as String),
       name: json['name'] as String,
@@ -22,19 +23,18 @@ _$DevicesModuleCreateDeviceImpl _$$DevicesModuleCreateDeviceImplFromJson(
               e as Map<String, dynamic>))
           .toList(),
       description: json['description'] as String?,
-      type: json['type'] as String? ?? 'third-party',
     );
 
 Map<String, dynamic> _$$DevicesModuleCreateDeviceImplToJson(
         _$DevicesModuleCreateDeviceImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'category': _$DevicesModuleDeviceCategoryEnumMap[instance.category]!,
       'name': instance.name,
       'controls': instance.controls,
       'channels': instance.channels,
       'description': instance.description,
-      'type': instance.type,
     };
 
 const _$DevicesModuleDeviceCategoryEnumMap = {

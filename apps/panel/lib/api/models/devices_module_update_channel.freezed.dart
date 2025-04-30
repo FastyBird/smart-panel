@@ -21,6 +21,9 @@ DevicesModuleUpdateChannel _$DevicesModuleUpdateChannelFromJson(
 
 /// @nodoc
 mixin _$DevicesModuleUpdateChannel {
+  /// Specifies the type of channel.
+  String get type => throw _privateConstructorUsedError;
+
   /// Human-readable name of the channel.
   String get name => throw _privateConstructorUsedError;
 
@@ -44,7 +47,7 @@ abstract class $DevicesModuleUpdateChannelCopyWith<$Res> {
       _$DevicesModuleUpdateChannelCopyWithImpl<$Res,
           DevicesModuleUpdateChannel>;
   @useResult
-  $Res call({String name, String? description});
+  $Res call({String type, String name, String? description});
 }
 
 /// @nodoc
@@ -63,10 +66,15 @@ class _$DevicesModuleUpdateChannelCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? name = null,
     Object? description = freezed,
   }) {
     return _then(_value.copyWith(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       name: null == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
@@ -88,7 +96,7 @@ abstract class _$$DevicesModuleUpdateChannelImplCopyWith<$Res>
       __$$DevicesModuleUpdateChannelImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String name, String? description});
+  $Res call({String type, String name, String? description});
 }
 
 /// @nodoc
@@ -106,10 +114,15 @@ class __$$DevicesModuleUpdateChannelImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? type = null,
     Object? name = null,
     Object? description = freezed,
   }) {
     return _then(_$DevicesModuleUpdateChannelImpl(
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
+              as String,
       name: null == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
@@ -126,11 +139,15 @@ class __$$DevicesModuleUpdateChannelImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$DevicesModuleUpdateChannelImpl implements _DevicesModuleUpdateChannel {
   const _$DevicesModuleUpdateChannelImpl(
-      {required this.name, this.description});
+      {required this.type, required this.name, this.description});
 
   factory _$DevicesModuleUpdateChannelImpl.fromJson(
           Map<String, dynamic> json) =>
       _$$DevicesModuleUpdateChannelImplFromJson(json);
+
+  /// Specifies the type of channel.
+  @override
+  final String type;
 
   /// Human-readable name of the channel.
   @override
@@ -142,7 +159,7 @@ class _$DevicesModuleUpdateChannelImpl implements _DevicesModuleUpdateChannel {
 
   @override
   String toString() {
-    return 'DevicesModuleUpdateChannel(name: $name, description: $description)';
+    return 'DevicesModuleUpdateChannel(type: $type, name: $name, description: $description)';
   }
 
   @override
@@ -150,6 +167,7 @@ class _$DevicesModuleUpdateChannelImpl implements _DevicesModuleUpdateChannel {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DevicesModuleUpdateChannelImpl &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.description, description) ||
                 other.description == description));
@@ -157,7 +175,7 @@ class _$DevicesModuleUpdateChannelImpl implements _DevicesModuleUpdateChannel {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, name, description);
+  int get hashCode => Object.hash(runtimeType, type, name, description);
 
   /// Create a copy of DevicesModuleUpdateChannel
   /// with the given fields replaced by the non-null parameter values.
@@ -179,11 +197,16 @@ class _$DevicesModuleUpdateChannelImpl implements _DevicesModuleUpdateChannel {
 abstract class _DevicesModuleUpdateChannel
     implements DevicesModuleUpdateChannel {
   const factory _DevicesModuleUpdateChannel(
-      {required final String name,
+      {required final String type,
+      required final String name,
       final String? description}) = _$DevicesModuleUpdateChannelImpl;
 
   factory _DevicesModuleUpdateChannel.fromJson(Map<String, dynamic> json) =
       _$DevicesModuleUpdateChannelImpl.fromJson;
+
+  /// Specifies the type of channel.
+  @override
+  String get type;
 
   /// Human-readable name of the channel.
   @override

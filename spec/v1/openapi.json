@@ -852,6 +852,7 @@
                           "channels": [
                             {
                               "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                              "type": "third-party",
                               "category": "generic",
                               "name": "Temperature Sensor",
                               "description": "Living room temperature sensor",
@@ -868,6 +869,7 @@
                               "properties": [
                                 {
                                   "id": "208f4790-21b0-4927-8835-7302d883a141",
+                                  "type": "third-party",
                                   "category": "generic",
                                   "name": "Thermostat mode",
                                   "permissions": [
@@ -955,6 +957,7 @@
                       "channels": [
                         {
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                          "type": "third-party",
                           "category": "generic",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
@@ -967,6 +970,7 @@
                           "properties": [
                             {
                               "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
+                              "type": "third-party",
                               "category": "generic",
                               "name": "Thermostat mode",
                               "permissions": [
@@ -1028,6 +1032,7 @@
                         "channels": [
                           {
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
@@ -1044,6 +1049,7 @@
                             "properties": [
                               {
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
+                                "type": "third-party",
                                 "category": "generic",
                                 "name": "Thermostat mode",
                                 "permissions": [
@@ -1155,6 +1161,7 @@
                         "channels": [
                           {
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
@@ -1171,6 +1178,7 @@
                             "properties": [
                               {
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
+                                "type": "third-party",
                                 "category": "generic",
                                 "name": "Thermostat mode",
                                 "permissions": [
@@ -1291,6 +1299,7 @@
                         "channels": [
                           {
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
@@ -1307,6 +1316,7 @@
                             "properties": [
                               {
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
+                                "type": "third-party",
                                 "category": "generic",
                                 "name": "Thermostat mode",
                                 "permissions": [
@@ -1685,6 +1695,7 @@
                       "data": [
                         {
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                          "type": "third-party",
                           "category": "generic",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
@@ -1701,6 +1712,7 @@
                           "properties": [
                             {
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
+                              "type": "third-party",
                               "category": "generic",
                               "name": "Thermostat mode",
                               "permissions": [
@@ -1773,6 +1785,7 @@
                   "value": {
                     "data": {
                       "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                      "type": "third-party",
                       "category": "generic",
                       "name": "Temperature Sensor",
                       "description": "Living room temperature sensor",
@@ -1785,6 +1798,7 @@
                       "properties": [
                         {
                           "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
+                          "type": "third-party",
                           "category": "generic",
                           "name": "Thermostat mode",
                           "permissions": [
@@ -1826,6 +1840,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -1842,6 +1857,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -1938,6 +1954,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -1954,6 +1971,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -2024,6 +2042,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
+                      "type": "third-party",
                       "name": "Temperature Sensor",
                       "description": "Living room temperature sensor"
                     }
@@ -2051,6 +2070,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -2067,6 +2087,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -2449,6 +2470,7 @@
                       "data": [
                         {
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
+                          "type": "third-party",
                           "category": "generic",
                           "name": "Thermostat mode",
                           "permissions": [
@@ -2517,6 +2539,7 @@
                   "value": {
                     "data": {
                       "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
+                      "type": "third-party",
                       "category": "generic",
                       "name": "Thermostat mode",
                       "permissions": [
@@ -2556,6 +2579,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -2651,6 +2675,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -2717,6 +2742,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
+                      "type": "third-party",
                       "name": "Thermostat mode",
                       "unit": "°C",
                       "format": [
@@ -2751,6 +2777,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -2857,6 +2884,7 @@
                       "data": [
                         {
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                          "type": "third-party",
                           "category": "generic",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
@@ -2873,6 +2901,7 @@
                           "properties": [
                             {
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
+                              "type": "third-party",
                               "category": "generic",
                               "name": "Thermostat mode",
                               "permissions": [
@@ -2942,6 +2971,7 @@
                   "value": {
                     "data": {
                       "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                      "type": "third-party",
                       "category": "generic",
                       "name": "Temperature Sensor",
                       "description": "Living room temperature sensor",
@@ -2954,6 +2984,7 @@
                       "properties": [
                         {
                           "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
+                          "type": "third-party",
                           "category": "generic",
                           "name": "Thermostat mode",
                           "permissions": [
@@ -2996,6 +3027,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -3012,6 +3044,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -3102,6 +3135,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -3118,6 +3152,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -3188,6 +3223,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
+                      "type": "third-party",
                       "name": "Temperature Sensor",
                       "description": "Living room temperature sensor"
                     }
@@ -3215,6 +3251,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -3222,6 +3259,7 @@
                         "controls": [
                           {
                             "id": "4b76637f-a8a6-45ba-965b-4819f4b57df2",
+                            "type": "third-party",
                             "name": "reset",
                             "channel": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                             "created_at": "2024-12-11T12:00:00Z",
@@ -3231,6 +3269,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
+                            "type": "third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -3604,6 +3643,7 @@
                       "data": [
                         {
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
+                          "type": "third-party",
                           "category": "generic",
                           "name": "Thermostat mode",
                           "permissions": [
@@ -3672,6 +3712,7 @@
                   "value": {
                     "data": {
                       "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
+                      "type": "third-party",
                       "category": "generic",
                       "name": "Thermostat mode",
                       "permissions": [
@@ -3711,6 +3752,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -3803,6 +3845,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -3869,6 +3912,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
+                      "type": "third-party",
                       "name": "Thermostat mode",
                       "unit": "°C",
                       "format": [
@@ -3903,6 +3947,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
+                        "type": "third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -8332,6 +8377,7 @@
         "type": "object",
         "required": [
           "id",
+          "type",
           "category",
           "name",
           "description",
@@ -8347,6 +8393,12 @@
             "format": "uuid",
             "description": "System-generated unique identifier for the channel.",
             "example": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
+            "readOnly": true
+          },
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of channel.",
+            "example": "third-party",
             "readOnly": true
           },
           "category": {
@@ -8459,6 +8511,7 @@
         "type": "object",
         "required": [
           "id",
+          "type",
           "category",
           "name",
           "permissions",
@@ -8478,6 +8531,12 @@
             "format": "uuid",
             "description": "System-generated unique identifier for the channel property.",
             "example": "208f4790-21b0-4927-8835-7302d883a141",
+            "readOnly": true
+          },
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of channel property.",
+            "example": "third-party",
             "readOnly": true
           },
           "category": {
@@ -8541,7 +8600,8 @@
             "items": {
               "type": [
                 "string",
-                "number"
+                "number",
+                "null"
               ]
             },
             "description": "List of valid values or states for the property, where applicable.",
@@ -8626,7 +8686,6 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of device.",
-            "default": "third-party",
             "example": "third-party"
           },
           "category": {
@@ -8686,6 +8745,7 @@
         "description": "Schema for creating a new channel, representing a functional category of a device such as temperature, light, or motion.",
         "type": "object",
         "required": [
+          "type",
           "category",
           "name"
         ],
@@ -8695,6 +8755,11 @@
             "format": "uuid",
             "description": "Unique identifier for the channel. Optional during creation and system-generated if not provided.",
             "example": "568e43e9-c9da-4a4e-ac7c-9904b42730c6"
+          },
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of channel.",
+            "example": "third-party"
           },
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelCategory",
@@ -8776,6 +8841,7 @@
         "description": "Schema for creating a new property within a channel, representing a specific characteristic or functional value.",
         "type": "object",
         "required": [
+          "type",
           "category",
           "permissions",
           "data_type"
@@ -8786,6 +8852,11 @@
             "format": "uuid",
             "description": "Unique identifier for the property. Optional during creation and system-generated if not provided.",
             "example": "9431cc2d-d447-44c1-b2d0-4398624e4921"
+          },
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of channel property.",
+            "example": "third-party"
           },
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelPropertyCategory",
@@ -8843,7 +8914,8 @@
             "items": {
               "type": [
                 "string",
-                "number"
+                "number",
+                "null"
               ]
             },
             "description": "List of valid values or states for the property, where applicable.",
@@ -8886,7 +8958,15 @@
         "title": "Update Device",
         "description": "Schema for updating basic details of a device, including its name and description.",
         "type": "object",
+        "required": [
+          "type"
+        ],
         "properties": {
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of device.",
+            "example": "third-party"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the device.",
@@ -8904,7 +8984,15 @@
         "title": "Update Channel",
         "description": "Schema for updating a channel, including optional updates to its name and description.",
         "type": "object",
+        "required": [
+          "type"
+        ],
         "properties": {
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of channel.",
+            "example": "third-party"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the channel.",
@@ -8922,7 +9010,15 @@
         "title": "Update Channel Property",
         "description": "Schema for updating a channel property, allowing updates to its name, unit, format, invalid state, step, and value.",
         "type": "object",
+        "required": [
+          "type"
+        ],
         "properties": {
+          "type": {
+            "type": "string",
+            "description": "Specifies the type of channel property.",
+            "example": "third-party"
+          },
           "name": {
             "type": "string",
             "nullable": true,
@@ -8941,7 +9037,8 @@
             "items": {
               "type": [
                 "string",
-                "number"
+                "number",
+                "null"
               ]
             },
             "description": "List of valid values or states for the property, where applicable.",

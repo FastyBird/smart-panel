@@ -18,6 +18,9 @@ class DevicesModuleCreateDevice with _$DevicesModuleCreateDevice {
     /// Unique identifier for the device. Optional during creation and system-generated if not provided.
     required String id,
 
+    /// Specifies the type of device.
+    required String type,
+
     /// Type of the device, defining its purpose or category (e.g., thermostat, lighting).
     required DevicesModuleDeviceCategory category,
 
@@ -32,10 +35,6 @@ class DevicesModuleCreateDevice with _$DevicesModuleCreateDevice {
 
     /// Optional detailed description of the device.
     String? description,
-
-    /// Specifies the type of device.
-    @Default('third-party')
-    String type,
   }) = _DevicesModuleCreateDevice;
   
   factory DevicesModuleCreateDevice.fromJson(Map<String, Object?> json) => _$DevicesModuleCreateDeviceFromJson(json);

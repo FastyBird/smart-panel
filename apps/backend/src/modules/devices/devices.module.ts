@@ -26,7 +26,9 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from './entities/devices.entity';
+import { ChannelsTypeMapperService } from './services/channels-type-mapper.service';
 import { ChannelsControlsService } from './services/channels.controls.service';
+import { ChannelsPropertiesTypeMapperService } from './services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './services/channels.properties.service';
 import { ChannelsService } from './services/channels.service';
 import { DevicesSeederService } from './services/devices-seeder.service';
@@ -41,8 +43,8 @@ import { ChannelEntitySubscriber } from './subscribers/channel-entity.subscriber
 import { ChannelPropertyEntitySubscriber } from './subscribers/channel-property-entity.subscriber';
 import { DeviceControlEntitySubscriber } from './subscribers/device-control-entity.subscriber';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
+import { ChannelExistsConstraintValidator } from './validators/channel-exists-constraint.validator';
 import { ChannelPropertyExistsConstraintValidator } from './validators/channel-property-exists-constraint.validator';
-import { DeviceChannelExistsConstraintValidator } from './validators/device-channel-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
 
 @Module({
@@ -60,14 +62,16 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		WebsocketModule,
 	],
 	providers: [
+		DevicesTypeMapperService,
+		ChannelsTypeMapperService,
+		ChannelsPropertiesTypeMapperService,
 		DevicesService,
 		DevicesControlsService,
 		ChannelsService,
 		ChannelsControlsService,
 		ChannelsPropertiesService,
-		DevicesTypeMapperService,
 		DeviceExistsConstraintValidator,
-		DeviceChannelExistsConstraintValidator,
+		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 		DeviceEntitySubscriber,
 		DeviceControlEntitySubscriber,
@@ -96,10 +100,12 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		ChannelsControlsService,
 		ChannelsPropertiesService,
 		DevicesTypeMapperService,
+		ChannelsTypeMapperService,
+		ChannelsPropertiesTypeMapperService,
 		DevicesSeederService,
 		PlatformRegistryService,
 		DeviceExistsConstraintValidator,
-		DeviceChannelExistsConstraintValidator,
+		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
 	],
 })

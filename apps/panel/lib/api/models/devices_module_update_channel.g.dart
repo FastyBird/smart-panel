@@ -9,6 +9,7 @@ part of 'devices_module_update_channel.dart';
 _$DevicesModuleUpdateChannelImpl _$$DevicesModuleUpdateChannelImplFromJson(
         Map<String, dynamic> json) =>
     _$DevicesModuleUpdateChannelImpl(
+      type: json['type'] as String,
       name: json['name'] as String,
       description: json['description'] as String?,
     );
@@ -16,6 +17,7 @@ _$DevicesModuleUpdateChannelImpl _$$DevicesModuleUpdateChannelImplFromJson(
 Map<String, dynamic> _$$DevicesModuleUpdateChannelImplToJson(
         _$DevicesModuleUpdateChannelImpl instance) =>
     <String, dynamic>{
+      'type': instance.type,
       'name': instance.name,
       'description': instance.description,
     };

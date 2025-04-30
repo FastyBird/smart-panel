@@ -8,6 +8,15 @@ type UpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];
 
 export class UpdateDeviceChannelDto implements UpdateChannel {
 	@Expose()
+	@IsNotEmpty({
+		message: '[{"field":"type","reason":"Type must be a valid string representing a supported channel type."}]',
+	})
+	@IsString({
+		message: '[{"field":"type","reason":"Type must be a valid string representing a supported channel type."}]',
+	})
+	type: string;
+
+	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })

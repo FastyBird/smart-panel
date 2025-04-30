@@ -19,6 +19,15 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 
 	@Expose()
 	@IsNotEmpty({
+		message: '[{"field":"type","reason":"Type must be a valid string representing a supported channel type."}]',
+	})
+	@IsString({
+		message: '[{"field":"type","reason":"Type must be a valid string representing a supported channel type."}]',
+	})
+	type: string;
+
+	@Expose()
+	@IsNotEmpty({
 		message: '[{"field":"category","reason":"Category must be a valid channel category."}]',
 	})
 	@IsEnum(ChannelCategory, {

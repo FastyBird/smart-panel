@@ -24,6 +24,9 @@ mixin _$DevicesModuleCreateChannel {
   /// Unique identifier for the channel. Optional during creation and system-generated if not provided.
   String get id => throw _privateConstructorUsedError;
 
+  /// Specifies the type of channel.
+  String get type => throw _privateConstructorUsedError;
+
   /// Type of the channel, indicating its functional category (e.g., temperature, light).
   DevicesModuleChannelCategory get category =>
       throw _privateConstructorUsedError;
@@ -64,6 +67,7 @@ abstract class $DevicesModuleCreateChannelCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
+      String type,
       DevicesModuleChannelCategory category,
       String name,
       List<DevicesModuleCreateChannelControl> controls,
@@ -89,6 +93,7 @@ class _$DevicesModuleCreateChannelCopyWithImpl<$Res,
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? category = null,
     Object? name = null,
     Object? controls = null,
@@ -100,6 +105,10 @@ class _$DevicesModuleCreateChannelCopyWithImpl<$Res,
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       category: null == category
           ? _value.category
@@ -140,6 +149,7 @@ abstract class _$$DevicesModuleCreateChannelImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
+      String type,
       DevicesModuleChannelCategory category,
       String name,
       List<DevicesModuleCreateChannelControl> controls,
@@ -164,6 +174,7 @@ class __$$DevicesModuleCreateChannelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
+    Object? type = null,
     Object? category = null,
     Object? name = null,
     Object? controls = null,
@@ -175,6 +186,10 @@ class __$$DevicesModuleCreateChannelImplCopyWithImpl<$Res>
       id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      type: null == type
+          ? _value.type
+          : type // ignore: cast_nullable_to_non_nullable
               as String,
       category: null == category
           ? _value.category
@@ -209,6 +224,7 @@ class __$$DevicesModuleCreateChannelImplCopyWithImpl<$Res>
 class _$DevicesModuleCreateChannelImpl implements _DevicesModuleCreateChannel {
   const _$DevicesModuleCreateChannelImpl(
       {required this.id,
+      required this.type,
       required this.category,
       required this.name,
       required final List<DevicesModuleCreateChannelControl> controls,
@@ -225,6 +241,10 @@ class _$DevicesModuleCreateChannelImpl implements _DevicesModuleCreateChannel {
   /// Unique identifier for the channel. Optional during creation and system-generated if not provided.
   @override
   final String id;
+
+  /// Specifies the type of channel.
+  @override
+  final String type;
 
   /// Type of the channel, indicating its functional category (e.g., temperature, light).
   @override
@@ -266,7 +286,7 @@ class _$DevicesModuleCreateChannelImpl implements _DevicesModuleCreateChannel {
 
   @override
   String toString() {
-    return 'DevicesModuleCreateChannel(id: $id, category: $category, name: $name, controls: $controls, properties: $properties, device: $device, description: $description)';
+    return 'DevicesModuleCreateChannel(id: $id, type: $type, category: $category, name: $name, controls: $controls, properties: $properties, device: $device, description: $description)';
   }
 
   @override
@@ -275,6 +295,7 @@ class _$DevicesModuleCreateChannelImpl implements _DevicesModuleCreateChannel {
         (other.runtimeType == runtimeType &&
             other is _$DevicesModuleCreateChannelImpl &&
             (identical(other.id, id) || other.id == id) &&
+            (identical(other.type, type) || other.type == type) &&
             (identical(other.category, category) ||
                 other.category == category) &&
             (identical(other.name, name) || other.name == name) &&
@@ -291,6 +312,7 @@ class _$DevicesModuleCreateChannelImpl implements _DevicesModuleCreateChannel {
   int get hashCode => Object.hash(
       runtimeType,
       id,
+      type,
       category,
       name,
       const DeepCollectionEquality().hash(_controls),
@@ -319,6 +341,7 @@ abstract class _DevicesModuleCreateChannel
     implements DevicesModuleCreateChannel {
   const factory _DevicesModuleCreateChannel(
       {required final String id,
+      required final String type,
       required final DevicesModuleChannelCategory category,
       required final String name,
       required final List<DevicesModuleCreateChannelControl> controls,
@@ -332,6 +355,10 @@ abstract class _DevicesModuleCreateChannel
   /// Unique identifier for the channel. Optional during creation and system-generated if not provided.
   @override
   String get id;
+
+  /// Specifies the type of channel.
+  @override
+  String get type;
 
   /// Type of the channel, indicating its functional category (e.g., temperature, light).
   @override

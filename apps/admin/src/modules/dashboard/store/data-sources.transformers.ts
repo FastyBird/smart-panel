@@ -24,10 +24,10 @@ export const transformDataSourceResponse = <T extends IDataSource = IDataSource>
 };
 
 export const transformDataSourceCreateRequest = <T extends IDataSourceCreateReq = IDataSourceCreateReq>(
-	property: IDataSourcesAddActionPayload['data'],
+	data: IDataSourcesAddActionPayload['data'],
 	schema: typeof DataSourceCreateReqSchema
 ): T => {
-	const parsedRequest = schema.safeParse(camelToSnake(property));
+	const parsedRequest = schema.safeParse(camelToSnake(data));
 
 	if (!parsedRequest.success) {
 		console.error('Schema validation failed with:', parsedRequest.error);
@@ -39,10 +39,10 @@ export const transformDataSourceCreateRequest = <T extends IDataSourceCreateReq 
 };
 
 export const transformDataSourceUpdateRequest = <T extends IDataSourceUpdateReq = IDataSourceUpdateReq>(
-	property: IDataSourcesEditActionPayload['data'],
+	data: IDataSourcesEditActionPayload['data'],
 	schema: typeof DataSourceUpdateReqSchema
 ): T => {
-	const parsedRequest = schema.safeParse(camelToSnake(property));
+	const parsedRequest = schema.safeParse(camelToSnake(data));
 
 	if (!parsedRequest.success) {
 		console.error('Schema validation failed with:', parsedRequest.error);

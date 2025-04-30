@@ -10,8 +10,8 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+import { ValidateChannelExists } from '../validators/channel-exists-constraint.validator';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
-import { ValidateDeviceChannelExists } from '../validators/device-channel-exists-constraint.validator';
 import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
 
 export class PropertyCommandValueDto {
@@ -22,7 +22,7 @@ export class PropertyCommandValueDto {
 
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
-	@ValidateDeviceChannelExists({ message: '[{"field":"channel","reason":"The specified channel does not exist."}]' })
+	@ValidateChannelExists({ message: '[{"field":"channel","reason":"The specified channel does not exist."}]' })
 	channel: string;
 
 	@Expose()

@@ -110,7 +110,7 @@ import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import { DevicesModuleDeviceCategory } from '../../../../openapi';
-import { type IDevicesFilter, usePlugins } from '../../composables/composables';
+import { type IDevicesFilter, useDevicesPlugins } from '../../composables/composables';
 import { ConnectionState } from '../../devices.constants';
 
 import { type IListDevicesAdjustProps } from './list-devices-adjust.types';
@@ -128,7 +128,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { options: typesOptions } = usePlugins();
+const { options: typesOptions } = useDevicesPlugins();
 
 const states: ConnectionState[] = [
 	ConnectionState.CONNECTED,

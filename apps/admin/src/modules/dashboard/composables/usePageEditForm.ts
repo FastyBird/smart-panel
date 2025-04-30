@@ -66,7 +66,7 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);
 
-			throw new DashboardValidationException('Failed to validate create page model.');
+			throw new DashboardValidationException('Failed to validate edit page model.');
 		}
 
 		try {

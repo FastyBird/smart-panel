@@ -93,6 +93,7 @@ describe('Devices module entity and OpenAPI Model Synchronization', () => {
 	test('ChannelEntity matches DevicesChannel', () => {
 		const openApiModel: Channel = {
 			id: uuid().toString(),
+			type: 'channel',
 			category: ChannelCategory.GENERIC,
 			name: 'Temperature Sensor',
 			description: 'Living room temperature sensor',
@@ -143,6 +144,7 @@ describe('Devices module entity and OpenAPI Model Synchronization', () => {
 	test('ChannelPropertyEntity matches DevicesChannelProperty', () => {
 		const openApiModel: ChannelProperty = {
 			id: uuid().toString(),
+			type: 'property',
 			category: PropertyCategory.GENERIC,
 			name: 'Thermostat Mode',
 			permissions: [PermissionType.READ_ONLY],

@@ -28,7 +28,7 @@ export abstract class HttpDevicePlatform implements IDevicePlatform {
 					method,
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload),
-					timeout: 5000, // 5 seconds timeout
+					timeout: 5000, // 5-second timeout
 					...options,
 				});
 

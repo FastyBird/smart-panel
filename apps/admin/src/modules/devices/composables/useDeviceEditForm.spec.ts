@@ -1,17 +1,21 @@
 import { nextTick } from 'vue';
 
 import type { FormInstance } from 'element-plus';
+import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesModuleDeviceCategory } from '../../../openapi';
-import { FormResult } from '../devices.constants';
+import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
+import { DeviceSchema } from '../store/devices.store.schemas';
 import type { IDevice } from '../store/devices.store.types';
 
 import { useDeviceEditForm } from './useDeviceEditForm';
 
+const deviceId = uuid().toString();
+
 const mockDevice: IDevice = {
-	id: 'device-1',
+	id: deviceId.toString(),
 	type: 'mock-type',
 	category: DevicesModuleDeviceCategory.generic,
 	name: 'Test Device',
@@ -43,6 +47,33 @@ vi.mock('../../../common', () => ({
 		success: mockSuccess,
 		error: mockError,
 		info: mockInfo,
+	}),
+}));
+
+const deviceSchema = DeviceSchema;
+
+const mockPluginList = [
+	{
+		type: 'test-plugin',
+		source: 'source',
+		name: 'Test Plugin',
+		description: 'Description',
+		links: {
+			documentation: '',
+			devDocumentation: '',
+			bugsTracking: '',
+		},
+		schemas: {
+			deviceSchema,
+		},
+		isCore: false,
+		modules: [DEVICES_MODULE_NAME],
+	},
+];
+
+vi.mock('./useDevicesPlugins', () => ({
+	useDevicesPlugins: () => ({
+		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
 	}),
 }));
 
@@ -95,6 +126,9 @@ describe('useDeviceEditForm', () => {
 		expect(mockEdit).toHaveBeenCalledWith({
 			id: mockDevice.id,
 			data: {
+				id: mockDevice.id,
+				type: mockDevice.type,
+				category: mockDevice.category,
 				name: mockDevice.name,
 				description: mockDevice.description,
 			},

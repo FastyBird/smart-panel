@@ -1,3 +1,4 @@
+import { camelToSnake, snakeToCamel } from '../../../common';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { ChannelPropertyCreateReqSchema, ChannelPropertySchema, ChannelPropertyUpdateReqSchema } from './channels.properties.store.schemas';
@@ -10,72 +11,47 @@ import type {
 	IChannelsPropertiesEditActionPayload,
 } from './channels.properties.store.types';
 
-export const transformChannelPropertyResponse = (response: IChannelPropertyRes): IChannelProperty => {
-	const parsedProperty = ChannelPropertySchema.safeParse({
-		id: response.id,
-		channel: response.channel,
-		category: response.category,
-		name: response.name,
-		permissions: response.permissions,
-		dataType: response.data_type,
-		unit: response.unit,
-		format: response.format,
-		invalid: response.invalid,
-		step: response.step,
-		value: response.value,
-		createdAt: response.created_at,
-		updatedAt: response.updated_at,
-	});
+export const transformChannelPropertyResponse = <T extends IChannelProperty = IChannelProperty>(
+	response: IChannelPropertyRes,
+	schema: typeof ChannelPropertySchema
+): T => {
+	const parsed = schema.safeParse(snakeToCamel(response));
 
-	if (!parsedProperty.success) {
-		console.error('Schema validation failed with:', parsedProperty.error);
+	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate received channel property data.');
 	}
 
-	return parsedProperty.data;
+	return parsed.data as T;
 };
 
-export const transformChannelPropertyCreateRequest = (
-	property: IChannelsPropertiesAddActionPayload['data'] & { id?: string; channel: string }
-): IChannelPropertyCreateReq => {
-	const parsedRequest = ChannelPropertyCreateReqSchema.safeParse({
-		id: property.id,
-		category: property.category,
-		name: property.name,
-		permissions: property.permissions,
-		data_type: property.dataType,
-		unit: property.unit,
-		format: property.format,
-		invalid: property.invalid,
-		step: property.step,
-		value: property.value,
-	});
+export const transformChannelPropertyCreateRequest = <T extends IChannelPropertyCreateReq = IChannelPropertyCreateReq>(
+	data: IChannelsPropertiesAddActionPayload['data'],
+	schema: typeof ChannelPropertyCreateReqSchema
+): T => {
+	const parsed = schema.safeParse(camelToSnake(data));
 
-	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate create channel property request.');
 	}
 
-	return parsedRequest.data;
+	return parsed.data as T;
 };
 
-export const transformChannelPropertyUpdateRequest = (property: IChannelsPropertiesEditActionPayload['data']): IChannelPropertyUpdateReq => {
-	const parsedRequest = ChannelPropertyUpdateReqSchema.safeParse({
-		name: property.name,
-		unit: property.unit,
-		format: property.format,
-		invalid: property.invalid,
-		step: property.step,
-		value: property.value,
-	});
+export const transformChannelPropertyUpdateRequest = <T extends IChannelPropertyUpdateReq = IChannelPropertyUpdateReq>(
+	data: IChannelsPropertiesEditActionPayload['data'],
+	schema: typeof ChannelPropertyUpdateReqSchema
+): T => {
+	const parsed = schema.safeParse(camelToSnake(data));
 
-	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+	if (!parsed.success) {
+		console.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate update channel property request.');
 	}
 
-	return parsedRequest.data;
+	return parsed.data as T;
 };

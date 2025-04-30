@@ -11,6 +11,9 @@ part 'devices_module_update_channel.g.dart';
 @Freezed()
 class DevicesModuleUpdateChannel with _$DevicesModuleUpdateChannel {
   const factory DevicesModuleUpdateChannel({
+    /// Specifies the type of channel.
+    required String type,
+
     /// Human-readable name of the channel.
     required String name,
 

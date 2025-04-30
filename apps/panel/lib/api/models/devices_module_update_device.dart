@@ -11,6 +11,9 @@ part 'devices_module_update_device.g.dart';
 @Freezed()
 class DevicesModuleUpdateDevice with _$DevicesModuleUpdateDevice {
   const factory DevicesModuleUpdateDevice({
+    /// Specifies the type of device.
+    required String type,
+
     /// Human-readable name of the device.
     required String name,
 

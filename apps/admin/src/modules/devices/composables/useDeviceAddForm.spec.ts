@@ -1,10 +1,12 @@
 import { nextTick } from 'vue';
 
 import type { FormInstance } from 'element-plus';
+import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesModuleDeviceCategory } from '../../../openapi';
-import { FormResult } from '../devices.constants';
+import { DEVICES_MODULE_NAME, FormResult } from '../devices.constants';
+import { DeviceSchema } from '../store/devices.store.schemas';
 
 import { useDeviceAddForm } from './useDeviceAddForm';
 
@@ -28,11 +30,40 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
+const deviceSchema = DeviceSchema;
+
+const mockPluginList = [
+	{
+		type: 'test-plugin',
+		source: 'source',
+		name: 'Test Plugin',
+		description: 'Description',
+		links: {
+			documentation: '',
+			devDocumentation: '',
+			bugsTracking: '',
+		},
+		schemas: {
+			deviceSchema,
+		},
+		isCore: false,
+		modules: [DEVICES_MODULE_NAME],
+	},
+];
+
+vi.mock('./useDevicesPlugins', () => ({
+	useDevicesPlugins: () => ({
+		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+	}),
+}));
+
 describe('useDeviceAddForm', () => {
 	let form: ReturnType<typeof useDeviceAddForm>;
 
+	const deviceId = uuid().toString();
+
 	beforeEach(() => {
-		form = useDeviceAddForm({ id: 'device-123', type: 'test-plugin' });
+		form = useDeviceAddForm({ id: deviceId.toString(), type: 'test-plugin' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -40,7 +71,7 @@ describe('useDeviceAddForm', () => {
 	});
 
 	it('should initialize with default values', () => {
-		expect(form.model.id).toBe('device-123');
+		expect(form.model.id).toBe(deviceId.toString());
 		expect(form.model.type).toBe('test-plugin');
 		expect(form.model.name).toBe('');
 		expect(form.model.category).toBe(DevicesModuleDeviceCategory.generic);
@@ -56,15 +87,20 @@ describe('useDeviceAddForm', () => {
 	});
 
 	it('should submit and call store add method', async () => {
+		form.model.name = 'New Device';
+
+		await nextTick();
+
 		await form.submit();
 
 		expect(mockAdd).toHaveBeenCalledWith({
-			id: 'device-123',
+			id: deviceId.toString(),
 			draft: false,
 			data: {
 				type: 'test-plugin',
+				id: deviceId.toString(),
 				category: DevicesModuleDeviceCategory.generic,
-				name: '',
+				name: 'New Device',
 				description: null,
 			},
 		});

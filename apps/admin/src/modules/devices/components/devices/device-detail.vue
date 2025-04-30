@@ -4,6 +4,17 @@
 			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
 			style="background: var(--el-fill-color-light)"
 		>
+			{{ t('devicesModule.texts.devices.category') }}
+		</dt>
+		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">
+			<el-text>
+				{{ t(`devicesModule.categories.devices.${device.category}`) }}
+			</el-text>
+		</dd>
+		<dt
+			class="b-b b-b-solid b-r b-r-solid py-1 px-2 flex items-center justify-end"
+			style="background: var(--el-fill-color-light)"
+		>
 			{{ t('devicesModule.texts.devices.channels') }}
 		</dt>
 		<dd class="col-start-2 b-b b-b-solid m-0 p-2 flex items-center min-w-[8rem]">

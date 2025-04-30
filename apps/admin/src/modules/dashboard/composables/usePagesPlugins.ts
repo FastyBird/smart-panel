@@ -21,6 +21,8 @@ export const usePagesPlugins = (): IUsePagesPlugins => {
 		'pageUpdateReqSchema',
 	];
 
+	const pluginRoutes: (keyof IPagePluginRoutes)[] = ['configure'];
+
 	const plugins = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes>[]>(
 		(): IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes>[] => {
 			return pluginsManager.getPlugins().filter((plugin) => {
@@ -28,7 +30,9 @@ export const usePagesPlugins = (): IUsePagesPlugins => {
 
 				const hasSchema = pluginSchemas.some((key) => plugin.schemas && key in plugin.schemas) ?? true;
 
-				return plugin.modules?.includes(DASHBOARD_MODULE_NAME) && (hasComponent || hasSchema);
+				const hasRoute = pluginRoutes.some((key) => plugin.routes && key in plugin.routes) ?? true;
+
+				return plugin.modules?.includes(DASHBOARD_MODULE_NAME) && (hasComponent || hasSchema || hasRoute);
 			});
 		}
 	);

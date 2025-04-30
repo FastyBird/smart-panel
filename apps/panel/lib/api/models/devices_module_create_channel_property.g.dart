@@ -11,6 +11,7 @@ _$DevicesModuleCreateChannelPropertyImpl
             Map<String, dynamic> json) =>
         _$DevicesModuleCreateChannelPropertyImpl(
           id: json['id'] as String,
+          type: json['type'] as String,
           category: DevicesModuleChannelPropertyCategory.fromJson(
               json['category'] as String),
           permissions: (json['permissions'] as List<dynamic>)
@@ -32,6 +33,7 @@ Map<String, dynamic> _$$DevicesModuleCreateChannelPropertyImplToJson(
         _$DevicesModuleCreateChannelPropertyImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
+      'type': instance.type,
       'category':
           _$DevicesModuleChannelPropertyCategoryEnumMap[instance.category]!,
       'permissions': instance.permissions
