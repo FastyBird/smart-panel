@@ -124,6 +124,7 @@ describe('ConfigService', () => {
 				{
 					provide: PluginsTypeMapperService,
 					useValue: {
+						onMappingsRegistered: jest.fn(() => {}),
 						registerMapping: jest.fn(() => {}),
 						getMapping: jest.fn(() => ({
 							type: 'mock',
@@ -174,8 +175,6 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			service['loadConfig']();
-
 			const toCompare = plainToInstance(AppConfigEntity, mockConfig, {
 				enableImplicitConversion: true,
 				exposeUnsetFields: false,
@@ -187,13 +186,10 @@ describe('ConfigService', () => {
 				}),
 			];
 
-			expect(service['config']).toEqual(toCompare);
+			expect(service.getConfig()).toEqual(toCompare);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 
@@ -206,11 +202,8 @@ describe('ConfigService', () => {
 
 			expect(() => service['loadConfig']()).toThrow(ConfigValidationException);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(invalidConfig));
 		});
 	});
@@ -220,8 +213,6 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
-
-			service['loadConfig']();
 
 			const toCompare = plainToInstance(AppConfigEntity, mockConfig, {
 				enableImplicitConversion: true,
@@ -236,11 +227,8 @@ describe('ConfigService', () => {
 
 			expect(service.getConfig()).toEqual(toCompare);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 	});
@@ -251,17 +239,12 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			service['loadConfig']();
-
 			const result = service.getConfigSection(SectionType.AUDIO, AudioConfigEntity);
 
 			expect(result).toEqual(mockConfig.audio);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 
@@ -270,18 +253,13 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			service['loadConfig']();
-
 			class MockConfig extends BaseConfigEntity {}
 
 			// @ts-expect-error: This is an intentional test for invalid configuration sections
 			expect(() => service.getConfigSection('invalid', MockConfig)).toThrow(ConfigNotFoundException);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 	});
@@ -307,8 +285,6 @@ describe('ConfigService', () => {
 				.mockReturnValueOnce(JSON.stringify(updatedRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValueOnce(mockRawConfig).mockReturnValueOnce(updatedRawConfig);
 
-			service['loadConfig']();
-
 			const mockYamlStringify = jest.spyOn(yaml, 'stringify');
 			const mockFsWriteFileSync = jest.spyOn(fs, 'writeFileSync');
 
@@ -316,11 +292,8 @@ describe('ConfigService', () => {
 
 			expect(service['config'].audio).toEqual(mergedConfig);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(updatedRawConfig));
 			expect(mockYamlStringify).toHaveBeenCalled();
@@ -338,17 +311,12 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			service['loadConfig']();
-
 			await expect(service.setConfigSection(SectionType.AUDIO, invalidUpdateDto, UpdateAudioConfigDto)).rejects.toThrow(
 				ConfigValidationException,
 			);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 	});
@@ -359,17 +327,12 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			service['loadConfig']();
-
 			const result = service.getPluginConfig('mock');
 
 			expect(result).toEqual(mockConfig.plugins[0]);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 
@@ -378,15 +341,10 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			service['loadConfig']();
-
 			expect(() => service.getPluginConfig('invalid')).toThrow(ConfigNotFoundException);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 	});
@@ -411,8 +369,6 @@ describe('ConfigService', () => {
 				.mockReturnValueOnce(JSON.stringify(updatedRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValueOnce(mockRawConfig).mockReturnValueOnce(updatedRawConfig);
 
-			service['loadConfig']();
-
 			const mockYamlStringify = jest.spyOn(yaml, 'stringify');
 			const mockFsWriteFileSync = jest.spyOn(fs, 'writeFileSync');
 
@@ -420,11 +376,8 @@ describe('ConfigService', () => {
 
 			expect(service['config'].plugins[0]).toEqual(mergedConfig);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(updatedRawConfig));
 			expect(mockYamlStringify).toHaveBeenCalled();
@@ -442,15 +395,10 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			service['loadConfig']();
-
 			expect(() => service.setPluginConfig('mock', invalidUpdateDto)).toThrow(ConfigValidationException);
 
-			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['getConfigPath'](), service['filename']));
-			expect(fs.readFileSync).toHaveBeenCalledWith(
-				path.resolve(service['getConfigPath'](), service['filename']),
-				'utf8',
-			);
+			expect(fs.existsSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']));
+			expect(fs.readFileSync).toHaveBeenCalledWith(path.resolve(service['configPath'], service['filename']), 'utf8');
 			expect(yaml.parse).toHaveBeenCalledWith(JSON.stringify(mockRawConfig));
 		});
 	});

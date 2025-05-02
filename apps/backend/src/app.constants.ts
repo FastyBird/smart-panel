@@ -1,4 +1,5 @@
 export const API_PREFIX = 'api';
+export const PLUGINS_PREFIX = 'plugins';
 
 export enum RequestResultState {
 	SUCCESS = 'success',

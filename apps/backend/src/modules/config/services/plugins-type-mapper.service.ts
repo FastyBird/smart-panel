@@ -14,12 +14,32 @@ export interface PluginTypeMapping<TPlugin extends PluginConfigEntity, TConfigDT
 export class PluginsTypeMapperService {
 	private readonly logger = new Logger(PluginsTypeMapperService.name);
 
+	private onMappingsReadyCallback: (() => void) | null = null;
+
 	private readonly mappings = new Map<string, PluginTypeMapping<PluginConfigEntity, UpdatePluginConfigDto>>();
+
+	/**
+	 * @internal
+	 *
+	 * Should only be used by module initialization logic to register a callback
+	 * triggered after all mappings are registered.
+	 */
+	onMappingsRegistered(callback: () => void) {
+		if (this.onMappingsReadyCallback !== null) {
+			throw new ConfigException('Mappings callback already registered');
+		}
+
+		this.onMappingsReadyCallback = callback;
+	}
 
 	registerMapping<TPlugin extends PluginConfigEntity, TConfigDTO extends UpdatePluginConfigDto>(
 		mapping: PluginTypeMapping<TPlugin, TConfigDTO>,
 	): void {
 		this.mappings.set(mapping.type, mapping);
+
+		if (this.onMappingsReadyCallback) {
+			this.onMappingsReadyCallback();
+		}
 
 		this.logger.log(`[REGISTERED] Plugin type '${mapping.type}' added. Total mappings: ${this.mappings.size}`);
 	}

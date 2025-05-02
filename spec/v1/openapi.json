@@ -12950,6 +12950,75 @@
           }
         ]
       },
+      "DevicesThirdPartyPluginThirdPartyDevice": {
+        "x-internal": true,
+        "title": "Tiles Page",
+        "description": "A third-party device used to communicate with third-party devices.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "service_address"
+            ],
+            "properties": {
+              "service_address": {
+                "type": "string",
+                "description": "A url address of the third-party device endpoint.",
+                "format": "uri",
+                "example": "http://third-party-device.local:8081"
+              }
+            }
+          }
+        ]
+      },
+      "DevicesThirdPartyPluginCreateThirdPartyDevice": {
+        "x-internal": true,
+        "title": "Create Tiles Page",
+        "description": "The schema for creating a third-party device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "service_address"
+            ],
+            "properties": {
+              "service_address": {
+                "type": "string",
+                "description": "A url address of the third-party device endpoint.",
+                "format": "uri",
+                "example": "http://third-party-device.local:8081"
+              }
+            }
+          }
+        ]
+      },
+      "DevicesThirdPartyPluginUpdateThirdPartyDevice": {
+        "x-internal": true,
+        "title": "Update Tiles Page",
+        "description": "Schema for updating a third-party device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateDevice"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "service_address": {
+                "type": "string",
+                "description": "A url address of the third-party device endpoint.",
+                "format": "uri",
+                "example": "http://third-party-device.local:8081"
+              }
+            }
+          }
+        ]
+      },
       "DevicesThirdPartyPluginPropertyUpdateRequest": {
         "title": "Third-Party Device Property Update",
         "description": "Represents a request to update a specific property on a third-party device.",
@@ -13099,6 +13168,176 @@
           "-80010": "Invalid value provided for a property update request.",
           "-80011": "Insufficient authorization for the requested operation."
         }
+      },
+      "DevicesHomeAssistantPluginHomeAssistantDevice": {
+        "x-internal": true,
+        "title": "Home Assistant Device",
+        "description": "A Home Assistant device used to communicate with Home Assistant instance.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "ha_device_id"
+            ],
+            "properties": {
+              "ha_device_id": {
+                "type": "string",
+                "description": "A HA device instance identifier.",
+                "example": "2fcdc656a7ae51e33482c8314b1d32b9"
+              }
+            }
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginCreateHomeAssistantDevice": {
+        "x-internal": true,
+        "title": "Create Home Assistant Device",
+        "description": "The schema for creating a Home Assistant device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "ha_device_id"
+            ],
+            "properties": {
+              "ha_device_id": {
+                "type": "string",
+                "description": "A HA device instance identifier.",
+                "example": "2fcdc656a7ae51e33482c8314b1d32b9"
+              }
+            }
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginUpdateHomeAssistantDevice": {
+        "x-internal": true,
+        "title": "Update Home Assistant Device",
+        "description": "Schema for updating a Home Assistant device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateDevice"
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginHomeAssistantChannel": {
+        "x-internal": true,
+        "title": "Home Assistant Device Channel",
+        "description": "A Home Assistant channels used to communicate with Home Assistant instance.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "ha_entity_id"
+            ],
+            "properties": {
+              "ha_entity_id": {
+                "type": "string",
+                "description": "A HA device entity identifier.",
+                "example": "light.hall_cabinet_lights_lights"
+              }
+            }
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginCreateHomeAssistantChannel": {
+        "x-internal": true,
+        "title": "Create Home Assistant Device Channel",
+        "description": "The schema for creating a Home Assistant channel.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "ha_entity_id"
+            ],
+            "properties": {
+              "ha_entity_id": {
+                "type": "string",
+                "description": "A HA device entity identifier.",
+                "example": "light.hall_cabinet_lights_lights"
+              }
+            }
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginUpdateHomeAssistantChannel": {
+        "x-internal": true,
+        "title": "Update Home Assistant Device Chanel",
+        "description": "Schema for updating a Home Assistant channel.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateChannel"
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginHomeAssistantChannelProperty": {
+        "x-internal": true,
+        "title": "Home Assistant Channel Property",
+        "description": "A Home Assistant properties used to communicate with Home Assistant instance.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "ha_attribute"
+            ],
+            "properties": {
+              "ha_attribute": {
+                "type": "string",
+                "description": "A HA device entity attribute.",
+                "example": "brightness",
+                "nullable": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty": {
+        "x-internal": true,
+        "title": "Create Home Assistant Channel Property",
+        "description": "The schema for creating a Home Assistant channel property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "ha_attribute"
+            ],
+            "properties": {
+              "ha_attribute": {
+                "type": "string",
+                "description": "A HA device entity attribute.",
+                "example": "brightness",
+                "nullable": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty": {
+        "x-internal": true,
+        "title": "Update Home Assistant Device Chanel",
+        "description": "Schema for updating a Home Assistant channel property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateChannelProperty"
+          }
+        ]
       },
       "PagesTilesPluginTilesPage": {
         "x-internal": true,

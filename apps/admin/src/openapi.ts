@@ -4744,6 +4744,42 @@ export interface components {
             metadata: components["schemas"]["CommonResMetadata"];
         };
         /**
+         * Tiles Page
+         * @description A third-party device used to communicate with third-party devices.
+         */
+        DevicesThirdPartyPluginThirdPartyDevice: components["schemas"]["DevicesModuleDevice"] & {
+            /**
+             * Format: uri
+             * @description A url address of the third-party device endpoint.
+             * @example http://third-party-device.local:8081
+             */
+            service_address: string;
+        };
+        /**
+         * Create Tiles Page
+         * @description The schema for creating a third-party device.
+         */
+        DevicesThirdPartyPluginCreateThirdPartyDevice: components["schemas"]["DevicesModuleCreateDevice"] & {
+            /**
+             * Format: uri
+             * @description A url address of the third-party device endpoint.
+             * @example http://third-party-device.local:8081
+             */
+            service_address: string;
+        };
+        /**
+         * Update Tiles Page
+         * @description Schema for updating a third-party device.
+         */
+        DevicesThirdPartyPluginUpdateThirdPartyDevice: components["schemas"]["DevicesModuleUpdateDevice"] & {
+            /**
+             * Format: uri
+             * @description A url address of the third-party device endpoint.
+             * @example http://third-party-device.local:8081
+             */
+            service_address?: string;
+        };
+        /**
          * Third-Party Device Property Update
          * @description Represents a request to update a specific property on a third-party device.
          */
@@ -4817,6 +4853,87 @@ export interface components {
          * @enum {number}
          */
         DevicesThirdPartyPluginErrorCode: DevicesThirdPartyPluginErrorCode;
+        /**
+         * Home Assistant Device
+         * @description A Home Assistant device used to communicate with Home Assistant instance.
+         */
+        DevicesHomeAssistantPluginHomeAssistantDevice: components["schemas"]["DevicesModuleDevice"] & {
+            /**
+             * @description A HA device instance identifier.
+             * @example 2fcdc656a7ae51e33482c8314b1d32b9
+             */
+            ha_device_id: string;
+        };
+        /**
+         * Create Home Assistant Device
+         * @description The schema for creating a Home Assistant device.
+         */
+        DevicesHomeAssistantPluginCreateHomeAssistantDevice: components["schemas"]["DevicesModuleCreateDevice"] & {
+            /**
+             * @description A HA device instance identifier.
+             * @example 2fcdc656a7ae51e33482c8314b1d32b9
+             */
+            ha_device_id: string;
+        };
+        /**
+         * Update Home Assistant Device
+         * @description Schema for updating a Home Assistant device.
+         */
+        DevicesHomeAssistantPluginUpdateHomeAssistantDevice: components["schemas"]["DevicesModuleUpdateDevice"];
+        /**
+         * Home Assistant Device Channel
+         * @description A Home Assistant channels used to communicate with Home Assistant instance.
+         */
+        DevicesHomeAssistantPluginHomeAssistantChannel: components["schemas"]["DevicesModuleChannel"] & {
+            /**
+             * @description A HA device entity identifier.
+             * @example light.hall_cabinet_lights_lights
+             */
+            ha_entity_id: string;
+        };
+        /**
+         * Create Home Assistant Device Channel
+         * @description The schema for creating a Home Assistant channel.
+         */
+        DevicesHomeAssistantPluginCreateHomeAssistantChannel: components["schemas"]["DevicesModuleCreateChannel"] & {
+            /**
+             * @description A HA device entity identifier.
+             * @example light.hall_cabinet_lights_lights
+             */
+            ha_entity_id: string;
+        };
+        /**
+         * Update Home Assistant Device Chanel
+         * @description Schema for updating a Home Assistant channel.
+         */
+        DevicesHomeAssistantPluginUpdateHomeAssistantChannel: components["schemas"]["DevicesModuleUpdateChannel"];
+        /**
+         * Home Assistant Channel Property
+         * @description A Home Assistant properties used to communicate with Home Assistant instance.
+         */
+        DevicesHomeAssistantPluginHomeAssistantChannelProperty: components["schemas"]["DevicesModuleChannelProperty"] & {
+            /**
+             * @description A HA device entity attribute.
+             * @example brightness
+             */
+            ha_attribute: string | null;
+        };
+        /**
+         * Create Home Assistant Channel Property
+         * @description The schema for creating a Home Assistant channel property.
+         */
+        DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty: components["schemas"]["DevicesModuleCreateChannelProperty"] & {
+            /**
+             * @description A HA device entity attribute.
+             * @example brightness
+             */
+            ha_attribute: string | null;
+        };
+        /**
+         * Update Home Assistant Device Chanel
+         * @description Schema for updating a Home Assistant channel property.
+         */
+        DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty: components["schemas"]["DevicesModuleUpdateChannelProperty"];
         /**
          * Tiles Page
          * @description A tiles page dashboard type, displaying a grid of customizable tiles.
@@ -5814,11 +5931,23 @@ export type SchemaWeatherModuleResLocationCurrent = components['schemas']['Weath
 export type SchemaWeatherModuleResLocationForecast = components['schemas']['WeatherModuleResLocationForecast'];
 export type SchemaWeatherModuleResGeolocationCityToCoordinates = components['schemas']['WeatherModuleResGeolocationCityToCoordinates'];
 export type SchemaWeatherModuleResGeolocationCoordinatesToCity = components['schemas']['WeatherModuleResGeolocationCoordinatesToCity'];
+export type SchemaDevicesThirdPartyPluginThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginThirdPartyDevice'];
+export type SchemaDevicesThirdPartyPluginCreateThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyDevice'];
+export type SchemaDevicesThirdPartyPluginUpdateThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyDevice'];
 export type SchemaDevicesThirdPartyPluginPropertyUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertyUpdateRequest'];
 export type SchemaDevicesThirdPartyPluginPropertiesUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertiesUpdateRequest'];
 export type SchemaDevicesThirdPartyPluginPropertyUpdateResult = components['schemas']['DevicesThirdPartyPluginPropertyUpdateResult'];
 export type SchemaDevicesThirdPartyPluginPropertiesUpdateResult = components['schemas']['DevicesThirdPartyPluginPropertiesUpdateResult'];
 export type SchemaDevicesThirdPartyPluginErrorCode = components['schemas']['DevicesThirdPartyPluginErrorCode'];
+export type SchemaDevicesHomeAssistantPluginHomeAssistantDevice = components['schemas']['DevicesHomeAssistantPluginHomeAssistantDevice'];
+export type SchemaDevicesHomeAssistantPluginCreateHomeAssistantDevice = components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantDevice'];
+export type SchemaDevicesHomeAssistantPluginUpdateHomeAssistantDevice = components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantDevice'];
+export type SchemaDevicesHomeAssistantPluginHomeAssistantChannel = components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannel'];
+export type SchemaDevicesHomeAssistantPluginCreateHomeAssistantChannel = components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantChannel'];
+export type SchemaDevicesHomeAssistantPluginUpdateHomeAssistantChannel = components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantChannel'];
+export type SchemaDevicesHomeAssistantPluginHomeAssistantChannelProperty = components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannelProperty'];
+export type SchemaDevicesHomeAssistantPluginCreateHomeAssistantChannelProperty = components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty'];
+export type SchemaDevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty = components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty'];
 export type SchemaPagesTilesPluginTilesPage = components['schemas']['PagesTilesPluginTilesPage'];
 export type SchemaPagesTilesPluginCreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];
 export type SchemaPagesTilesPluginUpdateTilesPage = components['schemas']['PagesTilesPluginUpdateTilesPage'];
