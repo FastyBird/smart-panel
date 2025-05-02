@@ -10,14 +10,14 @@ import {
 	UpdateWeatherConfigDto,
 } from '../dto/config.dto';
 import {
-	AppConfigEntity,
-	AudioConfigEntity,
-	BaseConfigEntity,
-	DisplayConfigEntity,
-	LanguageConfigEntity,
-	PluginConfigEntity,
-	WeatherConfigEntity,
-} from '../entities/config.entity';
+	AppConfigModel,
+	AudioConfigModel,
+	BaseConfigModel,
+	DisplayConfigModel,
+	LanguageConfigModel,
+	PluginConfigModel,
+	WeatherConfigModel,
+} from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 
 @Controller('config')
@@ -27,7 +27,7 @@ export class ConfigController {
 	constructor(private readonly service: ConfigService) {}
 
 	@Get()
-	getAllConfig(): AppConfigEntity {
+	getAllConfig(): AppConfigModel {
 		this.logger.debug('[LOOKUP ALL] Fetching application configuration');
 
 		const config = this.service.getConfig();
@@ -38,32 +38,32 @@ export class ConfigController {
 	}
 
 	@Get(':section')
-	getConfigSection(@Param('section') section: keyof AppConfigEntity): BaseConfigEntity {
+	getConfigSection(@Param('section') section: keyof AppConfigModel): BaseConfigModel {
 		this.logger.debug(`[LOOKUP] Fetching configuration section=${section}`);
 
-		let config: BaseConfigEntity;
+		let config: BaseConfigModel;
 
 		switch (section) {
 			case SectionType.AUDIO:
-				config = this.service.getConfigSection<AudioConfigEntity>(section, AudioConfigEntity);
+				config = this.service.getConfigSection<AudioConfigModel>(section, AudioConfigModel);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
 				return config;
 			case SectionType.DISPLAY:
-				config = this.service.getConfigSection<DisplayConfigEntity>(section, DisplayConfigEntity);
+				config = this.service.getConfigSection<DisplayConfigModel>(section, DisplayConfigModel);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
 				return config;
 			case SectionType.LANGUAGE:
-				config = this.service.getConfigSection<LanguageConfigEntity>(section, LanguageConfigEntity);
+				config = this.service.getConfigSection<LanguageConfigModel>(section, LanguageConfigModel);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
 				return config;
 			case SectionType.WEATHER:
-				config = this.service.getConfigSection<WeatherConfigEntity>(section, WeatherConfigEntity);
+				config = this.service.getConfigSection<WeatherConfigModel>(section, WeatherConfigModel);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
@@ -76,12 +76,12 @@ export class ConfigController {
 	}
 
 	@Patch(SectionType.AUDIO)
-	async updateAudioConfig(@Body() audioConfig: ReqUpdateSectionDto): Promise<AudioConfigEntity> {
+	async updateAudioConfig(@Body() audioConfig: ReqUpdateSectionDto): Promise<AudioConfigModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.AUDIO}`);
 
 		await this.service.setConfigSection(SectionType.AUDIO, audioConfig.data, UpdateAudioConfigDto);
 
-		const config = this.service.getConfigSection<AudioConfigEntity>(SectionType.AUDIO, AudioConfigEntity);
+		const config = this.service.getConfigSection<AudioConfigModel>(SectionType.AUDIO, AudioConfigModel);
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.AUDIO}`);
 
@@ -89,12 +89,12 @@ export class ConfigController {
 	}
 
 	@Patch(SectionType.DISPLAY)
-	async updateDisplayConfig(@Body() displayConfig: ReqUpdateSectionDto): Promise<DisplayConfigEntity> {
+	async updateDisplayConfig(@Body() displayConfig: ReqUpdateSectionDto): Promise<DisplayConfigModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.DISPLAY}`);
 
 		await this.service.setConfigSection(SectionType.DISPLAY, displayConfig.data, UpdateDisplayConfigDto);
 
-		const config = this.service.getConfigSection<DisplayConfigEntity>(SectionType.DISPLAY, DisplayConfigEntity);
+		const config = this.service.getConfigSection<DisplayConfigModel>(SectionType.DISPLAY, DisplayConfigModel);
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.DISPLAY}`);
 
@@ -102,12 +102,12 @@ export class ConfigController {
 	}
 
 	@Patch(SectionType.LANGUAGE)
-	async updateLanguageConfig(@Body() languageConfig: ReqUpdateSectionDto): Promise<LanguageConfigEntity> {
+	async updateLanguageConfig(@Body() languageConfig: ReqUpdateSectionDto): Promise<LanguageConfigModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.LANGUAGE}`);
 
 		await this.service.setConfigSection(SectionType.LANGUAGE, languageConfig.data, UpdateLanguageConfigDto);
 
-		const config = this.service.getConfigSection<LanguageConfigEntity>(SectionType.LANGUAGE, LanguageConfigEntity);
+		const config = this.service.getConfigSection<LanguageConfigModel>(SectionType.LANGUAGE, LanguageConfigModel);
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.LANGUAGE}`);
 
@@ -115,12 +115,12 @@ export class ConfigController {
 	}
 
 	@Patch(SectionType.WEATHER)
-	async updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): Promise<WeatherConfigEntity> {
+	async updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): Promise<WeatherConfigModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.WEATHER}`);
 
 		await this.service.setConfigSection(SectionType.WEATHER, weatherConfig.data, UpdateWeatherConfigDto);
 
-		const config = this.service.getConfigSection<WeatherConfigEntity>(SectionType.WEATHER, WeatherConfigEntity);
+		const config = this.service.getConfigSection<WeatherConfigModel>(SectionType.WEATHER, WeatherConfigModel);
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.WEATHER}`);
 
@@ -128,10 +128,10 @@ export class ConfigController {
 	}
 
 	@Get('plugin/:plugin')
-	getPluginConfig(@Param('plugin') plugin: string): PluginConfigEntity {
+	getPluginConfig(@Param('plugin') plugin: string): PluginConfigModel {
 		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
 
-		const config: PluginConfigEntity = this.service.getPluginConfig(plugin);
+		const config: PluginConfigModel = this.service.getPluginConfig(plugin);
 
 		this.logger.debug(`[LOOKUP] Found configuration plugin=${plugin}`);
 
@@ -139,7 +139,7 @@ export class ConfigController {
 	}
 
 	@Patch('plugin/:plugin')
-	updatePluginConfig(@Param('plugin') plugin: string, @Body() pluginConfig: ReqUpdatePluginDto): PluginConfigEntity {
+	updatePluginConfig(@Param('plugin') plugin: string, @Body() pluginConfig: ReqUpdatePluginDto): PluginConfigModel {
 		this.logger.debug(`[UPDATE] Incoming update request for plugin=${plugin}`);
 
 		this.service.setPluginConfig(plugin, pluginConfig.data);

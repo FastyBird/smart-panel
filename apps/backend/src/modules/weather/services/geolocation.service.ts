@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { SectionType } from '../../config/config.constants';
-import { WeatherConfigEntity } from '../../config/entities/config.entity';
+import { WeatherConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
 import { GeolocationDto } from '../dto/geolocation.dto';
 
@@ -18,7 +18,7 @@ export class GeolocationService {
 	private readonly API_URL = 'https://api.openweathermap.org/geo/1.0';
 
 	constructor(private readonly configService: ConfigService) {
-		this.apiKey = this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigEntity).openWeatherApiKey;
+		this.apiKey = this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigModel).openWeatherApiKey;
 	}
 
 	async getCoordinatesByCity(city: string): Promise<GeolocationDto[] | null> {

@@ -4,32 +4,34 @@ import 'reflect-metadata';
 
 import type { components } from '../../../openapi';
 
-import { LocationWeatherEntity } from './weather.entity';
+import { LocationWeatherModel } from './weather.model';
 
 type LocationWeather = components['schemas']['WeatherModuleLocationWeather'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
-describe('Weather module entity and OpenAPI Model Synchronization', () => {
-	const validateEntityAgainstModel = <T extends object, U extends object>(entity: T, model: U) => {
-		// Convert model keys from snake_case to camelCase
-		const modelKeys = Object.keys(model).map((attribute) => attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()));
+describe('Weather module model and OpenAPI component synchronization', () => {
+	const validateModelAgainstComponent = <T extends object, U extends object>(model: T, component: U) => {
+		// Convert component keys from snake_case to camelCase
+		const componentKeys = Object.keys(component).map((attribute) =>
+			attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()),
+		);
 
-		// Check that all keys in the model (converted to camelCase) exist in the entity
-		modelKeys.forEach((key) => {
-			expect(entity).toHaveProperty(key);
+		// Check that all keys in the component (converted to camelCase) exist in the model
+		componentKeys.forEach((key) => {
+			expect(model).toHaveProperty(key);
 		});
 
-		// Convert entity keys to snake_case and compare against the model keys
-		const entityKeys = Object.keys(entity).map((key) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
+		// Convert model keys to snake_case and compare against the component keys
+		const modelKeys = Object.keys(model).map((key) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
 
-		const originalModelKeys = Object.keys(model);
-		entityKeys.forEach((key) => {
+		const originalModelKeys = Object.keys(component);
+		modelKeys.forEach((key) => {
 			expect(originalModelKeys).toContain(key);
 		});
 	};
 
-	test('LocationWeatherEntity matches LocationWeather', () => {
+	test('LocationWeatherModel matches LocationWeather', () => {
 		const openApiModel: LocationWeather = {
 			current: {
 				temperature: 23.3,
@@ -101,14 +103,14 @@ describe('Weather module entity and OpenAPI Model Synchronization', () => {
 			},
 		};
 
-		const entityInstance = plainToInstance(LocationWeatherEntity, openApiModel, {
+		const modelInstance = plainToInstance(LocationWeatherModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});

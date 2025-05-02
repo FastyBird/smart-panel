@@ -7,7 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { SystemInfoEntity, ThrottleStatusEntity } from '../entities/system.entity';
+import { SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
 
 import { SystemController } from './system.controller';
@@ -77,7 +77,7 @@ describe('SystemController', () => {
 
 			const result = await controller.getSystemInfo();
 
-			expect(result).toBeInstanceOf(SystemInfoEntity);
+			expect(result).toBeInstanceOf(SystemInfoModel);
 			expect(result.cpuLoad).toBe(mockSystemInfo.cpuLoad);
 			expect(service.getSystemInfo).toHaveBeenCalled();
 		});
@@ -85,7 +85,7 @@ describe('SystemController', () => {
 		it('should log a message when called', async () => {
 			const loggerSpy = jest.spyOn(controller['logger'], 'debug').mockImplementation();
 
-			jest.spyOn(service, 'getSystemInfo').mockResolvedValue({} as SystemInfoEntity);
+			jest.spyOn(service, 'getSystemInfo').mockResolvedValue({} as SystemInfoModel);
 
 			await controller.getSystemInfo();
 
@@ -107,7 +107,7 @@ describe('SystemController', () => {
 
 			const result = await controller.getThrottleStatus();
 
-			expect(result).toBeInstanceOf(ThrottleStatusEntity);
+			expect(result).toBeInstanceOf(ThrottleStatusModel);
 			expect(result.undervoltage).toBe(mockThrottleStatus.undervoltage);
 			expect(service.getThrottleStatus).toHaveBeenCalled();
 		});
@@ -115,7 +115,7 @@ describe('SystemController', () => {
 		it('should log a message when called', async () => {
 			const loggerSpy = jest.spyOn(controller['logger'], 'debug').mockImplementation();
 
-			jest.spyOn(service, 'getThrottleStatus').mockResolvedValue({} as ThrottleStatusEntity);
+			jest.spyOn(service, 'getThrottleStatus').mockResolvedValue({} as ThrottleStatusModel);
 
 			await controller.getThrottleStatus();
 

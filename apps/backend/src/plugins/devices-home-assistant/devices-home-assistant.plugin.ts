@@ -18,12 +18,12 @@ import { UpdateHomeAssistantChannelPropertyDto } from './dto/update-channel-prop
 import { UpdateHomeAssistantChannelDto } from './dto/update-channel.dto';
 import { HomeAssistantUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeAssistantDeviceDto } from './dto/update-device.dto';
-import { HomeAssistantConfigEntity } from './entities/config-home-assistant.entity';
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from './entities/devices-home-assistant.entity';
+import { HomeAssistantConfigModel } from './models/config-home-assistant.model';
 import { HomeAssistantDevicePlatform } from './platforms/home-assistant-device.platform';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 
@@ -44,9 +44,9 @@ export class DevicesHomeAssistantPlugin {
 	) {}
 
 	onModuleInit() {
-		this.configMapper.registerMapping<HomeAssistantConfigEntity, HomeAssistantUpdatePluginConfigDto>({
+		this.configMapper.registerMapping<HomeAssistantConfigModel, HomeAssistantUpdatePluginConfigDto>({
 			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
-			class: HomeAssistantConfigEntity,
+			class: HomeAssistantConfigModel,
 			configDto: HomeAssistantUpdatePluginConfigDto,
 		});
 

@@ -5,15 +5,15 @@ import 'reflect-metadata';
 import { components } from '../../../openapi';
 
 import {
-	DisplayInfoEntity,
-	MemoryInfoEntity,
-	NetworkStatsEntity,
-	OperatingSystemInfoEntity,
-	StorageInfoEntity,
-	SystemInfoEntity,
-	TemperatureInfoEntity,
-	ThrottleStatusEntity,
-} from './system.entity';
+	DisplayInfoModel,
+	MemoryInfoModel,
+	NetworkStatsModel,
+	OperatingSystemInfoModel,
+	StorageInfoModel,
+	SystemInfoModel,
+	TemperatureInfoModel,
+	ThrottleStatusModel,
+} from './system.model';
 
 type MemoryInfo = components['schemas']['SystemModuleMemoryInfo'];
 type StorageInfo = components['schemas']['SystemModuleStorageInfo'];
@@ -26,47 +26,49 @@ type ThrottleStatus = components['schemas']['SystemModuleThrottleStatus'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
-describe('System module entity and OpenAPI Model Synchronization', () => {
-	const validateEntityAgainstModel = <T extends object, U extends object>(entity: T, model: U) => {
-		// Convert model keys from snake_case to camelCase
-		const modelKeys = Object.keys(model).map((attribute) => attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()));
+describe('System module model and OpenAPI component synchronization', () => {
+	const validateModelAgainstComponent = <T extends object, U extends object>(model: T, component: U) => {
+		// Convert component keys from snake_case to camelCase
+		const componentKeys = Object.keys(component).map((attribute) =>
+			attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()),
+		);
 
-		// Check that all keys in the model (converted to camelCase) exist in the entity
-		modelKeys.forEach((key) => {
-			expect(entity).toHaveProperty(key);
+		// Check that all keys in the component (converted to camelCase) exist in the model
+		componentKeys.forEach((key) => {
+			expect(model).toHaveProperty(key);
 		});
 
-		// Convert entity keys to snake_case and compare against the model keys
-		const entityKeys = Object.keys(entity).map((key) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
+		// Convert model keys to snake_case and compare against the component keys
+		const modelKeys = Object.keys(model).map((key) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
 
-		const originalModelKeys = Object.keys(model);
-		entityKeys.forEach((key) => {
+		const originalModelKeys = Object.keys(component);
+		modelKeys.forEach((key) => {
 			expect(originalModelKeys).toContain(key);
 		});
 	};
 
-	test('MemoryInfoEntity matches SystemMemoryInfo', () => {
+	test('MemoryInfoModel matches SystemMemoryInfo', () => {
 		const openApiModel: MemoryInfo = {
 			total: 8388608000,
 			used: 4200000000,
 			free: 4188608000,
 		};
 
-		const entityInstance = plainToInstance(MemoryInfoEntity, openApiModel, {
+		const modelInstance = plainToInstance(MemoryInfoModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('StorageInfoEntity matches SystemStorageInfo', () => {
+	test('StorageInfoModel matches SystemStorageInfo', () => {
 		const openApiModel: StorageInfo = {
 			fs: '/dev/mmcblk0p1',
 			used: 15000000000,
@@ -74,41 +76,41 @@ describe('System module entity and OpenAPI Model Synchronization', () => {
 			available: 17000000000,
 		};
 
-		const entityInstance = plainToInstance(StorageInfoEntity, openApiModel, {
+		const modelInstance = plainToInstance(StorageInfoModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('TemperatureInfoEntity matches SystemTemperatureInfo', () => {
+	test('TemperatureInfoModel matches SystemTemperatureInfo', () => {
 		const openApiModel: TemperatureInfo = {
 			cpu: 55,
 			gpu: 60,
 		};
 
-		const entityInstance = plainToInstance(TemperatureInfoEntity, openApiModel, {
+		const modelInstance = plainToInstance(TemperatureInfoModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('OperatingSystemInfoEntity matches SystemOperatingSystemInfo', () => {
+	test('OperatingSystemInfoModel matches SystemOperatingSystemInfo', () => {
 		const openApiModel: OperatingSystemInfo = {
 			platform: 'linux',
 			distro: 'Debian',
@@ -116,21 +118,21 @@ describe('System module entity and OpenAPI Model Synchronization', () => {
 			uptime: 36000,
 		};
 
-		const entityInstance = plainToInstance(OperatingSystemInfoEntity, openApiModel, {
+		const modelInstance = plainToInstance(OperatingSystemInfoModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('DisplayInfoEntity matches SystemDisplayInfo', () => {
+	test('DisplayInfoModel matches SystemDisplayInfo', () => {
 		const openApiModel: DisplayInfo = {
 			resolution_x: 1920,
 			resolution_y: 1080,
@@ -138,42 +140,42 @@ describe('System module entity and OpenAPI Model Synchronization', () => {
 			current_res_y: 720,
 		};
 
-		const entityInstance = plainToInstance(DisplayInfoEntity, openApiModel, {
+		const modelInstance = plainToInstance(DisplayInfoModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('NetworkStatsEntity matches SystemNetworkStats', () => {
+	test('NetworkStatsModel matches SystemNetworkStats', () => {
 		const openApiModel: NetworkStats = {
 			interface: 'eth0',
 			rx_bytes: 123456789,
 			tx_bytes: 98765432,
 		};
 
-		const entityInstance = plainToInstance(NetworkStatsEntity, openApiModel, {
+		const modelInstance = plainToInstance(NetworkStatsModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('SystemInfoEntity matches SystemSystemInfo', () => {
+	test('SystemInfoModel matches SystemSystemInfo', () => {
 		const openApiModel: SystemInfo = {
 			cpu_load: 15.3,
 			memory: {
@@ -220,21 +222,21 @@ describe('System module entity and OpenAPI Model Synchronization', () => {
 			},
 		};
 
-		const entityInstance = plainToInstance(SystemInfoEntity, openApiModel, {
+		const modelInstance = plainToInstance(SystemInfoModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('ThrottleStatusEntity matches SystemThrottleStatus', () => {
+	test('ThrottleStatusModel matches SystemThrottleStatus', () => {
 		const openApiModel: ThrottleStatus = {
 			undervoltage: false,
 			frequency_capping: false,
@@ -242,14 +244,14 @@ describe('System module entity and OpenAPI Model Synchronization', () => {
 			soft_temp_limit: false,
 		};
 
-		const entityInstance = plainToInstance(ThrottleStatusEntity, openApiModel, {
+		const modelInstance = plainToInstance(ThrottleStatusModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});

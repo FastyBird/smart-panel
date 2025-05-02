@@ -21,20 +21,22 @@ type ChannelProperty = components['schemas']['DevicesModuleChannelProperty'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
-describe('Devices module entity and OpenAPI Model Synchronization', () => {
-	const validateEntityAgainstModel = <T extends object, U extends object>(entity: T, model: U) => {
-		// Convert model keys from snake_case to camelCase
-		const modelKeys = Object.keys(model).map((attribute) => attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()));
+describe('Devices module entity and OpenAPI component synchronization', () => {
+	const validateEntityAgainstModel = <T extends object, U extends object>(entity: T, component: U) => {
+		// Convert component keys from snake_case to camelCase
+		const componentKeys = Object.keys(component).map((attribute) =>
+			attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()),
+		);
 
-		// Check that all keys in the model (converted to camelCase) exist in the entity
-		modelKeys.forEach((key) => {
+		// Check that all keys in the component (converted to camelCase) exist in the entity
+		componentKeys.forEach((key) => {
 			expect(entity).toHaveProperty(key);
 		});
 
-		// Convert entity keys to snake_case and compare against the model keys
+		// Convert entity keys to snake_case and compare against the component keys
 		const entityKeys = Object.keys(entity).map((key) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
 
-		const originalModelKeys = Object.keys(model);
+		const originalModelKeys = Object.keys(component);
 		entityKeys.forEach((key) => {
 			expect(originalModelKeys).toContain(key);
 		});

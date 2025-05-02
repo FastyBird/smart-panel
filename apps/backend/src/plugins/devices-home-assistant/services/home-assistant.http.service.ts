@@ -15,8 +15,8 @@ import {
 } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDeviceDto } from '../dto/home-assistant-device.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
-import { HomeAssistantConfigEntity } from '../entities/config-home-assistant.entity';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
+import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
 import { HomeAssistantDeviceModel } from '../models/home-assistant.model';
 
 const DEVICE_DISCOVERY_TEMPLATE =
@@ -26,7 +26,7 @@ const DEVICE_DISCOVERY_TEMPLATE =
 export class HomeAssistantHttpService {
 	private readonly logger = new Logger(HomeAssistantHttpService.name);
 
-	private pluginConfig: HomeAssistantConfigEntity | null = null;
+	private pluginConfig: HomeAssistantConfigModel | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -97,9 +97,9 @@ export class HomeAssistantHttpService {
 		this.pluginConfig = null;
 	}
 
-	private get config(): HomeAssistantConfigEntity {
+	private get config(): HomeAssistantConfigModel {
 		if (!this.pluginConfig) {
-			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigEntity>(
+			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(
 				DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 			);
 		}

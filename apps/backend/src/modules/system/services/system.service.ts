@@ -5,12 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { PlatformService } from '../../platform/services/platform.service';
-import {
-	NetworkStatsEntity,
-	SystemInfoEntity,
-	TemperatureInfoEntity,
-	ThrottleStatusEntity,
-} from '../entities/system.entity';
+import { NetworkStatsModel, SystemInfoModel, TemperatureInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { EventType } from '../system.constants';
 
 @Injectable()
@@ -22,35 +17,35 @@ export class SystemService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async getSystemInfo(): Promise<SystemInfoEntity> {
+	async getSystemInfo(): Promise<SystemInfoModel> {
 		const rawInfo = await this.platformService.getSystemInfo();
 
-		return plainToInstance(SystemInfoEntity, rawInfo, { enableImplicitConversion: true, exposeUnsetFields: false });
+		return plainToInstance(SystemInfoModel, rawInfo, { enableImplicitConversion: true, exposeUnsetFields: false });
 	}
 
-	async getThrottleStatus(): Promise<ThrottleStatusEntity> {
+	async getThrottleStatus(): Promise<ThrottleStatusModel> {
 		const rawStatus = await this.platformService.getThrottleStatus();
 
-		return plainToInstance(ThrottleStatusEntity, rawStatus, {
+		return plainToInstance(ThrottleStatusModel, rawStatus, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
 	}
 
-	async getTemperature(): Promise<TemperatureInfoEntity> {
+	async getTemperature(): Promise<TemperatureInfoModel> {
 		const rawStatus = await this.platformService.getTemperature();
 
-		return plainToInstance(TemperatureInfoEntity, rawStatus, {
+		return plainToInstance(TemperatureInfoModel, rawStatus, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
 	}
 
-	async getNetworkStats(): Promise<NetworkStatsEntity[]> {
+	async getNetworkStats(): Promise<NetworkStatsModel[]> {
 		const rawStatus = await this.platformService.getNetworkStats();
 
 		return rawStatus.map((item) =>
-			plainToInstance(NetworkStatsEntity, item, { enableImplicitConversion: true, exposeUnsetFields: false }),
+			plainToInstance(NetworkStatsModel, item, { enableImplicitConversion: true, exposeUnsetFields: false }),
 		);
 	}
 

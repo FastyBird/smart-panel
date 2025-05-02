@@ -12,12 +12,12 @@ import {
 } from '../config.constants';
 
 import {
-	AppConfigEntity,
-	AudioConfigEntity,
-	DisplayConfigEntity,
-	LanguageConfigEntity,
-	WeatherConfigEntity,
-} from './config.entity';
+	AppConfigModel,
+	AudioConfigModel,
+	DisplayConfigModel,
+	LanguageConfigModel,
+	WeatherConfigModel,
+} from './config.model';
 
 type Audio = components['schemas']['ConfigModuleAudio'];
 type Display = components['schemas']['ConfigModuleDisplay'];
@@ -27,26 +27,28 @@ type App = components['schemas']['ConfigModuleApp'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
-describe('Config module entity and OpenAPI Model Synchronization', () => {
-	const validateEntityAgainstModel = <T extends object, U extends object>(entity: T, model: U) => {
-		// Convert model keys from snake_case to camelCase
-		const modelKeys = Object.keys(model).map((attribute) => attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()));
+describe('Config module model and OpenAPI component synchronization', () => {
+	const validateModelAgainstComponent = <T extends object, U extends object>(model: T, component: U) => {
+		// Convert component keys from snake_case to camelCase
+		const componentKeys = Object.keys(component).map((attribute) =>
+			attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()),
+		);
 
-		// Check that all keys in the model (converted to camelCase) exist in the entity
-		modelKeys.forEach((key) => {
-			expect(entity).toHaveProperty(key);
+		// Check that all keys in the component (converted to camelCase) exist in the model
+		componentKeys.forEach((key) => {
+			expect(model).toHaveProperty(key);
 		});
 
-		// Convert entity keys to snake_case and compare against the model keys
-		const entityKeys = Object.keys(entity).map((key) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
+		// Convert model keys to snake_case and compare against the component keys
+		const modelKeys = Object.keys(model).map((key) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
 
-		const originalModelKeys = Object.keys(model);
-		entityKeys.forEach((key) => {
+		const originalModelKeys = Object.keys(component);
+		modelKeys.forEach((key) => {
 			expect(originalModelKeys).toContain(key);
 		});
 	};
 
-	test('AudioConfigEntity matches ConfigAudio', () => {
+	test('AudioConfigModel matches ConfigAudio', () => {
 		const openApiModel: Audio = {
 			type: SectionType.AUDIO,
 			speaker: true,
@@ -55,21 +57,21 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 			microphone_volume: 30,
 		};
 
-		const entityInstance = plainToInstance(AudioConfigEntity, openApiModel, {
+		const modelInstance = plainToInstance(AudioConfigModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('DisplayConfigEntity matches ConfigDisplay', () => {
+	test('DisplayConfigModel matches ConfigDisplay', () => {
 		const openApiModel: Display = {
 			type: SectionType.DISPLAY,
 			dark_mode: false,
@@ -78,21 +80,21 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 			screen_saver: false,
 		};
 
-		const entityInstance = plainToInstance(DisplayConfigEntity, openApiModel, {
+		const modelInstance = plainToInstance(DisplayConfigModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('LanguageConfigEntity matches ConfigLanguage', () => {
+	test('LanguageConfigModel matches ConfigLanguage', () => {
 		const openApiModel: Language = {
 			type: SectionType.LANGUAGE,
 			language: LanguageType.ENGLISH,
@@ -100,21 +102,21 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 			time_format: TimeFormatType.HOUR_24,
 		};
 
-		const entityInstance = plainToInstance(LanguageConfigEntity, openApiModel, {
+		const modelInstance = plainToInstance(LanguageConfigModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('WeatherConfigEntity matches ConfigWeather', () => {
+	test('WeatherConfigModel matches ConfigWeather', () => {
 		const openApiModel: Weather = {
 			type: SectionType.WEATHER,
 			location: null,
@@ -123,21 +125,21 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 			open_weather_api_key: null,
 		};
 
-		const entityInstance = plainToInstance(WeatherConfigEntity, openApiModel, {
+		const modelInstance = plainToInstance(WeatherConfigModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
 		expect(errors).toHaveLength(0);
 	});
 
-	test('AppConfigEntity matches ConfigApp', () => {
+	test('AppConfigModel matches ConfigApp', () => {
 		const openApiModel: App = {
 			audio: {
 				type: SectionType.AUDIO,
@@ -169,14 +171,14 @@ describe('Config module entity and OpenAPI Model Synchronization', () => {
 			plugins: [],
 		};
 
-		const entityInstance = plainToInstance(AppConfigEntity, openApiModel, {
+		const modelInstance = plainToInstance(AppConfigModel, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});
 
-		validateEntityAgainstModel(entityInstance, openApiModel);
+		validateModelAgainstComponent(modelInstance, openApiModel);
 
-		const errors = validateSync(entityInstance, {
+		const errors = validateSync(modelInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 		});
