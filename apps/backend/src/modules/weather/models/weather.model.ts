@@ -1,7 +1,7 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import { IsArray, IsDate, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-export class WindEntity {
+export class WindModel {
 	@Expose()
 	@IsNumber()
 	speed: number;
@@ -16,7 +16,7 @@ export class WindEntity {
 	gust?: number = null;
 }
 
-export class WeatherEntity {
+export class WeatherModel {
 	@Expose()
 	@IsInt()
 	code: number;
@@ -34,7 +34,7 @@ export class WeatherEntity {
 	icon: string;
 }
 
-export class ForecastTemperatureEntity {
+export class ForecastTemperatureModel {
 	@Expose()
 	@IsOptional()
 	@IsNumber()
@@ -66,7 +66,7 @@ export class ForecastTemperatureEntity {
 	morn?: number = null;
 }
 
-export class ForecastFeelsLikeEntity {
+export class ForecastFeelsLikeModel {
 	@Expose()
 	@IsOptional()
 	@IsNumber()
@@ -88,16 +88,16 @@ export class ForecastFeelsLikeEntity {
 	morn?: number = null;
 }
 
-export class ForecastDayEntity {
+export class ForecastDayModel {
 	@Expose()
 	@ValidateNested()
-	@Type(() => ForecastTemperatureEntity)
-	temperature: ForecastTemperatureEntity;
+	@Type(() => ForecastTemperatureModel)
+	temperature: ForecastTemperatureModel;
 
 	@Expose({ name: 'feels_like' })
 	@ValidateNested()
-	@Type(() => ForecastFeelsLikeEntity)
-	feelsLike: ForecastFeelsLikeEntity;
+	@Type(() => ForecastFeelsLikeModel)
+	feelsLike: ForecastFeelsLikeModel;
 
 	@Expose()
 	@IsNumber()
@@ -109,13 +109,13 @@ export class ForecastDayEntity {
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => WeatherEntity)
-	weather: WeatherEntity;
+	@Type(() => WeatherModel)
+	weather: WeatherModel;
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => WindEntity)
-	wind: WindEntity;
+	@Type(() => WindModel)
+	wind: WindModel;
 
 	@Expose()
 	@IsNumber()
@@ -218,7 +218,7 @@ export class ForecastDayEntity {
 	dayTime: Date;
 }
 
-export class CurrentDayEntity {
+export class CurrentDayModel {
 	@Expose()
 	@IsNumber()
 	temperature: number;
@@ -260,13 +260,13 @@ export class CurrentDayEntity {
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => WeatherEntity)
-	weather: WeatherEntity;
+	@Type(() => WeatherModel)
+	weather: WeatherModel;
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => WindEntity)
-	wind: WindEntity;
+	@Type(() => WindModel)
+	wind: WindModel;
 
 	@Expose()
 	@IsNumber()
@@ -325,7 +325,7 @@ export class CurrentDayEntity {
 	dayTime: Date;
 }
 
-export class LocationEntity {
+export class LocationModel {
 	@Expose()
 	@IsString()
 	name: string;
@@ -336,20 +336,20 @@ export class LocationEntity {
 	country?: string = null;
 }
 
-export class LocationWeatherEntity {
+export class LocationWeatherModel {
 	@Expose()
 	@ValidateNested()
-	@Type(() => CurrentDayEntity)
-	current: CurrentDayEntity;
+	@Type(() => CurrentDayModel)
+	current: CurrentDayModel;
 
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => ForecastDayEntity)
-	forecast: ForecastDayEntity[];
+	@Type(() => ForecastDayModel)
+	forecast: ForecastDayModel[];
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => LocationEntity)
-	location: LocationEntity;
+	@Type(() => LocationModel)
+	location: LocationModel;
 }

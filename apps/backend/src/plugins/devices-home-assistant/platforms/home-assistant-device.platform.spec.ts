@@ -4,12 +4,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
-import { HomeAssistantConfigEntity } from '../entities/config-home-assistant.entity';
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
 
 import { HomeAssistantDevicePlatform } from './home-assistant-device.platform';
 
@@ -37,7 +37,7 @@ describe('HomeAssistantDevicePlatform', () => {
 					provide: ConfigService,
 					useValue: {
 						getPluginConfig: jest.fn(() => {
-							return { hostname: 'localhost' } as HomeAssistantConfigEntity;
+							return { hostname: 'localhost' } as HomeAssistantConfigModel;
 						}),
 					},
 				},

@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
-export class MemoryInfoEntity {
+export class MemoryInfoModel {
 	@Expose()
 	@IsNumber()
 	total: number;
@@ -15,7 +15,7 @@ export class MemoryInfoEntity {
 	free: number;
 }
 
-export class StorageInfoEntity {
+export class StorageInfoModel {
 	@Expose()
 	@IsString()
 	fs: string;
@@ -33,7 +33,7 @@ export class StorageInfoEntity {
 	available: number;
 }
 
-export class TemperatureInfoEntity {
+export class TemperatureInfoModel {
 	@Expose()
 	@IsOptional()
 	@IsNumber()
@@ -45,7 +45,7 @@ export class TemperatureInfoEntity {
 	gpu?: number;
 }
 
-export class OperatingSystemInfoEntity {
+export class OperatingSystemInfoModel {
 	@Expose()
 	@IsString()
 	platform: string;
@@ -63,7 +63,7 @@ export class OperatingSystemInfoEntity {
 	uptime: number;
 }
 
-export class DisplayInfoEntity {
+export class DisplayInfoModel {
 	@Expose({ name: 'resolution_x' })
 	@IsNumber()
 	resolutionX: number;
@@ -81,7 +81,7 @@ export class DisplayInfoEntity {
 	currentResY: number;
 }
 
-export class NetworkStatsEntity {
+export class NetworkStatsModel {
 	@Expose()
 	@IsString()
 	interface: string;
@@ -95,7 +95,7 @@ export class NetworkStatsEntity {
 	txBytes: number;
 }
 
-export class DefaultNetwork {
+export class DefaultNetworkModel {
 	@Expose()
 	@IsString()
 	interface: string;
@@ -113,50 +113,50 @@ export class DefaultNetwork {
 	mac: string;
 }
 
-export class SystemInfoEntity {
+export class SystemInfoModel {
 	@Expose({ name: 'cpu_load' })
 	@IsNumber()
 	cpuLoad: number;
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => MemoryInfoEntity)
-	memory: MemoryInfoEntity;
+	@Type(() => MemoryInfoModel)
+	memory: MemoryInfoModel;
 
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => StorageInfoEntity)
-	storage: StorageInfoEntity[];
+	@Type(() => StorageInfoModel)
+	storage: StorageInfoModel[];
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => TemperatureInfoEntity)
-	temperature: TemperatureInfoEntity;
+	@Type(() => TemperatureInfoModel)
+	temperature: TemperatureInfoModel;
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => OperatingSystemInfoEntity)
-	os: OperatingSystemInfoEntity;
+	@Type(() => OperatingSystemInfoModel)
+	os: OperatingSystemInfoModel;
 
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => NetworkStatsEntity)
-	network: NetworkStatsEntity[];
+	@Type(() => NetworkStatsModel)
+	network: NetworkStatsModel[];
 
 	@Expose({ name: 'default_network' })
 	@ValidateNested()
-	@Type(() => DefaultNetwork)
-	defaultNetwork: DefaultNetwork;
+	@Type(() => DefaultNetworkModel)
+	defaultNetwork: DefaultNetworkModel;
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => DisplayInfoEntity)
-	display: DisplayInfoEntity;
+	@Type(() => DisplayInfoModel)
+	display: DisplayInfoModel;
 }
 
-export class ThrottleStatusEntity {
+export class ThrottleStatusModel {
 	@Expose()
 	@IsBoolean()
 	undervoltage: boolean;

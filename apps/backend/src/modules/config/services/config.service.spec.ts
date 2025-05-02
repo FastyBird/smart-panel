@@ -27,7 +27,7 @@ import {
 } from '../config.constants';
 import { ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { UpdateAudioConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
-import { AppConfigEntity, AudioConfigEntity, BaseConfigEntity, PluginConfigEntity } from '../entities/config.entity';
+import { AppConfigModel, AudioConfigModel, BaseConfigModel, PluginConfigModel } from '../models/config.model';
 
 import { ConfigService } from './config.service';
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
@@ -39,7 +39,7 @@ jest.mock('yaml', () => ({
 	stringify: jest.fn(),
 }));
 
-class MockPluginConfig extends PluginConfigEntity {
+class MockPluginConfig extends PluginConfigModel {
 	type = 'mock';
 
 	@Expose({ name: 'mock_value' })
@@ -71,7 +71,7 @@ describe('ConfigService', () => {
 		},
 	};
 
-	const mockConfig: Partial<AppConfigEntity> = {
+	const mockConfig: Partial<AppConfigModel> = {
 		audio: {
 			type: SectionType.AUDIO,
 			speaker: true,
@@ -103,7 +103,7 @@ describe('ConfigService', () => {
 			{
 				type: 'mock',
 				mockValue: 'default value',
-			} as PluginConfigEntity,
+			} as PluginConfigModel,
 		],
 	};
 
@@ -175,7 +175,7 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			const toCompare = plainToInstance(AppConfigEntity, mockConfig, {
+			const toCompare = plainToInstance(AppConfigModel, mockConfig, {
 				enableImplicitConversion: true,
 				exposeUnsetFields: false,
 			});
@@ -214,7 +214,7 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			const toCompare = plainToInstance(AppConfigEntity, mockConfig, {
+			const toCompare = plainToInstance(AppConfigModel, mockConfig, {
 				enableImplicitConversion: true,
 				exposeUnsetFields: false,
 			});
@@ -239,7 +239,7 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			const result = service.getConfigSection(SectionType.AUDIO, AudioConfigEntity);
+			const result = service.getConfigSection(SectionType.AUDIO, AudioConfigModel);
 
 			expect(result).toEqual(mockConfig.audio);
 
@@ -253,7 +253,7 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			class MockConfig extends BaseConfigEntity {}
+			class MockConfig extends BaseConfigModel {}
 
 			// @ts-expect-error: This is an intentional test for invalid configuration sections
 			expect(() => service.getConfigSection('invalid', MockConfig)).toThrow(ConfigNotFoundException);

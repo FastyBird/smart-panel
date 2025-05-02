@@ -13,7 +13,7 @@ import { PlatformService } from '../../platform/services/platform.service';
 import { EventType, SectionType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { BaseConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
-import { AppConfigEntity, BaseConfigEntity, PluginConfigEntity } from '../entities/config.entity';
+import { AppConfigModel, BaseConfigModel, PluginConfigModel } from '../models/config.model';
 
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
@@ -21,7 +21,7 @@ import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 export class ConfigService {
 	private readonly logger = new Logger(ConfigService.name);
 	private readonly filename = 'config.yaml';
-	private config: AppConfigEntity | null = null;
+	private config: AppConfigModel | null = null;
 
 	constructor(
 		private readonly configService: NestConfigService,
@@ -36,7 +36,7 @@ export class ConfigService {
 		});
 	}
 
-	private get appConfig(): AppConfigEntity {
+	private get appConfig(): AppConfigModel {
 		if (!this.config) {
 			this.config = this.loadConfig();
 		}
@@ -52,7 +52,7 @@ export class ConfigService {
 		);
 	}
 
-	private loadConfig(): AppConfigEntity {
+	private loadConfig(): AppConfigModel {
 		this.logger.log('[LOAD] Loading configuration from file system');
 
 		if (fs.existsSync(path.resolve(this.configPath, this.filename))) {
@@ -61,10 +61,10 @@ export class ConfigService {
 			const fileContents = fs.readFileSync(path.resolve(this.configPath, this.filename), 'utf8');
 
 			// Parse YAML and explicitly type the result
-			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigEntity>;
+			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigModel>;
 
 			// Transform YAML data into AppConfig instance
-			const appConfigInstance = plainToInstance(AppConfigEntity, parsedConfig, {
+			const appConfigInstance = plainToInstance(AppConfigModel, parsedConfig, {
 				enableImplicitConversion: true,
 				exposeUnsetFields: false,
 			});
@@ -89,7 +89,7 @@ export class ConfigService {
 			this.logger.warn('[LOAD] Configuration file not found. Initializing default configuration');
 
 			const config = plainToInstance(
-				AppConfigEntity,
+				AppConfigModel,
 				{},
 				{
 					enableImplicitConversion: true,
@@ -104,7 +104,7 @@ export class ConfigService {
 		}
 	}
 
-	private saveConfig(appConfig: AppConfigEntity) {
+	private saveConfig(appConfig: AppConfigModel) {
 		this.logger.log('[SAVE] Writing configuration to file');
 
 		// Prepare main app config
@@ -128,8 +128,8 @@ export class ConfigService {
 		this.logger.log('[SAVE] Configuration saved successfully');
 	}
 
-	private loadPlugins(parsedConfig: Partial<AppConfigEntity>): PluginConfigEntity[] {
-		const pluginsArray: PluginConfigEntity[] = [];
+	private loadPlugins(parsedConfig: Partial<AppConfigModel>): PluginConfigModel[] {
+		const pluginsArray: PluginConfigModel[] = [];
 
 		const existingPlugins =
 			'plugins' in parsedConfig && parsedConfig.plugins && typeof parsedConfig.plugins === 'object'
@@ -182,13 +182,13 @@ export class ConfigService {
 		return pluginsArray;
 	}
 
-	getConfig(): AppConfigEntity {
+	getConfig(): AppConfigModel {
 		this.logger.log('[LOOKUP ALL] Retrieving full configuration');
 
 		return this.appConfig;
 	}
 
-	getConfigSection<T extends BaseConfigEntity>(key: keyof AppConfigEntity, type: new () => T): T {
+	getConfigSection<T extends BaseConfigModel>(key: keyof AppConfigModel, type: new () => T): T {
 		this.logger.log(`[LOOKUP] Fetching configuration section=${key}`);
 
 		const configSection = this.appConfig[key];
@@ -218,7 +218,7 @@ export class ConfigService {
 	}
 
 	async setConfigSection<TUpdateDto extends BaseConfigDto>(
-		key: keyof AppConfigEntity,
+		key: keyof AppConfigModel,
 		value: TUpdateDto,
 		type: new () => TUpdateDto,
 	): Promise<void> {
@@ -300,7 +300,7 @@ export class ConfigService {
 		this.logger.log(`[UPDATE] Configuration update for section=${key} completed successfully`);
 	}
 
-	getPluginConfig<TConfig extends PluginConfigEntity>(plugin: string): TConfig {
+	getPluginConfig<TConfig extends PluginConfigModel>(plugin: string): TConfig {
 		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
 
 		const configSection = this.appConfig['plugins'];
@@ -340,7 +340,7 @@ export class ConfigService {
 	}
 
 	setPluginConfig<TUpdateDto extends UpdatePluginConfigDto>(plugin: string, value: TUpdateDto): void {
-		const mapping = this.pluginsMapperService.getMapping<PluginConfigEntity, TUpdateDto>(plugin);
+		const mapping = this.pluginsMapperService.getMapping<PluginConfigModel, TUpdateDto>(plugin);
 
 		const existingPlugin = (this.appConfig.plugins ?? []).find((existingPlugin) => existingPlugin.type === plugin);
 

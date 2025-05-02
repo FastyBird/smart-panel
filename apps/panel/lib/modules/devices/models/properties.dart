@@ -53,6 +53,8 @@ abstract class ChannelPropertyModel extends Model {
         _defaultValue = defaultValue,
         _value = value;
 
+  String get type => _type;
+
   String get channel => _channel;
 
   PropertyCategory get category => _category;

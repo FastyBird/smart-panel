@@ -9,12 +9,12 @@ import {
 	WeatherLocationTypeType,
 } from '../config.constants';
 
-export abstract class BaseConfigEntity {
+export abstract class BaseConfigModel {
 	@Expose({ groups: ['api'] })
 	type?: SectionType;
 }
 
-export class AudioConfigEntity extends BaseConfigEntity {
+export class AudioConfigModel extends BaseConfigModel {
 	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.AUDIO;
@@ -40,7 +40,7 @@ export class AudioConfigEntity extends BaseConfigEntity {
 	microphoneVolume: number = 0;
 }
 
-export class DisplayConfigEntity extends BaseConfigEntity {
+export class DisplayConfigModel extends BaseConfigModel {
 	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.DISPLAY;
@@ -66,7 +66,7 @@ export class DisplayConfigEntity extends BaseConfigEntity {
 	screenSaver: boolean = true;
 }
 
-export class LanguageConfigEntity extends BaseConfigEntity {
+export class LanguageConfigModel extends BaseConfigModel {
 	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.LANGUAGE;
@@ -84,7 +84,7 @@ export class LanguageConfigEntity extends BaseConfigEntity {
 	timeFormat: TimeFormatType = TimeFormatType.HOUR_24;
 }
 
-export class WeatherConfigEntity extends BaseConfigEntity {
+export class WeatherConfigModel extends BaseConfigModel {
 	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.WEATHER;
@@ -109,34 +109,34 @@ export class WeatherConfigEntity extends BaseConfigEntity {
 	openWeatherApiKey: string | null = null;
 }
 
-export abstract class PluginConfigEntity {
+export abstract class PluginConfigModel {
 	@Expose({ groups: ['api'] })
 	@IsString()
 	type: string;
 }
 
-export class AppConfigEntity {
+export class AppConfigModel {
 	@Expose()
 	@ValidateNested()
-	@Type(() => AudioConfigEntity)
-	audio: AudioConfigEntity = new AudioConfigEntity();
+	@Type(() => AudioConfigModel)
+	audio: AudioConfigModel = new AudioConfigModel();
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => DisplayConfigEntity)
-	display: DisplayConfigEntity = new DisplayConfigEntity();
+	@Type(() => DisplayConfigModel)
+	display: DisplayConfigModel = new DisplayConfigModel();
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => LanguageConfigEntity)
-	language: LanguageConfigEntity = new LanguageConfigEntity();
+	@Type(() => LanguageConfigModel)
+	language: LanguageConfigModel = new LanguageConfigModel();
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => WeatherConfigEntity)
-	weather: WeatherConfigEntity = new WeatherConfigEntity();
+	@Type(() => WeatherConfigModel)
+	weather: WeatherConfigModel = new WeatherConfigModel();
 
 	@Expose()
 	@ValidateNested({ each: true })
-	plugins: PluginConfigEntity[] = [];
+	plugins: PluginConfigModel[] = [];
 }

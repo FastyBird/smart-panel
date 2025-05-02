@@ -2253,7 +2253,7 @@ export interface components {
         };
         /**
          * Device
-         * @description Represents the core attributes of a device, including its unique identifier, name, and category. This model forms the foundation for more detailed device representations, such as those including related entities (e.g., channels, properties, or controls).
+         * @description Represents the core attributes of a device, including its unique identifier, name, and category. This model forms the foundation for more detailed device representations, such as those including related components (e.g., channels, properties, or controls).
          */
         DevicesModuleDevice: {
             /**

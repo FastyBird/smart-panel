@@ -9,12 +9,12 @@ import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/p
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { ServiceRequestDto } from '../dto/home-assistant-service-request.dto';
-import { HomeAssistantConfigEntity } from '../entities/config-home-assistant.entity';
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
 import { HomeAssistantServiceResolver } from '../utils/service-resolver.utils';
 import { HomeAssistantValueTransformer } from '../utils/value-transformer.utils';
 
@@ -39,7 +39,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 	}
 
 	async processBatch(updates: Array<IHomeAssistantDevicePropertyData>): Promise<boolean> {
-		const pluginConfiguration = this.configService.getPluginConfig<HomeAssistantConfigEntity>(
+		const pluginConfiguration = this.configService.getPluginConfig<HomeAssistantConfigModel>(
 			DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 		);
 

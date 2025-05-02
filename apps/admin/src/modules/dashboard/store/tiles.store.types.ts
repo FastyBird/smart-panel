@@ -87,10 +87,3 @@ export type ITileRes = z.infer<typeof TileResSchema>;
 
 // STORE
 export type TilesStore = Store<string, ITilesStoreState, object, ITilesStoreActions>;
-
-// MISC
-export type ITilesEntitiesSchemas = {
-	tile: typeof TileSchema;
-	createTileReq: typeof TileCreateReqSchema;
-	updateTileReq: typeof TileUpdateReqSchema;
-};

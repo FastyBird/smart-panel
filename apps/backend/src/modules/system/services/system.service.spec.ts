@@ -12,7 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PlatformService } from '../../platform/services/platform.service';
-import { SystemInfoEntity } from '../entities/system.entity';
+import { SystemInfoModel } from '../models/system.model';
 import { EventType } from '../system.constants';
 
 import { SystemService } from './system.service';
@@ -102,7 +102,7 @@ describe('SystemService', () => {
 
 			const result = await service.getSystemInfo();
 
-			expect(result).toBeInstanceOf(SystemInfoEntity);
+			expect(result).toBeInstanceOf(SystemInfoModel);
 			expect(result.cpuLoad).toBe(mockInfo.cpuLoad);
 		});
 
@@ -119,11 +119,11 @@ describe('SystemService', () => {
 		it('should broadcast system info over WebSocket', async () => {
 			const mockInfo = { cpuLoad: 10 };
 
-			jest.spyOn(service, 'getSystemInfo').mockResolvedValue(plainToInstance(SystemInfoEntity, mockInfo));
+			jest.spyOn(service, 'getSystemInfo').mockResolvedValue(plainToInstance(SystemInfoModel, mockInfo));
 
 			await service.broadcastSystemInfo();
 
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.SYSTEM_INFO, expect.any(SystemInfoEntity));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.SYSTEM_INFO, expect.any(SystemInfoModel));
 		});
 
 		it('should log an error if broadcasting fails', async () => {
