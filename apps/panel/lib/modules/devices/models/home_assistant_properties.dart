@@ -5,8 +5,10 @@ import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
-class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
-  ThirdPartyChannelPropertyModel({
+class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
+  final String? _haAttribute;
+
+  HomeAssistantChannelPropertyModel({
     required super.id,
     required super.channel,
     super.category = PropertyCategory.generic,
@@ -21,12 +23,17 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
     super.value,
     super.createdAt,
     super.updatedAt,
-  }) : super(
-          type: 'third-party',
+    required String? haAttribute,
+  })  : _haAttribute = haAttribute,
+        super(
+          type: 'home-assistant',
         );
 
-  factory ThirdPartyChannelPropertyModel.fromJson(Map<String, dynamic> json) {
-    return ThirdPartyChannelPropertyModel(
+  String? get haAttribute => _haAttribute;
+
+  factory HomeAssistantChannelPropertyModel.fromJson(
+      Map<String, dynamic> json) {
+    return HomeAssistantChannelPropertyModel(
       channel: json['channel'],
       id: json['id'],
       category: PropertyCategory.fromValue(json['category']) ??
@@ -54,11 +61,12 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
+      haAttribute: json['ha_attribute'],
     );
   }
 
   @override
-  ThirdPartyChannelPropertyModel copyWith({
+  HomeAssistantChannelPropertyModel copyWith({
     ValueType? value,
     bool? clearValue,
   }) {
@@ -68,7 +76,7 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
       setValue = null;
     }
 
-    return ThirdPartyChannelPropertyModel(
+    return HomeAssistantChannelPropertyModel(
       channel: channel,
       id: id,
       category: category,
@@ -83,6 +91,7 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
       value: setValue,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      haAttribute: haAttribute,
     );
   }
 }

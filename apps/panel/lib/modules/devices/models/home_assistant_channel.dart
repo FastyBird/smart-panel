@@ -2,8 +2,10 @@ import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 
-class ThirdPartyChannelModel extends ChannelModel {
-  ThirdPartyChannelModel({
+class HomeAssistantChannelModel extends ChannelModel {
+  final String _haEntityId;
+
+  HomeAssistantChannelModel({
     required super.id,
     super.category = ChannelCategory.generic,
     super.name,
@@ -13,11 +15,15 @@ class ThirdPartyChannelModel extends ChannelModel {
     required super.controls,
     super.createdAt,
     super.updatedAt,
-  }) : super(
-          type: 'third-party',
+    required String haEntityId,
+  })  : _haEntityId = haEntityId,
+        super(
+          type: 'home-assistant',
         );
 
-  factory ThirdPartyChannelModel.fromJson(Map<String, dynamic> json) {
+  String get haEntityId => _haEntityId;
+
+  factory HomeAssistantChannelModel.fromJson(Map<String, dynamic> json) {
     ChannelCategory? category = ChannelCategory.fromValue(
       json['category'],
     );
@@ -48,7 +54,7 @@ class ThirdPartyChannelModel extends ChannelModel {
       }
     }
 
-    return ThirdPartyChannelModel(
+    return HomeAssistantChannelModel(
       id: json['id'],
       category: category ?? ChannelCategory.generic,
       name: json['name'],
@@ -62,6 +68,7 @@ class ThirdPartyChannelModel extends ChannelModel {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
+      haEntityId: json['ha_entity_id'],
     );
   }
 }

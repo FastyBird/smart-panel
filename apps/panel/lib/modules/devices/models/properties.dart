@@ -6,6 +6,8 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
 abstract class ChannelPropertyModel extends Model {
+  final String _type;
+
   final String _channel;
 
   final PropertyCategory _category;
@@ -24,6 +26,7 @@ abstract class ChannelPropertyModel extends Model {
 
   ChannelPropertyModel({
     required super.id,
+    required String type,
     required String channel,
     PropertyCategory category = PropertyCategory.generic,
     String? name,
@@ -37,7 +40,8 @@ abstract class ChannelPropertyModel extends Model {
     ValueType? value,
     super.createdAt,
     super.updatedAt,
-  })  : _channel = channel,
+  })  : _type = type,
+        _channel = channel,
         _category = category,
         _name = name,
         _permission = permission,

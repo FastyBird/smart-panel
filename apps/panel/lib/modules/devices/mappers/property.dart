@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/models/home_assistant_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/third_party_properties.dart';
 
@@ -5,6 +6,9 @@ Map<String, ChannelPropertyModel Function(Map<String, dynamic>)>
     deviceModelMappers = {
   'third-party': (data) {
     return ThirdPartyChannelPropertyModel.fromJson(data);
+  },
+  'home-assistant': (data) {
+    return HomeAssistantChannelPropertyModel.fromJson(data);
   },
 };
 
