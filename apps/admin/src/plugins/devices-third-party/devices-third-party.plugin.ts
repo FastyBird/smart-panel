@@ -5,8 +5,6 @@ import { defaultsDeep } from 'lodash';
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import {
-	ChannelPropertySchema,
-	ChannelSchema,
 	DEVICES_MODULE_NAME,
 	type IChannelPluginsComponents,
 	type IChannelPluginsSchemas,
@@ -17,8 +15,11 @@ import {
 } from '../../modules/devices';
 
 import { ThirdPartyDeviceAddForm, ThirdPartyDeviceEditForm } from './components/components';
+import { DEVICES_THIRD_PARTY_PLUGIN_TYPE } from './devices-third-party.constants';
 import enUS from './locales/en-US.json';
 import { ThirdPartyDeviceAddFormSchema, ThirdPartyDeviceEditFormSchema } from './schemas/devices.schemas';
+import { ThirdPartyChannelPropertySchema } from './store/channels.properties.store.schemas';
+import { ThirdPartyChannelSchema } from './store/channels.store.schemas';
 import { ThirdPartyDeviceCreateReqSchema, ThirdPartyDeviceSchema, ThirdPartyDeviceUpdateReqSchema } from './store/devices.store.schemas';
 
 export const devicesThirdPartyPluginKey: PluginInjectionKey<
@@ -40,7 +41,7 @@ export default {
 		}
 
 		pluginsManager.addPlugin(devicesThirdPartyPluginKey, {
-			type: 'third-party',
+			type: DEVICES_THIRD_PARTY_PLUGIN_TYPE,
 			source: 'com.fastybird.smart-panel.plugin.devices-third-party',
 			name: 'Third Party Devices',
 			description: 'Third party devices plugin for FastyBird IoT Smart Panel',
@@ -59,8 +60,8 @@ export default {
 				deviceEditFormSchema: ThirdPartyDeviceEditFormSchema,
 				deviceCreateReqSchema: ThirdPartyDeviceCreateReqSchema,
 				deviceUpdateReqSchema: ThirdPartyDeviceUpdateReqSchema,
-				channelSchema: ChannelSchema,
-				channelPropertySchema: ChannelPropertySchema,
+				channelSchema: ThirdPartyChannelSchema,
+				channelPropertySchema: ThirdPartyChannelPropertySchema,
 			},
 			modules: [DEVICES_MODULE_NAME],
 			isCore: true,

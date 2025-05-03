@@ -1150,7 +1150,99 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pages-cards-plugin/cards": {
+    "/plugins/devices-home-assistant-plugin/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve a list of all available Home Assistant Devices
+         * @description Retrieves a list of devices discovered from the connected Home Assistant instance. Each device includes metadata, associated entities, and their current states.
+         */
+        get: operations["get-devices-home-assistant-plugin-devices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/devices-home-assistant-plugin/devices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The ID of the resource to retrieve.
+                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+                 */
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Retrieve details of a specific Home Assistant Device
+         * @description Fetches details of a specific Home Assistant device by its Home Assistant ID. The response includes associated entities and their current states.
+         */
+        get: operations["get-devices-home-assistant-plugin-device"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/devices-home-assistant-plugin/states": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve a list of all available Home Assistant States
+         * @description Fetches the current state information for all known entities from the connected Home Assistant instance. Each state includes metadata such as attributes and timestamps.
+         */
+        get: operations["get-devices-home-assistant-plugin-states"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/devices-home-assistant-plugin/states/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The ID of the resource to retrieve.
+                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+                 */
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Retrieve details of a specific Home Assistant State
+         * @description Fetches the current state and attributes for a single entity by its Home Assistant entity ID. This includes state value and timestamp details.
+         */
+        get: operations["get-devices-home-assistant-plugin-state"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plugins/pages-cards-plugin/cards": {
         parameters: {
             query?: never;
             header?: never;
@@ -1174,7 +1266,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pages-cards-plugin/cards/{id}": {
+    "/plugins/pages-cards-plugin/cards/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4780,6 +4872,36 @@ export interface components {
             service_address?: string;
         };
         /**
+         * Home Assistant Device Channel
+         * @description A Home Assistant channels used to communicate with Home Assistant instance.
+         */
+        DevicesThirdPartyPluginThirdPartyChannel: components["schemas"]["DevicesModuleChannel"];
+        /**
+         * Create Home Assistant Device Channel
+         * @description The schema for creating a Home Assistant channel.
+         */
+        DevicesThirdPartyPluginCreateThirdPartyChannel: components["schemas"]["DevicesModuleCreateChannel"];
+        /**
+         * Update Home Assistant Device Chanel
+         * @description Schema for updating a Home Assistant channel.
+         */
+        DevicesThirdPartyPluginUpdateThirdPartyChannel: components["schemas"]["DevicesModuleUpdateChannel"];
+        /**
+         * Home Assistant Channel Property
+         * @description A Home Assistant properties used to communicate with Home Assistant instance.
+         */
+        DevicesThirdPartyPluginThirdPartyChannelProperty: components["schemas"]["DevicesModuleChannelProperty"];
+        /**
+         * Create Home Assistant Channel Property
+         * @description The schema for creating a Home Assistant channel property.
+         */
+        DevicesThirdPartyPluginCreateThirdPartyChannelProperty: components["schemas"]["DevicesModuleCreateChannelProperty"];
+        /**
+         * Update Home Assistant Device Chanel
+         * @description Schema for updating a Home Assistant channel property.
+         */
+        DevicesThirdPartyPluginUpdateThirdPartyChannelProperty: components["schemas"]["DevicesModuleUpdateChannelProperty"];
+        /**
          * Third-Party Device Property Update
          * @description Represents a request to update a specific property on a third-party device.
          */
@@ -4934,6 +5056,214 @@ export interface components {
          * @description Schema for updating a Home Assistant channel property.
          */
         DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty: components["schemas"]["DevicesModuleUpdateChannelProperty"];
+        /**
+         * Home Assistant Discovered Device
+         * @description Represents a device discovered from a connected Home Assistant instance, including its associated entities and current states.
+         */
+        DevicesHomeAssistantPluginDiscoveredDevice: {
+            /** @description Home Assistant device ID. */
+            id: string;
+            /** @description Display name of the device. */
+            name: string;
+            /** @description List of entity IDs belonging to the device. */
+            entities: string[];
+            /**
+             * Format: uuid
+             * @description If adopted, the UUID of the corresponding panel device.
+             * @example 332dda32-b7de-4557-956a-b6ed6c6799a4
+             */
+            adopted_device_id: string | null;
+            /** @description Current states of all entities belonging to the device. */
+            states: components["schemas"]["DevicesHomeAssistantPluginState"][];
+        };
+        /**
+         * Home Assistant State
+         * @description A representation of an individual Home Assistant entity's state and metadata.
+         */
+        DevicesHomeAssistantPluginState: {
+            /** @description The unique ID of the Home Assistant entity (e.g. 'light.kitchen'). */
+            entity_id: string;
+            /**
+             * @description Current state of the entity (e.g. 'on', 'off', 'home', etc.).
+             * @default null
+             * @example 22.1
+             */
+            state: ((number | null) | (string | null) | (boolean | null) | null) | null;
+            /** @description Dynamic attributes of the entity such as friendly_name, unit_of_measurement, etc. */
+            attributes: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: date-time
+             * @description Timestamp of the last state change.
+             * @example 2025-01-25T12:00:00Z
+             */
+            last_changed: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp of the last report (may match last_updated).
+             * @example 2025-01-25T12:00:00Z
+             */
+            last_reported: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp of the last entity update.
+             * @example 2025-01-25T12:00:00Z
+             */
+            last_updated: string | null;
+        };
+        /**
+         * Home Assistant Device Response
+         * @description Response schema containing a single Home Assistant devices.
+         */
+        DevicesHomeAssistantPluginResDiscoveredDevice: {
+            /**
+             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+             * @example success
+             */
+            readonly status: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+             * @example 2025-01-18T12:00:00Z
+             */
+            readonly timestamp: string;
+            /**
+             * Format: uuid
+             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+             */
+            readonly request_id: string;
+            /**
+             * @description The API endpoint that was requested, including any dynamic parameters.
+             * @example /api/v1/plugins/devices-home-assistant-plugin/devices/2fcdc656a7ae51e33482c8314b1d32b9
+             */
+            readonly path: string;
+            /**
+             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+             * @example GET
+             * @enum {string}
+             */
+            readonly method: AuthModuleResCheckUsernameMethod;
+            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+            data: components["schemas"]["DevicesHomeAssistantPluginDiscoveredDevice"];
+            /** @description Additional metadata about the request and server performance metrics. */
+            metadata: components["schemas"]["CommonResMetadata"];
+        };
+        /**
+         * Home Assistant Devices Response
+         * @description Response schema containing a list of Home Assistant devices.
+         */
+        DevicesHomeAssistantPluginResDiscoveredDevices: {
+            /**
+             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+             * @example success
+             */
+            readonly status: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+             * @example 2025-01-18T12:00:00Z
+             */
+            readonly timestamp: string;
+            /**
+             * Format: uuid
+             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+             */
+            readonly request_id: string;
+            /**
+             * @description The API endpoint that was requested, including any dynamic parameters.
+             * @example /api/v1/plugins/devices-home-assistant-plugin/devices
+             */
+            readonly path: string;
+            /**
+             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+             * @example GET
+             * @enum {string}
+             */
+            readonly method: AuthModuleResCheckUsernameMethod;
+            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+            data: components["schemas"]["DevicesHomeAssistantPluginDiscoveredDevice"][];
+            /** @description Additional metadata about the request and server performance metrics. */
+            metadata: components["schemas"]["CommonResMetadata"];
+        };
+        /**
+         * Home Assistant State Response
+         * @description Response schema containing a single Home Assistant state.
+         */
+        DevicesHomeAssistantPluginResState: {
+            /**
+             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+             * @example success
+             */
+            readonly status: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+             * @example 2025-01-18T12:00:00Z
+             */
+            readonly timestamp: string;
+            /**
+             * Format: uuid
+             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+             */
+            readonly request_id: string;
+            /**
+             * @description The API endpoint that was requested, including any dynamic parameters.
+             * @example /api/v1/plugins/devices-home-assistant-plugin/states/sensor.hall_heater_floot_temperature
+             */
+            readonly path: string;
+            /**
+             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+             * @example GET
+             * @enum {string}
+             */
+            readonly method: AuthModuleResCheckUsernameMethod;
+            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+            data: components["schemas"]["DevicesHomeAssistantPluginState"];
+            /** @description Additional metadata about the request and server performance metrics. */
+            metadata: components["schemas"]["CommonResMetadata"];
+        };
+        /**
+         * Home Assistant States Response
+         * @description Response schema containing a list of Home Assistant states.
+         */
+        DevicesHomeAssistantPluginResStates: {
+            /**
+             * @description Indicates whether the API request was successful (`success`) or encountered an error (`error`).
+             * @example success
+             */
+            readonly status: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).
+             * @example 2025-01-18T12:00:00Z
+             */
+            readonly timestamp: string;
+            /**
+             * Format: uuid
+             * @description A unique identifier assigned to this API request. Useful for debugging and tracking API calls.
+             * @example b27b7c58-76f6-407a-bc78-4068e4cfd082
+             */
+            readonly request_id: string;
+            /**
+             * @description The API endpoint that was requested, including any dynamic parameters.
+             * @example /api/v1/plugins/devices-home-assistant-plugin/states
+             */
+            readonly path: string;
+            /**
+             * @description The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).
+             * @example GET
+             * @enum {string}
+             */
+            readonly method: AuthModuleResCheckUsernameMethod;
+            /** @description The actual data payload returned by the API. The structure depends on the specific endpoint response. */
+            data: components["schemas"]["DevicesHomeAssistantPluginState"][];
+            /** @description Additional metadata about the request and server performance metrics. */
+            metadata: components["schemas"]["CommonResMetadata"];
+        };
         /**
          * Tiles Page
          * @description A tiles page dashboard type, displaying a grid of customizable tiles.
@@ -5934,6 +6264,12 @@ export type SchemaWeatherModuleResGeolocationCoordinatesToCity = components['sch
 export type SchemaDevicesThirdPartyPluginThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginThirdPartyDevice'];
 export type SchemaDevicesThirdPartyPluginCreateThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyDevice'];
 export type SchemaDevicesThirdPartyPluginUpdateThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyDevice'];
+export type SchemaDevicesThirdPartyPluginThirdPartyChannel = components['schemas']['DevicesThirdPartyPluginThirdPartyChannel'];
+export type SchemaDevicesThirdPartyPluginCreateThirdPartyChannel = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyChannel'];
+export type SchemaDevicesThirdPartyPluginUpdateThirdPartyChannel = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyChannel'];
+export type SchemaDevicesThirdPartyPluginThirdPartyChannelProperty = components['schemas']['DevicesThirdPartyPluginThirdPartyChannelProperty'];
+export type SchemaDevicesThirdPartyPluginCreateThirdPartyChannelProperty = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyChannelProperty'];
+export type SchemaDevicesThirdPartyPluginUpdateThirdPartyChannelProperty = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyChannelProperty'];
 export type SchemaDevicesThirdPartyPluginPropertyUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertyUpdateRequest'];
 export type SchemaDevicesThirdPartyPluginPropertiesUpdateRequest = components['schemas']['DevicesThirdPartyPluginPropertiesUpdateRequest'];
 export type SchemaDevicesThirdPartyPluginPropertyUpdateResult = components['schemas']['DevicesThirdPartyPluginPropertyUpdateResult'];
@@ -5948,6 +6284,12 @@ export type SchemaDevicesHomeAssistantPluginUpdateHomeAssistantChannel = compone
 export type SchemaDevicesHomeAssistantPluginHomeAssistantChannelProperty = components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannelProperty'];
 export type SchemaDevicesHomeAssistantPluginCreateHomeAssistantChannelProperty = components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty'];
 export type SchemaDevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty = components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty'];
+export type SchemaDevicesHomeAssistantPluginDiscoveredDevice = components['schemas']['DevicesHomeAssistantPluginDiscoveredDevice'];
+export type SchemaDevicesHomeAssistantPluginState = components['schemas']['DevicesHomeAssistantPluginState'];
+export type SchemaDevicesHomeAssistantPluginResDiscoveredDevice = components['schemas']['DevicesHomeAssistantPluginResDiscoveredDevice'];
+export type SchemaDevicesHomeAssistantPluginResDiscoveredDevices = components['schemas']['DevicesHomeAssistantPluginResDiscoveredDevices'];
+export type SchemaDevicesHomeAssistantPluginResState = components['schemas']['DevicesHomeAssistantPluginResState'];
+export type SchemaDevicesHomeAssistantPluginResStates = components['schemas']['DevicesHomeAssistantPluginResStates'];
 export type SchemaPagesTilesPluginTilesPage = components['schemas']['PagesTilesPluginTilesPage'];
 export type SchemaPagesTilesPluginCreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];
 export type SchemaPagesTilesPluginUpdateTilesPage = components['schemas']['PagesTilesPluginUpdateTilesPage'];
@@ -8329,6 +8671,110 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    "get-devices-home-assistant-plugin-devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successfully retrieved the list of Home Assistant devices. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevicesHomeAssistantPluginResDiscoveredDevices"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "get-devices-home-assistant-plugin-device": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The ID of the resource to retrieve.
+                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+                 */
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successfully retrieved the requested Home Assistant device. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevicesHomeAssistantPluginResDiscoveredDevice"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "get-devices-home-assistant-plugin-states": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successfully retrieved the list of Home Assistant states. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevicesHomeAssistantPluginResStates"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
+        };
+    };
+    "get-devices-home-assistant-plugin-state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The ID of the resource to retrieve.
+                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
+                 */
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successfully retrieved the requested Home Assistant state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DevicesHomeAssistantPluginResState"];
+                };
+            };
+            400: components["responses"]["BadRequestError"];
+            404: components["responses"]["NotFoundError"];
+            500: components["responses"]["InternalServerError"];
         };
     };
     "get-pages-cards-plugin-page-cards": {
