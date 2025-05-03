@@ -57,7 +57,7 @@ export class HomeAssistantStateModel {
 	lastUpdated: Date;
 }
 
-export class HomeAssistantDeviceModel {
+export class HomeAssistantDiscoveredDeviceModel {
 	@Expose()
 	@IsString()
 	id: string;
@@ -81,5 +81,5 @@ export class HomeAssistantDeviceModel {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => HomeAssistantStateModel)
-	states: HomeAssistantStateModel;
+	states: HomeAssistantStateModel[];
 }

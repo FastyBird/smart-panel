@@ -1150,7 +1150,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/plugins/devices-home-assistant-plugin/devices": {
+    "/plugins/devices-home-assistant-plugin/discovered-devices": {
         parameters: {
             query?: never;
             header?: never;
@@ -1170,7 +1170,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    [path: `/plugins/devices-home-assistant-plugin/devices/${string}`]: {
+    [path: `/plugins/devices-home-assistant-plugin/discovered-devices/${string}`]: {
         parameters: {
             query?: never;
             header?: never;
@@ -5130,7 +5130,7 @@ export interface components {
             readonly request_id: string;
             /**
              * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/plugins/devices-home-assistant-plugin/devices/2fcdc656a7ae51e33482c8314b1d32b9
+             * @example /api/v1/plugins/devices-home-assistant-plugin/discovered-devices/2fcdc656a7ae51e33482c8314b1d32b9
              */
             readonly path: string;
             /**
@@ -5168,7 +5168,7 @@ export interface components {
             readonly request_id: string;
             /**
              * @description The API endpoint that was requested, including any dynamic parameters.
-             * @example /api/v1/plugins/devices-home-assistant-plugin/devices
+             * @example /api/v1/plugins/devices-home-assistant-plugin/discovered-devices
              */
             readonly path: string;
             /**

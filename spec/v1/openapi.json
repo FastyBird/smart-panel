@@ -5835,7 +5835,7 @@
         }
       }
     },
-    "/plugins/devices-home-assistant-plugin/devices": {
+    "/plugins/devices-home-assistant-plugin/discovered-devices": {
       "get": {
         "summary": "Retrieve a list of all available Home Assistant Devices",
         "description": "Retrieves a list of devices discovered from the connected Home Assistant instance. Each device includes metadata, associated entities, and their current states.",
@@ -5874,7 +5874,7 @@
         ]
       }
     },
-    "/plugins/devices-home-assistant-plugin/devices/{id}": {
+    "/plugins/devices-home-assistant-plugin/discovered-devices/{id}": {
       "parameters": [
         {
           "schema": {
@@ -13718,7 +13718,7 @@
           "path": {
             "type": "string",
             "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/plugins/devices-home-assistant-plugin/devices/2fcdc656a7ae51e33482c8314b1d32b9",
+            "example": "/api/v1/plugins/devices-home-assistant-plugin/discovered-devices/2fcdc656a7ae51e33482c8314b1d32b9",
             "readOnly": true
           },
           "method": {
@@ -13780,7 +13780,7 @@
           "path": {
             "type": "string",
             "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/plugins/devices-home-assistant-plugin/devices",
+            "example": "/api/v1/plugins/devices-home-assistant-plugin/discovered-devices",
             "readOnly": true
           },
           "method": {

@@ -9,7 +9,8 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
-import { HomeAssistantDevicesController } from './controllers/home-assistant-devices.controller';
+import { HomeAssistantDiscoveredDevicesController } from './controllers/home-assistant-discovered-devices.controller';
+import { HomeAssistantStatesController } from './controllers/home-assistant-states.controller';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from './devices-home-assistant.constants';
 import { CreateHomeAssistantChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateHomeAssistantChannelDto } from './dto/create-channel.dto';
@@ -30,7 +31,7 @@ import { HomeAssistantHttpService } from './services/home-assistant.http.service
 @Module({
 	imports: [TypeOrmModule.forFeature([HomeAssistantDeviceEntity]), DevicesModule, ConfigModule],
 	providers: [HomeAssistantHttpService, HomeAssistantDevicePlatform],
-	controllers: [HomeAssistantDevicesController],
+	controllers: [HomeAssistantDiscoveredDevicesController, HomeAssistantStatesController],
 	exports: [HomeAssistantHttpService],
 })
 export class DevicesHomeAssistantPlugin {

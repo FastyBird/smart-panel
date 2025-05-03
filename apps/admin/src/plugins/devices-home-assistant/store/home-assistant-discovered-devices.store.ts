@@ -104,7 +104,7 @@ export const useHomeAssistantDiscoveredDevices = defineStore<
 
 			semaphore.value.fetching.item.push(payload.id);
 
-			const apiResponse = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/devices/{id}`, {
+			const apiResponse = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices/{id}`, {
 				params: {
 					path: { id: payload.id },
 				},
@@ -154,7 +154,7 @@ export const useHomeAssistantDiscoveredDevices = defineStore<
 
 			semaphore.value.fetching.items = true;
 
-			const { data: responseData, error, response } = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/devices`);
+			const { data: responseData, error, response } = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/discovered-devices`);
 
 			semaphore.value.fetching.items = false;
 
