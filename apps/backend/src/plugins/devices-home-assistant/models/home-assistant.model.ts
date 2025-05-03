@@ -2,9 +2,9 @@ import { Expose, Transform, Type } from 'class-transformer';
 import { ArrayNotEmpty, IsArray, IsDate, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class HomeAssistantStateModel {
-	@Expose()
+	@Expose({ name: 'entity_id' })
 	@IsString()
-	entity_id: string;
+	entityId: string;
 
 	@Expose()
 	@IsString()

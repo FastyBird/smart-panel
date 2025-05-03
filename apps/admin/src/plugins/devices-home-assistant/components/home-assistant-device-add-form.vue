@@ -7,12 +7,12 @@
 		status-icon
 	>
 		<el-form-item
-			:label="t('devicesThirdPartyPlugin.fields.devices.id.title')"
+			:label="t('devicesHomeAssistantPlugin.fields.devices.id.title')"
 			:prop="['id']"
 		>
 			<el-input
 				v-model="model.id"
-				:placeholder="t('devicesThirdPartyPlugin.fields.devices.id.placeholder')"
+				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.id.placeholder')"
 				name="id"
 				required
 				disabled
@@ -20,23 +20,23 @@
 		</el-form-item>
 
 		<el-form-item
-			:label="t('devicesThirdPartyPlugin.fields.devices.name.title')"
+			:label="t('devicesHomeAssistantPlugin.fields.devices.name.title')"
 			:prop="['name']"
 		>
 			<el-input
 				v-model="model.name"
-				:placeholder="t('devicesThirdPartyPlugin.fields.devices.name.placeholder')"
+				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.name.placeholder')"
 				name="name"
 			/>
 		</el-form-item>
 
 		<el-form-item
-			:label="t('devicesThirdPartyPlugin.fields.devices.category.title')"
+			:label="t('devicesHomeAssistantPlugin.fields.devices.category.title')"
 			:prop="['category']"
 		>
 			<el-select
 				v-model="model.category"
-				:placeholder="t('devicesThirdPartyPlugin.fields.devices.category.placeholder')"
+				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.category.placeholder')"
 				name="category"
 				filterable
 			>
@@ -61,12 +61,12 @@
 		<el-divider />
 
 		<el-form-item
-			:label="t('devicesThirdPartyPlugin.fields.devices.description.title')"
+			:label="t('devicesHomeAssistantPlugin.fields.devices.description.title')"
 			:prop="['description']"
 		>
 			<el-input
 				v-model="model.description"
-				:placeholder="t('devicesThirdPartyPlugin.fields.devices.description.placeholder')"
+				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.description.placeholder')"
 				:rows="4"
 				type="textarea"
 				name="description"
@@ -76,13 +76,13 @@
 		<el-divider />
 
 		<el-form-item
-			:label="t('devicesThirdPartyPlugin.fields.devices.serviceAddress.title')"
-			:prop="['serviceAddress']"
+			:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
+			:prop="['haDeviceId']"
 		>
 			<el-input
-				v-model="model.serviceAddress"
-				:placeholder="t('devicesThirdPartyPlugin.fields.devices.serviceAddress.placeholder')"
-				name="serviceAddress"
+				v-model="model.haDeviceId"
+				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
+				name="haDeviceId"
 			/>
 		</el-form-item>
 	</el-form>
@@ -95,16 +95,16 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useDeviceAddForm } from '../../../modules/devices';
-import { DEVICES_THIRD_PARTY_PLUGIN_TYPE } from '../devices-third-party.constants';
-import type { IThirdPartyDeviceAddForm } from '../schemas/devices.types';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_TYPE } from '../devices-home-assistant.constants';
+import type { IHomeAssistantDeviceAddForm } from '../schemas/devices.types';
 
-import type { IThirdPartyDeviceAddFormProps } from './third-party-device-add-form.types';
+import type { IHomeAssistantDeviceAddFormProps } from './home-assistant-device-add-form.types';
 
 defineOptions({
-	name: 'ThirdPartyDeviceAddForm',
+	name: 'HomeAssistantDeviceAddForm',
 });
 
-const props = withDefaults(defineProps<IThirdPartyDeviceAddFormProps>(), {
+const props = withDefaults(defineProps<IHomeAssistantDeviceAddFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
@@ -119,17 +119,17 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm<IThirdPartyDeviceAddForm>({
+const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm<IHomeAssistantDeviceAddForm>({
 	id: props.id,
-	type: DEVICES_THIRD_PARTY_PLUGIN_TYPE,
+	type: DEVICES_HOME_ASSISTANT_PLUGIN_TYPE,
 });
 
-const rules = reactive<FormRules<IThirdPartyDeviceAddForm>>({
-	category: [{ required: true, message: t('devicesThirdPartyPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
-	name: [{ required: true, message: t('devicesThirdPartyPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
-	serviceAddress: [
-		{ required: true, message: t('devicesThirdPartyPlugin.fields.devices.serviceAddress.validation.required'), trigger: 'change' },
-		{ type: 'url', message: t('devicesThirdPartyPlugin.fields.devices.serviceAddress.validation.url'), trigger: 'change' },
+const rules = reactive<FormRules<IHomeAssistantDeviceAddForm>>({
+	category: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
+	name: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
+	haDeviceId: [
+		{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.required'), trigger: 'change' },
+		{ type: 'url', message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.url'), trigger: 'change' },
 	],
 });
 

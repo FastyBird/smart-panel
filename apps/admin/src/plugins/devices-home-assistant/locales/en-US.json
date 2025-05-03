@@ -1,0 +1,36 @@
+{
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Device id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Device category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select device category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Device name",
+        "validation": {
+          "required": "Please fill in device name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Device description"
+      },
+      "haDeviceId": {
+        "title": "Home Assistant device",
+        "placeholder": "Select device from Home Assistant instance",
+        "validation": {
+          "required": "Please select Home Assistant device"
+        }
+      }
+    }
+  }
+}
