@@ -5877,7 +5877,14 @@
     "/plugins/devices-home-assistant-plugin/devices/{id}": {
       "parameters": [
         {
-          "$ref": "#/components/parameters/id"
+          "schema": {
+            "type": "string",
+            "example": "6ab4250ba7c4216da36f3d6fb1514d03"
+          },
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "The ID of the Home Assisant discovered device to retrieve."
         }
       ],
       "get": {
@@ -5957,10 +5964,17 @@
         ]
       }
     },
-    "/plugins/devices-home-assistant-plugin/states/{id}": {
+    "/plugins/devices-home-assistant-plugin/states/{entityId}": {
       "parameters": [
         {
-          "$ref": "#/components/parameters/id"
+          "schema": {
+            "type": "string",
+            "example": "switch.hall_heater_actor"
+          },
+          "name": "entityId",
+          "in": "path",
+          "required": true,
+          "description": "The ID of the Home Assisant entity to retrieve state."
         }
       ],
       "get": {
@@ -15333,6 +15347,10 @@
     {
       "name": "Devices module",
       "description": "A collection of endpoints that provide device-related functionalities, acting as a central module for handling device interactions."
+    },
+    {
+      "name": "Devices home assistant plugin",
+      "description": "Endpoints for interacting with Home Assistant devices and their states. This plugin allows discovery, inspection, and potential adoption of Home Assistant devices into the Smart Panel ecosystem."
     },
     {
       "name": "Pages cards plugin",

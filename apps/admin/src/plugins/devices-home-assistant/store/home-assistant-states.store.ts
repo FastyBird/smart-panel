@@ -98,9 +98,9 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 
 				semaphore.value.fetching.item.push(payload.entityId);
 
-				const apiResponse = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states/{id}`, {
+				const apiResponse = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states/{entityId}`, {
 					params: {
-						path: { id: payload.entityId },
+						path: { entityId: payload.entityId },
 					},
 				});
 

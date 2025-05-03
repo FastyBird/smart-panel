@@ -1175,11 +1175,8 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
+                /** @description The ID of the Home Assisant discovered device to retrieve. */
+                id: string;
             };
             cookie?: never;
         };
@@ -1216,16 +1213,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/plugins/devices-home-assistant-plugin/states/{id}": {
+    "/plugins/devices-home-assistant-plugin/states/{entityId}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
+                /** @description The ID of the Home Assisant entity to retrieve state. */
+                entityId: string;
             };
             cookie?: never;
         };
@@ -8701,11 +8695,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
+                /** @description The ID of the Home Assisant discovered device to retrieve. */
+                id: string;
             };
             cookie?: never;
         };
@@ -8753,11 +8744,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description The ID of the resource to retrieve.
-                 * @example 9431cc2d-d447-44c1-b2d0-4398624e4921
-                 */
-                id: components["parameters"]["id"];
+                /** @description The ID of the Home Assisant entity to retrieve state. */
+                entityId: string;
             };
             cookie?: never;
         };
