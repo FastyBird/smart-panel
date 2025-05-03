@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'pages_cards_plugin_client.dart';
+part of 'devices_home_assistant_plugin_client.dart';
 
 // **************************************************************************
 // RetrofitGenerator
@@ -8,8 +8,13 @@ part of 'pages_cards_plugin_client.dart';
 
 // ignore_for_file: unnecessary_brace_in_string_interps,no_leading_underscores_for_local_identifiers,unused_element,unnecessary_string_interpolations
 
-class _PagesCardsPluginClient implements PagesCardsPluginClient {
-  _PagesCardsPluginClient(this._dio, {this.baseUrl, this.errorLogger});
+class _DevicesHomeAssistantPluginClient
+    implements DevicesHomeAssistantPluginClient {
+  _DevicesHomeAssistantPluginClient(
+    this._dio, {
+    this.baseUrl,
+    this.errorLogger,
+  });
 
   final Dio _dio;
 
@@ -18,28 +23,29 @@ class _PagesCardsPluginClient implements PagesCardsPluginClient {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<HttpResponse<PagesCardsPluginResCards>> getPagesCardsPluginPageCards({
-    String? page,
-  }) async {
+  Future<HttpResponse<DevicesHomeAssistantPluginResDiscoveredDevices>>
+      getDevicesHomeAssistantPluginDevices() async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{r'page': page};
-    queryParameters.removeWhere((k, v) => v == null);
+    final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<PagesCardsPluginResCards>>(
+    final _options = _setStreamType<
+        HttpResponse<DevicesHomeAssistantPluginResDiscoveredDevices>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/plugins/pages-cards-plugin/cards',
+            '/plugins/devices-home-assistant-plugin/discovered-devices',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late PagesCardsPluginResCards _value;
+    late DevicesHomeAssistantPluginResDiscoveredDevices _value;
     try {
-      _value = PagesCardsPluginResCards.fromJson(_result.data!);
+      _value = DevicesHomeAssistantPluginResDiscoveredDevices.fromJson(
+        _result.data!,
+      );
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -49,58 +55,29 @@ class _PagesCardsPluginClient implements PagesCardsPluginClient {
   }
 
   @override
-  Future<HttpResponse<PagesCardsPluginResCard>> createPagesCardsPluginPageCard({
-    PagesCardsPluginReqCreateCard? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options = _setStreamType<HttpResponse<PagesCardsPluginResCard>>(
-      Options(method: 'POST', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/plugins/pages-cards-plugin/cards',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late PagesCardsPluginResCard _value;
-    try {
-      _value = PagesCardsPluginResCard.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<PagesCardsPluginResCard>> getPagesCardsPluginPageCard({
-    required String id,
-  }) async {
+  Future<HttpResponse<DevicesHomeAssistantPluginResDiscoveredDevice>>
+      getDevicesHomeAssistantPluginDevice({required String id}) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<PagesCardsPluginResCard>>(
+    final _options = _setStreamType<
+        HttpResponse<DevicesHomeAssistantPluginResDiscoveredDevice>>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/plugins/pages-cards-plugin/cards/${id}',
+            '/plugins/devices-home-assistant-plugin/discovered-devices/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
           .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
     );
     final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late PagesCardsPluginResCard _value;
+    late DevicesHomeAssistantPluginResDiscoveredDevice _value;
     try {
-      _value = PagesCardsPluginResCard.fromJson(_result.data!);
+      _value = DevicesHomeAssistantPluginResDiscoveredDevice.fromJson(
+        _result.data!,
+      );
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;
@@ -110,57 +87,66 @@ class _PagesCardsPluginClient implements PagesCardsPluginClient {
   }
 
   @override
-  Future<HttpResponse<PagesCardsPluginResCard>> updatePagesCardsPluginPageCard({
-    required String id,
-    PagesCardsPluginReqUpdateCard? body,
-  }) async {
-    final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
-    queryParameters.removeWhere((k, v) => v == null);
-    final _headers = <String, dynamic>{};
-    final _data = body;
-    final _options = _setStreamType<HttpResponse<PagesCardsPluginResCard>>(
-      Options(method: 'PATCH', headers: _headers, extra: _extra)
-          .compose(
-            _dio.options,
-            '/plugins/pages-cards-plugin/cards/${id}',
-            queryParameters: queryParameters,
-            data: _data,
-          )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
-    );
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late PagesCardsPluginResCard _value;
-    try {
-      _value = PagesCardsPluginResCard.fromJson(_result.data!);
-    } on Object catch (e, s) {
-      errorLogger?.logError(e, s, _options);
-      rethrow;
-    }
-    final httpResponse = HttpResponse(_value, _result);
-    return httpResponse;
-  }
-
-  @override
-  Future<HttpResponse<void>> deletePagesCardsPluginPageCard({
-    required String id,
-  }) async {
+  Future<HttpResponse<DevicesHomeAssistantPluginResStates>>
+      getDevicesHomeAssistantPluginStates() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<HttpResponse<void>>(
-      Options(method: 'DELETE', headers: _headers, extra: _extra)
+    final _options =
+        _setStreamType<HttpResponse<DevicesHomeAssistantPluginResStates>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/plugins/pages-cards-plugin/cards/${id}',
+            '/plugins/devices-home-assistant-plugin/states',
             queryParameters: queryParameters,
             data: _data,
           )
-          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
     );
-    final _result = await _dio.fetch<void>(_options);
-    final httpResponse = HttpResponse(null, _result);
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late DevicesHomeAssistantPluginResStates _value;
+    try {
+      _value = DevicesHomeAssistantPluginResStates.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
+    return httpResponse;
+  }
+
+  @override
+  Future<HttpResponse<DevicesHomeAssistantPluginResState>>
+      getDevicesHomeAssistantPluginState({required String entityId}) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options =
+        _setStreamType<HttpResponse<DevicesHomeAssistantPluginResState>>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/plugins/devices-home-assistant-plugin/states/${entityId}',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(
+            baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl),
+          ),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late DevicesHomeAssistantPluginResState _value;
+    try {
+      _value = DevicesHomeAssistantPluginResState.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    final httpResponse = HttpResponse(_value, _result);
     return httpResponse;
   }
 
