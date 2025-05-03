@@ -4,7 +4,7 @@ import DevicesHomeAssistantPlugin from './devices-home-assistant.plugin';
 export { DevicesHomeAssistantPlugin };
 
 export * from './components/components';
-export * from './composables/composables.ts';
+export * from './composables/composables';
 export * from './store/stores';
 export * from './schemas/schemas';
 
