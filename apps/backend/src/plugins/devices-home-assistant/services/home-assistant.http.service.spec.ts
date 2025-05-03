@@ -54,7 +54,7 @@ describe('HomeAssistantHttpService', () => {
 		expect(devicesService).toBeDefined();
 	});
 
-	it('should throw validation error if API key is missing', async () => {
+	it('should throw validation error if API key is missing', () => {
 		mockConfigService.getPluginConfig.mockReturnValue({ apiKey: null });
 
 		expect(() => service['ensureApiKey']()).toThrow();

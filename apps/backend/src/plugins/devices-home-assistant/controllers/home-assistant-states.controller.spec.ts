@@ -5,7 +5,6 @@ import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
-import { HomeAssistantStateModel } from '../models/home-assistant.model';
 import { HomeAssistantHttpService } from '../services/home-assistant.http.service';
 
 import { HomeAssistantStatesController } from './home-assistant-states.controller';
