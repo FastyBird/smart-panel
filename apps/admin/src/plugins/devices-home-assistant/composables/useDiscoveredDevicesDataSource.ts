@@ -11,7 +11,7 @@ import { discoveredDevicesStoreKey } from '../store/keys';
 
 import type { IDiscoveredDevicesFilter, IUseDiscoveredDevicesDataSource } from './types';
 
-export const defaultDevicesFilter: IDiscoveredDevicesFilter = {
+export const defaultDiscoveredDevicesFilter: IDiscoveredDevicesFilter = {
 	search: undefined,
 	adopted: undefined,
 };
@@ -27,10 +27,10 @@ export const useDiscoveredDevicesDataSource = (): IUseDiscoveredDevicesDataSourc
 
 	const paginatePage = ref<number>(1);
 
-	const filters = ref<IDiscoveredDevicesFilter>(cloneDeep<IDiscoveredDevicesFilter>(defaultDevicesFilter));
+	const filters = ref<IDiscoveredDevicesFilter>(cloneDeep<IDiscoveredDevicesFilter>(defaultDiscoveredDevicesFilter));
 
 	const filtersActive = computed<boolean>((): boolean => {
-		return filters.value.search !== defaultDevicesFilter.search || filters.value.adopted !== defaultDevicesFilter.adopted;
+		return filters.value.search !== defaultDiscoveredDevicesFilter.search || filters.value.adopted !== defaultDiscoveredDevicesFilter.adopted;
 	});
 
 	const sortBy = ref<'name' | 'adoptedDeviceId'>('name');
@@ -83,7 +83,7 @@ export const useDiscoveredDevicesDataSource = (): IUseDiscoveredDevicesDataSourc
 	const totalRows = computed<number>(() => devicesStore.findAll().length);
 
 	const resetFilter = (): void => {
-		filters.value = cloneDeep<IDiscoveredDevicesFilter>(defaultDevicesFilter);
+		filters.value = cloneDeep<IDiscoveredDevicesFilter>(defaultDiscoveredDevicesFilter);
 	};
 
 	watch(

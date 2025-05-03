@@ -7,7 +7,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { injectStoresManager } from '../../../common';
 import type { IHomeAssistantDiscoveredDevice } from '../store/home-assistant-discovered-devices.store.types';
 
-import { defaultDevicesFilter, useDiscoveredDevicesDataSource } from './useDiscoveredDevicesDataSource';
+import { defaultDiscoveredDevicesFilter, useDiscoveredDevicesDataSource } from './useDiscoveredDevicesDataSource';
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
@@ -119,7 +119,7 @@ describe('useDiscoveredDevicesDataSource', () => {
 
 		resetFilter();
 
-		expect(filters.value).toEqual(defaultDevicesFilter);
+		expect(filters.value).toEqual(defaultDiscoveredDevicesFilter);
 	});
 
 	it('updates pagination page on filter change', async () => {
