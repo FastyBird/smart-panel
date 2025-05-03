@@ -11,7 +11,7 @@ import 'devices_module_device_control.dart';
 part 'devices_module_device.freezed.dart';
 part 'devices_module_device.g.dart';
 
-/// Represents the core attributes of a device, including its unique identifier, name, and category. This model forms the foundation for more detailed device representations, such as those including related entities (e.g., channels, properties, or controls).
+/// Represents the core attributes of a device, including its unique identifier, name, and category. This model forms the foundation for more detailed device representations, such as those including related components (e.g., channels, properties, or controls).
 @Freezed()
 class DevicesModuleDevice with _$DevicesModuleDevice {
   const factory DevicesModuleDevice({
