@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { ChannelAddFormSchema, ChannelEditFormSchema } from '../../../modules/devices';
 
 export const HomeAssistantChannelAddFormSchema = ChannelAddFormSchema.extend({
-	haChannelId: z.string(),
+	haEntityId: z.string(),
 });
 
 export const HomeAssistantChannelEditFormSchema = ChannelEditFormSchema.extend({
-	haChannelId: z.string().optional(),
+	haEntityId: z.string().optional(),
 });
