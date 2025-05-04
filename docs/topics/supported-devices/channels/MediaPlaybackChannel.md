@@ -31,8 +31,8 @@ Provides playback controls for multimedia devices, excluding volume control (han
 | **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
 |--------------|---------------|--------------|----------|-----------------|
 | `track`      | `String`      | -            | -        | RO (Read-Only)  |
-| `duration`   | `Int`         | `0–86400`    | seconds  | RO (Read-Only)  |
-| `position`   | `Int`         | `0–86400`    | seconds  | RW (Read-Write) |
+| `duration`   | `Uint`        | `0–86400`    | seconds  | RO (Read-Only)  |
+| `position`   | `Uint`        | `0–86400`    | seconds  | RW (Read-Write) |
 
 ---
 

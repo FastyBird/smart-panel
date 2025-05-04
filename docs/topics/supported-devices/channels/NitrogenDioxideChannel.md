@@ -8,11 +8,11 @@ Monitors the concentration of NO₂ in the air, often used in environmental and 
 
 ## Required Properties {id="required-properties"}
 
-| **Property** | **Data Type** | **Range**       | **Unit**      | **Permissions** |
-|--------------|---------------|-----------------|---------------|-----------------|
-| `detected`   | `Bool`        | `true/false`    | -             | RO (Read-Only)  |
-| `density`    | `Float`       | `0.0–100,000.0` | micrograms/m³ | RO (Read-Only)  |
-| `mode `      | `Enum`        | `annual/1_hour` | -             | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range**       | **Unit** | **Permissions** |
+|--------------|---------------|-----------------|----------|-----------------|
+| `detected`   | `Bool`        | `true/false`    | -        | RO (Read-Only)  |
+| `density`    | `Float`       | `0.0–100,000.0` | µg/m³    | RO (Read-Only)  |
+| `mode `      | `Enum`        | `annual/1_hour` | -        | RO (Read-Only)  |
 
 ---
 
@@ -29,7 +29,7 @@ Indicates whether the sensor detects abnormal levels of nitrogen dioxide:
 
 Reports the current detected nitrogen dioxide (NO₂) concentration:
 
-- Measured in micrograms per cubic meter (`micrograms/m³`).
+- Measured in micrograms per cubic meter (`µg/m³`).
 - Reflects real-time NO₂ levels in the environment.
 
 #### `mode`
@@ -41,7 +41,7 @@ Specifies the type of measurement provided by the sensor:
 
 > [!Notes]:
 Either `detected` or `density` must be included, depending on the use case. If only `density` is provided, values
-exceeding **40 micrograms/m³** (annual mean) or **200 micrograms/m³** (1-hour mean) are considered poor air quality
+exceeding **40 µg/m³** (annual mean) or **200 µg/m³** (1-hour mean) are considered poor air quality
 per WHO guidelines and will be displayed as a warning
 
 ---

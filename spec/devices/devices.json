@@ -1,0 +1,1570 @@
+{
+  "generic": {
+    "category": "generic",
+    "description": {
+      "en": ""
+    },
+    "channels": {
+      "generic": {
+        "category": "generic",
+        "required": false,
+        "multiple": true,
+        "description": {
+          "en": ""
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      }
+    }
+  },
+  "air_conditioner": {
+    "category": "air_conditioner",
+    "description": {
+      "en": "The Air Conditioner device represents a cooling system with additional features for environmental monitoring and energy management."
+    },
+    "channels": {
+      "cooler": {
+        "category": "cooler",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls devices that lower air or liquid temperatures, such as air conditioners or refrigeration systems."
+        }
+      },
+      "fan": {
+        "category": "fan",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
+        }
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current temperature in an environment, reported in degrees Celsius."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "heater": {
+        "category": "heater",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Manages heating devices, allowing control of temperature settings and modes."
+        }
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      }
+    }
+  },
+  "air_dehumidifier": {
+    "category": "air_dehumidifier",
+    "description": {
+      "en": "The Air Dehumidifier device represents a system designed to reduce humidity levels in the environment while providing additional monitoring and control capabilities."
+    },
+    "channels": {
+      "cooler": {
+        "category": "cooler",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls devices that lower air or liquid temperatures, such as air conditioners or refrigeration systems."
+        }
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "fan": {
+        "category": "fan",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current temperature in an environment, reported in degrees Celsius."
+        }
+      }
+    }
+  },
+  "air_humidifier": {
+    "category": "air_humidifier",
+    "description": {
+      "en": "The Air Humidifier device represents a system designed to increase humidity levels in the environment while providing additional monitoring and control capabilities."
+    },
+    "channels": {
+      "humidity": {
+        "category": "humidity",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "switcher": {
+        "category": "switcher",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Represents binary switches to control devices like lights, fans, or appliances."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "fan": {
+        "category": "fan",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current temperature in an environment, reported in degrees Celsius."
+        }
+      }
+    }
+  },
+  "air_purifier": {
+    "category": "air_purifier",
+    "description": {
+      "en": "The Air Purifier device represents a system designed to improve indoor air quality by removing contaminants and monitoring environmental conditions."
+    },
+    "channels": {
+      "fan": {
+        "category": "fan",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "air_particulate": {
+        "category": "air_particulate",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the concentration of particulate matter (e.g., PM2.5 and PM10) in the air, providing insights into air quality and pollution levels."
+        }
+      },
+      "carbon_dioxide": {
+        "category": "carbon_dioxide",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors CO₂ levels in the environment to track air quality and ventilation efficiency."
+        }
+      },
+      "carbon_monoxide": {
+        "category": "carbon_monoxide",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects the presence of carbon monoxide (CO) to ensure safety in enclosed spaces."
+        }
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      },
+      "nitrogen_dioxide": {
+        "category": "nitrogen_dioxide",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the concentration of NO₂ in the air, often used in environmental and industrial monitoring."
+        }
+      },
+      "ozone": {
+        "category": "ozone",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures ozone (O₃) levels in the air, often used in environmental quality assessments."
+        }
+      },
+      "pressure": {
+        "category": "pressure",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports atmospheric or liquid pressure values, typically measured in pascals (kPa)."
+        }
+      },
+      "sulphur_dioxide": {
+        "category": "sulphur_dioxide",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures sulphur dioxide (SO₂) levels in the air for environmental monitoring."
+        }
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current temperature in an environment, reported in degrees Celsius."
+        }
+      },
+      "volatile_organic_compounds": {
+        "category": "volatile_organic_compounds",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the concentration of VOCs in the air to track pollution or air quality."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      }
+    }
+  },
+  "alarm": {
+    "category": "alarm",
+    "description": {
+      "en": ""
+    },
+    "channels": {
+    }
+  },
+  "camera": {
+    "category": "camera",
+    "description": {
+      "en": "The Camera device represents a surveillance or monitoring system designed for video and image capturing, with additional features for environmental monitoring and interaction."
+    },
+    "channels": {
+      "camera": {
+        "category": "camera",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Provides video and image data streams from surveillance or monitoring cameras. This channel supports configuration and control of camera devices, such as surveillance cameras or babysitting monitors."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "battery": {
+        "category": "battery",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      },
+      "contact": {
+        "category": "contact",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet."
+        }
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "light": {
+        "category": "light",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls lighting devices, supporting brightness, color temperature, and color adjustments."
+        }
+      },
+      "microphone": {
+        "category": "microphone",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Represents audio input devices, reporting activity or capturing sound."
+        }
+      },
+      "motion": {
+        "category": "motion",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects motion in an area to trigger alerts or automate responses."
+        }
+      },
+      "speaker": {
+        "category": "speaker",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls speaker devices, including volume, mute state, and audio output modes."
+        }
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current temperature in an environment, reported in degrees Celsius."
+        }
+      }
+    }
+  },
+  "doorbell": {
+    "category": "doorbell",
+    "description": {
+      "en": "The Doorbell device represents a smart doorbell system that provides video, audio, and additional monitoring features for enhanced home security."
+    },
+    "channels": {
+      "doorbell": {
+        "category": "doorbell",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Represents smart doorbells, providing features such as button press detection and optional camera integration."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "battery": {
+        "category": "battery",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      },
+      "camera": {
+        "category": "camera",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Provides video and image data streams from surveillance or monitoring cameras. This channel supports configuration and control of camera devices, such as surveillance cameras or babysitting monitors."
+        }
+      },
+      "contact": {
+        "category": "contact",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet."
+        }
+      },
+      "light": {
+        "category": "light",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls lighting devices, supporting brightness, color temperature, and color adjustments."
+        }
+      },
+      "lock": {
+        "category": "lock",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Manages the locked/unlocked state of physical locks for doors, safes, or other secure areas."
+        }
+      },
+      "microphone": {
+        "category": "microphone",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Represents audio input devices, reporting activity or capturing sound."
+        }
+      },
+      "motion": {
+        "category": "motion",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects motion in an area to trigger alerts or automate responses."
+        }
+      },
+      "speaker": {
+        "category": "speaker",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls speaker devices, including volume, mute state, and audio output modes."
+        }
+      }
+    }
+  },
+  "door": {
+    "category": "door",
+    "description": {
+      "en": "The Door device represents automated or monitored doors, such as garage doors, entrance doors, or other types of doors, with additional features for security and environmental awareness."
+    },
+    "channels": {
+      "door": {
+        "category": "door",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Manages the open/close states of doors, including garage and entry doors."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "battery": {
+        "category": "battery",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      },
+      "contact": {
+        "category": "contact",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet."
+        }
+      },
+      "lock": {
+        "category": "lock",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Manages the locked/unlocked state of physical locks for doors, safes, or other secure areas."
+        }
+      },
+      "motion": {
+        "category": "motion",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects motion in an area to trigger alerts or automate responses."
+        }
+      }
+    }
+  },
+  "fan": {
+    "category": "fan",
+    "description": {
+      "en": "The Fan device represents a standalone or integrated fan system with features for speed control, direction adjustment, and energy monitoring."
+    },
+    "channels": {
+      "fan": {
+        "category": "fan",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      }
+    }
+  },
+  "heater": {
+    "category": "heater",
+    "description": {
+      "en": "The Heater device represents a heating system designed to control and monitor environmental temperature, with optional features for energy and humidity management."
+    },
+    "channels": {
+      "heater": {
+        "category": "heater",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Manages heating devices, allowing control of temperature settings and modes."
+        }
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current temperature in an environment, reported in degrees Celsius."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      }
+    }
+  },
+  "lighting": {
+    "category": "lighting",
+    "description": {
+      "en": "The Lighting device represents a lighting system designed to provide illumination with optional features for energy tracking, brightness control, and adaptive lighting based on ambient conditions."
+    },
+    "channels": {
+      "light": {
+        "category": "light",
+        "required": true,
+        "multiple": true,
+        "description": {
+          "en": "Controls lighting devices, supporting brightness, color temperature, and color adjustments."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "illuminance": {
+        "category": "illuminance",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects ambient light levels, typically measured in lux, to monitor brightness in a space."
+        }
+      }
+    }
+  },
+  "lock": {
+    "category": "lock",
+    "description": {
+      "en": "The Lock device represents an electronic or smart locking system, providing control and monitoring of access points such as doors or gates."
+    },
+    "channels": {
+      "lock": {
+        "category": "lock",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Manages the locked/unlocked state of physical locks for doors, safes, or other secure areas."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "battery": {
+        "category": "battery",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      },
+      "contact": {
+        "category": "contact",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet."
+        }
+      },
+      "motion": {
+        "category": "motion",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects motion in an area to trigger alerts or automate responses."
+        }
+      }
+    }
+  },
+  "media": {
+    "category": "media",
+    "description": {
+      "en": "The Media device represents a multimedia system capable of playing, recording, or managing audio and video content."
+    },
+    "channels": {
+      "media_input": {
+        "category": "media_input",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Manages the input sources of multimedia devices like TVs, projectors, or audio receivers."
+        }
+      },
+      "media_playback": {
+        "category": "media_playback",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Provides playback controls for multimedia devices, excluding volume control."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "microphone": {
+        "category": "microphone",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Represents audio input devices, reporting activity or capturing sound."
+        }
+      },
+      "speaker": {
+        "category": "speaker",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls speaker devices, including volume, mute state, and audio output modes."
+        }
+      }
+    }
+  },
+  "outlet": {
+    "category": "outlet",
+    "description": {
+      "en": "The Outlet device represents a power outlet with advanced monitoring and control features, enabling remote operation and energy tracking. It supports single or multiple outlets for flexible power management."
+    },
+    "channels": {
+      "outlet": {
+        "category": "outlet",
+        "required": true,
+        "multiple": true,
+        "description": {
+          "en": "Controls and monitors electrical outlets."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      }
+    }
+  },
+  "pump": {
+    "category": "pump",
+    "description": {
+      "en": "The Pump device represents a water or fluid pump with functionality for flow control, monitoring, and energy tracking."
+    },
+    "channels": {
+      "flow": {
+        "category": "flow",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the rate of fluid or air flow, typically measured in cubic meters per hour (m³/h)."
+        }
+      },
+      "switcher": {
+        "category": "switcher",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Represents binary switches to control devices like lights, fans, or appliances."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      },
+      "pressure": {
+        "category": "pressure",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports atmospheric or liquid pressure values, typically measured in pascals (kPa)."
+        }
+      }
+    }
+  },
+  "robot_vacuum": {
+    "category": "robot_vacuum",
+    "description": {
+      "en": "The Robot Vacuum device represents an autonomous cleaning device with capabilities for energy tracking and operational monitoring."
+    },
+    "channels": {
+      "battery": {
+        "category": "battery",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      },
+      "robot_vacuum": {
+        "category": "robot_vacuum",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls robotic vacuum cleaners, providing commands for start, stop, docking, and monitoring states."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      }
+    }
+  },
+  "sensor": {
+    "category": "sensor",
+    "description": {
+      "en": "The Sensor device represents a versatile monitoring unit capable of tracking various environmental and safety parameters."
+    },
+    "channels": {
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "air_particulate": {
+        "category": "air_particulate",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the concentration of particulate matter (e.g., PM2.5 and PM10) in the air, providing insights into air quality and pollution levels."
+        }
+      },
+      "battery": {
+        "category": "battery",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      },
+      "carbon_dioxide": {
+        "category": "carbon_dioxide",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors CO₂ levels in the environment to track air quality and ventilation efficiency."
+        }
+      },
+      "carbon_monoxide": {
+        "category": "carbon_monoxide",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects the presence of carbon monoxide (CO) to ensure safety in enclosed spaces."
+        }
+      },
+      "contact": {
+        "category": "contact",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet."
+        }
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "illuminance": {
+        "category": "illuminance",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects ambient light levels, typically measured in lux, to monitor brightness in a space."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      },
+      "motion": {
+        "category": "motion",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects motion in an area to trigger alerts or automate responses."
+        }
+      },
+      "nitrogen_dioxide": {
+        "category": "nitrogen_dioxide",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the concentration of NO₂ in the air, often used in environmental and industrial monitoring."
+        }
+      },
+      "occupancy": {
+        "category": "occupancy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects the presence of people in a space for automation or energy efficiency purposes."
+        }
+      },
+      "ozone": {
+        "category": "ozone",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures ozone (O₃) levels in the air, often used in environmental quality assessments."
+        }
+      },
+      "pressure": {
+        "category": "pressure",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports atmospheric or liquid pressure values, typically measured in pascals (kPa)."
+        }
+      },
+      "smoke": {
+        "category": "smoke",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Detects smoke in the environment, triggering alarms or alerts for safety."
+        }
+      },
+      "sulphur_dioxide": {
+        "category": "sulphur_dioxide",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures sulphur dioxide (SO₂) levels in the air for environmental monitoring."
+        }
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current temperature in an environment, reported in degrees Celsius."
+        }
+      },
+      "volatile_organic_compounds": {
+        "category": "volatile_organic_compounds",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the concentration of VOCs in the air to track pollution or air quality."
+        }
+      }
+    }
+  },
+  "speaker": {
+    "category": "speaker",
+    "description": {
+      "en": "The Speaker device represents an audio output system capable of producing sound and potentially supporting media playback and input functionality."
+    },
+    "channels": {
+      "speaker": {
+        "category": "speaker",
+        "required": true,
+        "multiple": true,
+        "description": {
+          "en": "Controls speaker devices, including volume, mute state, and audio output modes."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "media_input": {
+        "category": "media_input",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Manages the input sources of multimedia devices like TVs, projectors, or audio receivers."
+        }
+      },
+      "media_playback": {
+        "category": "media_playback",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Provides playback controls for multimedia devices, excluding volume control."
+        }
+      }
+    }
+  },
+  "sprinkler": {
+    "category": "sprinkler",
+    "description": {
+      "en": "The Sprinkler device represents an irrigation system designed to control water flow and monitor environmental conditions to optimize watering."
+    },
+    "channels": {
+      "valve": {
+        "category": "valve",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls fluid or gas valves, managing open/close states or flow rates."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "flow": {
+        "category": "flow",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the rate of fluid or air flow, typically measured in cubic meters per hour (m³/h)."
+        }
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      },
+      "pressure": {
+        "category": "pressure",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports atmospheric or liquid pressure values, typically measured in pascals (kPa)."
+        }
+      }
+    }
+  },
+  "switcher": {
+    "category": "switcher",
+    "description": {
+      "en": "The Switcher device represents a controllable outlet or switch that can toggle the power supply to connected devices and monitor energy usage. It supports multiple outlets for power control."
+    },
+    "channels": {
+      "outlet": {
+        "category": "outlet",
+        "required": true,
+        "multiple": true,
+        "description": {
+          "en": "Controls and monitors electrical outlets."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      }
+    }
+  },
+  "television": {
+    "category": "television",
+    "description": {
+      "en": "The Television device represents a smart TV or similar media device that can be controlled and monitored for its audio and display functionality."
+    },
+    "channels": {
+      "speaker": {
+        "category": "speaker",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls speaker devices, including volume, mute state, and audio output modes."
+        }
+      },
+      "television": {
+        "category": "television",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Provides control for TVs, including input source, brightness, and power state."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      }
+    }
+  },
+  "thermostat": {
+    "category": "thermostat",
+    "description": {
+      "en": "The Thermostat device represents a climate control system that monitors and adjusts temperature and related environmental factors."
+    },
+    "channels": {
+      "temperature": {
+        "category": "temperature",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Measures the current temperature in an environment, reported in degrees Celsius."
+        }
+      },
+      "thermostat": {
+        "category": "thermostat",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Manages climate control systems, allowing adjustments of heating, cooling, and fan settings."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "contact": {
+        "category": "contact",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Tracks the open or closed state of a contact point, such as a door, window, or cabinet."
+        }
+      },
+      "cooler": {
+        "category": "cooler",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Controls devices that lower air or liquid temperatures, such as air conditioners or refrigeration systems."
+        }
+      },
+      "heater": {
+        "category": "heater",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Manages heating devices, allowing control of temperature settings and modes."
+        }
+      },
+      "humidity": {
+        "category": "humidity",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the relative humidity in the environment, reported as a percentage."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      }
+    }
+  },
+  "valve": {
+    "category": "valve",
+    "description": {
+      "en": "The Valve device represents a controllable valve used for managing the flow of liquids or gases in various systems."
+    },
+    "channels": {
+      "valve": {
+        "category": "valve",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls fluid or gas valves, managing open/close states or flow rates."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "battery": {
+        "category": "battery",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      },
+      "flow": {
+        "category": "flow",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Monitors the rate of fluid or air flow, typically measured in cubic meters per hour (m³/h)."
+        }
+      },
+      "leak": {
+        "category": "leak",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
+        }
+      },
+      "pressure": {
+        "category": "pressure",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports atmospheric or liquid pressure values, typically measured in pascals (kPa)."
+        }
+      }
+    }
+  },
+  "window_covering": {
+    "category": "window_covering",
+    "description": {
+      "en": "The Window Covering device represents automated window treatments such as blinds, shades, or curtains."
+    },
+    "channels": {
+      "window_covering": {
+        "category": "window_covering",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "Controls coverings like blinds, curtains, and shutters, including position and tilt adjustments."
+        }
+      },
+      "device_information": {
+        "category": "device_information",
+        "required": true,
+        "multiple": false,
+        "description": {
+          "en": "This channel provides metadata about the device, including manufacturer details, model information, and operational statuses."
+        }
+      },
+      "battery": {
+        "category": "battery",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports the status of a device's battery, including level, charging state, and operational health."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
+        }
+      }
+    }
+  }
+}

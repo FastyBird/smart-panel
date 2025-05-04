@@ -30,13 +30,13 @@ Indicates the on/off state of the light:
 | **Property**          | **Data Type** | **Range**     | **Unit** | **Permissions** |
 |-----------------------|---------------|---------------|----------|-----------------|
 | `brightness`          | `Uchar`       | `0–100`       | %        | RW (Read/Write) |
-| `color_red`           | `Ushort`      | `0–255`       | -        | RW (Read/Write) |
-| `color_green`         | `Ushort`      | `0–255`       | -        | RW (Read/Write) |
-| `color_blue`          | `Ushort`      | `0–255`       | -        | RW (Read/Write) |
-| `color_white`         | `Ushort`      | `0–255`       | -        | RW (Read/Write) |
+| `color_red`           | `Uchar`       | `0–255`       | -        | RW (Read/Write) |
+| `color_green`         | `Uchar`       | `0–255`       | -        | RW (Read/Write) |
+| `color_blue`          | `Uchar`       | `0–255`       | -        | RW (Read/Write) |
+| `color_white`         | `Uchar`       | `0–255`       | -        | RW (Read/Write) |
 | `color_temperature`   | `Ushort`      | `2,700–6,500` | K        | RW (Read/Write) |
 | `hue`                 | `Ushort`      | `0–360`       | degrees  | RW (Read/Write) |
-| `saturation`          | `Ushort`      | `0–100`       | %        | RW (Read/Write) |
+| `saturation`          | `Uchar`       | `0–100`       | %        | RW (Read/Write) |
 
 ---
 

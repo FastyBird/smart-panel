@@ -10,10 +10,10 @@ The **Window Covering** device represents automated window treatments such as bl
 
 These channels are mandatory for the functionality of the window covering device:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `windowCovering`    | Controls the position, tilt, and operational state of the window covering.     | No           | [See details](WindowCoveringChannel.md)    |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `windowCovering`     | Controls the position, tilt, and operational state of the window covering.     | No           | [See details](WindowCoveringChannel.md)    |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -21,11 +21,11 @@ These channels are mandatory for the functionality of the window covering device
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                                                         | **Multiple** | **Details**                               |
-|--------------------|-------------------------------------------------------------------------|--------------|-------------------------------------------|
-| `battery`          | Monitors the battery status, if the window covering is battery-powered. | No           | [See details](BatteryChannel.md)          |
-| `electricalEnergy` | Tracks total energy consumption over time.                              | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information.                             | No           | [See details](ElectricalPowerChannel.md)  |
+| **Channel**         | **Description**                                                         | **Multiple** | **Details**                               |
+|---------------------|-------------------------------------------------------------------------|--------------|-------------------------------------------|
+| `battery`           | Monitors the battery status, if the window covering is battery-powered. | No           | [See details](BatteryChannel.md)          |
+| `electrical_energy` | Tracks total energy consumption over time.                              | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information.                             | No           | [See details](ElectricalPowerChannel.md)  |
 
 ---
 
@@ -35,7 +35,7 @@ These channels are optional and provide additional features:
     - Adjust the position and tilt of the window covering using the `windowCovering` channel.
 
 2. **Energy Management**:
-    - Monitor power usage and energy consumption with the `electricalPower` and `electricalEnergy` channels.
+    - Monitor power usage and energy consumption with the `electrical_power` and `electrical_energy` channels.
 
 3. **Battery Monitoring**:
     - For battery-powered window coverings, track battery status using the `battery` channel.
@@ -45,12 +45,12 @@ These channels are optional and provide additional features:
 ## Developer Notes {id="developer-notes"}
 
 1. **Channel Implementation**:
-    - The `deviceInformation` and `windowCovering` channels are required for basic operation.
+    - The `device_information` and `windowCovering` channels are required for basic operation.
     - Include optional channels for advanced features like energy tracking or battery monitoring.
 
 2. **Integration**:
     - Ensure seamless operation in automated home systems by implementing required and relevant optional channels.
 
 3. **Extensibility**:
-    - Add power monitoring features using `electricalEnergy` and `electricalPower` as needed.
+    - Add power monitoring features using `electrical_energy` and `electrical_power` as needed.
     - For battery-operated systems, the `battery` channel provides critical status information.

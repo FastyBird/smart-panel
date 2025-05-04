@@ -38,8 +38,8 @@ Indicates the current density of particulate matter:
 Specifies the type of particulate matter being measured:
  
 - Possible values:
-    - `pm2_5`: Measures particulate matter smaller than 2.5 micrometers.
-    - `pm10`: Measures particulate matter smaller than 10 micrometers.
+    - `pm2_5`: Measures particulate matter smaller than 2.5 µm.
+    - `pm10`: Measures particulate matter smaller than 10 µm.
 - Determines how the `density` property is interpreted.
 
 ---

@@ -11,11 +11,11 @@ and energy tracking.
 
 These channels are mandatory for the functionality of the pump device:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `flow`              | Monitors the rate of fluid flow through the pump.                              | No           | [See details](FlowChannel.md)              |
-| `switcher`          | Controls the on/off state of the pump.                                         | No           | [See details](SwitcherChannel.md)          |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `flow`               | Monitors the rate of fluid flow through the pump.                              | No           | [See details](FlowChannel.md)              |
+| `switcher`           | Controls the on/off state of the pump.                                         | No           | [See details](SwitcherChannel.md)          |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -23,12 +23,12 @@ These channels are mandatory for the functionality of the pump device:
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                                  | **Multiple** | **Details**                               |
-|--------------------|--------------------------------------------------|--------------|-------------------------------------------|
-| `electricalEnergy` | Tracks total energy consumption over time.       | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information.      | No           | [See details](ElectricalPowerChannel.md)  |
-| `leak`             | Detects leaks in the pump or connected systems.  | No           | [See details](LeakChannel.md)             |
-| `pressure`         | Monitors the pressure of the fluid being pumped. | No           | [See details](PressureChannel.md)         |
+| **Channel**         | **Description**                                  | **Multiple** | **Details**                               |
+|---------------------|--------------------------------------------------|--------------|-------------------------------------------|
+| `electrical_energy` | Tracks total energy consumption over time.       | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information.      | No           | [See details](ElectricalPowerChannel.md)  |
+| `leak`              | Detects leaks in the pump or connected systems.  | No           | [See details](LeakChannel.md)             |
+| `pressure`          | Monitors the pressure of the fluid being pumped. | No           | [See details](PressureChannel.md)         |
 
 ---
 
@@ -39,14 +39,14 @@ These channels are optional and provide additional features:
     - Monitor the rate of fluid flow via the `flow` channel.
 
 2. **Energy and Pressure Monitoring**:
-    - Track real-time power usage and energy consumption with the `electricalPower` and `electricalEnergy` channels.
+    - Track real-time power usage and energy consumption with the `electrical_power` and `electrical_energy` channels.
     - Ensure proper pump operation by monitoring the fluid pressure through the `pressure` channel.
 
 3. **Safety and Leak Detection**:
     - Use the `leak` channel to detect potential leaks in the system and take corrective action.
 
 4. **Device Metadata**:
-    - Access pump-specific information such as manufacturer, model, and firmware through the `deviceInformation` channel.
+    - Access pump-specific information such as manufacturer, model, and firmware through the `device_information` channel.
 
 ---
 
@@ -58,7 +58,7 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
     - Ensure the `switcher` channel directly controls the pump's operation.
-    - Include the `deviceInformation` channel for proper identification and metadata access.
+    - Include the `device_information` channel for proper identification and metadata access.
 
 3. **Extensibility**:
-    - Optional channels like `leak`, `pressure`, `electricalEnergy`, and `electricalPower` can enhance the device's utility for monitoring and safety.
+    - Optional channels like `leak`, `pressure`, `electrical_energy`, and `electrical_power` can enhance the device's utility for monitoring and safety.

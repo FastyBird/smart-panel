@@ -11,11 +11,11 @@ monitored for its audio and display functionality.
 
 These channels are mandatory for the functionality of the television device:
 
-| **Channel**         | **Description**                                                                         | **Multiple** | **Details**                                |
-|---------------------|-----------------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `speaker`           | Controls and monitors the audio output of the television.                               | No           | [See details](SpeakerChannel.md)           |
-| `television`        | Manages television-specific functionalities, such as input selection and state control. | No           | [See details](TelevisionChannel.md)        |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware.          | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                         | **Multiple** | **Details**                                |
+|----------------------|-----------------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `speaker`            | Controls and monitors the audio output of the television.                               | No           | [See details](SpeakerChannel.md)           |
+| `television`         | Manages television-specific functionalities, such as input selection and state control. | No           | [See details](TelevisionChannel.md)        |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware.          | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -34,14 +34,14 @@ This device does not currently support optional channels.
     - Switch input sources or control playback states via the `television` channel.
 
 3. **Device Metadata**:
-    - Retrieve details about the device, including model and firmware information, using the `deviceInformation` channel.
+    - Retrieve details about the device, including model and firmware information, using the `device_information` channel.
 
 ---
 
 ## Developer Notes {id="developer-notes"}
 
 1. **Channel Implementation**:
-    - Ensure the `deviceInformation`, `speaker`, and `television` channels are implemented for complete functionality.
+    - Ensure the `device_information`, `speaker`, and `television` channels are implemented for complete functionality.
 
 2. **Integration**:
     - Map the `speaker` channel to the TV's audio system and the `television` channel to input and state management.

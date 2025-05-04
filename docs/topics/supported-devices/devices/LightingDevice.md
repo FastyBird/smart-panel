@@ -10,10 +10,10 @@ The **Lighting** device represents a lighting system designed to provide illumin
 
 These channels are mandatory for the functionality of the lighting device:
 
-| **Channel**         | **Description**                                                                       | **Multiple** | **Details**                                |
-|---------------------|---------------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `light`             | Controls the lighting functionality, including power, brightness, and color settings. | Yes          | [See details](LightChannel.md)             |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware.        | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                       | **Multiple** | **Details**                                |
+|----------------------|---------------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `light`              | Controls the lighting functionality, including power, brightness, and color settings. | Yes          | [See details](LightChannel.md)             |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware.        | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -21,11 +21,11 @@ These channels are mandatory for the functionality of the lighting device:
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                               | **Multiple** | **Details**                               |
-|--------------------|-----------------------------------------------|--------------|-------------------------------------------|
-| `electricalEnergy` | Tracks total energy consumption over time.    | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information.   | No           | [See details](ElectricalPowerChannel.md)  |
-| `illuminance`      | Measures the ambient light level in the room. | No           | [See details](IlluminanceChannel.md)      |
+| **Channel**         | **Description**                               | **Multiple** | **Details**                               |
+|---------------------|-----------------------------------------------|--------------|-------------------------------------------|
+| `electrical_energy` | Tracks total energy consumption over time.    | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information.   | No           | [See details](ElectricalPowerChannel.md)  |
+| `illuminance`       | Measures the ambient light level in the room. | No           | [See details](IlluminanceChannel.md)      |
 
 ---
 
@@ -39,8 +39,8 @@ These channels are optional and provide additional features:
    - Measure ambient light levels using the `illuminance` channel for adaptive lighting.
 
 3. **Energy Management**:
-   - Track energy usage in real-time with the `electricalPower` channel.
-   - Monitor long-term energy consumption with the `electricalEnergy` channel.
+   - Track energy usage in real-time with the `electrical_power` channel.
+   - Monitor long-term energy consumption with the `electrical_energy` channel.
 
 ---
 
@@ -52,10 +52,10 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
    - Map the `light` channel to the physical or logical controls for the lighting device.
-   - Include the `deviceInformation` channel for proper device identification.
+   - Include the `device_information` channel for proper device identification.
 
 3. **Energy Tracking**:
-   - Use `electricalEnergy` and `electricalPower` channels to offer energy usage insights.
+   - Use `electrical_energy` and `electrical_power` channels to offer energy usage insights.
 
 4. **Extensibility**:
    - Add the `illuminance` channel for adaptive lighting based on room brightness.

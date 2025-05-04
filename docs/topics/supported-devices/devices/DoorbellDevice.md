@@ -11,10 +11,10 @@ monitoring features for enhanced home security.
 
 These channels are mandatory for the functionality of the doorbell:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `doorbell`          | Detects doorbell press events and manages related notifications.               | No           | [See details](DoorbellChannel.md)          |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `doorbell`           | Detects doorbell press events and manages related notifications.               | No           | [See details](DoorbellChannel.md)          |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -62,7 +62,7 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
     - Ensure proper mapping of channels to the doorbell's physical or logical components.
-    - The `deviceInformation` channel is mandatory for device identification.
+    - The `device_information` channel is mandatory for device identification.
 
 3. **Extensibility**:
     - Add the `camera` channel for video capabilities.

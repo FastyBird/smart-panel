@@ -11,11 +11,11 @@ and video content.
 
 These channels are mandatory for the functionality of the media device:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `mediaInput`        | Manages the input sources for audio or video playback.                         | No           | [See details](MediaInputChannel.md)        |
-| `mediaPlayback`     | Controls playback actions such as play, pause, stop, and seek.                 | No           | [See details](MediaPlaybackChannel.md)     |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `media_input`        | Manages the input sources for audio or video playback.                         | No           | [See details](MediaInputChannel.md)        |
+| `media_playback`     | Controls playback actions such as play, pause, stop, and seek.                 | No           | [See details](MediaPlaybackChannel.md)     |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -41,7 +41,7 @@ These channels are optional and provide additional features:
     - Manage speaker settings and output volume via the `speaker` channel.
 
 3. **Device Metadata**:
-    - Access device-specific information such as model and firmware using the `deviceInformation` channel.
+    - Access device-specific information such as model and firmware using the `device_information` channel.
 
 ---
 
@@ -53,7 +53,7 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
     - Ensure the `mediaInput` and `mediaPlayback` channels are linked to the device's input and playback components.
-    - Include the `deviceInformation` channel for proper device identification.
+    - Include the `device_information` channel for proper device identification.
 
 3. **Extensibility**:
     - Optional channels like `microphone` and `speaker` can enhance the media device's utility for communication or high-quality audio output.

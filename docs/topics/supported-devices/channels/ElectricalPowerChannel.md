@@ -88,10 +88,3 @@ Represents the fault state of the sensor:
 
 - `0`: No fault detected.
 - Non-zero: A fault has been detected, potentially affecting functionality.
-
-#### `tampered`
-
-Indicates whether the channel has been tampered with:
-
-- `true`: The channel has been tampered with.
-- `false`: The channel is in a normal, non-tampered state.
