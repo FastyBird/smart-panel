@@ -223,7 +223,7 @@
       },
       "fan": {
         "category": "fan",
-        "required": true,
+        "required": false,
         "multiple": false,
         "description": {
           "en": "Controls fan devices, including speed, oscillation, and modes for air circulation."
@@ -231,7 +231,7 @@
       },
       "leak": {
         "category": "leak",
-        "required": true,
+        "required": false,
         "multiple": false,
         "description": {
           "en": "Identifies the presence of water or other liquids to detect leaks and prevent damage."
@@ -239,7 +239,7 @@
       },
       "temperature": {
         "category": "temperature",
-        "required": true,
+        "required": false,
         "multiple": false,
         "description": {
           "en": "Measures the current temperature in an environment, reported in degrees Celsius."
