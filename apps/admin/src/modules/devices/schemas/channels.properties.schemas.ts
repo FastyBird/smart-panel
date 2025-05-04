@@ -47,7 +47,10 @@ export const ChannelPropertyEditFormSchema = z.object({
 		.nullable()
 		.optional(),
 	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
-	step: z.number().nullable().optional(),
+	step: z
+		.union([z.string(), z.number()])
+		.transform((val) => (val === '' ? undefined : Number(val)))
+		.nullable(),
 	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	enumValues: z.array(z.string()),
 	minValue: z
