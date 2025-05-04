@@ -118,8 +118,8 @@
 				:prop="['haEntityId']"
 			>
 				<select-discovered-device-entity
-					:device-id="haDeviceId"
 					v-model="model.haEntityId"
+					:device-id="haDeviceId"
 				/>
 			</el-form-item>
 		</template>
@@ -133,8 +133,6 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules, vLoading } from 'element-plus';
 
 import { FormResult, type FormResultType, type IDevice, useChannelAddForm, useDevices } from '../../../modules/devices';
-import { useDiscoveredDevicesOptions } from '../composables/useDiscoveredDevicesOptions';
-import { useEntitiesOptions } from '../composables/useEntitiesOptions';
 import type { IHomeAssistantChannelAddForm } from '../schemas/channels.types';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';
 

@@ -120,8 +120,8 @@
 				:prop="['haEntityId']"
 			>
 				<select-discovered-device-entity
-					:device-id="haDeviceId"
 					v-model="model.haEntityId"
+					:device-id="haDeviceId"
 					disabled
 				/>
 			</el-form-item>

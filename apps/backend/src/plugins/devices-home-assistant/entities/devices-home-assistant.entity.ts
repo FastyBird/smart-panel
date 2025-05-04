@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsOptional, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 import { ChildEntity, Column, Index } from 'typeorm';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';

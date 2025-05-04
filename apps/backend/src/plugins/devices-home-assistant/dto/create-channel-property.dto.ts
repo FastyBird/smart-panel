@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 import { CreateChannelPropertyDto } from '../../../modules/devices/dto/create-channel-property.dto';
 import type { components } from '../../../openapi';

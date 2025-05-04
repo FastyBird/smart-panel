@@ -241,8 +241,8 @@
 				:prop="['haAttribute']"
 			>
 				<select-entity-attribute
-					:entity-id="haEntityId"
 					v-model="model.haAttribute"
+					:entity-id="haEntityId"
 					disabled
 				/>
 			</el-form-item>
