@@ -269,13 +269,6 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			});
 
 			if (!parsedNewItem.success) {
-				console.log({
-					...payload.data,
-					id: parsedPayload.data.id,
-					channel: parsedPayload.data.channelId,
-					draft: parsedPayload.data.draft,
-					createdAt: new Date(),
-				});
 				console.error('Schema validation failed with:', parsedNewItem.error);
 
 				throw new DevicesValidationException('Failed to add channel property.');

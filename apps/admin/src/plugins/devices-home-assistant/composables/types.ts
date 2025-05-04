@@ -75,3 +75,18 @@ export interface IUseStatesDataSource {
 	sortDir: Ref<'ascending' | 'descending' | null>;
 	resetFilter: () => void;
 }
+
+export interface IUseDiscoveredDevicesOptions {
+	devicesOptions: ComputedRef<{ value: IHomeAssistantDiscoveredDevice['id']; label: IHomeAssistantDiscoveredDevice['name'] }[]>;
+	areLoading: ComputedRef<boolean>;
+}
+
+export interface IUseEntitiesOptions {
+	entitiesOptions: ComputedRef<{ value: IHomeAssistantState['entityId']; label: IHomeAssistantState['entityId'] | string }[]>;
+	areLoading: ComputedRef<boolean>;
+}
+
+export interface IUseAttributesOptions {
+	attributesOptions: ComputedRef<{ value: string; label: string }[]>;
+	isLoading: ComputedRef<boolean>;
+}

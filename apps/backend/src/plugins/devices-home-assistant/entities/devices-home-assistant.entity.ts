@@ -3,7 +3,11 @@ import { IsOptional, IsString } from 'class-validator';
 import { ChildEntity, Column, Index } from 'typeorm';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { DEVICES_HOME_ASSISTANT_TYPE, HomeAssistantDomain } from '../devices-home-assistant.constants';
+import {
+	DEVICES_HOME_ASSISTANT_TYPE,
+	HomeAssistantDomain,
+	MAIN_STATE_ENTITY_ATTRIBUTE,
+} from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
 @ChildEntity()
@@ -60,7 +64,6 @@ export class HomeAssistantChannelEntity extends ChannelEntity {
 @ChildEntity()
 export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	@Expose({ name: 'ha_attribute' })
-	@IsOptional()
 	@IsString({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
 	@Transform(
 		({ obj }: { obj: { ha_attribute?: string; haAttribute?: string } }) => obj.ha_attribute || obj.haAttribute,
@@ -69,7 +72,7 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 		},
 	)
 	@Column()
-	haAttribute: string | null = null;
+	haAttribute: string;
 
 	@Expose()
 	get type(): string {
@@ -77,7 +80,7 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	}
 
 	get isHaMainState(): boolean {
-		return this.haAttribute === null;
+		return this.haAttribute === MAIN_STATE_ENTITY_ATTRIBUTE;
 	}
 
 	toString(): string {

@@ -79,11 +79,20 @@
 			:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
 			:prop="['haDeviceId']"
 		>
-			<el-input
+			<el-select
 				v-model="model.haDeviceId"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
+				:loading="devicesOptionsLoading"
 				name="haDeviceId"
-			/>
+				filterable
+			>
+				<el-option
+					v-for="item in devicesOptions"
+					:key="item.value"
+					:label="item.label"
+					:value="item.value"
+				/>
+			</el-select>
 		</el-form-item>
 	</el-form>
 </template>
@@ -95,6 +104,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useDeviceAddForm } from '../../../modules/devices';
+import { useDiscoveredDevicesOptions } from '../composables/useDiscoveredDevicesOptions';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_TYPE } from '../devices-home-assistant.constants';
 import type { IHomeAssistantDeviceAddForm } from '../schemas/devices.types';
 
@@ -124,13 +134,12 @@ const { categoriesOptions, model, formEl, formChanged, submit, formResult } = us
 	type: DEVICES_HOME_ASSISTANT_PLUGIN_TYPE,
 });
 
+const { devicesOptions, areLoading: devicesOptionsLoading } = useDiscoveredDevicesOptions();
+
 const rules = reactive<FormRules<IHomeAssistantDeviceAddForm>>({
 	category: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
 	name: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
-	haDeviceId: [
-		{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.required'), trigger: 'change' },
-		{ type: 'url', message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.url'), trigger: 'change' },
-	],
+	haDeviceId: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.required'), trigger: 'change' }],
 });
 
 watch(

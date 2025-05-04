@@ -31,6 +31,135 @@
           "required": "Please select Home Assistant device"
         }
       }
+    },
+    "channels": {
+      "plugin": {
+        "title": "Channel plugin",
+        "placeholder": "Select channel plugin"
+      },
+      "device": {
+        "title": "Device",
+        "placeholder": "Channel device",
+        "description": "About device",
+        "validation": {
+          "required": "Please select channel device"
+        }
+      },
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Channel id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select channel category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel name",
+        "validation": {
+          "required": "Please fill in channel name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Channel description"
+      },
+      "haEntityId": {
+        "title": "Home Assistant device entity",
+        "placeholder": "Select Home Assistant device entity",
+        "validation": {
+          "required": "Please select Home Assistant device entity"
+        }
+      }
+    },
+    "channelsProperties": {
+      "channel": {
+        "title": "Channel",
+        "placeholder": "Channel property channel",
+        "description": "About channel",
+        "validation": {
+          "required": "Please select channel property channel"
+        }
+      },
+      "id": {
+        "title": "System identifier",
+        "placeholder": "Channel property id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel property category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select channel property category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel property name"
+      },
+      "permissions": {
+        "title": "Permissions",
+        "placeholder": "Channel property reading & writing permissions",
+        "validation": {
+          "required": "Please select channel property permissions"
+        }
+      },
+      "dataType": {
+        "title": "Data type",
+        "placeholder": "Channel property value data type",
+        "validation": {
+          "required": "Please select channel property data type"
+        }
+      },
+      "unit": {
+        "title": "Unit",
+        "placeholder": "Channel property unit"
+      },
+      "format": {
+        "title": {
+          "enum": "Enum values",
+          "min": "Minimum value",
+          "max": "Maximum value"
+        },
+        "placeholder": {
+          "enum": "List of allowed values",
+          "min": "Minimum allowed value",
+          "max": "Maximum allowed value"
+        },
+        "validation": {
+          "required": {
+            "enum": "Please fill in channel property list of values"
+          }
+        }
+      },
+      "invalid": {
+        "title": "Invalid value",
+        "placeholder": "Channel property invalid value"
+      },
+      "step": {
+        "title": "Step value",
+        "placeholder": "Channel property step value"
+      },
+      "haAttribute": {
+        "title": "Home Assistant entity attribute",
+        "placeholder": "Select Home Assistant entity attribute",
+        "validation": {
+          "required": "Please select Home Assistant entity attribute"
+        }
+      }
+    }
+  },
+  "misc": {
+    "options": {
+      "entities": {
+      },
+      "attributes": {
+        "mainState": "Entity main state attribute"
+      }
     }
   }
 }
