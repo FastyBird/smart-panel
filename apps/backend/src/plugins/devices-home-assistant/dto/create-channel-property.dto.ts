@@ -16,8 +16,7 @@ export class CreateHomeAssistantChannelPropertyDto
 	readonly type: 'home-assistant';
 
 	@Expose()
-	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
 	@IsString({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
-	ha_attribute: string | null = null;
+	ha_attribute: string;
 }

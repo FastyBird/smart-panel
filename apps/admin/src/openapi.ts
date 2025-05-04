@@ -5032,7 +5032,7 @@ export interface components {
              * @description A HA device entity attribute.
              * @example brightness
              */
-            ha_attribute: string | null;
+            ha_attribute: string;
         };
         /**
          * Create Home Assistant Channel Property
@@ -5043,7 +5043,7 @@ export interface components {
              * @description A HA device entity attribute.
              * @example brightness
              */
-            ha_attribute: string | null;
+            ha_attribute: string;
         };
         /**
          * Update Home Assistant Device Chanel

@@ -5,6 +5,7 @@
 		:data="props.items"
 		:default-sort="{ prop: props.sortBy, order: props.sortDir || 'ascending' }"
 		table-layout="fixed"
+		row-key="id"
 		class="flex-grow"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"

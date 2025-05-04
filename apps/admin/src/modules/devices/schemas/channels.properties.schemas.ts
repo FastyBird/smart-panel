@@ -17,11 +17,20 @@ export const ChannelPropertyAddFormSchema = z.object({
 	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
-	step: z.number().nullable(),
+	step: z
+		.union([z.string(), z.number()])
+		.transform((val) => (val === '' ? undefined : Number(val)))
+		.nullable(),
 	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	enumValues: z.array(z.string()),
-	minValue: z.number().optional(),
-	maxValue: z.number().optional(),
+	minValue: z
+		.union([z.string(), z.number()])
+		.transform((val) => (val === '' ? undefined : Number(val)))
+		.optional(),
+	maxValue: z
+		.union([z.string(), z.number()])
+		.transform((val) => (val === '' ? undefined : Number(val)))
+		.optional(),
 });
 
 export const ChannelPropertyEditFormSchema = z.object({
@@ -41,6 +50,12 @@ export const ChannelPropertyEditFormSchema = z.object({
 	step: z.number().nullable().optional(),
 	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	enumValues: z.array(z.string()),
-	minValue: z.number().optional(),
-	maxValue: z.number().optional(),
+	minValue: z
+		.union([z.string(), z.number()])
+		.transform((val) => (val === '' ? undefined : Number(val)))
+		.optional(),
+	maxValue: z
+		.union([z.string(), z.number()])
+		.transform((val) => (val === '' ? undefined : Number(val)))
+		.optional(),
 });

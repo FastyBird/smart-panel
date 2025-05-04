@@ -13538,8 +13538,7 @@
               "ha_attribute": {
                 "type": "string",
                 "description": "A HA device entity attribute.",
-                "example": "brightness",
-                "nullable": true
+                "example": "brightness"
               }
             }
           }
@@ -13562,8 +13561,7 @@
               "ha_attribute": {
                 "type": "string",
                 "description": "A HA device entity attribute.",
-                "example": "brightness",
-                "nullable": true
+                "example": "brightness"
               }
             }
           }

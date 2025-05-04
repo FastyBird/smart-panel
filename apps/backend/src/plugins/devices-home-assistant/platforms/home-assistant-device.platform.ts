@@ -77,7 +77,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		for (const channel of channels) {
 			const attributeProperties = channel.properties.filter(
 				(property): property is HomeAssistantChannelPropertyEntity =>
-					property instanceof HomeAssistantChannelPropertyEntity && property.haAttribute !== null,
+					property instanceof HomeAssistantChannelPropertyEntity && !property.isHaMainState,
 			);
 
 			const propsToUpdate = channel.properties.filter((prop) => prop.id in values);

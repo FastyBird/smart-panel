@@ -46,3 +46,5 @@ export enum HomeAssistantDomain {
 	WEATHER = 'weather',
 	ZONE = 'zone',
 }
+
+export const MAIN_STATE_ENTITY_ATTRIBUTE = 'fb.main_state';

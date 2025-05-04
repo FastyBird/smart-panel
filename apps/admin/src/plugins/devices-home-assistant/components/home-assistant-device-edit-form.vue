@@ -81,11 +81,21 @@
 			:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
 			:prop="['haDeviceId']"
 		>
-			<el-input
+			<el-select
 				v-model="model.haDeviceId"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.placeholder')"
+				:loading="devicesOptionsLoading"
 				name="haDeviceId"
-			/>
+				filterable
+				disabled
+			>
+				<el-option
+					v-for="item in devicesOptions"
+					:key="item.value"
+					:label="item.label"
+					:value="item.value"
+				/>
+			</el-select>
 		</el-form-item>
 	</el-form>
 </template>
@@ -97,6 +107,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useDeviceEditForm } from '../../../modules/devices';
+import { useDiscoveredDevicesOptions } from '../composables/useDiscoveredDevicesOptions';
 import type { IHomeAssistantDeviceEditForm } from '../schemas/devices.types';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';
 
@@ -125,12 +136,11 @@ const { categoriesOptions, model, formEl, formChanged, submit, formResult } = us
 	device: props.device as IHomeAssistantDevice,
 });
 
+const { devicesOptions, areLoading: devicesOptionsLoading } = useDiscoveredDevicesOptions();
+
 const rules = reactive<FormRules<IHomeAssistantDeviceEditForm>>({
 	name: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
-	haDeviceId: [
-		{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.required'), trigger: 'change' },
-		{ type: 'url', message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.url'), trigger: 'change' },
-	],
+	haDeviceId: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.validation.required'), trigger: 'change' }],
 });
 
 watch(
