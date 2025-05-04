@@ -44,6 +44,13 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
+vi.mock('../composables/useDiscoveredDevicesOptions', () => ({
+	useDiscoveredDevicesOptions: () => ({
+		devicesOptions: [],
+		areLoading: false,
+	}),
+}));
+
 describe('HomeAssistantDeviceEditForm', () => {
 	let wrapper: ReturnType<typeof mount>;
 

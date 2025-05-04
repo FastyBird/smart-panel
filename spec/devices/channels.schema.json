@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Channel property mapping schema",
+  "type": "object",
+  "patternProperties": {
+    "^[a-zA-Z0-9_]+$": {
+      "type": "object",
+      "required": [
+        "category",
+        "properties"
+      ],
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "description": {
+          "type": "object",
+          "properties": {
+            "en": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "en"
+          ],
+          "additionalProperties": false
+        },
+        "properties": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9_]+$": {
+              "type": "object",
+              "required": [
+                "category",
+                "required"
+              ],
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "description": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "en"
+                  ],
+                  "additionalProperties": false
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "ro",
+                      "rw"
+                    ]
+                  }
+                },
+                "data_type": {
+                  "type": "string",
+                  "enum": [
+                    "bool",
+                    "string",
+                    "enum",
+                    "float",
+                    "uchar",
+                    "ushort",
+                    "uint"
+                  ]
+                },
+                "unit": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "format": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                },
+                "invalid": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "step": {
+                  "type": [
+                    "number",
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

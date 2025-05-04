@@ -97,7 +97,10 @@ export const ChannelsPropertiesAddActionPayloadSchema = z.object({
 		unit: z.string().nullable(),
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 		invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
-		step: z.number().nullable(),
+		step: z
+			.union([z.string(), z.number()])
+			.transform((val) => (val === '' ? undefined : Number(val)))
+			.nullable(),
 		value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	}),
 });
@@ -115,7 +118,10 @@ export const ChannelsPropertiesEditActionPayloadSchema = z.object({
 			.nullable()
 			.optional(),
 		invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
-		step: z.number().nullable().optional(),
+		step: z
+			.union([z.string(), z.number()])
+			.transform((val) => (val === '' ? undefined : Number(val)))
+			.nullable(),
 		value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	}),
 });

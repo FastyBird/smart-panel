@@ -1,0 +1,71 @@
+{
+  "type": "object",
+  "patternProperties": {
+    "^[a-z0-9_]+$": {
+      "type": "object",
+      "required": [
+        "category",
+        "description",
+        "channels"
+      ],
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "description": {
+          "type": "object",
+          "properties": {
+            "en": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "en"
+          ],
+          "additionalProperties": false
+        },
+        "channels": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z0-9_]+$": {
+              "type": "object",
+              "required": [
+                "category",
+                "required",
+                "multiple",
+                "description"
+              ],
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "multiple": {
+                  "type": "boolean"
+                },
+                "description": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "en"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

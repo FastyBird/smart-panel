@@ -11,11 +11,11 @@ and related environmental factors.
 
 These channels are mandatory for the functionality of the thermostat device:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `temperature`       | Monitors and controls the target and current temperature.                      | No           | [See details](TemperatureChannel.md)       |
-| `thermostat`        | Manages the thermostat's operational modes and settings.                       | No           | [See details](ThermostatChannel.md)        |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `temperature`        | Monitors and controls the target and current temperature.                      | No           | [See details](TemperatureChannel.md)       |
+| `thermostat`         | Manages the thermostat's operational modes and settings.                       | No           | [See details](ThermostatChannel.md)        |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -23,14 +23,14 @@ These channels are mandatory for the functionality of the thermostat device:
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                                                                                    | **Multiple** | **Details**                               |
-|--------------------|----------------------------------------------------------------------------------------------------|--------------|-------------------------------------------|
-| `contact`          | Detects the state of doors or windows to improve energy efficiency by pausing operation when open. | No           | [See details](ContactChannel.md)          |
-| `cooler`           | Adds cooling functionality to the thermostat.                                                      | No           | [See details](CoolerChannel.md)           |
-| `heater`           | Adds heating functionality to the thermostat.                                                      | No           | [See details](HeaterChannel.md)           |
-| `humidity`         | Monitors and displays the ambient humidity level.                                                  | No           | [See details](HumidityChannel.md)         |
-| `electricalEnergy` | Tracks total energy consumption over time.                                                         | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information.                                                        | No           | [See details](ElectricalPowerChannel.md)  |
+| **Channel**         | **Description**                                                                                    | **Multiple** | **Details**                               |
+|---------------------|----------------------------------------------------------------------------------------------------|--------------|-------------------------------------------|
+| `contact`           | Detects the state of doors or windows to improve energy efficiency by pausing operation when open. | No           | [See details](ContactChannel.md)          |
+| `cooler`            | Adds cooling functionality to the thermostat.                                                      | No           | [See details](CoolerChannel.md)           |
+| `heater`            | Adds heating functionality to the thermostat.                                                      | No           | [See details](HeaterChannel.md)           |
+| `humidity`          | Monitors and displays the ambient humidity level.                                                  | No           | [See details](HumidityChannel.md)         |
+| `electrical_energy` | Tracks total energy consumption over time.                                                         | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information.                                                        | No           | [See details](ElectricalPowerChannel.md)  |
 
 ---
 
@@ -52,7 +52,7 @@ These channels are optional and provide additional features:
 ## Developer Notes {id="developer-notes"}
 
 1. **Channel Implementation**:
-    - Ensure the `deviceInformation`, `temperature`, and `thermostat` channels are implemented for basic thermostat functionality.
+    - Ensure the `device_information`, `temperature`, and `thermostat` channels are implemented for basic thermostat functionality.
 
 2. **Integration**:
     - The `contact` channel can be used to improve energy efficiency by integrating door or window state detection.

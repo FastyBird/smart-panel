@@ -52,7 +52,7 @@
     "test:cov:watch": "vitest --watch --coverage",
     "test:e2e": "playwright test",
     "type-check": "vue-tsc --build",
-    "generate:openapi": "openapi-typescript ../../spec/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false"
+    "generate:openapi": "openapi-typescript ../../spec/api/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false"
   },
   "dependencies": {
     "@iconify/json": "^2.2.327",
