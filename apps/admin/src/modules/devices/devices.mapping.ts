@@ -324,7 +324,7 @@ export const channelChannelsPropertiesSpecificationMappers: Record<
 		optional: DevicesModuleChannelPropertyCategory[];
 	}
 > = Object.fromEntries(
-	Object.entries<ChannelSpec>(channelsMappingSchema as unknown as Record<DevicesModuleDeviceCategory, ChannelSpec>).map(
+	Object.entries<ChannelSpec>(channelsMappingSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>).map(
 		([channelCategory, channelSpec]) => {
 			const required = Object.values<ChannelProperty>(channelSpec.properties)
 				.filter((prop) => prop.required)
@@ -338,3 +338,16 @@ export const channelChannelsPropertiesSpecificationMappers: Record<
 		}
 	)
 );
+
+export function getChannelPropertySpecification(
+	channelCategory: DevicesModuleChannelCategory,
+	propertyCategory: DevicesModuleChannelPropertyCategory
+): ChannelProperty | undefined {
+	const channelSpec = (channelsMappingSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>)[channelCategory];
+
+	if (!channelSpec) {
+		return undefined;
+	}
+
+	return Object.values<ChannelProperty>(channelSpec.properties).find((prop) => prop.category === propertyCategory);
+}

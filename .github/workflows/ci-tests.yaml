@@ -225,3 +225,30 @@ jobs:
 
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
+
+  devices-schemas:
+    name: "Devices mapping analysis"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "20"
+
+      - name: "Install ajv-cli"
+        run: "npm install -g ajv-cli"
+
+      - name: "Validate devices.json"
+        run: "ajv validate -s spec/devices/devices.schema.json -d spec/devices/devices.json"
+
+      - name: "Validate channels.json"
+        run: "ajv validate -s spec/devices/channels.schema.json -d spec/devices/channels.json"
