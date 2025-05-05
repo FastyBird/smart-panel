@@ -11,7 +11,51 @@
       ],
       "properties": {
         "category": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "generic",
+            "air_particulate",
+            "alarm",
+            "battery",
+            "camera",
+            "carbon_dioxide",
+            "carbon_monoxide",
+            "contact",
+            "cooler",
+            "device_information",
+            "door",
+            "doorbell",
+            "electrical_energy",
+            "electrical_power",
+            "fan",
+            "flow",
+            "heater",
+            "humidity",
+            "illuminance",
+            "leak",
+            "light",
+            "lock",
+            "media_input",
+            "media_playback",
+            "microphone",
+            "motion",
+            "nitrogen_dioxide",
+            "occupancy",
+            "outlet",
+            "ozone",
+            "pressure",
+            "robot_vacuum",
+            "smoke",
+            "speaker",
+            "sulphur_dioxide",
+            "switcher",
+            "television",
+            "temperature",
+            "thermostat",
+            "valve",
+            "volatile_organic_compounds",
+            "window_covering"
+          ]
         },
         "description": {
           "type": "object",
@@ -36,7 +80,70 @@
               ],
               "properties": {
                 "category": {
-                  "type": "string"
+                  "type": "string",
+                  "enum": [
+                    "generic",
+                    "active",
+                    "angle",
+                    "brightness",
+                    "color_blue",
+                    "color_green",
+                    "color_red",
+                    "color_temperature",
+                    "color_white",
+                    "connection_type",
+                    "consumption",
+                    "current",
+                    "density",
+                    "detected",
+                    "direction",
+                    "distance",
+                    "duration",
+                    "event",
+                    "fault",
+                    "firmware_revision",
+                    "frequency",
+                    "hardware_revision",
+                    "hue",
+                    "humidity",
+                    "in_use",
+                    "infrared",
+                    "input_source",
+                    "level",
+                    "link_quality",
+                    "locked",
+                    "manufacturer",
+                    "measured",
+                    "model",
+                    "mode",
+                    "obstruction",
+                    "on",
+                    "over_current",
+                    "over_voltage",
+                    "pan",
+                    "peak_level",
+                    "percentage",
+                    "position",
+                    "power",
+                    "rate",
+                    "remaining",
+                    "remote_key",
+                    "saturation",
+                    "serial_number",
+                    "source",
+                    "speed",
+                    "status",
+                    "swing",
+                    "tampered",
+                    "temperature",
+                    "tilt",
+                    "track",
+                    "type",
+                    "units",
+                    "voltage",
+                    "volume",
+                    "zoom"
+                  ]
                 },
                 "required": {
                   "type": "boolean"
@@ -59,61 +166,93 @@
                     "type": "string",
                     "enum": [
                       "ro",
-                      "rw"
+                      "rw",
+                      "wo",
+                      "ev"
                     ]
                   }
                 },
                 "data_type": {
                   "type": "string",
                   "enum": [
+                    "char",
+                    "uchar",
+                    "short",
+                    "ushort",
+                    "int",
+                    "uint",
+                    "float",
                     "bool",
                     "string",
                     "enum",
-                    "float",
-                    "uchar",
-                    "ushort",
-                    "uint"
+                    "unknown"
                   ]
                 },
                 "unit": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ],
+                  "default": null
                 },
                 "format": {
-                  "type": [
-                    "array",
-                    "null"
-                  ],
-                  "items": {
-                    "anyOf": [
-                      {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "array",
+                      "uniqueItems": true,
+                      "items": {
                         "type": "string"
-                      },
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "integer"
                       }
-                    ]
-                  }
+                    },
+                    {
+                      "type": "array",
+                      "uniqueItems": true,
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    }
+                  ]
                 },
                 "invalid": {
-                  "type": [
-                    "string",
-                    "number",
-                    "boolean",
-                    "null"
-                  ]
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "default": null
                 },
                 "step": {
-                  "type": [
-                    "number",
-                    "integer",
-                    "null"
-                  ]
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "default": null
                 }
               },
               "additionalProperties": false
