@@ -90,8 +90,8 @@
 		</el-form-item>
 
 		<channel-property-form-permissions
-			v-model="model.permissions"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-permissions`"
+			v-model="model.permissions"
 			:permissions-options="permissionsOptions"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
 			:property-category="model.category"
@@ -99,8 +99,8 @@
 		/>
 
 		<channel-property-form-data-type
-			v-model="model.dataType"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-dataType`"
+			v-model="model.dataType"
 			:data-types-options="dataTypesOptions"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
 			:property-category="model.category"
@@ -108,8 +108,8 @@
 		/>
 
 		<channel-property-form-unit
-			v-model="model.unit"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-unit`"
+			v-model="model.unit"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
 			:property-category="model.category"
 		/>
@@ -126,24 +126,24 @@
 					DevicesModuleChannelPropertyData_type.float,
 				].includes(model.dataType)
 			"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-min-max`"
 			v-model:min-value="model.minValue"
 			v-model:max-value="model.maxValue"
-			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-min-max`"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
 			:property-category="model.category"
 		/>
 
 		<channel-property-form-enum
 			v-if="[DevicesModuleChannelPropertyData_type.enum].includes(model.dataType)"
-			v-model="model.enumValues"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-enum`"
+			v-model="model.enumValues"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
 			:property-category="model.category"
 		/>
 
 		<channel-property-form-invalid
-			v-model="model.invalid"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-invalid`"
+			v-model="model.invalid"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
 			:property-category="model.category"
 		/>
@@ -160,8 +160,8 @@
 					DevicesModuleChannelPropertyData_type.float,
 				].includes(model.dataType)
 			"
-			v-model="model.step"
 			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-step`"
+			v-model="model.step"
 			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
 			:property-category="model.category"
 		/>
@@ -217,7 +217,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputTag, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
 
 import { FormResult, type FormResultType, useChannel, useChannelPropertyEditForm } from '../../../modules/devices';
 import ChannelPropertyFormDataType from '../../../modules/devices/components/channels/channel-property-form-data-type.vue';

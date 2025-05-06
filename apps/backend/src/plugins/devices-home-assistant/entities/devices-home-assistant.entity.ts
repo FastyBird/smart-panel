@@ -3,11 +3,7 @@ import { IsString } from 'class-validator';
 import { ChildEntity, Column, Index } from 'typeorm';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import {
-	DEVICES_HOME_ASSISTANT_TYPE,
-	HomeAssistantDomain,
-	MAIN_STATE_ENTITY_ATTRIBUTE,
-} from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE, EntityAttribute, HomeAssistantDomain } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
 @ChildEntity()
@@ -80,7 +76,7 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	}
 
 	get isHaMainState(): boolean {
-		return this.haAttribute === MAIN_STATE_ENTITY_ATTRIBUTE;
+		return (this.haAttribute as EntityAttribute) === EntityAttribute.MAIN_STATE;
 	}
 
 	toString(): string {

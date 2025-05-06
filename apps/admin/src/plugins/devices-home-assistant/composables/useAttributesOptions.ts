@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 
 import { orderBy } from 'natural-orderby';
 
-import { MAIN_STATE_ENTITY_ATTRIBUTE } from '../devices-home-assistant.constants';
+import { EntityAttribute } from '../devices-home-assistant.constants';
 import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
 
 import type { IUseAttributesOptions } from './types';
@@ -26,7 +26,7 @@ export const useAttributesOptions = ({ entityId }: IUseAttributesOptionsProps): 
 		const options = orderBy(
 			attributeEntries.map(([key]) => ({
 				value: key,
-				label: key,
+				label: `HA: ${key}`,
 			})),
 			['label'],
 			['asc']
@@ -34,8 +34,12 @@ export const useAttributesOptions = ({ entityId }: IUseAttributesOptionsProps): 
 
 		return [
 			{
-				value: MAIN_STATE_ENTITY_ATTRIBUTE,
+				value: EntityAttribute.MAIN_STATE,
 				label: t('devicesHomeAssistantPlugin.misc.options.attributes.mainState'),
+			},
+			{
+				value: EntityAttribute.VIRTUAL,
+				label: t('devicesHomeAssistantPlugin.misc.options.attributes.virtual'),
 			},
 			...options,
 		];

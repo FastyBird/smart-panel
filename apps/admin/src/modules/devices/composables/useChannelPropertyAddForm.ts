@@ -2,7 +2,7 @@ import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
-import { camelCase, cloneDeep, isEqual } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import {
