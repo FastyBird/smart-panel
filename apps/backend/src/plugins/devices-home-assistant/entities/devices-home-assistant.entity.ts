@@ -76,7 +76,7 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	}
 
 	get isHaMainState(): boolean {
-		return this.haAttribute === EntityAttribute.MAIN_STATE;
+		return (this.haAttribute as EntityAttribute) === EntityAttribute.MAIN_STATE;
 	}
 
 	toString(): string {
