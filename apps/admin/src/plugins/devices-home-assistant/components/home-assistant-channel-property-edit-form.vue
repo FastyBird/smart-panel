@@ -89,67 +89,32 @@
 			</el-select>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.permissions.title')"
-			:prop="['permissions']"
-		>
-			<el-select
-				v-model="model.permissions"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.permissions.placeholder')"
-				name="permissions"
-				multiple
-				readonly
-				disabled
-			>
-				<el-option
-					v-for="item in permissionsOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
+		<channel-property-form-permissions
+			v-model="model.permissions"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-permissions`"
+			:permissions-options="permissionsOptions"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+			disabled
+		/>
 
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.dataType.title')"
-			:prop="['dataType']"
-		>
-			<el-select
-				v-model="model.dataType"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.dataType.placeholder')"
-				name="dataType"
-				readonly
-				disabled
-			>
-				<el-option
-					v-for="item in dataTypesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
+		<channel-property-form-data-type
+			v-model="model.dataType"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-dataType`"
+			:data-types-options="dataTypesOptions"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+			disabled
+		/>
 
-		<el-alert
-			type="info"
-			:closable="false"
-		>
-			{{ t(`devicesModule.texts.channelsProperties.dataTypes.${props.property.dataType}`) }}
-		</el-alert>
+		<channel-property-form-unit
+			v-model="model.unit"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-unit`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
 
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.unit.title')"
-			:prop="['unit']"
-			class="mt-2"
-		>
-			<el-input
-				v-model="model.unit"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.unit.placeholder')"
-				name="unit"
-			/>
-		</el-form-item>
-
-		<div
+		<channel-property-form-min-max
 			v-if="
 				[
 					DevicesModuleChannelPropertyData_type.char,
@@ -159,59 +124,31 @@
 					DevicesModuleChannelPropertyData_type.int,
 					DevicesModuleChannelPropertyData_type.uint,
 					DevicesModuleChannelPropertyData_type.float,
-				].includes(props.property.dataType)
+				].includes(model.dataType)
 			"
-			class="flex flex-row gap-4"
-		>
-			<el-form-item
-				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.format.title.min')"
-				:prop="['format']"
-				class="grow-1"
-			>
-				<el-input
-					v-model="model.minValue"
-					:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.format.placeholder.min')"
-					name="format"
-				/>
-			</el-form-item>
+			v-model:min-value="model.minValue"
+			v-model:max-value="model.maxValue"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-min-max`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
 
-			<el-form-item
-				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.format.title.max')"
-				:prop="['format']"
-				class="grow-1"
-			>
-				<el-input
-					v-model="model.maxValue"
-					:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.format.placeholder.max')"
-					name="format"
-				/>
-			</el-form-item>
-		</div>
+		<channel-property-form-enum
+			v-if="[DevicesModuleChannelPropertyData_type.enum].includes(model.dataType)"
+			v-model="model.enumValues"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-enum`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
 
-		<el-form-item
-			v-if="[DevicesModuleChannelPropertyData_type.enum].includes(props.property.dataType)"
-			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.format.title.enum')"
-			:prop="['format']"
-		>
-			<el-input-tag
-				v-model="model.enumValues"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.format.placeholder.enum')"
-				name="format"
-			/>
-		</el-form-item>
+		<channel-property-form-invalid
+			v-model="model.invalid"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-invalid`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
 
-		<el-form-item
-			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.invalid.title')"
-			:prop="['invalid']"
-		>
-			<el-input
-				v-model="model.invalid as string | number | null"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.invalid.placeholder')"
-				name="invalid"
-			/>
-		</el-form-item>
-
-		<el-form-item
+		<channel-property-form-step
 			v-if="
 				[
 					DevicesModuleChannelPropertyData_type.char,
@@ -221,17 +158,13 @@
 					DevicesModuleChannelPropertyData_type.int,
 					DevicesModuleChannelPropertyData_type.uint,
 					DevicesModuleChannelPropertyData_type.float,
-				].includes(props.property.dataType)
+				].includes(model.dataType)
 			"
-			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.step.title')"
-			:prop="['step']"
-		>
-			<el-input
-				v-model="model.step"
-				:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.step.placeholder')"
-				name="step"
-			/>
-		</el-form-item>
+			v-model="model.step"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-step`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
 
 		<template v-if="haEntityId">
 			<el-divider />
@@ -247,17 +180,54 @@
 				/>
 			</el-form-item>
 		</template>
+
+		<el-divider />
+
+		<el-form-item
+			:label="t('devicesModule.fields.channelsProperties.enterValue.title')"
+			label-position="left"
+		>
+			<el-switch v-model="enterValue" />
+		</el-form-item>
+
+		<el-alert
+			v-if="enterValue"
+			type="warning"
+			:description="t('devicesModule.texts.channelsProperties.editValue')"
+			:closable="false"
+			show-icon
+		/>
+
+		<el-form-item
+			v-if="enterValue"
+			:label="t('devicesModule.fields.channelsProperties.value.title')"
+			:prop="['value']"
+			class="mt-2"
+		>
+			<el-input
+				v-model="model.value as string"
+				:placeholder="t('devicesModule.fields.channelsProperties.value.placeholder')"
+				name="value"
+			/>
+		</el-form-item>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputTag, ElOption, ElSelect, vLoading } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputTag, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
 
 import { FormResult, type FormResultType, useChannel, useChannelPropertyEditForm } from '../../../modules/devices';
-import { DevicesModuleChannelPropertyData_type } from '../../../openapi';
+import ChannelPropertyFormDataType from '../../../modules/devices/components/channels/channel-property-form-data-type.vue';
+import ChannelPropertyFormEnum from '../../../modules/devices/components/channels/channel-property-form-enum.vue';
+import ChannelPropertyFormInvalid from '../../../modules/devices/components/channels/channel-property-form-invalid.vue';
+import ChannelPropertyFormMinMax from '../../../modules/devices/components/channels/channel-property-form-min-max.vue';
+import ChannelPropertyFormPermissions from '../../../modules/devices/components/channels/channel-property-form-permissions.vue';
+import ChannelPropertyFormStep from '../../../modules/devices/components/channels/channel-property-form-step.vue';
+import ChannelPropertyFormUnit from '../../../modules/devices/components/channels/channel-property-form-unit.vue';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
 import type { IHomeAssistantChannelPropertyEditForm } from '../schemas/channels.properties.types';
 import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
 
@@ -286,6 +256,8 @@ const { t } = useI18n();
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
 	useChannelPropertyEditForm<IHomeAssistantChannelPropertyEditForm>({ property: props.property });
 const { channel } = useChannel({ id: props.property.channel });
+
+const enterValue = ref<boolean>(false);
 
 const haEntityId = computed<IHomeAssistantState['entityId'] | undefined>((): IHomeAssistantState['entityId'] | undefined => {
 	return channel.value && 'haEntityId' in channel.value && typeof channel.value.haEntityId === 'string' ? channel.value.haEntityId : undefined;

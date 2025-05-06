@@ -89,160 +89,132 @@
 			</el-select>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('devicesModule.fields.channelsProperties.permissions.title')"
-			:prop="['permissions']"
-		>
-			<el-select
-				v-model="model.permissions"
-				:placeholder="t('devicesModule.fields.channelsProperties.permissions.placeholder')"
-				name="permissions"
-				multiple
-			>
-				<el-option
-					v-for="item in permissionsOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
-		</el-form-item>
+		<channel-property-form-permissions
+			v-model="model.permissions"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-permissions`"
+			:permissions-options="permissionsOptions"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
+
+		<channel-property-form-data-type
+			v-model="model.dataType"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-dataType`"
+			:data-types-options="dataTypesOptions"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
+
+		<channel-property-form-unit
+			v-model="model.unit"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-unit`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
+
+		<channel-property-form-min-max
+			v-if="
+				[
+					DevicesModuleChannelPropertyData_type.char,
+					DevicesModuleChannelPropertyData_type.uchar,
+					DevicesModuleChannelPropertyData_type.short,
+					DevicesModuleChannelPropertyData_type.ushort,
+					DevicesModuleChannelPropertyData_type.int,
+					DevicesModuleChannelPropertyData_type.uint,
+					DevicesModuleChannelPropertyData_type.float,
+				].includes(model.dataType)
+			"
+			v-model:min-value="model.minValue"
+			v-model:max-value="model.maxValue"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-min-max`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
+
+		<channel-property-form-enum
+			v-if="[DevicesModuleChannelPropertyData_type.enum].includes(model.dataType)"
+			v-model="model.enumValues"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-enum`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
+
+		<channel-property-form-invalid
+			v-model="model.invalid"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-invalid`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
+
+		<channel-property-form-step
+			v-if="
+				[
+					DevicesModuleChannelPropertyData_type.char,
+					DevicesModuleChannelPropertyData_type.uchar,
+					DevicesModuleChannelPropertyData_type.short,
+					DevicesModuleChannelPropertyData_type.ushort,
+					DevicesModuleChannelPropertyData_type.int,
+					DevicesModuleChannelPropertyData_type.uint,
+					DevicesModuleChannelPropertyData_type.float,
+				].includes(model.dataType)
+			"
+			v-model="model.step"
+			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-step`"
+			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
+			:property-category="model.category"
+		/>
+
+		<el-divider />
 
 		<el-form-item
-			:label="t('devicesModule.fields.channelsProperties.dataType.title')"
-			:prop="['dataType']"
+			:label="t('devicesModule.fields.channelsProperties.enterValue.title')"
+			label-position="left"
 		>
-			<el-select
-				v-model="model.dataType"
-				:placeholder="t('devicesModule.fields.channelsProperties.dataType.placeholder')"
-				name="dataType"
-			>
-				<el-option
-					v-for="item in dataTypesOptions"
-					:key="item.value"
-					:label="item.label"
-					:value="item.value"
-				/>
-			</el-select>
+			<el-switch v-model="enterValue" />
 		</el-form-item>
 
 		<el-alert
-			v-if="model.dataType"
-			type="info"
+			v-if="enterValue"
+			type="warning"
+			:description="t('devicesModule.texts.channelsProperties.editValue')"
 			:closable="false"
-		>
-			{{ t(`devicesModule.texts.channelsProperties.dataTypes.${model.dataType}`) }}
-		</el-alert>
+			show-icon
+		/>
 
 		<el-form-item
-			:label="t('devicesModule.fields.channelsProperties.unit.title')"
-			:prop="['unit']"
+			v-if="enterValue"
+			:label="t('devicesModule.fields.channelsProperties.value.title')"
+			:prop="['value']"
+			class="mt-2"
 		>
 			<el-input
-				v-model="model.unit"
-				:placeholder="t('devicesModule.fields.channelsProperties.unit.placeholder')"
-				name="unit"
-			/>
-		</el-form-item>
-
-		<div
-			v-if="
-				[
-					DevicesModuleChannelPropertyData_type.char,
-					DevicesModuleChannelPropertyData_type.uchar,
-					DevicesModuleChannelPropertyData_type.short,
-					DevicesModuleChannelPropertyData_type.ushort,
-					DevicesModuleChannelPropertyData_type.int,
-					DevicesModuleChannelPropertyData_type.uint,
-					DevicesModuleChannelPropertyData_type.float,
-				].includes(model.dataType)
-			"
-			class="flex flex-row gap-4"
-		>
-			<el-form-item
-				:label="t('devicesModule.fields.channelsProperties.format.title.min')"
-				:prop="['format']"
-				class="grow-1"
-			>
-				<el-input
-					v-model="model.minValue"
-					:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder.min')"
-					name="format"
-				/>
-			</el-form-item>
-
-			<el-form-item
-				:label="t('devicesModule.fields.channelsProperties.format.title.max')"
-				:prop="['format']"
-				class="grow-1"
-			>
-				<el-input
-					v-model="model.maxValue"
-					:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder.max')"
-					name="format"
-				/>
-			</el-form-item>
-		</div>
-
-		<el-form-item
-			v-if="[DevicesModuleChannelPropertyData_type.enum].includes(model.dataType)"
-			:label="t('devicesModule.fields.channelsProperties.format.title.enum')"
-			:prop="['format']"
-		>
-			<el-input-tag
-				v-model="model.enumValues"
-				:placeholder="t('devicesModule.fields.channelsProperties.format.placeholder.enum')"
-				name="format"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('devicesModule.fields.channelsProperties.invalid.title')"
-			:prop="['invalid']"
-		>
-			<el-input
-				v-model="model.invalid as string | number | null"
-				:placeholder="t('devicesModule.fields.channelsProperties.invalid.placeholder')"
-				name="invalid"
-			/>
-		</el-form-item>
-
-		<el-form-item
-			v-if="
-				[
-					DevicesModuleChannelPropertyData_type.char,
-					DevicesModuleChannelPropertyData_type.uchar,
-					DevicesModuleChannelPropertyData_type.short,
-					DevicesModuleChannelPropertyData_type.ushort,
-					DevicesModuleChannelPropertyData_type.int,
-					DevicesModuleChannelPropertyData_type.uint,
-					DevicesModuleChannelPropertyData_type.float,
-				].includes(model.dataType)
-			"
-			:label="t('devicesModule.fields.channelsProperties.step.title')"
-			:prop="['step']"
-		>
-			<el-input
-				v-model="model.step"
-				:placeholder="t('devicesModule.fields.channelsProperties.step.placeholder')"
-				name="step"
+				v-model="model.value as string"
+				:placeholder="t('devicesModule.fields.channelsProperties.value.placeholder')"
+				name="value"
 			/>
 		</el-form-item>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputTag, ElOption, ElSelect, type FormRules, vLoading } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules, vLoading } from 'element-plus';
 
-import { DevicesModuleChannelPropertyData_type } from '../../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../../openapi';
 import { useChannelPropertyAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 import type { IChannelPropertyAddForm } from '../../schemas/channels.properties.types';
 
 import type { IChannelPropertyAddFormProps } from './channel-property-add-form.types';
+import ChannelPropertyFormDataType from './channel-property-form-data-type.vue';
+import ChannelPropertyFormEnum from './channel-property-form-enum.vue';
+import ChannelPropertyFormInvalid from './channel-property-form-invalid.vue';
+import ChannelPropertyFormMinMax from './channel-property-form-min-max.vue';
+import ChannelPropertyFormPermissions from './channel-property-form-permissions.vue';
+import ChannelPropertyFormStep from './channel-property-form-step.vue';
+import ChannelPropertyFormUnit from './channel-property-form-unit.vue';
 
 defineOptions({
 	name: 'ChannelPropertyAddForm',
@@ -265,6 +237,8 @@ const { t } = useI18n();
 
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
 	useChannelPropertyAddForm({ id: props.id, type: props.type, channelId: props.channel?.id });
+
+const enterValue = ref<boolean>(false);
 
 const rules = reactive<FormRules<IChannelPropertyAddForm>>({
 	channel: [{ required: true, message: t('devicesModule.fields.channelsProperties.channel.validation.required'), trigger: 'change' }],

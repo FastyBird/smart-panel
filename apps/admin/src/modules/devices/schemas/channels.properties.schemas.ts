@@ -19,7 +19,7 @@ export const ChannelPropertyAddFormSchema = z.object({
 	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
 	step: z
 		.union([z.string(), z.number()])
-		.transform((val) => (val === '' ? undefined : Number(val)))
+		.transform((val) => (val === '' ? null : Number(val)))
 		.nullable(),
 	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	enumValues: z.array(z.string()),
@@ -41,15 +41,12 @@ export const ChannelPropertyEditFormSchema = z.object({
 	name: z.string().trim().nonempty().nullable().optional(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
-	unit: z.string().nullable().optional(),
-	format: z
-		.array(z.union([z.string(), z.union([z.number(), z.null()])]))
-		.nullable()
-		.optional(),
-	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+	unit: z.string().nullable(),
+	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
+	invalid: z.union([z.string(), z.number(), z.boolean(), z.null()]),
 	step: z
 		.union([z.string(), z.number()])
-		.transform((val) => (val === '' ? undefined : Number(val)))
+		.transform((val) => (val === '' ? null : Number(val)))
 		.nullable(),
 	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	enumValues: z.array(z.string()),

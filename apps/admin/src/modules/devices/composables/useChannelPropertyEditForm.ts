@@ -132,9 +132,9 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 		label: t(`devicesModule.dataTypes.${value}`),
 	}));
 
-	const model = reactive<TForm>({ ...property, enumValues, minValue, maxValue } as unknown as TForm);
+	const model = reactive<TForm>({ ...property, format: toRaw(property.format), enumValues, minValue, maxValue } as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -235,6 +235,10 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 				property: property.name ?? property.category,
 			})
 		);
+
+		formChanged.value = false;
+
+		initialModel = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 		return 'saved';
 	};

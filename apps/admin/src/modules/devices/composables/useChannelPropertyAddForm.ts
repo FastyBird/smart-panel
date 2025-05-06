@@ -2,17 +2,18 @@ import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
-import { cloneDeep, isEqual } from 'lodash';
+import { camelCase, cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import {
+	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
 } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
-import { channelChannelsPropertiesSpecificationMappers } from '../devices.mapping';
+import { type ChannelPropertySpec, channelChannelsPropertiesSpecificationMappers, getChannelPropertySpecification } from '../devices.mapping';
 import { ChannelPropertyAddFormSchema } from '../schemas/channels.properties.schemas';
 import type { IChannelPropertyAddForm } from '../schemas/channels.properties.types';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
@@ -121,6 +122,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		enumValues: [] as string[],
 		minValue: undefined,
 		maxValue: undefined,
+		value: undefined,
 	} as TForm);
 
 	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
@@ -231,6 +233,61 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 	watch(model, (): void => {
 		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
+
+	watch(
+		(): DevicesModuleChannelPropertyCategory => model.category,
+		(val: DevicesModuleChannelPropertyCategory): void => {
+			const spec: ChannelPropertySpec | undefined = getChannelPropertySpecification(
+				channel.value?.category ?? DevicesModuleChannelCategory.generic,
+				val
+			);
+
+			if (!spec) {
+				return;
+			}
+
+			initialModel.permissions = spec.permissions;
+			initialModel.dataType = spec.data_type;
+			initialModel.unit = spec.unit;
+
+			if (typeof spec.invalid !== 'undefined') {
+				initialModel.invalid = spec.invalid;
+			}
+
+			if (typeof spec.step !== 'undefined') {
+				initialModel.step = spec.step;
+			}
+
+			if (initialModel.dataType === DevicesModuleChannelPropertyData_type.enum) {
+				initialModel.enumValues = (spec.format ?? []) as string[];
+				initialModel.maxValue = undefined;
+				initialModel.maxValue = undefined;
+			} else if (
+				[
+					DevicesModuleChannelPropertyData_type.char,
+					DevicesModuleChannelPropertyData_type.uchar,
+					DevicesModuleChannelPropertyData_type.short,
+					DevicesModuleChannelPropertyData_type.ushort,
+					DevicesModuleChannelPropertyData_type.int,
+					DevicesModuleChannelPropertyData_type.uint,
+					DevicesModuleChannelPropertyData_type.float,
+				].includes(model.dataType)
+			) {
+				initialModel.enumValues = [];
+				initialModel.maxValue = spec.format?.[0] as number | undefined;
+				initialModel.maxValue = spec.format?.[1] as number | undefined;
+			} else {
+				initialModel.enumValues = [];
+				initialModel.maxValue = undefined;
+				initialModel.maxValue = undefined;
+			}
+
+			formChanged.value = !isEqual(toRaw(model), initialModel);
+		},
+		{
+			immediate: true,
+		}
+	);
 
 	watch(
 		() => categoriesOptions.value,

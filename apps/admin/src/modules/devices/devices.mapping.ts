@@ -8,7 +8,7 @@ import {
 	DevicesModuleDeviceCategory,
 } from '../../openapi';
 
-type ChannelProperty = {
+export type ChannelPropertySpec = {
 	category: DevicesModuleChannelPropertyCategory;
 	required: boolean;
 	description: { en: string };
@@ -16,26 +16,26 @@ type ChannelProperty = {
 	data_type: DevicesModuleChannelPropertyData_type;
 	unit: string | null;
 	format: string[] | number[] | null;
-	invalid?: string[] | null;
-	step?: number[] | null;
+	invalid?: string | number | null;
+	step?: number | null;
 };
 
-type ChannelSpec = {
+export type ChannelSpec = {
 	category: DevicesModuleChannelCategory;
-	properties: ChannelProperty[];
+	properties: ChannelPropertySpec[];
 };
 
-type DeviceChannel = {
+export type DeviceChannelSpec = {
 	category: DevicesModuleChannelCategory;
 	required: boolean;
 	multiple: boolean;
 	description: { en: string };
 };
 
-type DeviceSpec = {
+export type DeviceSpec = {
 	category: DevicesModuleChannelCategory;
 	description: { en: string };
-	channels: DeviceChannel[];
+	channels: DeviceChannelSpec[];
 };
 
 const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, DevicesModuleChannelCategory[]> = {
@@ -261,7 +261,7 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 export const deviceChannelsSpecificationOrder: Record<string, DevicesModuleChannelCategory[]> = Object.fromEntries(
 	Object.entries<DeviceSpec>(devicesMappingSchema as unknown as Record<DevicesModuleDeviceCategory, DeviceSpec>).map(
 		([deviceCategory, deviceSpec]) => {
-			const unsortedChannels = Object.values<DeviceChannel>(deviceSpec.channels).map((ch) => ch.category);
+			const unsortedChannels = Object.values<DeviceChannelSpec>(deviceSpec.channels).map((ch) => ch.category);
 
 			const customOrder = deviceChannelsSortingSpecification[deviceCategory as DevicesModuleDeviceCategory];
 
@@ -293,15 +293,15 @@ export const deviceChannelsSpecificationMappers: Record<
 > = Object.fromEntries(
 	Object.entries<DeviceSpec>(devicesMappingSchema as unknown as Record<DevicesModuleDeviceCategory, DeviceSpec>).map(
 		([deviceCategory, deviceSpec]) => {
-			const required = Object.values<DeviceChannel>(deviceSpec.channels)
+			const required = Object.values<DeviceChannelSpec>(deviceSpec.channels)
 				.filter((channelSpec) => channelSpec.required)
 				.map((channelSpec) => channelSpec.category);
 
-			const optional = Object.values<DeviceChannel>(deviceSpec.channels)
+			const optional = Object.values<DeviceChannelSpec>(deviceSpec.channels)
 				.filter((channelSpec) => !channelSpec.required)
 				.map((channelSpec) => channelSpec.category);
 
-			const multiple = Object.values<DeviceChannel>(deviceSpec.channels)
+			const multiple = Object.values<DeviceChannelSpec>(deviceSpec.channels)
 				.filter((channelSpec) => channelSpec.multiple)
 				.map((channelSpec) => channelSpec.category);
 
@@ -326,11 +326,11 @@ export const channelChannelsPropertiesSpecificationMappers: Record<
 > = Object.fromEntries(
 	Object.entries<ChannelSpec>(channelsMappingSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>).map(
 		([channelCategory, channelSpec]) => {
-			const required = Object.values<ChannelProperty>(channelSpec.properties)
+			const required = Object.values<ChannelPropertySpec>(channelSpec.properties)
 				.filter((prop) => prop.required)
 				.map((prop) => prop.category);
 
-			const optional = Object.values<ChannelProperty>(channelSpec.properties)
+			const optional = Object.values<ChannelPropertySpec>(channelSpec.properties)
 				.filter((prop) => !prop.required)
 				.map((prop) => prop.category);
 
@@ -339,15 +339,15 @@ export const channelChannelsPropertiesSpecificationMappers: Record<
 	)
 );
 
-export function getChannelPropertySpecification(
+export const getChannelPropertySpecification = (
 	channelCategory: DevicesModuleChannelCategory,
 	propertyCategory: DevicesModuleChannelPropertyCategory
-): ChannelProperty | undefined {
+): ChannelPropertySpec | undefined => {
 	const channelSpec = (channelsMappingSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>)[channelCategory];
 
 	if (!channelSpec) {
 		return undefined;
 	}
 
-	return Object.values<ChannelProperty>(channelSpec.properties).find((prop) => prop.category === propertyCategory);
-}
+	return Object.values<ChannelPropertySpec>(channelSpec.properties).find((prop) => prop.category === propertyCategory);
+};

@@ -257,7 +257,8 @@
         "string": "A sequence of characters (e.g., \"hello\").",
         "enum": "Enumerated value selected from a predefined set.",
         "unknown": "Unknown or unspecified data type."
-      }
+      },
+      "editValue": "Changing this value manually is allowed, but it may be automatically overwritten if this property is mapped to a device. Use with caution."
     },
     "misc": {
       "notSet": "Not set",
@@ -390,7 +391,7 @@
       },
       "format": {
         "title": {
-          "enum": "Enum values",
+          "enum": "Allowed values",
           "min": "Minimum value",
           "max": "Maximum value"
         },
@@ -401,7 +402,7 @@
         },
         "validation": {
           "required": {
-            "enum": "Please fill in channel property list of values"
+            "enum": "Please fill in channel property list of allowed values"
           }
         }
       },
@@ -412,6 +413,13 @@
       "step": {
         "title": "Step value",
         "placeholder": "Channel property step value"
+      },
+      "enterValue": {
+        "title": "Enter value"
+      },
+      "value": {
+        "title": "Value",
+        "placeholder": "Channel property actual value"
       }
     }
   },

@@ -189,6 +189,12 @@ export interface IUseChannelPropertyEditForm<TForm extends IChannelPropertyEditF
 	loadingChannels: ComputedRef<boolean>;
 }
 
+export interface IUseChannelPropertyFormSpec<TValue> {
+	required: boolean;
+	description: { en?: string } | undefined;
+	value: TValue | undefined;
+}
+
 export interface IUseChannelsPropertiesPlugin {
 	plugin: ComputedRef<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>;
 }
