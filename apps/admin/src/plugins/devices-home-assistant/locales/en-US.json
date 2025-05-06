@@ -101,49 +101,6 @@
         "title": "Name",
         "placeholder": "Channel property name"
       },
-      "permissions": {
-        "title": "Permissions",
-        "placeholder": "Channel property reading & writing permissions",
-        "validation": {
-          "required": "Please select channel property permissions"
-        }
-      },
-      "dataType": {
-        "title": "Data type",
-        "placeholder": "Channel property value data type",
-        "validation": {
-          "required": "Please select channel property data type"
-        }
-      },
-      "unit": {
-        "title": "Unit",
-        "placeholder": "Channel property unit"
-      },
-      "format": {
-        "title": {
-          "enum": "Enum values",
-          "min": "Minimum value",
-          "max": "Maximum value"
-        },
-        "placeholder": {
-          "enum": "List of allowed values",
-          "min": "Minimum allowed value",
-          "max": "Maximum allowed value"
-        },
-        "validation": {
-          "required": {
-            "enum": "Please fill in channel property list of values"
-          }
-        }
-      },
-      "invalid": {
-        "title": "Invalid value",
-        "placeholder": "Channel property invalid value"
-      },
-      "step": {
-        "title": "Step value",
-        "placeholder": "Channel property step value"
-      },
       "haAttribute": {
         "title": "Home Assistant entity attribute",
         "placeholder": "Select Home Assistant entity attribute",
@@ -158,7 +115,8 @@
       "entities": {
       },
       "attributes": {
-        "mainState": "Entity main state attribute"
+        "mainState": "Entity main state attribute",
+        "virtual": "Entity virtual state attribute"
       }
     }
   }
