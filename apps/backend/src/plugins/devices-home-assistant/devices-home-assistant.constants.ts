@@ -47,4 +47,7 @@ export enum HomeAssistantDomain {
 	ZONE = 'zone',
 }
 
-export const MAIN_STATE_ENTITY_ATTRIBUTE = 'fb.main_state';
+export enum EntityAttribute {
+	MAIN_STATE = 'fb.main_state',
+	VIRTUAL = 'fb.virtual',
+}

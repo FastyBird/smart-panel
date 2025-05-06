@@ -68,6 +68,10 @@ vi.mock('./useChannelsPropertiesPlugins', () => ({
 	}),
 }));
 
+vi.mock('../devices.mapping', () => ({
+	getChannelPropertySpecification: () => undefined,
+}));
+
 describe('useChannelPropertyAddForm', () => {
 	let form: ReturnType<typeof useChannelPropertyAddForm>;
 
