@@ -4,7 +4,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
-import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
