@@ -13472,19 +13472,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannel"
-          },
-          {
-            "type": "object",
-            "required": [
-              "ha_entity_id"
-            ],
-            "properties": {
-              "ha_entity_id": {
-                "type": "string",
-                "description": "A HA device entity identifier.",
-                "example": "light.hall_cabinet_lights_lights"
-              }
-            }
           }
         ]
       },
@@ -13495,19 +13482,6 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannel"
-          },
-          {
-            "type": "object",
-            "required": [
-              "ha_entity_id"
-            ],
-            "properties": {
-              "ha_entity_id": {
-                "type": "string",
-                "description": "A HA device entity identifier.",
-                "example": "light.hall_cabinet_lights_lights"
-              }
-            }
           }
         ]
       },
@@ -13532,9 +13506,15 @@
           {
             "type": "object",
             "required": [
+              "ha_entity_id",
               "ha_attribute"
             ],
             "properties": {
+              "ha_entity_id": {
+                "type": "string",
+                "description": "A HA device entity identifier.",
+                "example": "light.hall_cabinet_lights_lights"
+              },
               "ha_attribute": {
                 "type": "string",
                 "description": "A HA device entity attribute.",
@@ -13555,9 +13535,15 @@
           {
             "type": "object",
             "required": [
+              "ha_entity_id",
               "ha_attribute"
             ],
             "properties": {
+              "ha_entity_id": {
+                "type": "string",
+                "description": "A HA device entity identifier.",
+                "example": "light.hall_cabinet_lights_lights"
+              },
               "ha_attribute": {
                 "type": "string",
                 "description": "A HA device entity attribute.",

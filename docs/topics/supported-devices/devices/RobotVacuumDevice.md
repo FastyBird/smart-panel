@@ -14,7 +14,7 @@ These channels are mandatory for the functionality of the robot vacuum device:
 | **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
 |----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
 | `battery`            | Monitors the battery level and status of the robot vacuum.                     | No           | [See details](BatteryChannel.md)           |
-| `robotVacuum`        | Manages the operational state and cleaning modes of the robot vacuum.          | No           | [See details](RobotVacuumChannel.md)       |
+| `robot_vacuum`       | Manages the operational state and cleaning modes of the robot vacuum.          | No           | [See details](RobotVacuumChannel.md)       |
 | `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---

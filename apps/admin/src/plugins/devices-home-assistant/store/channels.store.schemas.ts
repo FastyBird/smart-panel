@@ -8,9 +8,7 @@ type ApiCreateChannel = components['schemas']['DevicesHomeAssistantPluginCreateH
 type ApiUpdateChannel = components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantChannel'];
 type ApiChannel = components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannel'];
 
-export const HomeAssistantChannelSchema = ChannelSchema.extend({
-	haEntityId: z.string().trim().nonempty(),
-});
+export const HomeAssistantChannelSchema = ChannelSchema;
 
 // BACKEND API
 // ===========
@@ -18,7 +16,6 @@ export const HomeAssistantChannelSchema = ChannelSchema.extend({
 export const HomeAssistantChannelCreateReqSchema: ZodType<ApiCreateChannel> = ChannelCreateReqSchema.and(
 	z.object({
 		type: z.string().trim().nonempty().default(DEVICES_HOME_ASSISTANT_PLUGIN_TYPE),
-		ha_entity_id: z.string().trim().nonempty(),
 	})
 );
 
@@ -31,6 +28,5 @@ export const HomeAssistantChannelUpdateReqSchema: ZodType<ApiUpdateChannel> = Ch
 export const HomeAssistantChannelResSchema: ZodType<ApiChannel> = ChannelResSchema.and(
 	z.object({
 		type: z.string().trim().nonempty().default(DEVICES_HOME_ASSISTANT_PLUGIN_TYPE),
-		ha_entity_id: z.string().trim().nonempty(),
 	})
 );

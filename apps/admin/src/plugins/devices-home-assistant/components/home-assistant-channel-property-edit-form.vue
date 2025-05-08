@@ -166,7 +166,22 @@
 			:property-category="model.category"
 		/>
 
-		<template v-if="haEntityId">
+		<template v-if="haDeviceId">
+			<el-divider />
+
+			<el-form-item
+				:label="t('devicesHomeAssistantPlugin.fields.channels.haEntityId.title')"
+				:prop="['haEntityId']"
+			>
+				<select-discovered-device-entity
+					v-model="model.haEntityId"
+					:device-id="haDeviceId"
+					disabled
+				/>
+			</el-form-item>
+		</template>
+
+		<template v-if="model.haEntityId">
 			<el-divider />
 
 			<el-form-item
@@ -175,7 +190,7 @@
 			>
 				<select-entity-attribute
 					v-model="model.haAttribute"
-					:entity-id="haEntityId"
+					:entity-id="model.haEntityId"
 					disabled
 				/>
 			</el-form-item>
@@ -219,7 +234,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
 
-import { FormResult, type FormResultType, useChannel, useChannelPropertyEditForm } from '../../../modules/devices';
+import { FormResult, type FormResultType, useChannel, useChannelPropertyEditForm, useDevices } from '../../../modules/devices';
 import ChannelPropertyFormDataType from '../../../modules/devices/components/channels/channel-property-form-data-type.vue';
 import ChannelPropertyFormEnum from '../../../modules/devices/components/channels/channel-property-form-enum.vue';
 import ChannelPropertyFormInvalid from '../../../modules/devices/components/channels/channel-property-form-invalid.vue';
@@ -229,9 +244,10 @@ import ChannelPropertyFormStep from '../../../modules/devices/components/channel
 import ChannelPropertyFormUnit from '../../../modules/devices/components/channels/channel-property-form-unit.vue';
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
 import type { IHomeAssistantChannelPropertyEditForm } from '../schemas/channels.properties.types';
-import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
+import type { IHomeAssistantDevice } from '../store/devices.store.types';
 
 import type { IHomeAssistantChannelPropertyEditFormProps } from './home-assistant-channel-property-edit-form.types';
+import SelectDiscoveredDeviceEntity from './select-discovered-device-entity.vue';
 import SelectEntityAttribute from './select-entity-attribute.vue';
 
 defineOptions({
@@ -253,14 +269,17 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const { devices } = useDevices();
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
 	useChannelPropertyEditForm<IHomeAssistantChannelPropertyEditForm>({ property: props.property });
 const { channel } = useChannel({ id: props.property.channel });
 
 const enterValue = ref<boolean>(false);
 
-const haEntityId = computed<IHomeAssistantState['entityId'] | undefined>((): IHomeAssistantState['entityId'] | undefined => {
-	return channel.value && 'haEntityId' in channel.value && typeof channel.value.haEntityId === 'string' ? channel.value.haEntityId : undefined;
+const haDeviceId = computed<IHomeAssistantDevice['haDeviceId'] | undefined>((): IHomeAssistantDevice['haDeviceId'] | undefined => {
+	const device = devices.value.find((device) => device.id === channel.value?.device);
+
+	return device && 'haDeviceId' in device && typeof device.haDeviceId === 'string' ? device.haDeviceId : undefined;
 });
 
 watch(

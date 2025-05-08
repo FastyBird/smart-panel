@@ -83,7 +83,6 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			properties: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
-			ha_entity_id: 'light.hall_cabinet_lights_lights',
 		};
 
 		const entityInstance = plainToInstance(HomeAssistantChannelEntity, openApiModel, {
@@ -116,6 +115,7 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			channel: uuid().toString(),
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
+			ha_entity_id: 'light.hall_cabinet_lights_lights',
 			ha_attribute: 'brightness',
 		};
 

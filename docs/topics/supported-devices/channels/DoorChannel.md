@@ -8,12 +8,12 @@ Manages the open/close states of doors, including garage and entry doors.
 
 ## Required Properties {id="required-properties"}
 
-| **Property**  | **Data Type** | **Range**                             | **Unit** | **Permissions** |
-|---------------|---------------|---------------------------------------|----------|-----------------|
-| `obstruction` | `Bool`        | `true/false`                          | -        | RO (Read-Only)  |
-| `status`      | `Enum`        | `open/closed/opening/closing/stopped` | -        | RO (Read-Only)  |
-| `position`    | `Enum`        | `open/close/stop`                     | -        | RW (Read/Write) |
-| `type`        | `Enum`        | `door/garage`                         | -        | RO (Read-Only)  |
+| **Property**  | **Data Type** | **Range**                               | **Unit** | **Permissions** |
+|---------------|---------------|-----------------------------------------|----------|-----------------|
+| `obstruction` | `Bool`        | `true/false`                            | -        | RO (Read-Only)  |
+| `status`      | `Enum`        | `opened/closed/opening/closing/stopped` | -        | RO (Read-Only)  |
+| `position`    | `Enum`        | `open/close/stop`                       | -        | RW (Read/Write) |
+| `type`        | `Enum`        | `door/garage`                           | -        | RO (Read-Only)  |
 
 ---
 
@@ -31,7 +31,7 @@ Indicates whether the door is obstructed:
 Describes the state of the door:
 
 - Possible values:
-    - `open`: The door is fully open.
+    - `opened`: The door is fully open.
     - `closed`: The door is fully closed.
     - `opening`: The door is in the process of opening.
     - `closing`: The door is in the process of closing.

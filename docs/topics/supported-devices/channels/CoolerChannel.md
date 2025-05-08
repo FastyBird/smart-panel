@@ -8,10 +8,11 @@ Controls devices that lower air or liquid temperatures, such as air conditioners
 
 ## Required Properties {id="required-properties"}
 
-| **Property**   | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|----------------|---------------|--------------|----------|-----------------|
-| `temperature`  | `Float`       | `0.0–100.0`  | °C       | RW (Read/Write) |
-| `status`       | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| **Property**  | **Data Type** | **Range**    | **Unit** | **Permissions** |
+|---------------|---------------|--------------|----------|-----------------|
+| `on`          | `Bool`        | `true/false` | -        | RW (Read/Write) |
+| `temperature` | `Float`       | `0.0–100.0`  | °C       | RW (Read/Write) |
+| `status`      | `Bool`        | `true/false` | -        | RO (Read-Only)  |
 
 ---
 

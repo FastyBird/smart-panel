@@ -24,13 +24,28 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from './entities/devices-home-assistant.entity';
+import { BinarySensorEntityMapperService } from './mappers/binary-sensor.entity.mapper.service';
+import { ClimateEntityMapperService } from './mappers/climate.entity.mapper.service';
+import { LightEntityMapperService } from './mappers/light.entity.mapper.service';
+import { MapperService } from './mappers/mapper.service';
+import { SensorEntityMapperService } from './mappers/sensor.entity.mapper.service';
+import { SwitchEntityMapperService } from './mappers/switch.entity.mapper.service';
 import { HomeAssistantConfigModel } from './models/config-home-assistant.model';
 import { HomeAssistantDevicePlatform } from './platforms/home-assistant-device.platform';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 
 @Module({
 	imports: [TypeOrmModule.forFeature([HomeAssistantDeviceEntity]), DevicesModule, ConfigModule],
-	providers: [HomeAssistantHttpService, HomeAssistantDevicePlatform],
+	providers: [
+		HomeAssistantHttpService,
+		HomeAssistantDevicePlatform,
+		MapperService,
+		BinarySensorEntityMapperService,
+		ClimateEntityMapperService,
+		LightEntityMapperService,
+		SensorEntityMapperService,
+		SwitchEntityMapperService,
+	],
 	controllers: [HomeAssistantDiscoveredDevicesController, HomeAssistantStatesController],
 	exports: [HomeAssistantHttpService],
 })
@@ -42,6 +57,12 @@ export class DevicesHomeAssistantPlugin {
 		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly homeAssistantDevicePlatform: HomeAssistantDevicePlatform,
+		private readonly homeAssistantMapperService: MapperService,
+		private readonly homeAssistantBinarySensorEntityMapper: BinarySensorEntityMapperService,
+		private readonly homeAssistantClimateEntityMapper: ClimateEntityMapperService,
+		private readonly homeAssistantLightEntityMapper: LightEntityMapperService,
+		private readonly homeAssistantSensorEntityMapper: SensorEntityMapperService,
+		private readonly homeAssistantSwitchEntityMapper: SwitchEntityMapperService,
 	) {}
 
 	onModuleInit() {
@@ -85,5 +106,11 @@ export class DevicesHomeAssistantPlugin {
 		});
 
 		this.platformRegistryService.register(this.homeAssistantDevicePlatform);
+
+		this.homeAssistantMapperService.registerMapper(this.homeAssistantBinarySensorEntityMapper);
+		this.homeAssistantMapperService.registerMapper(this.homeAssistantClimateEntityMapper);
+		this.homeAssistantMapperService.registerMapper(this.homeAssistantLightEntityMapper);
+		this.homeAssistantMapperService.registerMapper(this.homeAssistantSensorEntityMapper);
+		this.homeAssistantMapperService.registerMapper(this.homeAssistantSwitchEntityMapper);
 	}
 }

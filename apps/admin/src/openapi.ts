@@ -5000,24 +5000,12 @@ export interface components {
          * Home Assistant Device Channel
          * @description A Home Assistant channels used to communicate with Home Assistant instance.
          */
-        DevicesHomeAssistantPluginHomeAssistantChannel: components["schemas"]["DevicesModuleChannel"] & {
-            /**
-             * @description A HA device entity identifier.
-             * @example light.hall_cabinet_lights_lights
-             */
-            ha_entity_id: string;
-        };
+        DevicesHomeAssistantPluginHomeAssistantChannel: components["schemas"]["DevicesModuleChannel"];
         /**
          * Create Home Assistant Device Channel
          * @description The schema for creating a Home Assistant channel.
          */
-        DevicesHomeAssistantPluginCreateHomeAssistantChannel: components["schemas"]["DevicesModuleCreateChannel"] & {
-            /**
-             * @description A HA device entity identifier.
-             * @example light.hall_cabinet_lights_lights
-             */
-            ha_entity_id: string;
-        };
+        DevicesHomeAssistantPluginCreateHomeAssistantChannel: components["schemas"]["DevicesModuleCreateChannel"];
         /**
          * Update Home Assistant Device Chanel
          * @description Schema for updating a Home Assistant channel.
@@ -5029,6 +5017,11 @@ export interface components {
          */
         DevicesHomeAssistantPluginHomeAssistantChannelProperty: components["schemas"]["DevicesModuleChannelProperty"] & {
             /**
+             * @description A HA device entity identifier.
+             * @example light.hall_cabinet_lights_lights
+             */
+            ha_entity_id: string;
+            /**
              * @description A HA device entity attribute.
              * @example brightness
              */
@@ -5039,6 +5032,11 @@ export interface components {
          * @description The schema for creating a Home Assistant channel property.
          */
         DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty: components["schemas"]["DevicesModuleCreateChannelProperty"] & {
+            /**
+             * @description A HA device entity identifier.
+             * @example light.hall_cabinet_lights_lights
+             */
+            ha_entity_id: string;
             /**
              * @description A HA device entity attribute.
              * @example brightness

@@ -30,19 +30,33 @@ export class ChannelsPropertiesService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async findAll(channelId?: string): Promise<ChannelPropertyEntity[]> {
+	async findAll(channelId?: string | string[]): Promise<ChannelPropertyEntity[]> {
 		if (channelId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelId=${channelId}`);
+			if (Array.isArray(channelId)) {
+				this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelIds=${channelId.join(', ')}`);
 
-			const properties = await this.repository
-				.createQueryBuilder('property')
-				.innerJoinAndSelect('property.channel', 'channel')
-				.where('channel.id = :channelId', { channelId })
-				.getMany();
+				const properties = await this.repository
+					.createQueryBuilder('property')
+					.innerJoinAndSelect('property.channel', 'channel')
+					.where('channel.id IN (:...channelIds)', { channelId })
+					.getMany();
 
-			this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties for channelId=${channelId}`);
+				this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties for channelIds=${channelId.join(', ')}`);
 
-			return properties;
+				return properties;
+			} else {
+				this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelId=${channelId}`);
+
+				const properties = await this.repository
+					.createQueryBuilder('property')
+					.innerJoinAndSelect('property.channel', 'channel')
+					.where('channel.id = :channelId', { channelId })
+					.getMany();
+
+				this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties for channelId=${channelId}`);
+
+				return properties;
+			}
 		}
 
 		this.logger.debug('[LOOKUP ALL] Fetching all properties');
