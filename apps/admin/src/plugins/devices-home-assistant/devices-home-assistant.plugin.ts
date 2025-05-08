@@ -15,8 +15,6 @@ import {
 } from '../../modules/devices';
 
 import {
-	HomeAssistantChannelAddForm,
-	HomeAssistantChannelEditForm,
 	HomeAssistantChannelPropertyAddForm,
 	HomeAssistantChannelPropertyEditForm,
 	HomeAssistantDeviceAddForm,
@@ -25,7 +23,6 @@ import {
 import { DEVICES_HOME_ASSISTANT_PLUGIN_TYPE } from './devices-home-assistant.constants';
 import enUS from './locales/en-US.json';
 import { HomeAssistantChannelPropertyAddFormSchema, HomeAssistantChannelPropertyEditFormSchema } from './schemas/channels.properties.schemas';
-import { HomeAssistantChannelAddFormSchema, HomeAssistantChannelEditFormSchema } from './schemas/channels.schemas';
 import { HomeAssistantDeviceAddFormSchema, HomeAssistantDeviceEditFormSchema } from './schemas/devices.schemas';
 import {
 	HomeAssistantChannelPropertyCreateReqSchema,
@@ -83,8 +80,6 @@ export default {
 			components: {
 				deviceAddForm: HomeAssistantDeviceAddForm,
 				deviceEditForm: HomeAssistantDeviceEditForm,
-				channelAddForm: HomeAssistantChannelAddForm,
-				channelEditForm: HomeAssistantChannelEditForm,
 				channelPropertyAddForm: HomeAssistantChannelPropertyAddForm,
 				channelPropertyEditForm: HomeAssistantChannelPropertyEditForm,
 			},
@@ -95,8 +90,6 @@ export default {
 				deviceCreateReqSchema: HomeAssistantDeviceCreateReqSchema,
 				deviceUpdateReqSchema: HomeAssistantDeviceUpdateReqSchema,
 				channelSchema: HomeAssistantChannelSchema,
-				channelAddFormSchema: HomeAssistantChannelAddFormSchema,
-				channelEditFormSchema: HomeAssistantChannelEditFormSchema,
 				channelCreateReqSchema: HomeAssistantChannelCreateReqSchema,
 				channelUpdateReqSchema: HomeAssistantChannelUpdateReqSchema,
 				channelPropertySchema: HomeAssistantChannelPropertySchema,

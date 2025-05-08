@@ -166,8 +166,16 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 			].includes(model.dataType)
 		) {
 			model.format = [
-				typeof model.minValue === 'string' && model.minValue !== '' ? Number(model.minValue) : null,
-				typeof model.maxValue === 'string' && model.maxValue !== '' ? Number(model.maxValue) : null,
+				typeof model.minValue === 'string' && model.minValue !== ''
+					? Number(model.minValue)
+					: typeof model.minValue === 'number'
+						? model.minValue
+						: null,
+				typeof model.maxValue === 'string' && model.maxValue !== ''
+					? Number(model.maxValue)
+					: typeof model.maxValue === 'number'
+						? model.maxValue
+						: null,
 			];
 		}
 
@@ -249,19 +257,27 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 			initialModel.permissions = spec.permissions;
 			initialModel.dataType = spec.data_type;
 			initialModel.unit = spec.unit;
+			model.permissions = spec.permissions;
+			model.dataType = spec.data_type;
+			model.unit = spec.unit;
 
 			if (typeof spec.invalid !== 'undefined') {
 				initialModel.invalid = spec.invalid;
+				model.invalid = spec.invalid;
 			}
 
 			if (typeof spec.step !== 'undefined') {
 				initialModel.step = spec.step;
+				model.step = spec.step;
 			}
 
 			if (initialModel.dataType === DevicesModuleChannelPropertyData_type.enum) {
 				initialModel.enumValues = (spec.format ?? []) as string[];
+				initialModel.minValue = undefined;
 				initialModel.maxValue = undefined;
-				initialModel.maxValue = undefined;
+				model.enumValues = (spec.format ?? []) as string[];
+				model.minValue = undefined;
+				model.maxValue = undefined;
 			} else if (
 				[
 					DevicesModuleChannelPropertyData_type.char,
@@ -274,12 +290,18 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 				].includes(model.dataType)
 			) {
 				initialModel.enumValues = [];
-				initialModel.maxValue = spec.format?.[0] as number | undefined;
+				initialModel.minValue = spec.format?.[0] as number | undefined;
 				initialModel.maxValue = spec.format?.[1] as number | undefined;
+				model.enumValues = [];
+				model.minValue = spec.format?.[0] as number | undefined;
+				model.maxValue = spec.format?.[1] as number | undefined;
 			} else {
 				initialModel.enumValues = [];
+				initialModel.minValue = undefined;
 				initialModel.maxValue = undefined;
-				initialModel.maxValue = undefined;
+				model.enumValues = [];
+				model.minValue = undefined;
+				model.maxValue = undefined;
 			}
 
 			formChanged.value = !isEqual(toRaw(model), initialModel);

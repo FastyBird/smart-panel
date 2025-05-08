@@ -164,7 +164,21 @@
 			:property-category="model.category"
 		/>
 
-		<template v-if="haEntityId">
+		<template v-if="haDeviceId">
+			<el-divider />
+
+			<el-form-item
+				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haEntityId.title')"
+				:prop="['haEntityId']"
+			>
+				<select-discovered-device-entity
+					v-model="model.haEntityId"
+					:device-id="haDeviceId"
+				/>
+			</el-form-item>
+		</template>
+
+		<template v-if="model.haEntityId">
 			<el-divider />
 
 			<el-form-item
@@ -173,7 +187,7 @@
 			>
 				<select-entity-attribute
 					v-model="model.haAttribute"
-					:entity-id="haEntityId"
+					:entity-id="model.haEntityId"
 				/>
 			</el-form-item>
 		</template>
@@ -227,12 +241,14 @@ import {
 	FormResult,
 	type FormResultType,
 	useChannelPropertyAddForm,
+	useDevices,
 } from '../../../modules/devices';
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
 import type { IHomeAssistantChannelPropertyAddForm } from '../schemas/channels.properties.types';
-import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
+import type { IHomeAssistantDevice } from '../store/devices.store.types';
 
 import type { IHomeAssistantChannelPropertyAddFormProps } from './home-assistant-channel-property-add-form.types';
+import SelectDiscoveredDeviceEntity from './select-discovered-device-entity.vue';
 import SelectEntityAttribute from './select-entity-attribute.vue';
 
 defineOptions({
@@ -254,13 +270,16 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const { devices } = useDevices();
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
 	useChannelPropertyAddForm<IHomeAssistantChannelPropertyAddForm>({ id: props.id, type: props.type, channelId: props.channel?.id });
 
 const enterValue = ref<boolean>(false);
 
-const haEntityId = computed<IHomeAssistantState['entityId'] | undefined>((): IHomeAssistantState['entityId'] | undefined => {
-	return props.channel && 'haEntityId' in props.channel && typeof props.channel.haEntityId === 'string' ? props.channel.haEntityId : undefined;
+const haDeviceId = computed<IHomeAssistantDevice['haDeviceId'] | undefined>((): IHomeAssistantDevice['haDeviceId'] | undefined => {
+	const device = devices.value.find((device) => device.id === props.channel?.device);
+
+	return device && 'haDeviceId' in device && typeof device.haDeviceId === 'string' ? device.haDeviceId : undefined;
 });
 
 const rules = reactive<FormRules<IHomeAssistantChannelPropertyAddForm>>({
@@ -270,6 +289,9 @@ const rules = reactive<FormRules<IHomeAssistantChannelPropertyAddForm>>({
 		{ required: true, message: t('devicesHomeAssistantPlugin.fields.channelsProperties.permissions.validation.required'), trigger: 'change' },
 	],
 	dataType: [{ required: true, message: t('devicesHomeAssistantPlugin.fields.channelsProperties.dataType.validation.required'), trigger: 'change' }],
+	haEntityId: [
+		{ required: true, message: t('devicesHomeAssistantPlugin.fields.channelsProperties.haEntityId.validation.required'), trigger: 'change' },
+	],
 	haAttribute: [
 		{ required: true, message: t('devicesHomeAssistantPlugin.fields.channelsProperties.haAttribute.validation.required'), trigger: 'change' },
 	],

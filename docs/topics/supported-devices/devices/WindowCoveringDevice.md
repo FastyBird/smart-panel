@@ -12,7 +12,7 @@ These channels are mandatory for the functionality of the window covering device
 
 | **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
 |----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `windowCovering`     | Controls the position, tilt, and operational state of the window covering.     | No           | [See details](WindowCoveringChannel.md)    |
+| `window_covering`    | Controls the position, tilt, and operational state of the window covering.     | No           | [See details](WindowCoveringChannel.md)    |
 | `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---

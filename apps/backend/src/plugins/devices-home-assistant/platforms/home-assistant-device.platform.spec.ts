@@ -9,30 +9,36 @@ import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
 
 import { HomeAssistantDevicePlatform } from './home-assistant-device.platform';
 
-jest.mock('../utils/value-transformer.utils', () => ({
-	HomeAssistantValueTransformer: {
-		toHa: jest.fn((_, val: string | number | boolean) => val),
-	},
-}));
-
-jest.mock('../utils/service-resolver.utils', () => ({
-	HomeAssistantServiceResolver: {
-		resolveBatch: jest.fn(() => 'turn_on'),
-	},
-}));
-
 describe('HomeAssistantDevicePlatform', () => {
 	let platform: HomeAssistantDevicePlatform;
+	let mapperService: MapperService;
 	let sendCommandMock: jest.SpyInstance;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				HomeAssistantDevicePlatform,
+				{
+					provide: MapperService,
+					useValue: {
+						mapToHA: jest.fn(() => {
+							return [
+								{
+									domain: 'light',
+									state: 'on',
+									service: 'turn_on',
+									entityId: 'light.kitchen_led',
+									properties: [],
+								},
+							];
+						}),
+					},
+				},
 				{
 					provide: ConfigService,
 					useValue: {
@@ -45,9 +51,15 @@ describe('HomeAssistantDevicePlatform', () => {
 		}).compile();
 
 		platform = module.get(HomeAssistantDevicePlatform);
+		mapperService = module.get<MapperService>(MapperService);
 
 		// Mock the sendCommand method
 		sendCommandMock = jest.spyOn(platform as any, 'sendCommand').mockResolvedValue({});
+	});
+
+	it('should be defined', () => {
+		expect(platform).toBeDefined();
+		expect(mapperService).toBeDefined();
 	});
 
 	it('should return true on successful update', async () => {
@@ -56,12 +68,12 @@ describe('HomeAssistantDevicePlatform', () => {
 
 		const channel = new HomeAssistantChannelEntity();
 		channel.id = uuid().toString();
-		channel.haEntityId = 'light.kitchen_led';
 		channel.properties = [];
 
 		const property = new HomeAssistantChannelPropertyEntity();
 		property.id = uuid().toString();
 		property.category = PropertyCategory.BRIGHTNESS;
+		property.haEntityId = 'light.kitchen_led';
 		property.haAttribute = 'brightness';
 		property.value = 100;
 
@@ -92,16 +104,18 @@ describe('HomeAssistantDevicePlatform', () => {
 
 		const channel = new HomeAssistantChannelEntity();
 		channel.id = uuid().toString();
-		channel.haEntityId = 'light.kitchen_led';
 		channel.properties = [];
 
 		const property = new HomeAssistantChannelPropertyEntity();
 		property.id = uuid().toString();
 		property.category = PropertyCategory.ON;
+		property.haEntityId = 'light.kitchen_led';
 		property.haAttribute = 'on';
 		property.value = true;
 
 		channel.properties.push(property);
+
+		jest.spyOn(mapperService, 'mapToHA').mockResolvedValue([]);
 
 		const result = await platform.process({ device, channel, property, value: false });
 

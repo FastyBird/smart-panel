@@ -67,13 +67,6 @@
       "description": {
         "title": "Description",
         "placeholder": "Channel description"
-      },
-      "haEntityId": {
-        "title": "Home Assistant device entity",
-        "placeholder": "Select Home Assistant device entity",
-        "validation": {
-          "required": "Please select Home Assistant device entity"
-        }
       }
     },
     "channelsProperties": {
@@ -100,6 +93,13 @@
       "name": {
         "title": "Name",
         "placeholder": "Channel property name"
+      },
+      "haEntityId": {
+        "title": "Home Assistant device entity",
+        "placeholder": "Select Home Assistant device entity",
+        "validation": {
+          "required": "Please select Home Assistant device entity"
+        }
       },
       "haAttribute": {
         "title": "Home Assistant entity attribute",

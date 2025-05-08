@@ -46,7 +46,7 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 
 	const model = reactive<TForm>(device as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -125,6 +125,10 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 				device: device.name,
 			})
 		);
+
+		formChanged.value = false;
+
+		initialModel = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 		return 'saved';
 	};

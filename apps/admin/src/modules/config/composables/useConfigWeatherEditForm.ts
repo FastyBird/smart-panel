@@ -1,7 +1,8 @@
-import { reactive, ref, watch } from 'vue';
+import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { cloneDeep } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigModuleWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
@@ -92,6 +93,8 @@ export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditF
 		timer = window.setTimeout(clear, 2000);
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.configWeather.edited'));
+
+		formChanged.value = false;
 
 		return 'saved';
 	};

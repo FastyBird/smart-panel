@@ -92,6 +92,8 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.tiles.edited'));
 
+		formChanged.value = false;
+
 		return 'saved';
 	};
 

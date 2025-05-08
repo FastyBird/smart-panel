@@ -9,11 +9,11 @@ and pollution levels.
 
 ## Required Properties {id="required-properties"}
 
-| **Property** | **Data Type** | **Range**     | **Unit** | **Permissions** |
-|--------------|---------------|---------------|----------|-----------------|
-| `detected`   | `Bool`        | `true/false`  | -        | RO (Read-Only)  |
-| `density`    | `Float`       | `0.0–1,000.0` | µg/m³    | RO (Read-Only)  |
-| `mode`       | `Enum`        | `pm2_5/pm10`  | -        | RO (Read-Only)  |
+| **Property** | **Data Type** | **Range**        | **Unit** | **Permissions** |
+|--------------|---------------|------------------|----------|-----------------|
+| `detected`   | `Bool`        | `true/false`     | -        | RO (Read-Only)  |
+| `density`    | `Float`       | `0.0–1,000.0`    | µg/m³    | RO (Read-Only)  |
+| `mode`       | `Enum`        | `pm1/pm2_5/pm10` | -        | RO (Read-Only)  |
 
 ---
 

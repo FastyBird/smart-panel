@@ -10,13 +10,11 @@ import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-devi
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { ServiceRequestDto } from '../dto/home-assistant-service-request.dto';
 import {
-	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
+import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
-import { HomeAssistantServiceResolver } from '../utils/service-resolver.utils';
-import { HomeAssistantValueTransformer } from '../utils/value-transformer.utils';
 
 export type IHomeAssistantDevicePropertyData = IDevicePropertyData & {
 	device: HomeAssistantDeviceEntity;
@@ -26,7 +24,10 @@ export type IHomeAssistantDevicePropertyData = IDevicePropertyData & {
 export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements IDevicePlatform {
 	private readonly logger = new Logger(HomeAssistantDevicePlatform.name);
 
-	constructor(private readonly configService: ConfigService) {
+	constructor(
+		private readonly configService: ConfigService,
+		private readonly mapperService: MapperService,
+	) {
 		super();
 	}
 
@@ -51,58 +52,32 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 			return false;
 		}
 
-		const channels = Array.from(
-			new Map(
-				updates
-					.map((update) => update.channel)
-					.filter((channel): channel is HomeAssistantChannelEntity => channel instanceof HomeAssistantChannelEntity)
-					.map((channel) => [channel.id, channel]),
-			).values(),
-		);
+		const values = new Map<HomeAssistantChannelPropertyEntity['id'], string | number | boolean>();
 
-		if (channels.length === 0) {
-			this.logger.error('[HOME ASSISTANT DEVICE] Failed to update device property, no channels found');
+		for (const { property, value } of updates) {
+			values.set(property.id, value);
+		}
+
+		const setStates = await this.mapperService.mapToHA(device, values);
+
+		if (setStates.length === 0) {
+			this.logger.error('[HOME ASSISTANT DEVICE] Failed to update device property, no payload to send');
 
 			return false;
 		}
 
-		const values = updates.reduce<Record<string, string | number | boolean>>((acc, update) => {
-			acc[update.property.id] = update.value;
-
-			return acc;
-		}, {});
-
 		const result = new Map<ChannelPropertyEntity['id'], boolean>();
 
-		for (const channel of channels) {
-			const attributeProperties = channel.properties.filter(
-				(property): property is HomeAssistantChannelPropertyEntity =>
-					property instanceof HomeAssistantChannelPropertyEntity && !property.isHaMainState,
-			);
-
-			const propsToUpdate = channel.properties.filter((prop) => prop.id in values);
-
-			const service = HomeAssistantServiceResolver.resolveBatch(
-				channel.haDomain,
-				propsToUpdate.map((prop) => ({
-					category: prop.category,
-					value: values[prop.id],
-				})),
-			);
+		for (const setState of setStates) {
+			const propsToUpdate = setState.properties;
 
 			try {
-				const endpoint = `http://${pluginConfiguration.hostname}/api/services/${channel.haDomain}/${service}`;
+				const endpoint = `http://${pluginConfiguration.hostname}/api/services/${setState.domain}/${setState.service}`;
 
 				const payload = {
-					entity_id: channel.haEntityId,
-					...attributeProperties.reduce<Record<string, string | number | boolean>>((acc, property) => {
-						acc[property.haAttribute] = HomeAssistantValueTransformer.toHa(
-							property.haAttribute,
-							property.id in values ? values[property.id] : property.value,
-						);
-
-						return acc;
-					}, {}),
+					entity_id: setState.entityId,
+					state: setState.state,
+					...setState.attributes,
 				};
 
 				if (!(await this.validateDto(ServiceRequestDto, payload))) {

@@ -59,6 +59,7 @@
         "data_type": "enum",
         "unit": null,
         "format": [
+          "pm1",
           "pm2_5",
           "pm10"
         ],
@@ -574,6 +575,21 @@
   "cooler": {
     "category": "cooler",
     "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
       "temperature": {
         "category": "temperature",
         "required": true,
@@ -826,7 +842,7 @@
         "data_type": "enum",
         "unit": null,
         "format": [
-          "open",
+          "opened",
           "closed",
           "opening",
           "closing",
@@ -1236,6 +1252,21 @@
   "heater": {
     "category": "heater",
     "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
       "temperature": {
         "category": "temperature",
         "required": true,
@@ -2891,7 +2922,12 @@
         ],
         "data_type": "enum",
         "unit": null,
-        "format": ["generic","irrigation","shower_head","water_faucet"],
+        "format": [
+          "generic",
+          "irrigation",
+          "shower_head",
+          "water_faucet"
+        ],
         "invalid": null,
         "step": null
       },
@@ -2906,7 +2942,10 @@
         ],
         "data_type": "ushort",
         "unit": "s",
-        "format": [0,3600]
+        "format": [
+          0,
+          3600
+        ]
       },
       "remaining": {
         "category": "remaining",
@@ -2919,7 +2958,10 @@
         ],
         "data_type": "ushort",
         "unit": "s",
-        "format": [0,3600]
+        "format": [
+          0,
+          3600
+        ]
       },
       "mode": {
         "category": "mode",
@@ -2932,7 +2974,10 @@
         ],
         "data_type": "enum",
         "unit": null,
-        "format": ["manual","scheduled"],
+        "format": [
+          "manual",
+          "scheduled"
+        ],
         "invalid": null,
         "step": null
       },
@@ -3004,7 +3049,9 @@
         "data_type": "enum",
         "unit": null,
         "format": [
-          "low","medium","high"
+          "low",
+          "medium",
+          "high"
         ],
         "invalid": null,
         "step": null
@@ -3089,7 +3136,11 @@
         "data_type": "enum",
         "unit": null,
         "format": [
-          "open","closed","opening","closing","stopped"
+          "opened",
+          "closed",
+          "opening",
+          "closing",
+          "stopped"
         ],
         "invalid": null,
         "step": null
@@ -3106,7 +3157,9 @@
         "data_type": "enum",
         "unit": null,
         "format": [
-          "open","close","stop"
+          "open",
+          "close",
+          "stop"
         ],
         "invalid": null,
         "step": null
@@ -3123,7 +3176,10 @@
         "data_type": "enum",
         "unit": null,
         "format": [
-          "curtain","blind","roller","outdoor_blind"
+          "curtain",
+          "blind",
+          "roller",
+          "outdoor_blind"
         ],
         "invalid": null,
         "step": null
