@@ -1,5 +1,7 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -172,30 +174,32 @@ describe('DevicesService', () => {
 
 	describe('findOne', () => {
 		it('should return a device if found', async () => {
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(plainToInstance(MockDevice, mockDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findOne(mockDevice.id);
 
 			expect(result).toEqual(plainToInstance(MockDevice, mockDevice));
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockDevice.id },
-				relations: [
-					'controls',
-					'controls.device',
-					'channels',
-					'channels.device',
-					'channels.controls',
-					'channels.controls.channel',
-					'channels.properties',
-					'channels.properties.channel',
-				],
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockDevice.id });
 		});
 
 		it('should return null if the device is not found', async () => {
 			const id = uuid().toString();
 
-			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(null),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findOne(id);
 
@@ -242,7 +246,15 @@ describe('DevicesService', () => {
 
 			jest.spyOn(repository, 'create').mockReturnValue(mockCratedDevice);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedDevice);
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockDevice, mockCratedDevice));
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(plainToInstance(MockDevice, mockCratedDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.create(createDto);
 
@@ -255,19 +267,7 @@ describe('DevicesService', () => {
 				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCratedDevice);
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockCratedDevice.id },
-				relations: [
-					'controls',
-					'controls.device',
-					'channels',
-					'channels.device',
-					'channels.controls',
-					'channels.controls.channel',
-					'channels.properties',
-					'channels.properties.channel',
-				],
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockCratedDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CREATED,
 				plainToInstance(MockDevice, mockCratedDevice),
@@ -325,29 +325,24 @@ describe('DevicesService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest
-				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(MockDevice, mockDevice))
-				.mockResolvedValueOnce(plainToInstance(MockDevice, mockUpdatedDevice));
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest
+					.fn()
+					.mockResolvedValueOnce(plainToInstance(MockDevice, mockDevice))
+					.mockResolvedValueOnce(plainToInstance(MockDevice, mockUpdatedDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedDevice);
 
 			const result = await service.update(mockDevice.id, updateDto);
 
 			expect(result).toEqual(plainToInstance(MockDevice, mockUpdatedDevice));
 			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockDevice, mockUpdateDevice));
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockDevice.id },
-				relations: [
-					'controls',
-					'controls.device',
-					'channels',
-					'channels.device',
-					'channels.controls',
-					'channels.controls.channel',
-					'channels.properties',
-					'channels.properties.channel',
-				],
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_UPDATED,
 				plainToInstance(MockDevice, mockUpdatedDevice),
@@ -357,7 +352,14 @@ describe('DevicesService', () => {
 
 	describe('remove', () => {
 		it('should remove a device', async () => {
-			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(plainToInstance(MockDevice, mockDevice)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'delete');
 
 			await service.remove(mockDevice.id);

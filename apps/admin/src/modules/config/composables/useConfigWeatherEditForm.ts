@@ -93,6 +93,8 @@ export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditF
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.configWeather.edited'));
 
+		formChanged.value = false;
+
 		return 'saved';
 	};
 

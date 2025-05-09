@@ -97,7 +97,7 @@ export const useChannelEditForm = <TForm extends IChannelEditForm = IChannelEdit
 
 	const model = reactive<TForm>(channel as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -177,6 +177,10 @@ export const useChannelEditForm = <TForm extends IChannelEditForm = IChannelEdit
 				channel: channel.name,
 			})
 		);
+
+		formChanged.value = false;
+
+		initialModel = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 		return 'saved';
 	};

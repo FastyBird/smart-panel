@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils';
 
 import { FormResult } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi';
+import { DEVICES_THIRD_PARTY_PLUGIN_TYPE } from '../devices-third-party.constants';
 import type { IThirdPartyDevice } from '../store/devices.store.types';
 
 import ThirdPartyDeviceEditForm from './third-party-device-edit-form.vue';
@@ -51,7 +52,7 @@ describe('ThirdPartyDeviceEditForm', () => {
 			props: {
 				device: {
 					id: '123',
-					type: 'third-party',
+					type: DEVICES_THIRD_PARTY_PLUGIN_TYPE,
 					category: DevicesModuleDeviceCategory.generic,
 					name: '',
 					description: '',

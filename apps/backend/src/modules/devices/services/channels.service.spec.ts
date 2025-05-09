@@ -1,5 +1,7 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -203,29 +205,37 @@ describe('ChannelsService', () => {
 
 	describe('findOne', () => {
 		it('should return a channel if found', async () => {
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockChannel, mockChannel));
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(plainToInstance(MockChannel, mockChannel)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findOne(mockChannel.id);
 
 			expect(result).toEqual(plainToInstance(MockChannel, mockChannel));
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockChannel.id },
-				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id: mockChannel.id });
 		});
 
 		it('should return null if the channel is not found', async () => {
 			const id = uuid().toString();
 
-			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(null),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findOne(id);
 
 			expect(result).toEqual(null);
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id },
-				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id });
 		});
 	});
 
@@ -271,7 +281,15 @@ describe('ChannelsService', () => {
 
 			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedChannel);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedChannel);
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockChannel, mockCreatedChannel));
+
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(plainToInstance(MockChannel, mockCreatedChannel)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.create(createDto);
 
@@ -284,10 +302,7 @@ describe('ChannelsService', () => {
 				}),
 			);
 			expect(repository.save).toHaveBeenCalledWith(mockCreatedChannel);
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockCreatedChannel.id },
-				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id: mockCreatedChannel.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CREATED,
 				plainToInstance(MockChannel, mockCreatedChannel),
@@ -347,20 +362,24 @@ describe('ChannelsService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest
-				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(MockChannel, mockChannel))
-				.mockResolvedValueOnce(plainToInstance(MockChannel, mockUpdatedChannel));
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest
+					.fn()
+					.mockResolvedValueOnce(plainToInstance(MockChannel, mockChannel))
+					.mockResolvedValueOnce(plainToInstance(MockChannel, mockUpdatedChannel)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedChannel);
 
 			const result = await service.update(mockChannel.id, updateDto);
 
 			expect(result).toEqual(plainToInstance(MockChannel, mockUpdatedChannel));
 			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockChannel, mockUpdateChannel));
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockChannel.id },
-				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id: mockChannel.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_UPDATED,
 				plainToInstance(MockChannel, mockUpdatedChannel),

@@ -115,6 +115,8 @@ export const useConfigDisplayEditForm = ({ config, messages }: IUseDisplayEditFo
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.configDisplay.edited'));
 
+		formChanged.value = false;
+
 		return 'saved';
 	};
 

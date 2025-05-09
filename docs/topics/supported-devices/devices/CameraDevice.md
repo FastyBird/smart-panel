@@ -11,10 +11,10 @@ with additional features for environmental monitoring and interaction.
 
 These channels are mandatory for the functionality of the camera:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `camera`            | Provides video and image data streams from the camera.                         | No           | [See details](CameraChannel.md)            |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `camera`             | Provides video and image data streams from the camera.                         | No           | [See details](CameraChannel.md)            |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -63,7 +63,7 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
     - Ensure proper mapping of channels to the camera's physical or logical components.
-    - The `deviceInformation` channel is mandatory for device identification.
+    - The `device_information` channel is mandatory for device identification.
 
 3. **Extensibility**:
     - Include channels like `microphone` and `speaker` for two-way audio capabilities.

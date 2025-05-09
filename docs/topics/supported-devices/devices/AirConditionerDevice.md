@@ -11,12 +11,12 @@ monitoring and energy management.
 
 These channels are mandatory for the functionality of the air conditioner:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `cooler`            | Controls the cooling functionality of the air conditioner.                     | No           | [See details](CoolerChannel.md)            |
-| `fan`               | Manages fan settings, including speed and direction.                           | No           | [See details](FanChannel.md)               |
-| `temperature`       | Monitors and controls the target and current temperature.                      | No           | [See details](TemperatureChannel.md)       |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `cooler`             | Controls the cooling functionality of the air conditioner.                     | No           | [See details](CoolerChannel.md)            |
+| `fan`                | Manages fan settings, including speed and direction.                           | No           | [See details](FanChannel.md)               |
+| `temperature`        | Monitors and controls the target and current temperature.                      | No           | [See details](TemperatureChannel.md)       |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -24,13 +24,13 @@ These channels are mandatory for the functionality of the air conditioner:
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                                | **Multiple** | **Details**                               |
-|--------------------|------------------------------------------------|--------------|-------------------------------------------|
-| `electricalEnergy` | Tracks total energy consumption over time.     | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information.    | No           | [See details](ElectricalPowerChannel.md)  |
-| `heater`           | Adds heating capability to the device.         | No           | [See details](HeaterChannel.md)           |
-| `humidity`         | Monitors the ambient humidity level.           | No           | [See details](HumidityChannel.md)         |
-| `leak`             | Detects water leaks or other potential issues. | No           | [See details](LeakChannel.md)             |
+| **Channel**         | **Description**                                | **Multiple** | **Details**                               |
+|---------------------|------------------------------------------------|--------------|-------------------------------------------|
+| `electrical_energy` | Tracks total energy consumption over time.     | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information.    | No           | [See details](ElectricalPowerChannel.md)  |
+| `heater`            | Adds heating capability to the device.         | No           | [See details](HeaterChannel.md)           |
+| `humidity`          | Monitors the ambient humidity level.           | No           | [See details](HumidityChannel.md)         |
+| `leak`              | Detects water leaks or other potential issues. | No           | [See details](LeakChannel.md)             |
 
 ---
 
@@ -45,7 +45,7 @@ These channels are optional and provide additional features:
     - Detect leaks using the `leak` channel to ensure safety.
 
 3. **Energy Management**:
-    - Track power usage and energy consumption using the `electricalPower` and `electricalEnergy` channels.
+    - Track power usage and energy consumption using the `electrical_power` and `electrical_energy` channels.
 
 ---
 
@@ -57,10 +57,10 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
    - Ensure proper mapping of channels to the device's physical or logical components.
-   - The `deviceInformation` channel is mandatory for device identification.
+   - The `device_information` channel is mandatory for device identification.
 
 3. **Energy and Safety Monitoring**:
-   - Include `electricalEnergy` and `electricalPower` for energy efficiency tracking.
+   - Include `electrical_energy` and `electrical_power` for energy efficiency tracking.
    - Use the `leak` channel for enhanced safety in environments prone to water-related issues.
 
 4. **Extensibility**:

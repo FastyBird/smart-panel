@@ -30,7 +30,7 @@ class _PagesCardsPluginClient implements PagesCardsPluginClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/pages-cards-plugin/cards',
+            '/plugins/pages-cards-plugin/cards',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -61,7 +61,7 @@ class _PagesCardsPluginClient implements PagesCardsPluginClient {
       Options(method: 'POST', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/pages-cards-plugin/cards',
+            '/plugins/pages-cards-plugin/cards',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -91,7 +91,7 @@ class _PagesCardsPluginClient implements PagesCardsPluginClient {
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/pages-cards-plugin/cards/${id}',
+            '/plugins/pages-cards-plugin/cards/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -123,7 +123,7 @@ class _PagesCardsPluginClient implements PagesCardsPluginClient {
       Options(method: 'PATCH', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/pages-cards-plugin/cards/${id}',
+            '/plugins/pages-cards-plugin/cards/${id}',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -153,7 +153,7 @@ class _PagesCardsPluginClient implements PagesCardsPluginClient {
       Options(method: 'DELETE', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            '/pages-cards-plugin/cards/${id}',
+            '/plugins/pages-cards-plugin/cards/${id}',
             queryParameters: queryParameters,
             data: _data,
           )

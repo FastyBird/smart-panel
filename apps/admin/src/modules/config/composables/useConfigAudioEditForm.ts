@@ -80,6 +80,8 @@ export const useConfigAudioEditForm = ({ config, messages }: IUseAudioEditFormPr
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.configAudio.edited'));
 
+		formChanged.value = false;
+
 		return 'saved';
 	};
 

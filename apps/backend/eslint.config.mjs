@@ -32,6 +32,7 @@ export default tseslint.config(
 			'@typescript-eslint/no-floating-promises': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'comma-dangle': ['error', 'always-multiline'],
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
 		},
 	},
 );

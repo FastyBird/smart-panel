@@ -42,7 +42,7 @@ export const useTileEditForm = <TForm extends ITileEditForm = ITileEditForm>({
 
 	const model = reactive<TForm>(tile as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -115,6 +115,10 @@ export const useTileEditForm = <TForm extends ITileEditForm = ITileEditForm>({
 		}
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'dashboardModule.messages.tiles.edited'));
+
+		formChanged.value = false;
+
+		initialModel = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 		return 'saved';
 	};

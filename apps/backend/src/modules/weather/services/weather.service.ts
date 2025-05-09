@@ -15,11 +15,11 @@ import {
 	SectionType,
 	WeatherLocationTypeType,
 } from '../../config/config.constants';
-import { LanguageConfigEntity, WeatherConfigEntity } from '../../config/entities/config.entity';
+import { LanguageConfigModel, WeatherConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
 import { ForecastDto, ForecastListItemDto } from '../dto/forecast.dto';
 import { WeatherDto } from '../dto/weather.dto';
-import { CurrentDayEntity, ForecastDayEntity, LocationEntity, LocationWeatherEntity } from '../entities/weather.entity';
+import { CurrentDayModel, ForecastDayModel, LocationModel, LocationWeatherModel } from '../models/weather.model';
 import { EventType } from '../weather.constants';
 import { WeatherException, WeatherNotFoundException, WeatherValidationException } from '../weather.exceptions';
 
@@ -59,7 +59,7 @@ export class WeatherService {
 		}
 	}
 
-	async getWeather(force = false): Promise<LocationWeatherEntity> {
+	async getWeather(force = false): Promise<LocationWeatherModel> {
 		this.loadConfiguration();
 
 		if (this.apiKey === null) {
@@ -78,7 +78,7 @@ export class WeatherService {
 
 			if (current && forecast) {
 				return plainToInstance(
-					LocationWeatherEntity,
+					LocationWeatherModel,
 					{
 						current: current.current,
 						forecast,
@@ -101,7 +101,7 @@ export class WeatherService {
 		throw new WeatherNotFoundException('Current weather data or forecast could not be loaded');
 	}
 
-	async getCurrentWeather(force = false): Promise<CurrentDayEntity> {
+	async getCurrentWeather(force = false): Promise<CurrentDayModel> {
 		this.loadConfiguration();
 
 		if (this.apiKey === null) {
@@ -116,7 +116,7 @@ export class WeatherService {
 			const current = await this.fetchCurrentWeather(force);
 
 			if (current) {
-				return plainToInstance(CurrentDayEntity, current.current, {
+				return plainToInstance(CurrentDayModel, current.current, {
 					enableImplicitConversion: true,
 					exposeUnsetFields: false,
 				});
@@ -132,7 +132,7 @@ export class WeatherService {
 		throw new WeatherNotFoundException('Current weather data could not be loaded');
 	}
 
-	async getForecastWeather(force = false): Promise<ForecastDayEntity[]> {
+	async getForecastWeather(force = false): Promise<ForecastDayModel[]> {
 		this.loadConfiguration();
 
 		if (this.apiKey === null) {
@@ -148,7 +148,7 @@ export class WeatherService {
 
 			if (forecast) {
 				return forecast.map((day) =>
-					plainToInstance(ForecastDayEntity, day, {
+					plainToInstance(ForecastDayModel, day, {
 						enableImplicitConversion: true,
 						exposeUnsetFields: false,
 					}),
@@ -199,16 +199,16 @@ export class WeatherService {
 	}
 
 	private loadConfiguration() {
-		this.apiKey = this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigEntity).openWeatherApiKey;
+		this.apiKey = this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigModel).openWeatherApiKey;
 
 		this.location =
-			this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigEntity).location || 'Prague,CZ';
+			this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigModel).location || 'Prague,CZ';
 
 		this.locationType =
-			this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigEntity).locationType ||
+			this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigModel).locationType ||
 			WeatherLocationTypeType.CITY_NAME;
 
-		switch (this.configService.getConfigSection(SectionType.LANGUAGE, LanguageConfigEntity).language) {
+		switch (this.configService.getConfigSection(SectionType.LANGUAGE, LanguageConfigModel).language) {
 			case LanguageType.ENGLISH:
 				this.language = 'en';
 				break;
@@ -219,8 +219,8 @@ export class WeatherService {
 	}
 
 	private async fetchCurrentWeather(force: boolean = false): Promise<{
-		current: CurrentDayEntity;
-		location: LocationEntity;
+		current: CurrentDayModel;
+		location: LocationModel;
 	} | null> {
 		const cacheKey = `weather-current:${this.location}`;
 		const cachedData = await this.cacheManager.get<WeatherDto>(cacheKey);
@@ -231,7 +231,7 @@ export class WeatherService {
 			const current = this.transformWeatherDto(cachedData);
 
 			const location = plainToInstance(
-				LocationEntity,
+				LocationModel,
 				{
 					name: cachedData.name,
 					country: cachedData.sys.country,
@@ -281,7 +281,7 @@ export class WeatherService {
 			const current = this.transformWeatherDto(weather);
 
 			const location = plainToInstance(
-				LocationEntity,
+				LocationModel,
 				{
 					name: weather.name,
 					country: weather.sys.country,
@@ -305,7 +305,7 @@ export class WeatherService {
 		}
 	}
 
-	private async fetchWeatherForecast(force: boolean = false): Promise<ForecastDayEntity[]> {
+	private async fetchWeatherForecast(force: boolean = false): Promise<ForecastDayModel[]> {
 		const cacheKey = `weather-forecast:${this.location}`;
 		const cachedData = await this.cacheManager.get<WeatherDto>(cacheKey);
 
@@ -394,9 +394,9 @@ export class WeatherService {
 		}
 	}
 
-	private transformWeatherDto(dto: WeatherDto): CurrentDayEntity {
+	private transformWeatherDto(dto: WeatherDto): CurrentDayModel {
 		return plainToInstance(
-			CurrentDayEntity,
+			CurrentDayModel,
 			{
 				temperature: dto.main.temp,
 				temperatureMin: dto.main.temp_min,
@@ -429,7 +429,7 @@ export class WeatherService {
 		);
 	}
 
-	private transformForecastDto(dto: ForecastDto): ForecastDayEntity[] {
+	private transformForecastDto(dto: ForecastDto): ForecastDayModel[] {
 		const dailyData: Record<
 			string,
 			{
@@ -485,7 +485,7 @@ export class WeatherService {
 
 		return Object.entries(dailyData).map(([date, data]) =>
 			plainToInstance(
-				ForecastDayEntity,
+				ForecastDayModel,
 				{
 					temperature: {
 						day: this.average(data.segments.day),

@@ -32,11 +32,15 @@ export class ChannelsService {
 	) {}
 
 	// Channels
-	async findAll(deviceId?: string): Promise<ChannelEntity[]> {
+	async findAll<TChannel extends ChannelEntity>(deviceId?: string, type?: string): Promise<TChannel[]> {
+		const mapping = type ? this.channelsMapperService.getMapping<TChannel, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
 		if (deviceId) {
 			this.logger.debug(`[LOOKUP ALL] Fetching all channels for deviceId=${deviceId}`);
 
-			const channels = await this.repository
+			const channels = (await repository
 				.createQueryBuilder('channel')
 				.innerJoinAndSelect('channel.device', 'device')
 				.leftJoinAndSelect('channel.controls', 'controls')
@@ -44,31 +48,39 @@ export class ChannelsService {
 				.leftJoinAndSelect('channel.properties', 'properties')
 				.leftJoinAndSelect('properties.channel', 'propertyChannel')
 				.where('device.id = :deviceId', { deviceId })
-				.getMany();
+				.getMany()) as TChannel[];
 
-			this.logger.debug(`[LOOKUP ALL] Found ${channels.length} tichannelsles for deviceId=${deviceId}`);
+			this.logger.debug(`[LOOKUP ALL] Found ${channels.length} channels for deviceId=${deviceId}`);
 
 			return channels;
 		}
 
 		this.logger.debug('[LOOKUP ALL] Fetching all channels');
 
-		const channels = await this.repository.find({
+		const channels = (await repository.find({
 			relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
-		});
+		})) as TChannel[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${channels.length} channels`);
 
 		return channels;
 	}
 
-	async findOne(id: string, deviceId?: string): Promise<ChannelEntity | null> {
-		let channel: ChannelEntity | null;
+	async findOne<TChannel extends ChannelEntity>(
+		id: string,
+		deviceId?: string,
+		type?: string,
+	): Promise<TChannel | null> {
+		const mapping = type ? this.channelsMapperService.getMapping<TChannel, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		let channel: TChannel | null;
 
 		if (deviceId) {
 			this.logger.debug(`[LOOKUP] Fetching channel with id=${id} for deviceId=${deviceId}`);
 
-			channel = await this.repository
+			channel = (await repository
 				.createQueryBuilder('channel')
 				.innerJoinAndSelect('channel.device', 'device')
 				.leftJoinAndSelect('channel.controls', 'controls')
@@ -77,7 +89,7 @@ export class ChannelsService {
 				.leftJoinAndSelect('properties.channel', 'propertyChannel')
 				.where('channel.id = :id', { id })
 				.andWhere('device.id = :deviceId', { deviceId })
-				.getOne();
+				.getOne()) as TChannel | null;
 
 			if (!channel) {
 				this.logger.warn(`[LOOKUP] Channel with id=${id} for deviceId=${deviceId} not found`);
@@ -87,10 +99,15 @@ export class ChannelsService {
 
 			this.logger.debug(`[LOOKUP] Successfully fetched channel with id=${id} for deviceId=${deviceId}`);
 		} else {
-			channel = await this.repository.findOne({
-				where: { id },
-				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
-			});
+			channel = (await repository
+				.createQueryBuilder('channel')
+				.innerJoinAndSelect('channel.device', 'device')
+				.leftJoinAndSelect('channel.controls', 'controls')
+				.leftJoinAndSelect('controls.channel', 'controlChannel')
+				.leftJoinAndSelect('channel.properties', 'properties')
+				.leftJoinAndSelect('properties.channel', 'propertyChannel')
+				.where('channel.id = :id', { id })
+				.getOne()) as TChannel | null;
 
 			if (!channel) {
 				this.logger.warn(`[LOOKUP] Channel with id=${id} not found`);

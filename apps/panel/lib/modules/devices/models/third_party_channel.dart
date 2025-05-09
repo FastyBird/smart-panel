@@ -13,7 +13,9 @@ class ThirdPartyChannelModel extends ChannelModel {
     required super.controls,
     super.createdAt,
     super.updatedAt,
-  });
+  }) : super(
+          type: 'third-party',
+        );
 
   factory ThirdPartyChannelModel.fromJson(Map<String, dynamic> json) {
     ChannelCategory? category = ChannelCategory.fromValue(

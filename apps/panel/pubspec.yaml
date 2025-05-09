@@ -128,7 +128,7 @@ flutter:
 
 # The following section is specific to Swagger OpenApi parser package
 swagger_parser:
-  schema_path: ../../spec/v1/openapi.json
+  schema_path: ../../spec/api/v1/openapi.json
   schema_url: http://localhost:3000/api/v1
   output_directory: lib/api
   name: "SmartPanelAPI"

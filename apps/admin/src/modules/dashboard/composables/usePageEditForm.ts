@@ -37,7 +37,7 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 
 	const model = reactive<TForm>(page as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -116,6 +116,10 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 				page: page.title,
 			})
 		);
+
+		formChanged.value = false;
+
+		initialModel = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 		return 'saved';
 	};

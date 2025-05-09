@@ -21,7 +21,7 @@ abstract class PagesCardsPluginClient {
   /// Fetches a list of cards associated with a specific page. Cards represent widgets that can be used for displaying data, such as device state, actual clock.
   ///
   /// [page] - Filter cards by the page resource ID.
-  @GET('/pages-cards-plugin/cards')
+  @GET('/plugins/pages-cards-plugin/cards')
   Future<HttpResponse<PagesCardsPluginResCards>> getPagesCardsPluginPageCards({
     @Query('page') String? page,
   });
@@ -29,7 +29,7 @@ abstract class PagesCardsPluginClient {
   /// Create a new card for a page.
   ///
   /// Creates a new card associated with a specific page. Cards represent widgets that can display device state or actual clock.
-  @POST('/pages-cards-plugin/cards')
+  @POST('/plugins/pages-cards-plugin/cards')
   Future<HttpResponse<PagesCardsPluginResCard>> createPagesCardsPluginPageCard({
     @Body() PagesCardsPluginReqCreateCard? body,
   });
@@ -39,7 +39,7 @@ abstract class PagesCardsPluginClient {
   /// Fetches detailed information about a specific card associated with a page using its unique ID. The response includes metadata such as the card’s position, ID, associated page, and tiles.
   ///
   /// [id] - The ID of the resource to retrieve.
-  @GET('/pages-cards-plugin/cards/{id}')
+  @GET('/plugins/pages-cards-plugin/cards/{id}')
   Future<HttpResponse<PagesCardsPluginResCard>> getPagesCardsPluginPageCard({
     @Path('id') required String id,
   });
@@ -49,7 +49,7 @@ abstract class PagesCardsPluginClient {
   /// Partially updates the attributes of a specific card associated with a page using its unique ID. The update can modify metadata, such as the card’s position or title, without requiring the full object.
   ///
   /// [id] - The ID of the resource to retrieve.
-  @PATCH('/pages-cards-plugin/cards/{id}')
+  @PATCH('/plugins/pages-cards-plugin/cards/{id}')
   Future<HttpResponse<PagesCardsPluginResCard>> updatePagesCardsPluginPageCard({
     @Path('id') required String id,
     @Body() PagesCardsPluginReqUpdateCard? body,
@@ -60,7 +60,7 @@ abstract class PagesCardsPluginClient {
   /// Deletes a specific card associated with a page using its unique ID. This action is irreversible and will remove the card and its associated data from the system.
   ///
   /// [id] - The ID of the resource to retrieve.
-  @DELETE('/pages-cards-plugin/cards/{id}')
+  @DELETE('/plugins/pages-cards-plugin/cards/{id}')
   Future<HttpResponse<void>> deletePagesCardsPluginPageCard({
     @Path('id') required String id,
   });

@@ -14,7 +14,7 @@ import {
 	PlatformNotSupportedException,
 	PlatformValidationException,
 } from '../../platform/platform.exceptions';
-import { SystemInfoEntity, ThrottleStatusEntity } from '../entities/system.entity';
+import { SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
 
 @Controller('system')
@@ -24,7 +24,7 @@ export class SystemController {
 	constructor(private readonly systemService: SystemService) {}
 
 	@Get('info')
-	async getSystemInfo(): Promise<SystemInfoEntity> {
+	async getSystemInfo(): Promise<SystemInfoModel> {
 		this.logger.debug('[LOOKUP] Fetching system info');
 
 		try {
@@ -32,7 +32,7 @@ export class SystemController {
 
 			this.logger.debug('[LOOKUP] Successfully retrieved system info');
 
-			return plainToInstance(SystemInfoEntity, systemInfo, {
+			return plainToInstance(SystemInfoModel, systemInfo, {
 				enableImplicitConversion: true,
 				exposeUnsetFields: false,
 			});
@@ -42,7 +42,7 @@ export class SystemController {
 	}
 
 	@Get('throttle')
-	async getThrottleStatus(): Promise<ThrottleStatusEntity> {
+	async getThrottleStatus(): Promise<ThrottleStatusModel> {
 		this.logger.debug('[LOOKUP] Fetching throttle status');
 
 		try {
@@ -50,7 +50,7 @@ export class SystemController {
 
 			this.logger.debug('[LOOKUP] Successfully retrieved throttle status');
 
-			return plainToInstance(ThrottleStatusEntity, throttleStatus, {
+			return plainToInstance(ThrottleStatusModel, throttleStatus, {
 				enableImplicitConversion: true,
 				exposeUnsetFields: false,
 			});

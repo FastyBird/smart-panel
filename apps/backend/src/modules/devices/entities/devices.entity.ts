@@ -51,7 +51,6 @@ export class DeviceEntity extends BaseEntity {
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => ChannelEntity)
 	@OneToMany(() => ChannelEntity, (channel) => channel.device, { cascade: true, onDelete: 'CASCADE' })
 	channels: ChannelEntity[];
 
@@ -126,7 +125,6 @@ export class ChannelEntity extends BaseEntity {
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => ChannelPropertyEntity)
 	@OneToMany(() => ChannelPropertyEntity, (property) => property.channel, { cascade: true, onDelete: 'CASCADE' })
 	properties: ChannelPropertyEntity[];
 

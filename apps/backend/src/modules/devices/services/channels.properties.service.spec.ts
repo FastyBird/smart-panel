@@ -315,9 +315,15 @@ describe('ChannelsPropertiesService', () => {
 
 			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
 
-			jest
-				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockCreatedProperty));
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockCreatedProperty)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
 			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedProperty);
 			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedProperty);
 
@@ -336,10 +342,7 @@ describe('ChannelsPropertiesService', () => {
 				EventType.CHANNEL_PROPERTY_CREATED,
 				plainToInstance(MockChannelProperty, mockCreatedProperty),
 			);
-			expect(repository.findOne).toHaveBeenCalledWith({
-				relations: ['channel'],
-				where: { id: mockCreatedProperty.id },
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('property.id = :id', { id: mockCreatedProperty.id });
 		});
 
 		it('should throw DevicesException if the channel property type is not provided', async () => {
@@ -407,10 +410,18 @@ describe('ChannelsPropertiesService', () => {
 
 			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
 
-			jest
-				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockChannelProperty))
-				.mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockUpdatedProperty));
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest
+					.fn()
+					.mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockChannelProperty))
+					.mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockUpdatedProperty)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
 			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedProperty);
 
 			const result = await channelsPropertiesService.update(mockChannelProperty.id, updateDto);
@@ -421,10 +432,7 @@ describe('ChannelsPropertiesService', () => {
 				EventType.CHANNEL_PROPERTY_UPDATED,
 				plainToInstance(MockChannelProperty, mockUpdatedProperty),
 			);
-			expect(repository.findOne).toHaveBeenCalledWith({
-				relations: ['channel'],
-				where: { id: mockUpdatedProperty.id },
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('property.id = :id', { id: mockUpdatedProperty.id });
 		});
 	});
 

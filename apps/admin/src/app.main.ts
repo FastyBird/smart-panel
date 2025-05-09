@@ -35,6 +35,7 @@ import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import type { paths } from './openapi';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
+import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party';
 import { PagesCardsPlugin } from './plugins/pages-cards';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail';
@@ -114,6 +115,7 @@ const pluginOptions: IModuleOptions = {
 };
 
 app.use(DevicesThirdPartyPlugin, pluginOptions);
+app.use(DevicesHomeAssistantPlugin, pluginOptions);
 app.use(PagesCardsPlugin, pluginOptions);
 app.use(PagesDeviceDetailPlugin, pluginOptions);
 app.use(PagesTilesPlugin, pluginOptions);

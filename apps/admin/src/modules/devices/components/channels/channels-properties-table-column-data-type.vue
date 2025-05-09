@@ -1,6 +1,7 @@
 <template>
 	<div class="flex flex-row items-center gap-1">
 		<el-link
+			v-if="props.withFilters"
 			:type="props.filters.dataTypes.includes(property.dataType) ? 'danger' : undefined"
 			:underline="false"
 			class="font-400!"
@@ -19,6 +20,12 @@
 
 			{{ t(`devicesModule.dataTypes.${props.property.dataType}`) }}
 		</el-link>
+		<el-text
+			v-else
+			class="font-400!"
+		>
+			{{ t(`devicesModule.dataTypes.${props.property.dataType}`) }}
+		</el-text>
 
 		<el-popover
 			v-if="isEnum"
@@ -108,7 +115,9 @@ defineOptions({
 	name: 'ChannelsPropertiesTableColumnDataType',
 });
 
-const props = defineProps<IChannelsPropertiesTableColumnDataTypeProps>();
+const props = withDefaults(defineProps<IChannelsPropertiesTableColumnDataTypeProps>(), {
+	withFilters: true,
+});
 
 const emit = defineEmits<{
 	(e: 'filter-by', value: DevicesModuleChannelPropertyData_type, add: boolean): void;
