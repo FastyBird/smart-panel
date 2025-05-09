@@ -1,5 +1,7 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and

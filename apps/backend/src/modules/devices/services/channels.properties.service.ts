@@ -50,7 +50,7 @@ export class ChannelsPropertiesService {
 
 				this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties for channelIds=${channelId.join(', ')}`);
 
-				return properties as TProperty[];
+				return properties;
 			} else {
 				this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelId=${channelId}`);
 

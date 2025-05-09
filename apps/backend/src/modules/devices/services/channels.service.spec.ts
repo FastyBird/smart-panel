@@ -1,5 +1,7 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -20,7 +22,7 @@ import { ChannelCategory, DeviceCategory, EventType } from '../devices.constants
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
-import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
 
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
