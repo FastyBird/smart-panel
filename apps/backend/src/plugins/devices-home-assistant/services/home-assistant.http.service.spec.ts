@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -9,6 +11,7 @@ import {
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
+import { MapperService } from '../mappers/mapper.service';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 
@@ -18,6 +21,18 @@ const mockConfigService = {
 
 const mockDevicesService = {
 	findAll: jest.fn(),
+};
+
+const mockChannelsPropertiesService = {
+	findAll: jest.fn(),
+};
+
+const mockPropertyValueService = {
+	write: jest.fn(),
+};
+
+const mockHomeAssistantMapperService = {
+	mapFromHA: jest.fn(),
 };
 
 describe('HomeAssistantHttpService', () => {
@@ -31,6 +46,9 @@ describe('HomeAssistantHttpService', () => {
 				HomeAssistantHttpService,
 				{ provide: ConfigService, useValue: mockConfigService },
 				{ provide: DevicesService, useValue: mockDevicesService },
+				{ provide: ChannelsPropertiesService, useValue: mockChannelsPropertiesService },
+				{ provide: MapperService, useValue: mockHomeAssistantMapperService },
+				{ provide: PropertyValueService, useValue: mockPropertyValueService },
 			],
 		}).compile();
 

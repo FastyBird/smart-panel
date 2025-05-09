@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
-import { HomeAssistantDomain } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE, HomeAssistantDomain } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import {
@@ -108,14 +108,13 @@ export class MapperService {
 	}
 
 	private async getChannels(device: HomeAssistantDeviceEntity): Promise<HomeAssistantChannelEntity[]> {
-		return (await this.channelsService.findAll(device.id)).filter(
-			(channel) => channel instanceof HomeAssistantChannelEntity,
-		);
+		return await this.channelsService.findAll<HomeAssistantChannelEntity>(device.id, DEVICES_HOME_ASSISTANT_TYPE);
 	}
 
 	private async getProperties(channels: HomeAssistantChannelEntity[]): Promise<HomeAssistantChannelPropertyEntity[]> {
-		return (await this.channelsPropertiesService.findAll(channels.map((channel) => channel.id))).filter(
-			(property) => property instanceof HomeAssistantChannelPropertyEntity,
+		return await this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
+			channels.map((channel) => channel.id),
+			DEVICES_HOME_ASSISTANT_TYPE,
 		);
 	}
 
