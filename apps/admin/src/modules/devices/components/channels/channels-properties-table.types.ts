@@ -1,4 +1,4 @@
-import type { IChannelsPropertiesFilter } from '../../composables/composables';
+import type { IChannelsPropertiesFilter } from '../../composables/types';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 
 export interface IChannelsPropertiesTableProps {
@@ -10,4 +10,5 @@ export interface IChannelsPropertiesTableProps {
 	filters: IChannelsPropertiesFilter;
 	filtersActive: boolean;
 	withChannelColumn?: boolean;
+	withFilters?: boolean;
 }
