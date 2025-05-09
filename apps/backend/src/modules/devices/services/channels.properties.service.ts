@@ -30,16 +30,23 @@ export class ChannelsPropertiesService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async findAll(channelId?: string | string[]): Promise<ChannelPropertyEntity[]> {
+	async findAll<TProperty extends ChannelPropertyEntity>(
+		channelId?: string | string[],
+		type?: string,
+	): Promise<TProperty[]> {
+		const mapping = type ? this.propertiesMapperService.getMapping<TProperty, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
 		if (channelId) {
 			if (Array.isArray(channelId)) {
 				this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelIds=${channelId.join(', ')}`);
 
-				const properties = await this.repository
+				const properties = (await repository
 					.createQueryBuilder('property')
 					.innerJoinAndSelect('property.channel', 'channel')
-					.where('channel.id IN (:...channelIds)', { channelId })
-					.getMany();
+					.where('channel.id IN (:...channelIds)', { channelIds: channelId })
+					.getMany()) as TProperty[];
 
 				this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties for channelIds=${channelId.join(', ')}`);
 
@@ -47,11 +54,11 @@ export class ChannelsPropertiesService {
 			} else {
 				this.logger.debug(`[LOOKUP ALL] Fetching all properties for channelId=${channelId}`);
 
-				const properties = await this.repository
+				const properties = (await repository
 					.createQueryBuilder('property')
 					.innerJoinAndSelect('property.channel', 'channel')
 					.where('channel.id = :channelId', { channelId })
-					.getMany();
+					.getMany()) as TProperty[];
 
 				this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties for channelId=${channelId}`);
 
@@ -61,25 +68,33 @@ export class ChannelsPropertiesService {
 
 		this.logger.debug('[LOOKUP ALL] Fetching all properties');
 
-		const properties = await this.repository.find({ relations: ['channel'] });
+		const properties = (await repository.find({ relations: ['channel'] })) as TProperty[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties`);
 
 		return properties;
 	}
 
-	async findOne(id: string, channelId?: string): Promise<ChannelPropertyEntity | null> {
-		let property: ChannelPropertyEntity | null;
+	async findOne<TProperty extends ChannelPropertyEntity>(
+		id: string,
+		channelId?: string,
+		type?: string,
+	): Promise<TProperty | null> {
+		const mapping = type ? this.propertiesMapperService.getMapping<TProperty, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		let property: TProperty | null;
 
 		if (channelId) {
 			this.logger.debug(`[LOOKUP] Fetching property with id=${id} for channelId=${channelId}`);
 
-			property = await this.repository
+			property = (await repository
 				.createQueryBuilder('property')
 				.innerJoinAndSelect('property.channel', 'channel')
 				.where('property.id = :id', { id })
 				.andWhere('channel.id = :channelId', { channelId })
-				.getOne();
+				.getOne()) as TProperty | null;
 
 			if (!property) {
 				this.logger.warn(`[LOOKUP] Property with id=${id} for channelId=${channelId} not found`);
@@ -89,10 +104,11 @@ export class ChannelsPropertiesService {
 
 			this.logger.debug(`[LOOKUP] Successfully fetched property with id=${id} for channelId=${channelId}`);
 		} else {
-			property = await this.repository.findOne({
-				where: { id },
-				relations: ['channel'],
-			});
+			property = (await repository
+				.createQueryBuilder('property')
+				.innerJoinAndSelect('property.channel', 'channel')
+				.where('property.id = :id', { id })
+				.getOne()) as TProperty | null;
 
 			if (!property) {
 				this.logger.warn(`[LOOKUP] Property with id=${id} not found`);

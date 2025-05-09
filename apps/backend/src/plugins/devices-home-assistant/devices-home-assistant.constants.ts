@@ -14,6 +14,7 @@ export enum HomeAssistantDomain {
 	CLIMATE = 'climate',
 	COVER = 'cover',
 	DEVICE_TRACKER = 'device_tracker',
+	EVENT = 'event',
 	FAN = 'fan',
 	HUMIDIFIER = 'humidifier',
 	IMAGE = 'image',

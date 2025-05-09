@@ -32,10 +32,14 @@ export class DevicesService {
 	) {}
 
 	// Devices
-	async findAll() {
+	async findAll<TDevice extends DeviceEntity>(type?: string): Promise<TDevice[]> {
+		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
 		this.logger.debug('[LOOKUP ALL] Fetching all devices');
 
-		const devices = await this.repository.find({
+		const devices = (await repository.find({
 			relations: [
 				'controls',
 				'controls.device',
@@ -46,29 +50,32 @@ export class DevicesService {
 				'channels.properties',
 				'channels.properties.channel',
 			],
-		});
+		})) as TDevice[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${devices.length} devices`);
 
 		return devices;
 	}
 
-	async findOne(id: string): Promise<DeviceEntity | null> {
+	async findOne<TDevice extends DeviceEntity>(id: string, type?: string): Promise<TDevice | null> {
+		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
 		this.logger.debug(`[LOOKUP] Fetching device with id=${id}`);
 
-		const device = await this.repository.findOne({
-			where: { id },
-			relations: [
-				'controls',
-				'controls.device',
-				'channels',
-				'channels.device',
-				'channels.controls',
-				'channels.controls.channel',
-				'channels.properties',
-				'channels.properties.channel',
-			],
-		});
+		const device = (await repository
+			.createQueryBuilder('device')
+			.leftJoinAndSelect('device.controls', 'controls')
+			.leftJoinAndSelect('controls.device', 'controlDevice')
+			.leftJoinAndSelect('device.channel', 'channels')
+			.leftJoinAndSelect('channels.device', 'channelDevice')
+			.leftJoinAndSelect('channels.controls', 'channelControls')
+			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
+			.leftJoinAndSelect('channels.properties', 'channelProperties')
+			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
+			.where('device.id = :id', { id })
+			.getOne()) as TDevice | null;
 
 		if (!device) {
 			this.logger.warn(`[LOOKUP] Page with id=${id} not found`);

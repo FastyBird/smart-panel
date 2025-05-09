@@ -3,11 +3,14 @@ import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
+import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
 	DevicesHomeAssistantNotFoundException,
@@ -15,7 +18,11 @@ import {
 } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
-import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
+import {
+	HomeAssistantChannelPropertyEntity,
+	HomeAssistantDeviceEntity,
+} from '../entities/devices-home-assistant.entity';
+import { MapperService } from '../mappers/mapper.service';
 import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
 import { HomeAssistantDiscoveredDeviceModel, HomeAssistantStateModel } from '../models/home-assistant.model';
 
@@ -34,6 +41,9 @@ export class HomeAssistantHttpService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly devicesService: DevicesService,
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly homeAssistantMapperService: MapperService,
+		private readonly propertyValueService: PropertyValueService,
 	) {}
 
 	async getDiscoveredDevice(id: string): Promise<HomeAssistantDiscoveredDeviceModel> {
@@ -45,14 +55,12 @@ export class HomeAssistantHttpService {
 			const [device, states] = await Promise.all([this.fetchSingleHaDevice(id), this.fetchListHaStates()]);
 
 			if (device && states) {
-				const panelDevices = await this.devicesService.findAll();
+				const panelDevices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
 
 				const deviceModel = this.toDiscoveredDeviceModel(device);
 
 				deviceModel.adoptedDeviceId =
-					panelDevices.find(
-						(panelDevice) => panelDevice instanceof HomeAssistantDeviceEntity && panelDevice.haDeviceId === device.id,
-					)?.id ?? null;
+					panelDevices.find((panelDevice) => panelDevice.haDeviceId === device.id)?.id ?? null;
 
 				deviceModel.states = states
 					.filter((state) => device.entities.includes(state.entity_id))
@@ -85,15 +93,13 @@ export class HomeAssistantHttpService {
 			const [devices, states] = await Promise.all([this.fetchListHaDevices(), this.fetchListHaStates()]);
 
 			if (devices && states) {
-				const panelDevices = await this.devicesService.findAll();
+				const panelDevices = await this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE);
 
 				return devices.map((device) => {
 					const deviceModel = this.toDiscoveredDeviceModel(device);
 
 					deviceModel.adoptedDeviceId =
-						panelDevices.find(
-							(panelDevice) => panelDevice instanceof HomeAssistantDeviceEntity && panelDevice.haDeviceId === device.id,
-						)?.id ?? null;
+						panelDevices.find((panelDevice) => panelDevice.haDeviceId === device.id)?.id ?? null;
 
 					deviceModel.states = states
 						.filter((state) => device.entities.includes(state.entity_id))
@@ -170,6 +176,78 @@ export class HomeAssistantHttpService {
 		}
 
 		throw new DevicesHomeAssistantNotFoundException('Home Assistant entities states list could not be loaded');
+	}
+
+	@Cron(CronExpression.EVERY_5_SECONDS)
+	async loadStates() {
+		if (this.apiKey === null) {
+			return;
+		}
+
+		try {
+			this.logger.debug('[HOME ASSISTANT][HTTP] Automatic fetch of all Home Assistant entities states list');
+
+			const [states, haDevices, panelDevices, properties] = await Promise.all([
+				this.fetchListHaStates(),
+				this.fetchListHaDevices(),
+				this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE),
+				this.channelsPropertiesService.findAll<HomeAssistantChannelPropertyEntity>(
+					undefined,
+					DEVICES_HOME_ASSISTANT_TYPE,
+				),
+			]);
+
+			if (!states?.length || !haDevices?.length || !panelDevices?.length || !properties?.length) {
+				this.logger.warn('[HOME ASSISTANT][HTTP] Missing data, skipping automatic sync');
+
+				return;
+			}
+
+			const entityIdToHaDevice = new Map<string, HomeAssistantDiscoveredDeviceDto>();
+
+			for (const device of haDevices) {
+				for (const entityId of device.entities) {
+					entityIdToHaDevice.set(entityId, device);
+				}
+			}
+
+			for (const state of states) {
+				const haDevice = entityIdToHaDevice.get(state.entity_id);
+
+				if (!haDevice) {
+					continue;
+				}
+
+				const panelDevice = panelDevices.find((device) => device.haDeviceId === haDevice.id);
+
+				if (!panelDevice) {
+					continue;
+				}
+
+				const resultMaps = await this.homeAssistantMapperService.mapFromHA(panelDevice, [state]);
+
+				for (const map of resultMaps) {
+					for (const [propertyId, value] of map) {
+						const prop = properties.find((property) => property.id === propertyId);
+
+						if (!prop) {
+							continue;
+						}
+
+						await this.propertyValueService.write(prop, value);
+					}
+				}
+			}
+
+			this.logger.debug('[HOME ASSISTANT][HTTP] Automatic fetch of all Home Assistant entities states list completed');
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[HOME ASSISTANT][HTTP] Failed to automated fetch of Home Assistant entities states list', {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
 	}
 
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
