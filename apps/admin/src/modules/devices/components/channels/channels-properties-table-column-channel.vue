@@ -1,5 +1,6 @@
 <template>
 	<el-link
+		v-if="props.withFilters"
 		:type="props.filters.channels.includes(property.channel) ? 'danger' : undefined"
 		:underline="false"
 		class="font-400!"
@@ -18,12 +19,18 @@
 
 		{{ channel?.name || property.channel }}
 	</el-link>
+	<el-text
+		v-else
+		class="font-400!"
+	>
+		{{ channel?.name || property.channel }}
+	</el-text>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
 
-import { ElIcon, ElLink } from 'element-plus';
+import { ElIcon, ElLink, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -36,7 +43,9 @@ defineOptions({
 	name: 'ChannelsPropertiesTableColumnChannel',
 });
 
-const props = defineProps<IChannelsPropertiesTableColumnChannelProps>();
+const props = withDefaults(defineProps<IChannelsPropertiesTableColumnChannelProps>(), {
+	withFilters: true,
+});
 
 const emit = defineEmits<{
 	(e: 'filter-by', value: IChannel['id'], add: boolean): void;
