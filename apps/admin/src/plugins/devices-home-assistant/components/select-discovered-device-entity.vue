@@ -1,7 +1,7 @@
 <template>
 	<el-select
 		v-model="selectedEntity"
-		:placeholder="t('devicesHomeAssistantPlugin.fields.channels.haEntityId.placeholder')"
+		:placeholder="t('devicesHomeAssistantPlugin.fields.channelsProperties.haEntityId.placeholder')"
 		:loading="areLoading"
 		:disabled="props.disabled"
 		name="haEntityId"

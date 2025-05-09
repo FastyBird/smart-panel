@@ -168,7 +168,7 @@
 			<el-divider />
 
 			<el-form-item
-				:label="t('devicesHomeAssistantPlugin.fields.channels.haEntityId.title')"
+				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haEntityId.title')"
 				:prop="['haEntityId']"
 			>
 				<select-discovered-device-entity
