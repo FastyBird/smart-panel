@@ -14,7 +14,7 @@ import {
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
-import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
+import { HomeAssistantConfigModel } from '../models/config.model';
 
 export type IHomeAssistantDevicePropertyData = IDevicePropertyData & {
 	device: HomeAssistantDeviceEntity;

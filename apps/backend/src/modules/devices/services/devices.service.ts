@@ -68,7 +68,7 @@ export class DevicesService {
 			.createQueryBuilder('device')
 			.leftJoinAndSelect('device.controls', 'controls')
 			.leftJoinAndSelect('controls.device', 'controlDevice')
-			.leftJoinAndSelect('device.channel', 'channels')
+			.leftJoinAndSelect('device.channels', 'channels')
 			.leftJoinAndSelect('channels.device', 'channelDevice')
 			.leftJoinAndSelect('channels.controls', 'channelControls')
 			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')

@@ -23,7 +23,7 @@ import {
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
-import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
+import { HomeAssistantConfigModel } from '../models/config.model';
 import { HomeAssistantDiscoveredDeviceModel, HomeAssistantStateModel } from '../models/home-assistant.model';
 
 const DISCOVERED_DEVICES_TEMPLATE =
@@ -178,7 +178,7 @@ export class HomeAssistantHttpService {
 		throw new DevicesHomeAssistantNotFoundException('Home Assistant entities states list could not be loaded');
 	}
 
-	@Cron(CronExpression.EVERY_5_SECONDS)
+	@Cron(CronExpression.EVERY_5_MINUTES)
 	async loadStates() {
 		if (this.apiKey === null) {
 			return;
@@ -274,12 +274,12 @@ export class HomeAssistantHttpService {
 	}
 
 	private get baseUrl(): string {
-		return `http://${this.config.hostname}`;
+		return `http://${this.hostname}`;
 	}
 
 	private ensureApiKey(): void {
 		if (this.apiKey === null) {
-			this.logger.warn('[HOME ASSISTANT][HTTP] Missing API key for Home Assistant service');
+			this.logger.warn('[HOME ASSISTANT][HTTP] Missing API key for Home Assistant HTTP service');
 
 			throw new DevicesHomeAssistantValidationException('Api key is required');
 		}

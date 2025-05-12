@@ -10,9 +10,9 @@ import {
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
-import { HomeAssistantConfigModel } from '../models/config-home-assistant.model';
+import { HomeAssistantConfigModel } from '../models/config.model';
 
-import { HomeAssistantDevicePlatform } from './home-assistant-device.platform';
+import { HomeAssistantDevicePlatform } from './home-assistant.device.platform';
 
 describe('HomeAssistantDevicePlatform', () => {
 	let platform: HomeAssistantDevicePlatform;

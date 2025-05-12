@@ -108,7 +108,7 @@ export class PropertyValueService {
 					break;
 
 				case DataTypeType.BOOL:
-					parsedValue = latest.stringValue ? latest.stringValue === 'true' : null;
+					parsedValue = latest.stringValue != null ? latest.stringValue === 'true' : null;
 					break;
 
 				case DataTypeType.CHAR:
@@ -117,12 +117,15 @@ export class PropertyValueService {
 				case DataTypeType.USHORT:
 				case DataTypeType.INT:
 				case DataTypeType.UINT:
-					parsedValue = latest.numberValue ? Math.round(latest.numberValue) : null;
+					parsedValue = latest.numberValue != null ? Math.round(latest.numberValue) : null;
 					break;
 
 				case DataTypeType.FLOAT:
-					parsedValue = latest.numberValue ? latest.numberValue : null;
+					parsedValue = latest.numberValue ?? null;
 					break;
+
+				default:
+					parsedValue = null;
 			}
 
 			this.logger.debug(

@@ -30,14 +30,17 @@ import { LightEntityMapperService } from './mappers/light.entity.mapper.service'
 import { MapperService } from './mappers/mapper.service';
 import { SensorEntityMapperService } from './mappers/sensor.entity.mapper.service';
 import { SwitchEntityMapperService } from './mappers/switch.entity.mapper.service';
-import { HomeAssistantConfigModel } from './models/config-home-assistant.model';
-import { HomeAssistantDevicePlatform } from './platforms/home-assistant-device.platform';
+import { HomeAssistantConfigModel } from './models/config.model';
+import { HomeAssistantDevicePlatform } from './platforms/home-assistant.device.platform';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
+import { HomeAssistantWsService } from './services/home-assistant.ws.service';
+import { StateChangedEventService } from './services/state-changed.event.service';
 
 @Module({
 	imports: [TypeOrmModule.forFeature([HomeAssistantDeviceEntity]), DevicesModule, ConfigModule],
 	providers: [
 		HomeAssistantHttpService,
+		HomeAssistantWsService,
 		HomeAssistantDevicePlatform,
 		MapperService,
 		BinarySensorEntityMapperService,
@@ -45,6 +48,7 @@ import { HomeAssistantHttpService } from './services/home-assistant.http.service
 		LightEntityMapperService,
 		SensorEntityMapperService,
 		SwitchEntityMapperService,
+		StateChangedEventService,
 	],
 	controllers: [HomeAssistantDiscoveredDevicesController, HomeAssistantStatesController],
 	exports: [HomeAssistantHttpService],
@@ -63,6 +67,8 @@ export class DevicesHomeAssistantPlugin {
 		private readonly homeAssistantLightEntityMapper: LightEntityMapperService,
 		private readonly homeAssistantSensorEntityMapper: SensorEntityMapperService,
 		private readonly homeAssistantSwitchEntityMapper: SwitchEntityMapperService,
+		private readonly homeAssistantWsService: HomeAssistantWsService,
+		private readonly stateChangedEventService: StateChangedEventService,
 	) {}
 
 	onModuleInit() {
@@ -112,5 +118,15 @@ export class DevicesHomeAssistantPlugin {
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantLightEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSwitchEntityMapper);
+
+		this.homeAssistantWsService.connect();
+		this.homeAssistantWsService.registerEventsHandler(
+			this.stateChangedEventService.event,
+			this.stateChangedEventService,
+		);
+	}
+
+	onModuleDestroy() {
+		this.homeAssistantWsService.disconnect();
 	}
 }

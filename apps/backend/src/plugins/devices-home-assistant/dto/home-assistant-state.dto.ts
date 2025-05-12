@@ -74,3 +74,48 @@ export class HomeAssistantStateDto {
 	@Type(() => HomeAssistantContextDto)
 	context: HomeAssistantContextDto;
 }
+
+export class HomeAssistantStateChangedEventDataDto {
+	@Expose()
+	@ValidateNested()
+	@Type(() => HomeAssistantStateDto)
+	old_state: HomeAssistantStateDto;
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => HomeAssistantStateDto)
+	new_state: HomeAssistantStateDto;
+}
+
+export class HomeAssistantStateChangedEventDto {
+	@Expose()
+	@IsString()
+	event_type: 'state_changed';
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => HomeAssistantStateChangedEventDataDto)
+	data: HomeAssistantStateChangedEventDataDto;
+
+	@Expose()
+	@IsString()
+	origin: string;
+
+	@Expose()
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { time_fired?: string } }) => {
+			return typeof obj.time_fired === 'string' ? new Date(obj.time_fired) : obj.time_fired;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	time_fired: Date;
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => HomeAssistantContextDto)
+	context: HomeAssistantContextDto;
+}
