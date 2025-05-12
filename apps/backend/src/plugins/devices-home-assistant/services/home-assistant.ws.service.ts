@@ -1,4 +1,5 @@
 import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import WebSocket from 'ws';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -7,9 +8,18 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
-import { DevicesHomeAssistantException } from '../devices-home-assistant.exceptions';
+import {
+	DevicesHomeAssistantException,
+	DevicesHomeAssistantValidationException,
+} from '../devices-home-assistant.exceptions';
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantConfigModel } from '../models/config.model';
+import {
+	HomeAssistantDeviceRegistryResponseModel,
+	HomeAssistantDeviceRegistryResponseResultModel,
+	HomeAssistantEntityRegistryResponseModel,
+	HomeAssistantEntityRegistryResponseResultModel,
+} from '../models/home-assistant.model';
 
 export interface WsEventService {
 	get event(): string;
@@ -19,6 +29,8 @@ export interface WsEventService {
 @Injectable()
 export class HomeAssistantWsService {
 	private readonly logger = new Logger(HomeAssistantWsService.name);
+
+	private readonly RESPONSE_TIMEOUT_MS = 10000; // 10 seconds
 
 	private ws: WebSocket | null = null;
 
@@ -31,6 +43,15 @@ export class HomeAssistantWsService {
 	private reconnectTimeout: NodeJS.Timeout | null = null;
 
 	private eventsHandlers: Map<string, WsEventService> = new Map();
+
+	private responses = new Map<
+		number,
+		{
+			resolve: (value: string) => void;
+			reject: (reason?: Error) => void;
+			timeout: NodeJS.Timeout;
+		}
+	>();
 
 	constructor(private readonly configService: ConfigService) {}
 
@@ -65,7 +86,7 @@ export class HomeAssistantWsService {
 
 		this.ws.on('message', (data: string) => {
 			void (async () => {
-				await this.handleMessage(JSON.parse(data) as object);
+				await this.handleMessage(data);
 			})();
 		});
 
@@ -87,6 +108,120 @@ export class HomeAssistantWsService {
 
 	isConnected(): boolean {
 		return this.ws?.readyState === WebSocket.OPEN;
+	}
+
+	async getDevicesRegistry(): Promise<HomeAssistantDeviceRegistryResponseResultModel[]> {
+		if (!this.isConnected()) {
+			this.logger.warn('[HOME ASSISTANT][WS] Tried to get devices registry while socket is not open.');
+
+			throw new DevicesHomeAssistantValidationException('Home Assistant socket connection is not open.');
+		}
+
+		try {
+			this.logger.debug('[HOME ASSISTANT][WS] Fetching devices registry from Home Assistant');
+
+			const response = await this.send({
+				type: 'config/device_registry/get',
+			});
+
+			const msg: object = JSON.parse(response) as object;
+
+			const devicesRegistry = plainToInstance(HomeAssistantDeviceRegistryResponseModel, msg, {
+				enableImplicitConversion: true,
+				exposeUnsetFields: false,
+			});
+
+			const errors = await validate(devicesRegistry);
+
+			if (errors.length) {
+				this.logger.error(
+					`[VALIDATION] Home Assistant devices registry response validation failed error=${JSON.stringify(errors)}`,
+				);
+
+				return null;
+			}
+
+			return devicesRegistry.result;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[HOME ASSISTANT][WS] Failed to fetch Home Assistant devices registry', {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			throw new DevicesHomeAssistantException(
+				'An unhandled error occur. Home Assistant discovered device detail could not be loaded',
+			);
+		}
+	}
+
+	async getEntitiesRegistry(): Promise<HomeAssistantEntityRegistryResponseResultModel[]> {
+		if (!this.isConnected()) {
+			this.logger.warn('[HOME ASSISTANT][WS] Tried to get entities registry while socket is not open.');
+
+			throw new DevicesHomeAssistantValidationException('Home Assistant socket connection is not open.');
+		}
+
+		try {
+			this.logger.debug('[HOME ASSISTANT][WS] Fetching entities registry from Home Assistant');
+
+			const response = await this.send({
+				type: 'config/entity_registry/get',
+			});
+
+			const msg: object = JSON.parse(response) as object;
+
+			const entitiesRegistry = plainToInstance(HomeAssistantEntityRegistryResponseModel, msg, {
+				enableImplicitConversion: true,
+				exposeUnsetFields: false,
+			});
+
+			const errors = await validate(entitiesRegistry);
+
+			if (errors.length) {
+				this.logger.error(
+					`[VALIDATION] Home Assistant entities registry response validation failed error=${JSON.stringify(errors)}`,
+				);
+
+				return null;
+			}
+
+			return entitiesRegistry.result;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[HOME ASSISTANT][WS] Failed to fetch Home Assistant entities registry', {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			throw new DevicesHomeAssistantException(
+				'An unhandled error occur. Home Assistant discovered entity detail could not be loaded',
+			);
+		}
+	}
+
+	send(data: Record<string, any>): Promise<string> {
+		if (!this.isConnected()) {
+			this.logger.warn('[HOME ASSISTANT][WS] Tried to send message while socket is not open.');
+
+			return Promise.reject(new DevicesHomeAssistantException('Home Assistant socket connection is not open.'));
+		}
+
+		const messageId = this.nextId++;
+
+		return new Promise<string>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				this.responses.delete(messageId);
+
+				reject(new DevicesHomeAssistantException(`Home Assistant WS response timed out (id=${messageId})`));
+			}, this.RESPONSE_TIMEOUT_MS);
+
+			this.responses.set(messageId, { resolve, reject, timeout });
+
+			this.ws.send(JSON.stringify({ id: messageId, ...data }));
+		});
 	}
 
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
@@ -132,15 +267,17 @@ export class HomeAssistantWsService {
 		}
 	}
 
-	send(data: Record<string, any>) {
-		if (this.isConnected()) {
-			this.ws.send(JSON.stringify({ id: this.nextId++, ...data }));
-		} else {
-			this.logger.warn('[HOME ASSISTANT][WS] Tried to send message while socket is not open.');
-		}
-	}
+	private async handleMessage(data: string) {
+		const msg: object = JSON.parse(data) as object;
 
-	private async handleMessage(msg: object) {
+		if ('id' in msg && msg.id && typeof msg.id === 'number' && this.responses.has(msg.id)) {
+			const { resolve } = this.responses.get(msg.id);
+
+			this.responses.delete(msg.id);
+
+			resolve(data);
+		}
+
 		if (!('type' in msg)) {
 			return;
 		}

@@ -10,6 +10,7 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
 import { HomeAssistantDiscoveredDevicesController } from './controllers/home-assistant-discovered-devices.controller';
+import { HomeAssistantRegistryController } from './controllers/home-assistant-registry.controller';
 import { HomeAssistantStatesController } from './controllers/home-assistant-states.controller';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from './devices-home-assistant.constants';
 import { CreateHomeAssistantChannelPropertyDto } from './dto/create-channel-property.dto';
@@ -50,7 +51,11 @@ import { StateChangedEventService } from './services/state-changed.event.service
 		SwitchEntityMapperService,
 		StateChangedEventService,
 	],
-	controllers: [HomeAssistantDiscoveredDevicesController, HomeAssistantStatesController],
+	controllers: [
+		HomeAssistantDiscoveredDevicesController,
+		HomeAssistantStatesController,
+		HomeAssistantRegistryController,
+	],
 	exports: [HomeAssistantHttpService],
 })
 export class DevicesHomeAssistantPlugin {
