@@ -25,7 +25,7 @@ export const useAttributesOptions = ({ entityId }: IUseAttributesOptionsProps): 
 
 		const options = orderBy(
 			attributeEntries.map(([key]) => ({
-				value: key,
+				value: key.replace(/([A-Z])/g, '_$1').toLowerCase(),
 				label: `HA: ${key}`,
 			})),
 			['label'],
