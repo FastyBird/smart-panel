@@ -1,5 +1,6 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import {
+	ArrayMinSize,
 	ArrayNotEmpty,
 	IsArray,
 	IsBoolean,
@@ -105,33 +106,36 @@ export class HomeAssistantEntityRegistryResponseResultModel {
 	@Expose({ name: 'area_id' })
 	@IsString()
 	@IsOptional()
-	areaId: string | null;
+	areaId: string | null = null;
 
 	@Expose({ name: 'device_id' })
 	@IsString()
-	deviceId: string;
+	@IsOptional()
+	deviceId: string | null = null;
 
 	@Expose({ name: 'entity_category' })
 	@IsString()
-	entityCategory: string;
+	@IsOptional()
+	entityCategory: string | null = null;
 
 	@Expose({ name: 'has_entity_name' })
 	@IsBoolean()
-	hasEntityName: boolean;
+	hasEntityName: boolean = false;
 
 	@Expose()
 	@IsString()
 	@IsOptional()
-	icon: string | null;
+	icon: string | null = null;
 
 	@Expose()
 	@IsString()
 	@IsOptional()
-	name: string | null;
+	name: string | null = null;
 
 	@Expose({ name: 'original_name' })
 	@IsString()
-	originalName: string;
+	@IsOptional()
+	originalName: string | null = null;
 
 	@Expose({ name: 'unique_id' })
 	@IsString()
@@ -140,9 +144,13 @@ export class HomeAssistantEntityRegistryResponseResultModel {
 	@Expose({ name: 'created_at' })
 	@IsDate()
 	@Transform(
-		({ obj }: { obj: { created_at?: string | Date; lastUpdated?: string | Date } }) => {
-			const value: string | Date = obj.created_at || obj.lastUpdated;
-			return typeof value === 'string' ? new Date(value) : value;
+		({ obj }: { obj: { created_at?: string | number | Date; createdAt?: string | number | Date } }) => {
+			const value: string | number | Date = obj.created_at || obj.createdAt;
+			return typeof value === 'string'
+				? new Date(value)
+				: typeof value === 'number'
+					? new Date(value < 10_000_000_000 ? value * 1000 : value)
+					: value;
 		},
 		{ toClassOnly: true },
 	)
@@ -152,18 +160,23 @@ export class HomeAssistantEntityRegistryResponseResultModel {
 	createdAt: Date;
 
 	@Expose({ name: 'modified_at' })
+	@IsOptional()
 	@IsDate()
 	@Transform(
-		({ obj }: { obj: { modified_at?: string | Date; lastUpdated?: string | Date } }) => {
-			const value: string | Date = obj.modified_at || obj.lastUpdated;
-			return typeof value === 'string' ? new Date(value) : value;
+		({ obj }: { obj: { modified_at?: string | number | Date; modifiedAt?: string | number | Date } }) => {
+			const value: string | number | Date = obj.modified_at || obj.modifiedAt;
+			return typeof value === 'string'
+				? new Date(value)
+				: typeof value === 'number'
+					? new Date(value < 10_000_000_000 ? value * 1000 : value)
+					: value;
 		},
 		{ toClassOnly: true },
 	)
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
 	})
-	modifiedAt: Date;
+	modifiedAt?: Date | string;
 }
 
 export class HomeAssistantEntityRegistryResponseModel {
@@ -184,16 +197,6 @@ export class HomeAssistantEntityRegistryResponseModel {
 	@ValidateNested({ each: true })
 	@Type(() => HomeAssistantEntityRegistryResponseResultModel)
 	result: HomeAssistantEntityRegistryResponseResultModel[];
-}
-
-export class DeviceConnection {
-	@IsString()
-	@Expose()
-	type: string; // mac | bluetooth | zigbee | zwave | serial | usb | ethernet
-
-	@IsString()
-	@Expose()
-	value: string;
 }
 
 export class HomeAssistantDeviceRegistryResponseResultModel {
@@ -217,7 +220,8 @@ export class HomeAssistantDeviceRegistryResponseResultModel {
 
 	@Expose()
 	@IsString()
-	manufacturer: string;
+	@IsOptional()
+	manufacturer: string | null;
 
 	@Expose()
 	@IsString()
@@ -245,18 +249,22 @@ export class HomeAssistantDeviceRegistryResponseResultModel {
 	serialNumber: string | null;
 
 	@Expose()
-	@IsOptional()
 	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => DeviceConnection)
-	connections: DeviceConnection[];
+	@IsOptional()
+	@ArrayMinSize(0)
+	@IsArray({ each: true })
+	connections: [string, string][] = [];
 
 	@Expose({ name: 'created_at' })
 	@IsDate()
 	@Transform(
-		({ obj }: { obj: { created_at?: string | Date; lastUpdated?: string | Date } }) => {
-			const value: string | Date = obj.created_at || obj.lastUpdated;
-			return typeof value === 'string' ? new Date(value) : value;
+		({ obj }: { obj: { created_at?: string | number | Date; createdAt?: string | number | Date } }) => {
+			const value: string | number | Date = obj.created_at || obj.createdAt;
+			return typeof value === 'string'
+				? new Date(value)
+				: typeof value === 'number'
+					? new Date(value < 10_000_000_000 ? value * 1000 : value)
+					: value;
 		},
 		{ toClassOnly: true },
 	)
@@ -266,18 +274,23 @@ export class HomeAssistantDeviceRegistryResponseResultModel {
 	createdAt: Date;
 
 	@Expose({ name: 'modified_at' })
+	@IsOptional()
 	@IsDate()
 	@Transform(
-		({ obj }: { obj: { modified_at?: string | Date; lastUpdated?: string | Date } }) => {
-			const value: string | Date = obj.modified_at || obj.lastUpdated;
-			return typeof value === 'string' ? new Date(value) : value;
+		({ obj }: { obj: { modified_at?: string | number | Date; modifiedAt?: string | number | Date } }) => {
+			const value: string | number | Date = obj.modified_at || obj.modifiedAt;
+			return typeof value === 'string'
+				? new Date(value)
+				: typeof value === 'number'
+					? new Date(value < 10_000_000_000 ? value * 1000 : value)
+					: value;
 		},
 		{ toClassOnly: true },
 	)
 	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
 		toPlainOnly: true,
 	})
-	modifiedAt: Date;
+	modifiedAt?: Date | string;
 }
 
 export class HomeAssistantDeviceRegistryResponseModel {

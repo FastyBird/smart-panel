@@ -36,6 +36,7 @@ import { HomeAssistantDevicePlatform } from './platforms/home-assistant.device.p
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 import { HomeAssistantWsService } from './services/home-assistant.ws.service';
 import { StateChangedEventService } from './services/state-changed.event.service';
+import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
 
 @Module({
 	imports: [TypeOrmModule.forFeature([HomeAssistantDeviceEntity]), DevicesModule, ConfigModule],
@@ -50,6 +51,7 @@ import { StateChangedEventService } from './services/state-changed.event.service
 		SensorEntityMapperService,
 		SwitchEntityMapperService,
 		StateChangedEventService,
+		DevicesServiceSubscriber,
 	],
 	controllers: [
 		HomeAssistantDiscoveredDevicesController,
@@ -74,6 +76,7 @@ export class DevicesHomeAssistantPlugin {
 		private readonly homeAssistantSwitchEntityMapper: SwitchEntityMapperService,
 		private readonly homeAssistantWsService: HomeAssistantWsService,
 		private readonly stateChangedEventService: StateChangedEventService,
+		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
 	) {}
 
 	onModuleInit() {
@@ -92,6 +95,9 @@ export class DevicesHomeAssistantPlugin {
 			class: HomeAssistantDeviceEntity,
 			createDto: CreateHomeAssistantDeviceDto,
 			updateDto: UpdateHomeAssistantDeviceDto,
+			afterCreate: async (device: HomeAssistantDeviceEntity): Promise<HomeAssistantDeviceEntity> => {
+				return await this.devicesServiceSubscriber.onDeviceCreated(device);
+			},
 		});
 
 		this.channelsMapper.registerMapping<

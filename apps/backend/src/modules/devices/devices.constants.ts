@@ -193,6 +193,19 @@ export enum DataTypeType {
 	UNKNOWN = 'unknown',
 }
 
+export enum ConnectionState {
+	CONNECTED = 'connected',
+	DISCONNECTED = 'disconnected',
+	INIT = 'init',
+	READY = 'ready',
+	RUNNING = 'running',
+	SLEEPING = 'sleeping',
+	STOPPED = 'stopped',
+	LOST = 'lost',
+	ALERT = 'alert',
+	UNKNOWN = 'unknown',
+}
+
 export const PropertyInfluxDbSchema: ISchemaOptions = {
 	measurement: 'property_value',
 	fields: { stringValue: FieldType.STRING, numberValue: FieldType.FLOAT },

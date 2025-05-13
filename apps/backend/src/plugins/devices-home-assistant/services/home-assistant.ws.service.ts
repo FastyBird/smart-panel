@@ -10,6 +10,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
+	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
 } from '../devices-home-assistant.exceptions';
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
@@ -121,7 +122,7 @@ export class HomeAssistantWsService {
 			this.logger.debug('[HOME ASSISTANT][WS] Fetching devices registry from Home Assistant');
 
 			const response = await this.send({
-				type: 'config/device_registry/get',
+				type: 'config/device_registry/list',
 			});
 
 			const msg: object = JSON.parse(response) as object;
@@ -137,11 +138,9 @@ export class HomeAssistantWsService {
 				this.logger.error(
 					`[VALIDATION] Home Assistant devices registry response validation failed error=${JSON.stringify(errors)}`,
 				);
-
-				return null;
+			} else {
+				return devicesRegistry.result;
 			}
-
-			return devicesRegistry.result;
 		} catch (error) {
 			const err = error as Error;
 
@@ -151,9 +150,13 @@ export class HomeAssistantWsService {
 			});
 
 			throw new DevicesHomeAssistantException(
-				'An unhandled error occur. Home Assistant discovered device detail could not be loaded',
+				'An unhandled error occur. Home Assistant devices registry could not be loaded',
 			);
 		}
+
+		throw new DevicesHomeAssistantNotFoundException(
+			'An unhandled error occur. Home Assistant devices registry could not be loaded',
+		);
 	}
 
 	async getEntitiesRegistry(): Promise<HomeAssistantEntityRegistryResponseResultModel[]> {
@@ -167,7 +170,7 @@ export class HomeAssistantWsService {
 			this.logger.debug('[HOME ASSISTANT][WS] Fetching entities registry from Home Assistant');
 
 			const response = await this.send({
-				type: 'config/entity_registry/get',
+				type: 'config/entity_registry/list',
 			});
 
 			const msg: object = JSON.parse(response) as object;
@@ -183,11 +186,9 @@ export class HomeAssistantWsService {
 				this.logger.error(
 					`[VALIDATION] Home Assistant entities registry response validation failed error=${JSON.stringify(errors)}`,
 				);
-
-				return null;
+			} else {
+				return entitiesRegistry.result;
 			}
-
-			return entitiesRegistry.result;
 		} catch (error) {
 			const err = error as Error;
 
@@ -197,9 +198,13 @@ export class HomeAssistantWsService {
 			});
 
 			throw new DevicesHomeAssistantException(
-				'An unhandled error occur. Home Assistant discovered entity detail could not be loaded',
+				'An unhandled error occur. Home Assistant entities registry could not be loaded',
 			);
 		}
+
+		throw new DevicesHomeAssistantNotFoundException(
+			'An unhandled error occur. Home Assistant entities registry could not be loaded',
+		);
 	}
 
 	send(data: Record<string, any>): Promise<string> {
@@ -302,7 +307,7 @@ export class HomeAssistantWsService {
 
 			this.disconnect();
 		} else if (msg.type === 'event') {
-			this.logger.debug(`[HOME ASSISTANT][WS] Received event message: ${JSON.stringify(msg)}`);
+			//this.logger.debug(`[HOME ASSISTANT][WS] Received event message: ${JSON.stringify(msg)}`);
 
 			if (
 				'event' in msg &&
@@ -322,7 +327,7 @@ export class HomeAssistantWsService {
 				}
 			}
 		} else {
-			this.logger.debug(`[HOME ASSISTANT][WS] Received unhandled message: ${JSON.stringify(msg)}`);
+			//this.logger.debug(`[HOME ASSISTANT][WS] Received unhandled message: ${JSON.stringify(msg)}`);
 		}
 	}
 

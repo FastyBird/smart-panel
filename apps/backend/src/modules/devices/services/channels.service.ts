@@ -3,7 +3,6 @@ import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, Repository } from 'typeorm';
-import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -138,12 +137,6 @@ export class ChannelsService {
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
-		(dtoInstance.properties || []).forEach((property) => {
-			property.id = property.id ?? uuid().toString();
-		});
-
-		const properties = dtoInstance.properties || [];
-
 		delete dtoInstance.properties;
 
 		const errors = await validate(dtoInstance, {
@@ -170,7 +163,7 @@ export class ChannelsService {
 		// Save the channel
 		const raw = await repository.save(channel);
 
-		for (const propertyDtoInstance of properties) {
+		for (const propertyDtoInstance of createDto.properties) {
 			this.logger.debug(`[CREATE] Creating new property for channelId=${raw.id}`);
 
 			await this.channelsPropertiesService.create(raw.id, propertyDtoInstance);

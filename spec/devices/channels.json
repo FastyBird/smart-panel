@@ -737,6 +737,32 @@
         "invalid": null,
         "step": null
       },
+      "status": {
+        "category": "status",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "connected",
+          "disconnected",
+          "init",
+          "ready",
+          "running",
+          "sleeping",
+          "stopped",
+          "lost",
+          "alert",
+          "unknown"
+        ],
+        "invalid": null,
+        "step": null
+      },
       "fault": {
         "category": "fault",
         "required": false,
