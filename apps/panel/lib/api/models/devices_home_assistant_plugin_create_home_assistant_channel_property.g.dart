@@ -21,8 +21,8 @@ _$DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyImpl
               .toList(),
           dataType: DevicesModuleCreateChannelPropertyDataType.fromJson(
               json['data_type'] as String),
-          haEntityId: json['ha_entity_id'] as String,
-          haAttribute: json['ha_attribute'] as String,
+          haEntityId: json['ha_entity_id'] as String?,
+          haAttribute: json['ha_attribute'] as String?,
           name: json['name'] as String?,
           unit: json['unit'] as String?,
           format: json['format'] as List<dynamic>?,
@@ -95,6 +95,7 @@ const _$DevicesModuleChannelPropertyCategoryEnumMap = {
   DevicesModuleChannelPropertyCategory.valueOn: 'on',
   DevicesModuleChannelPropertyCategory.overCurrent: 'over_current',
   DevicesModuleChannelPropertyCategory.overVoltage: 'over_voltage',
+  DevicesModuleChannelPropertyCategory.overPower: 'over_power',
   DevicesModuleChannelPropertyCategory.pan: 'pan',
   DevicesModuleChannelPropertyCategory.peakLevel: 'peak_level',
   DevicesModuleChannelPropertyCategory.percentage: 'percentage',

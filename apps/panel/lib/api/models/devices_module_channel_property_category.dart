@@ -84,6 +84,8 @@ enum DevicesModuleChannelPropertyCategory {
   overCurrent('over_current'),
   @JsonValue('over_voltage')
   overVoltage('over_voltage'),
+  @JsonValue('over_power')
+  overPower('over_power'),
   @JsonValue('pan')
   pan('pan'),
   @JsonValue('peak_level')

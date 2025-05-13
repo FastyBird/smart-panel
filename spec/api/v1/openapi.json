@@ -10257,6 +10257,7 @@
           "on",
           "over_current",
           "over_voltage",
+          "over_power",
           "pan",
           "peak_level",
           "percentage",
@@ -13512,11 +13513,13 @@
             "properties": {
               "ha_entity_id": {
                 "type": "string",
+                "nullable": true,
                 "description": "A HA device entity identifier.",
                 "example": "light.hall_cabinet_lights_lights"
               },
               "ha_attribute": {
                 "type": "string",
+                "nullable": true,
                 "description": "A HA device entity attribute.",
                 "example": "brightness"
               }
@@ -13541,11 +13544,13 @@
             "properties": {
               "ha_entity_id": {
                 "type": "string",
+                "nullable": true,
                 "description": "A HA device entity identifier.",
                 "example": "light.hall_cabinet_lights_lights"
               },
               "ha_attribute": {
                 "type": "string",
+                "nullable": true,
                 "description": "A HA device entity attribute.",
                 "example": "brightness"
               }
@@ -13566,11 +13571,13 @@
             "properties": {
               "ha_entity_id": {
                 "type": "string",
+                "nullable": true,
                 "description": "A HA device entity identifier.",
                 "example": "light.hall_cabinet_lights_lights"
               },
               "ha_attribute": {
                 "type": "string",
+                "nullable": true,
                 "description": "A HA device entity attribute.",
                 "example": "brightness"
               }

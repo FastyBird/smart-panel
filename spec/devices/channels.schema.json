@@ -120,6 +120,7 @@
                     "on",
                     "over_current",
                     "over_voltage",
+                    "over_power",
                     "pan",
                     "peak_level",
                     "percentage",

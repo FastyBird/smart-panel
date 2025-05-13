@@ -33,11 +33,11 @@ class DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty with _$Device
 
     /// A HA device entity identifier.
     @JsonKey(name: 'ha_entity_id')
-    required String haEntityId,
+    required String? haEntityId,
 
     /// A HA device entity attribute.
     @JsonKey(name: 'ha_attribute')
-    required String haAttribute,
+    required String? haAttribute,
 
     /// Optional name of the property for easier identification.
     String? name,

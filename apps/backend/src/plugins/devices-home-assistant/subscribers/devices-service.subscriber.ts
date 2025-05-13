@@ -8,11 +8,7 @@ import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../mod
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import {
-	DEVICES_HOME_ASSISTANT_TYPE,
-	DEVICE_NO_ENTITY,
-	ENTITY_NO_ATTRIBUTE,
-} from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
 import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
@@ -122,8 +118,8 @@ export class DevicesServiceSubscriber {
 						invalid: spec.invalid,
 						step: spec.step,
 						value: String(value),
-						ha_entity_id: DEVICE_NO_ENTITY,
-						ha_attribute: ENTITY_NO_ATTRIBUTE,
+						ha_entity_id: null,
+						ha_attribute: null,
 					};
 				})
 				.filter((prop) => prop !== null),

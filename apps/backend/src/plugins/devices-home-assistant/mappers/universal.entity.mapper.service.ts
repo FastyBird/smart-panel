@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { HomeAssistantDomain } from '../devices-home-assistant.constants';
+import { DataTypeType } from '../../../modules/devices/devices.constants';
+import { ENTITY_MAIN_STATE_ATTRIBUTE, HomeAssistantDomain } from '../devices-home-assistant.constants';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import { HomeAssistantChannelPropertyEntity } from '../entities/devices-home-assistant.entity';
 
@@ -30,8 +31,32 @@ export class UniversalEntityMapperService extends EntityMapper {
 					property &&
 					(typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean' || value === null)
 				) {
-					mapped.set(property.id, value as string | number | boolean | null);
+					let mappedValue: string | number | boolean | null = value as string | number | boolean | null;
+
+					if (property.dataType === DataTypeType.BOOL) {
+						mappedValue = ['on', 'true', '1'].includes(String(value).toLowerCase());
+					}
+
+					mapped.set(property.id, mappedValue as string | number | boolean | null);
 				}
+			}
+
+			const mainProperty = entityProperties.find((property) => property.haAttribute === ENTITY_MAIN_STATE_ATTRIBUTE);
+
+			if (
+				mainProperty &&
+				(typeof state.state === 'number' ||
+					typeof state.state === 'string' ||
+					typeof state.state === 'boolean' ||
+					state.state === null)
+			) {
+				let mappedValue: string | number | boolean | null = state.state;
+
+				if (mainProperty.dataType === DataTypeType.BOOL) {
+					mappedValue = ['on', 'true', '1'].includes(String(state.state).toLowerCase());
+				}
+
+				mapped.set(mainProperty.id, mappedValue as string | number | boolean | null);
 			}
 		}
 

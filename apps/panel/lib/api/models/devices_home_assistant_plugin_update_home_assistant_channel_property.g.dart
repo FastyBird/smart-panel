@@ -11,14 +11,14 @@ _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
             Map<String, dynamic> json) =>
         _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl(
           type: json['type'] as String,
-          haEntityId: json['ha_entity_id'] as String,
-          haAttribute: json['ha_attribute'] as String,
           name: json['name'] as String?,
           unit: json['unit'] as String?,
           format: json['format'] as List<dynamic>?,
           invalid: json['invalid'],
           step: json['step'] as num?,
           value: json['value'],
+          haEntityId: json['ha_entity_id'] as String?,
+          haAttribute: json['ha_attribute'] as String?,
         );
 
 Map<String, dynamic>
@@ -27,12 +27,12 @@ Map<String, dynamic>
                 instance) =>
         <String, dynamic>{
           'type': instance.type,
-          'ha_entity_id': instance.haEntityId,
-          'ha_attribute': instance.haAttribute,
           'name': instance.name,
           'unit': instance.unit,
           'format': instance.format,
           'invalid': instance.invalid,
           'step': instance.step,
           'value': instance.value,
+          'ha_entity_id': instance.haEntityId,
+          'ha_attribute': instance.haAttribute,
         };

@@ -1117,6 +1117,21 @@
         "invalid": null,
         "step": null
       },
+      "over_power": {
+        "category": "over_power",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
       "active": {
         "category": "active",
         "required": false,

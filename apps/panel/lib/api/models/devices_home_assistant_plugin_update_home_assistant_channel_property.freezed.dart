@@ -26,14 +26,6 @@ mixin _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty {
   /// Specifies the type of channel property.
   String get type => throw _privateConstructorUsedError;
 
-  /// A HA device entity identifier.
-  @JsonKey(name: 'ha_entity_id')
-  String get haEntityId => throw _privateConstructorUsedError;
-
-  /// A HA device entity attribute.
-  @JsonKey(name: 'ha_attribute')
-  String get haAttribute => throw _privateConstructorUsedError;
-
   /// Optional name of the property for easier identification.
   String? get name => throw _privateConstructorUsedError;
 
@@ -51,6 +43,14 @@ mixin _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty {
 
   /// Current value of the property.
   dynamic get value => throw _privateConstructorUsedError;
+
+  /// A HA device entity identifier.
+  @JsonKey(name: 'ha_entity_id')
+  String? get haEntityId => throw _privateConstructorUsedError;
+
+  /// A HA device entity attribute.
+  @JsonKey(name: 'ha_attribute')
+  String? get haAttribute => throw _privateConstructorUsedError;
 
   /// Serializes this DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -76,14 +76,14 @@ abstract class $DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyCopy
   @useResult
   $Res call(
       {String type,
-      @JsonKey(name: 'ha_entity_id') String haEntityId,
-      @JsonKey(name: 'ha_attribute') String haAttribute,
       String? name,
       String? unit,
       List<dynamic>? format,
       dynamic invalid,
       num? step,
-      dynamic value});
+      dynamic value,
+      @JsonKey(name: 'ha_entity_id') String? haEntityId,
+      @JsonKey(name: 'ha_attribute') String? haAttribute});
 }
 
 /// @nodoc
@@ -107,27 +107,19 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyCopyWithImpl
   @override
   $Res call({
     Object? type = null,
-    Object? haEntityId = null,
-    Object? haAttribute = null,
     Object? name = freezed,
     Object? unit = freezed,
     Object? format = freezed,
     Object? invalid = freezed,
     Object? step = freezed,
     Object? value = freezed,
+    Object? haEntityId = freezed,
+    Object? haAttribute = freezed,
   }) {
     return _then(_value.copyWith(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
-              as String,
-      haEntityId: null == haEntityId
-          ? _value.haEntityId
-          : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
-      haAttribute: null == haAttribute
-          ? _value.haAttribute
-          : haAttribute // ignore: cast_nullable_to_non_nullable
               as String,
       name: freezed == name
           ? _value.name
@@ -153,6 +145,14 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyCopyWithImpl
           ? _value.value
           : value // ignore: cast_nullable_to_non_nullable
               as dynamic,
+      haEntityId: freezed == haEntityId
+          ? _value.haEntityId
+          : haEntityId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      haAttribute: freezed == haAttribute
+          ? _value.haAttribute
+          : haAttribute // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -174,14 +174,14 @@ abstract class _$$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyIm
   @useResult
   $Res call(
       {String type,
-      @JsonKey(name: 'ha_entity_id') String haEntityId,
-      @JsonKey(name: 'ha_attribute') String haAttribute,
       String? name,
       String? unit,
       List<dynamic>? format,
       dynamic invalid,
       num? step,
-      dynamic value});
+      dynamic value,
+      @JsonKey(name: 'ha_entity_id') String? haEntityId,
+      @JsonKey(name: 'ha_attribute') String? haAttribute});
 }
 
 /// @nodoc
@@ -206,28 +206,20 @@ class __$$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImplCopyWi
   @override
   $Res call({
     Object? type = null,
-    Object? haEntityId = null,
-    Object? haAttribute = null,
     Object? name = freezed,
     Object? unit = freezed,
     Object? format = freezed,
     Object? invalid = freezed,
     Object? step = freezed,
     Object? value = freezed,
+    Object? haEntityId = freezed,
+    Object? haAttribute = freezed,
   }) {
     return _then(
         _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl(
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
-              as String,
-      haEntityId: null == haEntityId
-          ? _value.haEntityId
-          : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
-      haAttribute: null == haAttribute
-          ? _value.haAttribute
-          : haAttribute // ignore: cast_nullable_to_non_nullable
               as String,
       name: freezed == name
           ? _value.name
@@ -253,6 +245,14 @@ class __$$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImplCopyWi
           ? _value.value
           : value // ignore: cast_nullable_to_non_nullable
               as dynamic,
+      haEntityId: freezed == haEntityId
+          ? _value.haEntityId
+          : haEntityId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      haAttribute: freezed == haAttribute
+          ? _value.haAttribute
+          : haAttribute // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -263,14 +263,14 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
     implements _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty {
   const _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl(
       {required this.type,
-      @JsonKey(name: 'ha_entity_id') required this.haEntityId,
-      @JsonKey(name: 'ha_attribute') required this.haAttribute,
       this.name,
       this.unit,
       final List<dynamic>? format,
       this.invalid,
       this.step,
-      this.value})
+      this.value,
+      @JsonKey(name: 'ha_entity_id') this.haEntityId,
+      @JsonKey(name: 'ha_attribute') this.haAttribute})
       : _format = format;
 
   factory _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl.fromJson(
@@ -281,16 +281,6 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
   /// Specifies the type of channel property.
   @override
   final String type;
-
-  /// A HA device entity identifier.
-  @override
-  @JsonKey(name: 'ha_entity_id')
-  final String haEntityId;
-
-  /// A HA device entity attribute.
-  @override
-  @JsonKey(name: 'ha_attribute')
-  final String haAttribute;
 
   /// Optional name of the property for easier identification.
   @override
@@ -325,9 +315,19 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
   @override
   final dynamic value;
 
+  /// A HA device entity identifier.
+  @override
+  @JsonKey(name: 'ha_entity_id')
+  final String? haEntityId;
+
+  /// A HA device entity attribute.
+  @override
+  @JsonKey(name: 'ha_attribute')
+  final String? haAttribute;
+
   @override
   String toString() {
-    return 'DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty(type: $type, haEntityId: $haEntityId, haAttribute: $haAttribute, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
+    return 'DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty(type: $type, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value, haEntityId: $haEntityId, haAttribute: $haAttribute)';
   }
 
   @override
@@ -337,16 +337,16 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
             other
                 is _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl &&
             (identical(other.type, type) || other.type == type) &&
-            (identical(other.haEntityId, haEntityId) ||
-                other.haEntityId == haEntityId) &&
-            (identical(other.haAttribute, haAttribute) ||
-                other.haAttribute == haAttribute) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.unit, unit) || other.unit == unit) &&
             const DeepCollectionEquality().equals(other._format, _format) &&
             const DeepCollectionEquality().equals(other.invalid, invalid) &&
             (identical(other.step, step) || other.step == step) &&
-            const DeepCollectionEquality().equals(other.value, value));
+            const DeepCollectionEquality().equals(other.value, value) &&
+            (identical(other.haEntityId, haEntityId) ||
+                other.haEntityId == haEntityId) &&
+            (identical(other.haAttribute, haAttribute) ||
+                other.haAttribute == haAttribute));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -354,14 +354,14 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
   int get hashCode => Object.hash(
       runtimeType,
       type,
-      haEntityId,
-      haAttribute,
       name,
       unit,
       const DeepCollectionEquality().hash(_format),
       const DeepCollectionEquality().hash(invalid),
       step,
-      const DeepCollectionEquality().hash(value));
+      const DeepCollectionEquality().hash(value),
+      haEntityId,
+      haAttribute);
 
   /// Create a copy of DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty
   /// with the given fields replaced by the non-null parameter values.
@@ -387,14 +387,14 @@ abstract class _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty
     implements DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty {
   const factory _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty(
           {required final String type,
-          @JsonKey(name: 'ha_entity_id') required final String haEntityId,
-          @JsonKey(name: 'ha_attribute') required final String haAttribute,
           final String? name,
           final String? unit,
           final List<dynamic>? format,
           final dynamic invalid,
           final num? step,
-          final dynamic value}) =
+          final dynamic value,
+          @JsonKey(name: 'ha_entity_id') final String? haEntityId,
+          @JsonKey(name: 'ha_attribute') final String? haAttribute}) =
       _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl;
 
   factory _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty.fromJson(
@@ -405,16 +405,6 @@ abstract class _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty
   /// Specifies the type of channel property.
   @override
   String get type;
-
-  /// A HA device entity identifier.
-  @override
-  @JsonKey(name: 'ha_entity_id')
-  String get haEntityId;
-
-  /// A HA device entity attribute.
-  @override
-  @JsonKey(name: 'ha_attribute')
-  String get haAttribute;
 
   /// Optional name of the property for easier identification.
   @override
@@ -439,6 +429,16 @@ abstract class _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty
   /// Current value of the property.
   @override
   dynamic get value;
+
+  /// A HA device entity identifier.
+  @override
+  @JsonKey(name: 'ha_entity_id')
+  String? get haEntityId;
+
+  /// A HA device entity attribute.
+  @override
+  @JsonKey(name: 'ha_attribute')
+  String? get haAttribute;
 
   /// Create a copy of DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty
   /// with the given fields replaced by the non-null parameter values.

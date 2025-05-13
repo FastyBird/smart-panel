@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 import { CreateChannelPropertyDto } from '../../../modules/devices/dto/create-channel-property.dto';
 import type { components } from '../../../openapi';
@@ -16,12 +16,16 @@ export class CreateHomeAssistantChannelPropertyDto
 	readonly type: 'home-assistant';
 
 	@Expose()
+	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Home Assistant entity ID must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Home Assistant entity ID must be a non-empty string."}]' })
-	ha_entity_id: string;
+	@ValidateIf((_, value) => value !== null)
+	ha_entity_id: string | null;
 
 	@Expose()
+	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
 	@IsString({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
-	ha_attribute: string;
+	@ValidateIf((_, value) => value !== null)
+	ha_attribute: string | null;
 }

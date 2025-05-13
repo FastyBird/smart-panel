@@ -178,7 +178,7 @@
 			</el-form-item>
 		</template>
 
-		<template v-if="model.haEntityId">
+		<template v-if="model.haEntityId && model.haEntityId !== DEVICE_NO_ENTITY">
 			<el-divider />
 
 			<el-form-item

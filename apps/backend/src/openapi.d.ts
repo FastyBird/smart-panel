@@ -3397,7 +3397,7 @@ export interface components {
          * @description Defines specific properties of a device channel that can be measured, controlled, or reported.
          * @enum {string}
          */
-        DevicesModuleChannelPropertyCategory: "generic" | "active" | "angle" | "brightness" | "color_blue" | "color_green" | "color_red" | "color_temperature" | "color_white" | "connection_type" | "consumption" | "current" | "density" | "detected" | "direction" | "distance" | "duration" | "event" | "fault" | "firmware_revision" | "frequency" | "hardware_revision" | "hue" | "humidity" | "in_use" | "infrared" | "input_source" | "level" | "link_quality" | "locked" | "manufacturer" | "measured" | "model" | "mode" | "obstruction" | "on" | "over_current" | "over_voltage" | "pan" | "peak_level" | "percentage" | "position" | "power" | "rate" | "remaining" | "remote_key" | "saturation" | "serial_number" | "source" | "speed" | "status" | "swing" | "tampered" | "temperature" | "tilt" | "track" | "type" | "units" | "voltage" | "volume" | "zoom";
+        DevicesModuleChannelPropertyCategory: "generic" | "active" | "angle" | "brightness" | "color_blue" | "color_green" | "color_red" | "color_temperature" | "color_white" | "connection_type" | "consumption" | "current" | "density" | "detected" | "direction" | "distance" | "duration" | "event" | "fault" | "firmware_revision" | "frequency" | "hardware_revision" | "hue" | "humidity" | "in_use" | "infrared" | "input_source" | "level" | "link_quality" | "locked" | "manufacturer" | "measured" | "model" | "mode" | "obstruction" | "on" | "over_current" | "over_voltage" | "over_power" | "pan" | "peak_level" | "percentage" | "position" | "power" | "rate" | "remaining" | "remote_key" | "saturation" | "serial_number" | "source" | "speed" | "status" | "swing" | "tampered" | "temperature" | "tilt" | "track" | "type" | "units" | "voltage" | "volume" | "zoom";
         /**
          * Page Base
          * @description The base schema for all dashboard pages, including common properties such as id, type, title, and timestamps.
@@ -5020,12 +5020,12 @@ export interface components {
              * @description A HA device entity identifier.
              * @example light.hall_cabinet_lights_lights
              */
-            ha_entity_id: string;
+            ha_entity_id: string | null;
             /**
              * @description A HA device entity attribute.
              * @example brightness
              */
-            ha_attribute: string;
+            ha_attribute: string | null;
         };
         /**
          * Create Home Assistant Channel Property
@@ -5036,12 +5036,12 @@ export interface components {
              * @description A HA device entity identifier.
              * @example light.hall_cabinet_lights_lights
              */
-            ha_entity_id: string;
+            ha_entity_id: string | null;
             /**
              * @description A HA device entity attribute.
              * @example brightness
              */
-            ha_attribute: string;
+            ha_attribute: string | null;
         };
         /**
          * Update Home Assistant Device Chanel
@@ -5052,12 +5052,12 @@ export interface components {
              * @description A HA device entity identifier.
              * @example light.hall_cabinet_lights_lights
              */
-            ha_entity_id?: string;
+            ha_entity_id?: string | null;
             /**
              * @description A HA device entity attribute.
              * @example brightness
              */
-            ha_attribute?: string;
+            ha_attribute?: string | null;
         };
         /**
          * Home Assistant Discovered Device

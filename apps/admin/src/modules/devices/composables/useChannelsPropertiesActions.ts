@@ -26,7 +26,9 @@ export const useChannelsPropertiesActions = (): IUseChannelsPropertiesActions =>
 		}
 
 		ElMessageBox.confirm(
-			t('devicesModule.texts.channelsProperties.confirmRemove', { property: property.name }),
+			t('devicesModule.texts.channelsProperties.confirmRemove', {
+				property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
+			}),
 			t('devicesModule.headings.channelsProperties.remove'),
 			{
 				confirmButtonText: t('devicesModule.buttons.yes.title'),
@@ -40,13 +42,13 @@ export const useChannelsPropertiesActions = (): IUseChannelsPropertiesActions =>
 
 					flashMessage.success(
 						t('devicesModule.messages.channelsProperties.removed', {
-							property: property.name,
+							property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
 						})
 					);
 				} catch (error: unknown) {
 					if (error instanceof DevicesApiException && error.code === 404) {
 						const errorMessage = t('devicesModule.messages.channelsProperties.notFound', {
-							property: property.name,
+							property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
 						});
 
 						flashMessage.error(errorMessage);
@@ -55,7 +57,7 @@ export const useChannelsPropertiesActions = (): IUseChannelsPropertiesActions =>
 							flashMessage.error(error.message);
 						} else {
 							const errorMessage = t('devicesModule.messages.channelsProperties.notRemoved', {
-								property: property.name,
+								property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
 							});
 
 							flashMessage.error(errorMessage);
@@ -66,7 +68,7 @@ export const useChannelsPropertiesActions = (): IUseChannelsPropertiesActions =>
 			.catch((): void => {
 				flashMessage.info(
 					t('devicesModule.messages.channelsProperties.removeCanceled', {
-						property: property.name,
+						property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
 					})
 				);
 			});

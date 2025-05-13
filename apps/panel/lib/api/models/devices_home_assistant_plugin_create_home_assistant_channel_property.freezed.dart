@@ -44,11 +44,11 @@ mixin _$DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty {
 
   /// A HA device entity identifier.
   @JsonKey(name: 'ha_entity_id')
-  String get haEntityId => throw _privateConstructorUsedError;
+  String? get haEntityId => throw _privateConstructorUsedError;
 
   /// A HA device entity attribute.
   @JsonKey(name: 'ha_attribute')
-  String get haAttribute => throw _privateConstructorUsedError;
+  String? get haAttribute => throw _privateConstructorUsedError;
 
   /// Optional name of the property for easier identification.
   String? get name => throw _privateConstructorUsedError;
@@ -97,8 +97,8 @@ abstract class $DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyCopy
       List<DevicesModuleCreateChannelPropertyPermissions> permissions,
       @JsonKey(name: 'data_type')
       DevicesModuleCreateChannelPropertyDataType dataType,
-      @JsonKey(name: 'ha_entity_id') String haEntityId,
-      @JsonKey(name: 'ha_attribute') String haAttribute,
+      @JsonKey(name: 'ha_entity_id') String? haEntityId,
+      @JsonKey(name: 'ha_attribute') String? haAttribute,
       String? name,
       String? unit,
       List<dynamic>? format,
@@ -132,8 +132,8 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyCopyWithImpl
     Object? category = null,
     Object? permissions = null,
     Object? dataType = null,
-    Object? haEntityId = null,
-    Object? haAttribute = null,
+    Object? haEntityId = freezed,
+    Object? haAttribute = freezed,
     Object? name = freezed,
     Object? unit = freezed,
     Object? format = freezed,
@@ -162,14 +162,14 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyCopyWithImpl
           ? _value.dataType
           : dataType // ignore: cast_nullable_to_non_nullable
               as DevicesModuleCreateChannelPropertyDataType,
-      haEntityId: null == haEntityId
+      haEntityId: freezed == haEntityId
           ? _value.haEntityId
           : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
-      haAttribute: null == haAttribute
+              as String?,
+      haAttribute: freezed == haAttribute
           ? _value.haAttribute
           : haAttribute // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
       name: freezed == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
@@ -220,8 +220,8 @@ abstract class _$$DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyIm
       List<DevicesModuleCreateChannelPropertyPermissions> permissions,
       @JsonKey(name: 'data_type')
       DevicesModuleCreateChannelPropertyDataType dataType,
-      @JsonKey(name: 'ha_entity_id') String haEntityId,
-      @JsonKey(name: 'ha_attribute') String haAttribute,
+      @JsonKey(name: 'ha_entity_id') String? haEntityId,
+      @JsonKey(name: 'ha_attribute') String? haAttribute,
       String? name,
       String? unit,
       List<dynamic>? format,
@@ -256,8 +256,8 @@ class __$$DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyImplCopyWi
     Object? category = null,
     Object? permissions = null,
     Object? dataType = null,
-    Object? haEntityId = null,
-    Object? haAttribute = null,
+    Object? haEntityId = freezed,
+    Object? haAttribute = freezed,
     Object? name = freezed,
     Object? unit = freezed,
     Object? format = freezed,
@@ -287,14 +287,14 @@ class __$$DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyImplCopyWi
           ? _value.dataType
           : dataType // ignore: cast_nullable_to_non_nullable
               as DevicesModuleCreateChannelPropertyDataType,
-      haEntityId: null == haEntityId
+      haEntityId: freezed == haEntityId
           ? _value.haEntityId
           : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
-      haAttribute: null == haAttribute
+              as String?,
+      haAttribute: freezed == haAttribute
           ? _value.haAttribute
           : haAttribute // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
       name: freezed == name
           ? _value.name
           : name // ignore: cast_nullable_to_non_nullable
@@ -381,12 +381,12 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyImpl
   /// A HA device entity identifier.
   @override
   @JsonKey(name: 'ha_entity_id')
-  final String haEntityId;
+  final String? haEntityId;
 
   /// A HA device entity attribute.
   @override
   @JsonKey(name: 'ha_attribute')
-  final String haAttribute;
+  final String? haAttribute;
 
   /// Optional name of the property for easier identification.
   @override
@@ -500,8 +500,8 @@ abstract class _DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty
               permissions,
           @JsonKey(name: 'data_type')
           required final DevicesModuleCreateChannelPropertyDataType dataType,
-          @JsonKey(name: 'ha_entity_id') required final String haEntityId,
-          @JsonKey(name: 'ha_attribute') required final String haAttribute,
+          @JsonKey(name: 'ha_entity_id') required final String? haEntityId,
+          @JsonKey(name: 'ha_attribute') required final String? haAttribute,
           final String? name,
           final String? unit,
           final List<dynamic>? format,
@@ -539,12 +539,12 @@ abstract class _DevicesHomeAssistantPluginCreateHomeAssistantChannelProperty
   /// A HA device entity identifier.
   @override
   @JsonKey(name: 'ha_entity_id')
-  String get haEntityId;
+  String? get haEntityId;
 
   /// A HA device entity attribute.
   @override
   @JsonKey(name: 'ha_attribute')
-  String get haAttribute;
+  String? get haAttribute;
 
   /// Optional name of the property for easier identification.
   @override

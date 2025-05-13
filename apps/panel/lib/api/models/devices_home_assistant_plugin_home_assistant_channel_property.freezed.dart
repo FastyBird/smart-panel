@@ -67,11 +67,11 @@ mixin _$DevicesHomeAssistantPluginHomeAssistantChannelProperty {
 
   /// A HA device entity identifier.
   @JsonKey(name: 'ha_entity_id')
-  String get haEntityId => throw _privateConstructorUsedError;
+  String? get haEntityId => throw _privateConstructorUsedError;
 
   /// A HA device entity attribute.
   @JsonKey(name: 'ha_attribute')
-  String get haAttribute => throw _privateConstructorUsedError;
+  String? get haAttribute => throw _privateConstructorUsedError;
 
   /// Data type of the property’s value, e.g., string, integer, or boolean.
   @JsonKey(name: 'data_type')
@@ -113,8 +113,8 @@ abstract class $DevicesHomeAssistantPluginHomeAssistantChannelPropertyCopyWith<
       String channel,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
-      @JsonKey(name: 'ha_entity_id') String haEntityId,
-      @JsonKey(name: 'ha_attribute') String haAttribute,
+      @JsonKey(name: 'ha_entity_id') String? haEntityId,
+      @JsonKey(name: 'ha_attribute') String? haAttribute,
       @JsonKey(name: 'data_type')
       DevicesModuleChannelPropertyDataType dataType});
 }
@@ -150,8 +150,8 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelPropertyCopyWithImpl<$Res,
     Object? channel = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
-    Object? haEntityId = null,
-    Object? haAttribute = null,
+    Object? haEntityId = freezed,
+    Object? haAttribute = freezed,
     Object? dataType = null,
   }) {
     return _then(_value.copyWith(
@@ -207,14 +207,14 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelPropertyCopyWithImpl<$Res,
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      haEntityId: null == haEntityId
+      haEntityId: freezed == haEntityId
           ? _value.haEntityId
           : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
-      haAttribute: null == haAttribute
+              as String?,
+      haAttribute: freezed == haAttribute
           ? _value.haAttribute
           : haAttribute // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
       dataType: null == dataType
           ? _value.dataType
           : dataType // ignore: cast_nullable_to_non_nullable
@@ -251,8 +251,8 @@ abstract class _$$DevicesHomeAssistantPluginHomeAssistantChannelPropertyImplCopy
       String channel,
       @JsonKey(name: 'created_at') DateTime createdAt,
       @JsonKey(name: 'updated_at') DateTime? updatedAt,
-      @JsonKey(name: 'ha_entity_id') String haEntityId,
-      @JsonKey(name: 'ha_attribute') String haAttribute,
+      @JsonKey(name: 'ha_entity_id') String? haEntityId,
+      @JsonKey(name: 'ha_attribute') String? haAttribute,
       @JsonKey(name: 'data_type')
       DevicesModuleChannelPropertyDataType dataType});
 }
@@ -290,8 +290,8 @@ class __$$DevicesHomeAssistantPluginHomeAssistantChannelPropertyImplCopyWithImpl
     Object? channel = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
-    Object? haEntityId = null,
-    Object? haAttribute = null,
+    Object? haEntityId = freezed,
+    Object? haAttribute = freezed,
     Object? dataType = null,
   }) {
     return _then(_$DevicesHomeAssistantPluginHomeAssistantChannelPropertyImpl(
@@ -347,14 +347,14 @@ class __$$DevicesHomeAssistantPluginHomeAssistantChannelPropertyImplCopyWithImpl
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      haEntityId: null == haEntityId
+      haEntityId: freezed == haEntityId
           ? _value.haEntityId
           : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
-      haAttribute: null == haAttribute
+              as String?,
+      haAttribute: freezed == haAttribute
           ? _value.haAttribute
           : haAttribute // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
       dataType: null == dataType
           ? _value.dataType
           : dataType // ignore: cast_nullable_to_non_nullable
@@ -466,12 +466,12 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelPropertyImpl
   /// A HA device entity identifier.
   @override
   @JsonKey(name: 'ha_entity_id')
-  final String haEntityId;
+  final String? haEntityId;
 
   /// A HA device entity attribute.
   @override
   @JsonKey(name: 'ha_attribute')
-  final String haAttribute;
+  final String? haAttribute;
 
   /// Data type of the property’s value, e.g., string, integer, or boolean.
   @override
@@ -571,8 +571,8 @@ abstract class _DevicesHomeAssistantPluginHomeAssistantChannelProperty
           required final String channel,
           @JsonKey(name: 'created_at') required final DateTime createdAt,
           @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-          @JsonKey(name: 'ha_entity_id') required final String haEntityId,
-          @JsonKey(name: 'ha_attribute') required final String haAttribute,
+          @JsonKey(name: 'ha_entity_id') required final String? haEntityId,
+          @JsonKey(name: 'ha_attribute') required final String? haAttribute,
           @JsonKey(name: 'data_type')
           final DevicesModuleChannelPropertyDataType dataType}) =
       _$DevicesHomeAssistantPluginHomeAssistantChannelPropertyImpl;
@@ -638,12 +638,12 @@ abstract class _DevicesHomeAssistantPluginHomeAssistantChannelProperty
   /// A HA device entity identifier.
   @override
   @JsonKey(name: 'ha_entity_id')
-  String get haEntityId;
+  String? get haEntityId;
 
   /// A HA device entity attribute.
   @override
   @JsonKey(name: 'ha_attribute')
-  String get haAttribute;
+  String? get haAttribute;
 
   /// Data type of the property’s value, e.g., string, integer, or boolean.
   @override

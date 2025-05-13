@@ -14,14 +14,6 @@ class DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty with _$Device
     /// Specifies the type of channel property.
     required String type,
 
-    /// A HA device entity identifier.
-    @JsonKey(name: 'ha_entity_id')
-    required String haEntityId,
-
-    /// A HA device entity attribute.
-    @JsonKey(name: 'ha_attribute')
-    required String haAttribute,
-
     /// Optional name of the property for easier identification.
     String? name,
 
@@ -39,6 +31,14 @@ class DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty with _$Device
 
     /// Current value of the property.
     dynamic value,
+
+    /// A HA device entity identifier.
+    @JsonKey(name: 'ha_entity_id')
+    String? haEntityId,
+
+    /// A HA device entity attribute.
+    @JsonKey(name: 'ha_attribute')
+    String? haAttribute,
   }) = _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty;
   
   factory DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty.fromJson(Map<String, Object?> json) => _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyFromJson(json);

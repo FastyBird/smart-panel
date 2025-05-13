@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { ChildEntity, Column, Index } from 'typeorm';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
@@ -42,23 +42,30 @@ export class HomeAssistantChannelEntity extends ChannelEntity {
 @ChildEntity()
 export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 	@Expose({ name: 'ha_entity_id' })
+	@IsOptional()
 	@IsString({ message: '[{"field":"ha_entity_id","reason":"Home Assistant entity ID must be provided."}]' })
-	@Transform(({ obj }: { obj: { ha_entity_id?: string; haEntityId?: string } }) => obj.ha_entity_id || obj.haEntityId, {
-		toClassOnly: true,
-	})
-	@Column()
-	haEntityId: string;
-
-	@Expose({ name: 'ha_attribute' })
-	@IsString({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
 	@Transform(
-		({ obj }: { obj: { ha_attribute?: string; haAttribute?: string } }) => obj.ha_attribute || obj.haAttribute,
+		({ obj }: { obj: { ha_entity_id?: string | null; haEntityId?: string | null } }) =>
+			obj.ha_entity_id || obj.haEntityId,
 		{
 			toClassOnly: true,
 		},
 	)
-	@Column()
-	haAttribute: string;
+	@Column({ nullable: true })
+	haEntityId: string | null = null;
+
+	@Expose({ name: 'ha_attribute' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"ha_attribute","reason":"Home Assistant entity attribute must be provided."}]' })
+	@Transform(
+		({ obj }: { obj: { ha_attribute?: string | null; haAttribute?: string | null } }) =>
+			obj.ha_attribute || obj.haAttribute,
+		{
+			toClassOnly: true,
+		},
+	)
+	@Column({ nullable: true })
+	haAttribute: string | null = null;
 
 	get haDomain(): HomeAssistantDomain {
 		const domain = this.haEntityId.toLowerCase().split('.')[0] as HomeAssistantDomain;

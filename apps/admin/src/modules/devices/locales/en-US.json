@@ -704,6 +704,7 @@
       "on": "On",
       "over_current": "Over current",
       "over_voltage": "Over voltage",
+      "over_power": "Over power",
       "pan": "Pan",
       "peak_level": "Peak level",
       "percentage": "Percentage",

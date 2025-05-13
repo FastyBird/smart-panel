@@ -29,8 +29,8 @@ _$DevicesHomeAssistantPluginHomeAssistantChannelPropertyImpl
           updatedAt: json['updated_at'] == null
               ? null
               : DateTime.parse(json['updated_at'] as String),
-          haEntityId: json['ha_entity_id'] as String,
-          haAttribute: json['ha_attribute'] as String,
+          haEntityId: json['ha_entity_id'] as String?,
+          haAttribute: json['ha_attribute'] as String?,
           dataType: json['data_type'] == null
               ? DevicesModuleChannelPropertyDataType.unknown
               : DevicesModuleChannelPropertyDataType.fromJson(
@@ -103,6 +103,7 @@ const _$DevicesModuleChannelPropertyCategoryEnumMap = {
   DevicesModuleChannelPropertyCategory.valueOn: 'on',
   DevicesModuleChannelPropertyCategory.overCurrent: 'over_current',
   DevicesModuleChannelPropertyCategory.overVoltage: 'over_voltage',
+  DevicesModuleChannelPropertyCategory.overPower: 'over_power',
   DevicesModuleChannelPropertyCategory.pan: 'pan',
   DevicesModuleChannelPropertyCategory.peakLevel: 'peak_level',
   DevicesModuleChannelPropertyCategory.percentage: 'percentage',

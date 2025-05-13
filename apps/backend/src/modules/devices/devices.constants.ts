@@ -147,6 +147,7 @@ export enum PropertyCategory {
 	ON = 'on',
 	OVER_CURRENT = 'over_current',
 	OVER_VOLTAGE = 'over_voltage',
+	OVER_POWER = 'over_power',
 	PAN = 'pan',
 	PEAK_LEVEL = 'peak_level',
 	PERCENTAGE = 'percentage',

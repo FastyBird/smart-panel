@@ -5020,12 +5020,12 @@ export interface components {
              * @description A HA device entity identifier.
              * @example light.hall_cabinet_lights_lights
              */
-            ha_entity_id: string;
+            ha_entity_id: string | null;
             /**
              * @description A HA device entity attribute.
              * @example brightness
              */
-            ha_attribute: string;
+            ha_attribute: string | null;
         };
         /**
          * Create Home Assistant Channel Property
@@ -5036,12 +5036,12 @@ export interface components {
              * @description A HA device entity identifier.
              * @example light.hall_cabinet_lights_lights
              */
-            ha_entity_id: string;
+            ha_entity_id: string | null;
             /**
              * @description A HA device entity attribute.
              * @example brightness
              */
-            ha_attribute: string;
+            ha_attribute: string | null;
         };
         /**
          * Update Home Assistant Device Chanel
@@ -5052,12 +5052,12 @@ export interface components {
              * @description A HA device entity identifier.
              * @example light.hall_cabinet_lights_lights
              */
-            ha_entity_id?: string;
+            ha_entity_id?: string | null;
             /**
              * @description A HA device entity attribute.
              * @example brightness
              */
-            ha_attribute?: string;
+            ha_attribute?: string | null;
         };
         /**
          * Home Assistant Discovered Device
@@ -9098,6 +9098,7 @@ export enum DevicesModuleChannelPropertyCategory {
     on = "on",
     over_current = "over_current",
     over_voltage = "over_voltage",
+    over_power = "over_power",
     pan = "pan",
     peak_level = "peak_level",
     percentage = "percentage",

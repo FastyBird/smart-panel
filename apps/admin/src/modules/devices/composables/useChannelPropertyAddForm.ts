@@ -220,7 +220,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		timer = window.setTimeout(clear, 2000);
 
 		flashMessage.success(
-			t('devicesModule.messages.channels.created', {
+			t('devicesModule.messages.channelsProperties.created', {
 				device: model.name,
 			})
 		);

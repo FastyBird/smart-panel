@@ -6,9 +6,9 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
 class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
-  final String _haEntityId;
+  final String? _haEntityId;
 
-  final String _haAttribute;
+  final String? _haAttribute;
 
   HomeAssistantChannelPropertyModel({
     required super.id,
@@ -25,17 +25,17 @@ class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
     super.value,
     super.createdAt,
     super.updatedAt,
-    required String haEntityId,
-    required String haAttribute,
+    required String? haEntityId,
+    required String? haAttribute,
   })  : _haEntityId = haEntityId,
         _haAttribute = haAttribute,
         super(
           type: 'home-assistant',
         );
 
-  String get haEntityId => _haEntityId;
+  String? get haEntityId => _haEntityId;
 
-  String get haAttribute => _haAttribute;
+  String? get haAttribute => _haAttribute;
 
   factory HomeAssistantChannelPropertyModel.fromJson(
       Map<String, dynamic> json) {
