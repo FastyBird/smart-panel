@@ -66,7 +66,7 @@ export class MapperService {
 
 			const secondary = await this.universalEntityMapperService.mapFromHA(properties, state);
 
-			const result = new Map(primary);
+			const result = new Map<string, string | number | boolean | null>(primary);
 
 			for (const [key, value] of secondary.entries()) {
 				if (!result.has(key)) {

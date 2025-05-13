@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 
 import { orderBy } from 'natural-orderby';
 
-import { DEVICE_NO_ENTITY, ENTITY_MAIN_STATE_ATTRIBUTE } from '../devices-home-assistant.constants.ts';
+import { DEVICE_NO_ENTITY } from '../devices-home-assistant.constants';
 import type { IHomeAssistantDiscoveredDevice } from '../store/home-assistant-discovered-devices.store.types';
 import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
 

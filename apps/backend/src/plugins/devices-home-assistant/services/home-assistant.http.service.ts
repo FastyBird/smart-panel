@@ -7,6 +7,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
@@ -19,6 +20,7 @@ import {
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
 import {
+	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
@@ -187,7 +189,7 @@ export class HomeAssistantHttpService {
 		try {
 			this.logger.debug('[HOME ASSISTANT][HTTP] Automatic fetch of all Home Assistant entities states list');
 
-			const [states, haDevices, panelDevices, properties] = await Promise.all([
+			const [states, haDevices, devices, properties] = await Promise.all([
 				this.fetchListHaStates(),
 				this.fetchListHaDevices(),
 				this.devicesService.findAll<HomeAssistantDeviceEntity>(DEVICES_HOME_ASSISTANT_TYPE),
@@ -197,7 +199,7 @@ export class HomeAssistantHttpService {
 				),
 			]);
 
-			if (!states?.length || !haDevices?.length || !panelDevices?.length || !properties?.length) {
+			if (!states?.length || !haDevices?.length || !devices?.length || !properties?.length) {
 				this.logger.warn('[HOME ASSISTANT][HTTP] Missing data, skipping automatic sync');
 
 				return;
@@ -205,11 +207,13 @@ export class HomeAssistantHttpService {
 
 			const entityIdToHaDevice = new Map<string, HomeAssistantDiscoveredDeviceDto>();
 
-			for (const device of haDevices) {
-				for (const entityId of device.entities) {
-					entityIdToHaDevice.set(entityId, device);
+			for (const haDevice of haDevices) {
+				for (const entityId of haDevice.entities) {
+					entityIdToHaDevice.set(entityId, haDevice);
 				}
 			}
+
+			const deviceStatesMap = new Map<string, HomeAssistantStateDto[]>();
 
 			for (const state of states) {
 				const haDevice = entityIdToHaDevice.get(state.entity_id);
@@ -218,24 +222,54 @@ export class HomeAssistantHttpService {
 					continue;
 				}
 
-				const panelDevice = panelDevices.find((device) => device.haDeviceId === haDevice.id);
+				if (!deviceStatesMap.has(haDevice.id)) {
+					deviceStatesMap.set(haDevice.id, []);
+				}
 
-				if (!panelDevice) {
+				deviceStatesMap.get(haDevice.id).push(state);
+			}
+
+			for (const [haDeviceId, haDeviceStates] of deviceStatesMap) {
+				const device = devices.find((device) => device.haDeviceId === haDeviceId);
+
+				if (!device) {
 					continue;
 				}
 
-				const resultMaps = await this.homeAssistantMapperService.mapFromHA(panelDevice, [state]);
+				const resultMaps = await this.homeAssistantMapperService.mapFromHA(device, haDeviceStates);
 
 				for (const map of resultMaps) {
 					for (const [propertyId, value] of map) {
-						const prop = properties.find((property) => property.id === propertyId);
+						const property = properties.find((property) => property.id === propertyId);
 
-						if (!prop) {
+						if (!property) {
 							continue;
 						}
 
-						await this.propertyValueService.write(prop, value);
+						await this.propertyValueService.write(property, value);
 					}
+				}
+
+				const stateProperty = properties.find(
+					(property) =>
+						property.category === PropertyCategory.STATUS &&
+						property.channel instanceof HomeAssistantChannelEntity &&
+						property.channel.category === ChannelCategory.DEVICE_INFORMATION,
+				);
+
+				if (stateProperty) {
+					const isOffline = haDeviceStates.every(
+						(state) => typeof state.state === 'string' && state.state.toLowerCase() === 'unavailable',
+					);
+
+					await this.propertyValueService.write(
+						stateProperty,
+						isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
+					);
+
+					this.logger.debug(
+						`[HOME ASSISTANT][HTTP] Device ${device.name} (${device.id}) marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,
+					);
 				}
 			}
 

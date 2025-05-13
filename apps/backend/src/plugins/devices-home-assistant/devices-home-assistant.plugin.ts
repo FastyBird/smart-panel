@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
@@ -63,6 +63,8 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 	exports: [HomeAssistantHttpService],
 })
 export class DevicesHomeAssistantPlugin {
+	private readonly logger = new Logger(DevicesHomeAssistantPlugin.name);
+
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly devicesMapper: DevicesTypeMapperService,
@@ -76,6 +78,7 @@ export class DevicesHomeAssistantPlugin {
 		private readonly homeAssistantLightEntityMapper: LightEntityMapperService,
 		private readonly homeAssistantSensorEntityMapper: SensorEntityMapperService,
 		private readonly homeAssistantSwitchEntityMapper: SwitchEntityMapperService,
+		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly homeAssistantWsService: HomeAssistantWsService,
 		private readonly stateChangedEventService: StateChangedEventService,
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
@@ -137,6 +140,15 @@ export class DevicesHomeAssistantPlugin {
 			this.stateChangedEventService.event,
 			this.stateChangedEventService,
 		);
+
+		this.homeAssistantHttpService.loadStates().catch((error: unknown) => {
+			const err = error as Error;
+
+			this.logger.error('[HOME ASSISTANT][PLUGIN] Failed to initialize devices states', {
+				message: err.message,
+				stack: err.stack,
+			});
+		});
 	}
 
 	onModuleDestroy() {

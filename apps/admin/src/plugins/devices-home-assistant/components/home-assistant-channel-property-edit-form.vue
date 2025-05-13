@@ -241,7 +241,7 @@ import ChannelPropertyFormPermissions from '../../../modules/devices/components/
 import ChannelPropertyFormStep from '../../../modules/devices/components/channels/channel-property-form-step.vue';
 import ChannelPropertyFormUnit from '../../../modules/devices/components/channels/channel-property-form-unit.vue';
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
-import { DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants.ts';
+import { DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 import type { IHomeAssistantChannelPropertyEditForm } from '../schemas/channels.properties.types';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';
 
