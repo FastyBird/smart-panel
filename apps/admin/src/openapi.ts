@@ -5047,7 +5047,18 @@ export interface components {
          * Update Home Assistant Device Chanel
          * @description Schema for updating a Home Assistant channel property.
          */
-        DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty: components["schemas"]["DevicesModuleUpdateChannelProperty"];
+        DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty: components["schemas"]["DevicesModuleUpdateChannelProperty"] & {
+            /**
+             * @description A HA device entity identifier.
+             * @example light.hall_cabinet_lights_lights
+             */
+            ha_entity_id?: string;
+            /**
+             * @description A HA device entity attribute.
+             * @example brightness
+             */
+            ha_attribute?: string;
+        };
         /**
          * Home Assistant Discovered Device
          * @description Represents a device discovered from a connected Home Assistant instance, including its associated entities and current states.

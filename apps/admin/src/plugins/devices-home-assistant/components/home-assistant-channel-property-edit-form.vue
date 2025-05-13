@@ -170,18 +170,17 @@
 			<el-divider />
 
 			<el-form-item
-				:label="t('devicesHomeAssistantPlugin.fields.channels.haEntityId.title')"
+				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haEntityId.title')"
 				:prop="['haEntityId']"
 			>
 				<select-discovered-device-entity
 					v-model="model.haEntityId"
 					:device-id="haDeviceId"
-					disabled
 				/>
 			</el-form-item>
 		</template>
 
-		<template v-if="model.haEntityId">
+		<template v-if="model.haEntityId && model.haEntityId !== DEVICE_NO_ENTITY">
 			<el-divider />
 
 			<el-form-item
@@ -191,7 +190,6 @@
 				<select-entity-attribute
 					v-model="model.haAttribute"
 					:entity-id="model.haEntityId"
-					disabled
 				/>
 			</el-form-item>
 		</template>
@@ -243,6 +241,7 @@ import ChannelPropertyFormPermissions from '../../../modules/devices/components/
 import ChannelPropertyFormStep from '../../../modules/devices/components/channels/channel-property-form-step.vue';
 import ChannelPropertyFormUnit from '../../../modules/devices/components/channels/channel-property-form-unit.vue';
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
+import { DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants.ts';
 import type { IHomeAssistantChannelPropertyEditForm } from '../schemas/channels.properties.types';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';
 
@@ -319,6 +318,17 @@ watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
+	}
+);
+
+watch(
+	(): string | undefined => model.haEntityId,
+	(val: string | undefined): void => {
+		if (val === DEVICE_NO_ENTITY) {
+			model.haAttribute = ENTITY_NO_ATTRIBUTE;
+		} else if (model.haAttribute === ENTITY_NO_ATTRIBUTE) {
+			model.haAttribute = undefined;
+		}
 	}
 );
 </script>

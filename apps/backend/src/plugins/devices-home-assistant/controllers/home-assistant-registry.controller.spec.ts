@@ -22,7 +22,7 @@ import { HomeAssistantRegistryController } from './home-assistant-registry.contr
 
 describe('HomeAssistantRegistryController', () => {
 	let controller: HomeAssistantRegistryController;
-	let haService: jest.Mocked<HomeAssistantWsService>;
+	let homeAssistantWsService: jest.Mocked<HomeAssistantWsService>;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -39,7 +39,7 @@ describe('HomeAssistantRegistryController', () => {
 		}).compile();
 
 		controller = module.get<HomeAssistantRegistryController>(HomeAssistantRegistryController);
-		haService = module.get(HomeAssistantWsService);
+		homeAssistantWsService = module.get(HomeAssistantWsService);
 	});
 
 	describe('findAllDevices', () => {
@@ -53,27 +53,31 @@ describe('HomeAssistantRegistryController', () => {
 				} as unknown as HomeAssistantDeviceRegistryResponseResultModel,
 			];
 
-			haService.getDevicesRegistry.mockResolvedValue(mockDevices);
+			homeAssistantWsService.getDevicesRegistry.mockResolvedValue(mockDevices);
 
 			const result = await controller.findAllDevices();
 			expect(result).toEqual(mockDevices);
-			expect(haService.getDevicesRegistry).toHaveBeenCalled();
+			expect(homeAssistantWsService.getDevicesRegistry).toHaveBeenCalled();
 		});
 
 		it('should throw UnprocessableEntityException if plugin is misconfigured', async () => {
-			haService.getDevicesRegistry.mockRejectedValue(new DevicesHomeAssistantValidationException('Invalid config'));
+			homeAssistantWsService.getDevicesRegistry.mockRejectedValue(
+				new DevicesHomeAssistantValidationException('Invalid config'),
+			);
 
 			await expect(controller.findAllDevices()).rejects.toThrow(UnprocessableEntityException);
 		});
 
 		it('should throw NotFoundException if data not found', async () => {
-			haService.getDevicesRegistry.mockRejectedValue(new DevicesHomeAssistantNotFoundException('Not found'));
+			homeAssistantWsService.getDevicesRegistry.mockRejectedValue(
+				new DevicesHomeAssistantNotFoundException('Not found'),
+			);
 
 			await expect(controller.findAllDevices()).rejects.toThrow(NotFoundException);
 		});
 
 		it('should rethrow unexpected errors', async () => {
-			haService.getDevicesRegistry.mockRejectedValue(new Error('Unexpected'));
+			homeAssistantWsService.getDevicesRegistry.mockRejectedValue(new Error('Unexpected'));
 
 			await expect(controller.findAllDevices()).rejects.toThrow('Unexpected');
 		});
@@ -91,27 +95,31 @@ describe('HomeAssistantRegistryController', () => {
 				} as unknown as HomeAssistantEntityRegistryResponseResultModel,
 			];
 
-			haService.getEntitiesRegistry.mockResolvedValue(mockEntities);
+			homeAssistantWsService.getEntitiesRegistry.mockResolvedValue(mockEntities);
 
 			const result = await controller.findAllEntities();
 			expect(result).toEqual(mockEntities);
-			expect(haService.getEntitiesRegistry).toHaveBeenCalled();
+			expect(homeAssistantWsService.getEntitiesRegistry).toHaveBeenCalled();
 		});
 
 		it('should throw UnprocessableEntityException if plugin is misconfigured', async () => {
-			haService.getEntitiesRegistry.mockRejectedValue(new DevicesHomeAssistantValidationException('Invalid config'));
+			homeAssistantWsService.getEntitiesRegistry.mockRejectedValue(
+				new DevicesHomeAssistantValidationException('Invalid config'),
+			);
 
 			await expect(controller.findAllEntities()).rejects.toThrow(UnprocessableEntityException);
 		});
 
 		it('should throw NotFoundException if data not found', async () => {
-			haService.getEntitiesRegistry.mockRejectedValue(new DevicesHomeAssistantNotFoundException('Not found'));
+			homeAssistantWsService.getEntitiesRegistry.mockRejectedValue(
+				new DevicesHomeAssistantNotFoundException('Not found'),
+			);
 
 			await expect(controller.findAllEntities()).rejects.toThrow(NotFoundException);
 		});
 
 		it('should rethrow unexpected errors', async () => {
-			haService.getEntitiesRegistry.mockRejectedValue(new Error('Unexpected'));
+			homeAssistantWsService.getEntitiesRegistry.mockRejectedValue(new Error('Unexpected'));
 
 			await expect(controller.findAllEntities()).rejects.toThrow('Unexpected');
 		});

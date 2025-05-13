@@ -113,10 +113,11 @@
   "misc": {
     "options": {
       "entities": {
+        "noEntity": "Not connected to device entity"
       },
       "attributes": {
-        "mainState": "Entity main state attribute",
-        "virtual": "Entity virtual state attribute"
+        "noAttribute": "Not connected to entity attribute",
+        "mainState": "Entity main state attribute"
       }
     }
   }

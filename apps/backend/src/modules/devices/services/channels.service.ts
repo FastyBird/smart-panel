@@ -163,7 +163,7 @@ export class ChannelsService {
 		// Save the channel
 		const raw = await repository.save(channel);
 
-		for (const propertyDtoInstance of createDto.properties) {
+		for (const propertyDtoInstance of createDto.properties ?? []) {
 			this.logger.debug(`[CREATE] Creating new property for channelId=${raw.id}`);
 
 			await this.channelsPropertiesService.create(raw.id, propertyDtoInstance);

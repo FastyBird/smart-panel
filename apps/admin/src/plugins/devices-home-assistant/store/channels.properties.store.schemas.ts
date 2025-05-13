@@ -32,6 +32,8 @@ export const HomeAssistantChannelPropertyCreateReqSchema: ZodType<ApiCreateChann
 export const HomeAssistantChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> = ChannelPropertyUpdateReqSchema.and(
 	z.object({
 		type: z.string().trim().nonempty().default(DEVICES_HOME_ASSISTANT_PLUGIN_TYPE),
+		ha_entity_id: z.string().trim().nonempty().optional(),
+		ha_attribute: z.string().trim().nonempty().optional(),
 	})
 );
 

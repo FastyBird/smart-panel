@@ -31,6 +31,7 @@ import { LightEntityMapperService } from './mappers/light.entity.mapper.service'
 import { MapperService } from './mappers/mapper.service';
 import { SensorEntityMapperService } from './mappers/sensor.entity.mapper.service';
 import { SwitchEntityMapperService } from './mappers/switch.entity.mapper.service';
+import { UniversalEntityMapperService } from './mappers/universal.entity.mapper.service';
 import { HomeAssistantConfigModel } from './models/config.model';
 import { HomeAssistantDevicePlatform } from './platforms/home-assistant.device.platform';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
@@ -50,6 +51,7 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		LightEntityMapperService,
 		SensorEntityMapperService,
 		SwitchEntityMapperService,
+		UniversalEntityMapperService,
 		StateChangedEventService,
 		DevicesServiceSubscriber,
 	],

@@ -244,6 +244,7 @@ import {
 	useDevices,
 } from '../../../modules/devices';
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyData_type } from '../../../openapi';
+import { DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants.ts';
 import type { IHomeAssistantChannelPropertyAddForm } from '../schemas/channels.properties.types';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';
 
@@ -334,6 +335,17 @@ watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);
+	}
+);
+
+watch(
+	(): string | undefined => model.haEntityId,
+	(val: string | undefined): void => {
+		if (val === DEVICE_NO_ENTITY) {
+			model.haAttribute = ENTITY_NO_ATTRIBUTE;
+		} else if (model.haAttribute === ENTITY_NO_ATTRIBUTE) {
+			model.haAttribute = undefined;
+		}
 	}
 );
 </script>

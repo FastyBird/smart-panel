@@ -14,14 +14,14 @@ import { HomeAssistantWsService } from '../services/home-assistant.ws.service';
 export class HomeAssistantRegistryController {
 	private readonly logger = new Logger(HomeAssistantRegistryController.name);
 
-	constructor(private readonly haService: HomeAssistantWsService) {}
+	constructor(private readonly homeAssistantWsService: HomeAssistantWsService) {}
 
 	@Get('devices')
 	async findAllDevices(): Promise<HomeAssistantDeviceRegistryResponseResultModel[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all Home Assistant devices from registry');
 
 		try {
-			const devices = await this.haService.getDevicesRegistry();
+			const devices = await this.homeAssistantWsService.getDevicesRegistry();
 
 			this.logger.debug(`[LOOKUP ALL] Retrieved ${devices.length} devices from registry`);
 
@@ -54,7 +54,7 @@ export class HomeAssistantRegistryController {
 		this.logger.debug('[LOOKUP ALL] Fetching all Home Assistant entities from registry');
 
 		try {
-			const entities = await this.haService.getEntitiesRegistry();
+			const entities = await this.homeAssistantWsService.getEntitiesRegistry();
 
 			this.logger.debug(`[LOOKUP ALL] Retrieved ${entities.length} entities from registry`);
 

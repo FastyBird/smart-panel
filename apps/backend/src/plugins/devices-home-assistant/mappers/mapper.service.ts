@@ -13,6 +13,7 @@ import {
 } from '../entities/devices-home-assistant.entity';
 
 import { IEntityMapper } from './entity.mapper';
+import { UniversalEntityMapperService } from './universal.entity.mapper.service';
 
 type MappedToHa = {
 	domain: string;
@@ -34,6 +35,7 @@ export class MapperService {
 	constructor(
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly universalEntityMapperService: UniversalEntityMapperService,
 	) {}
 
 	registerMapper(mapper: IEntityMapper): void {
@@ -60,15 +62,21 @@ export class MapperService {
 
 			const mapper = this.mappers.get(domain);
 
-			if (!mapper) {
-				this.logger.warn(`[HOME ASSISTANT MAPPER] No mapper found for domain=${domain} entityId=${state.entity_id}`);
+			const primary = mapper ? await mapper.mapFromHA(properties, state) : new Map();
 
-				continue;
+			const secondary = await this.universalEntityMapperService.mapFromHA(properties, state);
+
+			const result = new Map(primary);
+
+			for (const [key, value] of secondary.entries()) {
+				if (!result.has(key)) {
+					result.set(key, value);
+				}
 			}
 
-			const result = await mapper.mapFromHA(properties, state);
-
-			updates.push(result);
+			if (result.size > 0) {
+				updates.push(result);
+			}
 		}
 
 		return updates;

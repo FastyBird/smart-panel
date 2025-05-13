@@ -11,14 +11,14 @@ import { HomeAssistantHttpService } from '../services/home-assistant.http.servic
 export class HomeAssistantStatesController {
 	private readonly logger = new Logger(HomeAssistantStatesController.name);
 
-	constructor(private readonly haService: HomeAssistantHttpService) {}
+	constructor(private readonly homeAssistantHttpService: HomeAssistantHttpService) {}
 
 	@Get()
 	async findAll(): Promise<HomeAssistantStateModel[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all Home Assistant entities states');
 
 		try {
-			const states = await this.haService.getStates();
+			const states = await this.homeAssistantHttpService.getStates();
 
 			this.logger.debug(`[LOOKUP ALL] Retrieved ${states.length} entities states`);
 
@@ -51,7 +51,7 @@ export class HomeAssistantStatesController {
 		this.logger.debug(`[LOOKUP] Fetching Home Assistant entity state id=${entityId}`);
 
 		try {
-			const state = await this.haService.getState(entityId);
+			const state = await this.homeAssistantHttpService.getState(entityId);
 
 			this.logger.debug(`[LOOKUP] Found Home Assistant entity state entityId=${state.entityId}`);
 

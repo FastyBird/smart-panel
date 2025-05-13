@@ -238,7 +238,7 @@
 			prop="dataType"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="180"
+			:min-width="150"
 		>
 			<template #default="scope">
 				<channels-properties-table-column-data-type
@@ -255,7 +255,7 @@
 			prop="value"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="150"
+			:min-width="150"
 		>
 			<template #default="scope">
 				<channels-properties-table-column-value :property="scope.row" />

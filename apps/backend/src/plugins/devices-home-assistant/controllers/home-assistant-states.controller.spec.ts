@@ -11,21 +11,21 @@ import { HomeAssistantStatesController } from './home-assistant-states.controlle
 
 describe('HomeAssistantStatesController', () => {
 	let controller: HomeAssistantStatesController;
-	let haService: jest.Mocked<HomeAssistantHttpService>;
+	let homeAssistantHttpService: jest.Mocked<HomeAssistantHttpService>;
 
 	beforeEach(async () => {
-		const haServiceMock: Partial<jest.Mocked<HomeAssistantHttpService>> = {
+		const homeAssistantHttpServiceMock: Partial<jest.Mocked<HomeAssistantHttpService>> = {
 			getStates: jest.fn(),
 			getState: jest.fn(),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [HomeAssistantStatesController],
-			providers: [{ provide: HomeAssistantHttpService, useValue: haServiceMock }],
+			providers: [{ provide: HomeAssistantHttpService, useValue: homeAssistantHttpServiceMock }],
 		}).compile();
 
 		controller = module.get(HomeAssistantStatesController);
-		haService = module.get(HomeAssistantHttpService);
+		homeAssistantHttpService = module.get(HomeAssistantHttpService);
 	});
 
 	it('should be defined', () => {
@@ -44,20 +44,20 @@ describe('HomeAssistantStatesController', () => {
 					lastReported: new Date('2025-05-01'),
 				},
 			];
-			haService.getStates.mockResolvedValue(mockStates);
+			homeAssistantHttpService.getStates.mockResolvedValue(mockStates);
 
 			const result = await controller.findAll();
 			expect(result).toEqual(mockStates);
 		});
 
 		it('should throw UnprocessableEntityException on validation error', async () => {
-			haService.getStates.mockRejectedValue(new DevicesHomeAssistantValidationException('bad config'));
+			homeAssistantHttpService.getStates.mockRejectedValue(new DevicesHomeAssistantValidationException('bad config'));
 
 			await expect(controller.findAll()).rejects.toThrow(UnprocessableEntityException);
 		});
 
 		it('should throw NotFoundException on not found error', async () => {
-			haService.getStates.mockRejectedValue(new DevicesHomeAssistantNotFoundException('not found'));
+			homeAssistantHttpService.getStates.mockRejectedValue(new DevicesHomeAssistantNotFoundException('not found'));
 
 			await expect(controller.findAll()).rejects.toThrow(NotFoundException);
 		});
@@ -73,20 +73,20 @@ describe('HomeAssistantStatesController', () => {
 				lastUpdated: new Date('2025-05-01'),
 				lastReported: new Date('2025-05-01'),
 			};
-			haService.getState.mockResolvedValue(mockState);
+			homeAssistantHttpService.getState.mockResolvedValue(mockState);
 
 			const result = await controller.findOne('sensor.temp');
 			expect(result).toEqual(mockState);
 		});
 
 		it('should throw UnprocessableEntityException on validation error', async () => {
-			haService.getState.mockRejectedValue(new DevicesHomeAssistantValidationException('bad config'));
+			homeAssistantHttpService.getState.mockRejectedValue(new DevicesHomeAssistantValidationException('bad config'));
 
 			await expect(controller.findOne('sensor.temp')).rejects.toThrow(UnprocessableEntityException);
 		});
 
 		it('should throw NotFoundException on not found error', async () => {
-			haService.getState.mockRejectedValue(new DevicesHomeAssistantNotFoundException('not found'));
+			homeAssistantHttpService.getState.mockRejectedValue(new DevicesHomeAssistantNotFoundException('not found'));
 
 			await expect(controller.findOne('sensor.temp')).rejects.toThrow(NotFoundException);
 		});

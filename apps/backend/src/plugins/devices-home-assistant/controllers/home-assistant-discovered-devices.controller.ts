@@ -11,14 +11,14 @@ import { HomeAssistantHttpService } from '../services/home-assistant.http.servic
 export class HomeAssistantDiscoveredDevicesController {
 	private readonly logger = new Logger(HomeAssistantDiscoveredDevicesController.name);
 
-	constructor(private readonly haService: HomeAssistantHttpService) {}
+	constructor(private readonly homeAssistantHttpService: HomeAssistantHttpService) {}
 
 	@Get()
 	async findAll(): Promise<HomeAssistantDiscoveredDeviceModel[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all Home Assistant discovered devices');
 
 		try {
-			const devices = await this.haService.getDiscoveredDevices();
+			const devices = await this.homeAssistantHttpService.getDiscoveredDevices();
 
 			this.logger.debug(`[LOOKUP ALL] Retrieved ${devices.length} discovered devices`);
 
@@ -53,7 +53,7 @@ export class HomeAssistantDiscoveredDevicesController {
 		this.logger.debug(`[LOOKUP] Fetching Home Assistant discovered device id=${id}`);
 
 		try {
-			const device = await this.haService.getDiscoveredDevice(id);
+			const device = await this.homeAssistantHttpService.getDiscoveredDevice(id);
 
 			this.logger.debug(`[LOOKUP] Found Home Assistant discovered device id=${device.id}`);
 

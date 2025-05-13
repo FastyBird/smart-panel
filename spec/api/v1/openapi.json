@@ -13560,6 +13560,21 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannelProperty"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "ha_entity_id": {
+                "type": "string",
+                "description": "A HA device entity identifier.",
+                "example": "light.hall_cabinet_lights_lights"
+              },
+              "ha_attribute": {
+                "type": "string",
+                "description": "A HA device entity attribute.",
+                "example": "brightness"
+              }
+            }
           }
         ]
       },
