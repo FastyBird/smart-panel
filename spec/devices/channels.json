@@ -971,7 +971,7 @@
       },
       "rate": {
         "category": "rate",
-        "required": true,
+        "required": false,
         "description": {
           "en": ""
         },
@@ -1041,7 +1041,7 @@
       },
       "voltage": {
         "category": "voltage",
-        "required": true,
+        "required": false,
         "description": {
           "en": ""
         },
@@ -1057,7 +1057,7 @@
       },
       "current": {
         "category": "current",
-        "required": true,
+        "required": false,
         "description": {
           "en": ""
         },
@@ -1073,7 +1073,7 @@
       },
       "frequency": {
         "category": "frequency",
-        "required": true,
+        "required": false,
         "description": {
           "en": ""
         },
