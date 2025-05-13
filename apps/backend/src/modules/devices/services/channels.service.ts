@@ -176,7 +176,13 @@ export class ChannelsService {
 			await this.channelsPropertiesService.create(raw.id, propertyDtoInstance);
 		}
 
-		const savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
+		let savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
+
+		if (mapping.afterCreate) {
+			await mapping.afterCreate(savedChannel);
+
+			savedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
+		}
 
 		this.logger.debug(`[CREATE] Successfully created channel with id=${savedChannel.id}`);
 
@@ -213,7 +219,13 @@ export class ChannelsService {
 
 		await repository.save(channel as TChannel);
 
-		const updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
+		let updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
+
+		if (mapping.afterUpdate) {
+			await mapping.afterUpdate(updatedChannel);
+
+			updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;
+		}
 
 		this.logger.debug(`[UPDATE] Successfully updated channel with id=${updatedChannel.id}`);
 

@@ -177,7 +177,13 @@ export class ChannelsPropertiesService {
 			await this.propertyValueService.write(raw, dtoInstance.value);
 		}
 
-		const savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+		let savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+
+		if (mapping.afterCreate) {
+			await mapping.afterCreate(savedProperty);
+
+			savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+		}
 
 		this.logger.debug(`[CREATE] Successfully created property with id=${savedProperty.id} for channelId=${channelId}`);
 
@@ -212,12 +218,18 @@ export class ChannelsPropertiesService {
 			),
 		);
 
-		await repository.save(property as TProperty);
-
-		const updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+		const raw = await repository.save(property as TProperty);
 
 		if (dtoInstance.value) {
-			await this.propertyValueService.write(updatedProperty, dtoInstance.value);
+			await this.propertyValueService.write(raw, dtoInstance.value);
+		}
+
+		let updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+
+		if (mapping.afterUpdate) {
+			await mapping.afterUpdate(updatedProperty);
+
+			updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
 		}
 
 		this.logger.debug(`[UPDATE] Successfully updated property with id=${updatedProperty.id}`);

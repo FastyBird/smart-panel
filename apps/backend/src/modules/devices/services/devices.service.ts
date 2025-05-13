@@ -151,7 +151,14 @@ export class DevicesService {
 		}
 
 		// Retrieve the saved device with its full relations
-		const savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
+		let savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
+
+		if (mapping.afterCreate) {
+			await mapping.afterCreate(savedDevice);
+
+			// Reload a potentially updated device
+			savedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
+		}
 
 		this.logger.debug(`[CREATE] Successfully created device with id=${savedDevice.id}`);
 
@@ -188,7 +195,13 @@ export class DevicesService {
 
 		await repository.save(device as TDevice);
 
-		const updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
+		let updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
+
+		if (mapping.afterUpdate) {
+			await mapping.afterUpdate(updatedDevice);
+
+			updatedDevice = (await this.getOneOrThrow(device.id)) as TDevice;
+		}
 
 		this.logger.debug(`[UPDATE] Successfully updated device with id=${updatedDevice.id}`);
 

@@ -186,6 +186,16 @@ export class HomeAssistantEntityRegistryResponseModel {
 	result: HomeAssistantEntityRegistryResponseResultModel[];
 }
 
+export class DeviceConnection {
+	@IsString()
+	@Expose()
+	type: string; // mac | bluetooth | zigbee | zwave | serial | usb | ethernet
+
+	@IsString()
+	@Expose()
+	value: string;
+}
+
 export class HomeAssistantDeviceRegistryResponseResultModel {
 	@Expose()
 	@IsString()
@@ -233,6 +243,13 @@ export class HomeAssistantDeviceRegistryResponseResultModel {
 	@IsString()
 	@IsOptional()
 	serialNumber: string | null;
+
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => DeviceConnection)
+	connections: DeviceConnection[];
 
 	@Expose({ name: 'created_at' })
 	@IsDate()
