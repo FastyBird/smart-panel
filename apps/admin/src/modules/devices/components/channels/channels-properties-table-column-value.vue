@@ -6,7 +6,7 @@
 		{{ props.property.value }}
 	</el-text>
 	<template v-else>
-		{{ props.property.value }}
+		{{ props.property.value !== null ? props.property.value : '-' }}{{ props.property.unit ? ` ${props.property.unit}` : '' }}
 	</template>
 </template>
 

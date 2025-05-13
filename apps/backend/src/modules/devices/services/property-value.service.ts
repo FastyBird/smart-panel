@@ -66,12 +66,12 @@ export class PropertyValueService {
 
 	async readLatest(property: ChannelPropertyEntity): Promise<string | number | boolean | null> {
 		try {
-			const cachedValue = this.valuesMap.has(property.id) ? this.valuesMap.get(property.id) : null;
+			if (this.valuesMap.has(property.id)) {
+				this.logger.debug(
+					`[PROPERTY] Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`,
+				);
 
-			if (cachedValue) {
-				this.logger.debug(`[PROPERTY] Loaded cached value for property id=${property.id}, value=${cachedValue}`);
-
-				return cachedValue;
+				return this.valuesMap.get(property.id);
 			}
 
 			const query = `
@@ -157,9 +157,5 @@ export class PropertyValueService {
 				err.stack,
 			);
 		}
-	}
-
-	private createCacheKey(property: ChannelPropertyEntity): string {
-		return `property:${property.id}:value`;
 	}
 }

@@ -182,6 +182,7 @@
 			<el-divider />
 
 			<el-form-item
+				:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.haEntityId}-haAttribute`"
 				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haAttribute.title')"
 				:prop="['haAttribute']"
 			>

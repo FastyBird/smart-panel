@@ -45,6 +45,7 @@ export class ChannelsPropertiesService {
 				const properties = (await repository
 					.createQueryBuilder('property')
 					.innerJoinAndSelect('property.channel', 'channel')
+					.innerJoinAndSelect('channel.device', 'device')
 					.where('channel.id IN (:...channelIds)', { channelIds: channelId })
 					.getMany()) as TProperty[];
 
@@ -57,6 +58,7 @@ export class ChannelsPropertiesService {
 				const properties = (await repository
 					.createQueryBuilder('property')
 					.innerJoinAndSelect('property.channel', 'channel')
+					.innerJoinAndSelect('channel.device', 'device')
 					.where('channel.id = :channelId', { channelId })
 					.getMany()) as TProperty[];
 
@@ -68,7 +70,7 @@ export class ChannelsPropertiesService {
 
 		this.logger.debug('[LOOKUP ALL] Fetching all properties');
 
-		const properties = (await repository.find({ relations: ['channel'] })) as TProperty[];
+		const properties = (await repository.find({ relations: ['channel', 'channel.device'] })) as TProperty[];
 
 		this.logger.debug(`[LOOKUP ALL] Found ${properties.length} properties`);
 
@@ -92,6 +94,7 @@ export class ChannelsPropertiesService {
 			property = (await repository
 				.createQueryBuilder('property')
 				.innerJoinAndSelect('property.channel', 'channel')
+				.innerJoinAndSelect('channel.device', 'device')
 				.where('property.id = :id', { id })
 				.andWhere('channel.id = :channelId', { channelId })
 				.getOne()) as TProperty | null;
@@ -107,6 +110,7 @@ export class ChannelsPropertiesService {
 			property = (await repository
 				.createQueryBuilder('property')
 				.innerJoinAndSelect('property.channel', 'channel')
+				.innerJoinAndSelect('channel.device', 'device')
 				.where('property.id = :id', { id })
 				.getOne()) as TProperty | null;
 

@@ -254,7 +254,9 @@ export class HomeAssistantHttpService {
 					(property) =>
 						property.category === PropertyCategory.STATUS &&
 						property.channel instanceof HomeAssistantChannelEntity &&
-						property.channel.category === ChannelCategory.DEVICE_INFORMATION,
+						property.channel.category === ChannelCategory.DEVICE_INFORMATION &&
+						property.channel.device instanceof HomeAssistantDeviceEntity &&
+						property.channel.device.id === device.id,
 				);
 
 				if (stateProperty) {
