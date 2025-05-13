@@ -36,10 +36,6 @@ class DevicesHomeAssistantPluginCreateHomeAssistantChannel with _$DevicesHomeAss
     /// The parent device to which this channel belongs.
     required String device,
 
-    /// A HA device entity identifier.
-    @JsonKey(name: 'ha_entity_id')
-    required String haEntityId,
-
     /// Optional description of the channel’s purpose or functionality.
     String? description,
   }) = _DevicesHomeAssistantPluginCreateHomeAssistantChannel;

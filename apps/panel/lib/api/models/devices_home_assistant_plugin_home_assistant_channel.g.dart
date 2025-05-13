@@ -29,7 +29,6 @@ _$DevicesHomeAssistantPluginHomeAssistantChannelImpl
           updatedAt: json['updated_at'] == null
               ? null
               : DateTime.parse(json['updated_at'] as String),
-          haEntityId: json['ha_entity_id'] as String,
         );
 
 Map<String, dynamic>
@@ -46,7 +45,6 @@ Map<String, dynamic>
           'properties': instance.properties,
           'created_at': instance.createdAt.toIso8601String(),
           'updated_at': instance.updatedAt?.toIso8601String(),
-          'ha_entity_id': instance.haEntityId,
         };
 
 const _$DevicesModuleChannelCategoryEnumMap = {

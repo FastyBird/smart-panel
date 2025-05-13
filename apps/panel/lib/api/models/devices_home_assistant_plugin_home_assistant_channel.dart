@@ -46,10 +46,6 @@ class DevicesHomeAssistantPluginHomeAssistantChannel with _$DevicesHomeAssistant
     /// Timestamp when the channel was last updated, if applicable.
     @JsonKey(name: 'updated_at')
     required DateTime? updatedAt,
-
-    /// A HA device entity identifier.
-    @JsonKey(name: 'ha_entity_id')
-    required String haEntityId,
   }) = _DevicesHomeAssistantPluginHomeAssistantChannel;
   
   factory DevicesHomeAssistantPluginHomeAssistantChannel.fromJson(Map<String, Object?> json) => _$DevicesHomeAssistantPluginHomeAssistantChannelFromJson(json);

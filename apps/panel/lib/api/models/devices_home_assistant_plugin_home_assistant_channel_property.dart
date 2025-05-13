@@ -56,9 +56,13 @@ class DevicesHomeAssistantPluginHomeAssistantChannelProperty with _$DevicesHomeA
     @JsonKey(name: 'updated_at')
     required DateTime? updatedAt,
 
+    /// A HA device entity identifier.
+    @JsonKey(name: 'ha_entity_id')
+    required String haEntityId,
+
     /// A HA device entity attribute.
     @JsonKey(name: 'ha_attribute')
-    required String? haAttribute,
+    required String haAttribute,
 
     /// Data type of the property’s value, e.g., string, integer, or boolean.
     @JsonKey(name: 'data_type')

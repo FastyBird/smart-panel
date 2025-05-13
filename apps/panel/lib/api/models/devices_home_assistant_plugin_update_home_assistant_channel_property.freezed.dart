@@ -26,6 +26,14 @@ mixin _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty {
   /// Specifies the type of channel property.
   String get type => throw _privateConstructorUsedError;
 
+  /// A HA device entity identifier.
+  @JsonKey(name: 'ha_entity_id')
+  String get haEntityId => throw _privateConstructorUsedError;
+
+  /// A HA device entity attribute.
+  @JsonKey(name: 'ha_attribute')
+  String get haAttribute => throw _privateConstructorUsedError;
+
   /// Optional name of the property for easier identification.
   String? get name => throw _privateConstructorUsedError;
 
@@ -68,6 +76,8 @@ abstract class $DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyCopy
   @useResult
   $Res call(
       {String type,
+      @JsonKey(name: 'ha_entity_id') String haEntityId,
+      @JsonKey(name: 'ha_attribute') String haAttribute,
       String? name,
       String? unit,
       List<dynamic>? format,
@@ -97,6 +107,8 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyCopyWithImpl
   @override
   $Res call({
     Object? type = null,
+    Object? haEntityId = null,
+    Object? haAttribute = null,
     Object? name = freezed,
     Object? unit = freezed,
     Object? format = freezed,
@@ -108,6 +120,14 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyCopyWithImpl
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      haEntityId: null == haEntityId
+          ? _value.haEntityId
+          : haEntityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      haAttribute: null == haAttribute
+          ? _value.haAttribute
+          : haAttribute // ignore: cast_nullable_to_non_nullable
               as String,
       name: freezed == name
           ? _value.name
@@ -154,6 +174,8 @@ abstract class _$$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyIm
   @useResult
   $Res call(
       {String type,
+      @JsonKey(name: 'ha_entity_id') String haEntityId,
+      @JsonKey(name: 'ha_attribute') String haAttribute,
       String? name,
       String? unit,
       List<dynamic>? format,
@@ -184,6 +206,8 @@ class __$$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImplCopyWi
   @override
   $Res call({
     Object? type = null,
+    Object? haEntityId = null,
+    Object? haAttribute = null,
     Object? name = freezed,
     Object? unit = freezed,
     Object? format = freezed,
@@ -196,6 +220,14 @@ class __$$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImplCopyWi
       type: null == type
           ? _value.type
           : type // ignore: cast_nullable_to_non_nullable
+              as String,
+      haEntityId: null == haEntityId
+          ? _value.haEntityId
+          : haEntityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      haAttribute: null == haAttribute
+          ? _value.haAttribute
+          : haAttribute // ignore: cast_nullable_to_non_nullable
               as String,
       name: freezed == name
           ? _value.name
@@ -231,6 +263,8 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
     implements _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty {
   const _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl(
       {required this.type,
+      @JsonKey(name: 'ha_entity_id') required this.haEntityId,
+      @JsonKey(name: 'ha_attribute') required this.haAttribute,
       this.name,
       this.unit,
       final List<dynamic>? format,
@@ -247,6 +281,16 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
   /// Specifies the type of channel property.
   @override
   final String type;
+
+  /// A HA device entity identifier.
+  @override
+  @JsonKey(name: 'ha_entity_id')
+  final String haEntityId;
+
+  /// A HA device entity attribute.
+  @override
+  @JsonKey(name: 'ha_attribute')
+  final String haAttribute;
 
   /// Optional name of the property for easier identification.
   @override
@@ -283,7 +327,7 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
 
   @override
   String toString() {
-    return 'DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty(type: $type, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
+    return 'DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty(type: $type, haEntityId: $haEntityId, haAttribute: $haAttribute, name: $name, unit: $unit, format: $format, invalid: $invalid, step: $step, value: $value)';
   }
 
   @override
@@ -293,6 +337,10 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
             other
                 is _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl &&
             (identical(other.type, type) || other.type == type) &&
+            (identical(other.haEntityId, haEntityId) ||
+                other.haEntityId == haEntityId) &&
+            (identical(other.haAttribute, haAttribute) ||
+                other.haAttribute == haAttribute) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.unit, unit) || other.unit == unit) &&
             const DeepCollectionEquality().equals(other._format, _format) &&
@@ -306,6 +354,8 @@ class _$DevicesHomeAssistantPluginUpdateHomeAssistantChannelPropertyImpl
   int get hashCode => Object.hash(
       runtimeType,
       type,
+      haEntityId,
+      haAttribute,
       name,
       unit,
       const DeepCollectionEquality().hash(_format),
@@ -337,6 +387,8 @@ abstract class _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty
     implements DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty {
   const factory _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty(
           {required final String type,
+          @JsonKey(name: 'ha_entity_id') required final String haEntityId,
+          @JsonKey(name: 'ha_attribute') required final String haAttribute,
           final String? name,
           final String? unit,
           final List<dynamic>? format,
@@ -353,6 +405,16 @@ abstract class _DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty
   /// Specifies the type of channel property.
   @override
   String get type;
+
+  /// A HA device entity identifier.
+  @override
+  @JsonKey(name: 'ha_entity_id')
+  String get haEntityId;
+
+  /// A HA device entity attribute.
+  @override
+  @JsonKey(name: 'ha_attribute')
+  String get haAttribute;
 
   /// Optional name of the property for easier identification.
   @override

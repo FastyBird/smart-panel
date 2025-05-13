@@ -24,7 +24,6 @@ _$DevicesHomeAssistantPluginCreateHomeAssistantChannelImpl
                   e as Map<String, dynamic>))
               .toList(),
           device: json['device'] as String,
-          haEntityId: json['ha_entity_id'] as String,
           description: json['description'] as String?,
         );
 
@@ -39,7 +38,6 @@ Map<String,
       'controls': instance.controls,
       'properties': instance.properties,
       'device': instance.device,
-      'ha_entity_id': instance.haEntityId,
       'description': instance.description,
     };
 

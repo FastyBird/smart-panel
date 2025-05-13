@@ -29,7 +29,8 @@ _$DevicesHomeAssistantPluginHomeAssistantChannelPropertyImpl
           updatedAt: json['updated_at'] == null
               ? null
               : DateTime.parse(json['updated_at'] as String),
-          haAttribute: json['ha_attribute'] as String?,
+          haEntityId: json['ha_entity_id'] as String,
+          haAttribute: json['ha_attribute'] as String,
           dataType: json['data_type'] == null
               ? DevicesModuleChannelPropertyDataType.unknown
               : DevicesModuleChannelPropertyDataType.fromJson(
@@ -57,6 +58,7 @@ Map<String, dynamic>
           'channel': instance.channel,
           'created_at': instance.createdAt.toIso8601String(),
           'updated_at': instance.updatedAt?.toIso8601String(),
+          'ha_entity_id': instance.haEntityId,
           'ha_attribute': instance.haAttribute,
           'data_type':
               _$DevicesModuleChannelPropertyDataTypeEnumMap[instance.dataType]!,

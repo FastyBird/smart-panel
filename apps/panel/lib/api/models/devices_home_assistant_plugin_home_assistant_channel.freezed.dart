@@ -57,10 +57,6 @@ mixin _$DevicesHomeAssistantPluginHomeAssistantChannel {
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt => throw _privateConstructorUsedError;
 
-  /// A HA device entity identifier.
-  @JsonKey(name: 'ha_entity_id')
-  String get haEntityId => throw _privateConstructorUsedError;
-
   /// Serializes this DevicesHomeAssistantPluginHomeAssistantChannel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
@@ -90,8 +86,7 @@ abstract class $DevicesHomeAssistantPluginHomeAssistantChannelCopyWith<$Res> {
       List<DevicesModuleChannelControl> controls,
       List<DevicesModuleChannelProperty> properties,
       @JsonKey(name: 'created_at') DateTime createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt,
-      @JsonKey(name: 'ha_entity_id') String haEntityId});
+      @JsonKey(name: 'updated_at') DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -121,7 +116,6 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelCopyWithImpl<$Res,
     Object? properties = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
-    Object? haEntityId = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -164,10 +158,6 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelCopyWithImpl<$Res,
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      haEntityId: null == haEntityId
-          ? _value.haEntityId
-          : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
     ) as $Val);
   }
 }
@@ -193,8 +183,7 @@ abstract class _$$DevicesHomeAssistantPluginHomeAssistantChannelImplCopyWith<
       List<DevicesModuleChannelControl> controls,
       List<DevicesModuleChannelProperty> properties,
       @JsonKey(name: 'created_at') DateTime createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt,
-      @JsonKey(name: 'ha_entity_id') String haEntityId});
+      @JsonKey(name: 'updated_at') DateTime? updatedAt});
 }
 
 /// @nodoc
@@ -223,7 +212,6 @@ class __$$DevicesHomeAssistantPluginHomeAssistantChannelImplCopyWithImpl<$Res>
     Object? properties = null,
     Object? createdAt = null,
     Object? updatedAt = freezed,
-    Object? haEntityId = null,
   }) {
     return _then(_$DevicesHomeAssistantPluginHomeAssistantChannelImpl(
       id: null == id
@@ -266,10 +254,6 @@ class __$$DevicesHomeAssistantPluginHomeAssistantChannelImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      haEntityId: null == haEntityId
-          ? _value.haEntityId
-          : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
     ));
   }
 }
@@ -288,8 +272,7 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelImpl
       required final List<DevicesModuleChannelControl> controls,
       required final List<DevicesModuleChannelProperty> properties,
       @JsonKey(name: 'created_at') required this.createdAt,
-      @JsonKey(name: 'updated_at') required this.updatedAt,
-      @JsonKey(name: 'ha_entity_id') required this.haEntityId})
+      @JsonKey(name: 'updated_at') required this.updatedAt})
       : _controls = controls,
         _properties = properties;
 
@@ -353,14 +336,9 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelImpl
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
-  /// A HA device entity identifier.
-  @override
-  @JsonKey(name: 'ha_entity_id')
-  final String haEntityId;
-
   @override
   String toString() {
-    return 'DevicesHomeAssistantPluginHomeAssistantChannel(id: $id, type: $type, category: $category, name: $name, description: $description, device: $device, controls: $controls, properties: $properties, createdAt: $createdAt, updatedAt: $updatedAt, haEntityId: $haEntityId)';
+    return 'DevicesHomeAssistantPluginHomeAssistantChannel(id: $id, type: $type, category: $category, name: $name, description: $description, device: $device, controls: $controls, properties: $properties, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -382,9 +360,7 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelImpl
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt) &&
-            (identical(other.haEntityId, haEntityId) ||
-                other.haEntityId == haEntityId));
+                other.updatedAt == updatedAt));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -400,8 +376,7 @@ class _$DevicesHomeAssistantPluginHomeAssistantChannelImpl
       const DeepCollectionEquality().hash(_controls),
       const DeepCollectionEquality().hash(_properties),
       createdAt,
-      updatedAt,
-      haEntityId);
+      updatedAt);
 
   /// Create a copy of DevicesHomeAssistantPluginHomeAssistantChannel
   /// with the given fields replaced by the non-null parameter values.
@@ -435,8 +410,7 @@ abstract class _DevicesHomeAssistantPluginHomeAssistantChannel
           required final List<DevicesModuleChannelControl> controls,
           required final List<DevicesModuleChannelProperty> properties,
           @JsonKey(name: 'created_at') required final DateTime createdAt,
-          @JsonKey(name: 'updated_at') required final DateTime? updatedAt,
-          @JsonKey(name: 'ha_entity_id') required final String haEntityId}) =
+          @JsonKey(name: 'updated_at') required final DateTime? updatedAt}) =
       _$DevicesHomeAssistantPluginHomeAssistantChannelImpl;
 
   factory _DevicesHomeAssistantPluginHomeAssistantChannel.fromJson(
@@ -484,11 +458,6 @@ abstract class _DevicesHomeAssistantPluginHomeAssistantChannel
   @override
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
-
-  /// A HA device entity identifier.
-  @override
-  @JsonKey(name: 'ha_entity_id')
-  String get haEntityId;
 
   /// Create a copy of DevicesHomeAssistantPluginHomeAssistantChannel
   /// with the given fields replaced by the non-null parameter values.

@@ -3,8 +3,6 @@ import 'package:fastybird_smart_panel/modules/devices/models/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 
 class HomeAssistantChannelModel extends ChannelModel {
-  final String _haEntityId;
-
   HomeAssistantChannelModel({
     required super.id,
     super.category = ChannelCategory.generic,
@@ -15,13 +13,9 @@ class HomeAssistantChannelModel extends ChannelModel {
     required super.controls,
     super.createdAt,
     super.updatedAt,
-    required String haEntityId,
-  })  : _haEntityId = haEntityId,
-        super(
+  }) : super(
           type: 'home-assistant',
         );
-
-  String get haEntityId => _haEntityId;
 
   factory HomeAssistantChannelModel.fromJson(Map<String, dynamic> json) {
     ChannelCategory? category = ChannelCategory.fromValue(
@@ -68,7 +62,6 @@ class HomeAssistantChannelModel extends ChannelModel {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
-      haEntityId: json['ha_entity_id'],
     );
   }
 }

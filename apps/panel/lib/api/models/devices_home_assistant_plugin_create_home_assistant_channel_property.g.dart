@@ -21,7 +21,8 @@ _$DevicesHomeAssistantPluginCreateHomeAssistantChannelPropertyImpl
               .toList(),
           dataType: DevicesModuleCreateChannelPropertyDataType.fromJson(
               json['data_type'] as String),
-          haAttribute: json['ha_attribute'] as String?,
+          haEntityId: json['ha_entity_id'] as String,
+          haAttribute: json['ha_attribute'] as String,
           name: json['name'] as String?,
           unit: json['unit'] as String?,
           format: json['format'] as List<dynamic>?,
@@ -45,6 +46,7 @@ Map<String, dynamic>
               .toList(),
           'data_type': _$DevicesModuleCreateChannelPropertyDataTypeEnumMap[
               instance.dataType]!,
+          'ha_entity_id': instance.haEntityId,
           'ha_attribute': instance.haAttribute,
           'name': instance.name,
           'unit': instance.unit,

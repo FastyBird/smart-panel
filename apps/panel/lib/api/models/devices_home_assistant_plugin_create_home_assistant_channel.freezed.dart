@@ -46,10 +46,6 @@ mixin _$DevicesHomeAssistantPluginCreateHomeAssistantChannel {
   /// The parent device to which this channel belongs.
   String get device => throw _privateConstructorUsedError;
 
-  /// A HA device entity identifier.
-  @JsonKey(name: 'ha_entity_id')
-  String get haEntityId => throw _privateConstructorUsedError;
-
   /// Optional description of the channel’s purpose or functionality.
   String? get description => throw _privateConstructorUsedError;
 
@@ -82,7 +78,6 @@ abstract class $DevicesHomeAssistantPluginCreateHomeAssistantChannelCopyWith<
       List<DevicesModuleCreateChannelControl> controls,
       List<DevicesModuleCreateChannelProperty> properties,
       String device,
-      @JsonKey(name: 'ha_entity_id') String haEntityId,
       String? description});
 }
 
@@ -111,7 +106,6 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelCopyWithImpl<$Res,
     Object? controls = null,
     Object? properties = null,
     Object? device = null,
-    Object? haEntityId = null,
     Object? description = freezed,
   }) {
     return _then(_value.copyWith(
@@ -143,10 +137,6 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelCopyWithImpl<$Res,
           ? _value.device
           : device // ignore: cast_nullable_to_non_nullable
               as String,
-      haEntityId: null == haEntityId
-          ? _value.haEntityId
-          : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
       description: freezed == description
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
@@ -177,7 +167,6 @@ abstract class _$$DevicesHomeAssistantPluginCreateHomeAssistantChannelImplCopyWi
       List<DevicesModuleCreateChannelControl> controls,
       List<DevicesModuleCreateChannelProperty> properties,
       String device,
-      @JsonKey(name: 'ha_entity_id') String haEntityId,
       String? description});
 }
 
@@ -207,7 +196,6 @@ class __$$DevicesHomeAssistantPluginCreateHomeAssistantChannelImplCopyWithImpl<
     Object? controls = null,
     Object? properties = null,
     Object? device = null,
-    Object? haEntityId = null,
     Object? description = freezed,
   }) {
     return _then(_$DevicesHomeAssistantPluginCreateHomeAssistantChannelImpl(
@@ -239,10 +227,6 @@ class __$$DevicesHomeAssistantPluginCreateHomeAssistantChannelImplCopyWithImpl<
           ? _value.device
           : device // ignore: cast_nullable_to_non_nullable
               as String,
-      haEntityId: null == haEntityId
-          ? _value.haEntityId
-          : haEntityId // ignore: cast_nullable_to_non_nullable
-              as String,
       description: freezed == description
           ? _value.description
           : description // ignore: cast_nullable_to_non_nullable
@@ -263,7 +247,6 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelImpl
       required final List<DevicesModuleCreateChannelControl> controls,
       required final List<DevicesModuleCreateChannelProperty> properties,
       required this.device,
-      @JsonKey(name: 'ha_entity_id') required this.haEntityId,
       this.description})
       : _controls = controls,
         _properties = properties;
@@ -314,18 +297,13 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelImpl
   @override
   final String device;
 
-  /// A HA device entity identifier.
-  @override
-  @JsonKey(name: 'ha_entity_id')
-  final String haEntityId;
-
   /// Optional description of the channel’s purpose or functionality.
   @override
   final String? description;
 
   @override
   String toString() {
-    return 'DevicesHomeAssistantPluginCreateHomeAssistantChannel(id: $id, type: $type, category: $category, name: $name, controls: $controls, properties: $properties, device: $device, haEntityId: $haEntityId, description: $description)';
+    return 'DevicesHomeAssistantPluginCreateHomeAssistantChannel(id: $id, type: $type, category: $category, name: $name, controls: $controls, properties: $properties, device: $device, description: $description)';
   }
 
   @override
@@ -343,8 +321,6 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelImpl
             const DeepCollectionEquality()
                 .equals(other._properties, _properties) &&
             (identical(other.device, device) || other.device == device) &&
-            (identical(other.haEntityId, haEntityId) ||
-                other.haEntityId == haEntityId) &&
             (identical(other.description, description) ||
                 other.description == description));
   }
@@ -360,7 +336,6 @@ class _$DevicesHomeAssistantPluginCreateHomeAssistantChannelImpl
       const DeepCollectionEquality().hash(_controls),
       const DeepCollectionEquality().hash(_properties),
       device,
-      haEntityId,
       description);
 
   /// Create a copy of DevicesHomeAssistantPluginCreateHomeAssistantChannel
@@ -393,7 +368,6 @@ abstract class _DevicesHomeAssistantPluginCreateHomeAssistantChannel
           required final List<DevicesModuleCreateChannelControl> controls,
           required final List<DevicesModuleCreateChannelProperty> properties,
           required final String device,
-          @JsonKey(name: 'ha_entity_id') required final String haEntityId,
           final String? description}) =
       _$DevicesHomeAssistantPluginCreateHomeAssistantChannelImpl;
 
@@ -428,11 +402,6 @@ abstract class _DevicesHomeAssistantPluginCreateHomeAssistantChannel
   /// The parent device to which this channel belongs.
   @override
   String get device;
-
-  /// A HA device entity identifier.
-  @override
-  @JsonKey(name: 'ha_entity_id')
-  String get haEntityId;
 
   /// Optional description of the channel’s purpose or functionality.
   @override
