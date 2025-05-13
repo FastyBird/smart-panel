@@ -105,7 +105,7 @@ export class DevicesServiceSubscriber {
 			name: 'Device information',
 			properties: Object.entries(haDeviceInformationProperties)
 				.filter(([, value]) => value != null)
-				.map(([category, value]) => {
+				.map(([category, value]: [PropertyCategory, string]) => {
 					const spec = categorySpec.properties.find((p) => p.category === category);
 
 					if (!spec) {
