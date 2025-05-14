@@ -71,7 +71,7 @@ export default {
 			type: DEVICES_HOME_ASSISTANT_PLUGIN_TYPE,
 			source: 'com.fastybird.smart-panel.plugin.devices-home-assistant',
 			name: 'Home Assistant Devices',
-			description: 'Home Assistant devices plugin for FastyBird IoT Smart Panel',
+			description: 'Connect and control your Home Assistant devices directly from the FastyBird Smart Panel',
 			links: {
 				documentation: 'http://www.fastybird.com',
 				devDocumentation: 'http://www.fastybird.com',

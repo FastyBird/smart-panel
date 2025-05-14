@@ -44,7 +44,7 @@ export default {
 			type: DEVICES_THIRD_PARTY_PLUGIN_TYPE,
 			source: 'com.fastybird.smart-panel.plugin.devices-third-party',
 			name: 'Third Party Devices',
-			description: 'Third party devices plugin for FastyBird IoT Smart Panel',
+			description: 'Control and monitor third-party devices seamlessly from the FastyBird Smart Panel',
 			links: {
 				documentation: 'http://www.fastybird.com',
 				devDocumentation: 'http://www.fastybird.com',
