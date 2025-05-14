@@ -24,3 +24,5 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+src/openapi.ts

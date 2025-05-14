@@ -398,3 +398,5 @@ Temporary Items
 dist
 .webpack
 .serverless/**/*.zip
+
+src/openapi.d.ts

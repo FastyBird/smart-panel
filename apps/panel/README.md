@@ -70,7 +70,13 @@ cd apps/panel
 flutter pub get
 ```
 
-### 3️⃣ Run the App (Development Mode)
+### 3️⃣ Build generated code
+
+```shell
+dart run swagger_parser && dart run build_runner build
+```
+
+### 4️⃣ Run the App (Development Mode)
 
 ```shell
 flutter run

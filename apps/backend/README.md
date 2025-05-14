@@ -115,19 +115,25 @@ cd apps/backend
 pnpm install
 ```
 
-### 3️⃣ Run Migrations
+### 3️⃣ Build generated code
+
+```shell
+pnpm generate:openapi
+```
+
+### 4️⃣ Run Migrations
 
 ```shell
 pnpm typeorm:migration:run
 ```
 
-### 4️⃣ Start the Server
+### 5️⃣ Start the Server
 
 ```shell
 pnpm start:dev
 ```
 
-### 5️⃣ Access the API
+### 6️⃣ Access the API
 
 The server runs on http://localhost:3000 by default. Test endpoints using a tool like Postman or cURL.
 
