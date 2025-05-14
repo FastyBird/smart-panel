@@ -73,6 +73,7 @@
 			:total-rows="totalRows"
 			:loading="areLoading"
 			:filters-active="filtersActive"
+			:with-filters="false"
 			@edit="(id: IChannelProperty['id']) => emit('property-edit', props.channel.id, id)"
 			@remove="(id: IChannelProperty['id']) => emit('property-remove', props.channel.id, id)"
 			@reset-filters="onResetFilters"

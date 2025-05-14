@@ -6,13 +6,14 @@ import { cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
 import {
+	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
 } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
-import { channelChannelsPropertiesSpecificationMappers } from '../devices.mapping';
+import { type ChannelPropertySpec, channelChannelsPropertiesSpecificationMappers, getChannelPropertySpecification } from '../devices.mapping';
 import { ChannelPropertyAddFormSchema } from '../schemas/channels.properties.schemas';
 import type { IChannelPropertyAddForm } from '../schemas/channels.properties.types';
 import type { IChannelProperty } from '../store/channels.properties.store.types';
@@ -121,6 +122,8 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		enumValues: [] as string[],
 		minValue: undefined,
 		maxValue: undefined,
+		enterValue: false,
+		value: undefined,
 	} as TForm);
 
 	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
@@ -164,9 +167,21 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 			].includes(model.dataType)
 		) {
 			model.format = [
-				typeof model.minValue === 'string' && model.minValue !== '' ? Number(model.minValue) : null,
-				typeof model.maxValue === 'string' && model.maxValue !== '' ? Number(model.maxValue) : null,
+				typeof model.minValue === 'string' && model.minValue !== ''
+					? Number(model.minValue)
+					: typeof model.minValue === 'number'
+						? model.minValue
+						: null,
+				typeof model.maxValue === 'string' && model.maxValue !== ''
+					? Number(model.maxValue)
+					: typeof model.maxValue === 'number'
+						? model.maxValue
+						: null,
 			];
+		}
+
+		if (!model.enterValue) {
+			delete model.value;
 		}
 
 		const parsedModel = (plugin.value?.schemas?.channelPropertyAddFormSchema || ChannelPropertyAddFormSchema).safeParse(model);
@@ -210,7 +225,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		timer = window.setTimeout(clear, 2000);
 
 		flashMessage.success(
-			t('devicesModule.messages.channels.created', {
+			t('devicesModule.messages.channelsProperties.created', {
 				device: model.name,
 			})
 		);
@@ -231,6 +246,75 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 	watch(model, (): void => {
 		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
+
+	watch(
+		(): DevicesModuleChannelPropertyCategory => model.category,
+		(val: DevicesModuleChannelPropertyCategory): void => {
+			const spec: ChannelPropertySpec | undefined = getChannelPropertySpecification(
+				channel.value?.category ?? DevicesModuleChannelCategory.generic,
+				val
+			);
+
+			if (!spec) {
+				return;
+			}
+
+			initialModel.permissions = spec.permissions;
+			initialModel.dataType = spec.data_type;
+			initialModel.unit = spec.unit;
+			model.permissions = spec.permissions;
+			model.dataType = spec.data_type;
+			model.unit = spec.unit;
+
+			if (typeof spec.invalid !== 'undefined') {
+				initialModel.invalid = spec.invalid;
+				model.invalid = spec.invalid;
+			}
+
+			if (typeof spec.step !== 'undefined') {
+				initialModel.step = spec.step;
+				model.step = spec.step;
+			}
+
+			if (initialModel.dataType === DevicesModuleChannelPropertyData_type.enum) {
+				initialModel.enumValues = (spec.format ?? []) as string[];
+				initialModel.minValue = undefined;
+				initialModel.maxValue = undefined;
+				model.enumValues = (spec.format ?? []) as string[];
+				model.minValue = undefined;
+				model.maxValue = undefined;
+			} else if (
+				[
+					DevicesModuleChannelPropertyData_type.char,
+					DevicesModuleChannelPropertyData_type.uchar,
+					DevicesModuleChannelPropertyData_type.short,
+					DevicesModuleChannelPropertyData_type.ushort,
+					DevicesModuleChannelPropertyData_type.int,
+					DevicesModuleChannelPropertyData_type.uint,
+					DevicesModuleChannelPropertyData_type.float,
+				].includes(model.dataType)
+			) {
+				initialModel.enumValues = [];
+				initialModel.minValue = spec.format?.[0] as number | undefined;
+				initialModel.maxValue = spec.format?.[1] as number | undefined;
+				model.enumValues = [];
+				model.minValue = spec.format?.[0] as number | undefined;
+				model.maxValue = spec.format?.[1] as number | undefined;
+			} else {
+				initialModel.enumValues = [];
+				initialModel.minValue = undefined;
+				initialModel.maxValue = undefined;
+				model.enumValues = [];
+				model.minValue = undefined;
+				model.maxValue = undefined;
+			}
+
+			formChanged.value = !isEqual(toRaw(model), initialModel);
+		},
+		{
+			immediate: true,
+		}
+	);
 
 	watch(
 		() => categoriesOptions.value,

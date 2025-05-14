@@ -1,6 +1,44 @@
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceCategory } from '../../openapi';
+import channelsMappingSchema from '../../../../../spec/devices/channels.json';
+import devicesMappingSchema from '../../../../../spec/devices/devices.json';
+import {
+	DevicesModuleChannelCategory,
+	DevicesModuleChannelPropertyCategory,
+	DevicesModuleChannelPropertyData_type,
+	DevicesModuleChannelPropertyPermissions,
+	DevicesModuleDeviceCategory,
+} from '../../openapi';
 
-export const deviceChannelsSpecificationOrder: Record<DevicesModuleDeviceCategory, DevicesModuleChannelCategory[]> = {
+export type ChannelPropertySpec = {
+	category: DevicesModuleChannelPropertyCategory;
+	required: boolean;
+	description: { en: string };
+	permissions: DevicesModuleChannelPropertyPermissions[];
+	data_type: DevicesModuleChannelPropertyData_type;
+	unit: string | null;
+	format: string[] | number[] | null;
+	invalid?: string | number | null;
+	step?: number | null;
+};
+
+export type ChannelSpec = {
+	category: DevicesModuleChannelCategory;
+	properties: ChannelPropertySpec[];
+};
+
+export type DeviceChannelSpec = {
+	category: DevicesModuleChannelCategory;
+	required: boolean;
+	multiple: boolean;
+	description: { en: string };
+};
+
+export type DeviceSpec = {
+	category: DevicesModuleChannelCategory;
+	description: { en: string };
+	channels: DeviceChannelSpec[];
+};
+
+const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, DevicesModuleChannelCategory[]> = {
 	[DevicesModuleDeviceCategory.generic]: [],
 	[DevicesModuleDeviceCategory.air_conditioner]: [
 		DevicesModuleChannelCategory.cooler,
@@ -220,552 +258,96 @@ export const deviceChannelsSpecificationOrder: Record<DevicesModuleDeviceCategor
 	],
 };
 
+export const deviceChannelsSpecificationOrder: Record<string, DevicesModuleChannelCategory[]> = Object.fromEntries(
+	Object.entries<DeviceSpec>(devicesMappingSchema as unknown as Record<DevicesModuleDeviceCategory, DeviceSpec>).map(
+		([deviceCategory, deviceSpec]) => {
+			const unsortedChannels = Object.values<DeviceChannelSpec>(deviceSpec.channels).map((ch) => ch.category);
+
+			const customOrder = deviceChannelsSortingSpecification[deviceCategory as DevicesModuleDeviceCategory];
+
+			const sortedChannels = customOrder
+				? [...unsortedChannels].sort((a, b) => {
+						const ai = customOrder.indexOf(a);
+						const bi = customOrder.indexOf(b);
+
+						if (ai === -1 && bi === -1) return 0; // both not found: keep relative
+						if (ai === -1) return 1; // a not found, b found: b first
+						if (bi === -1) return -1; // b not found, a found: a first
+
+						return ai - bi; // both found: sort by index
+					})
+				: unsortedChannels;
+
+			return [deviceCategory, sortedChannels];
+		}
+	)
+);
+
 export const deviceChannelsSpecificationMappers: Record<
-	DevicesModuleDeviceCategory,
+	string,
 	{
 		required: DevicesModuleChannelCategory[];
 		optional: DevicesModuleChannelCategory[];
-		multiple?: DevicesModuleChannelCategory[];
+		multiple: DevicesModuleChannelCategory[];
 	}
-> = {
-	[DevicesModuleDeviceCategory.generic]: {
-		required: [],
-		optional: [],
-	},
-	[DevicesModuleDeviceCategory.air_conditioner]: {
-		required: [
-			DevicesModuleChannelCategory.cooler,
-			DevicesModuleChannelCategory.device_information,
-			DevicesModuleChannelCategory.fan,
-			DevicesModuleChannelCategory.temperature,
-		],
-		optional: [
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-			DevicesModuleChannelCategory.heater,
-			DevicesModuleChannelCategory.humidity,
-			DevicesModuleChannelCategory.leak,
-		],
-	},
-	[DevicesModuleDeviceCategory.air_dehumidifier]: {
-		required: [DevicesModuleChannelCategory.cooler, DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.humidity],
-		optional: [
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-			DevicesModuleChannelCategory.fan,
-			DevicesModuleChannelCategory.leak,
-			DevicesModuleChannelCategory.temperature,
-		],
-	},
-	[DevicesModuleDeviceCategory.air_humidifier]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.humidity, DevicesModuleChannelCategory.switcher],
-		optional: [
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-			DevicesModuleChannelCategory.fan,
-			DevicesModuleChannelCategory.leak,
-			DevicesModuleChannelCategory.temperature,
-		],
-	},
-	[DevicesModuleDeviceCategory.air_purifier]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.fan],
-		optional: [
-			DevicesModuleChannelCategory.air_particulate,
-			DevicesModuleChannelCategory.carbon_dioxide,
-			DevicesModuleChannelCategory.carbon_monoxide,
-			DevicesModuleChannelCategory.humidity,
-			DevicesModuleChannelCategory.leak,
-			DevicesModuleChannelCategory.nitrogen_dioxide,
-			DevicesModuleChannelCategory.ozone,
-			DevicesModuleChannelCategory.pressure,
-			DevicesModuleChannelCategory.sulphur_dioxide,
-			DevicesModuleChannelCategory.temperature,
-			DevicesModuleChannelCategory.volatile_organic_compounds,
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-		],
-	},
-	[DevicesModuleDeviceCategory.alarm]: {
-		required: [DevicesModuleChannelCategory.alarm, DevicesModuleChannelCategory.device_information],
-		optional: [],
-	},
-	[DevicesModuleDeviceCategory.camera]: {
-		required: [DevicesModuleChannelCategory.camera, DevicesModuleChannelCategory.device_information],
-		optional: [
-			DevicesModuleChannelCategory.battery,
-			DevicesModuleChannelCategory.contact,
-			DevicesModuleChannelCategory.humidity,
-			DevicesModuleChannelCategory.light,
-			DevicesModuleChannelCategory.microphone,
-			DevicesModuleChannelCategory.motion,
-			DevicesModuleChannelCategory.speaker,
-			DevicesModuleChannelCategory.temperature,
-		],
-	},
-	[DevicesModuleDeviceCategory.door]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.door],
-		optional: [
-			DevicesModuleChannelCategory.battery,
-			DevicesModuleChannelCategory.contact,
-			DevicesModuleChannelCategory.lock,
-			DevicesModuleChannelCategory.motion,
-		],
-	},
-	[DevicesModuleDeviceCategory.doorbell]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.doorbell],
-		optional: [
-			DevicesModuleChannelCategory.battery,
-			DevicesModuleChannelCategory.camera,
-			DevicesModuleChannelCategory.contact,
-			DevicesModuleChannelCategory.light,
-			DevicesModuleChannelCategory.lock,
-			DevicesModuleChannelCategory.microphone,
-			DevicesModuleChannelCategory.motion,
-			DevicesModuleChannelCategory.speaker,
-		],
-	},
-	[DevicesModuleDeviceCategory.fan]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.fan],
-		optional: [DevicesModuleChannelCategory.electrical_energy, DevicesModuleChannelCategory.electrical_power],
-	},
-	[DevicesModuleDeviceCategory.heater]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.heater, DevicesModuleChannelCategory.temperature],
-		optional: [DevicesModuleChannelCategory.electrical_energy, DevicesModuleChannelCategory.electrical_power, DevicesModuleChannelCategory.humidity],
-	},
-	[DevicesModuleDeviceCategory.lighting]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.light],
-		optional: [
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-			DevicesModuleChannelCategory.illuminance,
-		],
-		multiple: [DevicesModuleChannelCategory.light],
-	},
-	[DevicesModuleDeviceCategory.lock]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.lock],
-		optional: [DevicesModuleChannelCategory.battery, DevicesModuleChannelCategory.contact, DevicesModuleChannelCategory.motion],
-	},
-	[DevicesModuleDeviceCategory.media]: {
-		required: [
-			DevicesModuleChannelCategory.device_information,
-			DevicesModuleChannelCategory.media_input,
-			DevicesModuleChannelCategory.media_playback,
-		],
-		optional: [DevicesModuleChannelCategory.microphone, DevicesModuleChannelCategory.speaker],
-	},
-	[DevicesModuleDeviceCategory.outlet]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.outlet],
-		optional: [DevicesModuleChannelCategory.electrical_energy, DevicesModuleChannelCategory.electrical_power],
-		multiple: [DevicesModuleChannelCategory.outlet],
-	},
-	[DevicesModuleDeviceCategory.pump]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.flow, DevicesModuleChannelCategory.switcher],
-		optional: [
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-			DevicesModuleChannelCategory.leak,
-			DevicesModuleChannelCategory.pressure,
-		],
-	},
-	[DevicesModuleDeviceCategory.robot_vacuum]: {
-		required: [DevicesModuleChannelCategory.battery, DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.robot_vacuum],
-		optional: [DevicesModuleChannelCategory.electrical_energy, DevicesModuleChannelCategory.electrical_power, DevicesModuleChannelCategory.leak],
-	},
-	[DevicesModuleDeviceCategory.sensor]: {
-		required: [DevicesModuleChannelCategory.device_information],
-		optional: [
-			DevicesModuleChannelCategory.air_particulate,
-			DevicesModuleChannelCategory.battery,
-			DevicesModuleChannelCategory.carbon_dioxide,
-			DevicesModuleChannelCategory.carbon_monoxide,
-			DevicesModuleChannelCategory.contact,
-			DevicesModuleChannelCategory.humidity,
-			DevicesModuleChannelCategory.illuminance,
-			DevicesModuleChannelCategory.leak,
-			DevicesModuleChannelCategory.motion,
-			DevicesModuleChannelCategory.nitrogen_dioxide,
-			DevicesModuleChannelCategory.occupancy,
-			DevicesModuleChannelCategory.ozone,
-			DevicesModuleChannelCategory.pressure,
-			DevicesModuleChannelCategory.smoke,
-			DevicesModuleChannelCategory.sulphur_dioxide,
-			DevicesModuleChannelCategory.temperature,
-			DevicesModuleChannelCategory.volatile_organic_compounds,
-		],
-	},
-	[DevicesModuleDeviceCategory.speaker]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.speaker],
-		optional: [
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-			DevicesModuleChannelCategory.media_input,
-			DevicesModuleChannelCategory.media_playback,
-		],
-	},
-	[DevicesModuleDeviceCategory.sprinkler]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.valve],
-		optional: [
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-			DevicesModuleChannelCategory.flow,
-			DevicesModuleChannelCategory.humidity,
-			DevicesModuleChannelCategory.leak,
-			DevicesModuleChannelCategory.pressure,
-		],
-		multiple: [DevicesModuleChannelCategory.valve],
-	},
-	[DevicesModuleDeviceCategory.switcher]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.switcher],
-		optional: [DevicesModuleChannelCategory.electrical_energy, DevicesModuleChannelCategory.electrical_power],
-		multiple: [DevicesModuleChannelCategory.switcher],
-	},
-	[DevicesModuleDeviceCategory.television]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.speaker, DevicesModuleChannelCategory.television],
-		optional: [],
-	},
-	[DevicesModuleDeviceCategory.thermostat]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.temperature, DevicesModuleChannelCategory.thermostat],
-		optional: [
-			DevicesModuleChannelCategory.contact,
-			DevicesModuleChannelCategory.cooler,
-			DevicesModuleChannelCategory.heater,
-			DevicesModuleChannelCategory.humidity,
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-		],
-	},
-	[DevicesModuleDeviceCategory.valve]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.valve],
-		optional: [
-			DevicesModuleChannelCategory.battery,
-			DevicesModuleChannelCategory.electrical_energy,
-			DevicesModuleChannelCategory.electrical_power,
-			DevicesModuleChannelCategory.flow,
-			DevicesModuleChannelCategory.leak,
-			DevicesModuleChannelCategory.pressure,
-		],
-	},
-	[DevicesModuleDeviceCategory.window_covering]: {
-		required: [DevicesModuleChannelCategory.device_information, DevicesModuleChannelCategory.window_covering],
-		optional: [DevicesModuleChannelCategory.battery, DevicesModuleChannelCategory.electrical_energy, DevicesModuleChannelCategory.electrical_power],
-	},
-};
+> = Object.fromEntries(
+	Object.entries<DeviceSpec>(devicesMappingSchema as unknown as Record<DevicesModuleDeviceCategory, DeviceSpec>).map(
+		([deviceCategory, deviceSpec]) => {
+			const required = Object.values<DeviceChannelSpec>(deviceSpec.channels)
+				.filter((channelSpec) => channelSpec.required)
+				.map((channelSpec) => channelSpec.category);
+
+			const optional = Object.values<DeviceChannelSpec>(deviceSpec.channels)
+				.filter((channelSpec) => !channelSpec.required)
+				.map((channelSpec) => channelSpec.category);
+
+			const multiple = Object.values<DeviceChannelSpec>(deviceSpec.channels)
+				.filter((channelSpec) => channelSpec.multiple)
+				.map((channelSpec) => channelSpec.category);
+
+			return [
+				deviceCategory,
+				{
+					required,
+					optional,
+					multiple,
+				},
+			];
+		}
+	)
+);
 
 export const channelChannelsPropertiesSpecificationMappers: Record<
-	DevicesModuleChannelCategory,
+	string,
 	{
 		required: DevicesModuleChannelPropertyCategory[];
 		optional: DevicesModuleChannelPropertyCategory[];
 	}
-> = {
-	[DevicesModuleChannelCategory.generic]: {
-		required: [],
-		optional: [],
-	},
-	[DevicesModuleChannelCategory.air_particulate]: {
-		required: [],
-		optional: [
-			DevicesModuleChannelPropertyCategory.detected,
-			DevicesModuleChannelPropertyCategory.density,
-			DevicesModuleChannelPropertyCategory.mode,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.alarm]: {
-		required: [],
-		optional: [],
-	},
-	[DevicesModuleChannelCategory.battery]: {
-		required: [DevicesModuleChannelPropertyCategory.percentage, DevicesModuleChannelPropertyCategory.status],
-		optional: [DevicesModuleChannelPropertyCategory.fault],
-	},
-	[DevicesModuleChannelCategory.camera]: {
-		required: [DevicesModuleChannelPropertyCategory.status, DevicesModuleChannelPropertyCategory.source],
-		optional: [
-			DevicesModuleChannelPropertyCategory.zoom,
-			DevicesModuleChannelPropertyCategory.pan,
-			DevicesModuleChannelPropertyCategory.tilt,
-			DevicesModuleChannelPropertyCategory.infrared,
-			DevicesModuleChannelPropertyCategory.fault,
-		],
-	},
-	[DevicesModuleChannelCategory.carbon_dioxide]: {
-		required: [],
-		optional: [
-			DevicesModuleChannelPropertyCategory.detected,
-			DevicesModuleChannelPropertyCategory.density,
-			DevicesModuleChannelPropertyCategory.peak_level,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.carbon_monoxide]: {
-		required: [],
-		optional: [
-			DevicesModuleChannelPropertyCategory.detected,
-			DevicesModuleChannelPropertyCategory.density,
-			DevicesModuleChannelPropertyCategory.peak_level,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.contact]: {
-		required: [DevicesModuleChannelPropertyCategory.detected],
-		optional: [
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.cooler]: {
-		required: [DevicesModuleChannelPropertyCategory.temperature, DevicesModuleChannelPropertyCategory.status],
-		optional: [],
-	},
-	[DevicesModuleChannelCategory.device_information]: {
-		required: [
-			DevicesModuleChannelPropertyCategory.manufacturer,
-			DevicesModuleChannelPropertyCategory.model,
-			DevicesModuleChannelPropertyCategory.serial_number,
-			DevicesModuleChannelPropertyCategory.firmware_revision,
-		],
-		optional: [
-			DevicesModuleChannelPropertyCategory.hardware_revision,
-			DevicesModuleChannelPropertyCategory.link_quality,
-			DevicesModuleChannelPropertyCategory.connection_type,
-			DevicesModuleChannelPropertyCategory.fault,
-		],
-	},
-	[DevicesModuleChannelCategory.door]: {
-		required: [
-			DevicesModuleChannelPropertyCategory.obstruction,
-			DevicesModuleChannelPropertyCategory.status,
-			DevicesModuleChannelPropertyCategory.position,
-			DevicesModuleChannelPropertyCategory.type,
-		],
-		optional: [DevicesModuleChannelPropertyCategory.percentage, DevicesModuleChannelPropertyCategory.fault],
-	},
-	[DevicesModuleChannelCategory.doorbell]: {
-		required: [DevicesModuleChannelPropertyCategory.event],
-		optional: [DevicesModuleChannelPropertyCategory.brightness, DevicesModuleChannelPropertyCategory.tampered],
-	},
-	[DevicesModuleChannelCategory.electrical_energy]: {
-		required: [DevicesModuleChannelPropertyCategory.consumption, DevicesModuleChannelPropertyCategory.rate],
-		optional: [DevicesModuleChannelPropertyCategory.active, DevicesModuleChannelPropertyCategory.fault],
-	},
-	[DevicesModuleChannelCategory.electrical_power]: {
-		required: [
-			DevicesModuleChannelPropertyCategory.power,
-			DevicesModuleChannelPropertyCategory.voltage,
-			DevicesModuleChannelPropertyCategory.current,
-			DevicesModuleChannelPropertyCategory.frequency,
-		],
-		optional: [
-			DevicesModuleChannelPropertyCategory.over_voltage,
-			DevicesModuleChannelPropertyCategory.over_current,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-		],
-	},
-	[DevicesModuleChannelCategory.fan]: {
-		required: [DevicesModuleChannelPropertyCategory.on],
-		optional: [
-			DevicesModuleChannelPropertyCategory.swing,
-			DevicesModuleChannelPropertyCategory.speed,
-			DevicesModuleChannelPropertyCategory.direction,
-		],
-	},
-	[DevicesModuleChannelCategory.flow]: {
-		required: [DevicesModuleChannelPropertyCategory.rate],
-		optional: [DevicesModuleChannelPropertyCategory.active, DevicesModuleChannelPropertyCategory.fault],
-	},
-	[DevicesModuleChannelCategory.heater]: {
-		required: [DevicesModuleChannelPropertyCategory.temperature, DevicesModuleChannelPropertyCategory.status],
-		optional: [],
-	},
-	[DevicesModuleChannelCategory.humidity]: {
-		required: [DevicesModuleChannelPropertyCategory.humidity],
-		optional: [DevicesModuleChannelPropertyCategory.active, DevicesModuleChannelPropertyCategory.fault],
-	},
-	[DevicesModuleChannelCategory.illuminance]: {
-		required: [],
-		optional: [
-			DevicesModuleChannelPropertyCategory.density,
-			DevicesModuleChannelPropertyCategory.level,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-		],
-	},
-	[DevicesModuleChannelCategory.leak]: {
-		required: [DevicesModuleChannelPropertyCategory.detected],
-		optional: [
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.light]: {
-		required: [DevicesModuleChannelPropertyCategory.on],
-		optional: [
-			DevicesModuleChannelPropertyCategory.brightness,
-			DevicesModuleChannelPropertyCategory.color_red,
-			DevicesModuleChannelPropertyCategory.color_green,
-			DevicesModuleChannelPropertyCategory.color_blue,
-			DevicesModuleChannelPropertyCategory.color_white,
-			DevicesModuleChannelPropertyCategory.color_temperature,
-			DevicesModuleChannelPropertyCategory.hue,
-			DevicesModuleChannelPropertyCategory.saturation,
-		],
-	},
-	[DevicesModuleChannelCategory.lock]: {
-		required: [DevicesModuleChannelPropertyCategory.on, DevicesModuleChannelPropertyCategory.status],
-		optional: [
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.media_input]: {
-		required: [],
-		optional: [],
-	},
-	[DevicesModuleChannelCategory.media_playback]: {
-		required: [],
-		optional: [],
-	},
-	[DevicesModuleChannelCategory.microphone]: {
-		required: [DevicesModuleChannelPropertyCategory.active],
-		optional: [DevicesModuleChannelPropertyCategory.volume],
-	},
-	[DevicesModuleChannelCategory.motion]: {
-		required: [DevicesModuleChannelPropertyCategory.detected],
-		optional: [
-			DevicesModuleChannelPropertyCategory.distance,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.nitrogen_dioxide]: {
-		required: [],
-		optional: [
-			DevicesModuleChannelPropertyCategory.detected,
-			DevicesModuleChannelPropertyCategory.density,
-			DevicesModuleChannelPropertyCategory.mode,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.occupancy]: {
-		required: [DevicesModuleChannelPropertyCategory.detected],
-		optional: [
-			DevicesModuleChannelPropertyCategory.distance,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.outlet]: {
-		required: [DevicesModuleChannelPropertyCategory.on],
-		optional: [DevicesModuleChannelPropertyCategory.in_use],
-	},
-	[DevicesModuleChannelCategory.ozone]: {
-		required: [],
-		optional: [
-			DevicesModuleChannelPropertyCategory.detected,
-			DevicesModuleChannelPropertyCategory.density,
-			DevicesModuleChannelPropertyCategory.level,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.pressure]: {
-		required: [DevicesModuleChannelPropertyCategory.measured],
-		optional: [DevicesModuleChannelPropertyCategory.active, DevicesModuleChannelPropertyCategory.fault],
-	},
-	[DevicesModuleChannelCategory.robot_vacuum]: {
-		required: [DevicesModuleChannelPropertyCategory.on, DevicesModuleChannelPropertyCategory.status],
-		optional: [DevicesModuleChannelPropertyCategory.mode, DevicesModuleChannelPropertyCategory.fault],
-	},
-	[DevicesModuleChannelCategory.smoke]: {
-		required: [DevicesModuleChannelPropertyCategory.detected],
-		optional: [
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.speaker]: {
-		required: [DevicesModuleChannelPropertyCategory.active],
-		optional: [DevicesModuleChannelPropertyCategory.volume, DevicesModuleChannelPropertyCategory.mode],
-	},
-	[DevicesModuleChannelCategory.sulphur_dioxide]: {
-		required: [],
-		optional: [
-			DevicesModuleChannelPropertyCategory.detected,
-			DevicesModuleChannelPropertyCategory.density,
-			DevicesModuleChannelPropertyCategory.level,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.switcher]: {
-		required: [DevicesModuleChannelPropertyCategory.on],
-		optional: [],
-	},
-	[DevicesModuleChannelCategory.television]: {
-		required: [
-			DevicesModuleChannelPropertyCategory.on,
-			DevicesModuleChannelPropertyCategory.brightness,
-			DevicesModuleChannelPropertyCategory.input_source,
-		],
-		optional: [DevicesModuleChannelPropertyCategory.remote_key],
-	},
-	[DevicesModuleChannelCategory.temperature]: {
-		required: [DevicesModuleChannelPropertyCategory.temperature],
-		optional: [DevicesModuleChannelPropertyCategory.active, DevicesModuleChannelPropertyCategory.fault],
-	},
-	[DevicesModuleChannelCategory.thermostat]: {
-		required: [DevicesModuleChannelPropertyCategory.active, DevicesModuleChannelPropertyCategory.mode],
-		optional: [DevicesModuleChannelPropertyCategory.locked, DevicesModuleChannelPropertyCategory.units],
-	},
-	[DevicesModuleChannelCategory.valve]: {
-		required: [DevicesModuleChannelPropertyCategory.on, DevicesModuleChannelPropertyCategory.type],
-		optional: [
-			DevicesModuleChannelPropertyCategory.duration,
-			DevicesModuleChannelPropertyCategory.remaining,
-			DevicesModuleChannelPropertyCategory.mode,
-			DevicesModuleChannelPropertyCategory.fault,
-		],
-	},
-	[DevicesModuleChannelCategory.volatile_organic_compounds]: {
-		required: [],
-		optional: [
-			DevicesModuleChannelPropertyCategory.detected,
-			DevicesModuleChannelPropertyCategory.density,
-			DevicesModuleChannelPropertyCategory.level,
-			DevicesModuleChannelPropertyCategory.active,
-			DevicesModuleChannelPropertyCategory.fault,
-			DevicesModuleChannelPropertyCategory.tampered,
-		],
-	},
-	[DevicesModuleChannelCategory.window_covering]: {
-		required: [
-			DevicesModuleChannelPropertyCategory.obstruction,
-			DevicesModuleChannelPropertyCategory.status,
-			DevicesModuleChannelPropertyCategory.position,
-			DevicesModuleChannelPropertyCategory.type,
-		],
-		optional: [
-			DevicesModuleChannelPropertyCategory.percentage,
-			DevicesModuleChannelPropertyCategory.tilt,
-			DevicesModuleChannelPropertyCategory.fault,
-		],
-	},
+> = Object.fromEntries(
+	Object.entries<ChannelSpec>(channelsMappingSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>).map(
+		([channelCategory, channelSpec]) => {
+			const required = Object.values<ChannelPropertySpec>(channelSpec.properties)
+				.filter((prop) => prop.required)
+				.map((prop) => prop.category);
+
+			const optional = Object.values<ChannelPropertySpec>(channelSpec.properties)
+				.filter((prop) => !prop.required)
+				.map((prop) => prop.category);
+
+			return [channelCategory, { required, optional }];
+		}
+	)
+);
+
+export const getChannelPropertySpecification = (
+	channelCategory: DevicesModuleChannelCategory,
+	propertyCategory: DevicesModuleChannelPropertyCategory
+): ChannelPropertySpec | undefined => {
+	const channelSpec = (channelsMappingSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>)[channelCategory];
+
+	if (!channelSpec) {
+		return undefined;
+	}
+
+	return Object.values<ChannelPropertySpec>(channelSpec.properties).find((prop) => prop.category === propertyCategory);
 };

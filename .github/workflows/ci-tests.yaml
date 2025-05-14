@@ -4,7 +4,7 @@ on:
   pull_request:
     paths-ignore:
       - "docs/**"
-      - "spec/**"
+      - "spec/api/**"
   push:
     branches:
       - "main"
@@ -50,6 +50,10 @@ jobs:
       - name: "Install NPM dependencies"
         shell: "bash"
         run: "pnpm install"
+
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
 
       - name: "Run Code Linting"
         run: "pnpm --filter @fastybird/smart-panel-backend lint:js"
@@ -103,6 +107,10 @@ jobs:
         shell: "bash"
         run: "pnpm install"
 
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
+
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-backend test:unit"
 
@@ -149,6 +157,10 @@ jobs:
         shell: "bash"
         run: "pnpm install"
 
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
+
       - name: "Run Code Linting"
         run: "pnpm --filter @fastybird/smart-panel-admin lint:js"
 
@@ -192,6 +204,10 @@ jobs:
         shell: "bash"
         run: "pnpm install"
 
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
+
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-admin test:unit"
 
@@ -223,5 +239,35 @@ jobs:
       - name: "Bootstrap Dependencies"
         run: "melos bootstrap"
 
+      - name: "Build generated code"
+        run: "melos rebuild-api"
+
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
+
+  devices-schemas:
+    name: "Devices mapping analysis"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "20"
+
+      - name: "Install ajv-cli"
+        run: "npm install -g ajv-cli"
+
+      - name: "Validate devices.json"
+        run: "ajv validate -s spec/devices/devices.schema.json -d spec/devices/devices.json"
+
+      - name: "Validate channels.json"
+        run: "ajv validate -s spec/devices/channels.schema.json -d spec/devices/channels.json"

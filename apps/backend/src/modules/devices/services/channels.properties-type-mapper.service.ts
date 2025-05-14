@@ -14,6 +14,8 @@ export interface ChannelPropertyTypeMapping<
 	class: new (...args: any[]) => TProperty; // Constructor for the property class
 	createDto: new (...args: any[]) => TCreateDTO; // Constructor for the Create DTO
 	updateDto: new (...args: any[]) => TUpdateDTO; // Constructor for the Update DTO
+	afterCreate?: (device: TProperty) => Promise<TProperty>;
+	afterUpdate?: (device: TProperty) => Promise<TProperty>;
 }
 
 @Injectable()

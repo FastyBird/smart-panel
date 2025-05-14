@@ -132,9 +132,16 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 		label: t(`devicesModule.dataTypes.${value}`),
 	}));
 
-	const model = reactive<TForm>({ ...property, enumValues, minValue, maxValue } as unknown as TForm);
+	const model = reactive<TForm>({
+		...property,
+		format: toRaw(property.format),
+		enumValues,
+		minValue,
+		maxValue,
+		enterValue: false,
+	} as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -149,8 +156,12 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 			messages && messages.error
 				? messages.error
 				: property.draft
-					? t('devicesModule.messages.channelsProperties.notCreated', { property: property.name ?? property.category })
-					: t('devicesModule.messages.channelsProperties.notEdited', { property: property.name ?? property.category });
+					? t('devicesModule.messages.channelsProperties.notCreated', {
+							property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
+						})
+					: t('devicesModule.messages.channelsProperties.notEdited', {
+							property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
+						});
 
 		formEl.value!.clearValidate();
 
@@ -176,6 +187,10 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 			].includes(property.dataType)
 		) {
 			model.format = [model.minValue ?? null, model.maxValue ?? null];
+		}
+
+		if (!model.enterValue) {
+			delete model.value;
 		}
 
 		const parsedModel = (plugin.value?.schemas?.channelPropertyEditFormSchema || ChannelPropertyEditFormSchema).safeParse(model);
@@ -223,7 +238,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 		if (isDraft) {
 			flashMessage.success(
 				t(messages && messages.success ? messages.success : 'devicesModule.messages.channelsProperties.created', {
-					property: property.name ?? property.category,
+					property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
 				})
 			);
 
@@ -232,9 +247,13 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 
 		flashMessage.success(
 			t(messages && messages.success ? messages.success : 'devicesModule.messages.channelsProperties.edited', {
-				property: property.name ?? property.category,
+				property: property.name ?? t(`devicesModule.categories.channelsProperties.${property.category}`),
 			})
 		);
+
+		formChanged.value = false;
+
+		initialModel = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 		return 'saved';
 	};

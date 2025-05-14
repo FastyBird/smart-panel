@@ -42,7 +42,7 @@ export const useDataSourceEditForm = <TForm extends IDataSourceEditForm = IDataS
 
 	const model = reactive<TForm>(dataSource as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -115,6 +115,10 @@ export const useDataSourceEditForm = <TForm extends IDataSourceEditForm = IDataS
 		}
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'dashboardModule.messages.dataSources.edited'));
+
+		formChanged.value = false;
+
+		initialModel = cloneDeep<Reactive<TForm>>(toRaw(model));
 
 		return 'saved';
 	};

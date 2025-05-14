@@ -95,6 +95,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useDeviceAddForm } from '../../../modules/devices';
+import { DEVICES_THIRD_PARTY_PLUGIN_TYPE } from '../devices-third-party.constants';
 import type { IThirdPartyDeviceAddForm } from '../schemas/devices.types';
 
 import type { IThirdPartyDeviceAddFormProps } from './third-party-device-add-form.types';
@@ -120,7 +121,7 @@ const { t } = useI18n();
 
 const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm<IThirdPartyDeviceAddForm>({
 	id: props.id,
-	type: 'third-party',
+	type: DEVICES_THIRD_PARTY_PLUGIN_TYPE,
 });
 
 const rules = reactive<FormRules<IThirdPartyDeviceAddForm>>({

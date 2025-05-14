@@ -8,12 +8,12 @@ Controls coverings like blinds, curtains, and shutters, including position and t
 
 ## Required Properties {id="required-properties"}
 
-| **Property**  | **Data Type** | **Range**                             | **Unit** | **Permissions** |
-|---------------|---------------|---------------------------------------|----------|-----------------|
-| `obstruction` | `Bool`        | `true/false`                          | -        | RO (Read-Only)  |
-| `status`      | `Enum`        | `open/closed/opening/closing/stopped` | -        | RO (Read-Only)  |
-| `position`    | `Enum`        | `open/close/stop`                     | -        | RW (Read/Write) |
-| `type`        | `Enum`        | `curtain/blind/roller/outdoor_blind`  | -        | RO (Read-Only)  |
+| **Property**  | **Data Type** | **Range**                               | **Unit** | **Permissions** |
+|---------------|---------------|-----------------------------------------|----------|-----------------|
+| `obstruction` | `Bool`        | `true/false`                            | -        | RO (Read-Only)  |
+| `status`      | `Enum`        | `opened/closed/opening/closing/stopped` | -        | RO (Read-Only)  |
+| `position`    | `Enum`        | `open/close/stop`                       | -        | RW (Read/Write) |
+| `type`        | `Enum`        | `curtain/blind/roller/outdoor_blind`    | -        | RO (Read-Only)  |
 
 ---
 
@@ -21,30 +21,30 @@ Controls coverings like blinds, curtains, and shutters, including position and t
 
 #### `obstruction`
 
-Indicates whether the door is obstructed:
+Indicates whether the covering is obstructed:
 
-- `true`: An obstruction is detected, preventing the door from moving.
+- `true`: An obstruction is detected, preventing the covering from moving.
 - `false`: No obstruction is detected.
 
 #### `status`
 
-Describes the state of the door:
+Describes the state of the covering:
 
 - Possible values:
-    - `open`: The door is fully open.
-    - `closed`: The door is fully closed.
-    - `opening`: The door is in the process of opening.
-    - `closing`: The door is in the process of closing.
-    - `stopped`: The door has stopped mid-operation.
+    - `opened`: The covering is fully open.
+    - `closed`: The covering is fully closed.
+    - `opening`: The covering is in the process of opening.
+    - `closing`: The covering is in the process of closing.
+    - `stopped`: The covering has stopped mid-operation.
 
 #### `position`
 
-Describes the target position of the door:
+Describes the target position of the covering:
 
 - Possible values:
-    - `open`: Open the door.
-    - `close`: Close the door.
-    - `stopp`: Stop the door movement.
+    - `open`: Open the covering.
+    - `close`: Close the covering.
+    - `stopp`: Stop the covering movement.
 
 #### `type`
 

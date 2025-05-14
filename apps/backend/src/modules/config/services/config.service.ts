@@ -13,7 +13,7 @@ import { PlatformService } from '../../platform/services/platform.service';
 import { EventType, SectionType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { BaseConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
-import { AppConfigEntity, BaseConfigEntity, PluginConfigEntity } from '../entities/config.entity';
+import { AppConfigModel, BaseConfigModel, PluginConfigModel } from '../models/config.model';
 
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
@@ -21,7 +21,7 @@ import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 export class ConfigService {
 	private readonly logger = new Logger(ConfigService.name);
 	private readonly filename = 'config.yaml';
-	private config: AppConfigEntity | null = null;
+	private config: AppConfigModel | null = null;
 
 	constructor(
 		private readonly configService: NestConfigService,
@@ -29,10 +29,22 @@ export class ConfigService {
 		private readonly platform: PlatformService,
 		private readonly eventEmitter: EventEmitter2,
 	) {
-		this.loadConfig();
+		this.pluginsMapperService.onMappingsRegistered(() => {
+			this.logger.log('[REFRESH] Configuration plugins mappings updated. Reloading configuration');
+
+			this.config = null;
+		});
 	}
 
-	private getConfigPath(): string {
+	private get appConfig(): AppConfigModel {
+		if (!this.config) {
+			this.config = this.loadConfig();
+		}
+
+		return this.config;
+	}
+
+	private get configPath(): string {
 		return getEnvValue<string>(
 			this.configService,
 			'FB_CONFIG_PATH',
@@ -40,19 +52,19 @@ export class ConfigService {
 		);
 	}
 
-	private loadConfig() {
+	private loadConfig(): AppConfigModel {
 		this.logger.log('[LOAD] Loading configuration from file system');
 
-		if (fs.existsSync(path.resolve(this.getConfigPath(), this.filename))) {
-			this.logger.debug(`[LOAD] Found configuration file at ${path.resolve(this.getConfigPath(), this.filename)}`);
+		if (fs.existsSync(path.resolve(this.configPath, this.filename))) {
+			this.logger.debug(`[LOAD] Found configuration file at ${path.resolve(this.configPath, this.filename)}`);
 
-			const fileContents = fs.readFileSync(path.resolve(this.getConfigPath(), this.filename), 'utf8');
+			const fileContents = fs.readFileSync(path.resolve(this.configPath, this.filename), 'utf8');
 
 			// Parse YAML and explicitly type the result
-			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigEntity>;
+			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigModel>;
 
 			// Transform YAML data into AppConfig instance
-			const appConfigInstance = plainToInstance(AppConfigEntity, parsedConfig, {
+			const appConfigInstance = plainToInstance(AppConfigModel, parsedConfig, {
 				enableImplicitConversion: true,
 				exposeUnsetFields: false,
 			});
@@ -72,31 +84,34 @@ export class ConfigService {
 
 			this.logger.log('[LOAD] Configuration loaded successfully');
 
-			this.config = appConfigInstance;
+			return appConfigInstance;
 		} else {
 			this.logger.warn('[LOAD] Configuration file not found. Initializing default configuration');
 
-			this.config = plainToInstance(
-				AppConfigEntity,
+			const config = plainToInstance(
+				AppConfigModel,
 				{},
 				{
 					enableImplicitConversion: true,
 					exposeUnsetFields: false,
 				},
 			);
-			this.config.plugins = this.loadPlugins({});
-			this.saveConfig();
+			config.plugins = this.loadPlugins({});
+
+			this.saveConfig(config);
+
+			return config;
 		}
 	}
 
-	private saveConfig() {
+	private saveConfig(appConfig: AppConfigModel) {
 		this.logger.log('[SAVE] Writing configuration to file');
 
 		// Prepare main app config
-		const appConfig = instanceToPlain(this.config);
+		const plainAppConfig = instanceToPlain(appConfig);
 
 		// Transform plugins
-		appConfig.plugins = this.config.plugins.reduce(
+		plainAppConfig.plugins = appConfig.plugins.reduce(
 			(acc, plugin) => {
 				acc[plugin.type] = instanceToPlain(plugin);
 
@@ -105,17 +120,21 @@ export class ConfigService {
 			{} as Record<string, any>,
 		);
 
-		const yamlContent = yaml.stringify(appConfig);
-		fs.writeFileSync(path.resolve(this.getConfigPath(), this.filename), yamlContent, 'utf8');
+		const yamlContent = yaml.stringify(plainAppConfig);
+		fs.writeFileSync(path.resolve(this.configPath, this.filename), yamlContent, 'utf8');
+
+		this.config = null;
 
 		this.logger.log('[SAVE] Configuration saved successfully');
 	}
 
-	private loadPlugins(parsedConfig: Partial<AppConfigEntity>): PluginConfigEntity[] {
-		const pluginsArray: PluginConfigEntity[] = [];
+	private loadPlugins(parsedConfig: Partial<AppConfigModel>): PluginConfigModel[] {
+		const pluginsArray: PluginConfigModel[] = [];
 
 		const existingPlugins =
-			parsedConfig.plugins && typeof parsedConfig.plugins === 'object' ? parsedConfig.plugins : {};
+			'plugins' in parsedConfig && parsedConfig.plugins && typeof parsedConfig.plugins === 'object'
+				? parsedConfig.plugins
+				: {};
 
 		for (const mapping of this.pluginsMapperService.getMappings()) {
 			const pluginType = mapping.type;
@@ -163,16 +182,16 @@ export class ConfigService {
 		return pluginsArray;
 	}
 
-	getConfig(): AppConfigEntity {
+	getConfig(): AppConfigModel {
 		this.logger.log('[LOOKUP ALL] Retrieving full configuration');
 
-		return this.config;
+		return this.appConfig;
 	}
 
-	getConfigSection<T extends BaseConfigEntity>(key: keyof AppConfigEntity, type: new () => T): T {
+	getConfigSection<T extends BaseConfigModel>(key: keyof AppConfigModel, type: new () => T): T {
 		this.logger.log(`[LOOKUP] Fetching configuration section=${key}`);
 
-		const configSection = this.config[key];
+		const configSection = this.appConfig[key];
 
 		if (!configSection) {
 			this.logger.error(`[ERROR] Configuration section=${key} not found`);
@@ -199,13 +218,13 @@ export class ConfigService {
 	}
 
 	async setConfigSection<TUpdateDto extends BaseConfigDto>(
-		key: keyof AppConfigEntity,
+		key: keyof AppConfigModel,
 		value: TUpdateDto,
 		type: new () => TUpdateDto,
 	): Promise<void> {
 		this.logger.log(`[UPDATE] Attempting to update configuration section=${key}`);
 
-		const configSection = this.config[key];
+		const configSection = this.appConfig[key];
 
 		if (!configSection) {
 			this.logger.error(`[ERROR] Configuration section=${key} not found`);
@@ -227,20 +246,20 @@ export class ConfigService {
 		}
 
 		this.logger.log(`[UPDATE] Updating configuration for section=${key}`);
-		Object.assign(this.config, { [key]: { ...configSection, ...instance } });
+
+		const appConfig = this.appConfig;
+
+		Object.assign(appConfig, { [key]: { ...configSection, ...instance } });
 
 		this.logger.log(`[SAVE] Saving updated configuration for section=${key}`);
-		this.saveConfig();
-
-		this.logger.log(`[LOAD] Reloading configuration after update to section=${key}`);
-		this.loadConfig();
+		this.saveConfig(appConfig);
 
 		if (key === SectionType.AUDIO) {
 			this.logger.log('[AUDIO] Applying updated audio configuration');
 
 			try {
-				this.logger.debug(`[AUDIO] Setting speaker volume: ${this.config.audio.speakerVolume}`);
-				await this.platform.setSpeakerVolume(this.config.audio.speakerVolume);
+				this.logger.debug(`[AUDIO] Setting speaker volume: ${this.appConfig.audio.speakerVolume}`);
+				await this.platform.setSpeakerVolume(this.appConfig.audio.speakerVolume);
 			} catch (error) {
 				const err = error as Error;
 
@@ -248,8 +267,8 @@ export class ConfigService {
 			}
 
 			try {
-				this.logger.debug(`[AUDIO] Setting speaker mute state: ${!this.config.audio.speaker}`);
-				await this.platform.muteSpeaker(!this.config.audio.speaker);
+				this.logger.debug(`[AUDIO] Setting speaker mute state: ${!this.appConfig.audio.speaker}`);
+				await this.platform.muteSpeaker(!this.appConfig.audio.speaker);
 			} catch (error) {
 				const err = error as Error;
 
@@ -257,8 +276,8 @@ export class ConfigService {
 			}
 
 			try {
-				this.logger.debug(`[AUDIO] Setting microphone volume: ${this.config.audio.microphoneVolume}`);
-				await this.platform.setMicrophoneVolume(this.config.audio.microphoneVolume);
+				this.logger.debug(`[AUDIO] Setting microphone volume: ${this.appConfig.audio.microphoneVolume}`);
+				await this.platform.setMicrophoneVolume(this.appConfig.audio.microphoneVolume);
 			} catch (error) {
 				const err = error as Error;
 
@@ -266,8 +285,8 @@ export class ConfigService {
 			}
 
 			try {
-				this.logger.debug(`[AUDIO] Setting microphone mute state: ${!this.config.audio.microphone}`);
-				await this.platform.muteMicrophone(!this.config.audio.microphone);
+				this.logger.debug(`[AUDIO] Setting microphone mute state: ${!this.appConfig.audio.microphone}`);
+				await this.platform.muteMicrophone(!this.appConfig.audio.microphone);
 			} catch (error) {
 				const err = error as Error;
 
@@ -276,15 +295,15 @@ export class ConfigService {
 		}
 
 		this.logger.log(`[EVENT] Broadcasting configuration change for section=${key}`);
-		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.config);
+		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
 
 		this.logger.log(`[UPDATE] Configuration update for section=${key} completed successfully`);
 	}
 
-	getPluginConfig<TConfig extends PluginConfigEntity>(plugin: string): TConfig {
-		this.logger.log(`[LOOKUP] Fetching configuration plugin=${plugin}`);
+	getPluginConfig<TConfig extends PluginConfigModel>(plugin: string): TConfig {
+		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
 
-		const configSection = this.config['plugins'];
+		const configSection = this.appConfig['plugins'];
 
 		if (!configSection) {
 			this.logger.error(`[ERROR] Configuration section=plugins not found`);
@@ -321,9 +340,9 @@ export class ConfigService {
 	}
 
 	setPluginConfig<TUpdateDto extends UpdatePluginConfigDto>(plugin: string, value: TUpdateDto): void {
-		const mapping = this.pluginsMapperService.getMapping<PluginConfigEntity, TUpdateDto>(plugin);
+		const mapping = this.pluginsMapperService.getMapping<PluginConfigModel, TUpdateDto>(plugin);
 
-		const existingPlugin = (this.config.plugins ?? []).find((existingPlugin) => existingPlugin.type === plugin);
+		const existingPlugin = (this.appConfig.plugins ?? []).find((existingPlugin) => existingPlugin.type === plugin);
 
 		const instance = plainToInstance(mapping.configDto, value, {
 			enableImplicitConversion: true,
@@ -339,10 +358,13 @@ export class ConfigService {
 		}
 
 		this.logger.log(`[UPDATE] Updating configuration for plugin=${plugin}`);
+
+		const appConfig = this.appConfig;
+
 		// Remove the old plugin if it exists
-		this.config.plugins = (this.config.plugins ?? []).filter((existingPlugin) => existingPlugin.type !== plugin);
+		appConfig.plugins = (appConfig.plugins ?? []).filter((existingPlugin) => existingPlugin.type !== plugin);
 		// Add the new plugin config
-		this.config.plugins.push(
+		appConfig.plugins.push(
 			plainToInstance(
 				mapping.class,
 				{
@@ -358,13 +380,10 @@ export class ConfigService {
 		);
 
 		this.logger.log(`[SAVE] Saving updated configuration for plugin=${plugin}`);
-		this.saveConfig();
-
-		this.logger.log(`[LOAD] Reloading configuration after update to plugin=${plugin}`);
-		this.loadConfig();
+		this.saveConfig(appConfig);
 
 		this.logger.log(`[EVENT] Broadcasting configuration change for plugin=${plugin}`);
-		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.config);
+		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
 
 		this.logger.log(`[UPDATE] Configuration update for plugin=${plugin} completed successfully`);
 	}

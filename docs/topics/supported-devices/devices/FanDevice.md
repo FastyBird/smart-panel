@@ -11,10 +11,10 @@ direction adjustment, and energy monitoring.
 
 These channels are mandatory for the functionality of the fan:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `fan`               | Manages the fan's operation, including speed, direction, and activation.       | No           | [See details](FanChannel.md)               |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `fan`                | Manages the fan's operation, including speed, direction, and activation.       | No           | [See details](FanChannel.md)               |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -22,10 +22,10 @@ These channels are mandatory for the functionality of the fan:
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                             | **Multiple** | **Details**                               |
-|--------------------|---------------------------------------------|--------------|-------------------------------------------|
-| `electricalEnergy` | Tracks total energy consumption over time.  | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information. | No           | [See details](ElectricalPowerChannel.md)  |
+| **Channel**         | **Description**                             | **Multiple** | **Details**                               |
+|---------------------|---------------------------------------------|--------------|-------------------------------------------|
+| `electrical_energy` | Tracks total energy consumption over time.  | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information. | No           | [See details](ElectricalPowerChannel.md)  |
 
 ---
 
@@ -36,8 +36,8 @@ These channels are optional and provide additional features:
     - Adjust speed and direction settings through the `fan` channel.
 
 2. **Energy Monitoring**:
-    - Use the `electricalPower` channel to monitor real-time power usage.
-    - Track long-term energy consumption with the `electricalEnergy` channel.
+    - Use the `electrical_power` channel to monitor real-time power usage.
+    - Track long-term energy consumption with the `electrical_energy` channel.
 
 ---
 
@@ -49,10 +49,10 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
     - Map the `fan` channel to the fan's speed and direction control mechanisms.
-    - Include the `deviceInformation` channel for device identification.
+    - Include the `device_information` channel for device identification.
 
 3. **Energy Tracking**:
-    - Use the `electricalEnergy` and `electricalPower` channels to enhance energy efficiency features.
+    - Use the `electrical_energy` and `electrical_power` channels to enhance energy efficiency features.
 
 4. **Use Cases**:
     - Suitable for standalone fans, ceiling fans, or integrated HVAC systems.

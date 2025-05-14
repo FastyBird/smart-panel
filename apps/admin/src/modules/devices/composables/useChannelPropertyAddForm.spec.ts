@@ -68,6 +68,10 @@ vi.mock('./useChannelsPropertiesPlugins', () => ({
 	}),
 }));
 
+vi.mock('../devices.mapping', () => ({
+	getChannelPropertySpecification: () => undefined,
+}));
+
 describe('useChannelPropertyAddForm', () => {
 	let form: ReturnType<typeof useChannelPropertyAddForm>;
 
@@ -124,6 +128,7 @@ describe('useChannelPropertyAddForm', () => {
 				enumValues: [],
 				maxValue: undefined,
 				minValue: undefined,
+				enterValue: false,
 			},
 		});
 		expect(form.formResult.value).toBe(FormResult.OK);

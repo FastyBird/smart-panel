@@ -11,11 +11,11 @@ while providing additional monitoring and control capabilities.
 
 These channels are mandatory for the functionality of the air dehumidifier:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `cooler`            | Controls the cooling functionality of the dehumidifier.                        | No           | [See details](CoolerChannel.md)            |
-| `humidity`          | Monitors the ambient humidity level and controls target humidity settings.     | No           | [See details](HumidityChannel.md)          |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `cooler`             | Controls the cooling functionality of the dehumidifier.                        | No           | [See details](CoolerChannel.md)            |
+| `humidity`           | Monitors the ambient humidity level and controls target humidity settings.     | No           | [See details](HumidityChannel.md)          |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -23,13 +23,13 @@ These channels are mandatory for the functionality of the air dehumidifier:
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                                      | **Multiple** | **Details**                               |
-|--------------------|------------------------------------------------------|--------------|-------------------------------------------|
-| `electricalEnergy` | Tracks total energy consumption over time.           | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information.          | No           | [See details](ElectricalPowerChannel.md)  |
-| `fan`              | Manages fan settings, including speed and direction. | No           | [See details](FanChannel.md)              |
-| `leak`             | Detects water leaks or other potential issues.       | No           | [See details](LeakChannel.md)             |
-| `temperature`      | Monitors the ambient temperature.                    | No           | [See details](TemperatureChannel.md)      |
+| **Channel**         | **Description**                                      | **Multiple** | **Details**                               |
+|---------------------|------------------------------------------------------|--------------|-------------------------------------------|
+| `electrical_energy` | Tracks total energy consumption over time.           | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information.          | No           | [See details](ElectricalPowerChannel.md)  |
+| `fan`               | Manages fan settings, including speed and direction. | No           | [See details](FanChannel.md)              |
+| `leak`              | Detects water leaks or other potential issues.       | No           | [See details](LeakChannel.md)             |
+| `temperature`       | Monitors the ambient temperature.                    | No           | [See details](TemperatureChannel.md)      |
 
 ---
 
@@ -44,7 +44,7 @@ These channels are optional and provide additional features:
     - Detect leaks using the `leak` channel for safety.
 
 3. **Energy Management**:
-    - Track power usage and energy consumption using the `electricalPower` and `electricalEnergy` channels.
+    - Track power usage and energy consumption using the `electrical_power` and `electrical_energy` channels.
 
 ---
 
@@ -56,10 +56,10 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
     - Ensure proper mapping of channels to the device's physical or logical components.
-    - The `deviceInformation` channel is mandatory for device identification.
+    - The `device_information` channel is mandatory for device identification.
 
 3. **Energy and Safety Monitoring**:
-    - Include `electricalEnergy` and `electricalPower` for energy efficiency tracking.
+    - Include `electrical_energy` and `electrical_power` for energy efficiency tracking.
     - Use the `leak` channel for enhanced safety in environments prone to water-related issues.
 
 4. **Extensibility**:

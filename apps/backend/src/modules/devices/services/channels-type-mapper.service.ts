@@ -14,6 +14,8 @@ export interface ChannelTypeMapping<
 	class: new (...args: any[]) => TChannel; // Constructor for the channel class
 	createDto: new (...args: any[]) => TCreateDTO; // Constructor for the Create DTO
 	updateDto: new (...args: any[]) => TUpdateDTO; // Constructor for the Update DTO
+	afterCreate?: (device: TChannel) => Promise<TChannel>;
+	afterUpdate?: (device: TChannel) => Promise<TChannel>;
 }
 
 @Injectable()

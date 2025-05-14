@@ -10,10 +10,10 @@ The **Outlet** device represents a power outlet with advanced monitoring and con
 
 These channels are mandatory for the functionality of the outlet device:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `outlet`            | Controls the on/off state of the power outlet(s).                              | Yes          | [See details](OutletChannel.md)            |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `outlet`             | Controls the on/off state of the power outlet(s).                              | Yes          | [See details](OutletChannel.md)            |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -21,10 +21,10 @@ These channels are mandatory for the functionality of the outlet device:
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                             | **Multiple** | **Details**                               |
-|--------------------|---------------------------------------------|--------------|-------------------------------------------|
-| `electricalEnergy` | Tracks total energy consumption over time.  | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information. | No           | [See details](ElectricalPowerChannel.md)  |
+| **Channel**         | **Description**                             | **Multiple** | **Details**                               |
+|---------------------|---------------------------------------------|--------------|-------------------------------------------|
+| `electrical_energy` | Tracks total energy consumption over time.  | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information. | No           | [See details](ElectricalPowerChannel.md)  |
 
 ---
 
@@ -35,10 +35,10 @@ These channels are optional and provide additional features:
    - Manage multiple outlets independently if supported.
 
 2. **Energy Monitoring**:
-   - Monitor power usage and track energy consumption using the `electricalPower` and `electricalEnergy` channels.
+   - Monitor power usage and track energy consumption using the `electrical_power` and `electrical_energy` channels.
 
 3. **Device Metadata**:
-   - Access outlet-specific information such as manufacturer, model, and firmware through the `deviceInformation` channel.
+   - Access outlet-specific information such as manufacturer, model, and firmware through the `device_information` channel.
 
 ---
 
@@ -50,8 +50,8 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
    - Ensure each `outlet` channel is linked to the corresponding physical relay controlling the power supply.
-   - Include the `deviceInformation` channel for proper identification and metadata access.
+   - Include the `device_information` channel for proper identification and metadata access.
 
 3. **Extensibility**:
-   - Optional channels like `electricalEnergy` and `electricalPower` can enhance the device's utility for energy management applications.
+   - Optional channels like `electrical_energy` and `electrical_power` can enhance the device's utility for energy management applications.
    - Support multiple `outlet` channels for power strips or multi-outlet devices.

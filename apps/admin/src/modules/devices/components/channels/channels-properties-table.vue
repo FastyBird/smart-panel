@@ -5,6 +5,7 @@
 		:data="props.items"
 		:default-sort="{ prop: props.sortBy, order: props.sortDir || 'ascending' }"
 		table-layout="fixed"
+		row-key="id"
 		class="flex-grow"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
@@ -115,6 +116,7 @@
 				<template v-if="scope.row.name">
 					<strong class="block">{{ scope.row.name }}</strong>
 					<el-link
+						v-if="props.withFilters"
 						:type="innerFilters.categories.includes(scope.row.category) ? 'danger' : undefined"
 						:underline="false"
 						class="font-400! block! leading-4"
@@ -133,9 +135,16 @@
 
 						{{ t(`devicesModule.categories.channelsProperties.${scope.row.category}`) }}
 					</el-link>
+					<el-text
+						v-else
+						class="font-400! block! leading-4"
+					>
+						{{ t(`devicesModule.categories.channelsProperties.${scope.row.category}`) }}
+					</el-text>
 				</template>
 				<template v-else>
 					<el-link
+						v-if="props.withFilters"
 						:type="innerFilters.categories.includes(scope.row.category) ? 'danger' : undefined"
 						:underline="false"
 						class="font-400!"
@@ -154,6 +163,12 @@
 
 						{{ t(`devicesModule.categories.channelsProperties.${scope.row.category}`) }}
 					</el-link>
+					<el-text
+						v-else
+						class="font-400!"
+					>
+						{{ t(`devicesModule.categories.channelsProperties.${scope.row.category}`) }}
+					</el-text>
 				</template>
 			</template>
 		</el-table-column>
@@ -168,6 +183,7 @@
 				<channels-properties-table-column-channel
 					:property="scope.row"
 					:filters="innerFilters"
+					:with-filters="props.withFilters"
 					@filter-by="(value: IChannel['id'], add: boolean) => onFilterBy('channel', value, add)"
 				/>
 			</template>
@@ -183,26 +199,36 @@
 					:spacer="spacer"
 					direction="horizontal"
 				>
-					<el-link
-						v-for="(permission, index) of scope.row.permissions"
-						:key="index"
-						:type="innerFilters.permissions.includes(permission) ? 'danger' : undefined"
-						:underline="false"
-						@click.stop="onFilterBy('permission', permission, !innerFilters.permissions.includes(permission))"
-					>
-						<el-icon class="el-icon--left">
-							<icon
-								v-if="innerFilters.permissions.includes(permission)"
-								icon="mdi:filter-minus"
-							/>
-							<icon
-								v-else
-								icon="mdi:filter-plus"
-							/>
-						</el-icon>
+					<template v-if="props.withFilters">
+						<el-link
+							v-for="(permission, index) of scope.row.permissions"
+							:key="`filter-${index}`"
+							:type="innerFilters.permissions.includes(permission) ? 'danger' : undefined"
+							:underline="false"
+							@click.stop="onFilterBy('permission', permission, !innerFilters.permissions.includes(permission))"
+						>
+							<el-icon class="el-icon--left">
+								<icon
+									v-if="innerFilters.permissions.includes(permission)"
+									icon="mdi:filter-minus"
+								/>
+								<icon
+									v-else
+									icon="mdi:filter-plus"
+								/>
+							</el-icon>
 
-						{{ t(`devicesModule.permissions.${permission}`) }}
-					</el-link>
+							{{ t(`devicesModule.permissions.${permission}`) }}
+						</el-link>
+					</template>
+					<template v-else>
+						<el-text
+							v-for="(permission, index) of scope.row.permissions"
+							:key="`no-filter-${index}`"
+						>
+							{{ t(`devicesModule.permissions.${permission}`) }}
+						</el-text>
+					</template>
 				</el-space>
 			</template>
 		</el-table-column>
@@ -212,12 +238,13 @@
 			prop="dataType"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="180"
+			:min-width="150"
 		>
 			<template #default="scope">
 				<channels-properties-table-column-data-type
 					:property="scope.row"
 					:filters="innerFilters"
+					:with-filters="props.withFilters"
 					@filter-by="(value: DevicesModuleChannelPropertyData_type, add: boolean) => onFilterBy('dataType', value, add)"
 				/>
 			</template>
@@ -228,7 +255,7 @@
 			prop="value"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="150"
+			:min-width="150"
 		>
 			<template #default="scope">
 				<channels-properties-table-column-value :property="scope.row" />
@@ -282,7 +309,7 @@ import {
 	type DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
 } from '../../../../openapi';
-import type { IChannelsPropertiesFilter } from '../../composables/composables';
+import type { IChannelsPropertiesFilter } from '../../composables/types';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 import type { IChannel } from '../../store/channels.store.types';
 import type { IDevice } from '../../store/devices.store.types';
@@ -299,6 +326,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<IChannelsPropertiesTableProps>(), {
 	withChannelColumn: false,
+	withFilters: true,
 });
 
 const emit = defineEmits<{

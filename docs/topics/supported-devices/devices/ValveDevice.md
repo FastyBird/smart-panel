@@ -11,10 +11,10 @@ in various systems.
 
 These channels are mandatory for the functionality of the valve device:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `valve`             | Controls the open/close state and operation of the valve.                      | No           | [See details](ValveChannel.md)             |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `valve`              | Controls the open/close state and operation of the valve.                      | No           | [See details](ValveChannel.md)             |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -22,14 +22,14 @@ These channels are mandatory for the functionality of the valve device:
 
 These channels are optional and provide additional features:
 
-| **Channel**        | **Description**                                                         | **Multiple** | **Details**                               |
-|--------------------|-------------------------------------------------------------------------|--------------|-------------------------------------------|
-| `battery`          | Monitors the battery status, if the valve is battery-powered.           | No           | [See details](BatteryChannel.md)          |
-| `electricalEnergy` | Tracks total energy consumption over time.                              | No           | [See details](ElectricalEnergyChannel.md) |
-| `electricalPower`  | Provides real-time power usage information.                             | No           | [See details](ElectricalPowerChannel.md)  |
-| `flow`             | Monitors the flow rate through the valve.                               | No           | [See details](FlowChannel.md)             |
-| `leak`             | Detects leaks or other flow-related issues.                             | No           | [See details](LeakChannel.md)             |
-| `pressure`         | Monitors the pressure level in the system where the valve is installed. | No           |  [See details](PressureChannel.md)        |
+| **Channel**         | **Description**                                                         | **Multiple** | **Details**                               |
+|---------------------|-------------------------------------------------------------------------|--------------|-------------------------------------------|
+| `battery`           | Monitors the battery status, if the valve is battery-powered.           | No           | [See details](BatteryChannel.md)          |
+| `electrical_energy` | Tracks total energy consumption over time.                              | No           | [See details](ElectricalEnergyChannel.md) |
+| `electrical_power`  | Provides real-time power usage information.                             | No           | [See details](ElectricalPowerChannel.md)  |
+| `flow`              | Monitors the flow rate through the valve.                               | No           | [See details](FlowChannel.md)             |
+| `leak`              | Detects leaks or other flow-related issues.                             | No           | [See details](LeakChannel.md)             |
+| `pressure`          | Monitors the pressure level in the system where the valve is installed. | No           |  [See details](PressureChannel.md)        |
 
 ---
 
@@ -40,7 +40,7 @@ These channels are optional and provide additional features:
     - Monitor flow rate with the `flow` channel for precision control.
 
 2. **Energy Monitoring**:
-    - Track power usage and energy consumption using the `electricalPower` and `electricalEnergy` channels.
+    - Track power usage and energy consumption using the `electrical_power` and `electrical_energy` channels.
 
 3. **System Safety**:
     - Use the `leak` channel to detect potential issues and ensure system integrity.
@@ -54,11 +54,11 @@ These channels are optional and provide additional features:
 ## Developer Notes {id="developer-notes"}
 
 1. **Channel Implementation**:
-    - The `deviceInformation` and `valve` channels are mandatory for basic valve operation.
+    - The `device_information` and `valve` channels are mandatory for basic valve operation.
     - Implement optional channels to provide advanced features like flow rate monitoring or energy management.
 
 2. **Integration**:
     - Ensure seamless operation with other system components using the `flow` and `pressure` channels.
 
 3. **Extensibility**:
-    - Add leak detection and energy tracking features using the `leak`, `electricalEnergy`, and `electricalPower` channels as needed.
+    - Add leak detection and energy tracking features using the `leak`, `electrical_energy`, and `electrical_power` channels as needed.

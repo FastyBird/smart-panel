@@ -11,7 +11,6 @@ Measures the total energy consumption over time, typically reported in kilowatt-
 | **Property**  | **Data Type** | **Range**      | **Unit** | **Permissions** |
 |---------------|---------------|----------------|----------|-----------------|
 | `consumption` | `Float`       | `0.0–10,000.0` | kWh      | RO (Read-Only)  |
-| `rate`        | `Float`       | `0.0–100.0`    | kW       | RO (Read-Only)  |
 
 ---
 
@@ -24,25 +23,26 @@ Represents the total energy consumed over a period of time:
 - Measured in kilowatt-hours (`kWh`).
 - Example: `12.5` indicates the device has consumed 12.5 kWh.
 
+---
+
+## Optional Properties {id="optional-properties"}
+
+| **Property** | **Data Type** | **Range**     | **Unit** | **Permissions** |
+|--------------|---------------|---------------|----------|-----------------|
+| `rate`       | `Float`       | `0.0–100.0`   | kW       | RO (Read-Only)  |
+| `active`     | `Bool`        | `true/false`  | -        | RO (Read-Only)  |
+| `fault`      | `Uchar`       | `0–255`       | -        | RO (Read-Only)  |
+
+---
+
+### Property Details {id="optional-properties-details"}
+
 #### `rate`
 
 Indicates the current rate of energy consumption:
 
 - Measured in kilowatts (`kW`).
 - Example: `1.5` means the device is consuming energy at a rate of 1.5 kW.
-
----
-
-## Optional Properties {id="optional-properties"}
-
-| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|--------------|---------------|--------------|----------|-----------------|
-| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `fault`      | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
-
----
-
-### Property Details {id="optional-properties-details"}
 
 #### `active`
 

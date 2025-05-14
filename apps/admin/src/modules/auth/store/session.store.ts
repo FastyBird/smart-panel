@@ -72,7 +72,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		if (accessTokenCookie !== null) {
 			const decodedAccessToken = jwtDecode<ITokenPayload>(accessTokenCookie);
 
-			// Rebuild session entity from stored cookies
+			// Rebuild session instance from stored cookies
 			const parsedSession = TokenPairSchema.safeParse({
 				accessToken: accessTokenCookie,
 				refreshToken: refreshTokenCookie,

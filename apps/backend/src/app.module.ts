@@ -9,6 +9,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { PLUGINS_PREFIX } from './app.constants';
 import { getEnvValue } from './common/utils/config.utils';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
@@ -28,6 +29,8 @@ import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
+import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant/devices-home-assistant.plugin';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
@@ -100,8 +103,17 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 				module: WeatherModule,
 			},
 			{
-				path: PAGES_CARDS_PLUGIN_PREFIX,
-				module: PagesCardsPlugin,
+				path: PLUGINS_PREFIX,
+				children: [
+					{
+						path: PAGES_CARDS_PLUGIN_PREFIX,
+						module: PagesCardsPlugin,
+					},
+					{
+						path: DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX,
+						module: DevicesHomeAssistantPlugin,
+					},
+				],
 			},
 		]),
 		AuthModule,
@@ -116,6 +128,7 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 		WeatherModule,
 		WebsocketModule,
 		DevicesThirdPartyPlugin,
+		DevicesHomeAssistantPlugin,
 		PagesCardsPlugin,
 		PagesDeviceDetailPlugin,
 		PagesTilesPlugin,

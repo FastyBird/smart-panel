@@ -47,7 +47,7 @@ export const useChannelsPropertiesDataSource = ({ channelId }: IUseChannelsPrope
 		);
 	});
 
-	const sortBy = ref<'name' | 'category'>('name');
+	const sortBy = ref<'name' | 'category'>('category');
 
 	const sortDir = ref<'ascending' | 'descending' | null>('ascending');
 

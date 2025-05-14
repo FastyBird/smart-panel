@@ -2,6 +2,8 @@ import 'package:fastybird_smart_panel/modules/devices/models/model.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 
 abstract class ChannelModel extends Model {
+  final String _type;
+
   final ChannelCategory _category;
 
   final String? _name;
@@ -14,6 +16,7 @@ abstract class ChannelModel extends Model {
 
   ChannelModel({
     required super.id,
+    required String type,
     ChannelCategory category = ChannelCategory.generic,
     String? name,
     String? description,
@@ -22,12 +25,15 @@ abstract class ChannelModel extends Model {
     required List<String> controls,
     super.createdAt,
     super.updatedAt,
-  })  : _category = category,
+  })  : _type = type,
+        _category = category,
         _name = name,
         _description = description,
         _device = device,
         _properties = properties,
         _controls = controls;
+
+  String get type => _type;
 
   ChannelCategory get category => _category;
 

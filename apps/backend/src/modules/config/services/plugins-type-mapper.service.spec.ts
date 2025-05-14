@@ -3,11 +3,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigException } from '../config.exceptions';
 import { UpdatePluginConfigDto } from '../dto/config.dto';
-import { PluginConfigEntity } from '../entities/config.entity';
+import { PluginConfigModel } from '../models/config.model';
 
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
-class MockPlugin extends PluginConfigEntity {}
+class MockPlugin extends PluginConfigModel {}
 class MockCreatePluginDto extends UpdatePluginConfigDto {}
 
 describe('PluginsTypeMapperService', () => {

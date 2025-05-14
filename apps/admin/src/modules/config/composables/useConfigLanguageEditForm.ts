@@ -138,6 +138,8 @@ export const useConfigLanguageEditForm = ({ config, messages }: IUseLanguageEdit
 
 		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.configLanguage.edited'));
 
+		formChanged.value = false;
+
 		return 'saved';
 	};
 

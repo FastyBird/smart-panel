@@ -11,9 +11,6 @@ Reports real-time power metrics such as voltage, current, and wattage for monito
 | **Property** | **Data Type** | **Range**      | **Unit** | **Permissions** |
 |--------------|---------------|----------------|----------|-----------------|
 | `power`      | `Float`       | `0.0–10,000.0` | W        | RO (Read-Only)  |
-| `voltage`    | `Float`       | `0.0–500.0`    | V        | RO (Read-Only)  |
-| `current`    | `Float`       | `0.0–100.0`    | A        | RO (Read-Only)  |
-| `frequency`  | `Float`       | `50.0–60.0`    | Hz       | RO (Read-Only)  |
 
 ---
 
@@ -24,6 +21,24 @@ Represents the current power usage of the device:
 
 - Measured in watts (`W`).
 - Example: `750` indicates the device is consuming 750 W.
+
+---
+
+## Optional Properties {id="optional-properties"}
+
+| **Property**   | **Data Type** | **Range**     | **Unit** | **Permissions** |
+|----------------|---------------|---------------|----------|-----------------|
+| `voltage`      | `Float`       | `0.0–500.0`   | V        | RO (Read-Only)  |
+| `current`      | `Float`       | `0.0–100.0`   | A        | RO (Read-Only)  |
+| `frequency`    | `Float`       | `50.0–60.0`   | Hz       | RO (Read-Only)  |
+| `over_current` | `Bool`        | `true/false`  | -        | RO (Read-Only)  |
+| `over_voltage` | `Bool`        | `true/false`  | -        | RO (Read-Only)  |
+| `active`       | `Bool`        | `true/false`  | -        | RO (Read-Only)  |
+| `fault`        | `Uchar`       | `0–255`       | -        | RO (Read-Only)  |
+
+---
+
+### Property Details {id="optional-properties-details"}
 
 #### `voltage`
 
@@ -45,21 +60,6 @@ Represents the frequency of the power supply:
 
 - Measured in hertz (`Hz`).
 - Typically `50` or `60` Hz depending on the region.
-
----
-
-## Optional Properties {id="optional-properties"}
-
-| **Property**   | **Data Type** | **Range**    | **Unit** | **Permissions** |
-|----------------|---------------|--------------|----------|-----------------|
-| `over_current` | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `over_voltage` | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `active`       | `Bool`        | `true/false` | -        | RO (Read-Only)  |
-| `fault`        | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
-
----
-
-### Property Details {id="optional-properties-details"}
 
 #### `over_current`
 
@@ -88,10 +88,3 @@ Represents the fault state of the sensor:
 
 - `0`: No fault detected.
 - Non-zero: A fault has been detected, potentially affecting functionality.
-
-#### `tampered`
-
-Indicates whether the channel has been tampered with:
-
-- `true`: The channel has been tampered with.
-- `false`: The channel is in a normal, non-tampered state.

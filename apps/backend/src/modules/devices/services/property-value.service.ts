@@ -1,7 +1,4 @@
-import { Cache } from 'cache-manager';
-
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { DataTypeType } from '../devices.constants';
@@ -11,13 +8,9 @@ import { ChannelPropertyEntity } from '../entities/devices.entity';
 export class PropertyValueService {
 	private readonly logger = new Logger(PropertyValueService.name);
 
-	private readonly CACHE_TTL = 30 * 1000; // 30 seconds cache expiration
+	private valuesMap: Map<ChannelPropertyEntity['id'], string | boolean | number | null> = new Map();
 
-	constructor(
-		private readonly influxDbService: InfluxDbService,
-		@Inject(CACHE_MANAGER)
-		private readonly cacheManager: Cache,
-	) {}
+	constructor(private readonly influxDbService: InfluxDbService) {}
 
 	async write(property: ChannelPropertyEntity, value: string | boolean | number): Promise<void> {
 		try {
@@ -58,7 +51,7 @@ export class PropertyValueService {
 				},
 			]);
 
-			await this.cacheManager.set(this.createCacheKey(property), value, this.CACHE_TTL);
+			this.valuesMap.set(property.id, value);
 
 			this.logger.debug(`[PROPERTY] Value saved id=${property.id} dataType=${property.dataType} value=${value}`);
 		} catch (error) {
@@ -73,12 +66,12 @@ export class PropertyValueService {
 
 	async readLatest(property: ChannelPropertyEntity): Promise<string | number | boolean | null> {
 		try {
-			const cachedValue = await this.cacheManager.get<string | number | boolean>(this.createCacheKey(property));
+			if (this.valuesMap.has(property.id)) {
+				this.logger.debug(
+					`[PROPERTY] Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`,
+				);
 
-			if (cachedValue) {
-				this.logger.debug(`[PROPERTY] Loaded cached value for property id=${property.id}, value=${cachedValue}`);
-
-				return cachedValue;
+				return this.valuesMap.get(property.id);
 			}
 
 			const query = `
@@ -108,7 +101,7 @@ export class PropertyValueService {
 					break;
 
 				case DataTypeType.BOOL:
-					parsedValue = latest.stringValue ? latest.stringValue === 'true' : null;
+					parsedValue = latest.stringValue != null ? latest.stringValue === 'true' : null;
 					break;
 
 				case DataTypeType.CHAR:
@@ -117,19 +110,22 @@ export class PropertyValueService {
 				case DataTypeType.USHORT:
 				case DataTypeType.INT:
 				case DataTypeType.UINT:
-					parsedValue = latest.numberValue ? Math.round(latest.numberValue) : null;
+					parsedValue = latest.numberValue != null ? Math.round(latest.numberValue) : null;
 					break;
 
 				case DataTypeType.FLOAT:
-					parsedValue = latest.numberValue ? latest.numberValue : null;
+					parsedValue = latest.numberValue ?? null;
 					break;
+
+				default:
+					parsedValue = null;
 			}
 
 			this.logger.debug(
 				`[PROPERTY] Read latest value id=${property.id} dataType=${property.dataType} value=${parsedValue}`,
 			);
 
-			await this.cacheManager.set(this.createCacheKey(property), parsedValue, this.CACHE_TTL);
+			this.valuesMap.set(property.id, parsedValue);
 
 			return parsedValue;
 		} catch (error) {
@@ -150,7 +146,7 @@ export class PropertyValueService {
 
 			await this.influxDbService.query(query);
 
-			await this.cacheManager.del(this.createCacheKey(property));
+			this.valuesMap.delete(property.id);
 
 			this.logger.log(`[PROPERTY] Deleted all stored values for id=${property.id}`);
 		} catch (error) {
@@ -161,9 +157,5 @@ export class PropertyValueService {
 				err.stack,
 			);
 		}
-	}
-
-	private createCacheKey(property: ChannelPropertyEntity): string {
-		return `property:${property.id}:value`;
 	}
 }

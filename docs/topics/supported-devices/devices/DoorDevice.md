@@ -11,10 +11,10 @@ or other types of doors, with additional features for security and environmental
 
 These channels are mandatory for the functionality of the door:
 
-| **Channel**         | **Description**                                                                | **Multiple** | **Details**                                |
-|---------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `door`              | Controls and monitors the opening, closing, and status of the door.            | No           | [See details](DoorbellChannel.md)          |
-| `deviceInformation` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                |
+|----------------------|--------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `door`               | Controls and monitors the opening, closing, and status of the door.            | No           | [See details](DoorbellChannel.md)          |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](DeviceInformationChannel.md) |
 
 ---
 
@@ -54,7 +54,7 @@ These channels are optional and provide additional features:
 
 2. **Integration**:
     - Ensure proper mapping of channels to the door's physical or logical components.
-    - The `deviceInformation` channel is mandatory for device identification.
+    - The `device_information` channel is mandatory for device identification.
 
 3. **Extensibility**:
     - Use the `motion` channel for motion detection capabilities.

@@ -138,6 +138,7 @@ enum PropertyCategory {
   on('on'),
   overCurrent('over_current'),
   overVoltage('over_voltage'),
+  overPower('over_power'),
   pan('pan'),
   peakLevel('peak_level'),
   percentage('percentage'),

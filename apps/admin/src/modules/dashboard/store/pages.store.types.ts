@@ -83,10 +83,3 @@ export type IPageRes = z.infer<typeof PageResSchema>;
 
 // STORE
 export type PagesStore = Store<string, IPagesStoreState, object, IPagesStoreActions>;
-
-// MISC
-export type IPagesEntitiesSchemas = {
-	page: typeof PageSchema;
-	createPageReq: typeof PageCreateReqSchema;
-	updatePageReq: typeof PageUpdateReqSchema;
-};

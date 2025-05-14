@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omit, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
 import type { operations } from '../../../openapi';
@@ -269,13 +269,6 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			});
 
 			if (!parsedNewItem.success) {
-				console.log({
-					...payload.data,
-					id: parsedPayload.data.id,
-					channel: parsedPayload.data.channelId,
-					draft: parsedPayload.data.draft,
-					createdAt: new Date(),
-				});
 				console.error('Schema validation failed with:', parsedNewItem.error);
 
 				throw new DevicesValidationException('Failed to add channel property.');
@@ -351,7 +344,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const plugin = getPluginByType(payload.data.type);
 
 			const parsedEditedItem = (plugin?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({
-				...data.value[payload.id],
+				...omit(data.value[payload.id], 'value'),
 				...omitBy(payload.data, isUndefined),
 			});
 
@@ -380,7 +373,9 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					},
 					body: {
 						data: transformChannelPropertyUpdateRequest<IChannelPropertyUpdateReq>(
-							parsedEditedItem.data,
+							{
+								...('value' in payload.data ? parsedEditedItem.data : omit(parsedEditedItem.data, 'value')),
+							},
 							plugin?.schemas?.channelPropertyUpdateReqSchema || ChannelPropertyUpdateReqSchema
 						),
 					},

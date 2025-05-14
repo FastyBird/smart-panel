@@ -22,12 +22,12 @@ import {
 	UpdateWeatherConfigDto,
 } from '../dto/config.dto';
 import {
-	AppConfigEntity,
-	AudioConfigEntity,
-	DisplayConfigEntity,
-	LanguageConfigEntity,
-	WeatherConfigEntity,
-} from '../entities/config.entity';
+	AppConfigModel,
+	AudioConfigModel,
+	DisplayConfigModel,
+	LanguageConfigModel,
+	WeatherConfigModel,
+} from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 
 import { ConfigController } from './config.controller';
@@ -36,7 +36,7 @@ describe('ConfigController', () => {
 	let controller: ConfigController;
 	let configService: ConfigService;
 
-	const mockConfig: AppConfigEntity = {
+	const mockConfig: AppConfigModel = {
 		audio: {
 			type: SectionType.AUDIO,
 			speaker: true,
@@ -75,7 +75,7 @@ describe('ConfigController', () => {
 					provide: ConfigService,
 					useValue: {
 						getConfig: jest.fn().mockReturnValue(mockConfig),
-						getConfigSection: jest.fn((key: keyof AppConfigEntity) => mockConfig[key]),
+						getConfigSection: jest.fn((key: keyof AppConfigModel) => mockConfig[key]),
 						setConfigSection: jest.fn(),
 					},
 				},
@@ -108,17 +108,17 @@ describe('ConfigController', () => {
 		it('should return the audio configuration section', () => {
 			const result = controller.getConfigSection(SectionType.AUDIO);
 			expect(result).toEqual(mockConfig.audio);
-			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.AUDIO, AudioConfigEntity);
+			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.AUDIO, AudioConfigModel);
 		});
 
 		it('should return the display configuration section', () => {
 			const result = controller.getConfigSection(SectionType.DISPLAY);
 			expect(result).toEqual(mockConfig.display);
-			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.DISPLAY, DisplayConfigEntity);
+			expect(configService.getConfigSection).toHaveBeenCalledWith(SectionType.DISPLAY, DisplayConfigModel);
 		});
 
 		it('should throw BadRequestException for an invalid section', () => {
-			expect(() => controller.getConfigSection('invalid' as keyof AppConfigEntity)).toThrow(BadRequestException);
+			expect(() => controller.getConfigSection('invalid' as keyof AppConfigModel)).toThrow(BadRequestException);
 		});
 	});
 
@@ -133,7 +133,7 @@ describe('ConfigController', () => {
 
 			expect(result).toEqual(updatedConfig);
 			expect(configService.setConfigSection).toHaveBeenCalledWith('audio', updateDto, UpdateAudioConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('audio', AudioConfigEntity);
+			expect(configService.getConfigSection).toHaveBeenCalledWith('audio', AudioConfigModel);
 		});
 	});
 
@@ -148,7 +148,7 @@ describe('ConfigController', () => {
 
 			expect(result).toEqual(updatedConfig);
 			expect(configService.setConfigSection).toHaveBeenCalledWith('display', updateDto, UpdateDisplayConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('display', DisplayConfigEntity);
+			expect(configService.getConfigSection).toHaveBeenCalledWith('display', DisplayConfigModel);
 		});
 	});
 
@@ -167,7 +167,7 @@ describe('ConfigController', () => {
 
 			expect(result).toEqual(updatedConfig);
 			expect(configService.setConfigSection).toHaveBeenCalledWith('language', updateDto, UpdateLanguageConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('language', LanguageConfigEntity);
+			expect(configService.getConfigSection).toHaveBeenCalledWith('language', LanguageConfigModel);
 		});
 	});
 
@@ -186,7 +186,7 @@ describe('ConfigController', () => {
 
 			expect(result).toEqual(updatedConfig);
 			expect(configService.setConfigSection).toHaveBeenCalledWith('weather', updateDto, UpdateWeatherConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('weather', WeatherConfigEntity);
+			expect(configService.getConfigSection).toHaveBeenCalledWith('weather', WeatherConfigModel);
 		});
 	});
 });

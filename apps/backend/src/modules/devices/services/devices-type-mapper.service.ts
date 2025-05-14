@@ -14,6 +14,8 @@ export interface DeviceTypeMapping<
 	class: new (...args: any[]) => TDevice; // Constructor for the device class
 	createDto: new (...args: any[]) => TCreateDTO; // Constructor for the Create DTO
 	updateDto: new (...args: any[]) => TUpdateDTO; // Constructor for the Update DTO
+	afterCreate?: (device: TDevice) => Promise<TDevice>;
+	afterUpdate?: (device: TDevice) => Promise<TDevice>;
 }
 
 @Injectable()

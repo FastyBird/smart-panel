@@ -1,0 +1,3282 @@
+{
+  "generic": {
+    "category": "generic",
+    "properties": {
+      "generic": {
+        "category": "generic",
+        "required": false,
+        "description": {
+          "en": ""
+        }
+      }
+    }
+  },
+  "air_particulate": {
+    "category": "air_particulate",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "density": {
+        "category": "density",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "µg/m³",
+        "format": [
+          0.0,
+          1000.0
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "mode": {
+        "category": "mode",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "pm1",
+          "pm2_5",
+          "pm10"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "alarm": {
+    "category": "alarm",
+    "properties": {
+    }
+  },
+  "battery": {
+    "category": "battery",
+    "properties": {
+      "percentage": {
+        "category": "percentage",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ],
+        "invalid": null,
+        "step": 1
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "ok",
+          "low",
+          "charging"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "camera": {
+    "category": "camera",
+    "properties": {
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "available",
+          "in_use",
+          "unavailable",
+          "offline",
+          "initializing",
+          "error"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "source": {
+        "category": "source",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "zoom": {
+        "category": "zoom",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": null,
+        "format": [
+          1.0,
+          10.0
+        ]
+      },
+      "pan": {
+        "category": "pan",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": "°",
+        "format": [
+          -180.0,
+          180.0
+        ]
+      },
+      "tilt": {
+        "category": "tilt",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": "°",
+        "format": [
+          -90.0,
+          90.0
+        ]
+      },
+      "infrared": {
+        "category": "infrared",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "carbon_dioxide": {
+    "category": "carbon_dioxide",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "density": {
+        "category": "density",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "ppm",
+        "format": [
+          0.0,
+          100000.0
+        ]
+      },
+      "peak_level": {
+        "category": "peak_level",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "ppm",
+        "format": [
+          0.0,
+          100000.0
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "carbon_monoxide": {
+    "category": "carbon_monoxide",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "density": {
+        "category": "density",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "ppm",
+        "format": [
+          0.0,
+          100.0
+        ]
+      },
+      "peak_level": {
+        "category": "peak_level",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "ppm",
+        "format": [
+          0.0,
+          100.0
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "contact": {
+    "category": "contact",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "cooler": {
+    "category": "cooler",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": "°C",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "device_information": {
+    "category": "device_information",
+    "properties": {
+      "manufacturer": {
+        "category": "manufacturer",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "model": {
+        "category": "model",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "serial_number": {
+        "category": "serial_number",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "firmware_revision": {
+        "category": "firmware_revision",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "hardware_revision": {
+        "category": "hardware_revision",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "link_quality": {
+        "category": "hardware_revision",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "connection_type": {
+        "category": "connection_type",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "wired",
+          "wifi",
+          "zigbee",
+          "bluetooth"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "status": {
+        "category": "status",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "connected",
+          "disconnected",
+          "init",
+          "ready",
+          "running",
+          "sleeping",
+          "stopped",
+          "lost",
+          "alert",
+          "unknown"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "doorbell": {
+    "category": "doorbell",
+    "properties": {
+      "event": {
+        "category": "event",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "single_press",
+          "double_press",
+          "long_press"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "brightness": {
+        "category": "brightness",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          100
+        ]
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "door": {
+    "category": "door",
+    "properties": {
+      "obstruction": {
+        "category": "obstruction",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "opened",
+          "closed",
+          "opening",
+          "closing",
+          "stopped"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "position": {
+        "category": "position",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "open",
+          "close",
+          "stop"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "type": {
+        "category": "type",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "door",
+          "garage"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "percentage": {
+        "category": "percentage",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          100
+        ]
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "electrical_energy": {
+    "category": "electrical_energy",
+    "properties": {
+      "consumption": {
+        "category": "consumption",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "kWh",
+        "format": [
+          0.0,
+          10000.0
+        ]
+      },
+      "rate": {
+        "category": "rate",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "kW",
+        "format": [
+          0.0,
+          100.0
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "electrical_power": {
+    "category": "electrical_power",
+    "properties": {
+      "power": {
+        "category": "power",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "W",
+        "format": [
+          0.0,
+          10000.0
+        ]
+      },
+      "voltage": {
+        "category": "voltage",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "V",
+        "format": [
+          0.0,
+          500.0
+        ]
+      },
+      "current": {
+        "category": "current",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "A",
+        "format": [
+          0.0,
+          100.0
+        ]
+      },
+      "frequency": {
+        "category": "frequency",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "Hz",
+        "format": [
+          50.0,
+          60.0
+        ]
+      },
+      "over_current": {
+        "category": "over_current",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "over_voltage": {
+        "category": "over_voltage",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "over_power": {
+        "category": "over_power",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "fan": {
+    "category": "fan",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "swing": {
+        "category": "swing",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "speed": {
+        "category": "speed",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "direction": {
+        "category": "direction",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "clockwise",
+          "counter_clockwise"
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "flow": {
+    "category": "flow",
+    "properties": {
+      "rate": {
+        "category": "rate",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "m³/h",
+        "format": [
+          0.0,
+          65533.0
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "heater": {
+    "category": "heater",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "temperature": {
+        "category": "temperature",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": "°C",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "humidity": {
+    "category": "humidity",
+    "properties": {
+      "humidity": {
+        "category": "humidity",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "illuminance": {
+    "category": "illuminance",
+    "properties": {
+      "density": {
+        "category": "density",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "lx",
+        "format": [
+          0.0,
+          100000.0
+        ]
+      },
+      "level": {
+        "category": "level",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "bright",
+          "moderate",
+          "dusky",
+          "dark"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "leak": {
+    "category": "leak",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "level": {
+        "category": "level",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "bright",
+          "moderate",
+          "dusky",
+          "dark"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "light": {
+    "category": "light",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "brightness": {
+        "category": "brightness",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "color_red": {
+        "category": "color_red",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ]
+      },
+      "color_green": {
+        "category": "color_green",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ]
+      },
+      "color_blue": {
+        "category": "color_blue",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ]
+      },
+      "color_white": {
+        "category": "color_white",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ]
+      },
+      "color_temperature": {
+        "category": "color_temperature",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "ushort",
+        "unit": "K",
+        "format": [
+          2700,
+          6500
+        ]
+      },
+      "hue": {
+        "category": "hue",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "ushort",
+        "unit": "deg",
+        "format": [
+          0,
+          360
+        ]
+      },
+      "saturation": {
+        "category": "saturation",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      }
+    }
+  },
+  "lock": {
+    "category": "lock",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "locked",
+          "unlocked"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "media_input": {
+    "category": "media_input",
+    "properties": {
+      "source": {
+        "category": "source",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "hdmi1",
+          "hdmi2",
+          "usb",
+          "optical"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "media_playback": {
+    "category": "media_playback",
+    "properties": {
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "playing",
+          "paused",
+          "stopped"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "track": {
+        "category": "track",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "string",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "duration": {
+        "category": "duration",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uint",
+        "unit": "s",
+        "format": [
+          0,
+          86400
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "position": {
+        "category": "position",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uint",
+        "unit": "s",
+        "format": [
+          0,
+          86400
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "microphone": {
+    "category": "microphone",
+    "properties": {
+      "active": {
+        "category": "active",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "volume": {
+        "category": "volume",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      }
+    }
+  },
+  "motion": {
+    "category": "motion",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "distance": {
+        "category": "distance",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "m",
+        "format": [
+          0.0,
+          100.0
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "nitrogen_dioxide": {
+    "category": "nitrogen_dioxide",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "density": {
+        "category": "density",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "µg/m³",
+        "format": [
+          0.0,
+          100000.0
+        ]
+      },
+      "mode": {
+        "category": "mode",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "annual",
+          "1_hour"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "occupancy": {
+    "category": "occupancy",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "distance": {
+        "category": "distance",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "m",
+        "format": [
+          0.0,
+          100.0
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "outlet": {
+    "category": "outlet",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "in_use": {
+        "category": "in_use",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "ozone": {
+    "category": "ozone",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "density": {
+        "category": "density",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "µg/m³",
+        "format": [
+          0.0,
+          100000.0
+        ]
+      },
+      "level": {
+        "category": "level",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "pressure": {
+    "category": "pressure",
+    "properties": {
+      "measured": {
+        "category": "measured",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "kPa",
+        "format": [
+          0.0,
+          32767.0
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "robot_vacuum": {
+    "category": "robot_vacuum",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "idle",
+          "cleaning",
+          "vacuuming",
+          "mopping",
+          "docking",
+          "charging"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "mode": {
+        "category": "mode",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "auto",
+          "spot",
+          "manual"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "smoke": {
+    "category": "smoke",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "speaker": {
+    "category": "speaker",
+    "properties": {
+      "active": {
+        "category": "active",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "volume": {
+        "category": "volume",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "mode": {
+        "category": "mode",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "stereo",
+          "mono",
+          "surround"
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "sulphur_dioxide": {
+    "category": "sulphur_dioxide",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "density": {
+        "category": "density",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "µg/m³",
+        "format": [
+          0.0,
+          100000.0
+        ]
+      },
+      "level": {
+        "category": "level",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "switcher": {
+    "category": "switcher",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "television": {
+    "category": "television",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "brightness": {
+        "category": "brightness",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "input_source": {
+        "category": "input_source",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null
+      },
+      "remote_key": {
+        "category": "remote_key",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "rewind",
+          "fast_forward",
+          "next",
+          "previous",
+          "arrow_up",
+          "arrow_down",
+          "arrow_left",
+          "arrow_right",
+          "select",
+          "back",
+          "exit",
+          "info",
+          "play",
+          "pause"
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "temperature": {
+    "category": "temperature",
+    "properties": {
+      "temperature": {
+        "category": "temperature",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "°C",
+        "format": [
+          0,
+          100
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "thermostat": {
+    "category": "thermostat",
+    "properties": {
+      "active": {
+        "category": "active",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "mode": {
+        "category": "mode",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "heat",
+          "cool",
+          "auto",
+          "manual"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "locked": {
+        "category": "locked",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "units": {
+        "category": "units",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "celsius",
+          "fahrenheit"
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "valve": {
+    "category": "valve",
+    "properties": {
+      "on": {
+        "category": "on",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "type": {
+        "category": "type",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "generic",
+          "irrigation",
+          "shower_head",
+          "water_faucet"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "duration": {
+        "category": "duration",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "ushort",
+        "unit": "s",
+        "format": [
+          0,
+          3600
+        ]
+      },
+      "remaining": {
+        "category": "remaining",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "ushort",
+        "unit": "s",
+        "format": [
+          0,
+          3600
+        ]
+      },
+      "mode": {
+        "category": "mode",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "manual",
+          "scheduled"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "volatile_organic_compounds": {
+    "category": "volatile_organic_compounds",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "density": {
+        "category": "density",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "float",
+        "unit": "µg/m³",
+        "format": [
+          0.0,
+          1000.0
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "level": {
+        "category": "level",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
+  "window_covering": {
+    "category": "window_covering",
+    "properties": {
+      "obstruction": {
+        "category": "obstruction",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "opened",
+          "closed",
+          "opening",
+          "closing",
+          "stopped"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "position": {
+        "category": "position",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "open",
+          "close",
+          "stop"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "type": {
+        "category": "type",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "curtain",
+          "blind",
+          "roller",
+          "outdoor_blind"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "percentage": {
+        "category": "percentage",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ],
+        "invalid": null,
+        "step": 1
+      },
+      "tilt": {
+        "category": "tilt",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "float",
+        "unit": "°",
+        "format": [
+          -90.0,
+          90.0
+        ]
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      }
+    }
+  }
+}

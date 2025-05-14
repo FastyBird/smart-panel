@@ -87,10 +87,3 @@ export type IDataSourceRes = z.infer<typeof DataSourceResSchema>;
 
 // STORE
 export type DataSourcesStore = Store<string, IDataSourcesStoreState, object, IDataSourcesStoreActions>;
-
-// MISC
-export type IDataSourcesEntitiesSchemas = {
-	dataSource: typeof DataSourceSchema;
-	createDataSourceReq: typeof DataSourceCreateReqSchema;
-	updateDataSourceReq: typeof DataSourceUpdateReqSchema;
-};
