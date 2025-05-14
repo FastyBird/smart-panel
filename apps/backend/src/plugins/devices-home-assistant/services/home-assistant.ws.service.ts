@@ -307,8 +307,6 @@ export class HomeAssistantWsService {
 
 			this.disconnect();
 		} else if (msg.type === 'event') {
-			this.logger.debug(`[HOME ASSISTANT][WS] Received event message: ${JSON.stringify(msg)}`);
-
 			if (
 				'event' in msg &&
 				typeof msg.event === 'object' &&
@@ -326,8 +324,6 @@ export class HomeAssistantWsService {
 					await handler.handle(event);
 				}
 			}
-		} else {
-			this.logger.debug(`[HOME ASSISTANT][WS] Received unhandled message: ${JSON.stringify(msg)}`);
 		}
 	}
 

@@ -177,8 +177,8 @@ export class ChannelsPropertiesService {
 		// Save the property
 		const raw = await repository.save(property);
 
-		if (dtoInstance.value) {
-			await this.propertyValueService.write(raw, dtoInstance.value);
+		if (typeof createDto.value !== 'undefined') {
+			await this.propertyValueService.write(raw, createDto.value);
 		}
 
 		let savedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
@@ -224,8 +224,8 @@ export class ChannelsPropertiesService {
 
 		const raw = await repository.save(property as TProperty);
 
-		if (dtoInstance.value) {
-			await this.propertyValueService.write(raw, dtoInstance.value);
+		if (typeof updateDto.value !== 'undefined') {
+			await this.propertyValueService.write(raw, updateDto.value);
 		}
 
 		let updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
