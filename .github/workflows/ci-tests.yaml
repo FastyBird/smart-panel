@@ -51,6 +51,10 @@ jobs:
         shell: "bash"
         run: "pnpm install"
 
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
+
       - name: "Run Code Linting"
         run: "pnpm --filter @fastybird/smart-panel-backend lint:js"
 
@@ -103,6 +107,10 @@ jobs:
         shell: "bash"
         run: "pnpm install"
 
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
+
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-backend test:unit"
 
@@ -149,6 +157,10 @@ jobs:
         shell: "bash"
         run: "pnpm install"
 
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
+
       - name: "Run Code Linting"
         run: "pnpm --filter @fastybird/smart-panel-admin lint:js"
 
@@ -192,6 +204,10 @@ jobs:
         shell: "bash"
         run: "pnpm install"
 
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
+
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-admin test:unit"
 
@@ -222,6 +238,9 @@ jobs:
 
       - name: "Bootstrap Dependencies"
         run: "melos bootstrap"
+
+      - name: "Build generated code"
+        run: "melos rebuild-api"
 
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
