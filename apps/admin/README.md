@@ -90,13 +90,19 @@ cd apps/admin
 pnpm install
 ```
 
-### 3️⃣ Start the Development Server
+### 3️⃣ Build generated code
+
+```shell
+pnpm generate:openapi
+```
+
+### 4️⃣ Start the Development Server
 
 ```shell
 pnpm dev
 ```
 
-### 4️⃣ Open the Admin Panel
+### 5️⃣ Open the Admin Panel
 
 The app runs on [http://localhost:3003](http://localhost:3003) by default.
 
