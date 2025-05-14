@@ -107,7 +107,6 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		DeviceExistsConstraintValidator,
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
-		PropertyValueService,
 	],
 })
 export class DevicesModule {

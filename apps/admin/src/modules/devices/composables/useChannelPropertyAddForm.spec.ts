@@ -128,6 +128,7 @@ describe('useChannelPropertyAddForm', () => {
 				enumValues: [],
 				maxValue: undefined,
 				minValue: undefined,
+				enterValue: false,
 			},
 		});
 		expect(form.formResult.value).toBe(FormResult.OK);

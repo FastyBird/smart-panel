@@ -3,7 +3,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import {
 	DevicesHomeAssistantNotFoundException,
 	DevicesHomeAssistantValidationException,
@@ -25,10 +24,7 @@ const mockDevicesService = {
 
 const mockChannelsPropertiesService = {
 	findAll: jest.fn(),
-};
-
-const mockPropertyValueService = {
-	write: jest.fn(),
+	update: jest.fn(),
 };
 
 const mockHomeAssistantMapperService = {
@@ -48,7 +44,6 @@ describe('HomeAssistantHttpService', () => {
 				{ provide: DevicesService, useValue: mockDevicesService },
 				{ provide: ChannelsPropertiesService, useValue: mockChannelsPropertiesService },
 				{ provide: MapperService, useValue: mockHomeAssistantMapperService },
-				{ provide: PropertyValueService, useValue: mockPropertyValueService },
 			],
 		}).compile();
 

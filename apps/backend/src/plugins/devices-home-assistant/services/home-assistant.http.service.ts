@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -10,7 +10,6 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
@@ -19,6 +18,7 @@ import {
 } from '../devices-home-assistant.exceptions';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantStateDto } from '../dto/home-assistant-state.dto';
+import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
@@ -45,7 +45,6 @@ export class HomeAssistantHttpService {
 		private readonly devicesService: DevicesService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly homeAssistantMapperService: MapperService,
-		private readonly propertyValueService: PropertyValueService,
 	) {}
 
 	async getDiscoveredDevice(id: string): Promise<HomeAssistantDiscoveredDeviceModel> {
@@ -246,7 +245,13 @@ export class HomeAssistantHttpService {
 							continue;
 						}
 
-						await this.propertyValueService.write(property, value);
+						await this.channelsPropertiesService.update(
+							property.id,
+							plainToInstance(UpdateHomeAssistantChannelPropertyDto, {
+								...instanceToPlain(property),
+								value,
+							}),
+						);
 					}
 				}
 
@@ -264,9 +269,12 @@ export class HomeAssistantHttpService {
 						(state) => typeof state.state === 'string' && state.state.toLowerCase() === 'unavailable',
 					);
 
-					await this.propertyValueService.write(
-						stateProperty,
-						isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
+					await this.channelsPropertiesService.update(
+						stateProperty.id,
+						plainToInstance(UpdateHomeAssistantChannelPropertyDto, {
+							...instanceToPlain(stateProperty),
+							value: isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
+						}),
 					);
 
 					this.logger.debug(

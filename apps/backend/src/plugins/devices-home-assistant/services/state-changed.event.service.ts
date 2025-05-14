@@ -1,13 +1,15 @@
+import { instanceToPlain, plainToInstance } from 'class-transformer';
+
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { EventType as DevicesModuleEventType } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { HomeAssistantDiscoveredDeviceDto } from '../dto/home-assistant-discovered-device.dto';
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
+import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
@@ -36,7 +38,6 @@ export class StateChangedEventService implements WsEventService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly homeAssistantMapperService: MapperService,
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
-		private readonly propertyValueService: PropertyValueService,
 	) {}
 
 	@OnEvent([
@@ -97,7 +98,13 @@ export class StateChangedEventService implements WsEventService {
 								continue;
 							}
 
-							await this.propertyValueService.write(property, value);
+							await this.channelsPropertiesService.update(
+								property.id,
+								plainToInstance(UpdateHomeAssistantChannelPropertyDto, {
+									...instanceToPlain(property),
+									value,
+								}),
+							);
 						}
 					}
 				})();

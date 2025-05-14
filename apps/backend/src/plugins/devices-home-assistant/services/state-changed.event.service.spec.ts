@@ -5,12 +5,14 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { instanceToPlain, plainToInstance } from 'class-transformer';
+
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
+import { UpdateHomeAssistantChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
 	HomeAssistantChannelPropertyEntity,
 	HomeAssistantDeviceEntity,
@@ -25,7 +27,6 @@ describe('StateChangedEventService', () => {
 	let service: StateChangedEventService;
 	let devicesService: jest.Mocked<DevicesService>;
 	let channelsPropertiesService: jest.Mocked<ChannelsPropertiesService>;
-	let propertyValueService: jest.Mocked<PropertyValueService>;
 	let mapperService: jest.Mocked<MapperService>;
 	let httpService: jest.Mocked<HomeAssistantHttpService>;
 
@@ -34,8 +35,7 @@ describe('StateChangedEventService', () => {
 			providers: [
 				StateChangedEventService,
 				{ provide: DevicesService, useValue: { findAll: jest.fn() } },
-				{ provide: ChannelsPropertiesService, useValue: { findAll: jest.fn() } },
-				{ provide: PropertyValueService, useValue: { write: jest.fn() } },
+				{ provide: ChannelsPropertiesService, useValue: { findAll: jest.fn(), update: jest.fn() } },
 				{ provide: MapperService, useValue: { mapFromHA: jest.fn() } },
 				{ provide: HomeAssistantHttpService, useValue: { getDiscoveredDevices: jest.fn() } },
 			],
@@ -44,7 +44,6 @@ describe('StateChangedEventService', () => {
 		service = module.get(StateChangedEventService);
 		devicesService = module.get(DevicesService);
 		channelsPropertiesService = module.get(ChannelsPropertiesService);
-		propertyValueService = module.get(PropertyValueService);
 		mapperService = module.get(MapperService);
 		httpService = module.get(HomeAssistantHttpService);
 
@@ -102,6 +101,12 @@ describe('StateChangedEventService', () => {
 
 		await jest.runAllTimersAsync(); // fast-forward debounce
 
-		expect(propertyValueService.write).toHaveBeenCalledWith(property, 25);
+		expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+			property.id,
+			plainToInstance(UpdateHomeAssistantChannelPropertyDto, {
+				...instanceToPlain(property),
+				value: 25,
+			}),
+		);
 	});
 });
