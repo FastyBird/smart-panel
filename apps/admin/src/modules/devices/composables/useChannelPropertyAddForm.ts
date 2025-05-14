@@ -122,6 +122,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		enumValues: [] as string[],
 		minValue: undefined,
 		maxValue: undefined,
+		enterValue: false,
 		value: undefined,
 	} as TForm);
 
@@ -177,6 +178,10 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 						? model.maxValue
 						: null,
 			];
+		}
+
+		if (!model.enterValue) {
+			delete model.value;
 		}
 
 		const parsedModel = (plugin.value?.schemas?.channelPropertyAddFormSchema || ChannelPropertyAddFormSchema).safeParse(model);

@@ -170,11 +170,11 @@
 			:label="t('devicesModule.fields.channelsProperties.enterValue.title')"
 			label-position="left"
 		>
-			<el-switch v-model="enterValue" />
+			<el-switch v-model="model.enterValue" />
 		</el-form-item>
 
 		<el-alert
-			v-if="enterValue"
+			v-if="model.enterValue"
 			type="warning"
 			:description="t('devicesModule.texts.channelsProperties.editValue')"
 			:closable="false"
@@ -182,7 +182,7 @@
 		/>
 
 		<el-form-item
-			v-if="enterValue"
+			v-if="model.enterValue"
 			:label="t('devicesModule.fields.channelsProperties.value.title')"
 			:prop="['value']"
 			class="mt-2"
@@ -197,7 +197,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules, vLoading } from 'element-plus';
@@ -237,8 +237,6 @@ const { t } = useI18n();
 
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
 	useChannelPropertyAddForm({ id: props.id, type: props.type, channelId: props.channel?.id });
-
-const enterValue = ref<boolean>(false);
 
 const rules = reactive<FormRules<IChannelPropertyAddForm>>({
 	channel: [{ required: true, message: t('devicesModule.fields.channelsProperties.channel.validation.required'), trigger: 'change' }],

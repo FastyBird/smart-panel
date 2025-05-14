@@ -96,8 +96,6 @@ describe('PropertyValueService', () => {
 				dataType: DataTypeType.INT,
 			} as ChannelPropertyEntity;
 
-			service['valuesMap'].set('test-property-id', null);
-
 			// @ts-expect-error Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([{ numberValue: 100 }]);
 
@@ -112,8 +110,6 @@ describe('PropertyValueService', () => {
 				id: 'test-property-id',
 				dataType: DataTypeType.STRING,
 			} as ChannelPropertyEntity;
-
-			service['valuesMap'].set('test-property-id', null);
 
 			// @ts-expect-error an Expected query to return a resolved value, mocking for test
 			influxDbService.query.mockResolvedValue([]);

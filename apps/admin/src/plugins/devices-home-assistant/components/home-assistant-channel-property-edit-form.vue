@@ -200,11 +200,11 @@
 			:label="t('devicesModule.fields.channelsProperties.enterValue.title')"
 			label-position="left"
 		>
-			<el-switch v-model="enterValue" />
+			<el-switch v-model="model.enterValue" />
 		</el-form-item>
 
 		<el-alert
-			v-if="enterValue"
+			v-if="model.enterValue"
 			type="warning"
 			:description="t('devicesModule.texts.channelsProperties.editValue')"
 			:closable="false"
@@ -212,7 +212,7 @@
 		/>
 
 		<el-form-item
-			v-if="enterValue"
+			v-if="model.enterValue"
 			:label="t('devicesModule.fields.channelsProperties.value.title')"
 			:prop="['value']"
 			class="mt-2"
@@ -227,7 +227,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
@@ -272,8 +272,6 @@ const { devices } = useDevices();
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
 	useChannelPropertyEditForm<IHomeAssistantChannelPropertyEditForm>({ property: props.property });
 const { channel } = useChannel({ id: props.property.channel });
-
-const enterValue = ref<boolean>(false);
 
 const haDeviceId = computed<IHomeAssistantDevice['haDeviceId'] | undefined>((): IHomeAssistantDevice['haDeviceId'] | undefined => {
 	const device = devices.value.find((device) => device.id === channel.value?.device);

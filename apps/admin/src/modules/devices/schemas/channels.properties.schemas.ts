@@ -21,6 +21,7 @@ export const ChannelPropertyAddFormSchema = z.object({
 		.union([z.string(), z.number()])
 		.transform((val) => (val === '' ? null : Number(val)))
 		.nullable(),
+	enterValue: z.boolean().default(false),
 	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	enumValues: z.array(z.string()),
 	minValue: z
@@ -48,6 +49,7 @@ export const ChannelPropertyEditFormSchema = z.object({
 		.union([z.string(), z.number()])
 		.transform((val) => (val === '' ? null : Number(val)))
 		.nullable(),
+	enterValue: z.boolean().default(false),
 	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
 	enumValues: z.array(z.string()),
 	minValue: z

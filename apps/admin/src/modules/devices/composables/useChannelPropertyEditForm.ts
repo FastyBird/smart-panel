@@ -132,7 +132,14 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 		label: t(`devicesModule.dataTypes.${value}`),
 	}));
 
-	const model = reactive<TForm>({ ...property, format: toRaw(property.format), enumValues, minValue, maxValue } as unknown as TForm);
+	const model = reactive<TForm>({
+		...property,
+		format: toRaw(property.format),
+		enumValues,
+		minValue,
+		maxValue,
+		enterValue: false,
+	} as unknown as TForm);
 
 	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
 
@@ -180,6 +187,10 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 			].includes(property.dataType)
 		) {
 			model.format = [model.minValue ?? null, model.maxValue ?? null];
+		}
+
+		if (!model.enterValue) {
+			delete model.value;
 		}
 
 		const parsedModel = (plugin.value?.schemas?.channelPropertyEditFormSchema || ChannelPropertyEditFormSchema).safeParse(model);

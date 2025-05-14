@@ -172,11 +172,11 @@
 			:label="t('devicesModule.fields.channelsProperties.enterValue.title')"
 			label-position="left"
 		>
-			<el-switch v-model="enterValue" />
+			<el-switch v-model="model.enterValue" />
 		</el-form-item>
 
 		<el-alert
-			v-if="enterValue"
+			v-if="model.enterValue"
 			type="warning"
 			:description="t('devicesModule.texts.channelsProperties.editValue')"
 			:closable="false"
@@ -184,7 +184,7 @@
 		/>
 
 		<el-form-item
-			v-if="enterValue"
+			v-if="model.enterValue"
 			:label="t('devicesModule.fields.channelsProperties.value.title')"
 			:prop="['value']"
 			class="mt-2"
@@ -199,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
@@ -239,8 +239,6 @@ const { t } = useI18n();
 const { categoriesOptions, channelsOptions, permissionsOptions, dataTypesOptions, formEl, model, formChanged, submit, formResult, loadingChannels } =
 	useChannelPropertyEditForm({ property: props.property });
 const { channel } = useChannel({ id: props.property.channel });
-
-const enterValue = ref<boolean>(false);
 
 watch(
 	(): FormResultType => formResult.value,

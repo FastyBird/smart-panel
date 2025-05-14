@@ -34,10 +34,14 @@ export class UniversalEntityMapperService extends EntityMapper {
 					let mappedValue: string | number | boolean | null = value as string | number | boolean | null;
 
 					if (property.dataType === DataTypeType.BOOL) {
-						mappedValue = ['on', 'true', '1'].includes(String(value).toLowerCase());
+						if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+							mappedValue = ['on', 'true', '1'].includes(String(value).toLowerCase());
+						} else {
+							mappedValue = false;
+						}
 					}
 
-					mapped.set(property.id, mappedValue as string | number | boolean | null);
+					mapped.set(property.id, mappedValue);
 				}
 			}
 
