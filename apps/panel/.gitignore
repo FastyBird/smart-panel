@@ -4,3 +4,5 @@ build
 .flutter-plugins
 .flutter-plugins-dependencies
 pubspec.lock
+
+lib/api
