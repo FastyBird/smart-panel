@@ -102,9 +102,17 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		@MessageBody() _message: CommandMessageDto,
 		@ConnectedSocket() client: Socket,
 	): Promise<boolean> {
-		client.join(EXCHANGE_ROOM);
+		try {
+			await client.join(EXCHANGE_ROOM);
 
-		return Promise.resolve(true);
+			return true;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`[WS GATEWAY] Joining exchange room failed`, { message: err.message, stack: err.stack });
+
+			return false;
+		}
 	}
 
 	@SubscribeMessage('command')
@@ -114,10 +122,10 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	): Promise<CommandResultDto> {
 		const { event, payload } = message;
 
-		this.logger.log(`[COMMAND HANDLER] Received command '${event}' from client ${client.id}`);
+		this.logger.log(`[WS GATEWAY] Received command '${event}' from client ${client.id}`);
 
 		if (!this.commandEventRegistry.has(event)) {
-			this.logger.warn(`[COMMAND HANDLER] No subscribers for event: ${event}`);
+			this.logger.warn(`[WS GATEWAY] No subscribers for event: ${event}`);
 
 			return plainToInstance(CommandResultDto, { status: 'error', message: `Event '${event}' is not supported.` });
 		}
@@ -137,7 +145,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 						} catch (error) {
 							const err = error as Error;
 
-							this.logger.error(`[COMMAND HANDLER] Error in '${name}'`, { message: err.message, stack: err.stack });
+							this.logger.error(`[WS GATEWAY] Error in '${name}'`, { message: err.message, stack: err.stack });
 
 							if (error instanceof WebsocketNotAllowedException) {
 								return { handler: name, success: false, reason: error.message };
@@ -153,7 +161,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[COMMAND HANDLER] Error handling event: ${event}`, { message: err.message, stack: err.stack });
+			this.logger.error(`[WS GATEWAY] Error handling event: ${event}`, { message: err.message, stack: err.stack });
 
 			return plainToInstance(CommandResultDto, { status: 'error', message: `Failed to handle event: ${event}` });
 		}
