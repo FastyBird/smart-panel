@@ -28,7 +28,7 @@ describe('Session Transformers', (): void => {
 		it('should throw AuthValidationException for invalid token pair response', (): void => {
 			const mockInvalidResponse = {
 				access_token: 'mockAccessToken',
-				refresh_token: '', // Invalid because refresh token is empty
+				refresh_token: '', // Invalid because the refresh token is empty
 				expiration: null, // Invalid expiration
 				type: 'Bearer',
 			};

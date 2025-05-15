@@ -1,7 +1,7 @@
 <template>
 	<el-link
 		:type="props.filters.devices.includes(channel.device) ? 'danger' : undefined"
-		:underline="false"
+		underline="never"
 		class="font-400!"
 		@click.stop="emit('filter-by', channel.device, !props.filters.devices.includes(channel.device))"
 	>

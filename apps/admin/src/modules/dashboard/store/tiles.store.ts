@@ -25,11 +25,13 @@ import {
 import type {
 	ITile,
 	ITileCreateReq,
+	ITileRes,
 	ITileUpdateReq,
 	ITilesAddActionPayload,
 	ITilesEditActionPayload,
 	ITilesFetchActionPayload,
 	ITilesGetActionPayload,
+	ITilesOnEventActionPayload,
 	ITilesRemoveActionPayload,
 	ITilesSaveActionPayload,
 	ITilesSetActionPayload,
@@ -93,6 +95,16 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 	const pendingGetPromises: Record<ITile['id'], Promise<ITile>> = {};
 
 	const pendingFetchPromises: Record<string, Promise<ITile[]>> = {};
+
+	const onEvent = (payload: ITilesOnEventActionPayload): ITile => {
+		const plugin = getPluginByType(payload.type);
+
+		return set({
+			id: payload.id,
+			parent: payload.parent,
+			data: transformTileResponse(payload.data as unknown as ITileRes, plugin?.schemas?.tileSchema || TileSchema),
+		});
+	};
 
 	const set = (payload: ITilesSetActionPayload): ITile => {
 		const plugin = getPluginByType(payload.data.type);
@@ -328,7 +340,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				return transformed;
 			}
 
-			// Record could not be created on api, we have to remove it from database
+			// Record could not be created on api, we have to remove it from a database
 			delete data.value[parsedNewItem.data.id];
 
 			let errorReason: string | null = 'Failed to create tile.';
@@ -405,7 +417,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				return transformed;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get({ id: payload.id, parent: payload.parent });
 
 			let errorReason: string | null = 'Failed to update tile.';
@@ -506,7 +518,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				return true;
 			}
 
-			// Deleting record on api failed, we need to refresh record
+			// Deleting record on api failed, we need to refresh the record
 			await get({ id: payload.id, parent: payload.parent });
 
 			let errorReason: string | null = 'Remove tile failed.';
@@ -547,6 +559,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		findAll,
 		findForParent,
 		findById,
+		onEvent,
 		set,
 		unset,
 		get,

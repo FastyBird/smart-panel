@@ -13,6 +13,7 @@ import {
 	ChannelsPropertiesEditActionPayloadSchema,
 	ChannelsPropertiesFetchActionPayloadSchema,
 	ChannelsPropertiesGetActionPayloadSchema,
+	ChannelsPropertiesOnEventActionPayloadSchema,
 	ChannelsPropertiesRemoveActionPayloadSchema,
 	ChannelsPropertiesSaveActionPayloadSchema,
 	ChannelsPropertiesSetActionPayloadSchema,
@@ -30,6 +31,8 @@ export type IChannelsPropertiesStateSemaphore = z.infer<typeof ChannelsPropertie
 
 // STORE ACTIONS
 // =============
+
+export type IChannelsPropertiesOnEventActionPayload = z.infer<typeof ChannelsPropertiesOnEventActionPayloadSchema>;
 
 export type IChannelsPropertiesSetActionPayload = z.infer<typeof ChannelsPropertiesSetActionPayloadSchema>;
 
@@ -65,6 +68,7 @@ export interface IChannelsPropertiesStoreActions {
 	findForChannel: (channelId: IChannel['id']) => IChannelProperty[];
 	findAll: () => IChannelProperty[];
 	// Actions
+	onEvent: (payload: IChannelsPropertiesOnEventActionPayload) => IChannelProperty;
 	set: (payload: IChannelsPropertiesSetActionPayload) => IChannelProperty;
 	unset: (payload: IChannelsPropertiesUnsetActionPayload) => void;
 	get: (payload: IChannelsPropertiesGetActionPayload) => Promise<IChannelProperty>;

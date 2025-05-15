@@ -170,7 +170,7 @@
 			<template #default="scope">
 				<el-link
 					:type="innerFilters.categories.includes(scope.row.category) ? 'danger' : undefined"
-					:underline="false"
+					underline="never"
 					class="font-400!"
 					@click.stop="onFilterBy('category', scope.row.category, !innerFilters.categories.includes(scope.row.category))"
 				>

@@ -81,7 +81,6 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitc
 
 import { Icon } from '@iconify/vue';
 
-import { RouteNames } from '../../app.constants';
 import { useDarkMode } from '../composables/useDarkMode';
 import { injectAccountManager } from '../services/account-manager';
 
@@ -160,9 +159,11 @@ const onToggleMenu = (): void => {
 };
 
 const onSignOut = (): void => {
-	accountManager?.signOut();
+	if (accountManager) {
+		accountManager.signOut();
 
-	router.push({ name: RouteNames.ROOT });
+		router.push({ name: accountManager.routes.signIn });
+	}
 };
 
 const onLock = (): void => {

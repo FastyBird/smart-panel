@@ -33,9 +33,9 @@ export class WsAuthService {
 
 	async validateClient(client: Socket): Promise<boolean> {
 		// First, try authenticating with JWT
-		const token = this.extractTokenFromHeader(client.handshake.headers);
+		const token: unknown = client.handshake.auth.token ?? undefined;
 
-		if (token && (await this.validateJwt(client, token))) {
+		if (typeof token === 'string' && (await this.validateJwt(client, token))) {
 			return true;
 		}
 

@@ -10,6 +10,8 @@ import { SystemApiException, SystemValidationException } from '../system.excepti
 import { SystemInfoSchema } from './system-info.store.schemas';
 import type {
 	ISystemInfo,
+	ISystemInfoOnEventActionPayload,
+	ISystemInfoRes,
 	ISystemInfoSetActionPayload,
 	ISystemInfoStateSemaphore,
 	ISystemInfoStoreActions,
@@ -36,6 +38,12 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 	const getting = (): boolean => semaphore.value.getting;
 
 	let pendingGetPromises: Promise<ISystemInfo> | null = null;
+
+	const onEvent = (payload: ISystemInfoOnEventActionPayload): ISystemInfo => {
+		return set({
+			data: transformSystemInfoResponse(payload.data as unknown as ISystemInfoRes),
+		});
+	};
 
 	const set = (payload: ISystemInfoSetActionPayload): ISystemInfo => {
 		const parsedSystemInfo = SystemInfoSchema.safeParse(payload.data);
@@ -99,6 +107,7 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 		data,
 		firstLoadFinished,
 		getting,
+		onEvent,
 		set,
 		get,
 	};

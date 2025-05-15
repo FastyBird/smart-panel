@@ -53,7 +53,7 @@
 					</el-descriptions-item>
 					<el-descriptions-item
 						v-else
-						:label="t('systemModule.systemInfo.cpuTemperature')"
+						:label="t('systemModule.systemInfo.gpuTemperature')"
 					>
 						{{ t('application.value.notAvailable') }}
 					</el-descriptions-item>

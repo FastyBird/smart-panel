@@ -130,10 +130,10 @@ describe('Cards Store', () => {
 
 	it('should set a card manually', () => {
 		const dummy: ICardsSetActionPayload = {
-			pageId,
 			id: cardId,
 			data: {
 				title: 'Card title',
+				page: pageId,
 				icon: null,
 				order: 0,
 				createdAt: new Date(),
@@ -148,10 +148,10 @@ describe('Cards Store', () => {
 
 	it('should unset cards for a page', () => {
 		const dummy: ICardsSetActionPayload = {
-			pageId,
 			id: cardId,
 			data: {
 				title: 'Card title',
+				page: pageId,
 				icon: null,
 				order: 0,
 				createdAt: new Date(),

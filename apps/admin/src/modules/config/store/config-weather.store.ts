@@ -14,6 +14,8 @@ import type {
 	ConfigWeatherStoreSetup,
 	IConfigWeather,
 	IConfigWeatherEditActionPayload,
+	IConfigWeatherOnEventActionPayload,
+	IConfigWeatherRes,
 	IConfigWeatherSetActionPayload,
 	IConfigWeatherStateSemaphore,
 	IConfigWeatherStoreActions,
@@ -42,6 +44,12 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 		const getting = (): boolean => semaphore.value.getting;
 
 		let pendingGetPromises: Promise<IConfigWeather> | null = null;
+
+		const onEvent = (payload: IConfigWeatherOnEventActionPayload): IConfigWeather => {
+			return set({
+				data: transformConfigWeatherResponse(payload.data as unknown as IConfigWeatherRes),
+			});
+		};
 
 		const set = (payload: IConfigWeatherSetActionPayload): IConfigWeather => {
 			const parsedConfigWeather = ConfigWeatherSchema.safeParse({ ...payload.data, type: ConfigModuleWeatherType.weather });
@@ -154,7 +162,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 				return data.value;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get();
 
 			let errorReason: string | null = 'Failed to update weather config.';
@@ -172,6 +180,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 			data,
 			firstLoadFinished,
 			getting,
+			onEvent,
 			set,
 			get,
 			edit,

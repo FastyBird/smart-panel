@@ -4,7 +4,7 @@ import type { Store } from 'pinia';
 
 import { z } from 'zod';
 
-import type { ChannelSchema } from './channels.store.schemas';
+import { type ChannelSchema, ChannelsOnEventActionPayloadSchema } from './channels.store.schemas';
 import {
 	ChannelCreateReqSchema,
 	ChannelResSchema,
@@ -30,6 +30,8 @@ export type IChannelsStateSemaphore = z.infer<typeof ChannelsStateSemaphoreSchem
 
 // STORE ACTIONS
 // =============
+
+export type IChannelsOnEventActionPayload = z.infer<typeof ChannelsOnEventActionPayloadSchema>;
 
 export type IChannelsSetActionPayload = z.infer<typeof ChannelsSetActionPayloadSchema>;
 
@@ -65,6 +67,7 @@ export interface IChannelsStoreActions {
 	findForDevice: (deviceId: IDevice['id']) => IChannel[];
 	findAll: () => IChannel[];
 	// Actions
+	onEvent: (payload: IChannelsOnEventActionPayload) => IChannel;
 	set: (payload: IChannelsSetActionPayload) => IChannel;
 	unset: (payload: IChannelsUnsetActionPayload) => void;
 	get: (payload: IChannelsGetActionPayload) => Promise<IChannel>;

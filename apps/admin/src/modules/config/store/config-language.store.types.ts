@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import {
 	ConfigLanguageEditActionPayloadSchema,
+	ConfigLanguageOnEventActionPayloadSchema,
 	ConfigLanguageResSchema,
 	ConfigLanguageSchema,
 	ConfigLanguageSetActionPayloadSchema,
@@ -22,6 +23,8 @@ export type IConfigLanguageStateSemaphore = z.infer<typeof ConfigLanguageStateSe
 
 // STORE ACTIONS
 // =============
+
+export type IConfigLanguageOnEventActionPayload = z.infer<typeof ConfigLanguageOnEventActionPayloadSchema>;
 
 export type IConfigLanguageSetActionPayload = z.infer<typeof ConfigLanguageSetActionPayloadSchema>;
 
@@ -41,6 +44,7 @@ export interface IConfigLanguageStoreActions {
 	firstLoadFinished: () => boolean;
 	getting: () => boolean;
 	// Actions
+	onEvent: (payload: IConfigLanguageOnEventActionPayload) => IConfigLanguage;
 	set: (payload: IConfigLanguageSetActionPayload) => IConfigLanguage;
 	get: () => Promise<IConfigLanguage>;
 	edit: (payload: IConfigLanguageEditActionPayload) => Promise<IConfigLanguage>;

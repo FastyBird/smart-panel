@@ -11,9 +11,11 @@ import { ChannelControlSchema, ChannelsControlsAddActionPayloadSchema } from './
 import type {
 	ChannelsControlsStoreSetup,
 	IChannelControl,
+	IChannelControlRes,
 	IChannelsControlsAddActionPayload,
 	IChannelsControlsFetchActionPayload,
 	IChannelsControlsGetActionPayload,
+	IChannelsControlsOnEventActionPayload,
 	IChannelsControlsRemoveActionPayload,
 	IChannelsControlsSaveActionPayload,
 	IChannelsControlsSetActionPayload,
@@ -63,30 +65,37 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 
 		const pendingFetchPromises: Record<string, Promise<IChannelControl[]>> = {};
 
+		const onEvent = (payload: IChannelsControlsOnEventActionPayload): IChannelControl => {
+			return set({
+				id: payload.id,
+				data: transformChannelControlResponse(payload.data as unknown as IChannelControlRes),
+			});
+		};
+
 		const set = (payload: IChannelsControlsSetActionPayload): IChannelControl => {
 			if (payload.id && data.value && payload.id in data.value) {
-				const parsedChannelControl = ChannelControlSchema.safeParse({ ...data.value[payload.id], ...payload.data });
+				const parsed = ChannelControlSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
-				if (!parsedChannelControl.success) {
-					console.error('Schema validation failed with:', parsedChannelControl.error);
+				if (!parsed.success) {
+					console.error('Schema validation failed with:', parsed.error);
 
 					throw new DevicesValidationException('Failed to insert channel control.');
 				}
 
-				return (data.value[parsedChannelControl.data.id] = parsedChannelControl.data);
+				return (data.value[parsed.data.id] = parsed.data);
 			}
 
-			const parsedChannelControl = ChannelControlSchema.safeParse({ ...payload.data, id: payload.id, channel: payload.channelId });
+			const parsed = ChannelControlSchema.safeParse({ ...payload.data, id: payload.id });
 
-			if (!parsedChannelControl.success) {
-				console.error('Schema validation failed with:', parsedChannelControl.error);
+			if (!parsed.success) {
+				console.error('Schema validation failed with:', parsed.error);
 
 				throw new DevicesValidationException('Failed to insert channel control.');
 			}
 
 			data.value = data.value ?? {};
 
-			return (data.value[parsedChannelControl.data.id] = parsedChannelControl.data);
+			return (data.value[parsed.data.id] = parsed.data);
 		};
 
 		const unset = (payload: IChannelsControlsUnsetActionPayload): void => {
@@ -280,7 +289,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 					return control;
 				}
 
-				// Record could not be created on api, we have to remove it from database
+				// Record could not be created on api, we have to remove it from a database
 				delete data.value[parsedNewChannelControl.data.id];
 
 				let errorReason: string | null = 'Failed to create channel control.';
@@ -374,7 +383,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 					return true;
 				}
 
-				// Deleting record on api failed, we need to refresh record
+				// Deleting record on api failed, we need to refresh the record
 				await get({ id: payload.id, channelId: payload.channelId });
 
 				let errorReason: string | null = 'Remove channel control failed.';
@@ -399,6 +408,7 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 			findAll,
 			findForChannel,
 			findById,
+			onEvent,
 			set,
 			unset,
 			get,

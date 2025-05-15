@@ -21,11 +21,13 @@ import type {
 	DataSourcesStoreSetup,
 	IDataSource,
 	IDataSourceCreateReq,
+	IDataSourceRes,
 	IDataSourceUpdateReq,
 	IDataSourcesAddActionPayload,
 	IDataSourcesEditActionPayload,
 	IDataSourcesFetchActionPayload,
 	IDataSourcesGetActionPayload,
+	IDataSourcesOnEventActionPayload,
 	IDataSourcesRemoveActionPayload,
 	IDataSourcesSaveActionPayload,
 	IDataSourcesSetActionPayload,
@@ -87,6 +89,16 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 		const pendingGetPromises: Record<IDataSource['id'], Promise<IDataSource>> = {};
 
 		const pendingFetchPromises: Record<string, Promise<IDataSource[]>> = {};
+
+		const onEvent = (payload: IDataSourcesOnEventActionPayload): IDataSource => {
+			const plugin = getPluginByType(payload.type);
+
+			return set({
+				id: payload.id,
+				parent: payload.parent,
+				data: transformDataSourceResponse(payload.data as unknown as IDataSourceRes, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+			});
+		};
 
 		const set = (payload: IDataSourcesSetActionPayload): IDataSource => {
 			const plugin = getPluginByType(payload.data.type);
@@ -319,7 +331,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					return transformed;
 				}
 
-				// Record could not be created on api, we have to remove it from database
+				// Record could not be created on api, we have to remove it from a database
 				delete data.value[parsedNewItem.data.id];
 
 				let errorReason: string | null = 'Failed to create data source.';
@@ -397,7 +409,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					return transformed;
 				}
 
-				// Updating record on api failed, we need to refresh record
+				// Updating the record on api failed, we need to refresh the record
 				await get({ id: payload.id, parent: payload.parent });
 
 				let errorReason: string | null = 'Failed to update data source.';
@@ -493,7 +505,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					return true;
 				}
 
-				// Deleting record on api failed, we need to refresh record
+				// Deleting record on api failed, we need to refresh the record
 				await get({ id: payload.id, parent: payload.parent });
 
 				let errorReason: string | null = 'Remove data source failed.';
@@ -518,6 +530,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			findAll,
 			findForParent,
 			findById,
+			onEvent,
 			set,
 			unset,
 			get,

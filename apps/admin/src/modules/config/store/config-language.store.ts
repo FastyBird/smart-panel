@@ -14,6 +14,8 @@ import type {
 	ConfigLanguageStoreSetup,
 	IConfigLanguage,
 	IConfigLanguageEditActionPayload,
+	IConfigLanguageOnEventActionPayload,
+	IConfigLanguageRes,
 	IConfigLanguageSetActionPayload,
 	IConfigLanguageStateSemaphore,
 	IConfigLanguageStoreActions,
@@ -42,6 +44,12 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 		const getting = (): boolean => semaphore.value.getting;
 
 		let pendingGetPromises: Promise<IConfigLanguage> | null = null;
+
+		const onEvent = (payload: IConfigLanguageOnEventActionPayload): IConfigLanguage => {
+			return set({
+				data: transformConfigLanguageResponse(payload.data as unknown as IConfigLanguageRes),
+			});
+		};
 
 		const set = (payload: IConfigLanguageSetActionPayload): IConfigLanguage => {
 			const parsedConfigLanguage = ConfigLanguageSchema.safeParse({ ...payload.data, type: ConfigModuleLanguageType.language });
@@ -154,7 +162,7 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 				return data.value;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get();
 
 			let errorReason: string | null = 'Failed to update language config.';
@@ -172,6 +180,7 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 			data,
 			firstLoadFinished,
 			getting,
+			onEvent,
 			set,
 			get,
 			edit,

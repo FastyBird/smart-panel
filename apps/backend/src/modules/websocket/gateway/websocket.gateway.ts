@@ -22,7 +22,7 @@ import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandResultDto } from '../dto/command-result.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
-import { CLIENT_DEFAULT_ROOM, DISPLAY_INTERNAL_ROOM } from '../websocket.constants';
+import { CLIENT_DEFAULT_ROOM, DISPLAY_INTERNAL_ROOM, EXCHANGE_ROOM } from '../websocket.constants';
 import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 interface ClientData {
@@ -97,6 +97,24 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		this.logger.log(`[WS GATEWAY] Client disconnected: ${client.id}`);
 	}
 
+	@SubscribeMessage('subscribe-exchange')
+	async handleSubscribeExchange(
+		@MessageBody() _message: CommandMessageDto,
+		@ConnectedSocket() client: Socket,
+	): Promise<boolean> {
+		try {
+			await client.join(EXCHANGE_ROOM);
+
+			return true;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`[WS GATEWAY] Joining exchange room failed`, { message: err.message, stack: err.stack });
+
+			return false;
+		}
+	}
+
 	@SubscribeMessage('command')
 	async handleCommand(
 		@MessageBody() message: CommandMessageDto,
@@ -104,10 +122,10 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	): Promise<CommandResultDto> {
 		const { event, payload } = message;
 
-		this.logger.log(`[COMMAND HANDLER] Received command '${event}' from client ${client.id}`);
+		this.logger.log(`[WS GATEWAY] Received command '${event}' from client ${client.id}`);
 
 		if (!this.commandEventRegistry.has(event)) {
-			this.logger.warn(`[COMMAND HANDLER] No subscribers for event: ${event}`);
+			this.logger.warn(`[WS GATEWAY] No subscribers for event: ${event}`);
 
 			return plainToInstance(CommandResultDto, { status: 'error', message: `Event '${event}' is not supported.` });
 		}
@@ -127,7 +145,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 						} catch (error) {
 							const err = error as Error;
 
-							this.logger.error(`[COMMAND HANDLER] Error in '${name}'`, { message: err.message, stack: err.stack });
+							this.logger.error(`[WS GATEWAY] Error in '${name}'`, { message: err.message, stack: err.stack });
 
 							if (error instanceof WebsocketNotAllowedException) {
 								return { handler: name, success: false, reason: error.message };
@@ -143,7 +161,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error(`[COMMAND HANDLER] Error handling event: ${event}`, { message: err.message, stack: err.stack });
+			this.logger.error(`[WS GATEWAY] Error handling event: ${event}`, { message: err.message, stack: err.stack });
 
 			return plainToInstance(CommandResultDto, { status: 'error', message: `Failed to handle event: ${event}` });
 		}
@@ -195,6 +213,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		this.logger.debug(`[WS GATEWAY] Emitting event bus message: ${JSON.stringify(message)}`);
 
 		this.server.to(DISPLAY_INTERNAL_ROOM).emit('event', message);
+		this.server.to(EXCHANGE_ROOM).emit('event', message);
 	}
 
 	private transformPayload(payload: Record<string, any>): Record<string, any> {

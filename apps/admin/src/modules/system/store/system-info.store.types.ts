@@ -4,7 +4,13 @@ import type { Store } from 'pinia';
 
 import { z } from 'zod';
 
-import { SystemInfoResSchema, SystemInfoSchema, SystemInfoSetActionPayloadSchema, SystemInfoStateSemaphoreSchema } from './system-info.store.schemas';
+import {
+	SystemInfoOnEventActionPayloadSchema,
+	SystemInfoResSchema,
+	SystemInfoSchema,
+	SystemInfoSetActionPayloadSchema,
+	SystemInfoStateSemaphoreSchema,
+} from './system-info.store.schemas';
 
 // STORE STATE
 // ===========
@@ -15,6 +21,8 @@ export type ISystemInfoStateSemaphore = z.infer<typeof SystemInfoStateSemaphoreS
 
 // STORE ACTIONS
 // =============
+
+export type ISystemInfoOnEventActionPayload = z.infer<typeof SystemInfoOnEventActionPayloadSchema>;
 
 export type ISystemInfoSetActionPayload = z.infer<typeof SystemInfoSetActionPayloadSchema>;
 
@@ -32,6 +40,7 @@ export interface ISystemInfoStoreActions {
 	firstLoadFinished: () => boolean;
 	getting: () => boolean;
 	// Actions
+	onEvent: (payload: ISystemInfoOnEventActionPayload) => ISystemInfo;
 	set: (payload: ISystemInfoSetActionPayload) => ISystemInfo;
 	get: () => Promise<ISystemInfo>;
 }

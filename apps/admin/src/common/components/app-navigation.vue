@@ -95,7 +95,6 @@ import { ElIcon, ElMenu, ElMenuItem, ElMenuItemGroup, ElScrollbar, ElSubMenu, us
 
 import { Icon } from '@iconify/vue';
 
-import { RouteNames } from '../../app.constants';
 import { useBreakpoints } from '../composables/useBreakpoints';
 import { useMenu } from '../composables/useMenu';
 import { injectAccountManager } from '../services/account-manager';
@@ -144,9 +143,11 @@ const activeIndex = computed<string | undefined>((): string | undefined => {
 });
 
 const onSignOut = (): void => {
-	accountManager?.signOut();
+	if (accountManager) {
+		accountManager.signOut();
 
-	router.push({ name: RouteNames.ROOT });
+		router.push({ name: accountManager.routes.signIn });
+	}
 };
 </script>
 

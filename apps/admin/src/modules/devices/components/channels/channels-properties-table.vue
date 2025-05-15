@@ -118,7 +118,7 @@
 					<el-link
 						v-if="props.withFilters"
 						:type="innerFilters.categories.includes(scope.row.category) ? 'danger' : undefined"
-						:underline="false"
+						underline="never"
 						class="font-400! block! leading-4"
 						@click.stop="onFilterBy('category', scope.row.category, !innerFilters.categories.includes(scope.row.category))"
 					>
@@ -146,7 +146,7 @@
 					<el-link
 						v-if="props.withFilters"
 						:type="innerFilters.categories.includes(scope.row.category) ? 'danger' : undefined"
-						:underline="false"
+						underline="never"
 						class="font-400!"
 						@click.stop="onFilterBy('category', scope.row.category, !innerFilters.categories.includes(scope.row.category))"
 					>
@@ -204,7 +204,7 @@
 							v-for="(permission, index) of scope.row.permissions"
 							:key="`filter-${index}`"
 							:type="innerFilters.permissions.includes(permission) ? 'danger' : undefined"
-							:underline="false"
+							underline="never"
 							@click.stop="onFilterBy('permission', permission, !innerFilters.permissions.includes(permission))"
 						>
 							<el-icon class="el-icon--left">
@@ -238,7 +238,7 @@
 			prop="dataType"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:min-width="150"
+			:min-width="180"
 		>
 			<template #default="scope">
 				<channels-properties-table-column-data-type

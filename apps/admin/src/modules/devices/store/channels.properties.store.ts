@@ -21,11 +21,13 @@ import type {
 	ChannelsPropertiesStoreSetup,
 	IChannelProperty,
 	IChannelPropertyCreateReq,
+	IChannelPropertyRes,
 	IChannelPropertyUpdateReq,
 	IChannelsPropertiesAddActionPayload,
 	IChannelsPropertiesEditActionPayload,
 	IChannelsPropertiesFetchActionPayload,
 	IChannelsPropertiesGetActionPayload,
+	IChannelsPropertiesOnEventActionPayload,
 	IChannelsPropertiesRemoveActionPayload,
 	IChannelsPropertiesSaveActionPayload,
 	IChannelsPropertiesSetActionPayload,
@@ -80,6 +82,18 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 		const pendingGetPromises: Record<string, Promise<IChannelProperty>> = {};
 
 		const pendingFetchPromises: Record<string, Promise<IChannelProperty[]>> = {};
+
+		const onEvent = (payload: IChannelsPropertiesOnEventActionPayload): IChannelProperty => {
+			const plugin = getPluginByType(payload.type);
+
+			return set({
+				id: payload.id,
+				data: transformChannelPropertyResponse(
+					payload.data as unknown as IChannelPropertyRes,
+					plugin?.schemas?.channelPropertySchema || ChannelPropertySchema
+				),
+			});
+		};
 
 		const set = (payload: IChannelsPropertiesSetActionPayload): IChannelProperty => {
 			const plugin = getPluginByType(payload.data.type);
@@ -311,7 +325,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					return transformed;
 				}
 
-				// Record could not be created on api, we have to remove it from database
+				// Record could not be created on api, we have to remove it from a database
 				delete data.value[parsedNewItem.data.id];
 
 				let errorReason: string | null = 'Failed to create channel property.';
@@ -393,7 +407,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					return transformed;
 				}
 
-				// Updating record on api failed, we need to refresh record
+				// Updating the record on api failed, we need to refresh the record
 				await get({ id: payload.id, channelId: payload.channelId });
 
 				let errorReason: string | null = 'Failed to update channel property.';
@@ -494,7 +508,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 					return true;
 				}
 
-				// Deleting record on api failed, we need to refresh record
+				// Deleting record on api failed, we need to refresh the record
 				await get({ id: payload.id, channelId: payload.channelId });
 
 				let errorReason: string | null = 'Remove property failed.';
@@ -519,6 +533,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			findAll,
 			findForChannel,
 			findById,
+			onEvent,
 			set,
 			unset,
 			get,

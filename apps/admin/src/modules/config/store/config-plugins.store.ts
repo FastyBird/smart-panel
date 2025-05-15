@@ -14,9 +14,11 @@ import { ConfigPluginSchema, ConfigPluginUpdateReqSchema, ConfigPluginsEditActio
 import type {
 	ConfigPluginsStoreSetup,
 	IConfigPlugin,
+	IConfigPluginRes,
 	IConfigPluginUpdateReq,
 	IConfigPluginsEditActionPayload,
 	IConfigPluginsGetActionPayload,
+	IConfigPluginsOnEventActionPayload,
 	IConfigPluginsSetActionPayload,
 	IConfigPluginsStateSemaphore,
 	IConfigPluginsStoreActions,
@@ -45,6 +47,14 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 		const updating = (plugin: IConfigPlugin['type']): boolean => semaphore.value.updating.includes(plugin);
 
 		const pendingGetPromises: Record<IConfigPlugin['type'], Promise<IConfigPlugin>> = {};
+
+		const onEvent = (payload: IConfigPluginsOnEventActionPayload): IConfigPlugin => {
+			const plugin = getPluginByType(payload.type);
+
+			return set({
+				data: transformConfigPluginResponse(payload.data as unknown as IConfigPluginRes, plugin?.schemas?.pluginConfigSchema || ConfigPluginSchema),
+			});
+		};
 
 		const set = (payload: IConfigPluginsSetActionPayload): IConfigPlugin => {
 			const plugin = getPluginByType(payload.data.type);
@@ -188,7 +198,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				return transformed;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get({ type: payload.data.type });
 
 			let errorReason: string | null = 'Failed to update plugin config.';
@@ -205,6 +215,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			data,
 			getting,
 			updating,
+			onEvent,
 			set,
 			get,
 			edit,

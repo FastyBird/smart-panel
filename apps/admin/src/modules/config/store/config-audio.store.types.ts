@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import {
 	ConfigAudioEditActionPayloadSchema,
+	ConfigAudioOnEventActionPayloadSchema,
 	ConfigAudioResSchema,
 	ConfigAudioSchema,
 	ConfigAudioSetActionPayloadSchema,
@@ -22,6 +23,8 @@ export type IConfigAudioStateSemaphore = z.infer<typeof ConfigAudioStateSemaphor
 
 // STORE ACTIONS
 // =============
+
+export type IConfigAudioOnEventActionPayload = z.infer<typeof ConfigAudioOnEventActionPayloadSchema>;
 
 export type IConfigAudioSetActionPayload = z.infer<typeof ConfigAudioSetActionPayloadSchema>;
 
@@ -41,6 +44,7 @@ export interface IConfigAudioStoreActions {
 	firstLoadFinished: () => boolean;
 	getting: () => boolean;
 	// Actions
+	onEvent: (payload: IConfigAudioOnEventActionPayload) => IConfigAudio;
 	set: (payload: IConfigAudioSetActionPayload) => IConfigAudio;
 	get: () => Promise<IConfigAudio>;
 	edit: (payload: IConfigAudioEditActionPayload) => Promise<IConfigAudio>;

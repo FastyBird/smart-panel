@@ -21,6 +21,10 @@ export const ThrottleStatusStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const ThrottleStatusOnEventActionPayloadSchema = z.object({
+	data: z.object({}),
+});
+
 export const ThrottleStatusSetActionPayloadSchema = z.object({
 	data: z.object({
 		undervoltage: z.boolean(),

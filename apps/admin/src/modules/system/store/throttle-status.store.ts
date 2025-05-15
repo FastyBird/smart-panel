@@ -10,6 +10,8 @@ import { SystemApiException, SystemValidationException } from '../system.excepti
 import { ThrottleStatusSchema } from './throttle-status.store.schemas';
 import type {
 	IThrottleStatus,
+	IThrottleStatusOnEventActionPayload,
+	IThrottleStatusRes,
 	IThrottleStatusSetActionPayload,
 	IThrottleStatusStateSemaphore,
 	IThrottleStatusStoreActions,
@@ -37,7 +39,13 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 
 		const getting = (): boolean => semaphore.value.getting;
 
-		let pendingGetPromises: Promise<IThrottleStatus> | null = null;
+		let pendingGetPromises: Promise<IThrottleStatus | null> | null = null;
+
+		const onEvent = (payload: IThrottleStatusOnEventActionPayload): IThrottleStatus => {
+			return set({
+				data: transformThrottleStatusResponse(payload.data as unknown as IThrottleStatusRes),
+			});
+		};
 
 		const set = (payload: IThrottleStatusSetActionPayload): IThrottleStatus => {
 			const parsedThrottleStatus = ThrottleStatusSchema.safeParse(payload.data);
@@ -53,12 +61,12 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 			return (data.value = parsedThrottleStatus.data);
 		};
 
-		const get = async (): Promise<IThrottleStatus> => {
+		const get = async (): Promise<IThrottleStatus | null> => {
 			if (pendingGetPromises) {
 				return pendingGetPromises;
 			}
 
-			const fetchPromise = (async (): Promise<IThrottleStatus> => {
+			const fetchPromise = (async (): Promise<IThrottleStatus | null> => {
 				if (semaphore.value.getting) {
 					throw new SystemApiException('Already getting throttle status.');
 				}
@@ -75,6 +83,10 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 					data.value = transformThrottleStatusResponse(responseData.data);
 
 					return data.value;
+				}
+
+				if (response.status === 400) {
+					return null;
 				}
 
 				let errorReason: string | null = 'Failed to fetch throttle status.';
@@ -101,6 +113,7 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 			data,
 			firstLoadFinished,
 			getting,
+			onEvent,
 			set,
 			get,
 		};

@@ -24,6 +24,10 @@ export const ConfigAudioStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const ConfigAudioOnEventActionPayloadSchema = z.object({
+	data: z.object({}),
+});
+
 export const ConfigAudioSetActionPayloadSchema = z.object({
 	data: z.object({
 		speaker: z.boolean(),

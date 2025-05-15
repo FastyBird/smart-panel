@@ -16,6 +16,12 @@ export interface IAccountManager {
 	signOut: () => Promise<boolean>;
 	lock?: () => Promise<boolean>;
 	canAccess: (resource: string, action: string) => Promise<boolean>;
+	routes: {
+		signIn: string;
+		signUp: string;
+		lock?: string;
+		unlock?: string;
+	};
 }
 
 export type StoreInjectionKey<Id extends string = string, S extends StateTree = object, G = object, A = object> = InjectionKey<Store<Id, S, G, A>>;

@@ -27,10 +27,12 @@ import { CardSchema, CardsAddActionPayloadSchema, CardsEditActionPayloadSchema }
 import type {
 	CardsStoreSetup,
 	ICard,
+	ICardRes,
 	ICardsAddActionPayload,
 	ICardsEditActionPayload,
 	ICardsFetchActionPayload,
 	ICardsGetActionPayload,
+	ICardsOnEventActionPayload,
 	ICardsRemoveActionPayload,
 	ICardsSaveActionPayload,
 	ICardsSetActionPayload,
@@ -82,30 +84,37 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 	const pendingFetchPromises: Record<string, Promise<ICard[]>> = {};
 
+	const onEvent = (payload: ICardsOnEventActionPayload): ICard => {
+		return set({
+			id: payload.id,
+			data: transformCardResponse(payload.data as unknown as ICardRes),
+		});
+	};
+
 	const set = (payload: ICardsSetActionPayload): ICard => {
 		if (payload.id && data.value && payload.id in data.value) {
-			const parsedCard = CardSchema.safeParse({ ...data.value[payload.id], ...payload.data });
+			const parsed = CardSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
-			if (!parsedCard.success) {
-				console.error('Schema validation failed with:', parsedCard.error);
+			if (!parsed.success) {
+				console.error('Schema validation failed with:', parsed.error);
 
 				throw new DashboardValidationException('Failed to insert card.');
 			}
 
-			return (data.value[parsedCard.data.id] = parsedCard.data);
+			return (data.value[parsed.data.id] = parsed.data);
 		}
 
-		const parsedCard = CardSchema.safeParse({ ...payload.data, id: payload.id, page: payload.pageId });
+		const parsed = CardSchema.safeParse({ ...payload.data, id: payload.id });
 
-		if (!parsedCard.success) {
-			console.error('Schema validation failed with:', parsedCard.error);
+		if (!parsed.success) {
+			console.error('Schema validation failed with:', parsed.error);
 
 			throw new DashboardValidationException('Failed to insert card.');
 		}
 
 		data.value = data.value ?? {};
 
-		return (data.value[parsedCard.data.id] = parsedCard.data);
+		return (data.value[parsed.data.id] = parsed.data);
 	};
 
 	const unset = (payload: ICardsUnsetActionPayload): void => {
@@ -305,7 +314,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				return card;
 			}
 
-			// Record could not be created on api, we have to remove it from database
+			// Record could not be created on api, we have to remove it from a database
 			delete data.value[parsedNewCard.data.id];
 
 			let errorReason: string | null = 'Failed to create card.';
@@ -376,7 +385,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				return card;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get({ id: payload.id, pageId: payload.pageId });
 
 			let errorReason: string | null = 'Failed to update card.';
@@ -485,7 +494,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				return true;
 			}
 
-			// Deleting record on api failed, we need to refresh record
+			// Deleting record on api failed, we need to refresh the record
 			await get({ id: payload.id, pageId: payload.pageId });
 
 			let errorReason: string | null = 'Remove card failed.';
@@ -555,6 +564,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		findAll,
 		findForPage,
 		findById,
+		onEvent,
 		set,
 		unset,
 		get,

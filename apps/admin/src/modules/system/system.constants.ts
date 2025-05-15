@@ -2,6 +2,8 @@ export const SYSTEM_MODULE_PREFIX = 'system-module';
 
 export const SYSTEM_MODULE_NAME = 'system-module';
 
+export const SYSTEM_MODULE_EVENT_PREFIX = 'SystemModule.';
+
 export enum EventType {
 	SYSTEM_INFO = 'SystemModule.System.Info',
 }

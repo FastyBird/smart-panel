@@ -10,6 +10,7 @@ import {
 	ConfigPluginUpdateReqSchema,
 	ConfigPluginsEditActionPayloadSchema,
 	ConfigPluginsGetActionPayloadSchema,
+	ConfigPluginsOnEventActionPayloadSchema,
 	ConfigPluginsSetActionPayloadSchema,
 	ConfigPluginsStateSemaphoreSchema,
 } from './config-plugins.store.schemas';
@@ -23,6 +24,8 @@ export type IConfigPluginsStateSemaphore = z.infer<typeof ConfigPluginsStateSema
 
 // STORE ACTIONS
 // =============
+
+export type IConfigPluginsOnEventActionPayload = z.infer<typeof ConfigPluginsOnEventActionPayloadSchema>;
 
 export type IConfigPluginsSetActionPayload = z.infer<typeof ConfigPluginsSetActionPayloadSchema>;
 
@@ -43,6 +46,7 @@ export interface IConfigPluginsStoreActions {
 	getting: (plugin: IConfigPlugin['type']) => boolean;
 	updating: (plugin: IConfigPlugin['type']) => boolean;
 	// Actions
+	onEvent: (payload: IConfigPluginsOnEventActionPayload) => IConfigPlugin;
 	set: (payload: IConfigPluginsSetActionPayload) => IConfigPlugin;
 	get: (payload: IConfigPluginsGetActionPayload) => Promise<IConfigPlugin>;
 	edit: (payload: IConfigPluginsEditActionPayload) => Promise<IConfigPlugin>;

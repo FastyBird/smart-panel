@@ -11,9 +11,11 @@ import { DeviceControlSchema, DevicesControlsAddActionPayloadSchema } from './de
 import type {
 	DevicesControlsStoreSetup,
 	IDeviceControl,
+	IDeviceControlRes,
 	IDevicesControlsAddActionPayload,
 	IDevicesControlsFetchActionPayload,
 	IDevicesControlsGetActionPayload,
+	IDevicesControlsOnEventActionPayload,
 	IDevicesControlsRemoveActionPayload,
 	IDevicesControlsSaveActionPayload,
 	IDevicesControlsSetActionPayload,
@@ -63,30 +65,37 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 		const pendingFetchPromises: Record<string, Promise<IDeviceControl[]>> = {};
 
+		const onEvent = (payload: IDevicesControlsOnEventActionPayload): IDeviceControl => {
+			return set({
+				id: payload.id,
+				data: transformDeviceControlResponse(payload.data as unknown as IDeviceControlRes),
+			});
+		};
+
 		const set = (payload: IDevicesControlsSetActionPayload): IDeviceControl => {
 			if (payload.id && data.value && payload.id in data.value) {
-				const parsedDeviceControl = DeviceControlSchema.safeParse({ ...data.value[payload.id], ...payload.data });
+				const parsed = DeviceControlSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
-				if (!parsedDeviceControl.success) {
-					console.error('Schema validation failed with:', parsedDeviceControl.error);
+				if (!parsed.success) {
+					console.error('Schema validation failed with:', parsed.error);
 
 					throw new DevicesValidationException('Failed to insert device control.');
 				}
 
-				return (data.value[parsedDeviceControl.data.id] = parsedDeviceControl.data);
+				return (data.value[parsed.data.id] = parsed.data);
 			}
 
-			const parsedDeviceControl = DeviceControlSchema.safeParse({ ...payload.data, id: payload.id, device: payload.deviceId });
+			const parsed = DeviceControlSchema.safeParse({ ...payload.data, id: payload.id });
 
-			if (!parsedDeviceControl.success) {
-				console.error('Schema validation failed with:', parsedDeviceControl.error);
+			if (!parsed.success) {
+				console.error('Schema validation failed with:', parsed.error);
 
 				throw new DevicesValidationException('Failed to insert device control.');
 			}
 
 			data.value = data.value ?? {};
 
-			return (data.value[parsedDeviceControl.data.id] = parsedDeviceControl.data);
+			return (data.value[parsed.data.id] = parsed.data);
 		};
 
 		const unset = (payload: IDevicesControlsUnsetActionPayload): void => {
@@ -280,7 +289,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					return control;
 				}
 
-				// Record could not be created on api, we have to remove it from database
+				// Record could not be created on api, we have to remove it from a database
 				delete data.value[parsedNewDeviceControl.data.id];
 
 				let errorReason: string | null = 'Failed to create device control.';
@@ -374,7 +383,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 					return true;
 				}
 
-				// Deleting record on api failed, we need to refresh record
+				// Deleting record on api failed, we need to refresh the record
 				await get({ id: payload.id, deviceId: payload.deviceId });
 
 				let errorReason: string | null = 'Remove device control failed.';
@@ -399,6 +408,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			findAll,
 			findForDevice,
 			findById,
+			onEvent,
 			set,
 			unset,
 			get,

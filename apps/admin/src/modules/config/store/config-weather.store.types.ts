@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import {
 	ConfigWeatherEditActionPayloadSchema,
+	ConfigWeatherOnEventActionPayloadSchema,
 	ConfigWeatherResSchema,
 	ConfigWeatherSchema,
 	ConfigWeatherSetActionPayloadSchema,
@@ -22,6 +23,8 @@ export type IConfigWeatherStateSemaphore = z.infer<typeof ConfigWeatherStateSema
 
 // STORE ACTIONS
 // =============
+
+export type IConfigWeatherOnEventActionPayload = z.infer<typeof ConfigWeatherOnEventActionPayloadSchema>;
 
 export type IConfigWeatherSetActionPayload = z.infer<typeof ConfigWeatherSetActionPayloadSchema>;
 
@@ -41,6 +44,7 @@ export interface IConfigWeatherStoreActions {
 	firstLoadFinished: () => boolean;
 	getting: () => boolean;
 	// Actions
+	onEvent: (payload: IConfigWeatherOnEventActionPayload) => IConfigWeather;
 	set: (payload: IConfigWeatherSetActionPayload) => IConfigWeather;
 	get: () => Promise<IConfigWeather>;
 	edit: (payload: IConfigWeatherEditActionPayload) => Promise<IConfigWeather>;

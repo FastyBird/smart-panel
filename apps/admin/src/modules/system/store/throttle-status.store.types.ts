@@ -5,6 +5,7 @@ import type { Store } from 'pinia';
 import { z } from 'zod';
 
 import {
+	ThrottleStatusOnEventActionPayloadSchema,
 	ThrottleStatusResSchema,
 	ThrottleStatusSchema,
 	ThrottleStatusSetActionPayloadSchema,
@@ -20,6 +21,8 @@ export type IThrottleStatusStateSemaphore = z.infer<typeof ThrottleStatusStateSe
 
 // STORE ACTIONS
 // =============
+
+export type IThrottleStatusOnEventActionPayload = z.infer<typeof ThrottleStatusOnEventActionPayloadSchema>;
 
 export type IThrottleStatusSetActionPayload = z.infer<typeof ThrottleStatusSetActionPayloadSchema>;
 
@@ -37,8 +40,9 @@ export interface IThrottleStatusStoreActions {
 	firstLoadFinished: () => boolean;
 	getting: () => boolean;
 	// Actions
+	onEvent: (payload: IThrottleStatusOnEventActionPayload) => IThrottleStatus;
 	set: (payload: IThrottleStatusSetActionPayload) => IThrottleStatus;
-	get: () => Promise<IThrottleStatus>;
+	get: () => Promise<IThrottleStatus | null>;
 }
 
 export type ThrottleStatusStoreSetup = IThrottleStatusStoreState & IThrottleStatusStoreActions;

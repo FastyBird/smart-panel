@@ -40,9 +40,13 @@ export const CardsStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const CardsOnEventActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	data: z.object({}),
+});
+
 export const CardsSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	pageId: ItemIdSchema,
 	data: z
 		.object({
 			title: z.string().trim().nonempty(),

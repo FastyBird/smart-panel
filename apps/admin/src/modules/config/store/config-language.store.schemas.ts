@@ -23,6 +23,10 @@ export const ConfigLanguageStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const ConfigLanguageOnEventActionPayloadSchema = z.object({
+	data: z.object({}),
+});
+
 export const ConfigLanguageSetActionPayloadSchema = z.object({
 	data: z.object({
 		language: z.nativeEnum(ConfigModuleLanguageLanguage),

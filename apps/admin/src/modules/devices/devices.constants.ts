@@ -2,6 +2,8 @@ export const DEVICES_MODULE_PREFIX = 'devices-module';
 
 export const DEVICES_MODULE_NAME = 'devices-module';
 
+export const DEVICES_MODULE_EVENT_PREFIX = 'DevicesModule.';
+
 export enum EventType {
 	DEVICE_CREATED = 'DevicesModule.Device.Created',
 	DEVICE_UPDATED = 'DevicesModule.Device.Updated',

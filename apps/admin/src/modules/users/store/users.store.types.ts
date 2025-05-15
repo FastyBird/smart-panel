@@ -12,12 +12,13 @@ import {
 	UsersAddActionPayloadSchema,
 	UsersEditActionPayloadSchema,
 	UsersGetActionPayloadSchema,
+	UsersOnEventActionPayloadSchema,
 	UsersRemoveActionPayloadSchema,
 	UsersSaveActionPayloadSchema,
+	UsersSetActionPayloadSchema,
 	UsersStateSemaphoreSchema,
+	UsersUnsetActionPayloadSchema,
 } from './users.store.schemas';
-
-export const UserIdSchema = z.string().uuid();
 
 // STORE STATE
 // ===========
@@ -28,6 +29,12 @@ export type IUsersStateSemaphore = z.infer<typeof UsersStateSemaphoreSchema>;
 
 // STORE ACTIONS
 // =============
+
+export type IUsersOnEventActionPayload = z.infer<typeof UsersOnEventActionPayloadSchema>;
+
+export type IUsersSetActionPayload = z.infer<typeof UsersSetActionPayloadSchema>;
+
+export type IUsersUnsetActionPayload = z.infer<typeof UsersUnsetActionPayloadSchema>;
 
 export type IUsersGetActionPayload = z.infer<typeof UsersGetActionPayloadSchema>;
 
@@ -56,6 +63,9 @@ export interface IUsersStoreActions {
 	findById: (id: IUser['id']) => IUser | null;
 	findAll: () => IUser[];
 	// Actions
+	onEvent: (payload: IUsersOnEventActionPayload) => IUser;
+	set: (payload: IUsersSetActionPayload) => IUser;
+	unset: (payload: IUsersUnsetActionPayload) => void;
 	get: (payload: IUsersGetActionPayload) => Promise<IUser>;
 	fetch: () => Promise<IUser[]>;
 	add: (payload: IUsersAddActionPayload) => Promise<IUser>;

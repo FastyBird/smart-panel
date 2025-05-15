@@ -42,6 +42,12 @@ export const PagesStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const PagesOnSetActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	type: z.string().trim().nonempty(),
+	data: z.object({}),
+});
+
 export const PagesSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	data: z

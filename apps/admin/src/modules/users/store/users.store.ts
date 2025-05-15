@@ -12,14 +12,18 @@ import { UsersApiException, UsersException, UsersValidationException } from '../
 import { UserSchema, UsersAddActionPayloadSchema, UsersEditActionPayloadSchema } from './users.store.schemas';
 import type {
 	IUser,
+	IUserRes,
 	IUsersAddActionPayload,
 	IUsersEditActionPayload,
 	IUsersGetActionPayload,
+	IUsersOnEventActionPayload,
 	IUsersRemoveActionPayload,
 	IUsersSaveActionPayload,
+	IUsersSetActionPayload,
 	IUsersStateSemaphore,
 	IUsersStoreActions,
 	IUsersStoreState,
+	IUsersUnsetActionPayload,
 	UsersStoreSetup,
 } from './users.store.types';
 import { transformUserCreateRequest, transformUserResponse, transformUserUpdateRequest } from './users.transformers';
@@ -52,6 +56,49 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 	const findAll = (): IUser[] => Object.values(data.value);
 
 	const findById = (id: IUser['id']): IUser | null => (id in data.value ? data.value[id] : null);
+
+	const onEvent = (payload: IUsersOnEventActionPayload): IUser => {
+		return set({
+			id: payload.id,
+			data: transformUserResponse(payload.data as unknown as IUserRes),
+		});
+	};
+
+	const set = (payload: IUsersSetActionPayload): IUser => {
+		if (payload.id && data.value && payload.id in data.value) {
+			const parsed = UserSchema.safeParse({ ...data.value[payload.id], ...payload.data });
+
+			if (!parsed.success) {
+				console.error('Schema validation failed with:', parsed.error);
+
+				throw new UsersValidationException('Failed to insert user.');
+			}
+
+			return (data.value[parsed.data.id] = parsed.data);
+		}
+
+		const parsed = UserSchema.safeParse({ ...payload.data, id: payload.id });
+
+		if (!parsed.success) {
+			console.error('Schema validation failed with:', parsed.error);
+
+			throw new UsersValidationException('Failed to insert user.');
+		}
+
+		data.value = data.value ?? {};
+
+		return (data.value[parsed.data.id] = parsed.data);
+	};
+
+	const unset = (payload: IUsersUnsetActionPayload): void => {
+		if (!data.value) {
+			return;
+		}
+
+		delete data.value[payload.id];
+
+		return;
+	};
 
 	const get = async (payload: IUsersGetActionPayload): Promise<IUser> => {
 		if (semaphore.value.fetching.item.includes(payload.id)) {
@@ -180,7 +227,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				return user;
 			}
 
-			// Record could not be created on api, we have to remove it from database
+			// Record could not be created on api, we have to remove it from a database
 			delete data.value[parsedNewUser.data.id];
 
 			let errorReason: string | null = 'Failed to create user.';
@@ -255,7 +302,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				return user;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get({ id: payload.id });
 
 			let errorReason: string | null = 'Failed to update user.';
@@ -354,7 +401,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				return true;
 			}
 
-			// Deleting record on api failed, we need to refresh record
+			// Deleting record on api failed, we need to refresh the record
 			await get({ id: payload.id });
 
 			let errorReason: string | null = 'Remove account failed.';
@@ -369,7 +416,25 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		return true;
 	};
 
-	return { semaphore, firstLoad, data, firstLoadFinished, getting, fetching, findAll, findById, get, fetch, add, edit, save, remove };
+	return {
+		semaphore,
+		firstLoad,
+		data,
+		firstLoadFinished,
+		getting,
+		fetching,
+		findAll,
+		findById,
+		onEvent,
+		set,
+		unset,
+		get,
+		fetch,
+		add,
+		edit,
+		save,
+		remove,
+	};
 });
 
 export const registerUsersStore = (pinia: Pinia): Store<string, IUsersStoreState, object, IUsersStoreActions> => {

@@ -24,6 +24,10 @@ export const ConfigDisplayStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const ConfigDisplayOnEventActionPayloadSchema = z.object({
+	data: z.object({}),
+});
+
 export const ConfigDisplaySetActionPayloadSchema = z.object({
 	data: z.object({
 		darkMode: z.boolean(),

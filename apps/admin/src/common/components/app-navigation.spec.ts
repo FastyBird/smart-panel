@@ -8,7 +8,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import { RouteNames } from '../../app.constants';
-import { RouteNames as AuthRouteNames } from '../../modules/auth';
 import { injectAccountManager } from '../services/account-manager';
 
 import enUS from './../../locales/en-US.json';
@@ -44,6 +43,10 @@ vi.mock('../composables/useMenu', () => ({
 vi.mock('../services/account-manager', () => ({
 	injectAccountManager: vi.fn().mockReturnValue({
 		signOut: vi.fn(),
+		routes: {
+			signIn: 'sign-in',
+			signUp: 'sign-up',
+		},
 	}),
 }));
 
@@ -55,7 +58,7 @@ describe('AppNavigation', () => {
 			history: createWebHistory(),
 			routes: [
 				{ path: '/', name: RouteNames.ROOT, component: {} },
-				{ path: '/sign-in', name: AuthRouteNames.SIGN_IN, component: {} },
+				{ path: '/sign-in', name: 'sign-in', component: {} },
 				{
 					path: '/settings',
 					name: 'settings',

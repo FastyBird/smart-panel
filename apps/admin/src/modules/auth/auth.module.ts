@@ -1,13 +1,14 @@
 import { type App, computed } from 'vue';
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 
-import { defaultsDeep } from 'lodash';
+import { defaultsDeep, get } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IAppUser, IModuleOptions } from '../../app.types';
-import { injectBackendClient, injectRouterGuard, injectStoresManager, provideAccountManager } from '../../common';
+import { injectBackendClient, injectRouterGuard, injectSockets, injectStoresManager, provideAccountManager } from '../../common';
 import type { IUser } from '../users';
 
+import { RouteNames } from './auth.constants';
 import enUS from './locales/en-US.json';
 import { ModuleAccountRoutes, ModuleAnonymousRoutes, anonymousGuard, authenticatedGuard, profileGuard, sessionGuard } from './router';
 import { sessionStoreKey } from './store/keys';
@@ -18,6 +19,7 @@ export default {
 		const storesManager = injectStoresManager(app);
 		const routerGuard = injectRouterGuard(app);
 		const backendClient = injectBackendClient(app);
+		const sockets = injectSockets(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -37,6 +39,31 @@ export default {
 		});
 		options.router.beforeEach((): boolean | { name: string } | undefined => {
 			return profileGuard(storesManager);
+		});
+		// Sockets connections
+		options.router.beforeEach((): boolean | { name: string } | undefined => {
+			const token = sessionStore.tokenPair?.accessToken ?? null;
+
+			if (!token) {
+				if (sockets.connected) {
+					sockets.disconnect();
+				}
+
+				sockets.auth = {};
+
+				return true;
+			}
+
+			if (!sockets.connected || get(sockets.auth ?? {}, 'token', undefined) !== token) {
+				if (sockets.connected) {
+					sockets.disconnect();
+				}
+
+				sockets.auth = { token };
+				sockets.connect();
+			}
+
+			return true;
 		});
 
 		routerGuard.register((appUser: IAppUser | undefined, route: RouteRecordRaw) => {
@@ -124,6 +151,10 @@ export default {
 			},
 			canAccess: (): Promise<boolean> => {
 				return Promise.resolve(true);
+			},
+			routes: {
+				signIn: RouteNames.SIGN_IN,
+				signUp: RouteNames.SIGN_UP,
 			},
 		});
 	},
