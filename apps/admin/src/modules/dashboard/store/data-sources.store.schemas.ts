@@ -41,6 +41,16 @@ export const DataSourcesStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const DataSourcesOnEventActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
+	type: z.string().trim().nonempty(),
+	data: z.object({}),
+});
+
 export const DataSourcesSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	parent: z.object({

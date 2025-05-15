@@ -13,6 +13,7 @@ import {
 	CardsEditActionPayloadSchema,
 	CardsFetchActionPayloadSchema,
 	CardsGetActionPayloadSchema,
+	CardsOnEventActionPayloadSchema,
 	CardsRemoveActionPayloadSchema,
 	CardsSaveActionPayloadSchema,
 	CardsSetActionPayloadSchema,
@@ -30,6 +31,8 @@ export type ICardsStateSemaphore = z.infer<typeof CardsStateSemaphoreSchema>;
 
 // STORE ACTIONS
 // =============
+
+export type ICardsOnEventActionPayload = z.infer<typeof CardsOnEventActionPayloadSchema>;
 
 export type ICardsSetActionPayload = z.infer<typeof CardsSetActionPayloadSchema>;
 
@@ -65,6 +68,7 @@ export interface ICardsStoreActions {
 	findForPage: (pageId: ICardsPage['id']) => ICard[];
 	findAll: () => ICard[];
 	// Actions
+	onEvent: (payload: ICardsOnEventActionPayload) => ICard;
 	set: (payload: ICardsSetActionPayload) => ICard;
 	unset: (payload: ICardsUnsetActionPayload) => void;
 	get: (payload: ICardsGetActionPayload) => Promise<ICard>;

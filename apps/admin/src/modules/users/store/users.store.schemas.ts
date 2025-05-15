@@ -44,6 +44,39 @@ export const UsersStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const UsersOnEventActionPayloadSchema = z.object({
+	id: UserIdSchema,
+	data: z.object({}),
+});
+
+export const UsersSetActionPayloadSchema = z.object({
+	id: UserIdSchema,
+	data: z.object({
+		username: z.string().trim().nonempty(),
+		email: z
+			.string()
+			.email()
+			.trim()
+			.transform((val) => (val === '' ? null : val))
+			.nullable(),
+		firstName: z
+			.string()
+			.trim()
+			.transform((val) => (val === '' ? null : val))
+			.nullable(),
+		lastName: z
+			.string()
+			.trim()
+			.transform((val) => (val === '' ? null : val))
+			.nullable(),
+		role: z.nativeEnum(UsersModuleUserRole).default(UsersModuleUserRole.user),
+	}),
+});
+
+export const UsersUnsetActionPayloadSchema = z.object({
+	id: UserIdSchema,
+});
+
 export const UsersGetActionPayloadSchema = z.object({
 	id: UserIdSchema,
 });

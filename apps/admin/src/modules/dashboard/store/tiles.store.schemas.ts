@@ -48,6 +48,16 @@ export const TilesStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const TilesOnEventActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	parent: z.object({
+		id: ItemIdSchema,
+		type: z.string().trim().nonempty(),
+	}),
+	type: z.string().trim().nonempty(),
+	data: z.object({}),
+});
+
 export const TilesSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
 	parent: z.object({

@@ -27,11 +27,13 @@ import type {
 	ChannelsStoreSetup,
 	IChannel,
 	IChannelCreateReq,
+	IChannelRes,
 	IChannelUpdateReq,
 	IChannelsAddActionPayload,
 	IChannelsEditActionPayload,
 	IChannelsFetchActionPayload,
 	IChannelsGetActionPayload,
+	IChannelsOnEventActionPayload,
 	IChannelsRemoveActionPayload,
 	IChannelsSaveActionPayload,
 	IChannelsSetActionPayload,
@@ -88,6 +90,15 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 	const pendingGetPromises: Record<string, Promise<IChannel>> = {};
 
 	const pendingFetchPromises: Record<string, Promise<IChannel[]>> = {};
+
+	const onEvent = (payload: IChannelsOnEventActionPayload): IChannel => {
+		const plugin = getPluginByType(payload.type);
+
+		return set({
+			id: payload.id,
+			data: transformChannelResponse(payload.data as unknown as IChannelRes, plugin?.schemas?.channelSchema || ChannelSchema),
+		});
+	};
 
 	const set = (payload: IChannelsSetActionPayload): IChannel => {
 		const plugin = getPluginByType(payload.data.type);
@@ -357,7 +368,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				return transformed;
 			}
 
-			// Record could not be created on api, we have to remove it from database
+			// Record could not be created on api, we have to remove it from a database
 			delete data.value[parsedNewItem.data.id];
 
 			let errorReason: string | null = 'Failed to create channel.';
@@ -451,7 +462,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				return transformed;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get({ id: payload.id });
 
 			let errorReason: string | null = 'Failed to update channel.';
@@ -579,7 +590,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				return true;
 			}
 
-			// Deleting record on api failed, we need to refresh record
+			// Deleting record on api failed, we need to refresh the record
 			await get({ id: payload.id });
 
 			let errorReason: string | null = 'Remove channel failed.';
@@ -604,7 +615,6 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		controls.forEach((control) => {
 			channelsControlsStore.set({
 				id: control.id,
-				channelId: channel.id,
 				data: transformChannelControlResponse(control),
 			});
 		});
@@ -620,7 +630,6 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 			channelsPropertiesStore.set({
 				id: property.id,
-				channelId: channel.id,
 				data: transformChannelPropertyResponse(property, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema),
 			});
 		});
@@ -638,6 +647,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		findAll,
 		findForDevice,
 		findById,
+		onEvent,
 		set,
 		unset,
 		get,

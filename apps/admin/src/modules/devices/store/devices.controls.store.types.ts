@@ -11,6 +11,7 @@ import {
 	DevicesControlsAddActionPayloadSchema,
 	DevicesControlsFetchActionPayloadSchema,
 	DevicesControlsGetActionPayloadSchema,
+	DevicesControlsOnEventActionPayloadSchema,
 	DevicesControlsRemoveActionPayloadSchema,
 	DevicesControlsSaveActionPayloadSchema,
 	DevicesControlsSetActionPayloadSchema,
@@ -28,6 +29,8 @@ export type IDevicesControlsStateSemaphore = z.infer<typeof DevicesControlsState
 
 // STORE ACTIONS
 // =============
+
+export type IDevicesControlsOnEventActionPayload = z.infer<typeof DevicesControlsOnEventActionPayloadSchema>;
 
 export type IDevicesControlsSetActionPayload = z.infer<typeof DevicesControlsSetActionPayloadSchema>;
 
@@ -61,6 +64,7 @@ export interface IDevicesControlsStoreActions {
 	findForDevice: (deviceId: IDevice['id']) => IDeviceControl[];
 	findAll: () => IDeviceControl[];
 	// Actions
+	onEvent: (payload: IDevicesControlsOnEventActionPayload) => IDeviceControl;
 	set: (payload: IDevicesControlsSetActionPayload) => IDeviceControl;
 	unset: (payload: IDevicesControlsUnsetActionPayload) => void;
 	get: (payload: IDevicesControlsGetActionPayload) => Promise<IDeviceControl>;

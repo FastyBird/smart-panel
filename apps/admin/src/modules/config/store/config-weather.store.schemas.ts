@@ -29,6 +29,10 @@ export const ConfigWeatherStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const ConfigWeatherOnEventActionPayloadSchema = z.object({
+	data: z.object({}),
+});
+
 export const ConfigWeatherSetActionPayloadSchema = z.object({
 	data: z.object({
 		location: z.string().nullable(),

@@ -3,7 +3,7 @@
 		<el-link
 			v-if="props.withFilters"
 			:type="props.filters.dataTypes.includes(property.dataType) ? 'danger' : undefined"
-			:underline="false"
+			underline="never"
 			class="font-400!"
 			@click.stop="emit('filter-by', property.dataType, !props.filters.dataTypes.includes(property.dataType))"
 		>

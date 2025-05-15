@@ -20,6 +20,11 @@ export const ConfigPluginsStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const ConfigPluginsOnEventActionPayloadSchema = z.object({
+	type: z.string(),
+	data: z.object({}),
+});
+
 export const ConfigPluginsSetActionPayloadSchema = z.object({
 	data: z.object({
 		type: z.string(),

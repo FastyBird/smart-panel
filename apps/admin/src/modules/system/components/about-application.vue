@@ -26,7 +26,7 @@
 
 		<div class="flex flex-row justify-center items-center my-4">
 			<el-link
-				:underline="false"
+				underline="never"
 				href="http://www.github.com/fastybird"
 				target="_blank"
 				class="mx-5"
@@ -41,7 +41,7 @@
 			<el-divider direction="vertical" />
 
 			<el-link
-				:underline="false"
+				underline="never"
 				href="http://www.x.com/fastybird"
 				target="_blank"
 				class="mx-5"
@@ -56,7 +56,7 @@
 			<el-divider direction="vertical" />
 
 			<el-link
-				:underline="false"
+				underline="never"
 				href="http://www.facebook.com/fastybird"
 				target="_blank"
 				class="mx-5"
@@ -71,7 +71,7 @@
 			<el-divider direction="vertical" />
 
 			<el-link
-				:underline="false"
+				underline="never"
 				href="http://www.facebook.com/fastybird"
 				target="_blank"
 				class="mx-5"

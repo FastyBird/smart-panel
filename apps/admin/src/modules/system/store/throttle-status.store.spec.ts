@@ -78,6 +78,18 @@ describe('ThrottleStatus Store', () => {
 		(backendClient.GET as Mock).mockResolvedValue({
 			data: undefined,
 			error: new Error('Network error'),
+			response: { status: 400 },
+		});
+
+		const result = await store.get();
+
+		expect(result).toEqual(null);
+	});
+
+	it('should throw error if fetch fails', async () => {
+		(backendClient.GET as Mock).mockResolvedValue({
+			data: undefined,
+			error: new Error('Network error'),
 			response: { status: 500 },
 		});
 

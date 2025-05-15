@@ -14,6 +14,8 @@ import type {
 	ConfigDisplayStoreSetup,
 	IConfigDisplay,
 	IConfigDisplayEditActionPayload,
+	IConfigDisplayOnEventActionPayload,
+	IConfigDisplayRes,
 	IConfigDisplaySetActionPayload,
 	IConfigDisplayStateSemaphore,
 	IConfigDisplayStoreActions,
@@ -42,6 +44,12 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 		const getting = (): boolean => semaphore.value.getting;
 
 		let pendingGetPromises: Promise<IConfigDisplay> | null = null;
+
+		const onEvent = (payload: IConfigDisplayOnEventActionPayload): IConfigDisplay => {
+			return set({
+				data: transformConfigDisplayResponse(payload.data as unknown as IConfigDisplayRes),
+			});
+		};
 
 		const set = (payload: IConfigDisplaySetActionPayload): IConfigDisplay => {
 			const parsedConfigDisplay = ConfigDisplaySchema.safeParse({ ...payload.data, type: ConfigModuleDisplayType.display });
@@ -154,7 +162,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 				return data.value;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get();
 
 			let errorReason: string | null = 'Failed to update display config.';
@@ -172,6 +180,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 			data,
 			firstLoadFinished,
 			getting,
+			onEvent,
 			set,
 			get,
 			edit,

@@ -11,6 +11,7 @@ import {
 	ChannelsControlsAddActionPayloadSchema,
 	ChannelsControlsFetchActionPayloadSchema,
 	ChannelsControlsGetActionPayloadSchema,
+	ChannelsControlsOnEventActionPayloadSchema,
 	ChannelsControlsRemoveActionPayloadSchema,
 	ChannelsControlsSaveActionPayloadSchema,
 	ChannelsControlsSetActionPayloadSchema,
@@ -28,6 +29,8 @@ export type IChannelsControlsStateSemaphore = z.infer<typeof ChannelsControlsSta
 
 // STORE ACTIONS
 // =============
+
+export type IChannelsControlsOnEventActionPayload = z.infer<typeof ChannelsControlsOnEventActionPayloadSchema>;
 
 export type IChannelsControlsSetActionPayload = z.infer<typeof ChannelsControlsSetActionPayloadSchema>;
 
@@ -61,6 +64,7 @@ export interface IChannelsControlsStoreActions {
 	findForChannel: (channelId: IChannel['id']) => IChannelControl[];
 	findAll: () => IChannelControl[];
 	// Actions
+	onEvent: (payload: IChannelsControlsOnEventActionPayload) => IChannelControl;
 	set: (payload: IChannelsControlsSetActionPayload) => IChannelControl;
 	unset: (payload: IChannelsControlsUnsetActionPayload) => void;
 	get: (payload: IChannelsControlsGetActionPayload) => Promise<IChannelControl>;

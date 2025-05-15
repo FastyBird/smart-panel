@@ -53,9 +53,14 @@ export const ChannelsPropertiesStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const ChannelsPropertiesOnEventActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	type: z.string().trim().nonempty(),
+	data: z.object({}),
+});
+
 export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	channelId: ItemIdSchema,
 	data: z.object({
 		type: z.string().trim().nonempty(),
 		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),

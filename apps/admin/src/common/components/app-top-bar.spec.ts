@@ -36,6 +36,10 @@ vi.mock('../services/account-manager', () => ({
 			username: 'johndoe',
 		})),
 		signOut: vi.fn(),
+		routes: {
+			signIn: 'sign-in',
+			signUp: 'sign-up',
+		},
 	}),
 }));
 
@@ -45,7 +49,10 @@ describe('AppTopBar.vue', () => {
 	beforeEach(() => {
 		const router = createRouter({
 			history: createWebHistory(),
-			routes: [{ path: '/', name: RouteNames.ROOT, component: {} }],
+			routes: [
+				{ path: '/', name: RouteNames.ROOT, component: {} },
+				{ path: '/sign-in', name: 'sign-in', component: {} },
+			],
 		});
 
 		const i18n = createI18n({

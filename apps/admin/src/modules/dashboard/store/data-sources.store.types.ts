@@ -13,6 +13,7 @@ import {
 	DataSourcesEditActionPayloadSchema,
 	DataSourcesFetchActionPayloadSchema,
 	DataSourcesGetActionPayloadSchema,
+	DataSourcesOnEventActionPayloadSchema,
 	DataSourcesRemoveActionPayloadSchema,
 	DataSourcesSaveActionPayloadSchema,
 	DataSourcesSetActionPayloadSchema,
@@ -29,6 +30,8 @@ export type IDataSourcesStateSemaphore = z.infer<typeof DataSourcesStateSemaphor
 
 // STORE ACTIONS
 // =============
+
+export type IDataSourcesOnEventActionPayload = z.infer<typeof DataSourcesOnEventActionPayloadSchema>;
 
 export type IDataSourcesSetActionPayload = z.infer<typeof DataSourcesSetActionPayloadSchema>;
 
@@ -64,6 +67,7 @@ export interface IDataSourcesStoreActions {
 	findForParent: (parent: string, parentId: string) => IDataSource[];
 	findAll: (parent: string) => IDataSource[];
 	// Actions
+	onEvent: (payload: IDataSourcesOnEventActionPayload) => IDataSource;
 	set: (payload: IDataSourcesSetActionPayload) => IDataSource;
 	unset: (payload: IDataSourcesUnsetActionPayload) => void;
 	get: (payload: IDataSourcesGetActionPayload) => Promise<IDataSource>;

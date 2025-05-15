@@ -1,7 +1,7 @@
 <template>
 	<el-link
 		:type="props.filters.states.includes(state) ? 'danger' : undefined"
-		:underline="false"
+		underline="never"
 		class="font-400!"
 		@click.stop="emit('filter-by', state, !props.filters.states.includes(state))"
 	>

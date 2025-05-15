@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import {
 	ConfigDisplayEditActionPayloadSchema,
+	ConfigDisplayOnEventActionPayloadSchema,
 	ConfigDisplayResSchema,
 	ConfigDisplaySchema,
 	ConfigDisplaySetActionPayloadSchema,
@@ -22,6 +23,8 @@ export type IConfigDisplayStateSemaphore = z.infer<typeof ConfigDisplayStateSema
 
 // STORE ACTIONS
 // =============
+
+export type IConfigDisplayOnEventActionPayload = z.infer<typeof ConfigDisplayOnEventActionPayloadSchema>;
 
 export type IConfigDisplaySetActionPayload = z.infer<typeof ConfigDisplaySetActionPayloadSchema>;
 
@@ -41,6 +44,7 @@ export interface IConfigDisplayStoreActions {
 	firstLoadFinished: () => boolean;
 	getting: () => boolean;
 	// Actions
+	onEvent: (payload: IConfigDisplayOnEventActionPayload) => IConfigDisplay;
 	set: (payload: IConfigDisplaySetActionPayload) => IConfigDisplay;
 	get: () => Promise<IConfigDisplay>;
 	edit: (payload: IConfigDisplayEditActionPayload) => Promise<IConfigDisplay>;

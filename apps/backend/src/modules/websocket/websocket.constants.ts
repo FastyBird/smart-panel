@@ -4,3 +4,4 @@ export const DISPLAY_SECRET_CACHE_KEY = 'display-secret';
 
 export const CLIENT_DEFAULT_ROOM = 'default-room';
 export const DISPLAY_INTERNAL_ROOM = 'display-room';
+export const EXCHANGE_ROOM = 'exchange-room';

@@ -2,6 +2,8 @@ export const CONFIG_MODULE_PREFIX = 'config-module';
 
 export const CONFIG_MODULE_NAME = 'config-module';
 
+export const CONFIG_MODULE_EVENT_PREFIX = 'ConfigModule.';
+
 export enum EventType {
 	CONFIG_UPDATED = 'ConfigModule.Configuration.Changed',
 }

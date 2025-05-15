@@ -12,6 +12,7 @@ import {
 	PagesAddActionPayloadSchema,
 	PagesEditActionPayloadSchema,
 	PagesGetActionPayloadSchema,
+	PagesOnSetActionPayloadSchema,
 	PagesRemoveActionPayloadSchema,
 	PagesSaveActionPayloadSchema,
 	PagesSetActionPayloadSchema,
@@ -28,6 +29,8 @@ export type IPagesStateSemaphore = z.infer<typeof PagesStateSemaphoreSchema>;
 
 // STORE ACTIONS
 // =============
+
+export type IPagesOnEventActionPayload = z.infer<typeof PagesOnSetActionPayloadSchema>;
 
 export type IPagesSetActionPayload = z.infer<typeof PagesSetActionPayloadSchema>;
 
@@ -60,6 +63,7 @@ export interface IPagesStoreActions {
 	findById: (id: IPage['id']) => IPage | null;
 	findAll: () => IPage[];
 	// Actions
+	onEvent: (payload: IPagesOnEventActionPayload) => IPage;
 	set: (payload: IPagesSetActionPayload) => IPage;
 	unset: (payload: IPagesUnsetActionPayload) => void;
 	get: (payload: IPagesGetActionPayload) => Promise<IPage>;

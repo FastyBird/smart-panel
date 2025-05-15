@@ -2,7 +2,7 @@
 	<el-text truncated>
 		<el-link
 			:type="props.filters.types.includes(props.dataSource.type) ? 'danger' : undefined"
-			:underline="false"
+			underline="never"
 			class="font-400!"
 			@click.stop="emit('filter-by', props.dataSource.type, !props.filters.types.includes(props.dataSource.type))"
 		>

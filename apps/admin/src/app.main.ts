@@ -17,6 +17,7 @@ import {
 	type Events,
 	PluginsManager,
 	RouterGuards,
+	SocketsPlugin,
 	StoresManager,
 	injectAccountManager,
 	provideBackendClient,
@@ -79,6 +80,11 @@ provideEventBus(app, eventBus);
 const routerGuards = new RouterGuards();
 app.config.globalProperties['routerGuards'] = routerGuards;
 provideRouterGuards(app, routerGuards);
+
+// Sockets
+app.use(SocketsPlugin, {
+	baseUrl: `${import.meta.env.FB_APP_HOST}:${import.meta.env.FB_BACKEND_PORT}`,
+});
 
 // Default route
 router.addRoute(RouteNames.ROOT, {

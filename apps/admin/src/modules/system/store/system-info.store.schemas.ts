@@ -60,6 +60,10 @@ export const SystemInfoStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const SystemInfoOnEventActionPayloadSchema = z.object({
+	data: z.object({}),
+});
+
 export const SystemInfoSetActionPayloadSchema = z.object({
 	data: z.object({
 		cpuLoad: z.number(),

@@ -13,6 +13,7 @@ import {
 	TilesEditActionPayloadSchema,
 	TilesFetchActionPayloadSchema,
 	TilesGetActionPayloadSchema,
+	TilesOnEventActionPayloadSchema,
 	TilesRemoveActionPayloadSchema,
 	TilesSaveActionPayloadSchema,
 	TilesSetActionPayloadSchema,
@@ -27,6 +28,8 @@ export type ITile = z.infer<typeof TileSchema>;
 
 // STORE ACTIONS
 // =============
+
+export type ITilesOnEventActionPayload = z.infer<typeof TilesOnEventActionPayloadSchema>;
 
 export type ITilesSetActionPayload = z.infer<typeof TilesSetActionPayloadSchema>;
 
@@ -64,6 +67,7 @@ export interface ITilesStoreActions {
 	findForParent: (parent: string, parentId: string) => ITile[];
 	findAll: (parent: string) => ITile[];
 	// Actions
+	onEvent: (payload: ITilesOnEventActionPayload) => ITile;
 	set: (payload: ITilesSetActionPayload) => ITile;
 	unset: (payload: ITilesUnsetActionPayload) => void;
 	get: (payload: ITilesGetActionPayload) => Promise<ITile>;

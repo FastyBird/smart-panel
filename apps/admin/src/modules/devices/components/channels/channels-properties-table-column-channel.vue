@@ -2,7 +2,7 @@
 	<el-link
 		v-if="props.withFilters"
 		:type="props.filters.channels.includes(property.channel) ? 'danger' : undefined"
-		:underline="false"
+		underline="never"
 		class="font-400!"
 		@click.stop="emit('filter-by', property.channel, !props.filters.channels.includes(property.channel))"
 	>

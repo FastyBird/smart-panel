@@ -14,6 +14,8 @@ import type {
 	ConfigAudioStoreSetup,
 	IConfigAudio,
 	IConfigAudioEditActionPayload,
+	IConfigAudioOnEventActionPayload,
+	IConfigAudioRes,
 	IConfigAudioSetActionPayload,
 	IConfigAudioStateSemaphore,
 	IConfigAudioStoreActions,
@@ -42,6 +44,12 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 		const getting = (): boolean => semaphore.value.getting;
 
 		let pendingGetPromises: Promise<IConfigAudio> | null = null;
+
+		const onEvent = (payload: IConfigAudioOnEventActionPayload): IConfigAudio => {
+			return set({
+				data: transformConfigAudioResponse(payload.data as unknown as IConfigAudioRes),
+			});
+		};
 
 		const set = (payload: IConfigAudioSetActionPayload): IConfigAudio => {
 			const parsedConfigAudio = ConfigAudioSchema.safeParse({ ...payload.data, type: ConfigModuleAudioType.audio });
@@ -154,7 +162,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 				return data.value;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get();
 
 			let errorReason: string | null = 'Failed to update audio config.';
@@ -172,6 +180,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 			data,
 			firstLoadFinished,
 			getting,
+			onEvent,
 			set,
 			get,
 			edit,

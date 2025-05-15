@@ -38,9 +38,13 @@ export const DevicesControlsStateSemaphoreSchema = z.object({
 // STORE ACTIONS
 // =============
 
+export const DevicesControlsOnEventActionPayloadSchema = z.object({
+	id: ItemIdSchema,
+	data: z.object({}),
+});
+
 export const DevicesControlsSetActionPayloadSchema = z.object({
 	id: ItemIdSchema,
-	deviceId: ItemIdSchema,
 	data: z.object({
 		name: z.string().trim().nonempty(),
 	}),

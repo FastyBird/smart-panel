@@ -26,10 +26,12 @@ import {
 import type {
 	IPage,
 	IPageCreateReq,
+	IPageRes,
 	IPageUpdateReq,
 	IPagesAddActionPayload,
 	IPagesEditActionPayload,
 	IPagesGetActionPayload,
+	IPagesOnEventActionPayload,
 	IPagesRemoveActionPayload,
 	IPagesSaveActionPayload,
 	IPagesSetActionPayload,
@@ -82,6 +84,15 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 	const pendingGetPromises: Record<string, Promise<IPage>> = {};
 
 	const pendingFetchPromises: Record<string, Promise<IPage[]>> = {};
+
+	const onEvent = (payload: IPagesOnEventActionPayload): IPage => {
+		const plugin = getPluginByType(payload.type);
+
+		return set({
+			id: payload.id,
+			data: transformPageResponse(payload.data as unknown as IPageRes, plugin?.schemas?.pageSchema || PageSchema),
+		});
+	};
 
 	const set = (payload: IPagesSetActionPayload): IPage => {
 		const plugin = getPluginByType(payload.data.type);
@@ -302,7 +313,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				return transformed;
 			}
 
-			// Record could not be created on api, we have to remove it from database
+			// Record could not be created on api, we have to remove it from a database
 			delete data.value[parsedNewItem.data.id];
 
 			let errorReason: string | null = 'Failed to create page.';
@@ -379,7 +390,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				return transformed;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get({ id: payload.id });
 
 			let errorReason: string | null = 'Failed to update page.';
@@ -495,7 +506,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				return true;
 			}
 
-			// Deleting record on api failed, we need to refresh record
+			// Deleting record on api failed, we need to refresh the record
 			await get({ id: payload.id });
 
 			let errorReason: string | null = 'Remove account failed.';
@@ -555,7 +566,25 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		tilesStore.firstLoad.push(page.id);
 	};
 
-	return { semaphore, firstLoad, data, firstLoadFinished, getting, fetching, findAll, findById, set, unset, get, fetch, add, edit, save, remove };
+	return {
+		semaphore,
+		firstLoad,
+		data,
+		firstLoadFinished,
+		getting,
+		fetching,
+		findAll,
+		findById,
+		onEvent,
+		set,
+		unset,
+		get,
+		fetch,
+		add,
+		edit,
+		save,
+		remove,
+	};
 });
 
 export const registerPagesStore = (pinia: Pinia): Store<string, IPagesStoreState, object, IPagesStoreActions> => {

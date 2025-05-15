@@ -29,10 +29,12 @@ import type {
 	DevicesStoreSetup,
 	IDevice,
 	IDeviceCreateReq,
+	IDeviceRes,
 	IDeviceUpdateReq,
 	IDevicesAddActionPayload,
 	IDevicesEditActionPayload,
 	IDevicesGetActionPayload,
+	IDevicesOnEventActionPayload,
 	IDevicesRemoveActionPayload,
 	IDevicesSaveActionPayload,
 	IDevicesSetActionPayload,
@@ -82,6 +84,15 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	const pendingGetPromises: Record<string, Promise<IDevice>> = {};
 
 	const pendingFetchPromises: Record<string, Promise<IDevice[]>> = {};
+
+	const onEvent = (payload: IDevicesOnEventActionPayload): IDevice => {
+		const plugin = getPluginByType(payload.type);
+
+		return set({
+			id: payload.id,
+			data: transformDeviceResponse(payload.data as unknown as IDeviceRes, plugin?.schemas?.deviceSchema || DeviceSchema),
+		});
+	};
 
 	const set = (payload: IDevicesSetActionPayload): IDevice => {
 		const plugin = getPluginByType(payload.data.type);
@@ -287,7 +298,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				return transformed;
 			}
 
-			// Record could not be created on api, we have to remove it from database
+			// Record could not be created on api, we have to remove it from a database
 			delete data.value[parsedNewItem.data.id];
 
 			let errorReason: string | null = 'Failed to create device.';
@@ -369,7 +380,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				return transformed;
 			}
 
-			// Updating record on api failed, we need to refresh record
+			// Updating the record on api failed, we need to refresh the record
 			await get({ id: payload.id });
 
 			let errorReason: string | null = 'Failed to update device.';
@@ -486,7 +497,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				return true;
 			}
 
-			// Deleting record on api failed, we need to refresh record
+			// Deleting record on api failed, we need to refresh the record
 			await get({ id: payload.id });
 
 			let errorReason: string | null = 'Remove account failed.';
@@ -507,7 +518,6 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		controls.forEach((control) => {
 			devicesControlsStore.set({
 				id: control.id,
-				deviceId: device.id,
 				data: transformDeviceControlResponse(control),
 			});
 		});
@@ -525,14 +535,12 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 			channelsStore.set({
 				id: channel.id,
-				deviceId: device.id,
 				data: transformChannelResponse(channel, plugin?.schemas?.channelSchema || ChannelSchema),
 			});
 
 			channel.controls.forEach((control) => {
 				channelsControlsStore.set({
 					id: control.id,
-					channelId: channel.id,
 					data: transformChannelControlResponse(control),
 				});
 			});
@@ -544,7 +552,6 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 				channelsPropertiesStore.set({
 					id: property.id,
-					channelId: channel.id,
 					data: transformChannelPropertyResponse(property, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema),
 				});
 			});
@@ -555,7 +562,25 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		channelsStore.firstLoad.push(device.id);
 	};
 
-	return { semaphore, firstLoad, data, firstLoadFinished, getting, fetching, findAll, findById, set, unset, get, fetch, add, edit, save, remove };
+	return {
+		semaphore,
+		firstLoad,
+		data,
+		firstLoadFinished,
+		getting,
+		fetching,
+		findAll,
+		findById,
+		onEvent,
+		set,
+		unset,
+		get,
+		fetch,
+		add,
+		edit,
+		save,
+		remove,
+	};
 });
 
 export const registerDevicesStore = (pinia: Pinia): Store<string, IDevicesStoreState, object, IDevicesStoreActions> => {

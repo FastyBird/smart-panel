@@ -165,7 +165,7 @@
 			<template #default="scope">
 				<el-link
 					:type="innerFilters.roles.includes(scope.row.role) ? 'danger' : undefined"
-					:underline="false"
+					underline="never"
 					class="font-400!"
 					@click.stop="onFilterBy('role', scope.row.role, !innerFilters.roles.includes(scope.row.role))"
 				>
