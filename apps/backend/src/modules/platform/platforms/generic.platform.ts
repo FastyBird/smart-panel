@@ -35,8 +35,8 @@ export class GenericPlatform extends Platform {
 		]);
 
 		const defaultNetworkInterface: NetworkInterfacesData = Array.isArray(networkInterface)
-			? networkInterface[0]
-			: networkInterface;
+			? (networkInterface[0] as NetworkInterfacesData)
+			: (networkInterface as NetworkInterfacesData);
 
 		const rawData = {
 			cpuLoad: cpu.currentLoad,
