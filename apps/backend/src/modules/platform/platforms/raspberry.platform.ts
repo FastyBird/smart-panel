@@ -11,6 +11,8 @@ import { PlatformException, PlatformValidationException } from '../platform.exce
 
 import { Platform } from './abstract.platform';
 
+import NetworkInterfacesData = Systeminformation.NetworkInterfacesData;
+
 const execAsync = promisify(exec);
 
 export class RaspberryPlatform extends Platform {
@@ -37,7 +39,9 @@ export class RaspberryPlatform extends Platform {
 			si.networkInterfaces('default'),
 		]);
 
-		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
+		const defaultNetworkInterface: NetworkInterfacesData = Array.isArray(networkInterface)
+			? networkInterface[0]
+			: networkInterface;
 
 		const rawData = {
 			cpuLoad: cpu.currentLoad,

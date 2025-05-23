@@ -8,6 +8,8 @@ import { PlatformNotSupportedException } from '../platform.exceptions';
 
 import { Platform } from './abstract.platform';
 
+import NetworkInterfacesData = Systeminformation.NetworkInterfacesData;
+
 export class GenericPlatform extends Platform {
 	async getSystemInfo() {
 		const [cpu, memory, storage, os, time, temp, network, graphics, networkInterface]: [
@@ -32,7 +34,9 @@ export class GenericPlatform extends Platform {
 			si.networkInterfaces('default'),
 		]);
 
-		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
+		const defaultNetworkInterface: NetworkInterfacesData = Array.isArray(networkInterface)
+			? networkInterface[0]
+			: networkInterface;
 
 		const rawData = {
 			cpuLoad: cpu.currentLoad,
