@@ -116,6 +116,10 @@ jobs:
 
       - name: "Run E2E Tests"
         run: "pnpm --filter @fastybird/smart-panel-backend test:e2e"
+        env:
+          FB_DB_SYNC: "true"
+          FB_DB_LOGGING: "false"
+          FB_ADMIN_PORT: "3003"
 
       - name: "Generate Coverage Report"
         run: "pnpm --filter @fastybird/smart-panel-backend test:cov"
