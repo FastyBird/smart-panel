@@ -81,7 +81,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 
 				const payload = {
 					entity_id: setState.entityId,
-					...Object.fromEntries(setState.attributes),
+					...(setState.attributes ? Object.fromEntries(setState.attributes) : []),
 				};
 
 				if (!(await this.validateDto(ServiceRequestDto, payload))) {
@@ -113,6 +113,8 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 				propsToUpdate.forEach((prop) => {
 					result.set(prop.id, false);
 				});
+
+				return false;
 			}
 		}
 
