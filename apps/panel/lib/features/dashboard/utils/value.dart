@@ -1,12 +1,12 @@
 import 'dart:math';
 
-import 'package:fastybird_smart_panel/modules/devices/models/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 
 class ValueUtils {
-  static String? formatValue(ChannelPropertyModel property, [int? scale]) {
+  static String? formatValue(ChannelPropertyView property, [int? scale]) {
     final ValueType? value = property.value;
     final InvalidValueType? invalid = property.invalid;
 

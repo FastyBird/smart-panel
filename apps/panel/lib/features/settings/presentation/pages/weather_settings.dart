@@ -5,11 +5,11 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/config/repositories/export.dart';
+import 'package:fastybird_smart_panel/modules/config/export.dart';
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class WeatherSettingsPage extends StatefulWidget {
   const WeatherSettingsPage({super.key});
@@ -64,7 +64,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SettingRow(
-                icon: Symbols.device_thermostat,
+                icon: MdiIcons.sunThermometer,
                 title: Text(
                   localizations
                       .settings_weather_settings_temperature_unit_title,
@@ -99,7 +99,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
               ),
               AppSpacings.spacingMdVertical,
               SettingRow(
-                icon: Symbols.place,
+                icon: MdiIcons.mapMarker,
                 title: Text(
                   localizations
                       .settings_weather_settings_temperature_location_title,

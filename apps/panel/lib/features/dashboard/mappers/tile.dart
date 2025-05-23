@@ -1,39 +1,38 @@
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/device_preview.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/forecast.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/time.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/weather.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/data_source.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/device_preview_tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/time_tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/weather_tile.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/device_preview.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/forecast.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/time.dart';
+import 'package:fastybird_smart_panel/features/dashboard/presentation/widgets/tiles/weather.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/device_preview.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/forecast.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/time.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/weather.dart';
 import 'package:flutter/material.dart';
 
-Map<String, Widget Function(TileModel, List<DataSourceModel>)>
-    tileWidgetMappers = {
-  TileType.clock.value: (model, data) {
-    return TimeTileWidget(model as TimeTileModel, data);
+Map<TileType, Widget Function(TileView)> tileWidgetMappers = {
+  TileType.clock: (tile) {
+    return TimeTileWidget(tile as TimeTileView);
   },
-  TileType.weatherDay.value: (model, data) {
-    return WeatherTileWidget(model as DayWeatherTileModel, data);
+  TileType.weatherDay: (tile) {
+    return WeatherTileWidget(tile as DayWeatherTileView);
   },
-  TileType.weatherForecast.value: (model, data) {
-    return ForecastTileWidget(model as ForecastWeatherTileModel, data);
+  TileType.weatherForecast: (tile) {
+    return ForecastTileWidget(tile as ForecastWeatherTileView);
   },
-  TileType.devicePreview.value: (model, data) {
-    return DevicePreviewTileWidget(model as DevicePreviewTileModel, data);
+  TileType.devicePreview: (tile) {
+    return DevicePreviewTileWidget(tile as DevicePreviewTileView);
   },
 };
 
-Widget buildTileWidget(TileModel model, List<DataSourceModel> data) {
-  final builder = tileWidgetMappers[model.type.value];
+Widget buildTileWidget(TileView tile) {
+  final builder = tileWidgetMappers[tile.type];
 
   if (builder != null) {
-    return builder(model, data);
+    return builder(tile);
   } else {
     throw Exception(
-      'Tile widget can not be created. Unsupported tile type: ${model.type}',
+      'Tile widget can not be created. Unsupported tile type: ${tile.type.value}',
     );
   }
 }

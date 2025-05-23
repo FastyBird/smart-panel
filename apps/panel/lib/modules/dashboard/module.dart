@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/repositories/cards.dart'
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/data_sources.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/pages.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/tiles.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
 import 'package:flutter/foundation.dart';
 
 class DashboardModuleService {
@@ -19,6 +20,8 @@ class DashboardModuleService {
   late CardsRepository _cardsRepository;
   late TilesRepository _tilesRepository;
   late DataSourcesRepository _dataSourcesRepository;
+
+  late DashboardService _dashboardService;
 
   bool _isLoading = true;
 
@@ -40,16 +43,27 @@ class DashboardModuleService {
       apiClient: apiClient.dashboardModule,
     );
 
+    _dashboardService = DashboardService(
+      pagesRepository: _pagesRepository,
+      tilesRepository: _tilesRepository,
+      dataSourcesRepository: _dataSourcesRepository,
+      cardsRepository: _cardsRepository,
+    );
+
     locator.registerSingleton(_pagesRepository);
     locator.registerSingleton(_cardsRepository);
     locator.registerSingleton(_tilesRepository);
     locator.registerSingleton(_dataSourcesRepository);
+
+    locator.registerSingleton(_dashboardService);
   }
 
   Future<void> initialize() async {
     _isLoading = true;
 
     await _initializePages();
+
+    await _dashboardService.initialize();
 
     _isLoading = false;
 

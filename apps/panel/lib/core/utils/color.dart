@@ -21,9 +21,9 @@ class ColorUtils {
   /// Convert a Flutter Color to RGB
   static RgbModel toRGB(Color color) {
     return RgbModel(
-      red: color.r.toInt(),
-      green: color.g.toInt(),
-      blue: color.b.toInt(),
+      red: color.r.toInt() * 255,
+      green: color.g.toInt() * 255,
+      blue: color.b.toInt() * 255,
     );
   }
 

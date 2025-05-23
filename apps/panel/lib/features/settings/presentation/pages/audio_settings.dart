@@ -12,7 +12,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class AudioSettingsPage extends StatefulWidget {
   const AudioSettingsPage({super.key});
@@ -77,7 +77,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SettingRow(
-                icon: Symbols.speaker,
+                icon: MdiIcons.speaker,
                 title: Text(
                   localizations.settings_audio_settings_speaker_title,
                   style: TextStyle(
@@ -92,8 +92,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                   ),
                 ),
                 trailing: IconSwitch(
-                  iconOn: Symbols.volume_up,
-                  iconOff: Symbols.volume_off,
+                  iconOn: MdiIcons.volumeHigh,
+                  iconOff: MdiIcons.volumeOff,
                   switchState: _speakerEnabled,
                   onChanged: (bool state) async {
                     _handleSpeakerChange(context, state);
@@ -102,7 +102,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
               ),
               AppSpacings.spacingMdVertical,
               SettingRow(
-                icon: Symbols.volume_up,
+                icon: MdiIcons.volumeHigh,
                 title: Text(
                   localizations.settings_audio_settings_speaker_volume_title,
                   style: TextStyle(
@@ -111,8 +111,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                   ),
                 ),
                 subtitle: SettingSlider(
-                  leftIcon: Symbols.volume_down,
-                  rightIcon: Symbols.volume_up,
+                  leftIcon: MdiIcons.volumeLow,
+                  rightIcon: MdiIcons.volumeHigh,
                   value: _speakerVolume.toDouble(),
                   enabled: _speakerEnabled,
                   onChanged: (double value) async {
@@ -125,7 +125,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
               ),
               AppSpacings.spacingMdVertical,
               SettingRow(
-                icon: Symbols.mic_external_on,
+                icon: MdiIcons.microphoneVariant,
                 title: Text(
                   localizations.settings_audio_settings_microphone_title,
                   style: TextStyle(
@@ -140,8 +140,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                   ),
                 ),
                 trailing: IconSwitch(
-                  iconOn: Symbols.mic,
-                  iconOff: Symbols.mic_off,
+                  iconOn: MdiIcons.microphone,
+                  iconOff: MdiIcons.microphoneOff,
                   switchState: _microphoneEnabled,
                   onChanged: (bool state) async {
                     _handleMicrophoneChange(context, state);
@@ -150,7 +150,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
               ),
               AppSpacings.spacingMdVertical,
               SettingRow(
-                icon: Symbols.mic,
+                icon: MdiIcons.microphone,
                 title: Text(
                   localizations.settings_audio_settings_microphone_volume_title,
                   style: TextStyle(
@@ -159,8 +159,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
                   ),
                 ),
                 subtitle: SettingSlider(
-                  leftIcon: Symbols.mic_off,
-                  rightIcon: Symbols.mic_sharp,
+                  leftIcon: MdiIcons.microphoneOff,
+                  rightIcon: MdiIcons.microphone,
                   value: _microphoneVolume.toDouble(),
                   enabled: _microphoneEnabled,
                   onChanged: (double value) async {

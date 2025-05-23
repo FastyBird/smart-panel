@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/system/constants.dart';
-import 'package:fastybird_smart_panel/modules/system/repositories/export.dart';
+import 'package:fastybird_smart_panel/modules/system/export.dart';
 
 class SystemModuleService {
   final SocketService _socketService;

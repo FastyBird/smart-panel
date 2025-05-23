@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class GeneralSettingsPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
@@ -17,32 +17,32 @@ class GeneralSettingsPage extends StatelessWidget {
 
     List<SettingsButton> buttons = [
       SettingsButton(
-        icon: Symbols.display_settings,
+        icon: MdiIcons.monitorDashboard,
         label: localizations.settings_general_settings_button_display_settings,
         route: 'display-settings',
       ),
       SettingsButton(
-        icon: Symbols.translate,
+        icon: MdiIcons.translate,
         label: localizations.settings_general_settings_button_language_settings,
         route: 'language-settings',
       ),
       SettingsButton(
-        icon: Symbols.volume_up,
+        icon: MdiIcons.volumeHigh,
         label: localizations.settings_general_settings_button_audio_settings,
         route: 'audio-settings',
       ),
       SettingsButton(
-        icon: Symbols.partly_cloudy_day,
+        icon: MdiIcons.weatherPartlyCloudy,
         label: localizations.settings_general_settings_button_weather_settings,
         route: 'weather-settings',
       ),
       SettingsButton(
-        icon: Symbols.info,
+        icon: MdiIcons.informationOutline,
         label: localizations.settings_general_settings_button_about,
         route: 'about',
       ),
       SettingsButton(
-        icon: Symbols.engineering,
+        icon: MdiIcons.wrenchClock,
         label: localizations.settings_general_settings_button_maintenance,
         route: 'maintenance',
       ),
@@ -51,7 +51,7 @@ class GeneralSettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: ScreenAppBar(
         title: localizations.settings_general_settings_title,
-        icon: Symbols.settings,
+        icon: MdiIcons.cog,
         actions: [
           Padding(
             padding: EdgeInsets.symmetric(
@@ -71,7 +71,7 @@ class GeneralSettingsPage extends StatelessWidget {
                   padding: AppSpacings.paddingSm,
                 ),
                 icon: Icon(
-                  Symbols.close,
+                  MdiIcons.close,
                   size: _screenService.scale(14),
                 ),
               ),

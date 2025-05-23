@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/tile.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:flutter/foundation.dart';

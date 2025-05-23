@@ -26,7 +26,7 @@
 				>
 					<template #active-action>
 						<icon
-							icon="mdi:moon-and-stars"
+							icon="mdi:weather-night"
 							class="dark-icon"
 						/>
 					</template>

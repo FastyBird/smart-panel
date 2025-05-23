@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/channel_prope
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/device_controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesModuleService {
@@ -21,6 +22,8 @@ class DevicesModuleService {
   late ChannelsRepository _channelsRepository;
   late ChannelControlsRepository _channelControlsRepository;
   late ChannelPropertiesRepository _channelPropertiesRepository;
+
+  late DevicesService _devicesService;
 
   bool _isLoading = true;
 
@@ -47,18 +50,28 @@ class DevicesModuleService {
       channelsRepository: _channelsRepository,
     );
 
+    _devicesService = DevicesService(
+      devicesRepository: _devicesRepository,
+      channelsRepository: _channelsRepository,
+      channelPropertiesRepository: _channelPropertiesRepository,
+    );
+
     locator.registerSingleton(_devicesRepository);
     locator.registerSingleton(_deviceControlsRepository);
 
     locator.registerSingleton(_channelsRepository);
     locator.registerSingleton(_channelControlsRepository);
     locator.registerSingleton(_channelPropertiesRepository);
+
+    locator.registerSingleton(_devicesService);
   }
 
   Future<void> initialize() async {
     _isLoading = true;
 
     await _initializeDevices();
+
+    await _devicesService.initialize();
 
     _isLoading = false;
 

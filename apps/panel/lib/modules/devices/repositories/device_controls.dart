@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/devices/models/controls.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/controls/controls.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 

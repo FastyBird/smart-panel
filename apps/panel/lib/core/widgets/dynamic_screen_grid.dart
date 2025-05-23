@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 class DynamicScreenGridItem extends StatelessWidget {
   final Widget child;

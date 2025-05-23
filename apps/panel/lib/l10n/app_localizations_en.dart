@@ -13,6 +13,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get value_not_set => 'Not Set';
 
   @override
+  String get value_loading => 'Loading';
+
+  @override
   String get information => 'Information';
 
   @override
@@ -91,16 +94,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get day_sunday_short => 'Sun';
 
   @override
-  String get message_error_home_not_configured_title => 'Home is not configured!';
-
-  @override
-  String get message_error_home_not_configured_description => 'Please configure at least one tile on the home screen.';
-
-  @override
   String get message_error_tiles_not_configured_title => 'No tiles configured!';
 
   @override
   String get message_error_tiles_not_configured_description => 'Please configure at least one tile on the screen.';
+
+  @override
+  String get message_error_cards_not_configured_title => 'No cards configured!';
+
+  @override
+  String get message_error_cards_not_configured_description => 'Please configure at least one card on the screen.';
 
   @override
   String get message_error_device_not_found_title => 'Device Not Found!';
@@ -119,6 +122,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get message_error_no_device_detail_preparing_description => 'For selected device detail page is not ready yet.';
+
+  @override
+  String get message_error_page_not_found_title => 'Page Not Found!';
+
+  @override
+  String get message_error_page_not_found_description => 'Requested page could not be found in the application.';
 
   @override
   String get electrical_energy_consumption_title => 'Energy Consumption';
@@ -167,6 +176,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get electrical_power_over_voltage_description => 'Warning: Electricity is too strong';
+
+  @override
+  String get electrical_power_over_power_title => 'Over Power';
+
+  @override
+  String get electrical_power_over_power_description => 'Warning: Power consumption is too high';
 
   @override
   String get light_state_off => 'Off';

@@ -7,11 +7,11 @@ import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/config/repositories/export.dart';
+import 'package:fastybird_smart_panel/modules/config/export.dart';
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class LanguageSettingsPage extends StatefulWidget {
   const LanguageSettingsPage({super.key});
@@ -82,7 +82,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SettingRow(
-                icon: Symbols.translate,
+                icon: MdiIcons.translate,
                 title: Text(
                   localizations.settings_language_settings_language_title,
                   style: TextStyle(
@@ -108,7 +108,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
               ),
               AppSpacings.spacingMdVertical,
               SettingRow(
-                icon: Symbols.language,
+                icon: MdiIcons.web,
                 title: Text(
                   localizations.settings_language_settings_timezone_title,
                   style: TextStyle(
@@ -149,7 +149,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
               ),
               AppSpacings.spacingMdVertical,
               SettingRow(
-                icon: Symbols.access_time,
+                icon: MdiIcons.clockOutline,
                 title: Text(
                   localizations.settings_language_settings_time_format_title,
                   style: TextStyle(

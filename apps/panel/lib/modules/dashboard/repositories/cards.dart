@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/pages_cards_plugin/pages_cards_plugin_client.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/card.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/models/cards/card.dart';
 import 'package:flutter/foundation.dart';
 
 class CardsRepository extends ChangeNotifier {
