@@ -12,7 +12,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class DisplaySettingsPage extends StatefulWidget {
   const DisplaySettingsPage({super.key});
@@ -82,7 +82,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SettingRow(
-                  icon: Symbols.brightness_medium,
+                  icon: MdiIcons.brightness6,
                   title: Text(
                     localizations.settings_display_settings_theme_mode_title,
                     style: TextStyle(
@@ -99,8 +99,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   ),
                   trailing: IconSwitch(
                     switchState: _isDarkMode,
-                    iconOn: Symbols.dark_mode,
-                    iconOff: Symbols.light_mode,
+                    iconOn: MdiIcons.weatherNight,
+                    iconOff: MdiIcons.weatherSunny,
                     toggleMode: true,
                     onChanged: (bool state) async {
                       _handleDarkModeChange(context, state);
@@ -109,7 +109,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 ),
                 AppSpacings.spacingMdVertical,
                 SettingRow(
-                  icon: Symbols.light_mode,
+                  icon: MdiIcons.lightbulbOn40,
                   title: Text(
                     localizations.settings_display_settings_brightness_title,
                     style: TextStyle(
@@ -118,8 +118,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     ),
                   ),
                   subtitle: SettingSlider(
-                    leftIcon: Symbols.brightness_low,
-                    rightIcon: Symbols.brightness_high,
+                    leftIcon: MdiIcons.brightness5,
+                    rightIcon: MdiIcons.brightness7,
                     value: _brightness.toDouble(),
                     enabled: true,
                     onChanged: (double value) async {
@@ -129,7 +129,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 ),
                 AppSpacings.spacingMdVertical,
                 SettingRow(
-                  icon: Symbols.screen_lock_portrait,
+                  icon: MdiIcons.cellphoneLock,
                   title: Text(
                     localizations.settings_display_settings_screen_lock_title,
                     style: TextStyle(
@@ -163,7 +163,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 ),
                 AppSpacings.spacingMdVertical,
                 SettingRow(
-                  icon: Symbols.wallpaper,
+                  icon: MdiIcons.wallpaper,
                   title: Text(
                     localizations.settings_display_settings_screen_saver_title,
                     style: TextStyle(
@@ -180,8 +180,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   ),
                   trailing: IconSwitch(
                     switchState: _hasScreenSaver,
-                    iconOn: Symbols.visibility,
-                    iconOff: Symbols.visibility_off,
+                    iconOn: MdiIcons.eye,
+                    iconOff: MdiIcons.eyeOff,
                     onChanged: (bool state) async {
                       _handleScreenSaverChange(context, state);
                     },

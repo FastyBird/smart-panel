@@ -1,0 +1,120 @@
+import 'package:collection/collection.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/obstruction.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/percentage.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/position.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart';
+
+class WindowCoveringChannelView extends ChannelView
+    with
+        ChannelObstructionMixin,
+        ChannelPercentageMixin,
+        ChannelTiltMixin,
+        ChannelFaultMixin {
+  WindowCoveringChannelView({
+    required super.channelModel,
+    required super.properties,
+  });
+
+  @override
+  ObstructionChannelPropertyView? get obstructionProp =>
+      properties.whereType<ObstructionChannelPropertyView>().firstOrNull;
+
+  StatusChannelPropertyView get statusProp =>
+      properties.whereType<StatusChannelPropertyView>().first;
+
+  PositionChannelPropertyView get positionProp =>
+      properties.whereType<PositionChannelPropertyView>().first;
+
+  TypeChannelPropertyView get typeProp =>
+      properties.whereType<TypeChannelPropertyView>().first;
+
+  @override
+  PercentageChannelPropertyView? get percentageProp =>
+      properties.whereType<PercentageChannelPropertyView>().firstOrNull;
+
+  @override
+  TiltChannelPropertyView? get tiltProp =>
+      properties.whereType<TiltChannelPropertyView>().firstOrNull;
+
+  @override
+  FaultChannelPropertyView? get faultProp =>
+      properties.whereType<FaultChannelPropertyView>().firstOrNull;
+
+  WindowCoveringStatusValue get status {
+    final ValueType? value = statusProp.value;
+
+    if (value is StringValueType &&
+        WindowCoveringStatusValue.contains(value.value)) {
+      WindowCoveringStatusValue? status =
+          WindowCoveringStatusValue.fromValue(value.value);
+
+      if (status != null) {
+        return status;
+      }
+    }
+
+    throw Exception(
+      'Channel is missing required value for property: ${statusProp.category.value}',
+    );
+  }
+
+  bool get isOpen => status == WindowCoveringStatusValue.open;
+
+  bool get isClosed => status == WindowCoveringStatusValue.closed;
+
+  bool get isOpening => status == WindowCoveringStatusValue.opening;
+
+  bool get isClosing => status == WindowCoveringStatusValue.closing;
+
+  bool get isStopped => status == WindowCoveringStatusValue.stopped;
+
+  List<WindowCoveringStatusValue> get availableStatuses {
+    final FormatType? format = statusProp.format;
+
+    if (format is StringListFormatType) {
+      format.value
+          .map((item) => WindowCoveringStatusValue.fromValue(item))
+          .whereType<WindowCoveringStatusValue>()
+          .toList();
+    }
+
+    return [];
+  }
+
+  WindowCoveringTypeValue get type {
+    final ValueType? value = typeProp.value;
+
+    if (value is StringValueType &&
+        WindowCoveringTypeValue.contains(value.value)) {
+      WindowCoveringTypeValue? type =
+          WindowCoveringTypeValue.fromValue(value.value);
+
+      if (type != null) {
+        return type;
+      }
+    }
+
+    throw Exception(
+      'Channel is missing required value for property: ${typeProp.category.value}',
+    );
+  }
+
+  WindowCoveringPositionValue? get currentAction {
+    final ValueType? value = positionProp.value;
+
+    if (value is StringValueType &&
+        WindowCoveringPositionValue.contains(value.value)) {
+      return WindowCoveringPositionValue.fromValue(value.value);
+    }
+
+    return null;
+  }
+}

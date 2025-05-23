@@ -13,6 +13,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get value_not_set => 'Nenastaveno';
 
   @override
+  String get value_loading => 'Loading';
+
+  @override
   String get information => 'Informace';
 
   @override
@@ -91,16 +94,16 @@ class AppLocalizationsCs extends AppLocalizations {
   String get day_sunday_short => 'Ne';
 
   @override
-  String get message_error_home_not_configured_title => 'Domov není nakonfigurován!';
-
-  @override
-  String get message_error_home_not_configured_description => 'Nakonfigurujte alespoň jednu dlaždici na domovské obrazovce.';
-
-  @override
   String get message_error_tiles_not_configured_title => 'Žádné dlaždice nejsou nakonfigurovány!';
 
   @override
   String get message_error_tiles_not_configured_description => 'Nakonfigurujte alespoň jednu dlaždici na obrazovce.';
+
+  @override
+  String get message_error_cards_not_configured_title => 'No cards configured!';
+
+  @override
+  String get message_error_cards_not_configured_description => 'Please configure at least one card on the screen.';
 
   @override
   String get message_error_device_not_found_title => 'Zařízení nenalezeno!';
@@ -119,6 +122,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get message_error_no_device_detail_preparing_description => 'Pro vybrané zařízení stránka s podrobnostmi ještě není připravena.';
+
+  @override
+  String get message_error_page_not_found_title => 'Page Not Found!';
+
+  @override
+  String get message_error_page_not_found_description => 'Requested page could not be found in the application.';
 
   @override
   String get electrical_energy_consumption_title => 'Spotřeba energie';
@@ -167,6 +176,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get electrical_power_over_voltage_description => 'Varování: Elektřina je příliš silná.';
+
+  @override
+  String get electrical_power_over_power_title => 'Over Power';
+
+  @override
+  String get electrical_power_over_power_description => 'Warning: Power consumption is too high';
 
   @override
   String get light_state_off => 'Vypnuto';

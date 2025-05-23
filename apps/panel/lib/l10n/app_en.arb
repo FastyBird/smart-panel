@@ -8,6 +8,10 @@
   "@value_not_set": {
     "description": "Displayed when a value has not been configured or assigned."
   },
+  "value_loading": "Loading",
+  "@value_loading": {
+    "description": "Displayed when a value is not available and loading from backend."
+  },
   "information": "Information",
   "@information": {
     "description": "General informational message"
@@ -112,14 +116,6 @@
   "@day_sunday_short": {
     "description": "Short abbreviation for Sunday in English."
   },
-  "message_error_home_not_configured_title": "Home is not configured!",
-  "@message_error_home_not_configured_title": {
-    "description": "Title for error when no home configuration exists"
-  },
-  "message_error_home_not_configured_description": "Please configure at least one tile on the home screen.",
-  "@message_error_home_not_configured_description": {
-    "description": "Indicates that no home configuration is available"
-  },
   "message_error_tiles_not_configured_title": "No tiles configured!",
   "@message_error_tiles_not_configured_title": {
     "description": "Title for error when no tiles are configured"
@@ -127,6 +123,14 @@
   "message_error_tiles_not_configured_description": "Please configure at least one tile on the screen.",
   "@message_error_tiles_not_configured_description": {
     "description": "Indicates that no tiles have been configured for the screen"
+  },
+  "message_error_cards_not_configured_title": "No cards configured!",
+  "@message_error_cards_not_configured_title": {
+    "description": "Title for error when no cards are configured"
+  },
+  "message_error_cards_not_configured_description": "Please configure at least one card on the screen.",
+  "@message_error_cards_not_configured_description": {
+    "description": "Indicates that no cards have been configured for the screen"
   },
   "message_error_device_not_found_title": "Device Not Found!",
   "@message_error_device_not_found_title": {
@@ -151,6 +155,14 @@
   "message_error_no_device_detail_preparing_description": "For selected device detail page is not ready yet.",
   "@message_error_no_device_detail_preparing_description": {
     "description": "Indicates that the selected device has no detailed page available"
+  },
+  "message_error_page_not_found_title": "Page Not Found!",
+  "@message_error_page_not_found_title": {
+    "description": "Title for error when a requested page cannot be found"
+  },
+  "message_error_page_not_found_description": "Requested page could not be found in the application.",
+  "@message_error_page_not_found_description": {
+    "description": "Indicates that the requested page is unavailable in the system"
   },
   "electrical_energy_consumption_title": "Energy Consumption",
   "@electrical_energy_consumption_title": {
@@ -215,6 +227,14 @@
   "electrical_power_over_voltage_description": "Warning: Electricity is too strong",
   "@electrical_power_over_voltage_description": {
     "description": "Detailed description of over voltage warning"
+  },
+  "electrical_power_over_power_title": "Over Power",
+  "@electrical_power_over_power_title": {
+    "description": "Title for over power warning"
+  },
+  "electrical_power_over_power_description": "Warning: Power consumption is too high",
+  "@electrical_power_over_power_description": {
+    "description": "Detailed description of over power warning"
   },
   "light_state_off": "Off",
   "@light_state_off": {

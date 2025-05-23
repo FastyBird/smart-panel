@@ -4,9 +4,9 @@ import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/system/repositories/export.dart';
+import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
@@ -64,7 +64,7 @@ class _AboutPageState extends State<AboutPage> {
                 child: Column(
                   children: [
                     Icon(
-                      Symbols.settings,
+                      MdiIcons.cogOutline,
                       size: _screenService.scale(72),
                     ),
                     AppSpacings.spacingLgVertical,
@@ -220,7 +220,7 @@ class _AboutPageState extends State<AboutPage> {
 
         return _renderInfoTile(
           context: context,
-          icon: Symbols.lan,
+          icon: MdiIcons.lan,
           title: localizations.settings_about_ip_address_title,
           value: ipAddress ?? localizations.value_not_available,
         );
@@ -241,7 +241,7 @@ class _AboutPageState extends State<AboutPage> {
 
         return _renderInfoTile(
           context: context,
-          icon: Symbols.host,
+          icon: MdiIcons.server,
           title: localizations.settings_about_mac_address_title,
           value: macAddress ?? localizations.value_not_available,
         );
@@ -262,7 +262,7 @@ class _AboutPageState extends State<AboutPage> {
 
         return _renderInfoTile(
           context: context,
-          icon: Symbols.earthquake,
+          icon: MdiIcons.gauge,
           title: localizations.settings_about_cpu_usage_title,
           value: cpuLoad != null
               ? NumberUtils.formatNumber(cpuLoad, 2)
@@ -286,7 +286,7 @@ class _AboutPageState extends State<AboutPage> {
 
         return _renderInfoTile(
           context: context,
-          icon: Symbols.memory,
+          icon: MdiIcons.memory,
           title: localizations.settings_about_memory_usage_title,
           value: memoryUsed != null
               ? NumberUtils.formatNumber(memoryUsed / 1024 / 1024, 0)

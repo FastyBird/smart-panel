@@ -11,10 +11,33 @@ scripts:
   generate-run-config:
     run: bash ./bin/generate_app_run_config.sh
 
+  rebuild-all:
+    run: melos rebuild-api && melos rebuild-spec
+    description: Rebuilds both the OpenAPI-generated API and the static spec files.
+
   rebuild-api:
-    run: cd ./apps/panel/ && rm -rf lib/api && dart run swagger_parser && dart run build_runner build
+    run: |
+      echo "🧼 Cleaning API directory..." && \
+      cd ./apps/panel/ && \
+      rm -rf lib/api && \
+      dart run swagger_parser && \
+      dart run build_runner build
     description: Cleans the API directory, regenerates interfaces, and runs build_runner.
+
+  rebuild-spec:
+    run: |
+      echo "🧼 Cleaning spec directory..." && \
+      cd ./apps/panel/ && \
+      rm -rf lib/spec && \
+      echo "🛠️  Building device spec..." && \
+      dart tools/build_device_spec.dart && \
+      echo "🛠️  Building channel spec..." && \
+      dart tools/build_channel_spec.dart && \
+      echo "✅ Spec rebuild complete!"
+    description: Cleans the Spec directory, regenerates device and channel specification Dart files.
 
 command:
   bootstrap:
     runPubGetInParallel: false
+    hooks:
+      post: melos rebuild-all

@@ -1,32 +1,33 @@
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/cards.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/pages/tiles.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/cards_page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/models/tiles_page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/cards.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/tiles.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:flutter/material.dart';
 
-Map<String, Widget Function(PageModel)> pageWidgetMappers = {
-  PageType.cards.value: (model) {
-    return CardsPage(page: model as CardsPageModel);
+Map<PageType, Widget Function(DashboardPageView)> pageWidgetMappers = {
+  PageType.tiles: (page) {
+    return TilesPage(page: page as TilesPageView);
   },
-  PageType.tiles.value: (model) {
-    return TilesPage(page: model as TilesPageModel);
+  PageType.cards: (page) {
+    return CardsPage(page: page as CardsPageView);
   },
-  PageType.deviceDetail.value: (model) {
-    return DeviceDetailPage(model.id);
+  PageType.deviceDetail: (page) {
+    return DeviceDetailPage(page: page as DeviceDetailPageView);
   },
 };
 
-Widget buildPageWidget(PageModel model) {
-  final builder = pageWidgetMappers[model.type.value];
+Widget buildPageWidget(DashboardPageView page) {
+  final builder = pageWidgetMappers[page.type];
 
   if (builder != null) {
-    return builder(model);
+    return builder(page);
   } else {
     throw Exception(
-      'Page widget can not be created. Unsupported page type: ${model.type}',
+      'Page widget can not be created. Unsupported page type: ${page.type.value}',
     );
   }
 }

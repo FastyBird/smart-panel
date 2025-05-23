@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 

@@ -1,15 +1,19 @@
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/constants.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
+import 'package:fastybird_smart_panel/modules/weather/service.dart';
 
 class WeatherModuleService {
   final SocketService _socketService;
 
   late CurrentWeatherRepository _currentWeatherRepository;
   late ForecastWeatherRepository _forecastWeatherRepository;
+
+  late WeatherService _weatherService;
 
   bool _isLoading = true;
 
@@ -24,14 +28,24 @@ class WeatherModuleService {
       apiClient: apiClient.weatherModule,
     );
 
+    _weatherService = WeatherService(
+      currentDayRepository: _currentWeatherRepository,
+      forecastRepository: _forecastWeatherRepository,
+      configurationRepository: locator<WeatherConfigRepository>(),
+    );
+
     locator.registerSingleton(_currentWeatherRepository);
     locator.registerSingleton(_forecastWeatherRepository);
+
+    locator.registerSingleton(_weatherService);
   }
 
   Future<void> initialize() async {
     _isLoading = true;
 
     await _initializeWeatherData();
+
+    await _weatherService.initialize();
 
     _isLoading = false;
 

@@ -2,9 +2,11 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/page.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/repositories/export.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -22,12 +24,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PagesRepository>(builder: (
+    return Consumer<DashboardService>(builder: (
       context,
-      pagesRepository,
+      dashboardService,
       _,
     ) {
-      if (pagesRepository.getItems().isEmpty) {
+      if (dashboardService.pages.isEmpty) {
         return Scaffold(
           body: Center(
             child: Padding(
@@ -36,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Symbols.warning,
+                    MdiIcons.alert,
                     color: Theme.of(context).warning,
                     size: _screenService.scale(64),
                   ),
@@ -57,10 +59,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
 
-      List<Widget> pages = pagesRepository
-          .getItems()
-          .map((model) => buildPageWidget(model))
+      List<Widget> pages = dashboardService.pages.entries
+          .map((entry) => buildPageWidget(entry.value))
           .toList();
+
+      final DashboardPageView currentView =
+          dashboardService.pages.entries.toList()[_currentPage].value;
 
       return Scaffold(
         body: Stack(
@@ -82,44 +86,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 },
               ),
             ),
-
-            // Dots Indicator
-            Positioned(
-              bottom: _screenService.scale(4.0),
-              left: 0,
-              right: 0,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  pages.length,
-                  (index) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: EdgeInsets.symmetric(
-                      horizontal: _screenService.scale(4.0),
-                    ),
-                    height: _screenService.scale(6.0),
-                    width: _currentPage == index % pages.length
-                        ? _screenService.scale(16.0)
-                        : _screenService.scale(6.0),
-                    decoration: BoxDecoration(
-                      color: _currentPage == index
-                          ? Theme.of(context).brightness == Brightness.light
-                              ? AppTextColorLight.primary
-                              : AppTextColorDark.primary
-                          : Theme.of(context).brightness == Brightness.light
-                              ? AppTextColorLight.disabled
-                              : AppTextColorDark.disabled,
-                      borderRadius:
-                          BorderRadius.circular(_screenService.scale(4.0)),
+            if (_shouldShowPageIndicator(currentView))
+              // Dots Indicator
+              Positioned(
+                bottom: _screenService.scale(4.0),
+                left: 0,
+                right: 0,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    pages.length,
+                    (index) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: EdgeInsets.symmetric(
+                        horizontal: _screenService.scale(4.0),
+                      ),
+                      height: _screenService.scale(6.0),
+                      width: _currentPage == index % pages.length
+                          ? _screenService.scale(16.0)
+                          : _screenService.scale(6.0),
+                      decoration: BoxDecoration(
+                        color: _currentPage == index
+                            ? Theme.of(context).brightness == Brightness.light
+                                ? AppTextColorLight.primary
+                                : AppTextColorDark.primary
+                            : Theme.of(context).brightness == Brightness.light
+                                ? AppTextColorLight.disabled
+                                : AppTextColorDark.disabled,
+                        borderRadius: BorderRadius.circular(
+                          _screenService.scale(4.0),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       );
     });
+  }
+
+  bool _shouldShowPageIndicator(DashboardPageView view) {
+    return view is! DeviceDetailPageView;
   }
 }

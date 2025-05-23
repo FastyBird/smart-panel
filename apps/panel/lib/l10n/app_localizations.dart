@@ -107,6 +107,12 @@ abstract class AppLocalizations {
   /// **'Not Set'**
   String get value_not_set;
 
+  /// Displayed when a value is not available and loading from backend.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get value_loading;
+
   /// General informational message
   ///
   /// In en, this message translates to:
@@ -263,18 +269,6 @@ abstract class AppLocalizations {
   /// **'Sun'**
   String get day_sunday_short;
 
-  /// Title for error when no home configuration exists
-  ///
-  /// In en, this message translates to:
-  /// **'Home is not configured!'**
-  String get message_error_home_not_configured_title;
-
-  /// Indicates that no home configuration is available
-  ///
-  /// In en, this message translates to:
-  /// **'Please configure at least one tile on the home screen.'**
-  String get message_error_home_not_configured_description;
-
   /// Title for error when no tiles are configured
   ///
   /// In en, this message translates to:
@@ -286,6 +280,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please configure at least one tile on the screen.'**
   String get message_error_tiles_not_configured_description;
+
+  /// Title for error when no cards are configured
+  ///
+  /// In en, this message translates to:
+  /// **'No cards configured!'**
+  String get message_error_cards_not_configured_title;
+
+  /// Indicates that no cards have been configured for the screen
+  ///
+  /// In en, this message translates to:
+  /// **'Please configure at least one card on the screen.'**
+  String get message_error_cards_not_configured_description;
 
   /// Title for error when a requested device cannot be found
   ///
@@ -322,6 +328,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'For selected device detail page is not ready yet.'**
   String get message_error_no_device_detail_preparing_description;
+
+  /// Title for error when a requested page cannot be found
+  ///
+  /// In en, this message translates to:
+  /// **'Page Not Found!'**
+  String get message_error_page_not_found_title;
+
+  /// Indicates that the requested page is unavailable in the system
+  ///
+  /// In en, this message translates to:
+  /// **'Requested page could not be found in the application.'**
+  String get message_error_page_not_found_description;
 
   /// Title for total energy consumption
   ///
@@ -418,6 +436,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Warning: Electricity is too strong'**
   String get electrical_power_over_voltage_description;
+
+  /// Title for over power warning
+  ///
+  /// In en, this message translates to:
+  /// **'Over Power'**
+  String get electrical_power_over_power_title;
+
+  /// Detailed description of over power warning
+  ///
+  /// In en, this message translates to:
+  /// **'Warning: Power consumption is too high'**
+  String get electrical_power_over_power_description;
 
   /// State when the light is turned off
   ///

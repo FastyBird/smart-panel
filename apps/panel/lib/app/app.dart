@@ -4,18 +4,17 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/dashboard/services/devices.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/config/repositories/export.dart'
+import 'package:fastybird_smart_panel/modules/config/export.dart'
     as config_module;
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
-import 'package:fastybird_smart_panel/modules/dashboard/repositories/export.dart'
+import 'package:fastybird_smart_panel/modules/dashboard/export.dart'
     as dashboard_module;
-import 'package:fastybird_smart_panel/modules/devices/repositories/export.dart'
+import 'package:fastybird_smart_panel/modules/devices/export.dart'
     as devices_module;
-import 'package:fastybird_smart_panel/modules/system/repositories/export.dart'
+import 'package:fastybird_smart_panel/modules/system/export.dart'
     as system_module;
-import 'package:fastybird_smart_panel/modules/weather/repositories/export.dart'
+import 'package:fastybird_smart_panel/modules/weather/export.dart'
     as weather_module;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -152,6 +151,9 @@ class _MyAppState extends State<MyApp> {
               value: locator<weather_module.ForecastWeatherRepository>(),
             ),
             ChangeNotifierProvider.value(
+              value: locator<weather_module.WeatherService>(),
+            ),
+            ChangeNotifierProvider.value(
               value: locator<system_module.SystemInfoRepository>(),
             ),
             ChangeNotifierProvider.value(
@@ -173,6 +175,9 @@ class _MyAppState extends State<MyApp> {
               value: locator<devices_module.ChannelPropertiesRepository>(),
             ),
             ChangeNotifierProvider.value(
+              value: locator<devices_module.DevicesService>(),
+            ),
+            ChangeNotifierProvider.value(
               value: locator<dashboard_module.PagesRepository>(),
             ),
             ChangeNotifierProvider.value(
@@ -185,7 +190,7 @@ class _MyAppState extends State<MyApp> {
               value: locator<dashboard_module.DataSourcesRepository>(),
             ),
             ChangeNotifierProvider.value(
-              value: locator<DevicesService>(),
+              value: locator<dashboard_module.DashboardService>(),
             ),
           ],
           child: AppBody(),

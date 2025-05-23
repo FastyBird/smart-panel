@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/features/overlay/presentation/reboot.dart'
 import 'package:fastybird_smart_panel/features/overlay/presentation/reset.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class MaintenancePage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
@@ -46,7 +46,7 @@ class MaintenancePage extends StatelessWidget {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Symbols.restart_alt,
+                  MdiIcons.restart,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -93,7 +93,7 @@ class MaintenancePage extends StatelessWidget {
                       padding: AppSpacings.paddingSm,
                     ),
                     child: Icon(
-                      Symbols.restart_alt,
+                      MdiIcons.play,
                       color: Theme.of(context).brightness == Brightness.light
                           ? AppColorsLight.primary
                           : AppColorsDark.primary,
@@ -120,7 +120,7 @@ class MaintenancePage extends StatelessWidget {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Symbols.power_settings_new,
+                  MdiIcons.power,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -167,7 +167,7 @@ class MaintenancePage extends StatelessWidget {
                       padding: AppSpacings.paddingSm,
                     ),
                     child: Icon(
-                      Symbols.power_settings_new,
+                      MdiIcons.play,
                       color: Theme.of(context).brightness == Brightness.light
                           ? AppColorsLight.primary
                           : AppColorsDark.primary,
@@ -194,7 +194,7 @@ class MaintenancePage extends StatelessWidget {
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,
                 leading: Icon(
-                  Symbols.cleaning_services_rounded,
+                  MdiIcons.vacuum,
                   size: AppFontSize.large,
                 ),
                 title: Text(
@@ -241,7 +241,7 @@ class MaintenancePage extends StatelessWidget {
                       padding: AppSpacings.paddingSm,
                     ),
                     child: Icon(
-                      Symbols.cleaning_services_rounded,
+                      MdiIcons.play,
                       color: Theme.of(context).brightness == Brightness.light
                           ? AppColorsLight.primary
                           : AppColorsDark.primary,

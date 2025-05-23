@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 enum AlertType { success, info, warning, error }
 
@@ -23,6 +23,7 @@ class AlertBar {
 
     if (icon != null) {
       content = Row(
+        textBaseline: TextBaseline.alphabetic,
         children: [
           Baseline(
             baseline: AppFontSize.extraSmall,
@@ -78,7 +79,7 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.success,
-        icon: Symbols.check_circle,
+        icon: MdiIcons.checkCircle,
         duration: duration,
       );
 
@@ -91,7 +92,7 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.info,
-        icon: Symbols.info,
+        icon: MdiIcons.information,
         duration: duration,
       );
 
@@ -104,7 +105,7 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.warning,
-        icon: Symbols.warning,
+        icon: MdiIcons.alert,
         duration: duration,
       );
 
@@ -117,7 +118,7 @@ class AlertBar {
         context,
         message: message,
         type: AlertType.error,
-        icon: Symbols.error,
+        icon: MdiIcons.alertCircle,
         duration: duration,
       );
 

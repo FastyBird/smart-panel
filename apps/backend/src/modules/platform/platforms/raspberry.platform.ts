@@ -37,7 +37,9 @@ export class RaspberryPlatform extends Platform {
 			si.networkInterfaces('default'),
 		]);
 
-		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
+		const defaultNetworkInterface = (
+			Array.isArray(networkInterface) ? networkInterface[0] : networkInterface
+		) as Systeminformation.NetworkInterfacesData;
 
 		const rawData = {
 			cpuLoad: cpu.currentLoad,

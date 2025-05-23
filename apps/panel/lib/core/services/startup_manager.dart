@@ -6,13 +6,9 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
-import 'package:fastybird_smart_panel/features/dashboard/services/devices.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/module.dart';
 import 'package:fastybird_smart_panel/modules/devices/module.dart';
-import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
-import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
-import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
 import 'package:fastybird_smart_panel/modules/system/module.dart';
 import 'package:fastybird_smart_panel/modules/weather/module.dart';
 import 'package:flutter/foundation.dart';
@@ -73,13 +69,7 @@ class StartupManagerService {
       socketService: _socketClient,
     );
 
-    var devicesService = DevicesService(
-      devicesRepository: locator.get<DevicesRepository>(),
-      channelsRepository: locator.get<ChannelsRepository>(),
-      channelPropertiesRepository: locator.get<ChannelPropertiesRepository>(),
-    );
-
-    // Register services
+    // Register core services
     locator.registerLazySingleton(
       () => NavigationService(),
     );
@@ -105,9 +95,6 @@ class StartupManagerService {
 
     // Sockets client
     locator.registerSingleton(_socketClient);
-
-    // Presentation services
-    locator.registerSingleton(devicesService);
   }
 
   Future<void> initialize() async {
@@ -144,21 +131,6 @@ class StartupManagerService {
 
       throw ArgumentError(
         'Data storage initialization failed. Ensure the server is running.',
-      );
-    }
-
-    try {
-      await Future.wait([
-        locator.get<DevicesService>().initialize(),
-      ]);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-            '[PRESENTATION SERVICES INIT] Services initialization failed: $e');
-      }
-
-      throw ArgumentError(
-        'Presentation services initialization failed. Check the app logs.',
       );
     }
 

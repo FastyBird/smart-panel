@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class AppError extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
@@ -41,7 +41,7 @@ class AppError extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Symbols.error,
+                  MdiIcons.alertCircle,
                   color: Theme.of(context).danger,
                   size: _screenService.scale(64),
                 ),

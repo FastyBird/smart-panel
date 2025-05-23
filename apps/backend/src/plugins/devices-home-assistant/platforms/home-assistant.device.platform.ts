@@ -2,7 +2,9 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 
+import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
@@ -24,6 +26,8 @@ export type IHomeAssistantDevicePropertyData = IDevicePropertyData & {
 export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements IDevicePlatform {
 	private readonly logger = new Logger(HomeAssistantDevicePlatform.name);
 
+	private pluginConfig: HomeAssistantConfigModel | null = null;
+
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly mapperService: MapperService,
@@ -35,15 +39,16 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		return DEVICES_HOME_ASSISTANT_TYPE;
 	}
 
+	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
+	handleConfigurationUpdatedEvent() {
+		this.pluginConfig = null;
+	}
+
 	async process({ device, channel, property, value }: IHomeAssistantDevicePropertyData): Promise<boolean> {
 		return this.processBatch([{ device, channel, property, value }]);
 	}
 
 	async processBatch(updates: Array<IHomeAssistantDevicePropertyData>): Promise<boolean> {
-		const pluginConfiguration = this.configService.getPluginConfig<HomeAssistantConfigModel>(
-			DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
-		);
-
 		const device = updates[0].device;
 
 		if (!(device instanceof HomeAssistantDeviceEntity)) {
@@ -72,19 +77,23 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 			const propsToUpdate = setState.properties;
 
 			try {
-				const endpoint = `http://${pluginConfiguration.hostname}/api/services/${setState.domain}/${setState.service}`;
+				const endpoint = `${this.baseUrl}/api/services/${setState.domain}/${setState.service}`;
 
 				const payload = {
 					entity_id: setState.entityId,
-					state: setState.state,
-					...setState.attributes,
+					...(setState.attributes ? Object.fromEntries(setState.attributes) : []),
 				};
 
 				if (!(await this.validateDto(ServiceRequestDto, payload))) {
 					return false;
 				}
 
-				const response = await this.sendCommand(endpoint, payload, 'POST');
+				const response = await this.sendCommand(endpoint, payload, 'POST', 3, {
+					headers: {
+						Authorization: `Bearer ${this.apiKey}`,
+						'Content-Type': 'application/json',
+					},
+				});
 
 				propsToUpdate.forEach((prop) => {
 					result.set(prop.id, response !== false);
@@ -104,6 +113,8 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 				propsToUpdate.forEach((prop) => {
 					result.set(prop.id, false);
 				});
+
+				return false;
 			}
 		}
 
@@ -134,5 +145,27 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 		}
 
 		return true;
+	}
+
+	private get config(): HomeAssistantConfigModel {
+		if (!this.pluginConfig) {
+			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(
+				DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+			);
+		}
+
+		return this.pluginConfig;
+	}
+
+	private get apiKey(): string {
+		return this.config.apiKey;
+	}
+
+	private get hostname(): string {
+		return this.config.hostname;
+	}
+
+	private get baseUrl(): string {
+		return `http://${this.hostname}`;
 	}
 }

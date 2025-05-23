@@ -2,18 +2,20 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
-import 'package:fastybird_smart_panel/features/dashboard/services/devices.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/symbols.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
 class DeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
 
-  final String id;
+  final DeviceDetailPageView page;
 
-  DeviceDetailPage(this.id, {super.key});
+  DeviceDetailPage({super.key, required this.page});
 
   @override
   Widget build(BuildContext context) {
@@ -22,9 +24,9 @@ class DeviceDetailPage extends StatelessWidget {
       devicesService,
       _,
     ) {
-      var deviceType = devicesService.getDevice(id);
+      final DeviceView? device = devicesService.getDevice(page.device);
 
-      if (deviceType == null) {
+      if (device == null) {
         final localizations = AppLocalizations.of(context)!;
 
         return Scaffold(
@@ -35,7 +37,7 @@ class DeviceDetailPage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Symbols.warning,
+                    MdiIcons.alert,
                     color: Theme.of(context).warning,
                     size: _screenService.scale(64),
                   ),
@@ -56,7 +58,7 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
-      return buildDeviceDetail(deviceType);
+      return buildDeviceDetail(device);
     });
   }
 }

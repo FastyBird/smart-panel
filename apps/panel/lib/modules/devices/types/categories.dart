@@ -99,7 +99,7 @@ enum ChannelCategory {
   static bool contains(String value) => utils.contains(value);
 }
 
-enum PropertyCategory {
+enum ChannelPropertyCategory {
   generic('generic'),
   active('active'),
   angle('angle'),
@@ -165,14 +165,15 @@ enum PropertyCategory {
 
   final String value;
 
-  const PropertyCategory(this.value);
+  const ChannelPropertyCategory(this.value);
 
   static final utils = StringEnumUtils(
-    PropertyCategory.values,
-    (PropertyCategory payload) => payload.value,
+    ChannelPropertyCategory.values,
+    (ChannelPropertyCategory payload) => payload.value,
   );
 
-  static PropertyCategory? fromValue(String value) => utils.fromValue(value);
+  static ChannelPropertyCategory? fromValue(String value) =>
+      utils.fromValue(value);
 
   static bool contains(String value) => utils.contains(value);
 }

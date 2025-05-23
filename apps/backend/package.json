@@ -110,6 +110,8 @@
     "@types/supertest": "^6.0",
     "@types/uuid": "^10.0",
     "@types/ws": "^8.18",
+    "@typescript-eslint/eslint-plugin": "latest",
+    "@typescript-eslint/parser": "latest",
     "eslint": "^9.24",
     "eslint-config-prettier": "^10.1",
     "eslint-plugin-prettier": "^5.2",

@@ -309,7 +309,7 @@ export class LightEntityMapperService extends EntityMapper {
 			rgbwGProp &&
 			rgbwBProp &&
 			rgbwWProp &&
-			(values.has(rgbRProp.id) || values.has(rgbwGProp.id) || values.has(rgbwBProp.id) || values.has(rgbwWProp.id))
+			(values.has(rgbwRProp.id) || values.has(rgbwGProp.id) || values.has(rgbwBProp.id) || values.has(rgbwWProp.id))
 		) {
 			const rgbwR = values.has(rgbwRProp.id) ? values.get(rgbwRProp.id) : rgbwRProp.value;
 			const rgbwG = values.has(rgbwGProp.id) ? values.get(rgbwGProp.id) : rgbwGProp.value;
@@ -352,29 +352,32 @@ export class LightEntityMapperService extends EntityMapper {
 			}
 		}
 
-		const colorBrightnessProp = await this.getValidProperty(
+		const brightnessProp = await this.getValidProperty(
 			properties,
 			PropertyCategory.BRIGHTNESS,
 			LightEntityAttribute.BRIGHTNESS,
 			[ChannelCategory.LIGHT],
 		);
 
-		if (colorBrightnessProp && values.has(colorBrightnessProp.id)) {
-			if (typeof values.get(colorBrightnessProp.id) === 'number') {
-				attributes.set(LightEntityAttribute.WHITE, values.get(colorBrightnessProp.id));
+		if (brightnessProp && values.has(brightnessProp.id) && typeof values.get(brightnessProp.id) === 'number') {
+			if (typeof values.get(brightnessProp.id) === 'number') {
+				attributes.set(
+					LightEntityAttribute.BRIGHTNESS,
+					Math.round((Number(values.get(brightnessProp.id)) / 100) * 255),
+				);
 			}
 		}
 
-		const colorBrightnessPctProp = await this.getValidProperty(
+		const brightnessPctProp = await this.getValidProperty(
 			properties,
 			PropertyCategory.BRIGHTNESS,
 			LightEntityAttribute.BRIGHTNESS_PCT,
 			[ChannelCategory.LIGHT],
 		);
 
-		if (colorBrightnessPctProp && values.has(colorBrightnessPctProp.id)) {
-			if (typeof values.get(colorBrightnessPctProp.id) === 'number') {
-				attributes.set(LightEntityAttribute.WHITE, values.get(colorBrightnessPctProp.id));
+		if (brightnessPctProp && values.has(brightnessPctProp.id) && typeof values.get(brightnessPctProp.id) === 'number') {
+			if (typeof values.get(brightnessPctProp.id) === 'number') {
+				attributes.set(LightEntityAttribute.BRIGHTNESS_PCT, values.get(brightnessPctProp.id));
 			}
 		}
 
