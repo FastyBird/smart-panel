@@ -29,13 +29,13 @@ void main() async {
   buffer.writeln(
       'import \'package:fastybird_smart_panel/modules/devices/types/categories.dart\';\n');
   buffer.writeln('class ChannelPropertiesSpecification {');
-  buffer.writeln('  final List<PropertyCategory> required;');
-  buffer.writeln('  final List<PropertyCategory> optional;\n');
+  buffer.writeln('  final List<ChannelPropertyCategory> required;');
+  buffer.writeln('  final List<ChannelPropertyCategory> optional;\n');
   buffer.writeln('  const ChannelPropertiesSpecification({');
   buffer.writeln('    required this.required,');
   buffer.writeln('    required this.optional,');
   buffer.writeln('  });\n');
-  buffer.writeln('  List<PropertyCategory> get all => [');
+  buffer.writeln('  List<ChannelPropertyCategory> get all => [');
   buffer.writeln('        ...required,');
   buffer.writeln('        ...optional,');
   buffer.writeln('      ];');
@@ -59,7 +59,7 @@ void main() async {
 
       if (category != null) {
         (isRequired ? required : optional)
-            .add('PropertyCategory.${_camelToEnum(category)}');
+            .add('ChannelPropertyCategory.${_camelToEnum(category)}');
       }
     }
 
