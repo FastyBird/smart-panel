@@ -40,8 +40,8 @@ export class RaspberryPlatform extends Platform {
 		]);
 
 		const defaultNetworkInterface: NetworkInterfacesData = Array.isArray(networkInterface)
-			? (networkInterface[0] as NetworkInterfacesData)
-			: (networkInterface as NetworkInterfacesData);
+			? networkInterface[0]
+			: networkInterface;
 
 		const rawData = {
 			cpuLoad: cpu.currentLoad,
