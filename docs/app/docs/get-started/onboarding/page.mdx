@@ -1,0 +1,68 @@
+import { Callout } from 'nextra/components'
+
+# Onboarding
+
+Before you can start managing devices or customizing your dashboard, your Smart Panel needs to be **linked to a user account**.
+This process ensures secure access and allows your panel to communicate with backend services.
+
+Currently, onboarding is available **only via the command line**. In a future update, a web-based onboarding interface
+will make this even easier — stay tuned!
+
+---
+
+## Registering the Owner
+
+Run this command to register the owner of this Smart Panel:
+
+```bash copy
+pnpm onboard
+```
+
+<Callout type="info">
+	This is a shortcut for:
+	`pnpm --filter @fastybird/smart-panel-backend run cli users:register-owner`
+	to simplify the process.
+</Callout>
+
+You'll be guided through an interactive prompt:
+
+```bash
+> Registering Smart Panel Owner
+────────────────────────────────────────
+
+? Owner username … johndoe
+? Owner password … ************
+```
+
+<Callout type="info">
+	Use a secure username and password combination — these will be used to log in to the admin interface.
+</Callout>
+
+If everything goes well, you'll see:
+
+```bash
+✔ Owner account successfully registered
+```
+
+---
+
+## Display Onboarding
+
+Once the display service is started (as shown in the previous [installation](/docs/get-started/installation) step), the **Display UI**
+will automatically boot into its default onboarding state.
+
+There is **no manual onboarding required** for the display at this stage. It will:
+
+- Connect to the backend
+- Fetch configuration
+- Show a default splash screen or pairing status
+
+<Callout type="info">
+	Future versions will include a guided UI onboarding wizard.
+</Callout>
+
+---
+
+## What’s Next?
+
+Jump to the next step: **Device Pairing** → where you’ll learn how to link your smart devices to the panel.

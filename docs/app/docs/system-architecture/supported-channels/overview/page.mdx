@@ -1,0 +1,100 @@
+import { Callout } from 'nextra/components'
+
+# Supported Channels
+
+This page provides an overview of all supported **channel types** in the Smart Panel system. Each channel defines a specific
+function — from temperature control to motion detection — and is used across many different devices.
+
+<Callout type="info">
+	Channels are **modular** and **reusable** building blocks that define what a device can measure or control.
+</Callout>
+
+---
+
+## Overview
+
+Channels represent **specific features** or **data points** on a device — like a light’s brightness, a sensor’s motion
+detection, or a speaker’s volume control. These building blocks make it easy to define devices consistently and extend
+functionality through plugins or configuration.
+
+---
+
+## Channel List
+
+### Environmental Monitoring
+
+- [Air Particulate](/docs/system-architecture/supported-channels/air-particulate-channel) – Monitors PM2.5/PM10 for air quality.
+- [Carbon Dioxide](/docs/system-architecture/supported-channels/carbon-dioxide-channel) – Tracks CO₂ concentration.
+- [Carbon Monoxide](/docs/system-architecture/supported-channels/carbon-monoxide-channel) – Detects CO for safety.
+- [Humidity](/docs/system-architecture/supported-channels/humidity-channel) – Measures ambient humidity.
+- [Illuminance](/docs/system-architecture/supported-channels/illuminance-channel) – Monitors light intensity.
+- [Nitrogen Dioxide](/docs/system-architecture/supported-channels/nitrogen-dioxide-channel) – Tracks NO₂ levels.
+- [Ozone](/docs/system-architecture/supported-channels/ozone-channel) – Monitors ozone concentration.
+- [Pressure](/docs/system-architecture/supported-channels/pressure-channel) – Measures atmospheric or fluid pressure.
+- [Smoke](/docs/system-architecture/supported-channels/smoke-channel) – Detects smoke presence.
+- [Sulphur Dioxide](/docs/system-architecture/supported-channels/sulphur-dioxide-channel) – Tracks SO₂ in the air.
+- [Temperature](/docs/system-architecture/supported-channels/temperature-channel) – Monitors indoor/outdoor temperatures.
+- [Volatile Organic Compounds](/docs/system-architecture/supported-channels/volatile-organic-compounds-channel) – Tracks VOCs for air quality.
+
+---
+
+### Security & Safety
+
+- [Alarm](/docs/system-architecture/supported-channels/alarm-channel) – Activates alert mechanisms.
+- [Contact](/docs/system-architecture/supported-channels/contact-channel) – Detects open/closed states.
+- [Leak](/docs/system-architecture/supported-channels/leak-channel) – Reports water or fluid leaks.
+- [Motion](/docs/system-architecture/supported-channels/motion-channel) – Detects movement in the area.
+- [Occupancy](/docs/system-architecture/supported-channels/occupancy-channel) – Detects presence of people.
+
+---
+
+### Control & Automation
+
+- [Cooler](/docs/system-architecture/supported-channels/cooler-channel) – Controls cooling units.
+- [Door Channel](/docs/system-architecture/supported-channels/door-channel) - Controls door.
+- [Fan](/docs/system-architecture/supported-channels/fan-channel) – Manages fan speed and direction.
+- [Heater](/docs/system-architecture/supported-channels/heater-channel) – Controls heating systems.
+- [Light](/docs/system-architecture/supported-channels/light-channel) – Manages brightness and color.
+- [Lock](/docs/system-architecture/supported-channels/lock-channel) – Controls locking mechanisms.
+- [Outlet](/docs/system-architecture/supported-channels/outlet-channel) – Monitors and toggles power.
+- [Switcher](/docs/system-architecture/supported-channels/switcher-channel) – Basic on/off toggle.
+- [Valve](/docs/system-architecture/supported-channels/valve-channel) – Controls liquid/gas flow.
+- [Window Covering](/docs/system-architecture/supported-channels/window-covering-channel) – Manages blinds and curtains.
+
+---
+
+### Media & Communication
+
+- [Camera](/docs/system-architecture/supported-channels/camera-channel) – Streams video or captures images.
+- [Doorbell](/docs/system-architecture/supported-channels/doorbell-channel) – Manages notification and trigger.
+- [Media Input](/docs/system-architecture/supported-channels/media-input-channel) – Switches media sources.
+- [Media Playback](/docs/system-architecture/supported-channels/media-playback-channel) – Controls playback status.
+- [Microphone](/docs/system-architecture/supported-channels/microphone-channel) – Captures audio input.
+- [Speaker](/docs/system-architecture/supported-channels/speaker-channel) – Outputs audio.
+- [Television](/docs/system-architecture/supported-channels/television-channel) – Manages TV inputs and playback.
+
+---
+
+### Power & Energy
+
+- [Battery](/docs/system-architecture/supported-channels/battery-channel) – Tracks charge levels and battery health.
+- [Electrical Energy](/docs/system-architecture/supported-channels/electrical-energy-channel) – Logs total energy use.
+- [Electrical Power](/docs/system-architecture/supported-channels/electrical-power-channel) – Shows real-time power data.
+
+---
+
+### Miscellaneous or Specialized Channels
+
+- [Device Information](/docs/system-architecture/supported-channels/device-information-channel) – Provides metadata like manufacturer, model, and firmware version.
+- [Flow](/docs/system-architecture/supported-channels/flow-channel) – Monitors flow rate of liquids or gases (e.g., water or air).
+- [Robotic Vacuum Cleaner](/docs/system-architecture/supported-channels/robotic-vacuum-cleaner-channel) – Handles control and status reporting for robotic vacuum devices.
+- [Thermostat](/docs/system-architecture/supported-channels/thermostat-channel) – Centralized interface for managing both heating and cooling systems.
+
+---
+
+## What’s Next?
+
+Now that you’ve explored the available channels, you’ll start to see how devices are composed from these building blocks.
+
+Each channel brings specific functionality — from turning on lights to tracking air quality. Understanding them is essential
+for designing responsive devices and dashboards.

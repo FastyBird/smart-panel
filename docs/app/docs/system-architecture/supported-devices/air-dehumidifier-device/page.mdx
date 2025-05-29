@@ -1,0 +1,71 @@
+import { Callout } from 'nextra/components'
+
+# Air Dehumidifier Device
+
+<Callout type="info">
+	**Device Category**: `air_dehumidifier`
+</Callout>
+
+The **Air Dehumidifier** device represents a system designed to reduce humidity levels in the environment
+while providing additional monitoring and control capabilities.
+
+---
+
+## Required Channels
+
+These channels are mandatory for the functionality of the air dehumidifier:
+
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
+|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
+| `cooler`             | Controls the cooling functionality of the dehumidifier.                        | No           | [See details](/docs/system-architecture/supported-channels/cooler-channel)             |
+| `humidity`           | Monitors the ambient humidity level and controls target humidity settings.     | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)           |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+
+---
+
+## Optional Channels
+
+These channels are optional and provide additional features:
+
+| **Channel**         | **Description**                                      | **Multiple** | **Details**                                                                           |
+|---------------------|------------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
+| `electrical_energy` | Tracks total energy consumption over time.           | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power`  | Provides real-time power usage information.          | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
+| `fan`               | Manages fan settings, including speed and direction. | No           | [See details](/docs/system-architecture/supported-channels/fan-channel)               |
+| `leak`              | Detects water leaks or other potential issues.       | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)              |
+| `temperature`       | Monitors the ambient temperature.                    | No           | [See details](/docs/system-architecture/supported-channels/temperature-channel)       |
+
+---
+
+## Use Case Scenarios
+
+1. **Dehumidification Control**:
+    - Adjust humidity levels using the `humidity` channel.
+    - Enhance performance with `cooler` and optional `fan` channels.
+
+2. **Environmental Monitoring**:
+    - Monitor room humidity (`humidity`) and temperature (`temperature`) for optimal comfort.
+    - Detect leaks using the `leak` channel for safety.
+
+3. **Energy Management**:
+    - Track power usage and energy consumption using the `electrical_power` and `electrical_energy` channels.
+
+---
+
+## Developer Notes
+
+1. **Channel Implementation**:
+    - Implement all required channels for core dehumidification functionality.
+    - Add optional channels based on the specific features of the device.
+
+2. **Integration**:
+    - Ensure proper mapping of channels to the device's physical or logical components.
+    - The `device_information` channel is mandatory for device identification.
+
+3. **Energy and Safety Monitoring**:
+    - Include `electrical_energy` and `electrical_power` for energy efficiency tracking.
+    - Use the `leak` channel for enhanced safety in environments prone to water-related issues.
+
+4. **Extensibility**:
+    - Add optional channels like `temperature` or `fan` to support additional features.
+    - Use the `humidity` and `cooler` channels to manage environmental conditions effectively.

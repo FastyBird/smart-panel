@@ -1,0 +1,366 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Installation
+
+Now that your Raspberry Pi is set up, it’s time to install the software that powers your Smart Panel: the backend and the panel UI.
+
+---
+
+<Steps>
+	## Connect to your Pi via SSH
+
+	If you’re setting up your Smart Panel without a monitor and keyboard, the easiest way to access your Raspberry Pi is
+	over the network using SSH.
+
+	You can do this from another computer on the same network:
+
+	```bash copy
+	ssh pi@smart-panel.local
+	```
+
+	<Callout>
+		Default password: **raspberry**
+	</Callout>
+
+	<Callout type="info">
+		This works because you set the hostname as **smart-panel** during the OS flashing step. If you used a different hostname,
+		replace it accordingly (e.g. `pi@your-name.local`).
+	</Callout>
+
+	<Callout type="info">
+		If `.local` domains don't work on your system (e.g. Windows without Bonjour), you can find the IP address of your Pi
+		from your router’s interface and connect like this:
+	</Callout>
+
+	```bash copy
+	ssh pi@192.168.x.x
+	```
+
+	<Callout>
+		If you’re using a monitor and keyboard directly connected to the Pi, you can skip this step and run all commands in
+		the terminal.
+	</Callout>
+
+	## Install Git
+
+	Git is a version control tool used to download and manage the Smart Panel’s source code. We’ll use it to clone the
+	project repository from GitHub.
+
+	To install Git on your Raspberry Pi:
+
+	```bash copy
+	sudo apt update
+	sudo apt install git -y
+	```
+
+	## Install Node.js & pnpm
+
+	Node.js powers the backend and admin interface. [pnpm](https://pnpm.io) is a fast, disk-efficient package manager used to install dependencies.
+
+	### Install Node.js
+
+	Use the official NodeSource setup script to install the latest **LTS** version of Node.js:
+
+	```bash copy
+	curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+	sudo apt install -y nodejs
+	```
+
+	<Callout type="info">
+		This installs both node and npm.
+	</Callout>
+
+	### Install pnpm
+
+	After Node.js is installed, you can install [pnpm](https://pnpm.io) globally:
+
+	```bash copy
+	npm install -g pnpm
+	```
+
+	<Callout type="info">
+		Why [pnpm](https://pnpm.io)? It’s faster and uses less disk space than npm or yarn.
+	</Callout>
+
+	## Install flutter-pi
+
+	The Smart Panel UI is written in Flutter and runs on your Raspberry Pi using [flutter-pi](https://github.com/ardera/flutter-pi),
+	a lightweight runtime that doesn’t require **X11** or **Wayland**.
+
+	{<h3>Install Required Dependencies</h3>}
+
+	```bash copy
+	sudo apt update
+	sudo apt install -y cmake pkg-config libglvnd-dev libdrm-dev libgbm-dev \
+	libinput-dev libudev-dev libxkbcommon-dev libwayland-dev clang ninja-build
+	```
+
+	{<h3>Build and Install flutter-pi</h3>}
+
+	First, create a directory where flutter-pi will live and make sure your user owns it:
+
+	```bash copy
+	sudo mkdir /opt/flutter-pi
+	sudo chown -R ${USER}: /opt/flutter-pi
+	```
+
+	Now clone the flutter-pi repository:
+
+	```bash copy
+	git clone https://github.com/ardera/flutter-pi.git /opt/flutter-pi
+	```
+
+	Install build dependencies and compile flutter-pi (run as user pi):
+
+	```bash copy
+	cd /opt/flutter-pi
+	cmake -Bbuild -GNinja
+	ninja -C build
+	sudo ninja -C build install
+	```
+
+	<Callout type="info">
+		Once installed, you’ll be able to run the Smart Panel UI directly from the console using the *flutter-pi* command.
+	</Callout>
+
+	## Enable KMS/DRM
+
+	To ensure proper display rendering, your Raspberry Pi must use the KMS (Kernel Mode Setting) graphics driver. This is
+	required for flutter-pi to access the display via DRM.
+
+	Open the boot config file:
+
+	```bash copy
+	sudo nano /boot/config.txt
+	```
+
+	Look for this line and make sure it is **enabled** (not commented out):
+
+	```bash copy
+	dtoverlay=vc4-kms-v3d
+	```
+
+	<Callout type="info">
+		If it’s not present, add it at the bottom of the file.
+	</Callout>
+
+	Reboot to apply changes:
+
+	```bash copy
+	sudo reboot
+	```
+
+	<Callout type="info">
+		If you previously had `dtoverlay=vc4-fkms-v3d` (the fake KMS driver), it should be **removed or commented out**.
+	</Callout>
+
+	## Install InfluxDB
+
+	The Smart Panel backend uses **InfluxDB** to store time-series data like temperature, humidity, or power usage.
+
+	To install InfluxDB v1.8:
+
+	```bash copy
+	sudo apt update
+	sudo apt install influxdb
+	```
+
+	Then enable and start the service:
+
+	```bash copy
+	sudo systemctl enable influxdb
+	sudo systemctl start influxdb
+	```
+
+	To verify that InfluxDB is running:
+
+	```bash copy
+	influx
+	```
+
+	This will launch the InfluxDB shell (> prompt). To exit:
+
+	```bash copy
+	exit
+	```
+
+	<Callout type="warning">
+		Make sure you're using InfluxDB **v1.8**. Installing **InfluxDB 2.x** will not work.
+	</Callout>
+
+	## Clone the Repository
+
+	To get the full source code and tools for the Smart Panel, you’ll need to clone the GitHub repository.
+
+	Create the directory and set ownership so your user can write to it:
+
+	```bash copy
+	sudo mkdir -p /opt/smart-panel
+	sudo chown -R ${USER}:${USER} /opt/smart-panel
+	```
+
+	Clone the GitHub repository into the folder:
+
+	```bash copy
+	git clone https://github.com/FastyBird/smart-panel.git /opt/smart-panel
+	```
+
+	Move into the cloned project directory:
+
+	```bash copy
+	cd /opt/smart-panel
+	```
+
+	## Install the Display application
+
+	The Smart Panel display is a pre-built Flutter app that you can easily download and run on your device.
+
+	Create the directory and set ownership so your user can write to it:
+
+	```bash copy
+	sudo mkdir -p /opt/smart-panel/display
+	sudo chown -R ${USER}: /opt/smart-panel/display
+	```
+
+	Download and unpack the latest release:
+
+	```bash copy
+	cd /opt/smart-panel/display
+	wget https://github.com/FastyBird/smart-panel/releases/latest/download/display.tar.gz
+	tar -xzf display.tar.gz -C .
+	rm display.tar.gz
+	```
+
+	## Bootstrap the Project
+
+	This project uses [pnpm](https://pnpm.io) to manage the monorepo.
+
+	Run the bootstrap command to install packages, generate types, run database migrations, and build the admin UI:
+
+	```bash
+	cd /opt/smart-panel
+	pnpm run bootstrap
+	```
+
+	<Callout type="info">
+		This command prepares the backend and admin UI for use. The display app was installed separately in an earlier step.
+	</Callout>
+
+	## Run Backend, Admin & Display as Services
+
+	You’ll want your Smart Panel to boot up and run the backend and display automatically. Let’s set them up using systemd services.
+
+	### Backend Service
+
+	Create a service file:
+
+	```bash copy
+	sudo nano /etc/systemd/system/smart-panel-backend.service
+	```
+
+	Paste this:
+
+	```bash copy
+	[Unit]
+	Description=Smart Panel Backend Service
+	After=network.target
+
+	[Service]
+	User=pi
+	WorkingDirectory=/opt/smart-panel
+	ExecStart=/home/pi/.local/share/pnpm/pnpm exec pnpm --filter @fastybird/smart-panel-backend start:prod
+	Restart=always
+	Environment=NODE_ENV=production
+	Environment=FB_DB_SYNC=true
+
+	[Install]
+	WantedBy=multi-user.target
+	```
+
+	Enable and start the service:
+
+	```bash copy
+	sudo systemctl enable smart-panel-backend
+	sudo systemctl start smart-panel-backend
+	```
+
+	### Admin Service
+
+	Create a service file:
+
+	```bash copy
+	sudo nano /etc/systemd/system/smart-panel-admin.service
+	```
+
+	Paste this:
+
+	```bash copy
+	[Unit]
+	Description=Smart Panel Admin UI
+	After=network.target
+
+	[Service]
+	User=pi
+	WorkingDirectory=/opt/smart-panel
+	ExecStart=/home/pi/.local/share/pnpm/pnpm exec pnpm --filter @fastybird/smart-panel-admin start:prod
+	Restart=always
+	Environment=NODE_ENV=production
+
+	[Install]
+	WantedBy=multi-user.target
+	```
+
+	Enable and start the service:
+
+	```bash copy
+	sudo systemctl enable smart-panel-admin
+	sudo systemctl start smart-panel-admin
+	```
+
+	### Display Service
+
+	Create the display service file:
+
+	```bash copy
+	sudo nano /etc/systemd/system/smart-panel-display.service
+	```
+
+	Paste this:
+
+	```bash copy
+	[Unit]
+	Description=Smart Panel Display App
+	After=network.target
+
+	[Service]
+	User=pi
+	WorkingDirectory=/opt/smart-panel/display
+	ExecStart=/usr/local/bin/flutter-pi .
+	Restart=always
+
+	[Install]
+	WantedBy=multi-user.target
+	```
+
+	Enable and start the service:
+
+	```bash copy
+	sudo systemctl enable smart-panel-display
+	sudo systemctl start smart-panel-display
+	```
+
+	---
+
+	Now, all three apps — **backend**, **admin**, and **display** — will automatically launch on boot and restart if they crash.
+</Steps>
+
+---
+
+## What’s Next?
+
+Your Smart Panel is now fully running — including the **backend**, **admin interface**, and the **display UI**.
+
+Now it’s time to **pair your devices**, **customize your dashboard**, and start building the smart display you’ve always wanted.
+
+👉 Head over to the next section: **[Onboarding](/docs/get-started/onboarding)** — where we’ll guide you through device
+pairing and initial setup.

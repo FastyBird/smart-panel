@@ -1,0 +1,66 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Properties
+
+Properties define the actual **data points** or **controls** inside a channel. This is where things like a light’s power
+state, a thermostat’s target temperature, or a sensor’s battery level are configured.
+
+Each channel can contain one or more properties depending on the device category and functionality.
+
+---
+
+## Add Properties to a Channel
+
+After creating a channel, you’ll assign properties to define what it measures or controls.
+
+<Steps>
+	### Open a Channel
+
+	In the **Admin UI**, go to your device, switch to the **Channels** tab, and select a specific channel.
+
+	<p align="center">
+		<img src="/images/devices-channel-detail.png" alt="Channel detail" />
+	</p>
+
+	---
+
+	### Click **+ Add Property**
+
+	Click **+ Add Property** in the top-right corner.
+
+	This will open the channel property creation dialog.
+
+	<p align="center">
+		<img src="/images/devices-channel-add-property.png" alt="Add new channel" />
+	</p>
+
+	---
+
+	### Define the Property
+
+	Fill in the required fields:
+
+	- **Name** – Internal identifier (e.g., `state`, `brightness`, `humidity`)
+	- **Data Type** – Type of value (`boolean`, `float`, `enum`, etc.)
+	- **Unit** – Optional unit of measurement (`°C`, `%`, `W`, etc.)
+	- **Permissions** – Define if it’s readable, writable, or both
+	- **Format** *(optional)* – Additional structure (e.g., for enums)
+
+	<Callout type="info">
+		The form may vary depending on the selected channel category. In some cases, fields like data type or format are pre-filled
+		by the system and cannot be changed manually.
+	</Callout>
+</Steps>
+
+<Callout>
+	The supported properties are based on the channel’s category. For example, a `light` channel may use `power` and
+	`brightness`, while a `temperature` channel uses `actual` and `target`.
+</Callout>
+
+---
+
+## What’s Next?
+
+With your device, channels, and properties defined, it’s time to visualize and control them on the display.
+
+👉 Continue to the [Pages & Tiles](/docs/admin-management/pages) section to build your dashboard.

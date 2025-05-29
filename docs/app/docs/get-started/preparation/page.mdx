@@ -1,0 +1,145 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Preparation
+
+Let’s get your **Raspberry Pi** up and running with the operating system and the Smart Panel software. This part will
+walk you through flashing the SD card and doing the first boot.
+
+The easiest and most reliable way is to use the **Raspberry Pi Imager**.
+
+---
+
+## Recommended: Using Raspberry Pi Imager
+
+<Steps>
+	### Download Raspberry Pi Imager
+
+	You can get the Raspberry Pi Imager from the official site:
+
+	[https://www.raspberrypi.com/software](https://www.raspberrypi.com/software)
+
+	It's available for Windows, macOS, and Linux.
+
+	### Insert the SD Card
+
+	Insert a microSD card (at least 8GB recommended) into your computer’s card reader.
+
+	### Choose Operating System
+
+	In Raspberry Pi Imager:
+
+	1. Click Choose OS
+	2. Select Raspberry Pi OS Lite (64-bit) (This is a lightweight, headless version perfect for embedded panels)
+
+	<p align="center">
+		<img src="/images/imager-select-os.png" alt="Choosing the OS in Raspberry Pi Imager" />
+	</p>
+
+	### Configure Advanced Options
+
+	Click the **Next** and then **Edit settings**.
+
+	Set the following:
+
+	On the **General** tab:
+
+	- Set username and password (e.g. pi / raspberry)
+	- Configure Wi-Fi (SSID, password, country)
+	- Set hostname (e.g. smart-panel.local)
+
+	On the **Services** tab:
+
+	- Enable SSH
+
+	<p align="center">
+		<img src="/images/imager-settings.png" alt="Raspberry Pi Imager settings" />
+	</p>
+
+	<Callout>
+		These options are saved per session. You can optionally make them default for future flashes.
+	</Callout>
+
+	When finished, click **Yes** to apply the settings.
+
+	<p align="center">
+		<img src="/images/imager-confirm-settings.png" alt="Raspberry Pi Imager confirming settings" />
+	</p>
+
+	### Flash the OS
+
+	Click **Yes** to begin flashing the image. This may take a few minutes.
+
+	<p align="center">
+		<img src="/images/imager-write-sd-card.png" alt="Raspberry Pi Imager writing to SD card" />
+	</p>
+
+	Once done, remove the SD card safely and insert it into your Raspberry Pi.
+</Steps>
+
+---
+
+## Advanced: Using Balena Etcher
+
+If you're a more advanced user or prefer full control, you can flash the image manually using [balenaEtcher](https://etcher.io/)
+
+<Steps>
+	### Download the OS
+
+	We recommend using [Raspberry Pi OS Lite](https://www.raspberrypi.com/software/operating-systems/), since it’s
+	lightweight and ideal for embedded use.
+
+	### Flash the SD Card
+
+	1. Insert the microSD card into your computer.
+	2. Use Etcher to write the OS image.
+	3. Once flashing is done, don’t remove the card just yet!
+
+	### Enable Wi-Fi
+
+	Create a file named `wpa_supplicant.conf` with your Wi-Fi credentials:
+
+	```conf
+	country=CZ
+	ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+	update_config=1
+
+	network={
+		ssid="YourSSID"
+		psk="YourPassword"
+	}
+	```
+
+	### Enable SSH
+
+	Create an **empty file** called `ssh` (with no extension) to enable SSH.
+
+	### Finalize
+
+	Save both files in the boot partition before inserting the SD card into your Pi.
+</Steps>
+
+---
+
+## First Boot
+
+1. Insert the microSD into the Pi.
+2. Power it on.
+3. Wait a minute or two for the initial setup.
+
+**You can connect to your Pi via SSH using:**
+
+```bash
+ssh pi@raspberrypi.local
+```
+
+<Callout type="info">
+	Default password: **raspberry**
+</Callout>
+
+---
+
+## What’s Next?
+
+Once the Pi is online and accessible, you’re ready to install the Smart Panel backend and panel app.
+
+👉 Head over to the **[Installation](/docs/get-started/installation)** section.

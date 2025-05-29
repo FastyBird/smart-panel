@@ -1,0 +1,61 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Channels
+
+Channels define what a device can **do** or **measure** — like turning a light on, reporting temperature, or adjusting
+fan speed. Each device includes one or more channels based on its functionality.
+
+---
+
+## Add Channels to a Device
+
+Once a device is created, you can assign channels to it. This enables specific controls and sensors for that device.
+
+<Steps>
+	### Select a Device
+
+	In the **Devices** section of the Admin UI, click on the device you want to configure.
+
+	This opens the detail view for the selected device.
+
+	<p align="center">
+		<img src="/images/devices-device-detail.png" alt="Device detail" />
+	</p>
+
+	---
+
+	### Click **+ Add Channel**
+
+	Click **+ Add Channel** in the top-right corner.
+
+	This will open the channel creation dialog.
+
+	<p align="center">
+		<img src="/images/devices-add-channel.png" alt="Add new channel" />
+	</p>
+
+	---
+
+	### Fill in Channel Details
+
+	Enter the required information for the channel:
+
+	- **Name** – The name used internally (e.g., `light`, `temperature`, `valve`)
+	- **Category** – Choose from a list of supported channel types
+	- **Description** *(optional)* – Short description of the channel
+
+</Steps>
+
+<Callout>
+	The channel category determines which properties can be used (like `power`, `brightness`, or `temperature`). Check the
+	[**Supported Channels**](/docs/system-architecture/supported-channels/overview) reference for details.
+</Callout>
+
+---
+
+## What’s Next?
+
+You’ve now structured your device’s capabilities. Next up: define the **Properties** for each channel — these are the
+individual controls or values.
+
+👉 Head to the [Properties](/docs/admin-management/properties) section.

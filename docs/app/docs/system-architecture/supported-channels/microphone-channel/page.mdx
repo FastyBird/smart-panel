@@ -1,0 +1,47 @@
+import { Callout } from 'nextra/components'
+
+# Microphone Channel
+
+<Callout type="info">
+	**Channel Category**: `microphone`
+</Callout>
+
+Represents audio input devices, reporting activity or capturing sound.
+
+---
+
+## Required Properties
+
+| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
+|--------------|---------------|--------------|----------|-----------------|
+| `active`     | `Bool`        | `true/false` | -        | RW (Read/Write) |
+
+---
+
+### Property Details
+
+#### `active`
+
+Indicates whether the microphone is muted:
+
+- `true`: Audio input is active.
+- `false`: Audio input is muted.
+
+---
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range** | **Unit** | **Permissions** |
+|--------------|---------------|-----------|----------|-----------------|
+| `volume`     | `Uchar`       | `0–100`   | %        | RW (Read/Write) |
+
+---
+
+### Property Details
+
+#### `volume`
+
+Represents the current volume level as a percentage:
+
+- `0`: Minimum volume (silent).
+- `100`: Maximum volume (full audio input).

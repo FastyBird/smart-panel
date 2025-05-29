@@ -1,3 +1,0 @@
-# Device Integration Guide
-
-TBD
