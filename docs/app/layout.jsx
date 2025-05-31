@@ -1,54 +1,125 @@
 /* eslint-env node */
+import Link from "next/link";
 import { Footer, Layout, Navbar } from "nextra-theme-docs";
 import { Banner, Head } from "nextra/components";
 import { getPageMap } from "nextra/page-map";
-import "nextra-theme-docs/style.css";
+import "./globals.css";
+import { Logo, SmallLogo } from "./_components/logo";
 
 export const metadata = {
-  metadataBase: new URL("https://www.fastybird.com"),
+  metadataBase: new URL("https://smart-panel.fastybird.com"),
+
   title: {
+    default: "FastyBird – Open Source Smart Panel for Touch Displays",
     template: "%s - FastyBird",
   },
-  description: "FastyBird: Smart Panel for Smart Home",
+
+  description:
+    "FastyBird is a modern, open-source smart panel for your wall-mounted touch display. Manage devices, create layouts, and control your smart home with ease.",
+
   applicationName: "FastyBird",
   generator: "Next.js",
+
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://smart-panel.fastybird.com",
+    siteName: "FastyBird",
+    title: "FastyBird – Open Source Smart Panel for Touch Displays",
+    description:
+      "FastyBird is a modern, open-source smart panel for your wall-mounted touch display. Manage devices, create layouts, and control your smart home with ease.",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FastyBird – Open Source Smart Panel for Touch Displays",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    site: "@fastybird",
+    creator: "@fastybird",
+    title: "FastyBird – Open Source Smart Panel for Touch Displays",
+    description:
+      "FastyBird is a modern, open-source smart panel for your wall-mounted touch display. Manage devices, create layouts, and control your smart home with ease.",
+    images: ["/opengraph-image.png"],
+  },
+
   appleWebApp: {
     title: "FastyBird",
   },
+
   other: {
     "msapplication-TileImage": "/ms-icon.png",
-    "msapplication-TileColor": "#fff",
-  },
-  twitter: {
-    site: "https://nextra.site",
+    "msapplication-TileColor": "#ffffff",
   },
 };
 
 export default async function RootLayout({ children }) {
   const navbar = (
     <Navbar
-      logo={
-        <div>
-          <b>FastyBird</b> <span style={{ opacity: "60%" }}>Smart Panel</span>
-        </div>
-      }
-      // Next.js discord server
-      chatLink="https://discord.gg/hEM84NMkRv"
+      logo={<Logo />}
+      projectLink={"https://github.com/FastyBird/smart-panel"}
+      chatLink={"https://discord.gg/tsszFb99"}
     />
   );
+
+  const footer = (
+    <Footer className="py-8 px-6">
+      <div className="max-w-screen-xl mx-auto w-full flex flex-col md:flex-row items-center justify-between gap-6">
+        {/* Logo */}
+        <SmallLogo />
+
+        {/* Copyright */}
+        <div className="text-sm text-neutral-400 text-center md:text-left">
+          © {new Date().getFullYear()} FastyBird. All rights reserved.
+        </div>
+
+        {/* Links */}
+        <div className="flex gap-6 text-sm">
+          <Link
+            href="/contact"
+            className="text-neutral-600 hover:text-black dark:text-neutral-400 dark:hover:text-white transition-colors"
+            aria-label="Contact"
+          >
+            Contact
+          </Link>
+          <Link
+            href="https://github.com/fastybird/smart-panel"
+            className="text-neutral-600 hover:text-black dark:text-neutral-400 dark:hover:text-white transition-colors"
+            aria-label="GitHub"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </Link>
+        </div>
+      </div>
+    </Footer>
+  );
+
   const pageMap = await getPageMap();
+
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <Head faviconGlyph="✦" />
       <body>
         <Layout
           banner={
-            <Banner storageKey="Nextra 2">FastyBird Smart Panel 1 Alpha</Banner>
+            <Banner storageKey="Alpha 1.0">
+              <a
+                href="https://github.com/FastyBird/smart-panel"
+                aria-label="Star fastybird/smart-panel on GitHub"
+              >
+                🚀 We just launched! Please star us on Github!{" "}
+              </a>
+            </Banner>
           }
           navbar={navbar}
-          footer={
-            <Footer>Apache-2.0 {new Date().getFullYear()} © FastyBird.</Footer>
-          }
+          footer={footer}
           editLink="Edit this page on GitHub"
           docsRepositoryBase="https://github.com/FastyBird/smart-panel/docs"
           sidebar={{ defaultMenuCollapseLevel: 1 }}
@@ -56,6 +127,7 @@ export default async function RootLayout({ children }) {
         >
           {children}
         </Layout>
+        <script async defer src="https://buttons.github.io/buttons.js"></script>
       </body>
     </html>
   );

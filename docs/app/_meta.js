@@ -9,6 +9,7 @@ export default {
   },
   api: {
     type: "page",
-    title: "API Reference",
+    href: "https://fastybird.stoplight.io/docs/smart-panel",
+    title: "API reference",
   },
 };

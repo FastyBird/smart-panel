@@ -1,0 +1,90 @@
+@import 'nextra-theme-docs/style.css';
+@import 'tailwindcss';
+/* Whitelist Tailwind CSS classes from <Bleed> TSDoc examples */
+@source inline('aspect-video');
+@source inline('py-10');
+
+@variant dark (&:where(.dark *));
+
+@theme {
+}
+
+body {
+    font-feature-settings:
+            'rlig' 1,
+            'calt' 1;
+}
+
+.home-content p {
+    margin-top: 1.5em;
+    line-height: 1.75em;
+}
+
+code.text-\[\.9em\] {
+    font-size: 14px;
+}
+
+@media screen and (max-width: 1200px) {
+    .home-content .hide-medium {
+        display: none;
+    }
+}
+
+@media screen and (max-width: 720px) {
+    .home-content p {
+        font-size: 0.9rem;
+    }
+
+    .home-content .hide-small {
+        display: none;
+    }
+}
+
+.fb-smart-panel-logo {
+    .fb-bird {
+        fill: #d9230f;
+    }
+    .fb-fastybird-smart {
+        fill: #43525A;
+    }
+    .fb-fastybird-panel {
+        fill: #d9230f;
+    }
+}
+
+.fb-logo {
+    .fb-bird {
+        fill: #d9230f;
+    }
+    .fb-fastybird-fasty {
+        fill: #43525A;
+    }
+    .fb-fastybird-bird {
+        fill: #d9230f;
+    }
+}
+
+.dark {
+    .fb-smart-panel-logo {
+        .fb-bird {
+            filter: drop-shadow(2px 2px 6px #a91b0c);
+        }
+        .fb-fastybird-smart {
+            fill: #fff;
+        }
+        .fb-fastybird-panel {
+            fill: #fff;
+        }
+    }
+    .fb-logo {
+        .fb-bird {
+            filter: drop-shadow(2px 2px 6px #a91b0c);
+        }
+        .fb-fastybird-fasty {
+            fill: #fff;
+        }
+        .fb-fastybird-bird {
+            fill: #fff;
+        }
+    }
+}
