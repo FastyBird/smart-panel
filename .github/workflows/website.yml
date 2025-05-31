@@ -1,0 +1,75 @@
+name: "build"
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - v*
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: "Build web and publish it to Github pages"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "20" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    if: github.event_name == 'push' && contains(github.ref, 'refs/heads/main')
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "${{ matrix.node-version }}"
+
+      - name: "Setup pnpm"
+        uses: "pnpm/action-setup@v2"
+        with:
+          version: "9.13.0"
+
+      - name: "Get pnpm store directory"
+        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: "Cache pnpm dependencies"
+        uses: "actions/cache@v3"
+        with:
+          path: "${{ env.PNPM_STORE_PATH }}"
+          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
+          restore-keys: "${{ runner.os }}-pnpm-store-"
+
+      - name: "Install dependencies"
+        shell: "bash"
+        run: "pnpm install"
+
+      - name: "Build"
+        shell: "bash"
+        run: 'pnpm --filter @fastybird/smart-panel-docs build'
+
+      - name: "Upload artifact"
+        uses: "actions/upload-pages-artifact@v2"
+        with:
+          path: './dist/'
+
+      - name: "Deploy to GitHub Pages"
+        uses: "actions/deploy-pages@v2"
