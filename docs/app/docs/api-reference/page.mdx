@@ -1,0 +1,59 @@
+import { Cards } from 'nextra/components'
+import Icon from "@mdi/react";
+import { mdiApi } from "@mdi/js";
+
+# API Reference
+
+FastyBird Smart Panel offers a robust, RESTful API that allows you to integrate, extend, and control the system programmatically.
+
+## About the API
+
+The Smart Panel API exposes endpoints for managing:
+
+- Devices, channels, and properties
+- Pages, tiles, and dashboards
+- Configuration and system settings
+- Third-party device integrations
+
+It is designed to be:
+
+- ✅ Open and well-documented
+- ✅ Schema-first, built on OpenAPI
+- ✅ Fully compatible with third-party and custom integrations
+
+---
+
+## Explore the API
+
+The full API documentation is available and maintained using **Stoplight**, where you can explore endpoints, test requests, and inspect schemas.
+
+<Cards.Card
+	icon={
+		<Icon
+			path={mdiApi}
+			size={2}
+		/>
+	}
+	title="View API Documentation"
+	href="https://fastybird.stoplight.io/docs/smart-panel"
+	arrow
+	className="mt-6"
+/>
+
+---
+
+## Authentication
+
+All requests to protected endpoints must include a valid API key or token, depending on the type of client integration:
+
+- **Display App** connects over WebSocket without credentials (auto-authenticated via registration)
+- **Third-party Devices** use static tokens and authenticated callbacks
+- **Admin App** communicates with the backend over HTTP and WebSocket via trusted connection
+
+## API Clients
+
+You can use any HTTP client to interact with the API (like `axios`, `curl`, Postman, etc.). OpenAPI tools such as [Swagger Codegen](https://swagger.io/tools/swagger-codegen/) or [openapi-typescript](https://www.npmjs.com/package/openapi-typescript) can be used to generate strong-typed clients.
+
+---
+
+If you're building an integration, custom plugin, or automation that communicates with the Smart Panel, this is your primary interface to the system.

@@ -1,0 +1,82 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Pages
+
+Pages define the layout of your Smart Panel interface. Each page acts as a container for **tiles**, **cards**, or **data sources**,
+allowing you to group devices and information logically — by room, function, or display type.
+
+---
+
+## Add a New Page
+
+<Steps>
+	### Open the Admin UI
+
+	Open the Admin Interface in your browser:
+
+	```bash copy
+	http://smart-panel.local
+	```
+
+	You'll land on the dashboard, where you can manage devices, pages, tiles, and data sources.
+
+	---
+
+	### Navigate to Pages
+
+	Click **Pages** in the sidebar. This section lists all the pages currently configured for your Smart Panel display.
+
+	<p align="center">
+		<img src="/images/dashboard-pages-list.png" alt="List of configured pages" />
+	</p>
+
+	---
+
+	### Click **+ Add**
+
+	In the **Pages** section, click the **+ Add Page** button in the top-right corner to create a new page.
+
+	<p align="center">
+		<img src="/images/dashboard-pages-add.png" alt="Add new page" />
+	</p>
+
+	---
+
+	### Fill in Page Details
+
+	In the form, enter the following information:
+
+	- **Plugin (Page Type)** – Choose the layout plugin:
+		- `Tiles Page` – Displays a grid of interactive tiles (great for dashboards)
+		- `Cards Page` – Displays grouped device cards (compact overview layout)
+		- `Device Detail Page` – Displays a view for a specific device
+	- **Title** – Name of the page shown in the Admin and on the Smart Panel
+	- **Icon** *(optional)* – Assign a visual icon to help identify the page
+	- **Order** – Sets the order in which pages appear on the Smart Panel
+
+	<Callout type="info">
+		Currently, only the **Tiles Page**, **Device detail** and **Cards page** plugins are available. Other page types will
+		be added in the future.
+	</Callout>
+</Steps>
+
+---
+
+## After Creating a Page
+
+What you can do next depends on the page type:
+
+- **Tiles Page**: Add **tiles** directly to the page in a flexible grid layout. Each tile represents a device control or data display.
+- **Cards Page**: Organize **tiles** into **cards** (grouped blocks). Cards help visually structure related controls or data sources.
+- **Device Detail Page**: This page is auto-generated and linked to a specific device. It shows all channels and properties and is not editable.
+
+<Callout type="info">
+	While Tiles and Cards pages support full customization via the Admin UI, Device Detail pages are system-generated.
+</Callout>
+---
+
+## What’s Next?
+
+Let’s fill your new page with content.
+
+👉 Head to the [Tiles](/docs/admin-management/tiles) section.

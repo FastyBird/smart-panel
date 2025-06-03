@@ -1,0 +1,89 @@
+import { Callout } from 'nextra/components'
+
+# Configuration Reference
+
+This page provides a comprehensive overview of the Smart Panel's configuration options using the `config.yaml` file. This file defines system-wide settings for audio, display behavior, language, weather integration, and plugin-specific configurations.
+
+---
+
+## Audio
+
+Controls built-in speaker and microphone functionality.
+
+```yaml
+audio:
+  speaker: true             # Enable or disable speaker output
+  speaker_volume: 90        # Volume level from 0 to 100
+  microphone: true          # Enable or disable microphone input
+  microphone_volume: 10     # Volume level from 0 to 100
+```
+
+---
+
+## Display
+
+Controls display appearance and screen saver behavior.
+
+```yaml
+display:
+  dark_mode: true               # Enables dark mode for the UI
+  brightness: 80                # Screen brightness (0 to 100)
+  screen_lock_duration: 60      # Time (in seconds) before screen lock activates
+  screen_saver: true            # Enables screen saver mode after inactivity
+```
+
+---
+
+## Language
+
+Defines language, time zone, and time format.
+
+```yaml
+language:
+  language: en_US           # Language locale (e.g., en_US, cs_CZ)
+  timezone: Europe/Prague   # IANA timezone string
+  time_format: 24h          # 12h or 24h display format
+```
+
+---
+
+## Weather
+
+Sets up weather data for the dashboard tiles. Uses the OpenWeather API.
+
+```yaml
+weather:
+  location: null                   # City name or coordinates (e.g., Prague or 50.08804,14.42076)
+  location_type: city_name         # 'lat_lon', 'city_name', 'city_id' or 'zip_code'
+  unit: celsius                    # 'celsius' or 'fahrenheit'
+  open_weather_api_key: your-key   # API key from OpenWeather
+```
+
+<Callout type="info">
+	Weather data is used by the Weather Tile Plugin.
+</Callout>
+
+---
+
+## Plugins
+
+Contains configuration for individual plugin modules.
+
+### Home Assistant Plugin
+
+```yaml
+plugins:
+  devices-home-assistant-plugin:
+    api_key: xxx                      # Long-lived access token
+    hostname: 10.10.0.45:8123         # Hostname or IP of the Home Assistant instance
+```
+
+<Callout type="info">
+	Currently, this plugin requires manual mapping and manual token configuration.
+</Callout>
+
+---
+
+Additional plugin configurations may be added here as needed.
+
+You must restart the backend after modifying the configuration file for changes to take effect.

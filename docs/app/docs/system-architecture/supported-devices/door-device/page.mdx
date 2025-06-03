@@ -1,0 +1,69 @@
+import { Callout } from 'nextra/components'
+
+# Door Device
+
+<Callout type="info">
+	**Device Category**: `door`
+</Callout>
+
+The **Door** device represents automated or monitored doors, such as garage doors, entrance doors,
+or other types of doors, with additional features for security and environmental awareness.
+
+---
+
+## Required Channels
+
+These channels are mandatory for the functionality of the door:
+
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
+|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
+| `door`               | Controls and monitors the opening, closing, and status of the door.            | No           | [See details](/docs/system-architecture/supported-channels/doorbell-channel)           |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+
+---
+
+## Optional Channels
+
+These channels are optional and provide additional features:
+
+| **Channel** | **Description**                                                               | **Multiple** | **Details**                                                                 |
+|-------------|-------------------------------------------------------------------------------|--------------|-----------------------------------------------------------------------------|
+| `battery`   | Monitors the battery level and status, if the door system is battery-powered. | No           | [See details](/docs/system-architecture/supported-channels/battery-channel) |
+| `contact`   | Detects the opening or closing of the door.                                   | No           | [See details](/docs/system-architecture/supported-channels/contact-channel) |
+| `lock`      | Monitors or controls the lock mechanism for the door.                         | No           | [See details](/docs/system-architecture/supported-channels/lock-channel)    |
+| `motion`    | Detects motion near the door for enhanced security.                           | No           | [See details](/docs/system-architecture/supported-channels/motion-channel)  |
+
+---
+
+## Use Case Scenarios
+
+1. **Door Control and Monitoring**:
+    - Open, close, or monitor the door's status using the `door` channel.
+    - Detect door activity through the `contact` channel for security purposes.
+
+2. **Security and Safety**:
+    - Use the `lock` channel to integrate locking mechanisms with automated door systems.
+    - Detect motion near the door using the `motion` channel for enhanced situational awareness.
+
+3. **Battery and Energy Monitoring**:
+    - Monitor the battery status via the `battery` channel for wireless door systems.
+
+---
+
+## Developer Notes
+
+1. **Channel Implementation**:
+    - Implement all required channels for core door functionality.
+    - Add optional channels based on the specific features of the door device.
+
+2. **Integration**:
+    - Ensure proper mapping of channels to the door's physical or logical components.
+    - The `device_information` channel is mandatory for device identification.
+
+3. **Extensibility**:
+    - Use the `motion` channel for motion detection capabilities.
+    - Add the `lock` channel for doors that support locking mechanisms.
+
+4. **Use Cases**:
+    - Suitable for garage doors, entrance doors, or any automated or monitored door systems.
+    - Integrate additional features like `battery` monitoring for standalone or wireless doors.

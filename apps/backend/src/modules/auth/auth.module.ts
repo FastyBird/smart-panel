@@ -10,6 +10,7 @@ import { getEnvValue } from '../../common/utils/config.utils';
 import { UsersModule } from '../users/users.module';
 
 import { TokenType } from './auth.constants';
+import { RegisterOwnerCommand } from './commands/register-owner.command';
 import { ResetPasswordCommand } from './commands/reset-password.command';
 import { AuthController } from './controllers/auth.controller';
 import { TokensController } from './controllers/tokens.controller';
@@ -44,6 +45,7 @@ import { TokensService } from './services/tokens.service';
 		TokensService,
 		CryptoService,
 		TokensTypeMapperService,
+		RegisterOwnerCommand,
 		ResetPasswordCommand,
 		{
 			provide: APP_GUARD,

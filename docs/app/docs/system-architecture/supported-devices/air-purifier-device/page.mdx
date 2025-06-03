@@ -1,0 +1,78 @@
+import { Callout } from 'nextra/components'
+
+# Air Purifier Device
+
+<Callout type="info">
+	**Device Category**: `air_purifier`
+</Callout>
+
+The **Air Purifier** device represents a system designed to improve indoor air quality by removing
+contaminants and monitoring environmental conditions.
+
+---
+
+## Required Channels
+
+These channels are mandatory for the functionality of the air purifier:
+
+| **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
+|----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
+| `fan`                | Controls fan settings, including speed and direction, for air circulation.     | No           | [See details](/docs/system-architecture/supported-channels/fan-channel)                |
+| `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
+
+---
+
+## Optional Channels
+
+These channels are optional and provide additional features:
+
+| **Channel**                  | **Description**                                                    | **Multiple** | **Details**                                                                                    |
+|------------------------------|--------------------------------------------------------------------|--------------|------------------------------------------------------------------------------------------------|
+| `air_particulate`            | Monitors particulate matter levels in the air (e.g., PM2.5, PM10). | No           | [See details](/docs/system-architecture/supported-channels/air-particulate-channel)            |
+| `carbon_dioxide`             | Tracks the concentration of CO₂ in the air.                        | No           | [See details](/docs/system-architecture/supported-channels/carbon-dioxide-channel)             |
+| `carbon_monoxide`            | Tracks the concentration of CO in the air.                         | No           | [See details](/docs/system-architecture/supported-channels/carbon-monoxide-channel)            |
+| `humidity`                   | Monitors the ambient humidity level.                               | No           | [See details](/docs/system-architecture/supported-channels/humidity-channel)                   |
+| `leak`                       | Detects water leaks or other potential issues.                     | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)                       |
+| `nitrogen_dioxide`           | Tracks the concentration of NO₂ in the air.                        | No           | [See details](/docs/system-architecture/supported-channels/nitrogen-dioxide-channel)           |
+| `ozone`                      | Tracks the concentration of ozone in the air.                      | No           | [See details](/docs/system-architecture/supported-channels/ozone-channel)                      |
+| `pressure`                   | Monitors atmospheric pressure levels.                              | No           | [See details](/docs/system-architecture/supported-channels/pressure-channel)                   |
+| `sulphur_dioxide`            | Tracks the concentration of SO₂ in the air.                        | No           | [See details](/docs/system-architecture/supported-channels/sulphur-dioxide-channel)            |
+| `temperature`                | Monitors the ambient temperature.                                  | No           | [See details](/docs/system-architecture/supported-channels/temperature-channel)                |
+| `volatile_organic_compounds` | Monitors the concentration of VOCs in the air.                     | No           | [See details](/docs/system-architecture/supported-channels/volatile-organic-compounds-channel) |
+| `electrical_energy`          | Tracks total energy consumption over time.                         | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel)          |
+| `electrical_power`           | Provides real-time power usage information.                        | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)           |
+
+---
+
+## Use Case Scenarios
+
+1. **Air Purification**:
+    - Adjust fan settings to control air circulation using the `fan` channel.
+    - Monitor particulate matter (`airParticulate`) to maintain air quality.
+
+2. **Environmental Monitoring**:
+    - Track temperature (`temperature`) and humidity (`humidity`) for optimal indoor comfort.
+    - Detect harmful gases like CO₂, CO, and VOCs using the respective channels.
+
+3. **Health and Safety**:
+    - Use `leak` to detect water leaks or device malfunctions.
+    - Monitor atmospheric pressure (`pressure`) and gas concentrations (e.g., NO₂, SO₂) for comprehensive air quality analysis.
+
+---
+
+## Developer Notes
+
+1. **Channel Implementation**:
+    - Implement all required channels for basic air purification functionality.
+    - Add optional channels based on the specific features of the device.
+
+2. **Integration**:
+    - Ensure proper mapping of channels to the device's physical or logical components.
+    - The `device_information` channel is mandatory for device identification.
+
+3. **Extensibility**:
+    - Add optional channels like `airParticulate` or `volatileOrganicCompounds` for enhanced air quality monitoring.
+    - Include `humidity` and `temperature` channels for environmental data tracking.
+
+4. **Safety Monitoring**:
+    - Include channels like `leak`, `carbonMonoxide`, and `ozone` for enhanced safety features.

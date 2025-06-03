@@ -1,0 +1,72 @@
+import { Callout, Steps } from "nextra/components";
+
+# Time Tile Plugin
+
+The Time Tile Plugin is a simple yet essential plugin that allows the Smart Panel dashboard to display the current time
+on your wall-mounted interface.
+
+## What It Does
+
+This plugin adds a time tile to the Dashboard module. It provides a clear, always-up-to-date display of the current time
+and date, making it ideal for the top of a screen or part of a broader status overview.
+
+Once added, the time tile:
+
+- Automatically syncs with the configured timezone
+- Supports both 12-hour and 24-hour time formats
+- Displays time and optionally the date in a minimal, clean layout
+
+---
+
+## Configuration
+
+No plugin configuration is required in the `config.yaml` file. However, the time display depends on proper panel localization settings.
+
+<Callout type="info">
+		The time tile uses values provided by the panel's language settings, which must be set in your `config.yaml` file:
+
+	```yaml
+		language:
+			timezone: Europe/Prague
+			time_format: 24h
+	```
+</Callout>
+
+---
+
+## Integration Steps
+
+<Steps>
+	#### Open the Admin App
+
+	Log in to your Smart Panel Admin interface using your browser.
+
+	#### Create or Edit a Page
+
+	Navigate to an existing dashboard page or create a new one to place the time tile.
+
+	#### Add a New Tile
+
+	Click **"Add Tile”** and choose a location for it on the grid.
+
+	#### Select the Time Tile Plugin
+
+	From the available tile types, choose **"Time Tile”** to insert a real-time clock display.
+
+	### Save and Sync
+
+	Once saved, your configuration is instantly applied. The Smart Panel display updates in real time without requiring any manual sync.
+</Steps>
+
+---
+
+## Features
+
+- ✅ Shows current time in real time
+- ✅ Syncs with configured timezone and format
+- ✅ Minimal, elegant display
+- ✅ No manual updates required
+
+---
+
+The Time Tile Plugin is ideal for any Smart Panel layout — giving users a reliable and glanceable way to keep track of the current time.

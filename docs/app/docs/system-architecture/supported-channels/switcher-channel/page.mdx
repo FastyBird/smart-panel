@@ -1,0 +1,28 @@
+import { Callout } from 'nextra/components'
+
+# Switcher Channel
+
+<Callout type="info">
+	**Channel Category**: `switcher`
+</Callout>
+
+Represents binary switches to control devices like lights, fans, or appliances.
+
+---
+
+## Required Properties
+
+| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
+|--------------|---------------|--------------|----------|-----------------|
+| `on`         | `Bool`        | `true/false` | -        | RW (Read/Write) |
+
+---
+
+### Property Details
+
+#### `on`
+
+Indicates the operational state of the switch:
+
+- `true`: The switch is powered on.
+- `false`: The switch is powered off.

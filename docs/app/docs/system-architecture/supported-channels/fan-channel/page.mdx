@@ -1,0 +1,63 @@
+import { Callout } from 'nextra/components'
+
+# Fan Channel
+
+<Callout type="info">
+	**Channel Category**: `fan`
+</Callout>
+
+Controls fan devices, including speed, oscillation, and modes for air circulation.
+
+---
+
+## Required Properties
+
+| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
+|--------------|---------------|--------------|----------|-----------------|
+| `on`         | `Bool`        | `true/false` | -        | RW (Read/Write) |
+
+---
+
+### Property Details
+
+#### `on`
+
+Indicates the on/off state of the fan:
+
+- `true`: The fan is on.
+- `false`: The fan is off.
+
+---
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range**                     | **Unit** | **Permissions** |
+|--------------|---------------|-------------------------------|----------|-----------------|
+| `swing`      | `Bool`        | `true/false`                  | -        | RW (Read/Write) |
+| `speed`      | `Uchar`       | `0–100`                       | %        | RW (Read/Write) |
+| `direction`  | `Enum`        | `clockwise/counter_clockwise` | -        | RW (Read/Write) |
+
+---
+
+### Property Details
+
+#### `swing`
+
+Indicates whether the swing mode is enabled:
+
+- `true`: Swing mode is enabled.
+- `false`: Swing mode is disabled.
+
+#### `speed`
+
+Represents the rotation speed of the fan:
+
+- Expressed as a percentage (`0–100%`) of the maximum supported speed.
+
+#### `direction`
+
+Specifies the direction of the fan’s rotation:
+
+- Possible values:
+    - `clockwise`
+    - `counter_clockwise`

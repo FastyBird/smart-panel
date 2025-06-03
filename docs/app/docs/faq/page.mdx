@@ -1,0 +1,121 @@
+import { Callout } from 'nextra/components'
+
+# Frequently Asked Questions (FAQ)
+
+Got questions? Here are answers to some of the most common issues and scenarios new users encounter when setting up or
+using the Smart Panel.
+
+---
+
+## I can’t connect to `smart-panel.local`
+
+- Make sure your Raspberry Pi is **powered on** and **connected to the same network** as your computer.
+- Try connecting using the Pi’s IP address instead.
+- Some networks or routers don’t support `.local` domains. In that case:
+	- Check your router’s connected device list for the IP.
+	- On Windows/macOS, install [Bonjour](https://support.apple.com/kb/dl999?locale=en_US) if not already installed.
+
+---
+
+## What’s the default SSH username and password?
+
+- **Username**: `pi`
+- **Password**: `raspberry`
+
+If you changed it during flashing (e.g., using Raspberry Pi Imager), use your custom credentials.
+
+---
+
+## The display app doesn’t start after boot
+
+- Make sure the panel service is installed and enabled (see the Installation section).
+- Confirm the display and touch panel wiring is correct.
+- To check if the display app is running, use:
+
+```bash copy
+sudo systemctl status smart-panel-display
+```
+
+- To view logs for debugging:
+
+```bash copy
+sudo journalctl -u smart-panel-display -b
+```
+
+<Callout type="info">
+	The display app is powered by `flutter-pi` and runs as a system service named `smart-panel-display`. It should start
+	automatically on boot if installed correctly.
+</Callout>
+
+---
+
+## Why can’t I see any devices in the Admin app?
+
+- Devices must be added manually via the Admin app or automatically synced by a plugin (e.g., Home Assistant).
+- Not all plugins support device auto-discovery — check the plugin’s documentation.
+
+---
+
+## How do I reset or reconfigure my Smart Panel?
+
+- SSH into your Raspberry Pi.
+- All runtime data is stored in:
+
+```bash copy
+/opt/smart-panel/var
+```
+
+This includes:
+
+- `data/config.yaml` – Your panel configuration
+- `db/database.sqlite` – The main system database
+
+To fully reset your panel:
+
+1. Stop the services:
+
+```bash copy
+sudo systemctl stop smart-panel-backend
+sudo systemctl stop smart-panel-admin
+sudo systemctl stop smart-panel-display
+```
+
+2. Delete the config and database files:
+
+```bash copy
+sudo rm /opt/smart-panel/var/data/config.yaml
+sudo rm /opt/smart-panel/var/db/database.sqlite
+```
+
+3. Restart the services and the onboarding will start fresh:
+
+```bash copy
+sudo systemctl start smart-panel-backend
+sudo systemctl start smart-panel-admin
+sudo systemctl start smart-panel-display
+```
+
+---
+
+## Can I use the panel without the touchscreen?
+
+Yes — the panel can run without a touchscreen, and you can still manage everything using the Admin UI, which is fully
+web-based and accessible from any browser.
+
+<Callout type="info">
+	However, the panel is designed to be **interactive**. Without a touchscreen, you’ll be limited to **a single static page**
+	without user interaction.
+</Callout>
+
+In the future, support for **physical buttons**, **dials**, and **other** input methods is planned to enhance usability
+even on non-touch displays.
+
+---
+
+## Still Need Help?
+
+If you didn’t find what you were looking for, check out:
+
+- [GitHub Discussions](https://github.com/fastybird/smart-panel/discussions)
+- [Report an issue](https://github.com/fastybird/smart-panel/issues)
+- Join our community on [Discord](https://discord.gg/H7pHN3hbqq)

@@ -36,6 +36,8 @@ class StartupManagerService {
   }) {
     _securedStorage = const FlutterSecureStorage();
 
+    print(
+        '${Platform.environment['APP_HOST'] ?? 'http://10.0.2.2'}:${Platform.environment['BACKEND_PORT'] ?? '3000'}/api/v1');
     _apiIoService = Dio(
       BaseOptions(
         baseUrl:

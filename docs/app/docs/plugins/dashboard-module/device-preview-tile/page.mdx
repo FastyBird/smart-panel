@@ -1,0 +1,68 @@
+import { Steps } from "nextra/components";
+
+# Device Tile Plugin
+
+The Device Tile Plugin allows you to display the current state of a selected device and interact with it directly from
+the Smart Panel dashboard.
+
+## What It Does
+
+This plugin enables dashboard tiles to show:
+
+- The **primary state** of a selected device (e.g., On/Off, Temperature, Brightness)
+- Additional **data sources** (e.g., sensor values) related to the device
+- **Interactive controls** to toggle or adjust devices directly from the panel
+- **Quick access to device details** — tapping the tile opens a full detail view of the selected device
+
+It’s a powerful way to visualize and control smart home devices at a glance.
+
+---
+
+## Configuration
+
+No plugin-specific configuration is required in the `config.yaml` file. All setup is done within the Admin App.
+
+---
+
+## Integration Steps
+
+<Steps>
+	### Open the Admin App
+
+	Navigate to the Admin App via your browser and ensure your devices are already integrated.
+
+	### Edit or Create a Page
+
+	Go to your desired dashboard page or create a new one for your layout.
+
+	### Add a Device Tile
+
+	Insert a new tile and choose **Device Tile** as the tile type from the options.
+
+	### Select a Device
+
+	Choose the device you want to display on the tile. You’ll be able to select its primary state (like power status or temperature).
+
+	### Attach Data Sources (Optional)
+
+	You can enhance the tile by adding one or more data sources from the same device (like humidity or battery level).
+
+	### Save and Sync
+
+	Once saved, your configuration is instantly applied. The Smart Panel display updates in real time without requiring any manual sync.
+</Steps>
+
+---
+
+## Features
+
+- ✅ Displays a device’s main state (switch, climate, etc.)
+- ✅ Supports optional data sources (e.g., sensors)
+- ✅ Allows user interaction (e.g., toggling switches, adjusting dimmers)
+- ✅ Tapping opens a full **Device Detail Page**
+- ✅ Dynamically reflects the real-time status of the device
+
+---
+
+The Device Tile Plugin brings devices to life on your wall-mounted interface — letting you view and control key states
+with a tap.

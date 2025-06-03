@@ -1,0 +1,50 @@
+import { Callout } from 'nextra/components'
+
+# Dashboard Plugins
+
+The **Dashboard module** defines how information and controls are presented on the Smart Panel display. It provides a flexible
+layout system with support for **pages**, **tiles**, and **data sources** — all of which can be extended and customized through plugins.
+
+## What Dashboard Plugins Do
+
+Plugins in the Dashboard module allow developers to introduce new visual and interactive components to the panel UI. These plugins can:
+
+- Add new **page types** (e.g., fullscreen graphs, multi-column layouts)
+- Provide **tile types** for displaying devices, sensors, charts, or actions
+- Register custom **data sources** that pull or compute values from devices or external systems
+
+## Extending the Display with Plugins
+
+The modular nature of the dashboard allows for highly personalized UI configurations. For example:
+
+- A tile plugin might display a **thermostat control**, **light dimmer**, or **weather forecast**
+- A card plugin might show a **group of sensors** in a compact layout
+- A page plugin might render a **dedicated climate page** or a **media control interface**
+
+Each plugin integrates deeply with the backend to ensure values are synchronized and actions are propagated in real-time.
+
+## Plugin Capabilities
+
+Dashboard plugins typically implement:
+
+- A backend definition (metadata, config structure)
+- A frontend representation (Vue or Flutter component)
+- Support for layout, theming, and responsiveness
+- Data binding to real device properties or derived sources
+
+<Callout>
+	The goal is to provide a seamless and extensible user experience, where panels can be tailored to any room, purpose, or user preference.
+</Callout>
+
+## Future Opportunities
+
+As the ecosystem grows, plugins can enable advanced dashboard features such as:
+
+- Real-time charts or historical data visualization
+- Voice control overlays
+- Specialized layouts for different screen sizes
+- Touch gestures or accessibility-enhanced components
+
+---
+
+Plugins under the Dashboard module are key to making the Smart Panel both powerful and beautiful — designed to fit the specific needs of each smart home.

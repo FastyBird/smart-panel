@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "🖥️ FastyBird Smart Panel API 🚀",
-    "description": "Welcome to the **FastyBird Smart Panel API Documentation**! This API enables seamless integration between the **FastyBird Smart Panel** and connected devices, providing a local, real-time, and fully customizable **smart home experience**.\n\n---\n\n## **🌟 What Does This API Provide?**\n\nThe **FastyBird Smart Panel API** allows you to:\n\n- 🎛️ **Access Smart Devices** – Retrieve device information, configurations, and states.  \n- 📊 **Monitor Device Status in Real-Time** – Stream live updates from sensors and switches.  \n- 🔗 **Integrate with External Systems** – Connect third-party devices and services for a unified experience.  \n- 📡 **Subscribe to Events** – Use **WebSockets** to get instant updates on device changes.  \n- 🚀 **Control Locally** – No cloud dependency, everything runs on your own **local hardware**.  \n\n💡 **Jump straight into the [API Reference](#explore-apis) for all available endpoints.**\n\n---\n\n## **🚀 Getting Started**\n\n> **💡 This API is designed for local control—no cloud required.**\n\n### **1️⃣ Install the Smart Panel**\nSet up the **FastyBird Smart Panel** on your hardware.\n\n### **2️⃣ Connect Devices**\nEnsure compatible smart devices are available for the panel to manage.\n\n### **3️⃣ Start Using the API**\nUse REST or WebSockets to **query device states, receive updates, and integrate external systems**.\n\n---\n\n## **🔎 API Overview**\nExplore the available API endpoints for integration:\n\n<!--\ntype: tab\ntitle: Devices API\n-->\n\n🔹 **Query smart devices and retrieve metadata.**  \n- [List all devices](#)  \n- [Get device details](#)  \n- [Check device availability](#)  \n- [API Reference](#)  \n\n<!--\ntype: tab\ntitle: Status & Monitoring API\n-->\n\n🔹 **Retrieve sensor readings and real-time device states.**  \n- [Get temperature sensor data](#)  \n- [Monitor smart switch states](#)  \n- [Track energy consumption](#)  \n- [API Reference](#)  \n\n<!--\ntype: tab\ntitle: WebSocket API\n-->\n\n🔹 **Subscribe to live updates for devices & events.**  \n- [Receive real-time device status changes](#)  \n- [Subscribe to WebSocket event streams](#)  \n- [API Reference](#)  \n\n<!-- type: tab-end -->\n\n---\n\n## **📚 API Usage Guides**\nDetailed documentation to help developers integrate the API:\n\n🔹 **[Understanding Device States](#)** – Learn how to interpret API responses.  \n🔹 **[Using WebSockets for Real-Time Monitoring](#)** – Get instant updates from the panel.  \n🔹 **[Integrating Third-Party Devices](#)** – Extend your setup with custom integrations.  \n\n💡 **Need something specific?** Let us know how we can improve the documentation.\n\n---\n\n## **💡 FAQs**\n> **🔍 Common API-related questions:**\n\n**Does this API require the cloud?**  \nNo, everything runs **locally** on your **own hardware**.\n\n**How do I authenticate API requests?**  \nUse **API tokens** for secure access. See [Authentication Guide](#).\n\n**Can I get real-time updates from the panel?**  \nYes! The **WebSocket API** provides instant status updates.\n\n**Does the API support third-party integrations?**  \nYes, you can connect external IoT systems via API endpoints.\n\n---\n\n## **💬 Need Help?**\n💌 **[Join our Developer Community](#)** – Discuss API integrations with others.  \n📧 **[Contact Support](#)** – Reach out for technical assistance.  \n\n---\n\n🔥 **Built with ❤️ by FastyBird** | API-first smart panel integration 🚀",
+    "description": "Welcome to the **FastyBird Smart Panel API Documentation**!\n\nThis API is the central interface for integrating with the **FastyBird Smart Panel**, a modern, modular, and open-source platform for managing smart home devices and dashboards — all running on **your local hardware**, with no cloud dependency.\n\n---\n\n## 🌟 What Can This API Do?\n\nThe **FastyBird Smart Panel API** provides:\n\n- 🎛️ **Full Access to Smart Devices**  \n  Manage devices, channels, and properties — read current values or send commands.\n\n- 📊 **Real-Time Monitoring & Sync**  \n  Receive live updates from sensors, switches, and more through WebSocket connections.\n\n- 🔌 **Third-Party Integration Support**  \n  Easily connect external systems using standard API calls to sync data and trigger actions.\n\n- 🧱 **Dashboard Customization**  \n  Build or modify dashboard layouts, pages, tiles, and data sources dynamically via API.\n\n- 🚀 **Local-First Control**  \n  The entire stack is designed to run offline on your own network — secure, private, and fast.\n\n---\n\n## 🚀 Getting Started\n\n> 🛠️ **No cloud required. Everything runs locally.**\n\n### 1. Install the Smart Panel  \nDeploy the platform to a supported device like a Raspberry Pi or ReTerminal.\n\n### 2. Connect & Configure Devices  \nAdd devices via the Admin App or API, either manually or through plugin integrations.\n\n### 3. Interact via REST or WebSocket  \nUse the API to read states, send commands, and subscribe to real-time updates.\n\n---\n\n## 🔎 API Modules Overview\n\n### Devices API  \nManage devices and their structure:  \n- Retrieve device/channel/property metadata  \n- Send control commands  \n- Sync state updates  \n\n### Dashboard API  \nConfigure your Smart Panel UI:  \n- Build pages and tiles  \n- Add data sources  \n- Organize device widgets  \n\n---\n\n## 📚 API Usage Examples\n\nUse this API to:\n\n- 💡 Read a temperature sensor value  \n- 🔘 Toggle a light switch  \n- 🧩 Display custom widgets  \n- 🔄 Sync external device state  \n- 📱 Integrate with your own mobile or desktop app  \n\n---\n\n## 🔐 Authentication\n\nUse token-based access when integrating external apps or third-party devices.  \nSee the [Authentication Guide](#) for details.\n\n---\n\n## 💬 Frequently Asked\n\n**Is the API cloud-based?**  \nNo — it runs entirely on your own hardware.\n\n**Do I need to be online?**  \nNo — the API is designed for offline-first use.\n\n**Can I control third-party devices?**  \nYes — use plugin-based extensions or the generic third-party interface.\n\n**Does the Smart Panel support real-time updates?**  \nYes — WebSocket support is built-in.\n\n---\n\n## 🤝 Need Help?\n\n- 💬 [Join the FastyBird Community](https://discord.gg/mDU56cxY)  \n- 🛠️ [Explore the Docs](https://smart-panel.fastybird.com/docs)  \n- 📨 [Report an issue](https://github.com/fastybird/smart-panel/issues)\n\n---\n\n🚀 **Built with ❤️ by FastyBird** — Local-first, modular smart home integration.",
     "version": "1.0",
     "license": {
       "name": "Apache 2.0",
@@ -5768,7 +5768,7 @@
       ],
       "put": {
         "tags": [
-          "Devices module"
+          "Devices third-party plugin"
         ],
         "summary": "Send command to third-party device",
         "description": "This endpoint is used to send property update commands to a third-party device. The backend calls this webhook with one or more property updates. The third-party device should process the updates and return a status response.\n\n**The actual webhook path must be defined on the third-party device level**, and the backend must be configured accordingly to call the correct endpoint.",
@@ -13133,7 +13133,7 @@
       },
       "DevicesThirdPartyPluginThirdPartyDevice": {
         "x-internal": true,
-        "title": "Tiles Page",
+        "title": "Third-party Device",
         "description": "A third-party device used to communicate with third-party devices.",
         "allOf": [
           {
@@ -13157,7 +13157,7 @@
       },
       "DevicesThirdPartyPluginCreateThirdPartyDevice": {
         "x-internal": true,
-        "title": "Create Tiles Page",
+        "title": "Create Third-party Device",
         "description": "The schema for creating a third-party device.",
         "allOf": [
           {
@@ -13181,7 +13181,7 @@
       },
       "DevicesThirdPartyPluginUpdateThirdPartyDevice": {
         "x-internal": true,
-        "title": "Update Tiles Page",
+        "title": "Update Third-party Device",
         "description": "Schema for updating a third-party device.",
         "allOf": [
           {
@@ -13202,8 +13202,8 @@
       },
       "DevicesThirdPartyPluginThirdPartyChannel": {
         "x-internal": true,
-        "title": "Home Assistant Device Channel",
-        "description": "A Home Assistant channels used to communicate with Home Assistant instance.",
+        "title": "Third-party Device Channel",
+        "description": "A Third-party channels used to communicate with Third-party instance.",
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannel"
@@ -13212,8 +13212,8 @@
       },
       "DevicesThirdPartyPluginCreateThirdPartyChannel": {
         "x-internal": true,
-        "title": "Create Home Assistant Device Channel",
-        "description": "The schema for creating a Home Assistant channel.",
+        "title": "Create Third-party Device Channel",
+        "description": "The schema for creating a Third-party channel.",
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannel"
@@ -13222,8 +13222,8 @@
       },
       "DevicesThirdPartyPluginUpdateThirdPartyChannel": {
         "x-internal": true,
-        "title": "Update Home Assistant Device Chanel",
-        "description": "Schema for updating a Home Assistant channel.",
+        "title": "Update Third-party Device Chanel",
+        "description": "Schema for updating a Third-party channel.",
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannel"
@@ -13232,8 +13232,8 @@
       },
       "DevicesThirdPartyPluginThirdPartyChannelProperty": {
         "x-internal": true,
-        "title": "Home Assistant Channel Property",
-        "description": "A Home Assistant properties used to communicate with Home Assistant instance.",
+        "title": "Third-party Channel Property",
+        "description": "A Third-party properties used to communicate with Third-party instance.",
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannelProperty"
@@ -13242,8 +13242,8 @@
       },
       "DevicesThirdPartyPluginCreateThirdPartyChannelProperty": {
         "x-internal": true,
-        "title": "Create Home Assistant Channel Property",
-        "description": "The schema for creating a Home Assistant channel property.",
+        "title": "Create Third-party Channel Property",
+        "description": "The schema for creating a Third-party channel property.",
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannelProperty"
@@ -13252,8 +13252,8 @@
       },
       "DevicesThirdPartyPluginUpdateThirdPartyChannelProperty": {
         "x-internal": true,
-        "title": "Update Home Assistant Device Chanel",
-        "description": "Schema for updating a Home Assistant channel property.",
+        "title": "Update Third-party Device Chanel",
+        "description": "Schema for updating a Third-party channel property.",
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannelProperty"
@@ -15357,6 +15357,10 @@
     {
       "name": "Devices home assistant plugin",
       "description": "Endpoints for interacting with Home Assistant devices and their states. This plugin allows discovery, inspection, and potential adoption of Home Assistant devices into the Smart Panel ecosystem."
+    },
+    {
+      "name": "Devices third-party plugin",
+      "description": "Endpoints for interacting with Third-party devices and their states."
     },
     {
       "name": "Pages cards plugin",

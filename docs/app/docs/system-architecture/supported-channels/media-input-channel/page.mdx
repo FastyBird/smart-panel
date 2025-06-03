@@ -1,0 +1,43 @@
+import { Callout } from 'nextra/components'
+
+# Media Input Channel
+
+<Callout type="info">
+	**Channel Category**: `media_input`
+</Callout>
+
+Manages the input sources of multimedia devices like TVs, projectors, or audio receivers.
+
+---
+
+## Required Properties
+
+| **Property** | **Data Type** | **Range**                 | **Unit** | **Permissions** |
+|--------------|---------------|---------------------------|----------|-----------------|
+| `source`     | `Enum`        | `hdmi1/hdmi2/usb/optical` | -        | RW (Read-Write) |
+
+---
+
+### Property Details
+
+#### `source`
+
+- Represents the selected input source.
+- Example values:
+    - `hdmi1`, `hdmi2`, `usb`, `optical`, `streaming`.
+
+---
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
+|--------------|---------------|--------------|----------|-----------------|
+| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
+
+#### `active`
+
+- Indicates whether the selected input is actively in use.

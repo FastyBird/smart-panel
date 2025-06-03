@@ -1,0 +1,49 @@
+import { Callout } from 'nextra/components'
+
+# Device Plugins
+
+The **Devices module** lies at the core of the FastyBird Smart Panel system. It handles how physical or virtual devices are
+represented, grouped into channels, and exposed to the panel for status monitoring and control.
+
+Plugins within the Devices module are responsible for extending this functionality to support different integration methods and ecosystems.
+
+## What Device Plugins Do
+
+A device plugin is typically responsible for:
+
+- **Discovering and registering devices** from an external platform (e.g., Home Assistant, third-party API)
+- **Defining device channels** and their properties, such as sensors, switches, dimmers, etc.
+- **Keeping device states in sync** with external systems (via polling, webhooks, or socket communication)
+- **Handling commands** sent from the panel and relaying them to the real device
+
+## Types of Device Plugins
+
+FastyBird currently supports multiple plugin types for device integration:
+
+- **Home Assistant Plugin**: Automatically imports devices and entities from a connected Home Assistant instance.
+- **Third-Party Plugin**: Enables integrators to define devices manually and communicate via custom API endpoints.
+
+More plugin types — including native protocols like Zigbee, Z-Wave, and MQTT — are planned.
+
+## Plugin Responsibilities
+
+Each plugin is expected to implement:
+
+- A device discovery/registration process
+- Mapping external device structures into FastyBird’s device → channel → property hierarchy
+- Periodic or real-time synchronization of property values
+- Optional handling of property commands
+
+<Callout>
+	The goal is to abstract away the communication logic while maintaining a consistent internal model across all integrations.
+</Callout>
+
+## Plugin Flexibility
+
+Device plugins can be as simple or complex as needed. They can expose:
+
+- Single devices with a few properties
+- Whole ecosystems of sensors, actuators, and control surfaces
+
+This flexibility makes it easy to build both lightweight integrations and large-scale smart home bridges — all managed
+through the same unified interface.

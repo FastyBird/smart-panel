@@ -47,7 +47,7 @@ jobs:
           key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
           restore-keys: "${{ runner.os }}-pnpm-store-"
 
-      - name: "Install NPM dependencies"
+      - name: "Install dependencies"
         shell: "bash"
         run: "pnpm install"
 
@@ -103,7 +103,7 @@ jobs:
             -e INFLUXDB_ADMIN_PASSWORD= \
             influxdb:1.8
 
-      - name: "Install NPM dependencies"
+      - name: "Install dependencies"
         shell: "bash"
         run: "pnpm install"
 
@@ -157,7 +157,7 @@ jobs:
           key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
           restore-keys: "${{ runner.os }}-pnpm-store-"
 
-      - name: "Install NPM dependencies"
+      - name: "Install dependencies"
         shell: "bash"
         run: "pnpm install"
 
@@ -204,7 +204,7 @@ jobs:
           key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
           restore-keys: "${{ runner.os }}-pnpm-store-"
 
-      - name: "Install NPM dependencies"
+      - name: "Install dependencies"
         shell: "bash"
         run: "pnpm install"
 
@@ -248,6 +248,46 @@ jobs:
 
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
+
+  website-build:
+    name: "Test build web"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+      fail-fast: false
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: "20"
+
+      - name: "Setup pnpm"
+        uses: "pnpm/action-setup@v2"
+        with:
+          version: "9.13.0"
+
+      - name: "Get pnpm store directory"
+        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: "Cache pnpm dependencies"
+        uses: "actions/cache@v3"
+        with:
+          path: "${{ env.PNPM_STORE_PATH }}"
+          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
+          restore-keys: "${{ runner.os }}-pnpm-store-"
+
+      - name: "Install dependencies"
+        shell: "bash"
+        run: "pnpm install"
+
+      - name: "Test build"
+        run: 'pnpm --filter @fastybird/smart-panel-docs build'
 
   devices-schemas:
     name: "Devices mapping analysis"

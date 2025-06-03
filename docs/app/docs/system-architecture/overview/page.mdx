@@ -1,0 +1,52 @@
+# System Architecture Overview
+
+The **System Architecture** section offers a high-level understanding of how the Smart Panel organizes and interacts with
+devices and their capabilities. This virtual structure ensures that a wide variety of hardware can be integrated consistently,
+regardless of brand or protocol.
+
+By breaking down physical or virtual devices into abstracted models — such as *devices*, *channels*, and *properties* — the platform
+can offer robust customization, clear structure, and future-proof extensibility.
+
+---
+
+## Devices
+
+A **device** is a representation of a real-world object — for example, a light bulb, a sensor, a speaker, or a thermostat. Each device:
+
+- Belongs to a **category** (e.g., lighting, heating, media)
+- Has a **unique name and identifier**
+- Contains one or more **channels** that define its capabilities
+
+This abstraction allows the system to treat all devices uniformly, even if they originate from different ecosystems (e.g., Zigbee, MQTT, HomeKit).
+
+---
+
+## Channels
+
+A **channel** encapsulates a specific feature or functionality of a device. For example:
+
+- A light device may have a **brightness** and **color** channel
+- A thermostat may include a **temperature** and **humidity** channel
+- A speaker may include a **volume** and **playback** channel
+
+This modular design allows capabilities to be reused across device categories and makes the interface predictable and scalable.
+
+---
+
+## Purpose
+
+The goal of this section is to document how devices and channels are modeled in the Smart Panel ecosystem. This structure is essential for:
+
+- Developers building custom integrations or plugins
+- Users configure devices manually through the Admin interface
+- Contributors who want to expand supported device types
+
+You don’t need to be a developer to benefit from this overview — just a curious mind and a desire to customize your smart home.
+
+---
+
+## What’s Next?
+
+Now that you understand how the Smart Panel structures **devices** and **channels**, it's time to dive into the actual components.
+
+👉 Head over to the **[Supported Devices](/docs/system-architecture/supported-devices)** section to explore each device category and its associated capabilities.

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" height="500" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="black" stroke-width="2" font-family="sans-serif">
+    <style>
+        .arrow {
+        stroke-dasharray: 10;
+        stroke-dashoffset: 10;
+        animation: dash 1s linear infinite;
+        }
+        @keyframes dash {
+        to {
+        stroke-dashoffset: 0;
+        }
+        }
+        .label {
+        fill: black;
+        font-size: 16px;
+        font-weight: bold;
+        text-anchor: middle;
+        }
+        .icon {
+        fill: #000;
+        }
+    </style>
+
+    <!-- Admin Interface -->
+    <rect x="50" y="150" width="120" height="80" rx="10" stroke="#000" fill="#fff"/>
+    <text x="110" y="245" class="label">Admin Interface</text>
+
+    <!-- Backend -->
+    <rect x="340" y="150" width="120" height="80" rx="10" stroke="#000" fill="#fff"/>
+    <text x="400" y="245" class="label">Backend</text>
+
+    <!-- Display Panel -->
+    <rect x="630" y="150" width="120" height="80" rx="10" stroke="#000" fill="#fff"/>
+    <text x="690" y="245" class="label">Display Panel</text>
+
+    <!-- Integrations -->
+    <rect x="340" y="320" width="120" height="80" rx="10" stroke="#000" fill="#fff"/>
+    <text x="400" y="415" class="label">Integrations</text>
+
+    <!-- Arrows -->
+    <line x1="170" y1="190" x2="340" y2="190" stroke="#000" class="arrow" marker-end="url(#arrowhead)"/>
+    <line x1="460" y1="190" x2="630" y2="190" stroke="#000" class="arrow" marker-end="url(#arrowhead)"/>
+    <line x1="400" y1="230" x2="400" y2="320" stroke="#000" class="arrow" marker-end="url(#arrowhead)"/>
+
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                refX="10" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="black" />
+        </marker>
+    </defs>
+</svg>
