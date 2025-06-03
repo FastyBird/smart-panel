@@ -1,0 +1,64 @@
+import { Callout, Steps } from "nextra/components";
+
+# Device Channel Data Source Plugin
+
+The Device Channel Data Source Plugin allows you to display the state of a specific property from any connected device channel — such as temperature, brightness, power status, and more.
+
+## What It Does
+
+This plugin adds a data source to the dashboard module that reads from a selected **device channel property**. It can be used by:
+
+- Tiles (e.g., status tiles, graphs, indicators)
+- Pages (e.g., headers or device views)
+- Any visual component that supports external data sources
+
+Once configured, it continuously reflects the live value of the chosen property — ideal for displaying real-time device feedback.
+
+---
+
+## Configuration
+
+No configuration is required in the `config.yaml` file. The plugin is available by default.
+
+---
+
+## Integration Steps
+
+<Steps>
+	### Open the Admin App
+
+	Navigate to your dashboard configuration in the Admin App.
+
+	### Edit a Tile or Page
+
+	Choose an element that supports data sources — such as a tile or a page-level display area.
+
+	### Add a Data Source
+
+	Select **Device Channel Data Source** as the source type.
+
+	### Choose Property
+
+	Select the device, channel, and specific property you want to visualize (e.g., `temperature`, `state`, `brightness`).
+
+	### Save and Sync
+
+	Once saved, your configuration is instantly applied. The Smart Panel display updates in real time without requiring any manual sync.
+</Steps>
+
+<Callout type="info">
+	You can add multiple data sources to a tile or page. Each source will reflect a specific device state in real time.
+</Callout>
+
+---
+
+## Features
+
+- ✅ Supports all device channels and properties
+- ✅ Works with any tile or page element that supports data sources
+- ✅ Real-time updates
+- ✅ No backend configuration required
+
+---
+
+The Device Channel Data Source Plugin brings granular, real-time data into your Smart Panel — enabling highly customized visual layouts and dashboards.

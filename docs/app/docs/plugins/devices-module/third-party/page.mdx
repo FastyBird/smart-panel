@@ -1,0 +1,120 @@
+import { Callout, Cards, Steps } from "nextra/components";
+import Icon from "@mdi/react";
+import { mdiApi } from "@mdi/js";
+
+# Third-Party Plugin
+
+The **Third-Party plugin** allows you to connect your own smart devices and services to the Smart Panel backend through
+simple API endpoints. It’s the most flexible integration method, ideal for custom hardware or external systems not yet
+natively supported.
+
+## What It Does
+
+This plugin enables Smart Panel to communicate with arbitrary third-party devices:
+
+- Send device commands to external services via HTTP
+- Accept incoming state updates from external systems
+- Maintain real-time device state within the Smart Panel ecosystem
+
+No advanced configuration is required in the panel. Instead, all logic lives in the endpoint integration of the third-party system.
+
+---
+
+## Configuration
+
+No plugin configuration is required in the `config.yaml` file. All setup is done per device using the Admin App or API.
+
+Each third-party device must define its:
+
+- **Command Endpoint** — where the Smart Panel should send commands when the user interacts with the panel
+- **State Update Endpoint** — used by third-party systems to notify Smart Panel when device state changes
+
+For the full data structure and API expectations, see the third-party device specification below:
+
+<Cards.Card
+	icon={
+		<Icon
+			path={mdiApi}
+			size={2}
+		/>
+	}
+	title="Third-party Device Schema"
+	href="https://fastybird.stoplight.io/docs/smart-panel/branches/main/e5c0bd8159c9f-third-party-device"
+	arrow
+	className={"mt-8"}
+/>
+
+---
+
+## How It Works
+
+### Sending Commands
+
+When a user interacts with a device (e.g. turns on a switch), the backend calls the configured **command endpoint** for the given device. This request follows this API definition:
+
+<Cards.Card
+	icon={
+		<Icon
+			path={mdiApi}
+			size={2}
+		/>
+	}
+	title="Send command to third-party device"
+	href="https://fastybird.stoplight.io/docs/smart-panel/branches/main/69d59e31c8650-send-command-to-third-party-device"
+	arrow
+	className={"mt-8"}
+/>
+
+### Receiving State Updates
+
+When a third-party device changes its state, it must call the Smart Panel API to update the appropriate property:
+
+<Cards.Card
+	icon={
+		<Icon
+			path={mdiApi}
+			size={2}
+		/>
+	}
+	title="Update a device property"
+	href="https://fastybird.stoplight.io/docs/smart-panel/branches/main/f093475494870-update-an-existing-property-for-a-channel"
+	arrow
+	className={"mt-8"}
+/>
+
+<Callout type="info">
+	In the future, this plugin will also support WebSocket-based communication using Socket.IO for more responsive and real-time integrations.
+</Callout>
+
+---
+
+## Integration Steps
+
+<Steps>
+	#### Define Device in the Admin App
+
+	Add your device via the Admin App. Choose the "Third-Party" device type and provide all required metadata.
+
+	#### Set Command Endpoint
+
+	In the device settings, specify the HTTP endpoint that will receive commands (e.g. toggles, state changes).
+
+	#### Implement Command Listener
+
+	Your backend should listen to incoming POST requests and execute the corresponding device action.
+
+	#### Update Property States
+
+	Whenever the device changes its state (e.g. temperature, switch status), send a POST request to Smart Panel to update the value.
+
+	#### Test Communication
+
+	Interact with the panel and verify that commands reach your service and state updates are reflected in the UI.
+</Steps>
+
+## Features
+
+- ✅ Stateless HTTP communication
+- ✅ Supports any language or platform
+- ✅ Fully customizable integration
+- 🛠️ WebSocket support in development

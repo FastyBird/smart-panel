@@ -1,0 +1,105 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Home Assistant Plugin
+
+The **Home Assistant plugin** bridges the Smart Panel with your Home Assistant instance, enabling the panel to display and control devices already integrated in your smart home setup.
+
+## What It Does
+
+This plugin allows you to connect the Devices module with your Home Assistant environment by manually mapping devices and entities. Once configured, you can:
+
+- Read real-time device states
+- Send control commands to Home Assistant
+- Visualize sensor data, switch states, and more via the dashboard
+
+## Current Limitations
+
+<Callout type="warning">
+	**Automatic mapping is not yet supported.**
+	All Home Assistant devices and entities must currently be mapped manually in the Smart Panel Admin App.
+</Callout>
+
+These limitations are temporary. Future versions of the plugin will support automatic discovery and mapping via the WebSocket API and allow full setup via the Admin App UI.
+
+---
+
+## Configuration
+
+To enable the plugin, you must manually define its settings inside your `config.yaml` file:
+
+### Getting Your Home Assistant Access Token
+
+To connect the Smart Panel with your Home Assistant instance, you’ll need to generate a **Long-Lived Access Token**. Follow the steps below:
+
+<Steps>
+	#### Open Home Assistant
+
+	Log in to your Home Assistant instance through your browser. You’ll need to be logged in as the user who should own the access token.
+
+	#### Go to Your Profile
+
+	Click on your user name or avatar at the bottom of the sidebar to open your user profile page. This is where all your personal settings and security tools live.
+
+	#### Find the Access Token Section
+
+	On the **Security** tab scroll to the section called **"Long-Lived Access Tokens"** — this is where you can manage tokens.
+
+	#### Create a New Token
+
+	Click on **"Create Token”**, then give it a recognizable name like **Smart Panel Integration**. This helps identify it later if you need to revoke access.
+
+	#### Copy and Store the Token
+
+	The token will only be shown once. Copy it immediately and paste it into your configuration file under `/opt/smart-panel/var/data/config.yaml`. Treat it like a password.
+
+	```yaml
+	plugins:
+		devices-home-assistant-plugin:
+			api_key: generated-long-lived-access-token
+			hostname: home-assistant.local:8123
+	```
+
+	| Key        | Description                                   |
+	|------------|-----------------------------------------------|
+	| `api_key`  | Your Home Assistant long-lived access token   |
+	| `hostname` | Hostname or IP address of your Home Assistant |
+</Steps>
+
+<Callout  type={'info'}>
+	You must restart the backend for configuration changes to take effect.
+</Callout>
+
+---
+
+## How It Works
+
+Once configured:
+
+- The plugin connects to your Home Assistant instance using the provided WebSocket API
+- Device and entity data must be manually linked to the Smart Panel’s internal model
+- Each Home Assistant entity becomes a **channel** with one or more **properties**
+- Property values are kept in sync with Home Assistant in real time
+- User interactions on the panel (like toggling a light) are sent back to Home Assistant as commands
+
+## Features
+
+- ✅ Real-time updates via WebSocket
+- ✅ Manual linking of Home Assistant entities to Smart Panel devices
+- ✅ Bidirectional communication
+- ✅ Support for common entity types
+
+## Supported Entity Types
+
+The plugin currently supports mapping of the following Home Assistant entity types:
+
+- `light`
+- `switch`
+- `sensor`
+- `climate`
+- `binary_sensor`
+
+Each supported entity type maps to corresponding Smart Panel properties (e.g., state, brightness, temperature).
+
+---
+
+The Home Assistant plugin brings the power of your existing automation setup into the Smart Panel ecosystem — and while manual setup is currently required, full automation is on the roadmap.

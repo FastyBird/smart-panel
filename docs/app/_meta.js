@@ -12,4 +12,8 @@ export default {
     href: "https://fastybird.stoplight.io/docs/smart-panel",
     title: "API reference",
   },
+  contact: {
+    type: "page",
+    display: "hidden",
+  },
 };

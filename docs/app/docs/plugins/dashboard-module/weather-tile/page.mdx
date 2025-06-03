@@ -1,0 +1,79 @@
+import { Callout, Steps } from "nextra/components";
+
+# Weather Tile Plugin
+
+The Weather Tile Plugin integrates weather information into your Smart Panel dashboard using data provided by the Weather
+module. It offers two types of tiles: Current Weather and Weekly Forecast.
+
+## What It Does
+
+This plugin connects to the Weather module, which pulls data from OpenWeather, and displays it on your panel through two
+distinct tile options:
+
+- **Current Weather Tile** — shows temperature, weather condition, and location
+- **Forecast Tile** — displays a 7-day forecast including temperature trends and conditions
+
+Both tile types:
+
+- Sync automatically with the configured weather provider (currently OpenWeather)
+- Support location-based weather updates
+- Display in a clean, visual format with icons and text
+
+---
+
+## Configuration
+
+No plugin configuration is required in the `config.yaml` file. However, the Weather module must be configured to enable
+weather data fetching.
+
+<Callout type="info">
+	The weather tile displays data provided by the Weather module, which must be properly configured in your `config.yaml` file:
+
+	```yaml
+	weather:
+		location: Prague
+		location_type: city_name
+		unit: celsius
+		open_weather_api_key: your-api-key
+	```
+</Callout>
+
+---
+
+## Integration Steps
+
+<Steps>
+	### Open the Admin App
+
+	Access the Smart Panel Admin interface in your browser.
+
+	### Create or Edit a Page
+
+	Choose an existing dashboard page or create a new one to place your weather tile.
+
+	### Add a New Tile
+
+	Click "Add Tile” and pick a spot in your layout.
+
+	### Select a Weather Tile Type
+
+	Choose either "Current Weather” or "Weekly Forecast” as the tile type.
+
+	### Save and Sync
+
+	Once saved, your configuration is instantly applied. The Smart Panel display updates in real time without requiring any manual sync.
+</Steps>
+
+---
+
+##  Features
+
+- ✅ Two tile types: Current Weather & Weekly Forecast
+- ✅ Automatically updates based on location
+- ✅ Powered by OpenWeather via the Weather module
+- ✅ Clean design with temperature and condition icons
+
+---
+
+The Weather Tile Plugin adds environmental awareness to your Smart Panel — whether it’s a glanceable current condition
+or a week-long forecast to plan ahead.
