@@ -449,7 +449,7 @@ export default function LandingPage() {
               GitHub
             </Button>
             <Button
-              href={"https://discord.gg/mDU56cxY"}
+              href={"https://discord.gg/H7pHN3hbqq"}
               size={"lg"}
               className={
                 "text-white bg-[#5865F2] hover:bg-[#4752c4] text-lg px-6 py-4"

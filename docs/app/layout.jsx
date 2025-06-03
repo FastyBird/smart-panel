@@ -63,7 +63,7 @@ export default async function RootLayout({ children }) {
     <Navbar
       logo={<Logo />}
       projectLink={"https://github.com/FastyBird/smart-panel"}
-      chatLink={"https://discord.gg/tsszFb99"}
+      chatLink={"https://discord.gg/H7pHN3hbqq"}
     />
   );
 

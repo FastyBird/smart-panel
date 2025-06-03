@@ -1,0 +1,119 @@
+name: NPM Publish
+
+on:
+  workflow_call:
+    inputs:
+      package_path:
+        description: "Path to the package to publish (e.g. packages/foo)"
+        required: true
+        type: "string"
+      node_version:
+        description: "Node.js version to use"
+        default: "22"
+        required: false
+        type: "number"
+      tag:
+        description: "Tag name to use for publishing (e.g. latest, alpha)"
+        required: false
+        type: "string"
+      npm_version_command:
+        description: "If provided, runs `npm version` (e.g. patch, minor)"
+        required: false
+        type: "string"
+      pre_id:
+        description: "Pre-release identifier (e.g. alpha, beta)"
+        default: ""
+        required: false
+        type: "string"
+      dynamically_adjust_version:
+        description: "Runs the version script to auto-set package version"
+        default: false
+        required: false
+        type: "boolean"
+    secrets:
+      npm_auth_token:
+        description: "NPM token for publishing"
+        required: true
+    outputs:
+      NPM_VERSION:
+        value: ${{ jobs.publish_npm.outputs.NPM_VERSION }}
+
+jobs:
+  publish_npm:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v4"
+        with:
+          node-version: ${{ inputs.node_version }}
+          registry-url: 'https://registry.npmjs.org'
+          cache: "pnpm"
+
+      - name: "Setup pnpm"
+        uses: "pnpm/action-setup@v2"
+        with:
+          version: "9.13.0"
+
+      - name: "Get pnpm store directory"
+        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: "Cache pnpm dependencies"
+        uses: "actions/cache@v3"
+        with:
+          path: "${{ env.PNPM_STORE_PATH }}"
+          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
+          restore-keys: "${{ runner.os }}-pnpm-store-"
+
+      - name: "Install dependencies"
+        shell: "bash"
+        run: "pnpm install"
+
+      - name: "Build generated code"
+        shell: "bash"
+        run: "pnpm generate:openapi"
+
+      - name: "Adjust version dynamically"
+        if: ${{ inputs.dynamically_adjust_version }}
+        working-directory: ${{ inputs.package_path }}
+        run: node ../scripts/npm-version-script.js ${{ github.ref }} ${{ inputs.tag }}
+
+      - name: "Run npm version (with git commit)"
+        if: ${{ inputs.npm_version_command != null && inputs.dynamically_adjust_version == false }}
+        working-directory: ${{ inputs.package_path }}
+        run: pnpm version ${{ inputs.npm_version_command }} --preid=${{ inputs.pre_id }}
+
+      - name: "Run npm version (without git commit)"
+        if: ${{ inputs.npm_version_command != null && inputs.dynamically_adjust_version }}
+        working-directory: ${{ inputs.package_path }}
+        run: pnpm version ${{ inputs.npm_version_command }} --preid=${{ inputs.pre_id }} --no-git-tag-version
+
+      - name: "Publish to NPM (no tag)"
+        if: ${{ inputs.tag == null }}
+        working-directory: ${{ inputs.package_path }}
+        run: pnpm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npm_auth_token }}
+
+      - name: "Publish to NPM (with tag)"
+        if: ${{ inputs.tag != null }}
+        working-directory: ${{ inputs.package_path }}
+        run: pnpm publish --access public --tag=${{ inputs.tag }} --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npm_auth_token }}
+
+      - name: "Return NPM Package Version"
+        id: "package-version"
+        working-directory: ${{ inputs.package_path }}
+        run: echo "NPM_VERSION=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+
+      - name: "Notice of Published Version"
+        run: echo "::notice::Published on NPM - ${{ steps.package-version.outputs.NPM_VERSION }}"
+
+    outputs:
+      NPM_VERSION: ${{ steps.package-version.outputs.NPM_VERSION }}

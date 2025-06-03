@@ -1,4 +1,4 @@
-name: Stale workflow
+name: Stale
 
 on:
   workflow_dispatch:

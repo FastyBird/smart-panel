@@ -1,4 +1,4 @@
-name: Node-CI Beta
+name: Beta Release
 
 on:
   push:
@@ -10,129 +10,143 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_and_test:
-    name: Build and run npm test
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, macos-latest, macos-15, macos-14, macos-13, windows-latest, windows-2022, windows-2019]
+  sync-versions:
+    name: "Sync packages versions"
+    runs-on: "ubuntu-latest"
 
-    uses: fastybird/.github/.github/workflows/nodejs-build-and-test.yml@latest
-    with:
-      enable_coverage: false
-      # # Code Coverage can only be used in a single run, not in a parallel run - Error: Bad response: 422 {"message":"Can't add a job to a build that is already closed. Build 6224987022 is closed. See docs.coveralls.io/parallel-builds","error":true}
-      # # Coveralls only expects to create a report once per build
-      runs_on: ${{ matrix.os }}
-      install_cmd: npm ci && cd ui && npm ci
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
 
-  publish:
-    needs: [build_and_test]
-    if: ${{ github.repository == 'fastybird/smart-panel' }}
-    uses: fastybird/.github/.github/workflows/npm-publish.yml@latest
+      - name: "Setup Node"
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: "Sync Versions"
+        id: set-version
+        run: node scripts/monorepo-version-sync.js ${{ github.ref }} beta
+
+      - name: "Commit Version Changes"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: sync versions [ci skip]"
+            git push
+          else
+            echo "No version changes to commit."
+          fi
+
+  publish-backend:
+    needs: "sync-versions"
+    name: "Publish Pre Release Beta Backend App"
+    uses: "./npm-publish.yml"
     with:
-      tag: beta
-      dynamically_adjust_version: true
-      npm_version_command: pre
-      pre_id: beta
-      install_cmd: npm ci && cd ui && npm ci
+      package_path: "apps/backend"
+      tag: "beta"
     secrets:
-      npm_auth_token: ${{ secrets.npm_token }}
+      npm_auth_token: "${{ secrets.NPM_REGISTRY_TOKEN }}"
+
+  publish-admin:
+    needs: "sync-versions"
+    name: "Publish Pre Release Beta Admin App"
+    uses: "./npm-publish.yml"
+    with:
+      package_path: "apps/admin"
+      tag: "beta"
+    secrets:
+      npm_auth_token: "${{ secrets.NPM_REGISTRY_TOKEN }}"
+
+  build-flutter:
+    needs: "sync-versions"
+    name: "Build Flutter Display App"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Install Flutter SDK"
+        uses: "subosito/flutter-action@v2"
+        with:
+          channel: stable
+          flutter-version: 3.27.0
+
+      - name: "Install Melos"
+        run: "dart pub global activate melos"
+
+      - name: "Bootstrap Dependencies"
+        run: "melos bootstrap"
+
+      - name: "Build generated code"
+        run: "melos rebuild-api"
+
+      - name: "Build Flutter Bundle"
+        working-directory: "./apps/panel"
+        run: "flutter build bundle"
+
+      - name: "Archive Flutter Assets"
+        run: |
+          tar -czvf smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz -C ./apps/panel/build/flutter_assets .
+          shasum -a 256 smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz > SHASUMS256.txt
+
+      - name: "Upload Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "flutter-assets"
+          path: |
+            smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz
+            SHASUMS256.txt
 
   pre-release-beta:
-    needs: [publish]
-    name: Create New Github Beta Pre Release
-    if: ${{ github.repository == 'fastybird/smart-panel' }}
+    needs: ["sync-versions", "publish-admin", "publish-backend", "build-flutter"]
+    name: "Create Beta Pre Release"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Create nightly release
-        id: create_release
-        uses: viperproject/create-nightly-release@v1
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Create pre-release"
+        uses: "viperproject/create-nightly-release@v1"
         env:
-          # This token is provided by Actions, you do not need to create your own token
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ needs.publish.outputs.NPM_VERSION }}
-          release_name: v${{ needs.publish.outputs.NPM_VERSION }}
+          tag_name: v${{ needs.sync-versions.outputs.version }}
+          release_name: v${{ needs.publish-admin.outputs.NPM_VERSION }}
           body: |
-            v${{ needs.publish.outputs.NPM_VERSION }}
-            [How To Test Upcoming Changes](https://github.com/fastybird/smart-panel/wiki/How-To-Test-Upcoming-Changes)
+            Admin App v${{ needs.publish-admin.outputs.NPM_VERSION }} & Backend App v${{ needs.publish-backend.outputs.NPM_VERSION }} & Display App v${{ needs.sync-versions.outputs.version }}
           keep_num: 5
           keep_tags: false
 
-  attach-artifact:
-    name: Attach Artifact
-    needs: [publish, pre-release-beta]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.x
-
-      - name: Install package v${{ needs.publish.outputs.NPM_VERSION }}
+      - name: "Summary"
         run: |
-          export npm_config_prefix=$(pwd)/package
-          for i in {1..10}; do
-            npm install -g --omit=dev smart-panel@${{ needs.publish.outputs.NPM_VERSION }} && break || {
-              if [ $? -eq 1 ] && grep -q 'ETARGET' <<< "$(npm install -g --omit=dev smart-panel@${{ needs.publish.outputs.NPM_VERSION }} 2>&1)"; then
-                echo "Attempt $i failed with ETARGET error. Retrying in 1 minute..."
-                sleep 60
-              else
-                echo "Attempt $i failed with a different error. Exiting..."
-                exit 1
-              fi
-            }
-          done
+          echo "### ✅ Beta Release Created: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin App: v${{ needs.publish-admin.outputs.NPM_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend App: v${{ needs.publish-backend.outputs.NPM_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: Remove invalid node-pty node-gyp run v${{ needs.publish.outputs.NPM_VERSION }}
-        run: |
-          rm -rf $(pwd)/package/lib/node_modules/smart-panel/node_modules/node-pty/build
-
-      - name: Create Bundle v${{ needs.publish.outputs.NPM_VERSION }}
-        run: |
-          tar -C $(pwd)/package --owner=0 --group=0 --format=posix -czvf smart-panel-${{ needs.publish.outputs.NPM_VERSION }}.tar.gz .
-          shasum -a 256 smart-panel-${{ needs.publish.outputs.NPM_VERSION }}.tar.gz > SHASUMS256.txt
-
-      - name: Check Bundle v${{ needs.publish.outputs.NPM_VERSION }}
-        run: |
-          if [ $(stat -c%s "smart-panel-${{ needs.publish.outputs.NPM_VERSION }}.tar.gz") -lt 10000000 ]; then
-            echo "Bundle is under 10MB, stopping"
-            exit 1
-          fi
-
-      - name: Upload tar.gz Bundle to GitHub Artifacts v${{ needs.publish.outputs.NPM_VERSION }}
-        uses: actions/upload-artifact@v4
+      - name: "Download Flutter Assets"
+        uses: "actions/download-artifact@v4"
         with:
-          name: 'smart-panel-${{ needs.publish.outputs.NPM_VERSION }}.tar.gz'
-          path: |
-            ./smart-panel-${{ needs.publish.outputs.NPM_VERSION }}.tar.gz
+          name: "flutter-assets"
 
-      - name: Upload SHASUMS256.txt to GitHub Artifacts v${{ needs.publish.outputs.NPM_VERSION }}
-        uses: actions/upload-artifact@v4
+      - name: "Attach Flutter Assets"
+        uses: "AButler/upload-release-assets@v3"
         with:
-          name: SHASUMS256.txt
-          path: |
-            ./SHASUMS256.txt
-
-      - name: Attach Bundle v${{ needs.publish.outputs.NPM_VERSION }}
-        uses: AButler/upload-release-assets@v3.0
-        with:
-          files: 'smart-panel-${{ needs.publish.outputs.NPM_VERSION }}.tar.gz;SHASUMS256.txt'
+          files: "smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz;SHASUMS256.txt"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.publish.outputs.NPM_VERSION }}
+          release-tag: v${{ needs.sync-versions.outputs.version }}
 
-  github-releases-to-discord:
-    name: Discord Webhooks
-    needs: [publish, pre-release-beta, attach-artifact]
-    uses: fastybird/.github/.github/workflows/discord-webhooks.yml@latest
+  releases-to-discord:
+    needs: [ "sync-versions", "publish-admin", "publish-backend", "build-flutter", "pre-release-beta" ]
+    name: "Discord Webhooks"
+    uses: ./discord-webhooks.yml
     with:
-      title: FastyBird Smart Panel Beta Release
-      description: |
-        Version `v${{ needs.publish.outputs.NPM_VERSION }}`
-      url: 'https://github.com/fastybird/smart-panel/releases/tag/v${{ needs.publish.outputs.NPM_VERSION }}'
+      title: "FastyBird Smart Panel Beta Release"
+      description: "Version v${{ needs.sync-versions.outputs.version }}"
+      url: "https://github.com/fastybird/smart-panel/releases/tag/v${{ needs.sync-versions.outputs.version }}"
     secrets:
-      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL_BETA }}
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
