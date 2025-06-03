@@ -41,7 +41,7 @@ jobs:
   publish-backend:
     needs: "sync-versions"
     name: "Publish Pre Release Alpha Backend App"
-    uses: "./npm-publish.yml@latest"
+    uses: "fastybird/smart-panel/.github/workflows/npm-publish.yml@main"
     with:
       package_path: "apps/backend"
       tag: "alpha"
@@ -51,7 +51,7 @@ jobs:
   publish-admin:
     needs: "sync-versions"
     name: "Publish Pre Release Alpha Admin App"
-    uses: "./npm-publish.yml@latest"
+    uses: "fastybird/smart-panel/.github/workflows/npm-publish.yml@main"
     with:
       package_path: "apps/admin"
       tag: "alpha"
@@ -141,7 +141,7 @@ jobs:
   releases-to-discord:
     needs: [ "sync-versions", "publish-admin", "publish-backend", "build-flutter", "pre-release-alpha" ]
     name: "Discord Webhooks"
-    uses: "./discord-webhooks.yml@latest"
+    uses: "fastybird/smart-panel/.github/workflows/discord-webhooks.yml@main"
     with:
       title: "FastyBird Smart Panel Alpha Release"
       description: "Version v${{ needs.sync-versions.outputs.version }}"
