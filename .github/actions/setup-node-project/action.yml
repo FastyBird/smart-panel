@@ -29,6 +29,10 @@ runs:
       with:
         version: ${{ inputs.pnpm-version }}
 
+    - name: "Enable pnpm via Corepack"
+      run: "corepack enable"
+      shell: bash
+
     - name: "Get pnpm store directory"
       run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
       shell: bash
