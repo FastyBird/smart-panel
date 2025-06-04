@@ -29,7 +29,8 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-node-project"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
@@ -55,7 +56,8 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-node-project"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
@@ -97,7 +99,8 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-node-project"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
@@ -123,7 +126,8 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-node-project"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
@@ -149,7 +153,8 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-flutter-project"
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
         with:
           flutter-version: "${{ matrix.flutter-version }}"
           flutter-channel: "${{ matrix.flutter-channel }}"
@@ -172,7 +177,8 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-node-project"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"

@@ -58,12 +58,14 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-node-project"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - uses: "./.github/actions/publish-npm-package"
+      - name: "Publish To NPM"
+        uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/backend"
           tag: "beta"
@@ -84,12 +86,14 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-node-project"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - uses: "./.github/actions/publish-npm-package"
+      - name: "Publish To NPM"
+        uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/admin"
           tag: "beta"
@@ -110,7 +114,8 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - uses: "./.github/actions/setup-flutter-project"
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
         with:
           flutter-version: "${{ matrix.flutter-version }}"
           flutter-channel: "${{ matrix.flutter-channel }}"
