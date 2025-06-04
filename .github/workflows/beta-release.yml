@@ -159,7 +159,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ needs.sync-versions.outputs.version }}
-          release_name: v${{ needs.publish-admin.outputs.NPM_VERSION }}
+          release_name: v${{ needs.sync-versions.outputs.version }}
           body: |
             Admin App v${{ needs.publish-admin.outputs.NPM_VERSION }} & Backend App v${{ needs.publish-backend.outputs.NPM_VERSION }} & Display App v${{ needs.sync-versions.outputs.version }}
           keep_num: 5
