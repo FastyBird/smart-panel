@@ -58,10 +58,17 @@ runs:
     - name: "Publish to NPM"
       working-directory: ${{ inputs.package-path }}
       run: |
-        if [ -z "${{ inputs.tag }}" ]; then
-          pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --provenance --no-git-checks --allow-same-version
+        VERSION=$(jq -r .version package.json)
+        PACKAGE_NAME=$(jq -r .name package.json)
+        
+        if npm view $PACKAGE_NAME@$VERSION --registry=${{ inputs.npm-registry-url }} > /dev/null 2>&1; then
+          echo "🔁 Skipping: $PACKAGE_NAME@$VERSION already exists on registry"
         else
-          pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --tag=${{ inputs.tag }} --provenance --no-git-checks --allow-same-version
+          if [ -z "${{ inputs.tag }}" ]; then
+            pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --provenance --no-git-checks
+          else
+            pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --tag=${{ inputs.tag }} --provenance --no-git-checks
+          fi
         fi
       shell: bash
       env:
