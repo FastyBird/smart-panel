@@ -7,6 +7,10 @@ on:
       - "beta"
   workflow_dispatch:
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   sync-versions:
     name: "Sync packages versions"
