@@ -46,22 +46,22 @@ runs:
     - name: "Run npm version (with git commit)"
       if: ${{ inputs.npm-version-command != '' && inputs.dynamically-adjust-version == 'false' }}
       working-directory: ${{ inputs.package-path }}
-      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }}"
+      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --allow-same-version"
       shell: bash
 
     - name: "Run npm version (no git commit)"
       if: ${{ inputs.npm-version-command != '' && inputs.dynamically-adjust-version == 'true' }}
       working-directory: ${{ inputs.package-path }}
-      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-tag-version"
+      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-tag-version --allow-same-version"
       shell: bash
 
     - name: "Publish to NPM"
       working-directory: ${{ inputs.package-path }}
       run: |
         if [ -z "${{ inputs.tag }}" ]; then
-          pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --provenance --no-git-checks
+          pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --provenance --no-git-checks --allow-same-version
         else
-          pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --tag=${{ inputs.tag }} --provenance --no-git-checks
+          pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --tag=${{ inputs.tag }} --provenance --no-git-checks --allow-same-version
         fi
       shell: bash
       env:
