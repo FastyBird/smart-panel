@@ -24,13 +24,16 @@ runs:
         registry-url: 'https://registry.npmjs.org'
         cache: "pnpm"
 
-    - name: "Install pnpm"
-      run: "npm install -g pnpm@${{ inputs.pnpm-version }}"
+    - name: "Install pnpm and export path"
       shell: bash
+      run: |
+        npm install -g pnpm@${{ inputs.pnpm-version }}
+        echo "Adding pnpm to PATH"
+        echo "$(npm bin -g)" >> $GITHUB_PATH
 
     - name: "Get pnpm store directory"
-      run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
       shell: bash
+      run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
     - name: "Cache pnpm dependencies"
       uses: "actions/cache@v3"
@@ -40,9 +43,9 @@ runs:
         restore-keys: "${{ runner.os }}-pnpm-store-"
 
     - name: "Install dependencies"
-      run: "pnpm install"
       shell: bash
+      run: pnpm install
 
     - name: "Build generated code"
-      run: "pnpm generate:openapi"
       shell: bash
+      run: pnpm generate:openapi
