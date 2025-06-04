@@ -55,9 +55,9 @@ runs:
       working-directory: ${{ inputs.package-path }}
       run: |
         if [ -z "${{ inputs.tag }}" ]; then
-          pnpm publish --access public --provenance  --no-git-checks --yes
+          pnpm publish --access public --provenance --no-git-checks
         else
-          pnpm publish --access public --tag=${{ inputs.tag }} --provenance --no-git-checks --yes
+          pnpm publish --access public --tag=${{ inputs.tag }} --provenance --no-git-checks
         fi
       shell: bash
       env:
