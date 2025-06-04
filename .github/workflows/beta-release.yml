@@ -1,33 +1,34 @@
-name: Beta Release
+name: "Beta Release"
 
 on:
   push:
     branches:
-      - beta-*.*.*
-      - beta
+      - "beta-*.*.*"
+      - "beta"
   workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: true
 
 jobs:
   sync-versions:
     name: "Sync packages versions"
-    runs-on: "ubuntu-latest"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        operating-system: [ "ubuntu-latest" ]
 
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v4
+        uses: "actions/checkout@v4"
 
       - name: "Setup Node"
-        uses: actions/setup-node@v4
+        uses: "actions/setup-node@v4"
         with:
-          node-version: 22
+          node-version: "${{ matrix.node-version }}"
 
       - name: "Sync Versions"
-        id: set-version
-        run: node scripts/monorepo-version-sync.js ${{ github.ref }} beta
+        id: "set-version"
+        run: "node scripts/monorepo-version-sync.js ${{ github.ref }} beta"
 
       - name: "Commit Version Changes"
         run: |
@@ -45,46 +46,74 @@ jobs:
   publish-backend:
     needs: "sync-versions"
     name: "Publish Pre Release Beta Backend App"
-    uses: "fastybird/smart-panel/.github/workflows/npm-publish.yml@main"
-    with:
-      package_path: "apps/backend"
-      tag: "beta"
-    secrets:
-      npm_auth_token: "${{ secrets.NPM_REGISTRY_TOKEN }}"
+    runs-on: "${{ matrix.operating-system }}"
 
-  publish-admin:
-    needs: "sync-versions"
-    name: "Publish Pre Release Beta Admin App"
-    uses: "fastybird/smart-panel/.github/workflows/npm-publish.yml@main"
-    with:
-      package_path: "apps/admin"
-      tag: "beta"
-    secrets:
-      npm_auth_token: "${{ secrets.NPM_REGISTRY_TOKEN }}"
-
-  build-flutter:
-    needs: "sync-versions"
-    name: "Build Flutter Display App"
-    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "9.13.0" ]
+        operating-system: [ "ubuntu-latest" ]
 
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Install Flutter SDK"
-        uses: "subosito/flutter-action@v2"
+      - uses: "./.github/actions/setup-node-project"
         with:
-          channel: stable
-          flutter-version: 3.27.0
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
 
-      - name: "Install Melos"
-        run: "dart pub global activate melos"
+      - uses: "./.github/actions/publish-npm-package"
+        with:
+          package-path: "apps/backend"
+          tag: "beta"
+          npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
 
-      - name: "Bootstrap Dependencies"
-        run: "melos bootstrap"
+  publish-admin:
+    needs: "sync-versions"
+    name: "Publish Pre Release Beta Admin App"
+    runs-on: "${{ matrix.operating-system }}"
 
-      - name: "Build generated code"
-        run: "melos rebuild-api"
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "9.13.0" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - uses: "./.github/actions/publish-npm-package"
+        with:
+          package-path: "apps/admin"
+          tag: "beta"
+          npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+  build-flutter:
+    needs: "sync-versions"
+    name: "Build Flutter Display App"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - uses: "./.github/actions/setup-flutter-project"
+        with:
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
 
       - name: "Build Flutter Bundle"
         working-directory: "./apps/panel"
@@ -106,12 +135,17 @@ jobs:
   pre-release-beta:
     needs: ["sync-versions", "publish-admin", "publish-backend", "build-flutter"]
     name: "Create Beta Pre Release"
-    runs-on: ubuntu-latest
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Create pre-release"
+      - name: "Create Pre-Release"
         uses: "viperproject/create-nightly-release@v1"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -145,10 +179,17 @@ jobs:
   releases-to-discord:
     needs: [ "sync-versions", "publish-admin", "publish-backend", "build-flutter", "pre-release-beta" ]
     name: "Discord Webhooks"
-    uses: "fastybird/smart-panel/.github/workflows/discord-webhooks.yml@main"
-    with:
-      title: "FastyBird Smart Panel Beta Release"
-      description: "Version v${{ needs.sync-versions.outputs.version }}"
-      url: "https://github.com/fastybird/smart-panel/releases/tag/v${{ needs.sync-versions.outputs.version }}"
-    secrets:
-      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Send Discord Notification"
+        uses: "./.github/actions/send-discord-notification"
+        with:
+          title: "FastyBird Smart Panel Beta Release"
+          description: "Version v${{ needs.sync-versions.outputs.version }}"
+          url: "https://github.com/fastybird/smart-panel/releases/tag/v${{ needs.sync-versions.outputs.version }}"
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}

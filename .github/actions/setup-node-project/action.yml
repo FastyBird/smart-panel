@@ -1,0 +1,49 @@
+# .github/actions/setup-node-project/action.yml
+
+name: "Setup Node Project"
+
+description: "Setup Node.js, pnpm, install dependencies, and generate code"
+
+inputs:
+  node-version:
+    description: "Node.js version"
+    default: "22"
+    required: false
+  pnpm-version:
+    description: "PNPM version"
+    default: "9.13.0"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup Node.js"
+      uses: "actions/setup-node@v4"
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: 'https://registry.npmjs.org'
+        cache: "pnpm"
+
+    - name: "Setup pnpm"
+      uses: "pnpm/action-setup@v2"
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: "Get pnpm store directory"
+      run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+      shell: bash
+
+    - name: "Cache pnpm dependencies"
+      uses: "actions/cache@v3"
+      with:
+        path: "${{ env.PNPM_STORE_PATH }}"
+        key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
+        restore-keys: "${{ runner.os }}-pnpm-store-"
+
+    - name: "Install dependencies"
+      run: "pnpm install"
+      shell: "bash"
+
+    - name: "Build generated code"
+      run: "pnpm generate:openapi"
+      shell: "bash"
