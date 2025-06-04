@@ -23,13 +23,10 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       <section className="relative h-screen w-full max-w-screen-2xl mx-auto overflow-hidden bg-black">
-        <Image
+        <img
           src="/landing/smart-panel-hero.png"
           alt="Smart Panel on wall"
-          layout="fill"
-          objectFit="cover"
-          className="object-center opacity-85"
-          priority
+          className="absolute inset-0 w-full h-full object-cover object-center opacity-85"
         />
 
         <div className="absolute top-0 left-0 h-full w-1/50 bg-gradient-to-l from-transparent to-black/40 z-0" />

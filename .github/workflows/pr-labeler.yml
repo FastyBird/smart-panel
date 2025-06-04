@@ -2,7 +2,10 @@ name: PR Labeler
 
 on:
   pull_request: # required for auto labeler
-    types: [opened, reopened, synchronize]
+    types:
+      - "opened"
+      - "reopened"
+      - "synchronize"
   workflow_dispatch:
 
 jobs:

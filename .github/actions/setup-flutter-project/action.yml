@@ -1,0 +1,36 @@
+# .github/actions/setup-flutter-project/action.yml
+
+name: "Setup Flutter Project"
+
+description: "Install Flutter SDK, Melos, bootstrap dependencies, and run codegen"
+
+inputs:
+  flutter-version:
+    description: "Flutter SDK version"
+    default: "3.27.0"
+    required: false
+  flutter-channel:
+    description: "Flutter release channel"
+    default: "stable"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Install Flutter SDK"
+      uses: "subosito/flutter-action@v2"
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        channel: ${{ inputs.flutter-channel }}
+
+    - name: "Install Melos"
+      run: "dart pub global activate melos"
+      shell: bash
+
+    - name: "Bootstrap Dependencies"
+      run: "melos bootstrap"
+      shell: bash
+
+    - name: "Build generated code"
+      run: "melos rebuild-all"
+      shell: bash

@@ -1,0 +1,83 @@
+name: 'Send Discord Notification'
+
+description: 'Sends a message to Discord using sarisia/actions-status-discord'
+
+inputs:
+  status:
+    description: 'Status of the message (Success, Failure, etc.)'
+    required: false
+    default: 'Success'
+  content:
+    description: 'Main text content of the message'
+    required: false
+    default: ''
+  title:
+    description: 'Title of the embed message'
+    required: false
+    default: ''
+  description:
+    description: 'Description of the embed message'
+    required: false
+    default: ''
+  image:
+    description: 'Image URL to include in the message'
+    required: false
+    default: ''
+  color:
+    description: 'Color of the embed sidebar (hex or decimal)'
+    required: false
+    default: ''
+  url:
+    description: 'URL to link in the title'
+    required: false
+    default: 'https://smart-panel.fastybird.com'
+  username:
+    description: 'Username for the bot'
+    required: false
+    default: 'FastyBird'
+  avatar-url:
+    description: 'URL of the bot avatar'
+    required: false
+    default: ''
+  nofail:
+    description: 'Whether to suppress failure on error'
+    required: false
+    default: 'true'
+  noprefix:
+    required: false
+    default: 'false'
+  nodetail:
+    required: false
+    default: 'false'
+  nocontext:
+    required: false
+    default: 'false'
+  notimestamp:
+    required: false
+    default: 'false'
+  webhook:
+    description: "Discord notification webhook address"
+    required: true
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Send Discord notification'
+      uses: sarisia/actions-status-discord@v1
+      with:
+        webhook: ${{ inputs.webhook }}
+        status: ${{ inputs.status }}
+        content: ${{ inputs.content }}
+        title: ${{ inputs.title }}
+        description: ${{ inputs.description }}
+        image: ${{ inputs.image }}
+        color: ${{ inputs.color }}
+        url: ${{ inputs.url }}
+        username: ${{ inputs.username }}
+        avatar_url: ${{ inputs.avatar_url }}
+        nofail: ${{ inputs.nofail }}
+        noprefix: ${{ inputs.noprefix }}
+        nodetail: ${{ inputs.nodetail }}
+        nocontext: ${{ inputs.nocontext }}
+        notimestamp: ${{ inputs.notimestamp }}

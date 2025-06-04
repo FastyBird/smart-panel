@@ -21,39 +21,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "9.13.0" ]
         operating-system: [ "ubuntu-latest" ]
 
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Setup Node.js"
-        uses: "actions/setup-node@v4"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
-          node-version: "20"
-
-      - name: "Setup pnpm"
-        uses: "pnpm/action-setup@v2"
-        with:
-          version: "9.13.0"
-
-      - name: "Get pnpm store directory"
-        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: "Cache pnpm dependencies"
-        uses: "actions/cache@v3"
-        with:
-          path: "${{ env.PNPM_STORE_PATH }}"
-          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
-          restore-keys: "${{ runner.os }}-pnpm-store-"
-
-      - name: "Install dependencies"
-        shell: "bash"
-        run: "pnpm install"
-
-      - name: "Build generated code"
-        shell: "bash"
-        run: "pnpm generate:openapi"
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Run Code Linting"
         run: "pnpm --filter @fastybird/smart-panel-backend lint:js"
@@ -68,31 +48,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "9.13.0" ]
         operating-system: [ "ubuntu-latest" ]
 
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Setup Node.js"
-        uses: "actions/setup-node@v4"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
-          node-version: "20"
-
-      - name: "Setup pnpm"
-        uses: "pnpm/action-setup@v2"
-        with:
-          version: "9.13.0"
-
-      - name: "Get pnpm store directory"
-        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: "Cache pnpm dependencies"
-        uses: "actions/cache@v3"
-        with:
-          path: "${{ env.PNPM_STORE_PATH }}"
-          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
-          restore-keys: "${{ runner.os }}-pnpm-store-"
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Start InfluxDB"
         run: |
@@ -102,14 +70,6 @@ jobs:
             -e INFLUXDB_ADMIN_USER= \
             -e INFLUXDB_ADMIN_PASSWORD= \
             influxdb:1.8
-
-      - name: "Install dependencies"
-        shell: "bash"
-        run: "pnpm install"
-
-      - name: "Build generated code"
-        shell: "bash"
-        run: "pnpm generate:openapi"
 
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-backend test:unit"
@@ -131,39 +91,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "9.13.0" ]
         operating-system: [ "ubuntu-latest" ]
 
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Setup Node.js"
-        uses: "actions/setup-node@v4"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
-          node-version: "20"
-
-      - name: "Setup pnpm"
-        uses: "pnpm/action-setup@v2"
-        with:
-          version: "9.13.0"
-
-      - name: "Get pnpm store directory"
-        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: "Cache pnpm dependencies"
-        uses: "actions/cache@v3"
-        with:
-          path: "${{ env.PNPM_STORE_PATH }}"
-          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
-          restore-keys: "${{ runner.os }}-pnpm-store-"
-
-      - name: "Install dependencies"
-        shell: "bash"
-        run: "pnpm install"
-
-      - name: "Build generated code"
-        shell: "bash"
-        run: "pnpm generate:openapi"
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Run Code Linting"
         run: "pnpm --filter @fastybird/smart-panel-admin lint:js"
@@ -178,39 +118,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "9.13.0" ]
         operating-system: [ "ubuntu-latest" ]
 
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Setup Node.js"
-        uses: "actions/setup-node@v4"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
-          node-version: "20"
-
-      - name: "Setup pnpm"
-        uses: "pnpm/action-setup@v2"
-        with:
-          version: "9.13.0"
-
-      - name: "Get pnpm store directory"
-        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: "Cache pnpm dependencies"
-        uses: "actions/cache@v3"
-        with:
-          path: "${{ env.PNPM_STORE_PATH }}"
-          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
-          restore-keys: "${{ runner.os }}-pnpm-store-"
-
-      - name: "Install dependencies"
-        shell: "bash"
-        run: "pnpm install"
-
-      - name: "Build generated code"
-        shell: "bash"
-        run: "pnpm generate:openapi"
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Run Unit Tests"
         run: "pnpm --filter @fastybird/smart-panel-admin test:unit"
@@ -225,26 +145,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        flutter-version: [ "3.27.0" ]
+        flutter-channel: [ "stable" ]
         operating-system: [ "ubuntu-latest" ]
 
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Install Flutter SDK"
-        uses: "subosito/flutter-action@v2"
+      - name: "Setup Flutter"
+        uses: "./.github/actions/setup-flutter-project"
         with:
-          channel: stable
-          flutter-version: 3.27.0
-
-      - name: "Install Melos"
-        run: "dart pub global activate melos"
-
-      - name: "Bootstrap Dependencies"
-        run: "melos bootstrap"
-
-      - name: "Build generated code"
-        run: "melos rebuild-api"
+          flutter-version: "${{ matrix.flutter-version }}"
+          flutter-channel: "${{ matrix.flutter-channel }}"
 
       - name: "Run Dart Analyzer"
         run: "melos run analyze"
@@ -255,6 +168,8 @@ jobs:
 
     strategy:
       matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "9.13.0" ]
         operating-system: [ "ubuntu-latest" ]
       fail-fast: false
 
@@ -262,29 +177,11 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Setup Node.js"
-        uses: "actions/setup-node@v4"
+      - name: "Setop Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
-          node-version: "20"
-
-      - name: "Setup pnpm"
-        uses: "pnpm/action-setup@v2"
-        with:
-          version: "9.13.0"
-
-      - name: "Get pnpm store directory"
-        run: echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: "Cache pnpm dependencies"
-        uses: "actions/cache@v3"
-        with:
-          path: "${{ env.PNPM_STORE_PATH }}"
-          key: "${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}"
-          restore-keys: "${{ runner.os }}-pnpm-store-"
-
-      - name: "Install dependencies"
-        shell: "bash"
-        run: "pnpm install"
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Test build"
         run: 'pnpm --filter @fastybird/smart-panel-docs build'
@@ -296,6 +193,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        node-version: [ "22" ]
         operating-system: [ "ubuntu-latest" ]
 
     steps:
@@ -305,7 +203,7 @@ jobs:
       - name: "Setup Node.js"
         uses: "actions/setup-node@v4"
         with:
-          node-version: "20"
+          node-version: "${{ matrix.node-version }}"
 
       - name: "Install ajv-cli"
         run: "npm install -g ajv-cli"

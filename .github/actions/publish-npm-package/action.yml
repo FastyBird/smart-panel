@@ -1,0 +1,74 @@
+# .github/actions/publish-npm-package/action.yml
+
+name: "Publish NPM Package"
+
+description: "Publishes an NPM package with optional version bump and tagging"
+
+inputs:
+  package-path:
+    description: "Path to the package"
+    required: true
+  tag:
+    description: "NPM tag (e.g. latest, alpha)"
+    required: false
+  npm-version-command:
+    description: "Version bump (e.g. patch, minor)"
+    required: false
+  pre-id:
+    description: "Pre-release ID (e.g. alpha, beta)"
+    required: false
+    default: ""
+  dynamically-adjust-version:
+    description: "Run custom version script"
+    required: false
+    default: "false"
+  npm-auth-token:
+    description: "NPM Auth Token"
+    required: true
+
+outputs:
+  NPM_VERSION:
+    description: "Published NPM version"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Adjust version dynamically"
+      if: ${{ inputs.dynamically-adjust-version == 'true' }}
+      working-directory: ${{ inputs.package-path }}
+      run: "node ../scripts/npm-version-script.js ${{ github.ref }} ${{ inputs.tag }}"
+      shell: bash
+
+    - name: "Run npm version (with git commit)"
+      if: ${{ inputs.npm-version-command != '' && inputs.dynamically-adjust-version == 'false' }}
+      working-directory: ${{ inputs.package-path }}
+      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }}"
+      shell: bash
+
+    - name: "Run npm version (no git commit)"
+      if: ${{ inputs.npm-version-command != '' && inputs.dynamically-adjust-version == 'true' }}
+      working-directory: ${{ inputs.package-path }}
+      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-tag-version"
+      shell: bash
+
+    - name: "Publish to NPM"
+      working-directory: ${{ inputs.package-path }}
+      run: |
+        if [ -z "${{ inputs.tag }}" ]; then
+          pnpm publish --access public --provenance
+        else
+          pnpm publish --access public --tag=${{ inputs.tag }} --provenance
+        fi
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token }}
+
+    - name: "Extract and output version"
+      id: "get-version"
+      working-directory: ${{ inputs.package-path }}
+      run: "echo "NPM_VERSION=$(jq -r .version package.json)" >> $GITHUB_OUTPUT"
+      shell: bash
+
+    - name: "Notice"
+      run: echo "::notice::Published ${{ inputs.package-path }} on NPM as ${{ steps.get-version.outputs.NPM_VERSION }}"
+      shell: bash
