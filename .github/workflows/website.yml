@@ -35,10 +35,11 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@v4"
 
-      - name: "Setup Node"
-        uses: "actions/setup-node@v4"
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
         with:
           node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Build"
         shell: "bash"
