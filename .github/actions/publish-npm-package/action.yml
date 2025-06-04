@@ -25,6 +25,10 @@ inputs:
   npm-auth-token:
     description: "NPM Auth Token"
     required: true
+  npm-registry-url:
+    description: "NPM registry"
+    default: "https://registry.npmjs.org"
+    required: false
 
 outputs:
   NPM_VERSION:
@@ -55,9 +59,9 @@ runs:
       working-directory: ${{ inputs.package-path }}
       run: |
         if [ -z "${{ inputs.tag }}" ]; then
-          pnpm publish --access public --provenance --no-git-checks
+          pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --provenance --no-git-checks
         else
-          pnpm publish --access public --tag=${{ inputs.tag }} --provenance --no-git-checks
+          pnpm publish --registry=${{ inputs.npm-registry-url }} --access public --tag=${{ inputs.tag }} --provenance --no-git-checks
         fi
       shell: bash
       env:
