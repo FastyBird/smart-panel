@@ -42,13 +42,13 @@ runs:
     - name: "Run npm version (with git commit)"
       if: ${{ inputs.npm-version-command != '' && inputs.dynamically-adjust-version == 'false' }}
       working-directory: ${{ inputs.package-path }}
-      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }}"
+      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-checks --yes"
       shell: bash
 
     - name: "Run npm version (no git commit)"
       if: ${{ inputs.npm-version-command != '' && inputs.dynamically-adjust-version == 'true' }}
       working-directory: ${{ inputs.package-path }}
-      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-tag-version"
+      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-tag-version --no-git-checks --yes"
       shell: bash
 
     - name: "Publish to NPM"
