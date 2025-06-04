@@ -24,13 +24,8 @@ runs:
         registry-url: 'https://registry.npmjs.org'
         cache: "pnpm"
 
-    - name: "Setup pnpm"
-      uses: "pnpm/action-setup@v2"
-      with:
-        version: ${{ inputs.pnpm-version }}
-
-    - name: "Enable pnpm via Corepack"
-      run: "corepack enable"
+    - name: "Install pnpm"
+      run: "npm install -g pnpm@${{ inputs.pnpm-version }}"
       shell: bash
 
     - name: "Get pnpm store directory"
@@ -46,8 +41,8 @@ runs:
 
     - name: "Install dependencies"
       run: "pnpm install"
-      shell: "bash"
+      shell: bash
 
     - name: "Build generated code"
       run: "pnpm generate:openapi"
-      shell: "bash"
+      shell: bash
