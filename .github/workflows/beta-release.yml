@@ -28,7 +28,7 @@ jobs:
 
       - name: "Sync Versions"
         id: "set-version"
-        run: "node scripts/monorepo-version-sync.js ${{ github.ref }} beta"
+        run: "node .github/scripts/monorepo-version-sync.js ${{ github.ref }} beta"
 
       - name: "Commit Version Changes"
         run: |
