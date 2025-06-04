@@ -42,22 +42,22 @@ runs:
     - name: "Run npm version (with git commit)"
       if: ${{ inputs.npm-version-command != '' && inputs.dynamically-adjust-version == 'false' }}
       working-directory: ${{ inputs.package-path }}
-      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-checks --yes"
+      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }}"
       shell: bash
 
     - name: "Run npm version (no git commit)"
       if: ${{ inputs.npm-version-command != '' && inputs.dynamically-adjust-version == 'true' }}
       working-directory: ${{ inputs.package-path }}
-      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-tag-version --no-git-checks --yes"
+      run: "pnpm version ${{ inputs.npm-version-command }} --preid=${{ inputs.pre-id }} --no-git-tag-version"
       shell: bash
 
     - name: "Publish to NPM"
       working-directory: ${{ inputs.package-path }}
       run: |
         if [ -z "${{ inputs.tag }}" ]; then
-          pnpm publish --access public --provenance
+          pnpm publish --access public --provenance  --no-git-checks --yes
         else
-          pnpm publish --access public --tag=${{ inputs.tag }} --provenance
+          pnpm publish --access public --tag=${{ inputs.tag }} --provenance --no-git-checks --yes
         fi
       shell: bash
       env:
