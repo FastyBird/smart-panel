@@ -13,6 +13,10 @@ inputs:
     description: "PNPM version"
     default: "9.13.0"
     required: false
+  registry-url:
+    description: "NPM registry"
+    default: "https://registry.npmjs.org"
+    required: false
 
 runs:
   using: "composite"
@@ -21,7 +25,7 @@ runs:
       uses: "actions/setup-node@v4"
       with:
         node-version: ${{ inputs.node-version }}
-        registry-url: 'https://registry.npmjs.org'
+        registry-url: ${{ inputs.registry-url }}
 
     - name: "Install pnpm and export path"
       shell: bash
