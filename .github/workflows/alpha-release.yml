@@ -175,7 +175,7 @@ jobs:
           name: "flutter-assets"
 
       - name: "Attach Flutter Assets"
-        uses: "AButler/upload-release-assets@v3"
+        uses: "AButler/upload-release-assets@v3.0"
         with:
           files: "smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz;SHASUMS256.txt"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
