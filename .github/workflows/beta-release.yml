@@ -61,6 +61,9 @@ jobs:
         pnpm-version: [ "9.13.0" ]
         operating-system: [ "ubuntu-latest" ]
 
+    outputs:
+      version: ${{ steps.publish-npm.outputs.NPM_VERSION }}
+
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
@@ -71,12 +74,24 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
+      - name: "Build App"
+        run: "pnpm --filter @fastybird/smart-panel-backend build"
+
       - name: "Publish To NPM"
+        id: "publish-npm"
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/backend"
           tag: "beta"
           npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+      - name: "Publish To GitHub NPM"
+        uses: "./.github/actions/publish-npm-package"
+        with:
+          package-path: "apps/backend"
+          tag: "alpha"
+          npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          npm-registry-url: "https://npm.pkg.github.com"
 
   publish-admin:
     needs: "sync-versions"
@@ -89,6 +104,9 @@ jobs:
         pnpm-version: [ "9.13.0" ]
         operating-system: [ "ubuntu-latest" ]
 
+    outputs:
+      version: ${{ steps.publish-npm.outputs.NPM_VERSION }}
+
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v4"
@@ -99,12 +117,24 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
+      - name: "Build App"
+        run: "pnpm --filter @fastybird/smart-panel-admin build"
+
       - name: "Publish To NPM"
+        id: "publish-npm"
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/admin"
           tag: "beta"
           npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+      - name: "Publish To GitHub NPM"
+        uses: "./.github/actions/publish-npm-package"
+        with:
+          package-path: "apps/admin"
+          tag: "alpha"
+          npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          npm-registry-url: "https://npm.pkg.github.com"
 
   build-flutter:
     needs: "sync-versions"
@@ -165,15 +195,15 @@ jobs:
           tag_name: v${{ needs.sync-versions.outputs.version }}
           release_name: v${{ needs.sync-versions.outputs.version }}
           body: |
-            Admin App v${{ needs.publish-admin.outputs.NPM_VERSION }} & Backend App v${{ needs.publish-backend.outputs.NPM_VERSION }} & Display App v${{ needs.sync-versions.outputs.version }}
+            Admin App v${{ needs.publish-admin.outputs.version }} & Backend App v${{ needs.publish-backend.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
           keep_num: 5
           keep_tags: false
 
       - name: "Summary"
         run: |
           echo "### ✅ Beta Release Created: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Admin App: v${{ needs.publish-admin.outputs.NPM_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend App: v${{ needs.publish-backend.outputs.NPM_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin App: v${{ needs.publish-admin.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend App: v${{ needs.publish-backend.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
       - name: "Download Flutter Assets"

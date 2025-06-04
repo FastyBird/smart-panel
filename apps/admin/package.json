@@ -34,6 +34,12 @@
     "type": "git",
     "url": "https://github.com/FastyBird/smart-panel.git"
   },
+  "files": [
+    "dist/",
+    "package.json",
+    "README.md",
+    "LICENSE.md"
+  ],
   "scripts": {
     "build": "run-p type-check \"build:no-check {@}\" --",
     "build:no-check": "vite build",
