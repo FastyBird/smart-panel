@@ -114,7 +114,7 @@ export default async function RootLayout({ children }) {
                 href="https://github.com/FastyBird/smart-panel"
                 aria-label="Star fastybird/smart-panel on GitHub"
               >
-                🚀 We just launched! Please star us on Github!{" "}
+                🚀 We just launched! Please star us on Github!
               </a>
             </Banner>
           }
@@ -127,7 +127,11 @@ export default async function RootLayout({ children }) {
         >
           {children}
         </Layout>
-        <script async defer src="https://buttons.github.io/buttons.js"></script>
+        <script
+          defer
+          src="https://cloud.umami.is/script.js"
+          data-website-id="f893c539-0cf2-442f-a511-904e606f9e15"
+        ></script>
       </body>
     </html>
   );
