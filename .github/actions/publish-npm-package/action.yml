@@ -29,6 +29,10 @@ inputs:
     description: "NPM registry"
     default: "https://registry.npmjs.org"
     required: false
+  npm-registry:
+    description: "NPM registry (used in .npmrc auth entry)"
+    default: "registry.npmjs.org"
+    required: false
 
 outputs:
   NPM_VERSION:
@@ -37,6 +41,15 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: "Configure .npmrc for GitHub NPM"
+      working-directory: ${{ inputs.package-path }}
+      shell: bash
+      run: |
+        echo "@fastybird:registry=${{ inputs.npm-registry-url }}" >> .npmrc
+        echo "//${{ inputs.npm-registry }}/:_authToken=${NODE_AUTH_TOKEN}" >> .npmrc
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token }}
+
     - name: "Adjust version dynamically"
       if: ${{ inputs.dynamically-adjust-version == 'true' }}
       working-directory: ${{ inputs.package-path }}

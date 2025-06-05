@@ -97,6 +97,7 @@ jobs:
           tag: "alpha"
           npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
           npm-registry-url: "https://npm.pkg.github.com"
+          npm-registry: "npm.pkg.github.com"
 
   publish-admin:
     needs: "sync-versions"
@@ -145,6 +146,7 @@ jobs:
           tag: "alpha"
           npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
           npm-registry-url: "https://npm.pkg.github.com"
+          npm-registry: "npm.pkg.github.com"
 
   build-flutter:
     needs: "sync-versions"
