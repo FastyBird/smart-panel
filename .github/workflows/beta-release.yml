@@ -218,15 +218,15 @@ jobs:
           tag_name: v${{ needs.sync-versions.outputs.version }}
           release_name: v${{ needs.sync-versions.outputs.version }}
           body: |
-            Admin App v${{ needs.publish-admin.outputs.version }} & Backend App v${{ needs.publish-backend.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
+            Admin App v${{ needs.sync-versions.outputs.version }} & Backend App v${{ needs.sync-versions.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
           keep_num: 5
           keep_tags: false
 
       - name: "Summary"
         run: |
           echo "### ✅ Beta Release Created: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Admin App: v${{ needs.publish-admin.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend App: v${{ needs.publish-backend.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
       - name: "Download Flutter Assets"
