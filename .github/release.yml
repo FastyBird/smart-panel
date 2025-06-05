@@ -12,7 +12,7 @@ changelog:
         - fix
         - bugfix
         - bug
-    - title: Other Changes
+    - title: Maintenance Tasks 🧰
       labels:
         - chore
         - housekeeping

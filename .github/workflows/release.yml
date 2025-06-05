@@ -1,11 +1,13 @@
-name: "Beta Release"
+name: "Production Release"
 
 on:
-  push:
-    branches:
-      - "beta-*.*.*"
-      - "beta"
-  workflow_dispatch:
+  release:
+    types:
+      - "released"
+
+concurrency:
+  group: production-release-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -13,7 +15,40 @@ permissions:
   packages: write
 
 jobs:
+  tag:
+    name: "Verify Release Tag"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - name: "Get Release Tag"
+        id: "get-version"
+        uses: "jannemattila/get-version-from-tag@v3"
+
+      - name: "Tag Info"
+        run: |
+          echo "Release Tag: ${{github.ref}}"
+          echo "Latest Tag: ${{ steps.get-version.outputs.version }}"
+
+      - name: "Tag Info Matches"
+        if: endsWith(github.ref, steps.get-version.outputs.version )
+        run: |
+          echo Latest Tag matches Release tag
+
+      - name: "Tag Info Doesn't Match"
+        if: ${{ !endsWith(github.ref, steps.get-version.outputs.version ) }}
+        run: |
+          echo Latest Tag does not matches Release tag
+          exit 1
+
   sync-versions:
+    needs: "tag"
     name: "Sync packages versions"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -36,7 +71,7 @@ jobs:
 
       - name: "Sync Versions"
         id: "set-version"
-        run: "node .github/scripts/monorepo-version-sync.js ${{ github.ref }} beta"
+        run: "node .github/scripts/monorepo-version-sync.js ${{ github.ref }} latest"
 
       - name: "Commit Version Changes"
         run: |
@@ -51,9 +86,47 @@ jobs:
             echo "No version changes to commit."
           fi
 
-  publish-backend:
+  changelog:
     needs: "sync-versions"
-    name: "Publish Pre Release Beta Backend App"
+    name: "Generate CHANGELOG"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Generate CHANGELOG.md from Releases"
+        uses: "mikepenz/release-changelog-builder-action@v4"
+        with:
+          outputFile: "CHANGELOG.md"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Commit CHANGELOG"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add CHANGELOG.md
+            git commit -m "docs: update CHANGELOG.md [ci skip]"
+            git push
+          else
+            echo "No changelog updates to commit."
+          fi
+
+  publish-backend:
+    needs: [ "tag", "sync-versions", "changelog" ]
+    name: "Publish Release Backend App"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -84,11 +157,10 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-backend build"
 
       - name: "Publish To NPM"
-        id: "publish-npm"
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/backend"
-          tag: "beta"
+          tag: "latest"
           npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
 
       - name: "Extract Published Version"
@@ -101,14 +173,14 @@ jobs:
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/backend"
-          tag: "alpha"
+          tag: "latest"
           npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
           npm-registry-url: "https://npm.pkg.github.com"
           npm-registry: "npm.pkg.github.com"
 
   publish-admin:
-    needs: "sync-versions"
-    name: "Publish Pre Release Beta Admin App"
+    needs: [ "tag", "sync-versions", "changelog" ]
+    name: "Publish Release Admin App"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -143,7 +215,7 @@ jobs:
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/admin"
-          tag: "beta"
+          tag: "latest"
           npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
 
       - name: "Extract Published Version"
@@ -156,13 +228,13 @@ jobs:
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/admin"
-          tag: "alpha"
+          tag: "latest"
           npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
           npm-registry-url: "https://npm.pkg.github.com"
           npm-registry: "npm.pkg.github.com"
 
   build-flutter:
-    needs: "sync-versions"
+    needs: [ "tag", "sync-versions", "changelog" ]
     name: "Build Flutter Display App"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -204,9 +276,9 @@ jobs:
             smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz
             SHASUMS256.txt
 
-  pre-release-beta:
-    needs: ["sync-versions", "publish-admin", "publish-backend", "build-flutter"]
-    name: "Create Beta Pre Release"
+  attach-artifacts:
+    needs: ["tag", "publish-backend", "publish-admin", "build-flutter"]
+    name: "Attach Artifacts ${{ needs.tag.outputs.version }}"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -222,25 +294,6 @@ jobs:
       - name: "Pull Updated Branch"
         run: git pull origin ${{ github.ref_name }}
 
-      - name: "Create Pre-Release"
-        uses: "viperproject/create-nightly-release@v1"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ needs.sync-versions.outputs.version }}
-          release_name: v${{ needs.sync-versions.outputs.version }}
-          body: |
-            Admin App v${{ needs.publish-admin.outputs.version }} & Backend App v${{ needs.publish-backend.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
-          keep_num: 5
-          keep_tags: false
-
-      - name: "Summary"
-        run: |
-          echo "### ✅ Beta Release Created: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Admin App: v${{ needs.publish-admin.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend App: v${{ needs.publish-backend.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-
       - name: "Download Flutter Assets"
         uses: "actions/download-artifact@v4"
         with:
@@ -249,12 +302,12 @@ jobs:
       - name: "Attach Flutter Assets"
         uses: "AButler/upload-release-assets@v3.0"
         with:
-          files: "smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz;SHASUMS256.txt"
+          files: "smart-panel-display-${{ needs.tag.outputs.version }}.tar.gz;SHASUMS256.txt"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          release-tag: v${{ needs.sync-versions.outputs.version }}
+          release-tag: v${{ needs.tag.outputs.version }}
 
   release-to-discord:
-    needs: [ "sync-versions", "publish-admin", "publish-backend", "build-flutter", "pre-release-beta" ]
+    needs: "attach-artifacts"
     name: "Discord Webhooks"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -274,7 +327,7 @@ jobs:
       - name: "Send Discord Notification"
         uses: "./.github/actions/send-discord-notification"
         with:
-          title: "FastyBird Smart Panel Beta Release"
+          title: "FastyBird Smart Panel Release"
           description: "Version v${{ needs.sync-versions.outputs.version }}"
           url: "https://github.com/fastybird/smart-panel/releases/tag/v${{ needs.sync-versions.outputs.version }}"
           webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}

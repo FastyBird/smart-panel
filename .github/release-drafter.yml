@@ -14,9 +14,13 @@ categories:
       - fix
       - bugfix
       - bug
-  - title: Other Changes
+  - title: Documentation Updates
     labels:
       - documentation
+  - title: Maintenance
+    labels:
+      - chore
+      - dependencies
 
 autolabeler:
   - label: fix
@@ -27,8 +31,20 @@ autolabeler:
   - label: feature
     branch:
       - '/feature\/.+/'
+  - label: enhancement
+    branch:
+      - '/enhancement\/.+/'
+  - label: documentation
+    branch:
+      - '/docs?\//'
+    title:
+      - /docs?/i
+  - label: chore
+    branch:
+      - '/chore\//'
 
 change-template: '- $TITLE @$AUTHOR [#$NUMBER]'
+
 template: |
-  ## Other Changes
-  $CHANGES
+  ## What's Changed
+  $CATEGORIES

@@ -66,14 +66,13 @@ This way, each app remains lean and specialized — but plugins define the share
 
 - Run `pnpm install` from the root to link all dependencies
 - Use per-app `README.md` files for details on dev & build commands
-- For plugin development follow the [Plugin Registration Guide](../docs/plugins.md)
 
 ---
 
 ## 📚 Learn More
 
 - [Application README](../README.md) – Project overview, features, and motivation
-- [Docs](../docs/) – Guides, APIs, and design system references
+- Developer documentation is currently being prepared and will be available soon.
 
 ***
-Homepage [https://www.fastybird.com](https://www.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).
+Homepage [https://smart-panel.fastybird.com](https://smart-panel.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).

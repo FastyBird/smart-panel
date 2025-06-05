@@ -7,6 +7,7 @@ const child_process = require("node:child_process");
 const PACKAGES = [
 	{ name: "@fastybird/smart-panel-admin", path: "apps/admin" },
 	{ name: "@fastybird/smart-panel-backend", path: "apps/backend" },
+	{ name: "@fastybird/smart-panel-docs", path: "docs" },
 ];
 
 const ROOT_PKG_PATH = "package.json";
@@ -54,26 +55,52 @@ const getPublishedVersions = (packageName, base, tag) => {
 			.filter((v) =>
 				tag === "latest" ? v === base : v.startsWith(`${base}-${tag}.`)
 			)
-			.sort();
+			.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 	} catch {
 		return [];
 	}
 }
 
-const incrementPreReleaseVersion = (baseVersion, existingVersions) => {
+const extractBuildNumber = (existingVersions) => {
+	if (tag === "latest") {
+		return existingVersions.length; // e.g. 0, 1, 2, ...
+	}
+
 	if (existingVersions.length === 0) {
-		return `${baseVersion}-${tag}.0`;
+		return 0;
+	}
+
+	const last = existingVersions[existingVersions.length - 1];
+	const match = last.match(/-(?:alpha|beta)\.(\d+)$/);
+
+	return match ? parseInt(match[1], 10) : 0;
+};
+
+const computeVersionInfo = (baseVersion, existingVersions) => {
+	const buildNumber = extractBuildNumber(existingVersions)
+
+	if (tag === "latest") {
+		return { fullVersion: baseVersion, buildNumber }; // No suffix for production
+	}
+
+	if (existingVersions.length === 0) {
+		return { fullVersion: `${baseVersion}-${tag}.0`, buildNumber };
 	}
 
 	const last = existingVersions[existingVersions.length - 1];
 	const match = last.match(/-(?:alpha|beta)\.(\d+)$/);
 	const next = match ? parseInt(match[1], 10) + 1 : 0;
 
-	return `${baseVersion}-${tag}.${next}`;
-}
+	return { fullVersion: `${baseVersion}-${tag}.${next}`, buildNumber: next };
+};
 
 const updatePackageJson = (filePath, newVersion) => {
 	const fullPath = path.resolve(filePath, "package.json");
+
+	if (!fs.existsSync(fullPath)) {
+		throw new Error(`Missing package.json at: ${fullPath}`);
+	}
+
 	const pkg = JSON.parse(fs.readFileSync(fullPath, "utf8"));
 
 	pkg.version = newVersion;
@@ -81,9 +108,13 @@ const updatePackageJson = (filePath, newVersion) => {
 	fs.writeFileSync(fullPath, JSON.stringify(pkg, null, 2));
 
 	console.log(`✅ Updated ${filePath}/package.json`);
-}
+};
 
 const updateRootPackageJson = (newVersion) => {
+	if (!fs.existsSync(ROOT_PKG_PATH)) {
+		throw new Error(`Missing root package.json at: ${ROOT_PKG_PATH}`);
+	}
+
 	const pkg = JSON.parse(fs.readFileSync(ROOT_PKG_PATH, "utf8"));
 
 	pkg.version = newVersion;
@@ -91,13 +122,20 @@ const updateRootPackageJson = (newVersion) => {
 	fs.writeFileSync(ROOT_PKG_PATH, JSON.stringify(pkg, null, 2));
 
 	console.log(`✅ Updated root package.json`);
-}
+};
 
-const updatePubspecYaml = (filePath, baseVersion, tag) => {
-	const version = `${baseVersion}-${tag}`;
+const updatePubspecYaml = (filePath, baseVersion, tag, buildNumber) => {
+	if (!fs.existsSync(filePath)) {
+		throw new Error(`Missing pubspec.yaml at: ${filePath}`);
+	}
+
+	const version = tag === "latest"
+		? `${baseVersion}+${buildNumber}`
+		: `${baseVersion}-${tag}+${buildNumber}`;
+
 	const content = fs.readFileSync(filePath, "utf8");
 
-	const updated = content.replace(/version:\s*[\d\.]+[-a-zA-Z\.]*/, `version: ${version}`);
+	const updated = content.replace(/^version:\s*.*$/m, `version: ${version}`);
 
 	fs.writeFileSync(filePath, updated);
 
@@ -111,8 +149,9 @@ const updatePubspecYaml = (filePath, baseVersion, tag) => {
 		getPublishedVersions(pkg.name, baseVersion, tag)
 	);
 
-	const fullVersion = incrementPreReleaseVersion(baseVersion, allPublishedVersions);
-	const displayVersion = `${baseVersion}-${tag}`; // For Flutter & GitHub output
+	const { fullVersion, buildNumber } = computeVersionInfo(baseVersion, allPublishedVersions);
+
+	const appVersion = tag === "latest" ? baseVersion : `${baseVersion}-${tag}`;
 
 	// Update all target files
 	for (const pkg of PACKAGES) {
@@ -120,14 +159,12 @@ const updatePubspecYaml = (filePath, baseVersion, tag) => {
 	}
 
 	updateRootPackageJson(fullVersion);
-	updatePubspecYaml(PUBSPEC_PATH, baseVersion, tag);
+	updatePubspecYaml(PUBSPEC_PATH, baseVersion, tag, buildNumber);
 
-	// Print to stdout for logs
-	console.log(`📦 Published Version (Node): ${fullVersion}`);
-	console.log(`📱 Display Version (Flutter): ${displayVersion}`);
+	console.log(`📦 Published Version: ${fullVersion}`);
 
-	// Emit GitHub Actions output for use in other jobs
 	if (process.env.GITHUB_OUTPUT) {
-		fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${displayVersion}\n`);
+		fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${appVersion}\n`);
+		fs.appendFileSync(process.env.GITHUB_OUTPUT, `buildNumber=${buildNumber}\n`);
 	}
 })();
