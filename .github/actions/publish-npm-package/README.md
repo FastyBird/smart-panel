@@ -2,13 +2,14 @@
 
 This GitHub Action publishes a package to the NPM registry. It supports versioning (manual or automatic), pre-release tags, provenance, and includes the published version as an output.
 
-## 📦 Features
+## ✅ Features
 
-- Publishes any package in the repository to NPM
-- Supports both static and dynamic versioning
-- Supports pre-release identifiers like `alpha`, `beta`
-- Returns published version as output
-- Optionally builds code before publishing
+- ✔️ Publishes any package (e.g., `apps/backend`) to NPM or GitHub Packages
+- 🔄 Supports **manual** or **dynamic versioning**
+- 🏷️ Handles **pre-release tags** like `alpha`, `beta`
+- 🔐 Supports **custom registries** and **authentication**
+- 📤 Outputs the published version for downstream jobs
+- 🧱 Optimized for **monorepos** and **pnpm**
 
 ## ✅ Usage
 
@@ -16,22 +17,23 @@ This GitHub Action publishes a package to the NPM registry. It supports versioni
 - name: Publish to NPM
   uses: ./.github/actions/publish-npm-package
   with:
-    package_path: "apps/backend"
-    tag: "alpha"
-  secrets:
-    npm_auth_token: ${{ secrets.NPM_REGISTRY_TOKEN }}
+    package-path: apps/backend
+    tag: alpha
+    npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
 ```
 
 ## 💡 Inputs
 
-| Name                         | Description                                 | Default | Required |
-|------------------------------|---------------------------------------------|---------|----------|
-| `package-path`               | Path to the package directory               | `-`     | ✅        |
-| `tag`                        | NPM tag name (e.g. latest, alpha, beta)     | `-`     | ❌        |
-| `npm-version-command`        | If set, runs pnpm version <value>           | `-`     | ❌        |
-| `pre-id`                     | Pre-release identifier (e.g. alpha, beta)   | `-`     | ❌        |
-| `dynamically-adjust-version` | Runs script to automatically adjust version | `false` | ❌        |
-| `npm-auth-token`             | NPM token to authenticate publish           | `-`     | ✅        |
+| Name                         | Description                                             | Default                      | Required |
+|------------------------------|---------------------------------------------------------|------------------------------|----------|
+| `package-path`               | Path to the package directory                           | `-`                          | ✅        |
+| `tag`                        | NPM tag name (e.g. latest, alpha, beta)                 | `-`                          | ❌        |
+| `npm-version-command`        | If set, runs pnpm version <value>                       | `-`                          | ❌        |
+| `pre-id`                     | Pre-release identifier (e.g. alpha, beta)               | `-`                          | ❌        |
+| `dynamically-adjust-version` | Runs script to automatically adjust version             | `false`                      | ❌        |
+| `npm-auth-token`             | NPM token to authenticate publish                       | `-`                          | ✅        |
+| `npm-registry-url`           | NPM registry URL (e.g., https://npm.pkg.github.com)     | `https://registry.npmjs.org` | ❌        |
+| `npm-registry`               | Registry hostname for .npmrc (e.g., npm.pkg.github.com) | `npm.pkg.github.com`         | ❌        |
 
 
 ## 🧾 Outputs

@@ -22,10 +22,11 @@ This GitHub Action sets up a Node.js project using PNPM, installs dependencies, 
 
 ## 💡 Inputs
 
-| Name            | Description                            | Default  | Required |
-|-----------------|----------------------------------------|----------|----------|
-| `node-version`  | Node.js version to install             | `22`     | ❌        |
-| `pnpm-version`  | PNPM version to install                | `9.13.0` | ❌        |
+| Name               | Description                                         | Default                      | Required |
+|--------------------|-----------------------------------------------------|------------------------------|----------|
+| `node-version`     | Node.js version to install                          | `22`                         | ❌        |
+| `pnpm-version`     | PNPM version to install                             | `9.13.0`                     | ❌        |
+| `npm-registry-url` | NPM registry URL (e.g., https://npm.pkg.github.com) | `https://registry.npmjs.org` | ❌        |
 
 ## 🛠 Included Steps
 
