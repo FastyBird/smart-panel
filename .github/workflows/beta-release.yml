@@ -63,7 +63,7 @@ jobs:
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
-      version: ${{ steps.publish-npm.outputs.NPM_VERSION }}
+      version: ${{ steps.extract-version.outputs.version }}
 
     steps:
       - name: "Checkout"
@@ -91,6 +91,12 @@ jobs:
           tag: "beta"
           npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
 
+      - name: "Extract Published Version"
+        id: "extract-version"
+        working-directory: "apps/backend"
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: "Publish To GitHub NPM"
         uses: "./.github/actions/publish-npm-package"
         with:
@@ -112,7 +118,7 @@ jobs:
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
-      version: ${{ steps.publish-npm.outputs.NPM_VERSION }}
+      version: ${{ steps.extract-version.outputs.version }}
 
     steps:
       - name: "Checkout"
@@ -139,6 +145,12 @@ jobs:
           package-path: "apps/admin"
           tag: "beta"
           npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+      - name: "Extract Published Version"
+        id: "extract-version"
+        working-directory: "apps/admin"
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: "Publish To GitHub NPM"
         uses: "./.github/actions/publish-npm-package"
