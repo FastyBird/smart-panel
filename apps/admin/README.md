@@ -141,7 +141,7 @@ Contributions are welcome! Please fork this repository and submit a pull request
 
 ## 📜 License
 
-This project is licensed under the **Apache License 2.0**. See the [LICENSE](https://github.com/FastyBird/smart-panel/blob/main/LICENSE.md) file for details.
+This project is licensed under the **Apache License 2.0**. See the [LICENSE](../../LICENSE.md) file for details.
 
 ## 🌟 Acknowledgements
 
@@ -165,4 +165,4 @@ This project is licensed under the **Apache License 2.0**. See the [LICENSE](htt
 </table>
 
 ***
-Homepage [https://www.fastybird.com](https://www.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).
+Homepage [https://smart-panel.fastybird.com](https://smart-panel.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).

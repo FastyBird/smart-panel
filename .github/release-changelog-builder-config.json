@@ -1,0 +1,10 @@
+{
+  "template": "# Changelog\n\n{{CHANGELOG}}",
+  "categories": [
+    { "title": "🚨 Breaking Changes", "labels": ["breaking change"] },
+    { "title": "✨ Features", "labels": ["feature", "enhancement"] },
+    { "title": "🐛 Fixes", "labels": ["fix", "bugfix", "bug"] },
+    { "title": "🧹 Maintenance", "labels": ["chore", "housekeeping"] },
+    { "title": "Other", "labels": ["*"] }
+  ]
+}

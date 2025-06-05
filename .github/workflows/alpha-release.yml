@@ -252,7 +252,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.sync-versions.outputs.version }}
 
-  releases-to-discord:
+  release-to-discord:
     needs: [ "sync-versions", "publish-admin", "publish-backend", "build-flutter", "pre-release-alpha" ]
     name: "Discord Webhooks"
     runs-on: "${{ matrix.operating-system }}"

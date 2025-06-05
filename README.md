@@ -63,9 +63,9 @@ Crafted with **Flutter**, the display app runs smoothly on Raspberry Pi and othe
 
 ## 📖 Documentation & Resources
 
-- 🌍 [Project Website](https://www.fastybird.com)
-- 📚 [User Documentation](https://docs.fastybird.com)
-- 💻 [Developer Docs](https://github.com/FastyBird/smart-panel/wiki)
+- 🌍 [Project Website](https://smart-panel.fastybird.com)
+- 📚 [User Documentation](https://smart-panel.fastybird.com/docs)
+- 💻 Developer documentation is currently a work in progress and will be available soon.
 - 🐛 [Issue Tracker](https://github.com/FastyBird/smart-panel/issues)
 
 ---
@@ -77,4 +77,4 @@ Whether you're building a custom dashboard for your smart home setup, integratin
 > **Ready to build your control center? Start with FastyBird.**
 
 ***
-Homepage [https://www.fastybird.com](https://www.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).
+Homepage [https://smart-panel.fastybird.com](https://smart-panel.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).

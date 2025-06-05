@@ -2,9 +2,6 @@ name: "CI Tests"
 
 on:
   pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "spec/api/**"
   push:
     branches:
       - "main"
@@ -14,7 +11,27 @@ on:
     - cron: "0 8 * * 1" # At 08:00 on Monday
 
 jobs:
+  check-skip:
+    runs-on: ubuntu-latest
+
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+
+    steps:
+      - name: "Check commit message for [ci skip]"
+        id: "check"
+        run: |
+          if [[ "${{ github.event.head_commit.message || '' }}" == *"[ci skip]"* ]]; then
+            echo "Skipping CI due to [ci skip] in commit message"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "Running full CI"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
   backend-analyze:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
     name: "Backend code analysis"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -42,6 +59,8 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-backend lint:openapi"
 
   backend-tests:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
     name: "Backend code tests"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -85,6 +104,8 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-backend test:cov"
 
   admin-analyze:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
     name: "Admin code analysis"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -112,6 +133,8 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-admin type-check"
 
   admin-tests:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
     name: "Admin code tests"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -139,6 +162,8 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-admin test:cov"
 
   panel-analyze:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
     name: "Panel code analysis"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -163,6 +188,8 @@ jobs:
         run: "melos run analyze"
 
   website-build:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
     name: "Test build web"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -187,6 +214,8 @@ jobs:
         run: 'pnpm --filter @fastybird/smart-panel-docs build'
 
   devices-schemas:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
     name: "Devices mapping analysis"
     runs-on: "${{ matrix.operating-system }}"
 
