@@ -93,6 +93,10 @@ runs:
       run: echo "NPM_VERSION=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
       shell: bash
 
+    - name: "Export version from composite to workflow"
+      run: echo "NPM_VERSION=${{ steps.get-version.outputs.NPM_VERSION }}" >> $GITHUB_OUTPUT
+      shell: bash
+
     - name: "Notice"
       run: echo "::notice::Published ${{ inputs.package-path }} on NPM as ${{ steps.get-version.outputs.NPM_VERSION }}"
       shell: bash
