@@ -47,4 +47,5 @@ change-template: '- $TITLE @$AUTHOR [#$NUMBER]'
 
 template: |
   ## What's Changed
-  $CATEGORIES
+
+  $CHANGES
