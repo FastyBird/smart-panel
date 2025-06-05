@@ -93,14 +93,16 @@ const updateRootPackageJson = (newVersion) => {
 	console.log(`✅ Updated root package.json`);
 }
 
-const updatePubspecYaml = (filePath, newVersion) => {
+const updatePubspecYaml = (filePath, baseVersion, tag) => {
+	const version = `${baseVersion}-${tag}`;
 	const content = fs.readFileSync(filePath, "utf8");
-	const updated = content.replace(/version:\s*[\d\.]+[-a-zA-Z\.]*/, `version: ${newVersion}`);
+
+	const updated = content.replace(/version:\s*[\d\.]+[-a-zA-Z\.]*/, `version: ${version}`);
 
 	fs.writeFileSync(filePath, updated);
 
-	console.log(`✅ Updated pubspec.yaml`);
-}
+	console.log(`✅ Updated pubspec.yaml to version: ${version}`);
+};
 
 (async () => {
 	const baseVersion = parseBaseVersion(ref);
@@ -109,21 +111,23 @@ const updatePubspecYaml = (filePath, newVersion) => {
 		getPublishedVersions(pkg.name, baseVersion, tag)
 	);
 
-	const newVersion = incrementPreReleaseVersion(baseVersion, allPublishedVersions);
+	const fullVersion = incrementPreReleaseVersion(baseVersion, allPublishedVersions);
+	const displayVersion = `${baseVersion}-${tag}`; // For Flutter & GitHub output
 
 	// Update all target files
 	for (const pkg of PACKAGES) {
-		updatePackageJson(pkg.path, newVersion);
+		updatePackageJson(pkg.path, fullVersion);
 	}
 
-	updateRootPackageJson(newVersion);
-	updatePubspecYaml(PUBSPEC_PATH, newVersion);
+	updateRootPackageJson(fullVersion);
+	updatePubspecYaml(PUBSPEC_PATH, baseVersion, tag);
 
 	// Print to stdout for logs
-	console.log(`📦 New unified version: ${newVersion}`);
+	console.log(`📦 Published Version (Node): ${fullVersion}`);
+	console.log(`📱 Display Version (Flutter): ${displayVersion}`);
 
 	// Emit GitHub Actions output for use in other jobs
 	if (process.env.GITHUB_OUTPUT) {
-		fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${newVersion}\n`);
+		fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${displayVersion}\n`);
 	}
 })();

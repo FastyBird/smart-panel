@@ -63,7 +63,7 @@ jobs:
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
-      version: ${{ steps.publish-npm.outputs.NPM_VERSION }}
+      version: ${{ steps.extract-version.outputs.version }}
 
     steps:
       - name: "Checkout"
@@ -84,12 +84,17 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-backend build"
 
       - name: "Publish To NPM"
-        id: "publish-npm"
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/backend"
           tag: "alpha"
           npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+      - name: "Extract Published Version"
+        id: "extract-version"
+        working-directory: "apps/backend"
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: "Publish To GitHub NPM"
         uses: "./.github/actions/publish-npm-package"
@@ -112,7 +117,7 @@ jobs:
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
-      version: ${{ steps.publish-npm.outputs.NPM_VERSION }}
+      version: ${{ steps.extract-version.outputs.version }}
 
     steps:
       - name: "Checkout"
@@ -139,6 +144,12 @@ jobs:
           package-path: "apps/admin"
           tag: "alpha"
           npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+      - name: "Extract Published Version"
+        id: "extract-version"
+        working-directory: "apps/admin"
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+        shell: bash
 
       - name: "Publish To GitHub NPM"
         uses: "./.github/actions/publish-npm-package"
@@ -218,15 +229,15 @@ jobs:
           tag_name: v${{ needs.sync-versions.outputs.version }}
           release_name: v${{ needs.sync-versions.outputs.version }}
           body: |
-            Admin App v${{ needs.sync-versions.outputs.version }} & Backend App v${{ needs.sync-versions.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
+            Admin App v${{ needs.publish-admin.outputs.version }} & Backend App v${{ needs.publish-backend.outputs.version }} & Display App v${{ needs.sync-versions.outputs.version }}
           keep_num: 5
           keep_tags: false
 
       - name: "Summary"
         run: |
           echo "### ✅ Alpha Release Created: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Admin App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin App: v${{ needs.publish-admin.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend App: v${{ needs.publish-backend.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
       - name: "Download Flutter Assets"
