@@ -49,7 +49,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	To install Git on your Raspberry Pi:
 
 	```bash copy
-	sudo apt update
+	sudo apt update & sudo apt upgrade -y
 	sudo apt install git -y
 	```
 
@@ -75,7 +75,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	After Node.js is installed, you can install [pnpm](https://pnpm.io) globally:
 
 	```bash copy
-	npm install -g pnpm
+	sudo npm install -g pnpm
 	```
 
 	<Callout type="info">
@@ -131,7 +131,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	Open the boot config file:
 
 	```bash copy
-	sudo nano /boot/config.txt
+	sudo nano /boot/firmware/config.txt
 	```
 
 	Look for this line and make sure it is **enabled** (not commented out):
@@ -161,27 +161,37 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	To install InfluxDB v1.8:
 
 	```bash copy
-	sudo apt update
-	sudo apt install influxdb
+	wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo tee /etc/apt/trusted.gpg.d/influxdata.asc
+	```
+
+	```bash copy
+	echo "deb https://repos.influxdata.com/debian bookworm stable" | sudo tee /etc/apt/sources.list.d/influxdata.list
+	```
+
+	```bash copy
+	sudo apt update & sudo apt install influxdb=1.8.10-1 -y
 	```
 
 	Then enable and start the service:
 
 	```bash copy
 	sudo systemctl enable influxdb
+	```
+
+	```bash copy
 	sudo systemctl start influxdb
 	```
 
 	To verify that InfluxDB is running:
 
 	```bash copy
-	influx
+	influxd version
 	```
 
-	This will launch the InfluxDB shell (> prompt). To exit:
+	You should see:
 
 	```bash copy
-	exit
+	InfluxDB v1.8.10 (git: ...)
 	```
 
 	<Callout type="warning">
