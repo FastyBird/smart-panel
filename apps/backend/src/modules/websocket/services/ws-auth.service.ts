@@ -1,14 +1,12 @@
 import bcrypt from 'bcrypt';
 import { Cache } from 'cache-manager';
 import { plainToInstance } from 'class-transformer';
-import type { IncomingHttpHeaders } from 'http';
 import { Socket } from 'socket.io';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-import { ACCESS_TOKEN_TYPE } from '../../auth/auth.constants';
 import { AccessTokenEntity, LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
