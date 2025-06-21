@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,8 @@ class PowerOffScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ScreenService screenService = locator<ScreenService>();
+    final VisualDensityService visualDensityService =
+        locator<VisualDensityService>();
     final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -23,8 +26,14 @@ class PowerOffScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                width: screenService.scale(50),
-                height: screenService.scale(50),
+                width: screenService.scale(
+                  50,
+                  density: visualDensityService.density,
+                ),
+                height: screenService.scale(
+                  50,
+                  density: visualDensityService.density,
+                ),
                 child: const CircularProgressIndicator(),
               ),
               AppSpacings.spacingLgVertical,

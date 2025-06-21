@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+
 class ScreenService {
   final double screenWidth;
   final double screenHeight;
@@ -31,8 +33,10 @@ class ScreenService {
 
   bool get isLandscape => screenHeight <= screenWidth;
 
-  double scale(double size) {
-    return size * scaleFactor;
+  double scale(double size, {DisplayDensity? density = DisplayDensity.normal}) {
+    return density == DisplayDensity.compact
+        ? size * scaleFactor
+        : size * scaleFactor;
   }
 
   double _calculateOptimalTileWidth(double screenWidth) {

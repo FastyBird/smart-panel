@@ -1,8 +1,9 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,8 @@ class AboutPage extends StatefulWidget {
 
 class _AboutPageState extends State<AboutPage> {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   String _appVersion = 'Loading...';
 
@@ -50,7 +53,7 @@ class _AboutPageState extends State<AboutPage> {
     final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: ScreenAppBar(
+      appBar: AppTopBar(
         title: localizations.settings_about_title,
       ),
       body: SingleChildScrollView(
@@ -65,7 +68,10 @@ class _AboutPageState extends State<AboutPage> {
                   children: [
                     Icon(
                       MdiIcons.cogOutline,
-                      size: _screenService.scale(72),
+                      size: _screenService.scale(
+                        72,
+                        density: _visualDensityService.density,
+                      ),
                     ),
                     AppSpacings.spacingLgVertical,
                     Text(
@@ -134,7 +140,10 @@ class _AboutPageState extends State<AboutPage> {
                         Text(
                           'https://fastybird.com',
                           style: TextStyle(
-                            fontSize: _screenService.scale(8),
+                            fontSize: _screenService.scale(
+                              8,
+                              density: _visualDensityService.density,
+                            ),
                             color: AppColorsLight.primary,
                           ),
                         ),
@@ -313,57 +322,54 @@ class _AboutPageState extends State<AboutPage> {
         elevation: 0,
         color: Colors.transparent,
         child: ListTile(
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pSm,
-          ),
-          dense: true,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            side: BorderSide(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppBorderColorLight.base
-                  : AppBorderColorDark.base,
-              width: _screenService.scale(1),
-            ),
-          ),
-          textColor: Theme.of(context).brightness == Brightness.light
-              ? AppTextColorLight.regular
-              : AppTextColorDark.regular,
           leading: showLoading
               ? CircularProgressIndicator()
               : Icon(
                   icon,
                   size: AppFontSize.large,
                 ),
-          title: Text(
-            title,
-            style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          subtitle: Row(
+          title: Column(
             mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                value,
+                title,
                 style: TextStyle(
-                  fontSize: _screenService.scale(8),
+                  fontSize: AppFontSize.extraSmall,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              unit != null ? AppSpacings.spacingXsHorizontal : null,
-              unit != null
-                  ? Text(
-                      unit,
-                      style: TextStyle(
-                        fontSize: _screenService.scale(7),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: _screenService.scale(
+                        8,
+                        density: _visualDensityService.density,
                       ),
-                    )
-                  : null
-            ].whereType<Widget>().toList(),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  unit != null ? AppSpacings.spacingXsHorizontal : null,
+                  unit != null
+                      ? Text(
+                          unit,
+                          style: TextStyle(
+                            fontSize: _screenService.scale(
+                              7,
+                              density: _visualDensityService.density,
+                            ),
+                          ),
+                        )
+                      : null
+                ].whereType<Widget>().toList(),
+              ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -17,6 +18,8 @@ import 'package:weather_icons/weather_icons.dart';
 
 class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   ForecastTileWidget(super.tile, {super.key});
 
@@ -80,7 +83,10 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
         : NumberUtils.formatUnavailableNumber(1);
 
     return SizedBox(
-      width: _screenService.scale(70),
+      width: _screenService.scale(
+        70,
+        density: _visualDensityService.density,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -101,7 +107,10 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.warning
                 : AppColorsDark.warning,
-            size: _screenService.scale(20),
+            size: _screenService.scale(
+              20,
+              density: _visualDensityService.density,
+            ),
           ),
           AppSpacings.spacingSmVertical,
           Row(

@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -56,6 +57,8 @@ class ColoredSlider extends StatefulWidget {
 
 class _ColoredSliderState extends State<ColoredSlider> {
   final ScreenService screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   late final double trackHeight;
   late final double? trackWidth;
@@ -72,14 +75,23 @@ class _ColoredSliderState extends State<ColoredSlider> {
 
     trackHeight = widget.trackHeight != null
         ? widget.trackHeight!
-        : screenService.scale(75);
+        : screenService.scale(
+            75,
+            density: _visualDensityService.density,
+          );
     trackWidth = widget.trackWidth;
     thumbHeight = widget.thumbHeight != null
         ? widget.thumbHeight!
-        : screenService.scale(60);
+        : screenService.scale(
+            60,
+            density: _visualDensityService.density,
+          );
     thumbWidth = widget.thumbWidth != null
         ? widget.thumbWidth!
-        : screenService.scale(30);
+        : screenService.scale(
+            30,
+            density: _visualDensityService.density,
+          );
   }
 
   @override
@@ -253,6 +265,8 @@ class RoundedRectThumbShape extends SliderComponentShape {
 
 class RoundedRectTrackShape extends SliderTrackShape {
   final ScreenService screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   final double borderRadius;
 
@@ -317,10 +331,22 @@ class RoundedRectTrackShape extends SliderTrackShape {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTRB(
-          trackRect.left + screenService.scale(3),
-          trackRect.top + screenService.scale(3),
+          trackRect.left +
+              screenService.scale(
+                3,
+                density: _visualDensityService.density,
+              ),
+          trackRect.top +
+              screenService.scale(
+                3,
+                density: _visualDensityService.density,
+              ),
           thumbCenter.dx,
-          trackRect.bottom - screenService.scale(3),
+          trackRect.bottom -
+              screenService.scale(
+                3,
+                density: _visualDensityService.density,
+              ),
         ),
         Radius.circular(borderRadius),
       ),

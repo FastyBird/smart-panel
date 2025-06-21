@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -49,6 +50,8 @@ class _IconSwitchState extends State<IconSwitch>
   @override
   Widget build(BuildContext context) {
     final ScreenService screenService = locator<ScreenService>();
+    final VisualDensityService visualDensityService =
+        locator<VisualDensityService>();
 
     return GestureDetector(
       onTap: () {
@@ -59,8 +62,14 @@ class _IconSwitchState extends State<IconSwitch>
         widget.onChanged(switchState);
       },
       child: SizedBox(
-        width: screenService.scale(55),
-        height: screenService.scale(26),
+        width: screenService.scale(
+          55,
+          density: visualDensityService.density,
+        ),
+        height: screenService.scale(
+          26,
+          density: visualDensityService.density,
+        ),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -68,7 +77,10 @@ class _IconSwitchState extends State<IconSwitch>
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(screenService.scale(20)),
+                borderRadius: BorderRadius.circular(screenService.scale(
+                  20,
+                  density: visualDensityService.density,
+                )),
                 border: Border.all(
                   color: widget.toggleMode
                       ? (Theme.of(context).brightness == Brightness.light
@@ -81,7 +93,10 @@ class _IconSwitchState extends State<IconSwitch>
                           : (Theme.of(context).brightness == Brightness.light
                               ? AppBorderColorLight.base
                               : AppBorderColorDark.base)),
-                  width: screenService.scale(1),
+                  width: screenService.scale(
+                    1,
+                    density: visualDensityService.density,
+                  ),
                 ),
                 color: widget.toggleMode
                     ? (Theme.of(context).brightness == Brightness.light
@@ -95,8 +110,14 @@ class _IconSwitchState extends State<IconSwitch>
                             ? AppBorderColorLight.base
                             : AppBorderColorDark.base)),
               ),
-              width: screenService.scale(55),
-              height: screenService.scale(26),
+              width: screenService.scale(
+                55,
+                density: visualDensityService.density,
+              ),
+              height: screenService.scale(
+                26,
+                density: visualDensityService.density,
+              ),
             ),
             // Thumb with Icon
             AnimatedAlign(
@@ -104,8 +125,14 @@ class _IconSwitchState extends State<IconSwitch>
               alignment:
                   switchState ? Alignment.centerRight : Alignment.centerLeft,
               child: Container(
-                width: screenService.scale(26),
-                height: screenService.scale(26),
+                width: screenService.scale(
+                  26,
+                  density: visualDensityService.density,
+                ),
+                height: screenService.scale(
+                  26,
+                  density: visualDensityService.density,
+                ),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.transparent,
@@ -121,7 +148,10 @@ class _IconSwitchState extends State<IconSwitch>
                             : (Theme.of(context).brightness == Brightness.light
                                 ? AppBorderColorLight.base
                                 : AppBorderColorDark.base)),
-                    width: screenService.scale(1),
+                    width: screenService.scale(
+                      1,
+                      density: visualDensityService.density,
+                    ),
                   ),
                 ),
                 child: Container(
@@ -146,7 +176,10 @@ class _IconSwitchState extends State<IconSwitch>
                             : (Theme.of(context).brightness == Brightness.light
                                 ? AppBorderColorLight.base
                                 : AppBorderColorDark.base)),
-                    size: screenService.scale(18),
+                    size: screenService.scale(
+                      18,
+                      density: visualDensityService.density,
+                    ),
                   ),
                 ),
               ),

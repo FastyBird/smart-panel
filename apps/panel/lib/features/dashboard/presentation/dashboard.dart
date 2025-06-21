@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
@@ -18,6 +19,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
   final PageController _pageController = PageController(initialPage: 0);
 
   int _currentPage = 0;
@@ -40,7 +43,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Icon(
                     MdiIcons.alert,
                     color: Theme.of(context).warning,
-                    size: _screenService.scale(64),
+                    size: _screenService.scale(
+                      64,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                   AppSpacings.spacingMdVertical,
                   const Text(
@@ -89,7 +95,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (_shouldShowPageIndicator(currentView))
               // Dots Indicator
               Positioned(
-                bottom: _screenService.scale(4.0),
+                bottom: _screenService.scale(
+                  4,
+                  density: _visualDensityService.density,
+                ),
                 left: 0,
                 right: 0,
                 child: Row(
@@ -100,12 +109,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     (index) => AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       margin: EdgeInsets.symmetric(
-                        horizontal: _screenService.scale(4.0),
+                        horizontal: _screenService.scale(
+                          4,
+                          density: _visualDensityService.density,
+                        ),
                       ),
-                      height: _screenService.scale(6.0),
+                      height: _screenService.scale(
+                        6,
+                        density: _visualDensityService.density,
+                      ),
                       width: _currentPage == index % pages.length
-                          ? _screenService.scale(16.0)
-                          : _screenService.scale(6.0),
+                          ? _screenService.scale(
+                              16,
+                              density: _visualDensityService.density,
+                            )
+                          : _screenService.scale(
+                              6,
+                              density: _visualDensityService.density,
+                            ),
                       decoration: BoxDecoration(
                         color: _currentPage == index
                             ? Theme.of(context).brightness == Brightness.light
@@ -115,7 +136,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ? AppTextColorLight.disabled
                                 : AppTextColorDark.disabled,
                         borderRadius: BorderRadius.circular(
-                          _screenService.scale(4.0),
+                          _screenService.scale(
+                            4,
+                            density: _visualDensityService.density,
+                          ),
                         ),
                       ),
                     ),

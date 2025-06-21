@@ -1,7 +1,8 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
@@ -14,6 +15,8 @@ import 'package:provider/provider.dart';
 
 class CardsPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   final CardsPageView page;
 
@@ -43,7 +46,10 @@ class CardsPage extends StatelessWidget {
                   Icon(
                     MdiIcons.alert,
                     color: Theme.of(context).warning,
-                    size: _screenService.scale(64),
+                    size: _screenService.scale(
+                      64,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                   AppSpacings.spacingMdVertical,
                   Text(
@@ -73,7 +79,10 @@ class CardsPage extends StatelessWidget {
                   Icon(
                     MdiIcons.cardText,
                     color: Theme.of(context).warning,
-                    size: _screenService.scale(64),
+                    size: _screenService.scale(
+                      64,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                   AppSpacings.spacingMdVertical,
                   Text(
@@ -94,7 +103,7 @@ class CardsPage extends StatelessWidget {
       }
 
       return Scaffold(
-        appBar: ScreenAppBar(
+        appBar: AppTopBar(
           icon: freshPage.icon,
           title: freshPage.title,
           actions: [
