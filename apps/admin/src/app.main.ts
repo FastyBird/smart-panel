@@ -66,7 +66,7 @@ providePluginsManager(app, pluginsManager);
 
 // Backend
 const backendClient = createClient<paths>({
-	baseUrl: `${import.meta.env.FB_APP_HOST}:${import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT}/api/v1`,
+	baseUrl: `${window.location.protocol}//${window.location.hostname}:${import.meta.env.MODE === 'development' ? import.meta.env.FB_ADMIN_PORT : import.meta.env.FB_BACKEND_PORT}/api/v1`,
 });
 app.config.globalProperties['backend'] = backendClient;
 provideBackendClient(app, backendClient);
@@ -83,7 +83,7 @@ provideRouterGuards(app, routerGuards);
 
 // Sockets
 app.use(SocketsPlugin, {
-	baseUrl: `${import.meta.env.FB_APP_HOST}:${import.meta.env.FB_BACKEND_PORT}`,
+	baseUrl: `${window.location.protocol}//${window.location.hostname}:${import.meta.env.FB_BACKEND_PORT}`,
 });
 
 // Default route
