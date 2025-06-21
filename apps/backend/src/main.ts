@@ -1,8 +1,9 @@
 import { useContainer } from 'class-validator';
 
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { LogLevel, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { API_PREFIX } from './app.constants';
 import { AppModule } from './app.module';
@@ -20,7 +21,17 @@ import { ValidationExceptionFactory } from './common/validation/validation-excep
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
 async function bootstrap() {
-	const app = await NestFactory.create(AppModule);
+	const isProduction = process.env.NODE_ENV === 'production';
+
+	const validLogLevels: LogLevel[] = ['verbose', 'debug', 'log', 'warn', 'error', 'fatal'];
+
+	const logLevels =
+		(process.env.FB_LOG_LEVEL?.split(',') as LogLevel[]) ??
+		(isProduction ? ['log', 'warn', 'error', 'fatal'] : ['verbose', 'debug', 'log', 'warn', 'error', 'fatal']);
+
+	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+		logger: logLevels.filter((level): level is LogLevel => validLogLevels.includes(level)),
+	});
 
 	const configService = app.get(NestConfigService);
 	const port = getEnvValue<number>(configService, 'FB_BACKEND_PORT', 3000);
@@ -67,7 +78,9 @@ async function bootstrap() {
 	const websocketGateway = app.get(WebsocketGateway);
 	websocketGateway.enable();
 
-	await app.listen(port);
+	app.enableCors();
+
+	await app.listen(port, '0.0.0.0');
 }
 
 bootstrap().catch((error: Error) => {

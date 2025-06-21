@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Panel Admin UI – Not Available</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: #1e1e1e;
+      color: #f8f8f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 600px;
+    }
+
+    h1 {
+      font-size: 2em;
+      color: #ff6b6b;
+    }
+
+    p {
+      margin: 1em 0;
+    }
+
+    code {
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Smart Panel Admin UI Unavailable</h1>
+    <p>The Admin UI static files are not configured or missing.</p>
+    <p>To fix this, ensure that the environment variable <code>FB_ADMIN_UI_PATH</code> is pointing to the correct directory containing your built frontend app.</p>
+    <p>If this is a production deployment, make sure you've built the admin app using <code>pnpm build</code> and copied it to the target device.</p>
+    <p>Need help? Visit <a href="https://smart-panel.fastybird.com/docs" target="_blank" style="color: #61dafb;">FastyBird Docs</a>.</p>
+  </div>
+</body>
+</html>

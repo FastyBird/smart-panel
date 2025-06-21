@@ -75,10 +75,10 @@ export class RaspberryPlatform extends Platform {
 				mac: defaultNetworkInterface.mac,
 			},
 			display: {
-				resolutionX: graphics.displays[0].resolutionX,
-				resolutionY: graphics.displays[0].resolutionY,
-				currentResX: graphics.displays[0].currentResX,
-				currentResY: graphics.displays[0].currentResY,
+				resolutionX: graphics.displays[0]?.resolutionX || 0,
+				resolutionY: graphics.displays[0]?.resolutionY || 0,
+				currentResX: graphics.displays[0]?.currentResX || 0,
+				currentResY: graphics.displays[0]?.currentResY || 0,
 			},
 		};
 

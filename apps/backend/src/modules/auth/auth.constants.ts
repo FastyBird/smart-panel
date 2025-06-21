@@ -1,4 +1,4 @@
-import { Request } from 'express';
+import { FastifyRequest as Request } from 'fastify';
 
 import { UserRole } from '../users/users.constants';
 

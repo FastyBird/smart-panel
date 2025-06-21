@@ -7,10 +7,11 @@ import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } 
 import { RouterModule } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PLUGINS_PREFIX } from './app.constants';
-import { getEnvValue } from './common/utils/config.utils';
+import { getEnvValue, resolveStaticPath } from './common/utils/config.utils';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
 import { CONFIG_MODULE_PREFIX } from './modules/config/config.constants';
@@ -67,6 +68,7 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 							),
 					entities: [__dirname + '/**/*.entity{.ts,.js}'],
 					subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
+					migrations: [__dirname + '/migrations/*{.ts,.js}'],
 					synchronize: getEnvValue<boolean>(configService, 'FB_DB_SYNC', false),
 					logging: getEnvValue<boolean>(configService, 'FB_DB_LOGGING', false),
 				};
@@ -136,6 +138,25 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 		TilesTimePlugin,
 		TilesWeatherPlugin,
 		DataSourcesDeviceChannelPlugin,
+		ServeStaticModule.forRootAsync({
+			imports: [NestConfigModule], // Ensure ConfigModule is available
+			inject: [NestConfigService],
+			useFactory: (configService: NestConfigService) => {
+				const rootPath = resolveStaticPath(
+					getEnvValue<string>(configService, 'FB_ADMIN_UI_PATH', path.resolve(__dirname, '../static')),
+				);
+
+				return [
+					{
+						rootPath,
+						exclude: ['/api*', '/socket.io*', '/favicon.ico'],
+						serveStaticOptions: {
+							fallthrough: true,
+						},
+					},
+				];
+			},
+		}),
 	],
 })
 export class AppModule {}

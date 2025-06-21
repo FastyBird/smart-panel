@@ -44,7 +44,7 @@
     "test:e2e": "pnpm run -r test:e2e",
     "generate:openapi": "pnpm run -r generate:openapi",
     "bootstrap": "pnpm install && pnpm run generate:openapi && pnpm --filter @fastybird/smart-panel-backend run typeorm:migration:run && pnpm --filter @fastybird/smart-panel-backend run build && pnpm --filter @fastybird/smart-panel-admin run build",
-    "onboard": "pnpm --filter @fastybird/smart-panel-backend run cli users:register-owner"
+    "onboard": "pnpm --filter @fastybird/smart-panel-backend run cli:prod auth:onboarding"
   },
   "engines": {
     "node": ">=20"

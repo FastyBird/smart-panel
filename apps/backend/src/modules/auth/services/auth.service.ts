@@ -10,7 +10,7 @@ import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
-import { DISPLAY_USERNAME, UserRole } from '../../users/users.constants';
+import { UserRole } from '../../users/users.constants';
 import { ACCESS_TOKEN_TYPE, DISPLAY_SECRET_CACHE_KEY, TokenType } from '../auth.constants';
 import {
 	AuthException,
@@ -131,7 +131,7 @@ export class AuthService {
 		);
 	}
 
-	async register(registerDto: RegisterDto): Promise<void> {
+	async register(registerDto: RegisterDto): Promise<UserEntity> {
 		this.logger.debug(`[REGISTER] Registering new user username=${registerDto.username}, email=${registerDto.email}`);
 
 		const dtoInstance = await this.validateDto<RegisterDto>(RegisterDto, registerDto);
@@ -139,7 +139,7 @@ export class AuthService {
 		const { password, email, username } = dtoInstance;
 
 		// Ensure only one owner can be registered
-		if ((await this.usersService.findOwner()) && username !== DISPLAY_USERNAME) {
+		if ((await this.usersService.findOwner()) && registerDto.role !== UserRole.DISPLAY) {
 			this.logger.warn(`[REGISTER] Registration failed - owner already exists`);
 
 			throw new AuthException('Owner already registered');
@@ -167,14 +167,16 @@ export class AuthService {
 		const user = await this.usersService.create({
 			...dtoInstance,
 			password,
-			role: ownerExists || username === DISPLAY_USERNAME ? UserRole.USER : UserRole.OWNER,
+			role: dtoInstance.role ?? (ownerExists ? UserRole.USER : UserRole.OWNER),
 		});
 
-		if (registerDto.username === DISPLAY_USERNAME) {
+		if (registerDto.role === UserRole.DISPLAY) {
 			await this.cacheManager.del(DISPLAY_SECRET_CACHE_KEY);
 		}
 
 		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);
+
+		return user;
 	}
 
 	async refreshAccessToken(token: string): Promise<RefreshTokenResponseDto> {
@@ -185,7 +187,7 @@ export class AuthService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[AUTH] JWT validation failed', { message: err.message, stack: err.stack });
+			this.logger.debug('[AUTH] JWT validation failed', { message: err.message, stack: err.stack });
 
 			throw new AuthUnauthorizedException('Invalid or expired token');
 		}

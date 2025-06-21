@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,43 +29,49 @@ export class BadRequestExceptionFilter implements ExceptionFilter {
 				}
 			});
 
-			return response.status(status).json({
-				status: RequestResultState.ERROR,
-				timestamp: new Date().toISOString(),
-				request_id: requestId,
-				path: request.originalUrl,
-				method: request.method,
-				error: {
-					code: 'BadRequestError',
-					message: 'One or more parameters failed validation.',
-					details,
-				},
-				metadata: {
-					server_time: new Date().toISOString(),
-					cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
-				},
-			});
-		} else if (status === HttpStatus.BAD_REQUEST) {
-			return response.status(status).json({
-				status: RequestResultState.ERROR,
-				timestamp: new Date().toISOString(),
-				request_id: requestId,
-				path: request.originalUrl,
-				method: request.method,
-				error: {
-					code: 'BadRequestError',
-					message: 'The request could not be processed due to invalid input.',
-					details: {
-						reason: exceptionResponse.message || `The provided input is invalid or incomplete.`,
+			return response
+				.code(status)
+				.type('application/json')
+				.send({
+					status: RequestResultState.ERROR,
+					timestamp: new Date().toISOString(),
+					request_id: requestId,
+					path: request.originalUrl,
+					method: request.method,
+					error: {
+						code: 'BadRequestError',
+						message: 'One or more parameters failed validation.',
+						details,
 					},
-				},
-				metadata: {
-					server_time: new Date().toISOString(),
-					cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
-				},
-			});
+					metadata: {
+						server_time: new Date().toISOString(),
+						cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
+					},
+				});
+		} else if (status === HttpStatus.BAD_REQUEST) {
+			return response
+				.code(status)
+				.type('application/json')
+				.send({
+					status: RequestResultState.ERROR,
+					timestamp: new Date().toISOString(),
+					request_id: requestId,
+					path: request.originalUrl,
+					method: request.method,
+					error: {
+						code: 'BadRequestError',
+						message: 'The request could not be processed due to invalid input.',
+						details: {
+							reason: exceptionResponse.message || `The provided input is invalid or incomplete.`,
+						},
+					},
+					metadata: {
+						server_time: new Date().toISOString(),
+						cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
+					},
+				});
 		}
 
-		response.status(status).json(exceptionResponse);
+		response.code(status).type('application/json').send(exceptionResponse);
 	}
 }

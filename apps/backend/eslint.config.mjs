@@ -7,7 +7,7 @@ import eslint from '@eslint/js';
 
 export default tseslint.config(
 	{
-		ignores: ['eslint.config.mjs', 'src/openapi.d.ts'],
+		ignores: ['eslint.config.mjs', 'src/openapi.d.ts', 'src/migrations/*'],
 	},
 	eslint.configs.recommended,
 	...tseslint.configs.recommendedTypeChecked,

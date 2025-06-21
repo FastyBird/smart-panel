@@ -1,4 +1,3 @@
-import bcrypt from 'bcrypt';
 import { Command, Positional } from 'nestjs-command';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -44,7 +43,7 @@ export class RegisterOwnerCommand {
 
 		const user = await this.service.create({
 			username,
-			password: await bcrypt.hash(password, 10),
+			password,
 			role: UserRole.OWNER,
 		});
 

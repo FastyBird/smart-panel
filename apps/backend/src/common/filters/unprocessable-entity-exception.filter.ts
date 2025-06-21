@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,23 +18,26 @@ export class UnprocessableEntityExceptionFilter implements ExceptionFilter {
 		};
 		const requestId = uuidv4();
 
-		return response.status(status).json({
-			status: RequestResultState.ERROR,
-			timestamp: new Date().toISOString(),
-			request_id: requestId,
-			path: request.originalUrl,
-			method: request.method,
-			error: {
-				code: 'UnprocessableEntity',
-				message: 'The request could not be processed due to semantic issues.',
-				details: {
-					reason: exceptionResponse.message || `The data provided could not be processed in its current state.`,
+		return response
+			.code(status)
+			.type('application/json')
+			.send({
+				status: RequestResultState.ERROR,
+				timestamp: new Date().toISOString(),
+				request_id: requestId,
+				path: request.originalUrl,
+				method: request.method,
+				error: {
+					code: 'UnprocessableEntity',
+					message: 'The request could not be processed due to semantic issues.',
+					details: {
+						reason: exceptionResponse.message || `The data provided could not be processed in its current state.`,
+					},
 				},
-			},
-			metadata: {
-				server_time: new Date().toISOString(),
-				cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
-			},
-		});
+				metadata: {
+					server_time: new Date().toISOString(),
+					cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
+				},
+			});
 	}
 }
