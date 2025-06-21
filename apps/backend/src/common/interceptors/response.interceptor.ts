@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import os from 'os';
 import { Observable, map } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,7 +18,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
 		return next.handle().pipe(
 			map((data) => {
 				const responseTime = Date.now() - startTime;
-
 				if (request.method === 'DELETE') {
 					response.status(HttpStatus.NO_CONTENT);
 

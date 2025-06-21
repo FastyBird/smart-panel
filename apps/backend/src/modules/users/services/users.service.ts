@@ -51,6 +51,16 @@ export class UsersService {
 		return this.findByField('email', email);
 	}
 
+	async findAllByRole(role: UserRole): Promise<UserEntity[]> {
+		this.logger.debug(`[LOOKUP ALL] Fetching all users by given role: ${role}`);
+
+		const users = await this.repository.createQueryBuilder('user').where('user.role = :role', { role }).getMany();
+
+		this.logger.debug(`[LOOKUP ALL] Found ${users.length} users by given role: ${role}`);
+
+		return users;
+	}
+
 	async create(createDto: CreateUserDto): Promise<UserEntity> {
 		this.logger.debug('[CREATE] Creating new user');
 

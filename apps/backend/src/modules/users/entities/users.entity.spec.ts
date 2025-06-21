@@ -5,9 +5,10 @@ import { v4 as uuid } from 'uuid';
 import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
-import { UserEntity } from './users.entity';
+import { DisplayEntity, UserEntity } from './users.entity';
 
 type User = components['schemas']['UsersModuleUser'];
+type Display = components['schemas']['UsersModuleDisplay'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -46,6 +47,32 @@ describe('Users module entity and OpenAPI component synchronization', () => {
 		};
 
 		const entityInstance = plainToInstance(UserEntity, openApiModel, {
+			excludeExtraneousValues: true,
+			enableImplicitConversion: true,
+		});
+
+		validateEntityAgainstModel(entityInstance, openApiModel);
+
+		const errors = validateSync(entityInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+		expect(errors).toHaveLength(0);
+	});
+
+	test('DisplayEntity matches UsersDisplay', () => {
+		const openApiModel: Display = {
+			id: uuid().toString(),
+			uid: uuid().toString(),
+			mac: '00:1A:2B:3C:4D:5E',
+			version: '1.0.0',
+			build: '42',
+			user: uuid().toString(),
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+		};
+
+		const entityInstance = plainToInstance(DisplayEntity, openApiModel, {
 			excludeExtraneousValues: true,
 			enableImplicitConversion: true,
 		});

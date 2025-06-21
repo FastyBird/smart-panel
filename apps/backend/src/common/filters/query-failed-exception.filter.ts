@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import os from 'os';
 import { QueryFailedError } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,22 +16,25 @@ export class QueryFailedExceptionFilter implements ExceptionFilter {
 		const status = this.getHttpStatus(exception);
 		const requestId = uuidv4();
 
-		return response.status(status).json({
-			status: RequestResultState.ERROR,
-			timestamp: new Date().toISOString(),
-			request_id: requestId,
-			path: request.originalUrl,
-			method: request.method,
-			error: {
-				code: status === HttpStatus.CONFLICT ? 'ConflictError' : 'InternalServerError',
-				message: status === HttpStatus.CONFLICT ? 'A conflict occurred.' : 'An internal server error occurred.',
-				details: this.parseErrorDetails(exception),
-			},
-			metadata: {
-				server_time: new Date().toISOString(),
-				cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
-			},
-		});
+		return response
+			.code(status)
+			.type('application/json')
+			.send({
+				status: RequestResultState.ERROR,
+				timestamp: new Date().toISOString(),
+				request_id: requestId,
+				path: request.originalUrl,
+				method: request.method,
+				error: {
+					code: status === HttpStatus.CONFLICT ? 'ConflictError' : 'InternalServerError',
+					message: status === HttpStatus.CONFLICT ? 'A conflict occurred.' : 'An internal server error occurred.',
+					details: this.parseErrorDetails(exception),
+				},
+				metadata: {
+					server_time: new Date().toISOString(),
+					cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),
+				},
+			});
 	}
 
 	private getHttpStatus(exception: QueryFailedError): HttpStatus {

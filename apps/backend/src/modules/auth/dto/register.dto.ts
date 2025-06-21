@@ -1,16 +1,28 @@
 import { Expose, Type } from 'class-transformer';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
+import { UserRole } from '../../users/users.constants';
 
 type ReqRegister = components['schemas']['AuthModuleReqRegister'];
 type Register = components['schemas']['AuthModuleRegister'];
 
 export class RegisterDto implements Register {
 	@Expose()
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
+	id?: string;
+
+	@Expose()
 	@IsNotEmpty({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })
 	username: string;
+
+	@Expose()
+	@IsOptional()
+	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
+	@ValidateIf((_, value) => value !== null)
+	role?: UserRole;
 
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })

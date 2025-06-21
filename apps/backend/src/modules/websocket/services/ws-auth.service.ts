@@ -136,40 +136,49 @@ export class WsAuthService {
 	}
 
 	private async validateDisplaySecret(client: Socket, providedSecret: string): Promise<boolean> {
-		let userSecret: string | undefined;
+		let usersSecrets: string[] | null = null;
 
 		try {
-			userSecret = await this.cacheManager.get<string>(DISPLAY_SECRET_CACHE_KEY);
+			usersSecrets = await this.cacheManager.get<string[]>(DISPLAY_SECRET_CACHE_KEY);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error('[WS AUTH] Failed to fetch authentication data', { message: err.message, stack: err.stack });
 		}
 
-		if (!userSecret) {
+		if (usersSecrets === null || usersSecrets.length === 0) {
 			this.logger.debug('[WS AUTH] Display secret not in cache, fetching from database');
 
-			const displayUser = await this.usersService.findByUsername('display');
+			const displayUsers = await this.usersService.findAllByRole(UserRole.DISPLAY);
 
-			if (!displayUser) {
+			if (displayUsers.length === 0) {
 				this.logger.warn('[WS AUTH] No display user found');
 
 				throw new WebsocketNotAllowedException('Invalid display authentication');
 			}
 
-			userSecret = displayUser.password;
+			usersSecrets = displayUsers.map((user) => user.password);
 		}
 
-		const match = await bcrypt.compare(providedSecret, userSecret);
+		let found = false;
 
-		if (!match) {
+		for (const userSecret of usersSecrets) {
+			const match = await bcrypt.compare(providedSecret, userSecret);
+
+			if (match) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
 			this.logger.warn(`[WS AUTH] Invalid ${DISPLAY_SECRET_HEADER} provided`);
 
 			throw new WebsocketNotAllowedException('Invalid display authentication');
 		}
 
 		try {
-			await this.cacheManager.set(DISPLAY_SECRET_CACHE_KEY, userSecret);
+			await this.cacheManager.set(DISPLAY_SECRET_CACHE_KEY, usersSecrets);
 		} catch (error) {
 			const err = error as Error;
 
@@ -181,17 +190,5 @@ export class WsAuthService {
 		this.logger.debug('[WS AUTH] Display authentication successful');
 
 		return true;
-	}
-
-	private extractTokenFromHeader(request: IncomingHttpHeaders): string | undefined {
-		const authHeader = request.authorization;
-
-		if (!authHeader) {
-			return undefined;
-		}
-
-		const [type, token] = authHeader.split(' ');
-
-		return type === ACCESS_TOKEN_TYPE ? token : undefined;
 	}
 }
