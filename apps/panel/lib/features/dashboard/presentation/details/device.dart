@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/device.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -10,6 +11,8 @@ import 'package:provider/provider.dart';
 
 class DeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   final String id;
 
@@ -37,7 +40,10 @@ class DeviceDetailPage extends StatelessWidget {
                   Icon(
                     MdiIcons.alert,
                     color: Theme.of(context).warning,
-                    size: _screenService.scale(64),
+                    size: _screenService.scale(
+                      64,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                   AppSpacings.spacingMdVertical,
                   Text(

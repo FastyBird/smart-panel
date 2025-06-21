@@ -23,7 +23,10 @@ class AlertBar {
 
     if (icon != null) {
       content = Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
+        spacing: AppSpacings.pSm,
         children: [
           Baseline(
             baseline: AppFontSize.extraSmall,
@@ -34,7 +37,6 @@ class AlertBar {
               color: textColor,
             ),
           ),
-          AppSpacings.spacingSmHorizontal,
           Baseline(
             baseline: AppFontSize.extraSmall,
             baselineType: TextBaseline.alphabetic,
@@ -66,6 +68,8 @@ class AlertBar {
         backgroundColor: backgroundColor,
         closeIconColor: closeIconColor,
         duration: duration,
+        margin: EdgeInsets.all(0),
+        padding: EdgeInsets.all(0),
       ),
     );
   }

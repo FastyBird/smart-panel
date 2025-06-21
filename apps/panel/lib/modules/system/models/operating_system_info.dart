@@ -4,13 +4,13 @@ class OperatingSystemInfoModel extends Model {
   final String _platform;
   final String _distro;
   final String _release;
-  final int _uptime;
+  final double _uptime;
 
   OperatingSystemInfoModel({
     required String platform,
     required String distro,
     required String release,
-    required int uptime,
+    required double uptime,
   })  : _platform = platform,
         _distro = distro,
         _release = release,
@@ -22,14 +22,14 @@ class OperatingSystemInfoModel extends Model {
 
   String get release => _release;
 
-  int get uptime => _uptime;
+  double get uptime => _uptime;
 
   factory OperatingSystemInfoModel.fromJson(Map<String, dynamic> json) {
     return OperatingSystemInfoModel(
       platform: json['platform'],
       distro: json['distro'],
       release: json['release'],
-      uptime: json['uptime'],
+      uptime: (json['uptime'] as num).toDouble(),
     );
   }
 
@@ -37,7 +37,7 @@ class OperatingSystemInfoModel extends Model {
     String? platform,
     String? distro,
     String? release,
-    int? uptime,
+    double? uptime,
   }) {
     return OperatingSystemInfoModel(
       platform: platform ?? _platform,

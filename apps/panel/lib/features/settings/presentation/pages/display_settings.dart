@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -23,6 +25,8 @@ class DisplaySettingsPage extends StatefulWidget {
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
   final DisplayConfigRepository _repository =
       locator<DisplayConfigRepository>();
 
@@ -72,7 +76,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
       curve: Curves.easeInOut,
       data: _isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
       child: Scaffold(
-        appBar: ScreenAppBar(
+        appBar: AppTopBar(
           title: localizations.settings_display_settings_title,
         ),
         body: SingleChildScrollView(
@@ -94,7 +98,10 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     localizations
                         .settings_display_settings_theme_mode_description,
                     style: TextStyle(
-                      fontSize: _screenService.scale(8),
+                      fontSize: _screenService.scale(
+                        8,
+                        density: _visualDensityService.density,
+                      ),
                     ),
                   ),
                   trailing: IconSwitch(
@@ -141,23 +148,41 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     localizations
                         .settings_display_settings_screen_lock_description,
                     style: TextStyle(
-                      fontSize: _screenService.scale(8),
+                      fontSize: _screenService.scale(
+                        8,
+                        density: _visualDensityService.density,
+                      ),
                     ),
                   ),
                   trailing: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: _screenLockDuration,
+                    child: DropdownButton2<int>(
+                      isExpanded: false,
+                      isDense: true,
                       items: _getScreenLockDurationItems(),
+                      value: _screenLockDuration,
                       onChanged: (int? value) async {
                         _handleScreenLockDurationChange(context, value);
                       },
-                      style: TextStyle(
-                        fontSize: AppFontSize.extraSmall,
-                        color: Theme.of(context).brightness == Brightness.light
-                            ? AppTextColorLight.regular
-                            : AppTextColorDark.regular,
+                      menuItemStyleData: MenuItemStyleData(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 0,
+                          horizontal: AppSpacings.pLg,
+                        ),
+                        height: _screenService.scale(
+                          35,
+                          density: _visualDensityService.density,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                      dropdownStyleData: DropdownStyleData(
+                        padding: EdgeInsets.all(0),
+                        maxHeight: _screenService.scale(
+                          120,
+                          density: _visualDensityService.density,
+                        ),
+                      ),
+                      iconStyleData: const IconStyleData(
+                        openMenuIcon: Icon(Icons.arrow_drop_up),
+                      ),
                     ),
                   ),
                 ),
@@ -175,7 +200,10 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     localizations
                         .settings_display_settings_screen_saver_description,
                     style: TextStyle(
-                      fontSize: _screenService.scale(8),
+                      fontSize: _screenService.scale(
+                        8,
+                        density: _visualDensityService.density,
+                      ),
                     ),
                   ),
                   trailing: IconSwitch(

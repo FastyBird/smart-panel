@@ -36,6 +36,37 @@ scripts:
       echo "✅ Spec rebuild complete!"
     description: Cleans the Spec directory, regenerates device and channel specification Dart files.
 
+  build-panel:
+    run: |
+      echo "🧹 Cleaning previous build artifacts..." && \
+      cd ./apps/panel && \
+      rm -rf build flutter_assets && \
+      flutter build bundle \
+        --dart-define=APP_VERSION=1.0.0 \
+        --dart-define=APP_BUILD=42 && \
+      dart run flutterpi_tool build \
+        --arch=${FB_FLUTTERPI_ARCH:-arm64} \
+        ${FB_FLUTTERPI_RELEASE:+--release} \
+        --dart-define=APP_VERSION=1.0.0 \
+        --dart-define=APP_BUILD=42
+    description: Builds the Flutter Pi app for the specified architecture and mode.
+
+  build-panel-arm:
+    exec: FB_FLUTTERPI_ARCH=arm melos run build-panel
+    description: Builds Flutter Pi app for ARM (32-bit) in debug mode.
+
+  build-panel-arm64:
+    exec: FB_FLUTTERPI_ARCH=arm64 melos run build-panel
+    description: Builds Flutter Pi app for ARM64 (64-bit) in debug mode.
+
+  build-panel-arm-release:
+    exec: FB_FLUTTERPI_ARCH=arm FB_FLUTTERPI_RELEASE=1 melos run build-panel
+    description: Builds Flutter Pi app for ARM (32-bit) in release mode.
+
+  build-panel-arm64-release:
+    exec: FB_FLUTTERPI_ARCH=arm64 FB_FLUTTERPI_RELEASE=1 melos run build-panel
+    description: Builds Flutter Pi app for ARM64 (64-bit) in release mode.
+
 command:
   bootstrap:
     runPubGetInParallel: false

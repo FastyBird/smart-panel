@@ -1,14 +1,17 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
+import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class WindowCoveringDeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   final WindowCoveringDeviceView device;
 
@@ -22,7 +25,7 @@ class WindowCoveringDeviceDetailPage extends StatelessWidget {
     final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: ScreenAppBar(
+      appBar: AppTopBar(
         title: device.name,
       ),
       body: Center(
@@ -34,7 +37,10 @@ class WindowCoveringDeviceDetailPage extends StatelessWidget {
               Icon(
                 MdiIcons.alert,
                 color: Theme.of(context).warning,
-                size: _screenService.scale(64),
+                size: _screenService.scale(
+                  64,
+                  density: _visualDensityService.density,
+                ),
               ),
               AppSpacings.spacingMdVertical,
               Text(

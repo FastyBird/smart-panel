@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -36,6 +37,8 @@ class ColoredSwitch extends StatefulWidget {
 
 class _ColoredSwitchState extends State<ColoredSwitch> {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   late bool _switchState;
 
@@ -51,13 +54,19 @@ class _ColoredSwitchState extends State<ColoredSwitch> {
 
     _trackHeight = widget.trackHeight != null
         ? widget.trackHeight!
-        : _screenService.scale(75);
+        : _screenService.scale(
+            75,
+            density: _visualDensityService.density,
+          );
 
     _trackWidth = widget.trackWidth;
 
     _thumbHeight = widget.thumbHeight != null
         ? widget.thumbHeight!
-        : _screenService.scale(60);
+        : _screenService.scale(
+            60,
+            density: _visualDensityService.density,
+          );
   }
 
   @override
@@ -124,7 +133,10 @@ class _ColoredSwitchState extends State<ColoredSwitch> {
                           : (Theme.of(context).brightness == Brightness.light
                               ? AppBorderColorLight.base
                               : AppBorderColorDark.base),
-                      width: _screenService.scale(1),
+                      width: _screenService.scale(
+                        1,
+                        density: _visualDensityService.density,
+                      ),
                     ),
                     color: _switchState
                         ? (Theme.of(context).brightness == Brightness.light
@@ -164,7 +176,10 @@ class _ColoredSwitchState extends State<ColoredSwitch> {
                                       Brightness.light
                                   ? AppBorderColorLight.base
                                   : AppBorderColorDark.base),
-                          width: _screenService.scale(1),
+                          width: _screenService.scale(
+                            1,
+                            density: _visualDensityService.density,
+                          ),
                         ),
                       ),
                       child: Container(
@@ -196,7 +211,10 @@ class _ColoredSwitchState extends State<ColoredSwitch> {
           : (Theme.of(context).brightness == Brightness.light
               ? AppBorderColorLight.base
               : AppBorderColorDark.base),
-      size: _screenService.scale(40),
+      size: _screenService.scale(
+        40,
+        density: _visualDensityService.density,
+      ),
     );
 
     if (widget.vertical) {

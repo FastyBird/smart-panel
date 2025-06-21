@@ -86,6 +86,28 @@
             }
           }
         ],
+        "requestBody": {
+          "description": "Schema for display registration.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthModuleReqRegisterDisplay"
+              },
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "data": {
+                      "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                      "mac": "00:1A:2B:3C:4D:5E",
+                      "version": "1.0.0",
+                      "build": "42"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Response returned after successfully registering a display-only user.",
@@ -6305,6 +6327,49 @@
           }
         ]
       },
+      "AuthModuleRegisterDisplay": {
+        "title": "Register Display",
+        "description": "Schema for display registration.",
+        "type": "object",
+        "required": [
+          "uid",
+          "mac",
+          "version",
+          "build"
+        ],
+        "properties": {
+          "uid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the display device (e.g., UUID).",
+            "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+          },
+          "mac": {
+            "type": "string",
+            "format": "mac",
+            "description": "MAC address of the device network interface.",
+            "example": "00:1A:2B:3C:4D:5E"
+          },
+          "version": {
+            "type": "string",
+            "description": "Application version running on the display.",
+            "example": "1.0.0"
+          },
+          "build": {
+            "type": "string",
+            "description": "Build number or identifier of the app.",
+            "example": "42"
+          }
+        },
+        "examples": [
+          {
+            "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "mac": "00:1A:2B:3C:4D:5E",
+            "version": "1.0.0",
+            "build": "42"
+          }
+        ]
+      },
       "AuthModuleCheckUsername": {
         "title": "Check Username",
         "description": "Schema for checking username availability.",
@@ -6497,6 +6562,29 @@
               "email": "john@doe.com",
               "first_name": "John",
               "last_name": "Doe"
+            }
+          }
+        ]
+      },
+      "AuthModuleReqRegisterDisplay": {
+        "title": "Register Display Request",
+        "description": "Request schema for display registration.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AuthModuleRegisterDisplay"
+          }
+        },
+        "examples": [
+          {
+            "data": {
+              "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+              "mac": "00:1A:2B:3C:4D:5E",
+              "version": "1.0.0",
+              "build": "42"
             }
           }
         ]
@@ -7162,6 +7250,86 @@
           }
         ]
       },
+      "UsersModuleDisplay": {
+        "title": "Display",
+        "description": "Schema for a registered display within the system.",
+        "type": "object",
+        "required": [
+          "id",
+          "uid",
+          "mac",
+          "version",
+          "build",
+          "user",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the display.",
+            "example": "e39936d6-ef14-41fb-b614-8baa6f46d2ff"
+          },
+          "uid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the display device (e.g., UUID).",
+            "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+          },
+          "mac": {
+            "type": "string",
+            "format": "mac",
+            "description": "MAC address of the device network interface.",
+            "example": "00:1A:2B:3C:4D:5E"
+          },
+          "version": {
+            "type": "string",
+            "description": "Application version running on the display.",
+            "example": "1.0.0"
+          },
+          "build": {
+            "type": "string",
+            "description": "Build number or identifier of the app.",
+            "example": "42"
+          },
+          "user": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the user.",
+            "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "readOnly": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when the user was created.",
+            "example": "2025-01-25T12:00:00Z",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "The timestamp when the user was updated.",
+            "default": null,
+            "example": "2025-01-25T12:00:00Z",
+            "readonly": true
+          }
+        },
+        "examples": [
+          {
+            "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+            "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "mac": "00:1A:2B:3C:4D:5E",
+            "version": "1.0.0",
+            "build": "42",
+            "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "created_at": "2025-01-25T12:00:00Z",
+            "updated_at": "2025-01-25T12:00:00Z"
+          }
+        ]
+      },
       "UsersModuleCreateUser": {
         "title": "Create User",
         "description": "Schema for creating a new user account.",
@@ -7233,6 +7401,64 @@
           }
         ]
       },
+      "UsersModuleCreateDisplay": {
+        "title": "Create Display",
+        "description": "Schema for creating a new display.",
+        "type": "object",
+        "required": [
+          "uid",
+          "mac",
+          "version",
+          "build",
+          "user"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the display.",
+            "example": "e39936d6-ef14-41fb-b614-8baa6f46d2ff"
+          },
+          "uid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the display device (e.g., UUID).",
+            "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+          },
+          "mac": {
+            "type": "string",
+            "format": "mac",
+            "description": "MAC address of the device network interface.",
+            "example": "00:1A:2B:3C:4D:5E"
+          },
+          "version": {
+            "type": "string",
+            "description": "Application version running on the display.",
+            "example": "1.0.0"
+          },
+          "build": {
+            "type": "string",
+            "description": "Build number or identifier of the app.",
+            "example": "42"
+          },
+          "user": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the user.",
+            "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+          }
+        },
+        "examples": [
+          {
+            "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+            "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "mac": "00:1A:2B:3C:4D:5E",
+            "version": "1.0.0",
+            "build": "42",
+            "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+          }
+        ]
+      },
       "UsersModuleUpdateUser": {
         "title": "Update User",
         "description": "Schema for modifying an existing user account.",
@@ -7285,6 +7511,29 @@
           }
         ]
       },
+      "UsersModuleUpdateDisplay": {
+        "title": "Update Display",
+        "description": "Schema for modifying an existing display.",
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "Application version running on the display.",
+            "example": "1.0.0"
+          },
+          "build": {
+            "type": "string",
+            "description": "Build number or identifier of the app.",
+            "example": "42"
+          }
+        },
+        "examples": [
+          {
+            "version": "1.0.0",
+            "build": "42"
+          }
+        ]
+      },
       "UsersModuleReqCreateUser": {
         "title": "Create User Request",
         "description": "Request schema for creating new user.",
@@ -7311,6 +7560,31 @@
           }
         ]
       },
+      "UsersModuleReqCreateDisplay": {
+        "title": "Create Display Request",
+        "description": "Request schema for creating new display.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UsersModuleCreateDisplay"
+          }
+        },
+        "examples": [
+          {
+            "data": {
+              "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+              "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+              "mac": "00:1A:2B:3C:4D:5E",
+              "version": "1.0.0",
+              "build": "42",
+              "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+            }
+          }
+        ]
+      },
       "UsersModuleReqUpdateUser": {
         "title": "Update User Request",
         "description": "Request schema for updating an existing user.",
@@ -7330,6 +7604,27 @@
               "first_name": "John",
               "last_name": "Doe",
               "role": "user"
+            }
+          }
+        ]
+      },
+      "UsersModuleReqUpdateDisplay": {
+        "title": "Update Display Request",
+        "description": "Request schema for updating an existing display.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UsersModuleUpdateDisplay"
+          }
+        },
+        "examples": [
+          {
+            "data": {
+              "version": "1.0.0",
+              "build": "42"
             }
           }
         ]

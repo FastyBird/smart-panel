@@ -121,8 +121,21 @@ class SocketService {
       _eventCallbacks = {};
 
   void initialize(String apiSecret) {
+    final bool isAndroidEmulator = Platform.isAndroid && !kReleaseMode;
+
+    const String appHost = String.fromEnvironment(
+      'FB_APP_HOST',
+      defaultValue: 'http://127.0.0.1',
+    );
+    const String backendPort = String.fromEnvironment(
+      'FB_BACKEND_PORT',
+      defaultValue: '3000',
+    );
+
+    final String host = isAndroidEmulator ? 'http://10.0.2.2' : appHost;
+
     _socket = io.io(
-      '${Platform.environment['APP_HOST'] ?? 'http://10.0.2.2'}:${Platform.environment['BACKEND_PORT'] ?? '3000'}',
+      '$host:$backendPort',
       io.OptionBuilder()
           .setTransports(['websocket'])
           .setExtraHeaders({'X-Display-Secret': apiSecret})

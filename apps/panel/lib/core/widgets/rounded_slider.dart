@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -45,6 +46,8 @@ class RoundedSlider extends StatefulWidget {
 
 class _RoundedSliderState extends State<RoundedSlider> {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   double knobAngle = 0;
 
@@ -119,7 +122,11 @@ class _RoundedSliderState extends State<RoundedSlider> {
     setState(() {
       trackOffset = Offset(
         0,
-        calculatedTrackOffset + _screenService.scale(barWidth),
+        calculatedTrackOffset +
+            _screenService.scale(
+              barWidth,
+              density: _visualDensityService.density,
+            ),
       );
       trackRadius = calculatedTrackRadius + calculatedTrackOffset;
     });
@@ -145,19 +152,31 @@ class _RoundedSliderState extends State<RoundedSlider> {
                   : (widget.enabled
                       ? AppColorsDark.primary
                       : AppTextColorDark.placeholder),
-              barWidth: _screenService.scale(barWidth),
+              barWidth: _screenService.scale(
+                barWidth,
+                density: _visualDensityService.density,
+              ),
               trackColor: Theme.of(context).brightness == Brightness.light
                   ? AppBorderColorLight.light
                   : AppBorderColorDark.light,
               knobColor: AppColors.white,
               knobAngle: knobAngle,
-              knobSize: _screenService.scale(knobSize),
-              knobBorder: _screenService.scale(knobBorder),
+              knobSize: _screenService.scale(
+                knobSize,
+                density: _visualDensityService.density,
+              ),
+              knobBorder: _screenService.scale(
+                knobBorder,
+                density: _visualDensityService.density,
+              ),
               startAngle: startAngle,
               endAngle: endAngle,
               trackRadius: trackRadius,
               trackOffset: trackOffset,
-              trackWidth: _screenService.scale(trackWidth),
+              trackWidth: _screenService.scale(
+                trackWidth,
+                density: _visualDensityService.density,
+              ),
               isLightTheme: Theme.of(context).brightness == Brightness.light,
               upperLabel: widget.upperLabel,
               lowerLabel: widget.lowerLabel,

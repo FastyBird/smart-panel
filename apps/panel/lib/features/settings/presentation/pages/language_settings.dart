@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/export.dart';
@@ -22,6 +24,8 @@ class LanguageSettingsPage extends StatefulWidget {
 
 class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
   final LanguageConfigRepository _repository =
       locator<LanguageConfigRepository>();
 
@@ -72,7 +76,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
     ];
 
     return Scaffold(
-      appBar: ScreenAppBar(
+      appBar: AppTopBar(
         title: localizations.settings_language_settings_title,
       ),
       body: SingleChildScrollView(
@@ -93,16 +97,41 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 subtitle: Text(
                   localizations.settings_language_settings_language_description,
                   style: TextStyle(
-                    fontSize: _screenService.scale(8),
+                    fontSize: _screenService.scale(
+                      8,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                 ),
                 trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _language.value,
+                  child: DropdownButton2<String>(
+                    isExpanded: false,
+                    isDense: true,
                     items: getLanguageItems(),
+                    value: _language.value,
                     onChanged: (String? value) async {
                       _handleLanguageChange(context, value);
                     },
+                    menuItemStyleData: MenuItemStyleData(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: AppSpacings.pLg,
+                      ),
+                      height: _screenService.scale(
+                        35,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                    dropdownStyleData: DropdownStyleData(
+                      padding: EdgeInsets.all(0),
+                      maxHeight: _screenService.scale(
+                        200,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                    iconStyleData: const IconStyleData(
+                      openMenuIcon: Icon(Icons.arrow_drop_up),
+                    ),
                   ),
                 ),
               ),
@@ -119,17 +148,29 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 subtitle: Text(
                   localizations.settings_language_settings_timezone_description,
                   style: TextStyle(
-                    fontSize: _screenService.scale(8),
+                    fontSize: _screenService.scale(
+                      8,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                 ),
                 trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
+                  child: DropdownButton2<String>(
+                    isExpanded: false,
+                    isDense: true,
+                    items: getTimezoneItems(timezones),
                     value: _timezone,
+                    onChanged: (String? value) async {
+                      _handleTimeZoneChange(context, value);
+                    },
                     selectedItemBuilder: (BuildContext context) {
                       return timezones.map<Widget>((String item) {
                         return Container(
                           alignment: Alignment.centerRight,
-                          width: 180,
+                          width: _screenService.scale(
+                            120,
+                            density: _visualDensityService.density,
+                          ),
                           child: Text(
                             item,
                             textAlign: TextAlign.end,
@@ -140,10 +181,30 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         );
                       }).toList();
                     },
-                    items: getTimezoneItems(timezones),
-                    onChanged: (String? value) async {
-                      _handleTimeZoneChange(context, value);
-                    },
+                    menuItemStyleData: MenuItemStyleData(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: AppSpacings.pLg,
+                      ),
+                      height: _screenService.scale(
+                        35,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                    dropdownStyleData: DropdownStyleData(
+                      padding: EdgeInsets.all(0),
+                      width: _screenService.scale(
+                        150,
+                        density: _visualDensityService.density,
+                      ),
+                      maxHeight: _screenService.scale(
+                        200,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                    iconStyleData: const IconStyleData(
+                      openMenuIcon: Icon(Icons.arrow_drop_up),
+                    ),
                   ),
                 ),
               ),
@@ -161,16 +222,41 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                   localizations
                       .settings_language_settings_time_format_description,
                   style: TextStyle(
-                    fontSize: _screenService.scale(8),
+                    fontSize: _screenService.scale(
+                      8,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                 ),
                 trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _timeFormat.value,
+                  child: DropdownButton2<String>(
+                    isExpanded: false,
+                    isDense: true,
                     items: getTimeFormatItems(context),
+                    value: _timeFormat.value,
                     onChanged: (String? value) async {
                       _handleTimeFormatChange(context, value);
                     },
+                    menuItemStyleData: MenuItemStyleData(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: AppSpacings.pLg,
+                      ),
+                      height: _screenService.scale(
+                        35,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                    dropdownStyleData: DropdownStyleData(
+                      padding: EdgeInsets.all(0),
+                      maxHeight: _screenService.scale(
+                        200,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                    iconStyleData: const IconStyleData(
+                      openMenuIcon: Icon(Icons.arrow_drop_up),
+                    ),
                   ),
                 ),
               ),

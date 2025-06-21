@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
@@ -132,6 +133,8 @@ class ButtonTileWidget extends StatelessWidget {
 
 class ButtonTileBox extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   final GestureTapCallback? onTap;
   final bool isOn;
@@ -175,7 +178,10 @@ class ButtonTileBox extends StatelessWidget {
                   : (Theme.of(context).brightness == Brightness.light
                       ? AppColorsLight.infoLight5
                       : AppColorsDark.infoLight5)),
-          width: _screenService.scale(1),
+          width: _screenService.scale(
+            1,
+            density: _visualDensityService.density,
+          ),
         ),
         boxShadow: isOn
             ? [
@@ -304,6 +310,8 @@ class ButtonTileSubTitle extends StatelessWidget {
 
 class ButtonTileIcon extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   final IconData? icon;
   final GestureTapCallback? onTap;
@@ -351,7 +359,10 @@ class ButtonTileIcon extends StatelessWidget {
                     : (Theme.of(context).brightness == Brightness.light
                         ? AppColorsLight.infoLight5
                         : AppColorsDark.infoLight5)),
-            width: _screenService.scale(4),
+            width: _screenService.scale(
+              4,
+              density: _visualDensityService.density,
+            ),
           ),
         ),
         child: Container(
@@ -397,7 +408,10 @@ class ButtonTileIcon extends StatelessWidget {
                     )
                   : Icon(
                       icon,
-                      size: _screenService.scale(24),
+                      size: _screenService.scale(
+                        24,
+                        density: _visualDensityService.density,
+                      ),
                       color: isDisabled
                           ? (Theme.of(context).brightness == Brightness.light
                               ? AppColorsLight.infoLight5

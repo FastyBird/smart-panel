@@ -1,9 +1,10 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_app_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/openweather.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/types/configuration.dart';
@@ -17,6 +18,8 @@ import 'package:weather_icons/weather_icons.dart';
 
 class WeatherDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   WeatherDetailPage({super.key});
 
@@ -33,7 +36,7 @@ class WeatherDetailPage extends StatelessWidget {
       final forecast = weatherService.forecast;
 
       return Scaffold(
-        appBar: ScreenAppBar(
+        appBar: AppTopBar(
           title: localizations.weather_forecast_title,
         ),
         body: SingleChildScrollView(
@@ -103,7 +106,10 @@ class WeatherDetailPage extends StatelessWidget {
           children: [
             BoxedIcon(
               weatherIcon,
-              size: _screenService.scale(60),
+              size: _screenService.scale(
+                60,
+                density: _visualDensityService.density,
+              ),
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.primary
                   : AppTextColorDark.primary,
@@ -120,7 +126,10 @@ class WeatherDetailPage extends StatelessWidget {
                       currentTemperature,
                       style: TextStyle(
                         fontFamily: 'DIN1451',
-                        fontSize: _screenService.scale(40),
+                        fontSize: _screenService.scale(
+                          40,
+                          density: _visualDensityService.density,
+                        ),
                         color: Theme.of(context).brightness == Brightness.light
                             ? AppTextColorLight.primary
                             : AppTextColorDark.primary,
@@ -197,7 +206,10 @@ class WeatherDetailPage extends StatelessWidget {
                 Text(
                   'm/s',
                   style: TextStyle(
-                    fontSize: _screenService.scale(8),
+                    fontSize: _screenService.scale(
+                      8,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                 ),
                 AppSpacings.spacingMdHorizontal,
@@ -217,7 +229,10 @@ class WeatherDetailPage extends StatelessWidget {
                 Text(
                   'hPa',
                   style: TextStyle(
-                    fontSize: _screenService.scale(8),
+                    fontSize: _screenService.scale(
+                      8,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                 ),
                 AppSpacings.spacingMdHorizontal,
@@ -237,7 +252,10 @@ class WeatherDetailPage extends StatelessWidget {
                 Text(
                   '%',
                   style: TextStyle(
-                    fontSize: _screenService.scale(8),
+                    fontSize: _screenService.scale(
+                      8,
+                      density: _visualDensityService.density,
+                    ),
                   ),
                 ),
               ],
@@ -286,149 +304,140 @@ class WeatherDetailPage extends StatelessWidget {
           )
         : NumberUtils.formatUnavailableNumber(1);
 
-    return SizedBox(
-      height: _screenService.scale(45),
-      child: IntrinsicHeight(
-        // Allows content to expand properly
-        child: ListTile(
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-          ),
-          visualDensity: const VisualDensity(vertical: 4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            side: BorderSide(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppBorderColorLight.base
-                  : AppBorderColorDark.base,
-              width: _screenService.scale(1),
+    return ListTile(
+      titleAlignment: ListTileTitleAlignment.center,
+      iconColor: Theme.of(context).brightness == Brightness.light
+          ? AppColorsLight.warning
+          : AppColorsDark.warning,
+      leading: BoxedIcon(
+        WeatherConditionMapper.getIcon(forecast.weatherCode),
+        size: _screenService.scale(
+          18,
+          density: _visualDensityService.density,
+        ),
+      ),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(
+            DatetimeUtils.getDayName(forecast.dayTime),
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          textColor: Theme.of(context).brightness == Brightness.light
-              ? AppTextColorLight.regular
-              : AppTextColorDark.regular,
-          leading: SizedBox(
-            width: _screenService.scale(28),
-            child: BoxedIcon(
-              WeatherConditionMapper.getIcon(forecast.weatherCode),
-              size: _screenService.scale(18),
-              color: Theme.of(context).brightness == Brightness.light
-                  ? AppColorsLight.warning
-                  : AppColorsDark.warning,
+          AppSpacings.spacingSmHorizontal,
+          Text(
+            DatetimeUtils.getShortMonthDay(forecast.dayTime),
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
             ),
           ),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
+        ],
+      ),
+      subtitle: Text(
+        forecast.weatherMain,
+        style: TextStyle(
+          fontSize: AppFontSize.extraSmall,
+        ),
+      ),
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: 0,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
+            spacing: AppSpacings.pXs,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                DatetimeUtils.getDayName(forecast.dayTime),
+                wholeNightTemp,
                 style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
+                  fontSize: _screenService.scale(
+                    8,
+                    density: _visualDensityService.density,
+                  ),
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.secondary
+                      : AppTextColorDark.secondary,
+                ),
+              ),
+              Text(
+                '/',
+                style: TextStyle(
+                  fontSize: _screenService.scale(
+                    9,
+                    density: _visualDensityService.density,
+                  ),
+                ),
+              ),
+              Text(
+                wholeDayTemp,
+                style: TextStyle(
+                  fontSize: _screenService.scale(
+                    9,
+                    density: _visualDensityService.density,
+                  ),
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              AppSpacings.spacingSmHorizontal,
               Text(
-                DatetimeUtils.getShortMonthDay(forecast.dayTime),
+                _getUnit(forecast),
                 style: TextStyle(
-                  fontSize: _screenService.scale(8),
+                  fontSize: _screenService.scale(
+                    8,
+                    density: _visualDensityService.density,
+                  ),
                 ),
               ),
             ],
           ),
-          subtitle: Text(
-            forecast.weatherMain,
-            style: TextStyle(
-              fontSize: _screenService.scale(8),
-            ),
-          ),
-          trailing: IntrinsicHeight(
-            // Ensures trailing content expands
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 150,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        wholeNightTemp,
-                        style: TextStyle(
-                          fontSize: AppFontSize.extraSmall,
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? AppTextColorLight.secondary
-                                  : AppTextColorDark.secondary,
-                        ),
-                      ),
-                      AppSpacings.spacingXsHorizontal,
-                      Text(
-                        '/',
-                        style: TextStyle(
-                          fontSize: AppFontSize.extraSmall,
-                        ),
-                      ),
-                      AppSpacings.spacingXsHorizontal,
-                      Text(
-                        wholeDayTemp,
-                        style: TextStyle(
-                          fontSize: AppFontSize.base,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        _getUnit(forecast),
-                        style: TextStyle(
-                          fontSize: AppFontSize.small,
-                        ),
-                      ),
-                    ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            spacing: AppSpacings.pXs,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                localizations.weather_forecast_humidity,
+                style: TextStyle(
+                  fontSize: _screenService.scale(
+                    7,
+                    density: _visualDensityService.density,
+                  ),
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppTextColorLight.secondary
+                      : AppTextColorDark.secondary,
+                ),
+              ),
+              Text(
+                forecast.humidity.toString(),
+                style: TextStyle(
+                  fontSize: _screenService.scale(
+                    7,
+                    density: _visualDensityService.density,
                   ),
                 ),
-                SizedBox(
-                  width: 150,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        localizations.weather_forecast_humidity,
-                        style: TextStyle(
-                          fontSize: _screenService.scale(7),
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? AppTextColorLight.secondary
-                                  : AppTextColorDark.secondary,
-                        ),
-                      ),
-                      AppSpacings.spacingXsHorizontal,
-                      Text(
-                        forecast.humidity.toString(),
-                        style: TextStyle(
-                          fontSize: AppFontSize.extraSmall,
-                        ),
-                      ),
-                      AppSpacings.spacingXsHorizontal,
-                      Text(
-                        '%',
-                        style: TextStyle(
-                          fontSize: _screenService.scale(7),
-                        ),
-                      ),
-                    ],
+              ),
+              Text(
+                '%',
+                style: TextStyle(
+                  fontSize: _screenService.scale(
+                    7,
+                    density: _visualDensityService.density,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
+        ],
       ),
     );
   }

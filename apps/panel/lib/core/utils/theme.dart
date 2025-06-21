@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:flutter/material.dart';
 
 extension AppExtendedColors on ThemeData {
@@ -28,6 +29,10 @@ extension AppExtendedColors on ThemeData {
 }
 
 class AppTheme {
+  static final ScreenService _screenService = locator<ScreenService>();
+  static final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
   static ThemeData get startThemeLight {
     return ThemeData(
       fontFamily: 'Roboto',
@@ -44,6 +49,7 @@ class AppTheme {
         primary: AppColorsLight.primary,
         error: AppColorsLight.error,
       ),
+      visualDensity: _visualDensityService.visualDensity,
     );
   }
 
@@ -63,12 +69,11 @@ class AppTheme {
         primary: AppColorsDark.primary,
         error: AppColorsDark.error,
       ),
+      visualDensity: _visualDensityService.visualDensity,
     );
   }
 
   static ThemeData get lightTheme {
-    final ScreenService screen = locator<ScreenService>();
-
     return ThemeData(
       fontFamily: 'Roboto',
       brightness: Brightness.light,
@@ -79,39 +84,12 @@ class AppTheme {
       textTheme: AppTextThemes.light,
       outlinedButtonTheme: AppOutlinedButtonsLightThemes.base,
       filledButtonTheme: AppFilledButtonsLightThemes.base,
-      appBarTheme: AppBarTheme(
-        foregroundColor: AppTextColorLight.regular,
-        backgroundColor: AppBgColorLight.base,
-        shape: Border(
-          bottom: BorderSide(
-            color: AppBorderColorLight.base,
-            width: screen.scale(1),
-          ),
-        ),
-        toolbarHeight: AppTopBar.size,
-        titleTextStyle: TextStyle(
-          color: AppTextColorLight.regular,
-          fontSize: AppFontSize.large,
-        ),
-        titleSpacing: 0,
+      colorScheme: const ColorScheme.light(
+        primary: AppColorsLight.primary,
+        error: AppColorsLight.error,
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        selectedItemColor: AppColorsLight.primary,
-        unselectedItemColor: AppTextColorLight.regular,
-        backgroundColor: AppBgColorLight.base,
-        selectedIconTheme: IconThemeData(
-          size: screen.scale(20.0),
-        ),
-        unselectedIconTheme: IconThemeData(
-          size: screen.scale(20.0),
-        ),
-        selectedLabelStyle: TextStyle(
-          fontSize: screen.scale(10.0),
-        ),
-        unselectedLabelStyle: TextStyle(
-          fontSize: screen.scale(8.0),
-        ),
-      ),
+      visualDensity: _visualDensityService.visualDensity,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColorsLight.primary,
         linearTrackColor: AppColors.white,
@@ -127,16 +105,36 @@ class AppTheme {
           fontSize: AppFontSize.base,
         ),
       ),
-      colorScheme: const ColorScheme.light(
-        primary: AppColorsLight.primary,
-        error: AppColorsLight.error,
+      listTileTheme: ListTileThemeData(
+        dense: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          side: BorderSide(
+            color: AppBorderColorLight.base,
+            width: _screenService.scale(
+              1,
+              density: _visualDensityService.density,
+            ),
+          ),
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+        ),
+        horizontalTitleGap: AppSpacings.pSm,
+        textColor: AppTextColorLight.regular,
+        titleAlignment: ListTileTitleAlignment.center,
+        minVerticalPadding: AppSpacings.pSm,
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          visualDensity: VisualDensity(horizontal: 0, vertical: 0),
+          padding: WidgetStatePropertyAll(EdgeInsets.all(0)),
+        ),
       ),
     );
   }
 
   static ThemeData get darkTheme {
-    final ScreenService screen = locator<ScreenService>();
-
     return ThemeData(
       fontFamily: 'Roboto',
       brightness: Brightness.dark,
@@ -147,42 +145,12 @@ class AppTheme {
       textTheme: AppTextThemes.dark,
       outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base,
       filledButtonTheme: AppFilledButtonsDarkThemes.base,
-      appBarTheme: AppBarTheme(
-        foregroundColor: AppTextColorDark.regular,
-        backgroundColor: AppBgColorDark.overlay,
-        shape: Border(
-          bottom: BorderSide(
-            color: AppBorderColorDark.base,
-            width: screen.scale(1),
-          ),
-        ),
-        toolbarHeight: AppTopBar.size,
-        titleTextStyle: TextStyle(
-          color: AppTextColorDark.regular,
-          fontSize: AppFontSize.large,
-        ),
-        titleSpacing: 0,
-        iconTheme: IconThemeData(
-          size: AppFontSize.large,
-        ),
+      colorScheme: const ColorScheme.dark(
+        primary: AppColorsDark.primary,
+        error: AppColorsDark.error,
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        selectedItemColor: AppColorsDark.primary,
-        unselectedItemColor: AppTextColorDark.regular,
-        backgroundColor: AppBgColorDark.overlay,
-        selectedIconTheme: IconThemeData(
-          size: screen.scale(20.0),
-        ),
-        unselectedIconTheme: IconThemeData(
-          size: screen.scale(20.0),
-        ),
-        selectedLabelStyle: TextStyle(
-          fontSize: screen.scale(10.0),
-        ),
-        unselectedLabelStyle: TextStyle(
-          fontSize: screen.scale(8.0),
-        ),
-      ),
+      visualDensity: _visualDensityService.visualDensity,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColorsDark.primary,
         linearTrackColor: AppColors.white,
@@ -198,9 +166,23 @@ class AppTheme {
           fontSize: AppFontSize.base,
         ),
       ),
-      colorScheme: const ColorScheme.dark(
-        primary: AppColorsDark.primary,
-        error: AppColorsDark.error,
+      listTileTheme: ListTileThemeData(
+        dense: true,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          side: BorderSide(
+            color: AppBorderColorDark.base,
+            width: _screenService.scale(
+              1,
+              density: _visualDensityService.density,
+            ),
+          ),
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+        ),
+        horizontalTitleGap: AppSpacings.pSm,
+        textColor: AppTextColorDark.regular,
       ),
     );
   }
@@ -438,46 +420,87 @@ class AppMaskColorDark {
 }
 
 class AppBorderRadius {
-  static final ScreenService _scaler = locator<ScreenService>();
-
-  static double get medium => _scaler.scale(12.0);
-
-  static double get base => _scaler.scale(6.0);
-
-  static double get small => _scaler.scale(2.0);
-
-  static double get round => _scaler.scale(20.0);
-}
-
-class AppTopBar {
   static final ScreenService _screenService = locator<ScreenService>();
+  static final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
-  static double get size => _screenService.scale(40.0);
+  static double get medium => _screenService.scale(
+        12.0,
+        density: _visualDensityService.density,
+      );
+
+  static double get base => _screenService.scale(
+        6.0,
+        density: _visualDensityService.density,
+      );
+
+  static double get small => _screenService.scale(
+        2.0,
+        density: _visualDensityService.density,
+      );
+
+  static double get round => _screenService.scale(
+        20.0,
+        density: _visualDensityService.density,
+      );
 }
 
 class AppFontSize {
   static final ScreenService _screenService = locator<ScreenService>();
+  static final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
-  static double get large => _screenService.scale(16.0);
+  static double get large => _screenService.scale(
+        16.0,
+        density: _visualDensityService.density,
+      );
 
-  static double get base => _screenService.scale(14.0);
+  static double get base => _screenService.scale(
+        14.0,
+        density: _visualDensityService.density,
+      );
 
-  static double get small => _screenService.scale(12.0);
+  static double get small => _screenService.scale(
+        12.0,
+        density: _visualDensityService.density,
+      );
 
-  static double get extraSmall => _screenService.scale(10.0);
+  static double get extraSmall => _screenService.scale(
+        10.0,
+        density: _visualDensityService.density,
+      );
+
+  static double get extraExtraSmall => _screenService.scale(
+        8.0,
+        density: _visualDensityService.density,
+      );
 }
 
 // Centralized spacing
 class AppSpacings {
   static final ScreenService _screenService = locator<ScreenService>();
+  static final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
-  static double get pXs => _screenService.scale(2.0);
+  static double get pXs => _screenService.scale(
+        2.0,
+        density: _visualDensityService.density,
+      );
 
-  static double get pSm => _screenService.scale(4.0);
+  static double get pSm => _screenService.scale(
+        4.0,
+        density: _visualDensityService.density,
+      );
 
-  static double get pMd => _screenService.scale(8.0);
+  static double get pMd => _screenService.scale(
+        8.0,
+        density: _visualDensityService.density,
+      );
 
-  static double get pLg => _screenService.scale(16.0);
+  static double get pLg => _screenService.scale(
+        16.0,
+        density: _visualDensityService.density,
+      );
 
   static EdgeInsets get paddingXs => EdgeInsets.all(pXs);
 
@@ -1232,34 +1255,54 @@ class AppIconButtonsDarkThemes {
 
 class AppTextThemes {
   static final ScreenService _screenService = locator<ScreenService>();
+  static final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
 
   static TextTheme getBaseTextTheme(Color textColor) {
     return TextTheme(
       headlineLarge: TextStyle(
-        fontSize: _screenService.scale(20.0),
+        fontSize: _screenService.scale(
+          20.0,
+          density: _visualDensityService.density,
+        ),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       headlineMedium: TextStyle(
-        fontSize: _screenService.scale(18.0),
+        fontSize: _screenService.scale(
+          18.0,
+          density: _visualDensityService.density,
+        ),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       headlineSmall: TextStyle(
-        fontSize: _screenService.scale(16.0),
+        fontSize: _screenService.scale(
+          16.0,
+          density: _visualDensityService.density,
+        ),
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
       bodyLarge: TextStyle(
-        fontSize: _screenService.scale(16.0),
+        fontSize: _screenService.scale(
+          16.0,
+          density: _visualDensityService.density,
+        ),
         color: textColor,
       ),
       bodyMedium: TextStyle(
-        fontSize: _screenService.scale(14.0),
+        fontSize: _screenService.scale(
+          14.0,
+          density: _visualDensityService.density,
+        ),
         color: textColor,
       ),
       bodySmall: TextStyle(
-        fontSize: _screenService.scale(12.0),
+        fontSize: _screenService.scale(
+          12.0,
+          density: _visualDensityService.density,
+        ),
         color: textColor,
       ),
     );
@@ -1284,7 +1327,9 @@ ButtonStyle createButtonTheme({
   required Color hoveredBorderColor,
   required Color disabledBorderColor,
 }) {
-  final screen = locator<ScreenService>();
+  final ScreenService screenService = locator<ScreenService>();
+  final VisualDensityService visualDensityService =
+      locator<VisualDensityService>();
 
   return ButtonStyle(
     foregroundColor: WidgetStateProperty.resolveWith<Color>(
@@ -1316,34 +1361,55 @@ ButtonStyle createButtonTheme({
         if (states.contains(WidgetState.pressed)) {
           return BorderSide(
             color: pressedBorderColor,
-            width: screen.scale(1),
+            width: screenService.scale(
+              1,
+              density: visualDensityService.density,
+            ),
           );
         } else if (states.contains(WidgetState.hovered)) {
           return BorderSide(
             color: hoveredBorderColor,
-            width: screen.scale(1),
+            width: screenService.scale(
+              1,
+              density: visualDensityService.density,
+            ),
           );
         } else if (states.contains(WidgetState.disabled)) {
           return BorderSide(
             color: disabledBorderColor,
-            width: screen.scale(1),
+            width: screenService.scale(
+              1,
+              density: visualDensityService.density,
+            ),
           );
         }
         return BorderSide(
           color: borderColor,
-          width: screen.scale(1),
+          width: screenService.scale(
+            1,
+            density: visualDensityService.density,
+          ),
         );
       },
     ),
     padding: WidgetStateProperty.all(
       EdgeInsets.symmetric(
-        horizontal: screen.scale(49),
-        vertical: screen.scale(8),
+        horizontal: screenService.scale(
+          49,
+          density: visualDensityService.density,
+        ),
+        vertical: screenService.scale(
+          8,
+          density: visualDensityService.density,
+        ),
       ),
     ),
     textStyle: WidgetStateProperty.all(
       TextStyle(
-        fontSize: screen.scale(14),
+        fontSize: screenService.scale(
+          14,
+          density: visualDensityService.density,
+        ),
         fontWeight: FontWeight.w500,
       ),
     ),
@@ -1352,6 +1418,7 @@ ButtonStyle createButtonTheme({
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
     ),
+    visualDensity: visualDensityService.visualDensity,
   );
 }
 
@@ -1369,7 +1436,9 @@ ButtonStyle createIconButtonTheme({
   required Color hoveredBorderColor,
   required Color disabledBorderColor,
 }) {
-  final screen = locator<ScreenService>();
+  final ScreenService screenService = locator<ScreenService>();
+  final VisualDensityService visualDensityService =
+      locator<VisualDensityService>();
 
   final baseStyle = createButtonTheme(
     color: color,
@@ -1389,8 +1458,14 @@ ButtonStyle createIconButtonTheme({
   return baseStyle.copyWith(
     padding: WidgetStateProperty.all(
       EdgeInsets.symmetric(
-        horizontal: screen.scale(8),
-        vertical: screen.scale(8),
+        horizontal: screenService.scale(
+          8,
+          density: visualDensityService.density,
+        ),
+        vertical: screenService.scale(
+          8,
+          density: visualDensityService.density,
+        ),
       ),
     ),
     shape: WidgetStateProperty.all(

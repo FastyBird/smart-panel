@@ -2,10 +2,15 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
+import 'package:fastybird_smart_panel/api/models/auth_module_register_display.dart';
+import 'package:fastybird_smart_panel/api/models/auth_module_req_register_display.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/application.dart';
+import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/module.dart';
 import 'package:fastybird_smart_panel/modules/devices/module.dart';
@@ -13,9 +18,11 @@ import 'package:fastybird_smart_panel/modules/system/module.dart';
 import 'package:fastybird_smart_panel/modules/weather/module.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:uuid/uuid.dart';
 
 class StartupManagerService {
   static const String _apiSecretKey = 'api_secret';
+  static const String _appUniqueIdentifierKey = 'app_uid';
 
   final double screenWidth;
   final double screenHeight;
@@ -28,20 +35,49 @@ class StartupManagerService {
   late SocketService _socketClient;
 
   late FlutterSecureStorage _securedStorage;
+  late SecureStorageFallback _securedStorageFallback;
 
   StartupManagerService({
     required this.screenWidth,
     required this.screenHeight,
     required this.pixelRatio,
   }) {
-    _securedStorage = const FlutterSecureStorage();
+    if (kDebugMode) {
+      debugPrint(
+        '[STARTUP MANAGER] Starting application with width: $screenWidth, height: $screenHeight, pixelRatio: $pixelRatio',
+      );
+    }
 
-    print(
-        '${Platform.environment['APP_HOST'] ?? 'http://10.0.2.2'}:${Platform.environment['BACKEND_PORT'] ?? '3000'}/api/v1');
+    if (Platform.isAndroid || Platform.isIOS) {
+      _securedStorage = const FlutterSecureStorage();
+    } else {
+      _securedStorageFallback = SecureStorageFallback();
+    }
+
+    final bool isAndroidEmulator = Platform.isAndroid && !kReleaseMode;
+
+    const String appHost = String.fromEnvironment(
+      'FB_APP_HOST',
+      defaultValue: 'http://localhost',
+    );
+    const String backendPort = String.fromEnvironment(
+      'FB_BACKEND_PORT',
+      defaultValue: '3000',
+    );
+
+    final String host = isAndroidEmulator ? 'http://10.0.2.2' : appHost;
+
+    final String baseUrl = '$host:$backendPort/api/v1';
+
+    if (kDebugMode) {
+      debugPrint(
+        '[STARTUP MANAGER] API base URL: $baseUrl',
+      );
+    }
+
     _apiIoService = Dio(
       BaseOptions(
-        baseUrl:
-            '${Platform.environment['APP_HOST'] ?? 'http://10.0.2.2'}:${Platform.environment['BACKEND_PORT'] ?? '3000'}/api/v1',
+        baseUrl: baseUrl,
         contentType: 'application/json',
       ),
     );
@@ -82,7 +118,17 @@ class StartupManagerService {
         pixelRatio: pixelRatio,
       ),
     );
-    locator.registerSingleton(_securedStorage);
+    locator.registerLazySingleton(
+      () => VisualDensityService(
+        pixelRatio: pixelRatio,
+        envDensity: const String.fromEnvironment('FB_DISPLAY_DENSITY'),
+      ),
+    );
+    if (Platform.isAndroid || Platform.isIOS) {
+      locator.registerSingleton(_securedStorage);
+    } else {
+      locator.registerSingleton(_securedStorageFallback);
+    }
 
     // Register modules
     locator.registerSingleton(configModuleService);
@@ -100,7 +146,11 @@ class StartupManagerService {
   }
 
   Future<void> initialize() async {
-    _apiSecret = await _securedStorage.read(key: _apiSecretKey);
+    if (Platform.isAndroid || Platform.isIOS) {
+      _apiSecret = await _securedStorage.read(key: _apiSecretKey);
+    } else {
+      _apiSecret = await _securedStorageFallback.read(key: _apiSecretKey);
+    }
 
     if (_apiSecret != null) {
       _apiIoService.options.headers['X-Display-Secret'] = _apiSecret;
@@ -152,17 +202,38 @@ class StartupManagerService {
   }
 
   Future<void> _obtainApiSecret() async {
+    final appUid = await _getAppUid();
+    final mac = await AppInfo.getMacAddress();
+    final versionInfo = await AppInfo.getAppVersionInfo();
+
     try {
-      var registerResponse = await _apiClient.authModule
-          .createAuthModuleRegisterDisplay(userAgent: 'FlutterApp');
+      var registerResponse =
+          await _apiClient.authModule.createAuthModuleRegisterDisplay(
+        userAgent: 'FlutterApp',
+        body: AuthModuleReqRegisterDisplay(
+          data: AuthModuleRegisterDisplay(
+            uid: appUid,
+            mac: mac,
+            version: versionInfo.version,
+            build: versionInfo.build,
+          ),
+        ),
+      );
 
       String apiSecret = registerResponse.data.data.secret;
 
       // Store API secret key
-      await _securedStorage.write(
-        key: _apiSecretKey,
-        value: apiSecret,
-      );
+      if (Platform.isAndroid || Platform.isIOS) {
+        await _securedStorage.write(
+          key: _apiSecretKey,
+          value: apiSecret,
+        );
+      } else {
+        await _securedStorageFallback.write(
+          key: _apiSecretKey,
+          value: apiSecret,
+        );
+      }
 
       // Update API secret key in the API client
       _apiIoService.options.headers['X-Display-Secret'] = apiSecret;
@@ -207,7 +278,11 @@ class StartupManagerService {
           debugPrint('[CHECK SECRET] Stored secret key is not valid');
         }
 
-        _securedStorage.delete(key: _apiSecretKey);
+        if (Platform.isAndroid || Platform.isIOS) {
+          _securedStorage.delete(key: _apiSecretKey);
+        } else {
+          _securedStorageFallback.delete(key: _apiSecretKey);
+        }
         _apiSecret = null;
 
         await _initialize();
@@ -223,5 +298,34 @@ class StartupManagerService {
 
       throw StateError('Unexpected backend error.');
     }
+  }
+
+  Future<String> _getAppUid() async {
+    late String? appUid;
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      appUid = await _securedStorage.read(key: _appUniqueIdentifierKey);
+    } else {
+      appUid = await _securedStorageFallback.read(key: _appUniqueIdentifierKey);
+    }
+
+    if (appUid == null) {
+      appUid = const Uuid().v4();
+
+      // Store app UID
+      if (Platform.isAndroid || Platform.isIOS) {
+        await _securedStorage.write(
+          key: _appUniqueIdentifierKey,
+          value: appUid,
+        );
+      } else {
+        await _securedStorageFallback.write(
+          key: _appUniqueIdentifierKey,
+          value: appUid,
+        );
+      }
+    }
+
+    return appUid;
   }
 }
