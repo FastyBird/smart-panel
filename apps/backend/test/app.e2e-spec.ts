@@ -41,9 +41,9 @@ describe('FastyBird Smart Panel (e2e)', () => {
 	});
 
 	// ✅ User Registration
-	it('/api/v1/auth-module/auth/register (POST) - should register a new user', async () => {
+	it('/auth-module/auth/register (POST) - should register a new user', async () => {
 		await request(app.getHttpServer())
-			.post('/api/v1/auth-module/auth/register')
+			.post('/auth-module/auth/register')
 			.send({
 				data: {
 					username: 'testuser',
@@ -55,9 +55,9 @@ describe('FastyBird Smart Panel (e2e)', () => {
 	});
 
 	// ✅ User Login
-	it('/api/v1/auth-module/auth/login (POST) - should log in an existing user', async () => {
+	it('/auth-module/auth/login (POST) - should log in an existing user', async () => {
 		const response = await request(app.getHttpServer())
-			.post('/api/v1/auth-module/auth/login')
+			.post('/auth-module/auth/login')
 			.send({
 				data: {
 					username: 'testuser',
@@ -73,9 +73,9 @@ describe('FastyBird Smart Panel (e2e)', () => {
 	});
 
 	// ✅ Fetch Profile
-	it('/api/v1/auth-module/auth/profile (GET) - should fetch user profile', async () => {
+	it('/auth-module/auth/profile (GET) - should fetch user profile', async () => {
 		const response = await request(app.getHttpServer())
-			.get('/api/v1/auth-module/auth/profile')
+			.get('/auth-module/auth/profile')
 			.set('Authorization', `Bearer ${accessToken}`)
 			.expect(200);
 
@@ -85,9 +85,9 @@ describe('FastyBird Smart Panel (e2e)', () => {
 	});
 
 	// ✅ Fetch All Users (Requires Admin Role)
-	it('/api/v1/users-module/users (GET) - should fetch all users (admin only)', async () => {
+	it('/users-module/users (GET) - should fetch all users (admin only)', async () => {
 		const response = await request(app.getHttpServer())
-			.get('/api/v1/users-module/users')
+			.get('/users-module/users')
 			.set('Authorization', `Bearer ${accessToken}`)
 			.expect(200);
 
@@ -97,10 +97,10 @@ describe('FastyBird Smart Panel (e2e)', () => {
 	});
 
 	// ✅ Delete User
-	it('/api/v1/users-module/users/:id (DELETE) - should delete a user', async () => {
+	it('/users-module/users/:id (DELETE) - should delete a user', async () => {
 		// Fetch user to delete
 		const usersResponse = await request(app.getHttpServer())
-			.get('/api/v1/users-module/users')
+			.get('/users-module/users')
 			.set('Authorization', `Bearer ${accessToken}`)
 			.expect(200);
 
@@ -110,16 +110,16 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			const userId = users[0].id;
 
 			await request(app.getHttpServer())
-				.delete(`/api/v1/users-module/users/${userId}`)
+				.delete(`/users-module/users/${userId}`)
 				.set('Authorization', `Bearer ${accessToken}`)
 				.expect(422);
 		}
 	});
 
 	// ✅ Register Display Device
-	it('/api/v1/auth-module/auth/register-display (POST) - should register a display device', async () => {
+	it('/auth-module/auth/register-display (POST) - should register a display device', async () => {
 		const response = await request(app.getHttpServer())
-			.post('/api/v1/auth-module/auth/register-display')
+			.post('/auth-module/auth/register-display')
 			.set('User-Agent', 'FlutterApp')
 			.expect(201);
 
@@ -129,7 +129,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 	});
 
 	// ✅ Unauthorized Access Test
-	it('/api/v1/auth-module/auth/profile (GET) - should fail without token', async () => {
-		await request(app.getHttpServer()).get('/api/v1/auth-module/auth/profile').expect(401);
+	it('/auth-module/auth/profile (GET) - should fail without token', async () => {
+		await request(app.getHttpServer()).get('/auth-module/auth/profile').expect(401);
 	});
 });

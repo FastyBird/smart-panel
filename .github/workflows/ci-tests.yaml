@@ -99,6 +99,7 @@ jobs:
           FB_DB_SYNC: "true"
           FB_DB_LOGGING: "false"
           FB_ADMIN_PORT: "3003"
+          FB_ADMIN_UI_PATH: ""
 
       - name: "Generate Coverage Report"
         run: "pnpm --filter @fastybird/smart-panel-backend test:cov"
