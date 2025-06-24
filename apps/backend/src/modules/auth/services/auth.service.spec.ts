@@ -282,7 +282,7 @@ describe('AuthService', () => {
 
 			const result = await authService.register(registerDto);
 
-			expect(result).toBeUndefined();
+      expect(result).toEqual(plainToInstance(UserEntity, registeredUser));
 		});
 
 		it('should throw AuthException if email is already registered', async () => {

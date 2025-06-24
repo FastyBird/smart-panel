@@ -12,7 +12,7 @@ import { v4 as uuid } from 'uuid';
 import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { UserEntity } from '../../users/entities/users.entity';
+import { DisplayEntity, UserEntity } from '../../users/entities/users.entity';
 import { DisplaysService } from '../../users/services/displays.service';
 import { UsersService } from '../../users/services/users.service';
 import { CheckResponseDto } from '../dto/check-response.dto';
@@ -24,6 +24,7 @@ import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
 import { AuthController } from './auth.controller';
+import { UserRole } from '../../users/users.constants';
 
 describe('AuthController', () => {
 	let controller: AuthController;
@@ -65,6 +66,7 @@ describe('AuthController', () => {
 					provide: DisplaysService,
 					useValue: {
 						findForUser: jest.fn(),
+						create: jest.fn(),
 					},
 				},
 			],
@@ -112,9 +114,32 @@ describe('AuthController', () => {
 		it('should register a display when no display user exists', async () => {
 			const expectedResponse = plainToInstance(RegisteredDisplayResponseDto, { secret: 'secure-password' });
 
+			const displayId = uuid().toString();
+
 			jest.spyOn(cryptoService, 'generateSecureSecret').mockReturnValue('secure-password');
 			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(null);
-			jest.spyOn(authService, 'register');
+			jest.spyOn(authService, 'register').mockResolvedValue(plainToInstance(UserEntity, {
+				id: displayId,
+				isHidden: false,
+				username: displayUid,
+				password: 'secure-password',
+				email: null,
+				role: UserRole.DISPLAY,
+				firstName: null,
+				lastName: null,
+				createdAt: new Date(),
+				updatedAt: null,
+			}));
+			jest.spyOn(displayService, 'create').mockResolvedValue(plainToInstance(DisplayEntity, {
+				id: displayId,
+				uid: displayUid,
+				mac: '00:1A:2B:3C:4D:5E',
+				version: '1.0.0',
+				build: '42',
+				user: displayId,
+				createdAt: new Date(),
+				updatedAt: null,
+			}));
 
 			await expect(
 				controller.registerDisplay('FlutterApp', {
