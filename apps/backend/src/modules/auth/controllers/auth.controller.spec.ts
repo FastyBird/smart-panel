@@ -15,6 +15,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DisplayEntity, UserEntity } from '../../users/entities/users.entity';
 import { DisplaysService } from '../../users/services/displays.service';
 import { UsersService } from '../../users/services/users.service';
+import { UserRole } from '../../users/users.constants';
 import { CheckResponseDto } from '../dto/check-response.dto';
 import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
@@ -24,7 +25,6 @@ import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
 import { AuthController } from './auth.controller';
-import { UserRole } from '../../users/users.constants';
 
 describe('AuthController', () => {
 	let controller: AuthController;
@@ -118,28 +118,32 @@ describe('AuthController', () => {
 
 			jest.spyOn(cryptoService, 'generateSecureSecret').mockReturnValue('secure-password');
 			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(null);
-			jest.spyOn(authService, 'register').mockResolvedValue(plainToInstance(UserEntity, {
-				id: displayId,
-				isHidden: false,
-				username: displayUid,
-				password: 'secure-password',
-				email: null,
-				role: UserRole.DISPLAY,
-				firstName: null,
-				lastName: null,
-				createdAt: new Date(),
-				updatedAt: null,
-			}));
-			jest.spyOn(displayService, 'create').mockResolvedValue(plainToInstance(DisplayEntity, {
-				id: displayId,
-				uid: displayUid,
-				mac: '00:1A:2B:3C:4D:5E',
-				version: '1.0.0',
-				build: '42',
-				user: displayId,
-				createdAt: new Date(),
-				updatedAt: null,
-			}));
+			jest.spyOn(authService, 'register').mockResolvedValue(
+				plainToInstance(UserEntity, {
+					id: displayId,
+					isHidden: false,
+					username: displayUid,
+					password: 'secure-password',
+					email: null,
+					role: UserRole.DISPLAY,
+					firstName: null,
+					lastName: null,
+					createdAt: new Date(),
+					updatedAt: null,
+				}),
+			);
+			jest.spyOn(displayService, 'create').mockResolvedValue(
+				plainToInstance(DisplayEntity, {
+					id: displayId,
+					uid: displayUid,
+					mac: '00:1A:2B:3C:4D:5E',
+					version: '1.0.0',
+					build: '42',
+					user: displayId,
+					createdAt: new Date(),
+					updatedAt: null,
+				}),
+			);
 
 			await expect(
 				controller.registerDisplay('FlutterApp', {
