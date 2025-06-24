@@ -12,6 +12,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
+import {v4 as uuid} from "uuid";
 
 describe('FastyBird Smart Panel (e2e)', () => {
 	let app: INestApplication;
@@ -121,6 +122,14 @@ describe('FastyBird Smart Panel (e2e)', () => {
 		const response = await request(app.getHttpServer())
 			.post('/auth-module/auth/register-display')
 			.set('User-Agent', 'FlutterApp')
+      .send({
+        data: {
+          uid: uuid.toString(),
+          mac: '00:1A:2B:3C:4D:5E',
+          version: '1.0.0',
+          build: '42',
+        },
+      })
 			.expect(201);
 
 		const responseBody = response.body as { secret: string };
