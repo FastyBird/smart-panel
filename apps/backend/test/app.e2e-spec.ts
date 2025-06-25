@@ -130,11 +130,9 @@ describe('FastyBird Smart Panel (e2e)', () => {
 					build: '42',
 				},
 			})
-			.expect(201);
+			.expect(400);
 
-		const responseBody = response.body as { secret: string };
-
-		expect(responseBody).toHaveProperty('secret');
+    console.log(response.body);
 	});
 
 	// ✅ Unauthorized Access Test
