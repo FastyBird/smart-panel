@@ -6,6 +6,7 @@ Reason: The test setup involves dynamic assignment and interaction with Jest moc
 which TypeScript cannot strictly type-check. These cases require flexible handling
 that ESLint flags as unsafe, but they are necessary for effective testing.
 */
+import { useContainer } from 'class-validator';
 import request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
@@ -33,6 +34,8 @@ describe('FastyBird Smart Panel (e2e)', () => {
 				transform: true,
 			}),
 		);
+
+		useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
 		await app.init();
 	});
@@ -124,7 +127,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			.set('User-Agent', 'FlutterApp')
 			.send({
 				data: {
-          uid: uuid(),
+					uid: uuid(),
 					mac: '00:1A:2B:3C:4D:5E',
 					version: '1.0.0',
 					build: '42',
@@ -132,7 +135,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			})
 			.expect(403);
 
-    console.log(response.body);
+		console.log(response.body);
 	});
 
 	// ✅ Unauthorized Access Test
