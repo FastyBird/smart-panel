@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { Cache } from 'cache-manager';
-import { Request } from 'express';
+import { FastifyRequest as Request } from 'fastify';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
@@ -84,7 +84,7 @@ export class AuthGuard implements CanActivate {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[AUTH] JWT authentication failed', { message: err.message, stack: err.stack });
+			this.logger.debug('[AUTH] JWT authentication failed', { message: err.message, stack: err.stack });
 
 			throw new UnauthorizedException('Invalid or expired token');
 		}
@@ -158,40 +158,49 @@ export class AuthGuard implements CanActivate {
 	}
 
 	private async validateDisplaySecret(request: Request, providedSecret: string): Promise<boolean> {
-		let userSecret: string | undefined;
+		let usersSecrets: string[] | null = null;
 
 		try {
-			userSecret = await this.cacheManager.get<string>(DISPLAY_SECRET_CACHE_KEY);
+			usersSecrets = await this.cacheManager.get<string[]>(DISPLAY_SECRET_CACHE_KEY);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error('[AUTH] Failed to fetch authentication data', { message: err.message, stack: err.stack });
 		}
 
-		if (!userSecret) {
+		if (usersSecrets === null || usersSecrets.length === 0) {
 			this.logger.debug('[AUTH] Display secret not in cache, fetching from database');
 
-			const displayUser = await this.usersService.findByUsername('display');
+			const displayUsers = await this.usersService.findAllByRole(UserRole.DISPLAY);
 
-			if (!displayUser) {
+			if (displayUsers.length === 0) {
 				this.logger.warn('[AUTH] No display user found');
 
 				throw new UnauthorizedException('Invalid display authentication');
 			}
 
-			userSecret = displayUser.password;
+			usersSecrets = displayUsers.map((user) => user.password);
 		}
 
-		const match = await bcrypt.compare(providedSecret, userSecret);
+		let found = false;
 
-		if (!match) {
+		for (const userSecret of usersSecrets) {
+			const match = await bcrypt.compare(providedSecret, userSecret);
+
+			if (match) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found) {
 			this.logger.warn(`[AUTH] Invalid ${DISPLAY_SECRET_HEADER} provided`);
 
 			throw new UnauthorizedException('Invalid display authentication');
 		}
 
 		try {
-			await this.cacheManager.set(DISPLAY_SECRET_CACHE_KEY, userSecret);
+			await this.cacheManager.set(DISPLAY_SECRET_CACHE_KEY, usersSecrets);
 		} catch (error) {
 			const err = error as Error;
 

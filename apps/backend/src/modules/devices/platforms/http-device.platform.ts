@@ -24,22 +24,37 @@ export abstract class HttpDevicePlatform implements IDevicePlatform {
 
 		try {
 			for (let i = 0; i < attempts; i++) {
-				const response = await this.attemptToSendCommand(endpoint, {
-					method,
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload),
-					timeout: 5000, // 5-second timeout
-					...options,
-				});
+				const controller = new AbortController();
+				const timeout = setTimeout(() => controller.abort(), 5000); // 5-second timeout
 
-				if (response === false) {
-					this.innerLogger.warn(`[HTTP PLATFORM] Retry attempt ${i + 1} failed`);
-				} else {
-					if (!response.ok) {
-						return false;
+				try {
+					const response = await this.attemptToSendCommand(endpoint, {
+						method,
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(payload),
+						signal: controller.signal,
+						...options,
+					});
+
+					clearTimeout(timeout);
+
+					if (response === false) {
+						this.innerLogger.warn(`[HTTP PLATFORM] Retry attempt ${i + 1} failed`);
+					} else {
+						if (!response.ok) {
+							return false;
+						}
+						return response;
+					}
+				} catch (error) {
+					clearTimeout(timeout);
+
+					if (error instanceof Error && error.name === 'AbortError') {
+						this.innerLogger.warn(`[HTTP PLATFORM] Request to ${endpoint} timed out`);
+						continue; // Retry
 					}
 
-					return response;
+					throw error;
 				}
 			}
 		} catch (error) {

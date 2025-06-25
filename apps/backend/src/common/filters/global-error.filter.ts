@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,6 +13,7 @@ export class GlobalErrorFilter implements ExceptionFilter {
 		const request = ctx.getRequest<Request>();
 		const response = ctx.getResponse<Response>();
 		const requestId = uuidv4();
+		console.log('ERROR', exception);
 
 		// Handle known HTTP exceptions
 		const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -39,6 +40,6 @@ export class GlobalErrorFilter implements ExceptionFilter {
 			},
 		};
 
-		response.status(status).json(errorResponse);
+		response.code(status).type('application/json').send(errorResponse);
 	}
 }

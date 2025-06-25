@@ -4,14 +4,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ListUsersCommand } from './commands/list-users.command';
 import { UsersController } from './controllers/users.controller';
-import { UserEntity } from './entities/users.entity';
+import { DisplayEntity, UserEntity } from './entities/users.entity';
 import { RolesGuard } from './guards/roles.guard';
+import { DisplaysService } from './services/displays.service';
 import { UsersService } from './services/users.service';
+import { UserExistsConstraintValidator } from './validators/user-exists-constraint.validator';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UserEntity])],
+	imports: [TypeOrmModule.forFeature([UserEntity, DisplayEntity])],
 	providers: [
 		UsersService,
+		DisplaysService,
+		UserExistsConstraintValidator,
 		ListUsersCommand,
 		{
 			provide: APP_GUARD,
@@ -19,6 +23,6 @@ import { UsersService } from './services/users.service';
 		},
 	],
 	controllers: [UsersController],
-	exports: [UsersService],
+	exports: [UsersService, DisplaysService, UserExistsConstraintValidator],
 })
 export class UsersModule {}

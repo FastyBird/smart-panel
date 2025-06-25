@@ -1,3 +1,6 @@
+import { existsSync } from 'fs';
+import { join } from 'path';
+
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 export const getEnvValue = <T>(configService: NestConfigService, key: string, defaultValue?: T): T => {
@@ -18,4 +21,14 @@ export const getEnvValue = <T>(configService: NestConfigService, key: string, de
 	}
 
 	return value as unknown as T;
+};
+
+export const resolveStaticPath = (rootPath: string): string => {
+	const resolved = join(rootPath, 'index.html');
+
+	if (existsSync(resolved)) {
+		return rootPath;
+	}
+
+	throw new Error(`The static files folder: ${rootPath} does not exist`);
 };

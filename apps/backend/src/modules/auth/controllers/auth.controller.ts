@@ -13,9 +13,11 @@ import {
 	Req,
 } from '@nestjs/common';
 
+import { CreateDisplayDto } from '../../users/dto/create-display.dto';
 import { UserEntity } from '../../users/entities/users.entity';
+import { DisplaysService } from '../../users/services/displays.service';
 import { UsersService } from '../../users/services/users.service';
-import { DISPLAY_USERNAME } from '../../users/users.constants';
+import { UserRole } from '../../users/users.constants';
 import { AuthenticatedRequest } from '../auth.constants';
 import { AuthNotFoundException, AuthUnauthorizedException } from '../auth.exceptions';
 import { ReqCheckEmailDto } from '../dto/check-email.dto';
@@ -25,6 +27,7 @@ import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
 import { ReqLoginDto } from '../dto/login.dto';
 import { RefreshTokenResponseDto } from '../dto/refresh-token-response.dto';
 import { ReqRefreshDto } from '../dto/refresh-token.dto';
+import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { ReqRegisterDto } from '../dto/register.dto';
 import { RegisteredDisplayResponseDto } from '../dto/registered-display-response.dto';
 import { Public } from '../guards/auth.guard';
@@ -38,6 +41,7 @@ export class AuthController {
 	constructor(
 		private readonly authService: AuthService,
 		private readonly userService: UsersService,
+		private readonly displayService: DisplaysService,
 		private readonly cryptoService: CryptoService,
 	) {}
 
@@ -73,12 +77,6 @@ export class AuthController {
 			throw new ForbiddenException('Application owner already exists');
 		}
 
-		if (body.data.username === DISPLAY_USERNAME) {
-			this.logger.warn('[REGISTER] User is trying to use reserved username');
-
-			throw new ForbiddenException('Trying to register with reserved username');
-		}
-
 		this.logger.debug(`[REGISTER] Registering new user username=${body.data.username}, email=${body.data.email}`);
 
 		await this.authService.register(body.data);
@@ -106,7 +104,7 @@ export class AuthController {
 
 	@Public()
 	@Post('register-display')
-	async registerDisplay(@Headers('User-Agent') userAgent: string) {
+	async registerDisplay(@Headers('User-Agent') userAgent: string, @Body() createDto: ReqRegisterDisplayDto) {
 		this.logger.debug(`[REGISTER DISPLAY] User-Agent: ${userAgent}`);
 
 		if (!userAgent || !userAgent.includes('FlutterApp')) {
@@ -115,7 +113,7 @@ export class AuthController {
 			throw new ForbiddenException('Access Denied');
 		}
 
-		const displayUser = await this.userService.findByUsername(DISPLAY_USERNAME);
+		const displayUser = await this.userService.findByUsername(createDto.data.uid);
 
 		if (displayUser !== null) {
 			this.logger.warn('[REGISTER DISPLAY] Display user already registered');
@@ -126,10 +124,25 @@ export class AuthController {
 		try {
 			const password = this.cryptoService.generateSecureSecret();
 
-			await this.authService.register({
-				username: DISPLAY_USERNAME,
+			const displayUser = await this.authService.register({
+				username: createDto.data.uid,
 				password,
+				role: UserRole.DISPLAY,
 			});
+
+			const dtoInstance = plainToInstance(
+				CreateDisplayDto,
+				{
+					...createDto.data,
+					user: displayUser.id,
+				},
+				{
+					enableImplicitConversion: true,
+					exposeUnsetFields: false,
+				},
+			);
+
+			await this.displayService.create(displayUser.id, dtoInstance);
 
 			this.logger.debug('[REGISTER DISPLAY] Display user successfully registered');
 

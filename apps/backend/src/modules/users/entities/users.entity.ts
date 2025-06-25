@@ -1,8 +1,9 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
-import { Column, Entity } from 'typeorm';
+import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, IsUUID, Validate, ValidateIf } from 'class-validator';
+import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { UserRole } from '../users.constants';
 
 @Entity('users_module_users')
@@ -56,4 +57,40 @@ export class UserEntity extends BaseEntity {
 		default: UserRole.USER,
 	})
 	role: UserRole = UserRole.USER;
+}
+
+@Entity('users_module_displays')
+export class DisplayEntity extends BaseEntity {
+	@Expose()
+	@IsString()
+	@IsUUID()
+	@PrimaryGeneratedColumn('uuid')
+	uid: string;
+
+	@Expose()
+	@IsString()
+	@Column({ nullable: false })
+	mac: string;
+
+	@Expose()
+	@IsString()
+	@Column({ nullable: false })
+	version: string;
+
+	@Expose()
+	@IsString()
+	@Column({ nullable: false })
+	build: string;
+
+	@Expose()
+	@ValidateIf((_, value) => typeof value === 'string')
+	@IsUUID('4', { message: '[{"field":"user","reason":"User must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => typeof value === 'object')
+	@Validate(AbstractInstanceValidator, [UserEntity], {
+		message: '[{"field":"user","reason":"User must be a valid subclass of UserEntity."}]',
+	})
+	@Transform(({ value }: { value: UserEntity }) => value.id, { toPlainOnly: true })
+	@OneToOne(() => UserEntity, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'user_id' })
+	user: UserEntity | string;
 }

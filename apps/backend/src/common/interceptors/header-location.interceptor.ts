@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { FastifyReply as Response } from 'fastify';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -50,7 +50,7 @@ export class HeaderLocationInterceptor implements NestInterceptor {
 					}
 
 					// Update the Location header
-					response.setHeader('Location', updatedLocation);
+					response.header('Location', updatedLocation);
 				}
 
 				return data; // Pass the original data to the response

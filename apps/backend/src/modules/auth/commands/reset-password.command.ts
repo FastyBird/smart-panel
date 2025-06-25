@@ -1,4 +1,3 @@
-import bcrypt from 'bcrypt';
 import { Command, Positional } from 'nestjs-command';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -43,7 +42,7 @@ export class ResetPasswordCommand {
 		console.log(`\n\x1b[33m🔹 Resetting password for owner: \x1b[1m${user.username}\x1b[0m\n`);
 
 		await this.service.update(user.id, {
-			password: await bcrypt.hash(password, 10),
+			password,
 		});
 
 		console.log(`\n\x1b[32m✅ Successfully reset password for: \x1b[1m${user.username}\x1b[0m\n`);
