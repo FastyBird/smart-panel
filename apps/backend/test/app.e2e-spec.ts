@@ -130,7 +130,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 					build: '42',
 				},
 			})
-			.expect(400);
+			.expect(403);
 
     console.log(response.body);
 	});
