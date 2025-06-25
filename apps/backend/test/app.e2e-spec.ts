@@ -133,10 +133,12 @@ describe('FastyBird Smart Panel (e2e)', () => {
 					build: '42',
 				},
 			})
-			.expect(403);
+      .expect(201);
 
-		console.log(response.body);
-	});
+    const responseBody = response.body as { secret: string };
+
+    expect(responseBody).toHaveProperty('secret');
+  });
 
 	// ✅ Unauthorized Access Test
 	it('/auth-module/auth/profile (GET) - should fail without token', async () => {
