@@ -124,7 +124,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			.set('User-Agent', 'FlutterApp')
 			.send({
 				data: {
-					uid: uuid.toString(),
+					uid: uuid,
 					mac: '00:1A:2B:3C:4D:5E',
 					version: '1.0.0',
 					build: '42',
