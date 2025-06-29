@@ -251,6 +251,10 @@ jobs:
         working-directory: "./build"
         run: "pnpm add @fastybird/smart-panel-admin@${{ needs.sync-versions.outputs.version }}"
 
+      - name: "Install Production Dependencies"
+        working-directory: "./build"
+        run: "pnpm install --prod"
+
       - name: "Archive Build"
         run: |
           tar -czvf smart-panel.tar.gz -C ./build .
