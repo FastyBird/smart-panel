@@ -1,6 +1,8 @@
 packages:
   - apps/**
   - docs
+  # Exclude build folder
+  - '!build'
 onlyBuiltDependencies:
   - '@nestjs/core'
   - '@parcel/watcher'
