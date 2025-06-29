@@ -204,7 +204,7 @@ jobs:
 
   build-application:
     needs: [ "build-display", "publish-admin", "publish-backend" ]
-    name: "Build Nest Backend App"
+    name: "Pre-Build Application"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -221,6 +221,12 @@ jobs:
 
       - name: "Pull Updated Branch"
         run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
 
       - name: "Download Application Assets"
         uses: "actions/download-artifact@v4"
