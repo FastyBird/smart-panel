@@ -41,6 +41,18 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 		the terminal.
 	</Callout>
 
+	## Update Your System
+
+	Before installing the Smart Panel, it’s a good idea to make sure your Raspberry Pi is up to date:
+
+	```bash copy
+	sudo apt update & sudo apt upgrade -y
+	```
+
+	<Callout type="info">
+		This updates all system packages to their latest versions, which helps ensure compatibility and security.
+	</Callout>
+
 	## Install Git
 
 	Git is a version control tool used to download and manage the Smart Panel’s source code. We’ll use it to clone the
@@ -49,7 +61,6 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	To install Git on your Raspberry Pi:
 
 	```bash copy
-	sudo apt update
 	sudo apt install git -y
 	```
 
@@ -75,7 +86,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	After Node.js is installed, you can install [pnpm](https://pnpm.io) globally:
 
 	```bash copy
-	npm install -g pnpm
+	sudo npm install -g pnpm
 	```
 
 	<Callout type="info">
@@ -90,9 +101,15 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	{<h3>Install Required Dependencies</h3>}
 
 	```bash copy
-	sudo apt update
-	sudo apt install -y cmake pkg-config libglvnd-dev libdrm-dev libgbm-dev \
-	libinput-dev libudev-dev libxkbcommon-dev libwayland-dev clang ninja-build
+	sudo apt install cmake libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev \
+	libdrm-dev libgbm-dev ttf-mscorefonts-installer fontconfig libsystemd-dev \
+	libinput-dev libudev-dev  libxkbcommon-dev -y
+	```
+
+	{<h4>Update the system fonts</h4>}
+
+	```bash copy
+	sudo fc-cache
 	```
 
 	{<h3>Build and Install flutter-pi</h3>}
@@ -114,9 +131,20 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 
 	```bash copy
 	cd /opt/flutter-pi
-	cmake -Bbuild -GNinja
-	ninja -C build
-	sudo ninja -C build install
+	mkdir build && cd build
+	cmake ..
+	make -j`nproc`
+	sudo make install
+	```
+
+	Give the **pi** permission to use 3D acceleration:
+
+	<Callout type="warning">
+		Potential security hazard. If you don't want to do this, launch Smart Panel UI using sudo instead.
+	</Callout>
+
+	```bash copy
+	sudo usermod -a -G render pi
 	```
 
 	<Callout type="info">
@@ -131,7 +159,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	Open the boot config file:
 
 	```bash copy
-	sudo nano /boot/config.txt
+	sudo nano /boot/firmware/config.txt
 	```
 
 	Look for this line and make sure it is **enabled** (not commented out):
@@ -161,94 +189,76 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	To install InfluxDB v1.8:
 
 	```bash copy
-	sudo apt update
-	sudo apt install influxdb
+	wget -qO- https://repos.influxdata.com/influxdata-archive_compat.key | sudo tee /etc/apt/trusted.gpg.d/influxdata.asc
+	```
+
+	```bash copy
+	echo "deb https://repos.influxdata.com/debian bookworm stable" | sudo tee /etc/apt/sources.list.d/influxdata.list
+	```
+
+	```bash copy
+	sudo apt install influxdb=1.8.10-1 -y
 	```
 
 	Then enable and start the service:
 
 	```bash copy
 	sudo systemctl enable influxdb
+	```
+
+	```bash copy
 	sudo systemctl start influxdb
 	```
 
 	To verify that InfluxDB is running:
 
 	```bash copy
-	influx
+	influxd version
 	```
 
-	This will launch the InfluxDB shell (> prompt). To exit:
+	You should see:
 
-	```bash copy
-	exit
+	```bash
+	InfluxDB v1.8.10 (git: ...)
 	```
 
 	<Callout type="warning">
 		Make sure you're using InfluxDB **v1.8**. Installing **InfluxDB 2.x** will not work.
 	</Callout>
 
-	## Clone the Repository
+	## Install the Smart Panel Application
 
-	To get the full source code and tools for the Smart Panel, you’ll need to clone the GitHub repository.
+	To get the full Smart Panel software—including the backend, admin UI, and the display app—you’ll need to download and
+	unpack the latest release.
 
-	Create the directory and set ownership so your user can write to it:
+	Create the target directory and give your user ownership:
 
 	```bash copy
 	sudo mkdir -p /opt/smart-panel
 	sudo chown -R ${USER}:${USER} /opt/smart-panel
 	```
 
-	Clone the GitHub repository into the folder:
-
-	```bash copy
-	git clone https://github.com/FastyBird/smart-panel.git /opt/smart-panel
-	```
-
-	Move into the cloned project directory:
+	Move into the project directory:
 
 	```bash copy
 	cd /opt/smart-panel
 	```
 
-	## Install the Display application
-
-	The Smart Panel display is a pre-built Flutter app that you can easily download and run on your device.
-
-	Create the directory and set ownership so your user can write to it:
+	Download and Unpack the Latest Release:
 
 	```bash copy
-	sudo mkdir -p /opt/smart-panel/display
-	sudo chown -R ${USER}: /opt/smart-panel/display
-	```
-
-	Download and unpack the latest release:
-
-	```bash copy
-	cd /opt/smart-panel/display
-	wget https://github.com/FastyBird/smart-panel/releases/latest/download/display.tar.gz
-	tar -xzf display.tar.gz -C .
-	rm display.tar.gz
-	```
-
-	## Bootstrap the Project
-
-	This project uses [pnpm](https://pnpm.io) to manage the monorepo.
-
-	Run the bootstrap command to install packages, generate types, run database migrations, and build the admin UI:
-
-	```bash
-	cd /opt/smart-panel
-	pnpm run bootstrap
+	wget https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
+	tar -xzf smart-panel.tar.gz -C .
+	rm smart-panel.tar.gz
 	```
 
 	<Callout type="info">
-		This command prepares the backend and admin UI for use. The display app was installed separately in an earlier step.
+		This archive contains everything you need: backend, admin UI, and the prebuilt display app.
 	</Callout>
 
 	## Run Backend, Admin & Display as Services
 
-	You’ll want your Smart Panel to boot up and run the backend and display automatically. Let’s set them up using systemd services.
+	You’ll want your Smart Panel to automatically launch on boot. Here’s how to set up systemd services for both backend and display:
 
 	### Backend Service
 
@@ -268,10 +278,9 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	[Service]
 	User=pi
 	WorkingDirectory=/opt/smart-panel
-	ExecStart=/home/pi/.local/share/pnpm/pnpm exec pnpm --filter @fastybird/smart-panel-backend start:prod
+	ExecStart=pnpm start
 	Restart=always
 	Environment=NODE_ENV=production
-	Environment=FB_DB_SYNC=true
 
 	[Install]
 	WantedBy=multi-user.target
@@ -284,38 +293,9 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	sudo systemctl start smart-panel-backend
 	```
 
-	### Admin Service
-
-	Create a service file:
-
-	```bash copy
-	sudo nano /etc/systemd/system/smart-panel-admin.service
-	```
-
-	Paste this:
-
-	```bash copy
-	[Unit]
-	Description=Smart Panel Admin UI
-	After=network.target
-
-	[Service]
-	User=pi
-	WorkingDirectory=/opt/smart-panel
-	ExecStart=/home/pi/.local/share/pnpm/pnpm exec pnpm --filter @fastybird/smart-panel-admin start:prod
-	Restart=always
-	Environment=NODE_ENV=production
-
-	[Install]
-	WantedBy=multi-user.target
-	```
-
-	Enable and start the service:
-
-	```bash copy
-	sudo systemctl enable smart-panel-admin
-	sudo systemctl start smart-panel-admin
-	```
+	<Callout type="info">
+		The **Admin Interface** is already bundled and served through the backend — you don’t need to run it separately.
+	</Callout>
 
 	### Display Service
 
@@ -335,7 +315,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	[Service]
 	User=pi
 	WorkingDirectory=/opt/smart-panel/display
-	ExecStart=/usr/local/bin/flutter-pi .
+	ExecStart=/usr/local/bin/flutter-pi --release .
 	Restart=always
 
 	[Install]
