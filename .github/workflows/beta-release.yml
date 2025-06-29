@@ -59,7 +59,7 @@ jobs:
     strategy:
       matrix:
         node-version: [ "22" ]
-        pnpm-version: [ "9.13.0" ]
+        pnpm-version: [ "10.12.0" ]
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
@@ -84,7 +84,6 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-backend build"
 
       - name: "Publish To NPM"
-        id: "publish-npm"
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/backend"
@@ -101,7 +100,7 @@ jobs:
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/backend"
-          tag: "alpha"
+          tag: "beta"
           npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
           npm-registry-url: "https://npm.pkg.github.com"
           npm-registry: "npm.pkg.github.com"
@@ -114,7 +113,7 @@ jobs:
     strategy:
       matrix:
         node-version: [ "22" ]
-        pnpm-version: [ "9.13.0" ]
+        pnpm-version: [ "10.12.0" ]
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
@@ -139,7 +138,6 @@ jobs:
         run: "pnpm --filter @fastybird/smart-panel-admin build"
 
       - name: "Publish To NPM"
-        id: "publish-npm"
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/admin"
@@ -156,12 +154,12 @@ jobs:
         uses: "./.github/actions/publish-npm-package"
         with:
           package-path: "apps/admin"
-          tag: "alpha"
+          tag: "beta"
           npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
           npm-registry-url: "https://npm.pkg.github.com"
           npm-registry: "npm.pkg.github.com"
 
-  build-flutter:
+  build-display:
     needs: "sync-versions"
     name: "Build Flutter Display App"
     runs-on: "${{ matrix.operating-system }}"
@@ -193,19 +191,75 @@ jobs:
 
       - name: "Archive Flutter Assets"
         run: |
-          tar -czvf smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz -C ./apps/panel/build/flutter_assets .
-          shasum -a 256 smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz > SHASUMS256.txt
+          tar -czvf smart-panel-display.tar.gz -C ./apps/panel/build/flutter_assets .
+          shasum -a 256 smart-panel-display.tar.gz > SHASUMS256.txt
 
       - name: "Upload Artifact"
         uses: "actions/upload-artifact@v4"
         with:
           name: "flutter-assets"
           path: |
-            smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz
+            smart-panel-display.tar.gz
+            SHASUMS256.txt
+
+  build-application:
+    needs: [ "build-display", "publish-admin", "publish-backend" ]
+    name: "Build Nest Backend App"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Download Application Assets"
+        uses: "actions/download-artifact@v4"
+        with:
+          name: "flutter-assets"
+
+      - name: "Extract Flutter Assets to /build/display"
+        run: |
+          mkdir -p ./build/display
+          tar -xzf ./smart-panel-display.tar.gz -C ./build/display
+
+      - name: "Prepare Build Folder"
+        run: |
+          cp .env ./build/
+          cp -r var ./build/
+
+      - name: "Install Backend application"
+        working-directory: "./build"
+        run: "pnpm add @fastybird/smart-panel-backend@${{ needs.sync-versions.outputs.version }}"
+
+      - name: "Install Admin application"
+        working-directory: "./build"
+        run: "pnpm add @fastybird/smart-panel-admin@${{ needs.sync-versions.outputs.version }}"
+
+      - name: "Archive Build"
+        run: |
+          tar -czvf smart-panel.tar.gz -C ./build .
+          shasum -a 256 smart-panel.tar.gz > SHASUMS256.txt
+
+      - name: "Upload Artifact"
+        uses: "actions/upload-artifact@v4"
+        with:
+          name: "application-build"
+          path: |
+            smart-panel.tar.gz
             SHASUMS256.txt
 
   pre-release-beta:
-    needs: ["sync-versions", "publish-admin", "publish-backend", "build-flutter"]
+    needs: ["sync-versions", "publish-admin", "publish-backend", "build-application"]
     name: "Create Beta Pre Release"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -241,20 +295,20 @@ jobs:
           echo "- Backend App: v${{ needs.publish-backend.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: "Download Flutter Assets"
+      - name: "Download Application Build"
         uses: "actions/download-artifact@v4"
         with:
-          name: "flutter-assets"
+          name: "application-build"
 
-      - name: "Attach Flutter Assets"
+      - name: "Attach Application Build"
         uses: "AButler/upload-release-assets@v3.0"
         with:
-          files: "smart-panel-display-${{ needs.sync-versions.outputs.version }}.tar.gz;SHASUMS256.txt"
+          files: "smart-panel.tar.gz;SHASUMS256.txt"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.sync-versions.outputs.version }}
 
   release-to-discord:
-    needs: [ "sync-versions", "publish-admin", "publish-backend", "build-flutter", "pre-release-beta" ]
+    needs: [ "sync-versions", "publish-admin", "publish-backend", "build-application", "pre-release-beta" ]
     name: "Discord Webhooks"
     runs-on: "${{ matrix.operating-system }}"
 
