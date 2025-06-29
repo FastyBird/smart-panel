@@ -132,7 +132,7 @@ jobs:
     strategy:
       matrix:
         node-version: [ "22" ]
-        pnpm-version: [ "9.13.0" ]
+        pnpm-version: [ "10.13.0" ]
         operating-system: [ "ubuntu-latest" ]
 
     outputs:
@@ -186,7 +186,7 @@ jobs:
     strategy:
       matrix:
         node-version: [ "22" ]
-        pnpm-version: [ "9.13.0" ]
+        pnpm-version: [ "10.13.0" ]
         operating-system: [ "ubuntu-latest" ]
 
     outputs:

@@ -47,6 +47,8 @@
     "onboard": "pnpm --filter @fastybird/smart-panel-backend run cli:prod auth:onboarding"
   },
   "engines": {
-    "node": ">=20"
-  }
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.13.0"
 }
