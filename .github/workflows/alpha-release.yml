@@ -257,6 +257,10 @@ jobs:
         working-directory: "./build"
         run: "pnpm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}"
 
+      - name: "Install SQLite Dependency"
+        working-directory: "./build"
+        run: "pnpm add sqlite3"
+
       - name: "Install Production Dependencies"
         working-directory: "./build"
         run: "pnpm install --prod"
