@@ -44,7 +44,7 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 @Module({
 	imports: [
 		NestConfigModule.forRoot({
-			envFilePath: [path.resolve(__dirname, '../../../.env.local'), path.resolve(__dirname, '../../../.env')],
+			envFilePath: [path.resolve(process.cwd(), '.env.local'), path.resolve(process.cwd(), '.env')],
 		}),
 		CacheModule.register({
 			isGlobal: true,
