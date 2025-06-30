@@ -400,3 +400,5 @@ dist
 .serverless/**/*.zip
 
 src/openapi.d.ts
+src/spec
+src/spec/*

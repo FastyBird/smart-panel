@@ -26,3 +26,5 @@ coverage
 *.tsbuildinfo
 
 src/openapi.ts
+src/spec
+src/spec/*

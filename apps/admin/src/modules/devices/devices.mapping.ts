@@ -1,5 +1,3 @@
-import channelsMappingSchema from '../../../../../spec/devices/channels.json';
-import devicesMappingSchema from '../../../../../spec/devices/devices.json';
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
@@ -7,6 +5,8 @@ import {
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
 } from '../../openapi';
+import { channelsSchema } from '../../spec/channels.ts';
+import { devicesSchema } from '../../spec/devices.ts';
 
 export type ChannelPropertySpec = {
 	category: DevicesModuleChannelPropertyCategory;
@@ -259,28 +259,26 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 };
 
 export const deviceChannelsSpecificationOrder: Record<string, DevicesModuleChannelCategory[]> = Object.fromEntries(
-	Object.entries<DeviceSpec>(devicesMappingSchema as unknown as Record<DevicesModuleDeviceCategory, DeviceSpec>).map(
-		([deviceCategory, deviceSpec]) => {
-			const unsortedChannels = Object.values<DeviceChannelSpec>(deviceSpec.channels).map((ch) => ch.category);
+	Object.entries<DeviceSpec>(devicesSchema as unknown as Record<DevicesModuleDeviceCategory, DeviceSpec>).map(([deviceCategory, deviceSpec]) => {
+		const unsortedChannels = Object.values<DeviceChannelSpec>(deviceSpec.channels).map((ch) => ch.category);
 
-			const customOrder = deviceChannelsSortingSpecification[deviceCategory as DevicesModuleDeviceCategory];
+		const customOrder = deviceChannelsSortingSpecification[deviceCategory as DevicesModuleDeviceCategory];
 
-			const sortedChannels = customOrder
-				? [...unsortedChannels].sort((a, b) => {
-						const ai = customOrder.indexOf(a);
-						const bi = customOrder.indexOf(b);
+		const sortedChannels = customOrder
+			? [...unsortedChannels].sort((a, b) => {
+					const ai = customOrder.indexOf(a);
+					const bi = customOrder.indexOf(b);
 
-						if (ai === -1 && bi === -1) return 0; // both not found: keep relative
-						if (ai === -1) return 1; // a not found, b found: b first
-						if (bi === -1) return -1; // b not found, a found: a first
+					if (ai === -1 && bi === -1) return 0; // both not found: keep relative
+					if (ai === -1) return 1; // a not found, b found: b first
+					if (bi === -1) return -1; // b not found, a found: a first
 
-						return ai - bi; // both found: sort by index
-					})
-				: unsortedChannels;
+					return ai - bi; // both found: sort by index
+				})
+			: unsortedChannels;
 
-			return [deviceCategory, sortedChannels];
-		}
-	)
+		return [deviceCategory, sortedChannels];
+	})
 );
 
 export const deviceChannelsSpecificationMappers: Record<
@@ -291,30 +289,28 @@ export const deviceChannelsSpecificationMappers: Record<
 		multiple: DevicesModuleChannelCategory[];
 	}
 > = Object.fromEntries(
-	Object.entries<DeviceSpec>(devicesMappingSchema as unknown as Record<DevicesModuleDeviceCategory, DeviceSpec>).map(
-		([deviceCategory, deviceSpec]) => {
-			const required = Object.values<DeviceChannelSpec>(deviceSpec.channels)
-				.filter((channelSpec) => channelSpec.required)
-				.map((channelSpec) => channelSpec.category);
+	Object.entries<DeviceSpec>(devicesSchema as unknown as Record<DevicesModuleDeviceCategory, DeviceSpec>).map(([deviceCategory, deviceSpec]) => {
+		const required = Object.values<DeviceChannelSpec>(deviceSpec.channels)
+			.filter((channelSpec) => channelSpec.required)
+			.map((channelSpec) => channelSpec.category);
 
-			const optional = Object.values<DeviceChannelSpec>(deviceSpec.channels)
-				.filter((channelSpec) => !channelSpec.required)
-				.map((channelSpec) => channelSpec.category);
+		const optional = Object.values<DeviceChannelSpec>(deviceSpec.channels)
+			.filter((channelSpec) => !channelSpec.required)
+			.map((channelSpec) => channelSpec.category);
 
-			const multiple = Object.values<DeviceChannelSpec>(deviceSpec.channels)
-				.filter((channelSpec) => channelSpec.multiple)
-				.map((channelSpec) => channelSpec.category);
+		const multiple = Object.values<DeviceChannelSpec>(deviceSpec.channels)
+			.filter((channelSpec) => channelSpec.multiple)
+			.map((channelSpec) => channelSpec.category);
 
-			return [
-				deviceCategory,
-				{
-					required,
-					optional,
-					multiple,
-				},
-			];
-		}
-	)
+		return [
+			deviceCategory,
+			{
+				required,
+				optional,
+				multiple,
+			},
+		];
+	})
 );
 
 export const channelChannelsPropertiesSpecificationMappers: Record<
@@ -324,7 +320,7 @@ export const channelChannelsPropertiesSpecificationMappers: Record<
 		optional: DevicesModuleChannelPropertyCategory[];
 	}
 > = Object.fromEntries(
-	Object.entries<ChannelSpec>(channelsMappingSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>).map(
+	Object.entries<ChannelSpec>(channelsSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>).map(
 		([channelCategory, channelSpec]) => {
 			const required = Object.values<ChannelPropertySpec>(channelSpec.properties)
 				.filter((prop) => prop.required)
@@ -343,7 +339,7 @@ export const getChannelPropertySpecification = (
 	channelCategory: DevicesModuleChannelCategory,
 	propertyCategory: DevicesModuleChannelPropertyCategory
 ): ChannelPropertySpec | undefined => {
-	const channelSpec = (channelsMappingSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>)[channelCategory];
+	const channelSpec = (channelsSchema as unknown as Record<DevicesModuleChannelCategory, ChannelSpec>)[channelCategory];
 
 	if (!channelSpec) {
 		return undefined;

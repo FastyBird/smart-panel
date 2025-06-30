@@ -59,7 +59,8 @@
     "test:cov:watch": "vitest --watch --coverage",
     "test:e2e": "playwright test",
     "type-check": "vue-tsc --build",
-    "generate:openapi": "openapi-typescript ../../spec/api/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false"
+    "generate:openapi": "openapi-typescript ../../spec/api/v1/openapi.json -o ./src/openapi.ts --enum --dedupe-enums --root-types --default-non-nullable=false",
+    "generate:spec": "node ./tools/build_devices_spec.mjs && node ./tools/build_channel_spec.mjs"
   },
   "dependencies": {
     "@iconify/json": "^2.2",

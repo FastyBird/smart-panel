@@ -8,7 +8,7 @@ This GitHub Action sets up a Node.js project using PNPM, installs dependencies, 
 * Installs a specified PNPM version
 * Caches the PNPM store for faster installs
 * Installs project dependencies
-* Runs `pnpm generate:openapi`
+* Runs `pnpm generate:openapi` and `pnpm generate:spec`
 
 ## ✅ Usage
 
@@ -34,7 +34,7 @@ This GitHub Action sets up a Node.js project using PNPM, installs dependencies, 
 2. Setup PNPM using `pnpm/action-setup`
 3. Cache the PNPM store directory
 4. Install dependencies using `pnpm install`
-5. Run `pnpm generate:openapi`
+5. Run `pnpm generate:openapi` and `pnpm generate:spec`
 
 ## 📁 Project Structure
 
