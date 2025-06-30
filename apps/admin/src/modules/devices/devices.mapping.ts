@@ -5,8 +5,8 @@ import {
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
 } from '../../openapi';
-import { channelsSchema } from '../../spec/channels.ts';
-import { devicesSchema } from '../../spec/devices.ts';
+import { channelsSchema } from '../../spec/channels';
+import { devicesSchema } from '../../spec/devices';
 
 export type ChannelPropertySpec = {
 	category: DevicesModuleChannelPropertyCategory;
