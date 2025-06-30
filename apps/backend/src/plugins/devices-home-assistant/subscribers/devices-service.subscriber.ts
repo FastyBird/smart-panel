@@ -3,11 +3,11 @@ import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import * as channelsSchema from '../../../../../../spec/devices/channels.json';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { channelsSchema } from '../../../spec/channels';
 import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { CreateHomeAssistantChannelDto } from '../dto/create-channel.dto';
 import { HomeAssistantDeviceEntity } from '../entities/devices-home-assistant.entity';
