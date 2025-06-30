@@ -240,7 +240,7 @@ jobs:
 
       - name: "Prepare Build Folder"
         run: |
-          cp .env ./build/
+          cp -v ./.env ./build/.env
           cp -r var ./build/
 
       - name: "Remove Monorepo Configuration"

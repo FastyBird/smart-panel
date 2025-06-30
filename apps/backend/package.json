@@ -36,6 +36,7 @@
   "main": "dist/main.js",
   "files": [
     "dist/",
+    "static/",
     "package.json",
     "README.md",
     "LICENSE.md"
