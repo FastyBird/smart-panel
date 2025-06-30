@@ -1,5 +1,5 @@
 {
-  "name": "@fastybird/smart-panel",
+  "name": "@fastybird/smart-panel-build",
   "private": true,
   "type": "module",
   "version": "1.0.0-dev.1",
@@ -40,5 +40,5 @@
     "node": ">=20",
     "pnpm": ">=10"
   },
-  "packageManager": "pnpm@10.13.0"
+  "packageManager": "pnpm@10.12.0"
 }

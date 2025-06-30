@@ -11,6 +11,7 @@ const PACKAGES = [
 ];
 
 const ROOT_PKG_PATH = "package.json";
+const BUILD_PKG_PATH = "build/package.json";
 const PUBSPEC_PATH = "apps/panel/pubspec.yaml";
 
 const ref = process.argv[2];
@@ -124,6 +125,20 @@ const updateRootPackageJson = (newVersion) => {
 	console.log(`✅ Updated root package.json`);
 };
 
+const updateBuildPackageJson = (newVersion) => {
+	if (!fs.existsSync(BUILD_PKG_PATH)) {
+		throw new Error(`Missing build package.json at: ${BUILD_PKG_PATH}`);
+	}
+
+	const pkg = JSON.parse(fs.readFileSync(BUILD_PKG_PATH, "utf8"));
+
+	pkg.version = newVersion;
+
+	fs.writeFileSync(BUILD_PKG_PATH, JSON.stringify(pkg, null, 2));
+
+	console.log(`✅ Updated build package.json`);
+};
+
 const updatePubspecYaml = (filePath, baseVersion, tag, buildNumber) => {
 	if (!fs.existsSync(filePath)) {
 		throw new Error(`Missing pubspec.yaml at: ${filePath}`);
@@ -159,6 +174,7 @@ const updatePubspecYaml = (filePath, baseVersion, tag, buildNumber) => {
 	}
 
 	updateRootPackageJson(fullVersion);
+	updateBuildPackageJson(fullVersion);
 	updatePubspecYaml(PUBSPEC_PATH, baseVersion, tag, buildNumber);
 
 	console.log(`📦 Published Version: ${fullVersion}`);
