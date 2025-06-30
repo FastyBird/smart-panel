@@ -240,7 +240,7 @@ jobs:
 
       - name: "Prepare Build Folder"
         run: |
-          cp -v ./.env ./build/.env
+          cp .env ./build/
           cp -r var ./build/
 
       - name: "Remove Monorepo Configuration"
@@ -251,19 +251,15 @@ jobs:
 
       - name: "Install Backend application"
         working-directory: "./build"
-        run: "pnpm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}"
+        run: "npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}"
 
       - name: "Install Admin application"
         working-directory: "./build"
-        run: "pnpm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}"
-
-      - name: "Install SQLite Dependency"
-        working-directory: "./build"
-        run: "pnpm add sqlite3"
+        run: "npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}"
 
       - name: "Install Production Dependencies"
         working-directory: "./build"
-        run: "pnpm install --prod"
+        run: "npm install --omit=dev"
 
       - name: "Archive Build"
         run: |
