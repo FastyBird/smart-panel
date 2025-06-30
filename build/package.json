@@ -15,7 +15,7 @@
     "production",
     "embedded"
   ],
-  "homepage": "https://www.fastybird.com",
+  "homepage": "https://smart-panel.fastybird.com",
   "bugs": "https://github.com/FastyBird/smart-panel/issues",
   "license": "Apache-2.0",
   "author": {
@@ -38,7 +38,7 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": ">=10"
+    "npm": ">=11"
   },
-  "packageManager": "pnpm@10.12.0"
+  "packageManager": "npm@11.4.0"
 }
