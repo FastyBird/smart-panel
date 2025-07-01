@@ -245,7 +245,7 @@ jobs:
         uses: "pguyot/arm-runner-action@v2"
         with:
           base_image: "raspios_lite:latest"
-          image_additional_mb: "512"
+          image_additional_mb: "1024"
           copy_repository_path: "/opt/smart-panel"
           copy_artifact_path: "/opt/smart-panel/build/smart-panel.tar.gz;/opt/build/smart-panel/SHASUMS256.txt"
           copy_artifact_dest: "."
