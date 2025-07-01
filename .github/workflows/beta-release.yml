@@ -249,7 +249,7 @@ jobs:
           cpu_info: "cpuinfo/raspberrypi_zero2_w"
           image_additional_mb: "4096"
           copy_repository_path: "/opt/smart-panel"
-          copy_artifact_path: "/opt/smart-panel/build/smart-panel.tar.gz;/opt/build/smart-panel/SHASUMS256.txt"
+          copy_artifact_path: "/opt/smart-panel/smart-panel.tar.gz;/opt/smart-panel/SHASUMS256.txt"
           copy_artifact_dest: "."
           commands: |
             apt-get update
@@ -260,7 +260,8 @@ jobs:
             npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}
             npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
             npm install --omit=dev
-            tar -czvf smart-panel.tar.gz -C . .
+            cd /opt/smart-panel
+            tar -czvf smart-panel.tar.gz -C ./build .
             shasum -a 256 smart-panel.tar.gz > SHASUMS256.txt
 
       - name: "Upload Artifact"
