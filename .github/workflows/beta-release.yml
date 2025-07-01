@@ -251,7 +251,9 @@ jobs:
           copy_artifact_dest: "."
           commands: |
             apt-get update
-            apt-get install -y curl git nodejs npm
+            apt-get install -y curl git
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+            apt-get install -y nodejs
             cd /opt/smart-panel/build
             npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}
             npm add @fastybird/smart-panel-admin@${{ needs.publish-admin.outputs.version }}
