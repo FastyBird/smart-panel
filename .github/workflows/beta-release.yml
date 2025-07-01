@@ -244,12 +244,11 @@ jobs:
       - name: "Run Build in ARM Environment"
         uses: "pguyot/arm-runner-action@v2"
         with:
-          base_image: "raspbian_lite:latest"
+          base_image: "raspios_lite:latest"
           copy_repository_path: "/opt/smart-panel"
           copy_artifact_path: "/opt/smart-panel/build/smart-panel.tar.gz;/opt/build/smart-panel/SHASUMS256.txt"
           copy_artifact_dest: "."
           commands: |
-            apt-get update
             apt-get install -y curl git nodejs npm
             cd /opt/smart-panel/build
             npm add @fastybird/smart-panel-backend@${{ needs.publish-backend.outputs.version }}
