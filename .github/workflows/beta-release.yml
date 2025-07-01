@@ -249,7 +249,7 @@ jobs:
           cpu_info: "cpuinfo/raspberrypi_zero2_w"
           image_additional_mb: "4096"
           copy_repository_path: "/opt/smart-panel"
-          copy_artifact_path: "/opt/smart-panel/smart-panel.tar.gz;/opt/smart-panel/SHASUMS256.txt"
+          copy_artifact_path: "smart-panel.tar.gz;SHASUMS256.txt"
           copy_artifact_dest: "."
           commands: |
             apt-get update
