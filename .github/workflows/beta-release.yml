@@ -244,7 +244,9 @@ jobs:
       - name: "Run Build in ARM Environment"
         uses: "pguyot/arm-runner-action@v2"
         with:
-          base_image: "raspios_lite:latest"
+          base_image: "dietpi:rpi_armv7_bookworm"
+          cpu: "cortex-a7"
+          cpu_info: "cpuinfo/raspberrypi_zero2_w"
           image_additional_mb: "4096"
           copy_repository_path: "/opt/smart-panel"
           copy_artifact_path: "/opt/smart-panel/build/smart-panel.tar.gz;/opt/build/smart-panel/SHASUMS256.txt"
