@@ -186,8 +186,7 @@ jobs:
           flutter-channel: "${{ matrix.flutter-channel }}"
 
       - name: "Build Flutter Bundle"
-        working-directory: "./apps/panel"
-        run: "flutterpi_tool build --release"
+        run: "melos build-panel-arm-release"
 
       - name: "Archive Flutter Assets"
         run: |
@@ -204,7 +203,7 @@ jobs:
 
       - name: "Build Flutter Bundle for (arm64)"
         working-directory: "./apps/panel"
-        run: "flutterpi_tool build --arch=arm64 --release"
+        run: "melos build-panel-arm64-release"
 
       - name: "Archive Flutter Assets for (arm64)"
         run: |

@@ -43,12 +43,12 @@ scripts:
       rm -rf build flutter_assets && \
       flutter build bundle \
         --dart-define=APP_VERSION=1.0.0 \
-        --dart-define=APP_BUILD=42 && \
+        --dart-define=APP_BUILD=1 && \
       dart run flutterpi_tool build \
         --arch=${FB_FLUTTERPI_ARCH:-arm64} \
         ${FB_FLUTTERPI_RELEASE:+--release} \
-        --dart-define=APP_VERSION=1.0.0 \
-        --dart-define=APP_BUILD=42
+        --dart-define=APP_VERSION=${FB_FLUTTERPI_APP_VERSION:-1.0.0} \
+        --dart-define=APP_BUILD=${FB_FLUTTERPI_APP_BUILD:-1}
     description: Builds the Flutter Pi app for the specified architecture and mode.
 
   build-panel-arm:
