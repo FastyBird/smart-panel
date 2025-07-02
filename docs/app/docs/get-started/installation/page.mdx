@@ -64,13 +64,9 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	sudo apt install git -y
 	```
 
-	## Install Node.js & pnpm
+	## Install Node.js
 
-	Node.js powers the backend and admin interface. [pnpm](https://pnpm.io) is a fast, disk-efficient package manager used to install dependencies.
-
-	### Install Node.js
-
-	Use the official NodeSource setup script to install the latest **LTS** version of Node.js:
+	Node.js powers the backend and admin interface. Use the official NodeSource setup script to install the latest **LTS** version of Node.js:
 
 	```bash copy
 	curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
@@ -81,24 +77,12 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 		This installs both node and npm.
 	</Callout>
 
-	### Install pnpm
-
-	After Node.js is installed, you can install [pnpm](https://pnpm.io) globally:
-
-	```bash copy
-	sudo npm install -g pnpm
-	```
-
-	<Callout type="info">
-		Why [pnpm](https://pnpm.io)? It’s faster and uses less disk space than npm or yarn.
-	</Callout>
-
 	## Install flutter-pi
 
 	The Smart Panel UI is written in Flutter and runs on your Raspberry Pi using [flutter-pi](https://github.com/ardera/flutter-pi),
 	a lightweight runtime that doesn’t require **X11** or **Wayland**.
 
-	{<h3>Install Required Dependencies</h3>}
+	### Install Required Dependencies
 
 	```bash copy
 	sudo apt install cmake libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev \
@@ -112,7 +96,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	sudo fc-cache
 	```
 
-	{<h3>Build and Install flutter-pi</h3>}
+	### Build and Install flutter-pi
 
 	First, create a directory where flutter-pi will live and make sure your user owns it:
 
@@ -151,7 +135,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 		Once installed, you’ll be able to run the Smart Panel UI directly from the console using the *flutter-pi* command.
 	</Callout>
 
-	## Enable KMS/DRM
+	### Enable KMS/DRM
 
 	To ensure proper display rendering, your Raspberry Pi must use the KMS (Kernel Mode Setting) graphics driver. This is
 	required for flutter-pi to access the display via DRM.
@@ -260,7 +244,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 
 	You’ll want your Smart Panel to automatically launch on boot. Here’s how to set up systemd services for both backend and display:
 
-	### Backend Service
+	### Backend & Admin Service
 
 	Create a service file:
 
@@ -272,13 +256,13 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 
 	```bash copy
 	[Unit]
-	Description=Smart Panel Backend Service
+	Description=Smart Panel Backend & Admin Service
 	After=network.target
 
 	[Service]
 	User=pi
 	WorkingDirectory=/opt/smart-panel
-	ExecStart=pnpm start
+	ExecStart=npm start
 	Restart=always
 	Environment=NODE_ENV=production
 
@@ -321,6 +305,16 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	[Install]
 	WantedBy=multi-user.target
 	```
+
+	<Callout type="default">
+		Want to rotate the display? Add the `-p` (physical rotation) flag to the `ExecStart` line. For example:
+
+		```bash copy
+		ExecStart=/usr/local/bin/flutter-pi -p 270 --release .
+		```
+
+		Valid rotation values: `0`, `90`, `180`, `270`
+	</Callout>
 
 	Enable and start the service:
 
