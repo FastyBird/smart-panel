@@ -2,7 +2,11 @@ import dotenv from 'dotenv';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 
-dotenv.config();
+const envPaths = [path.resolve(process.cwd(), '.env.local'), path.resolve(process.cwd(), '.env')];
+
+for (const envPath of envPaths) {
+	dotenv.config({ path: envPath, override: false });
+}
 
 const AppDataSource = new DataSource({
 	type: 'sqlite',

@@ -15,9 +15,9 @@
     "url": "https://github.com/FastyBird/smart-panel.git"
   },
   "scripts": {
-    "dev": "next -p 3006",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "start:dev": "next -p 3006"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",

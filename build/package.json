@@ -29,7 +29,8 @@
   },
   "scripts": {
     "start": "node ./node_modules/@fastybird/smart-panel-backend/dist/main",
-    "onboard": "node ./node_modules/@fastybird/smart-panel-backend/dist/cli users:register-owner",
+    "onboard": "node ./node_modules/@fastybird/smart-panel-backend/dist/cli auth:onboarding",
+    "seed": "node ./node_modules/@fastybird/smart-panel-backend/dist/cli seed:run",
     "migration:run": "node ./node_modules/typeorm/cli.js migration:run -d ./node_modules/@fastybird/smart-panel-backend/dist/dataSource.js",
     "migration:revert": "node ./node_modules/typeorm/cli.js migration:revert -d ./node_modules/@fastybird/smart-panel-backend/dist/dataSource.js"
   },
