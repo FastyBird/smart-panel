@@ -28,11 +28,13 @@ export class SystemController {
 
 	@Public()
 	@Get('health')
-	async getSystemHealth(): Promise<SystemHealthModel> {
+	getSystemHealth(): SystemHealthModel {
 		this.logger.debug('[LOOKUP] Health check');
 
 		try {
-			const pkgJson = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8'));
+			const pkgJson: { version: string } | undefined = JSON.parse(
+				readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8'),
+			);
 
 			return plainToInstance(
 				SystemHealthModel,
