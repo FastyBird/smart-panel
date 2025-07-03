@@ -10,6 +10,7 @@ import {
 	NetworkStatsModel,
 	OperatingSystemInfoModel,
 	StorageInfoModel,
+	SystemHealthModel,
 	SystemInfoModel,
 	TemperatureInfoModel,
 	ThrottleStatusModel,
@@ -21,6 +22,7 @@ type TemperatureInfo = components['schemas']['SystemModuleTemperatureInfo'];
 type OperatingSystemInfo = components['schemas']['SystemModuleOperatingSystemInfo'];
 type DisplayInfo = components['schemas']['SystemModuleDisplayInfo'];
 type NetworkStats = components['schemas']['SystemModuleNetworkStats'];
+type SystemHealth = components['schemas']['SystemModuleSystemHealth'];
 type SystemInfo = components['schemas']['SystemModuleSystemInfo'];
 type ThrottleStatus = components['schemas']['SystemModuleThrottleStatus'];
 
@@ -47,7 +49,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 		});
 	};
 
-	test('MemoryInfoModel matches SystemMemoryInfo', () => {
+	test('MemoryInfoModel matches MemoryInfo', () => {
 		const openApiModel: MemoryInfo = {
 			total: 8388608000,
 			used: 4200000000,
@@ -68,7 +70,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('StorageInfoModel matches SystemStorageInfo', () => {
+	test('StorageInfoModel matches StorageInfo', () => {
 		const openApiModel: StorageInfo = {
 			fs: '/dev/mmcblk0p1',
 			used: 15000000000,
@@ -90,7 +92,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('TemperatureInfoModel matches SystemTemperatureInfo', () => {
+	test('TemperatureInfoModel matches TemperatureInfo', () => {
 		const openApiModel: TemperatureInfo = {
 			cpu: 55,
 			gpu: 60,
@@ -110,7 +112,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('OperatingSystemInfoModel matches SystemOperatingSystemInfo', () => {
+	test('OperatingSystemInfoModel matches OperatingSystemInfo', () => {
 		const openApiModel: OperatingSystemInfo = {
 			platform: 'linux',
 			distro: 'Debian',
@@ -132,7 +134,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('DisplayInfoModel matches SystemDisplayInfo', () => {
+	test('DisplayInfoModel matches DisplayInfo', () => {
 		const openApiModel: DisplayInfo = {
 			resolution_x: 1920,
 			resolution_y: 1080,
@@ -154,7 +156,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('NetworkStatsModel matches SystemNetworkStats', () => {
+	test('NetworkStatsModel matches NetworkStats', () => {
 		const openApiModel: NetworkStats = {
 			interface: 'eth0',
 			rx_bytes: 123456789,
@@ -175,7 +177,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('SystemInfoModel matches SystemSystemInfo', () => {
+	test('SystemInfoModel matches SystemInfo', () => {
 		const openApiModel: SystemInfo = {
 			cpu_load: 15.3,
 			memory: {
@@ -236,7 +238,27 @@ describe('System module model and OpenAPI component synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
-	test('ThrottleStatusModel matches SystemThrottleStatus', () => {
+	test('SystemHealthModel matches SystemHealth', () => {
+		const openApiModel: SystemHealth = {
+			status: 'ok',
+			version: '1.0.0',
+		};
+
+		const modelInstance = plainToInstance(SystemHealthModel, openApiModel, {
+			excludeExtraneousValues: true,
+			enableImplicitConversion: true,
+		});
+
+		validateModelAgainstComponent(modelInstance, openApiModel);
+
+		const errors = validateSync(modelInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+		expect(errors).toHaveLength(0);
+	});
+
+	test('ThrottleStatusModel matches ThrottleStatus', () => {
 		const openApiModel: ThrottleStatus = {
 			undervoltage: false,
 			frequency_capping: false,

@@ -312,6 +312,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	[Unit]
 	Description=Smart Panel Display App
 	After=network.target
+	Requires=smart-panel-backend.service
 
 	[Service]
 	User=pi

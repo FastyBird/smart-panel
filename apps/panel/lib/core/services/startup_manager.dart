@@ -194,10 +194,53 @@ class StartupManagerService {
   }
 
   Future<void> _initialize() async {
+    final backendReady = await _waitForBackend();
+
+    if (!backendReady) {
+      if (kDebugMode) {
+        debugPrint(
+          '[CHECK BACKEND] Checking backend connection failed.',
+        );
+      }
+
+      throw Exception(
+        'Backend connection check failed. Ensure the server is running.',
+      );
+    }
+
     if (_apiSecret == null) {
       await _obtainApiSecret();
     } else {
       await _checkApiConnection();
+    }
+  }
+
+  Future<bool> _waitForBackend({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    while (stopwatch.elapsed < timeout) {
+      final reachable = await _pingBackend();
+
+      if (reachable) {
+        return true;
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+    }
+
+    return false;
+  }
+
+  Future<bool> _pingBackend() async {
+    try {
+      final systemInfoResponse =
+          await _apiClient.systemModule.getSystemModuleSystemHealth();
+
+      return systemInfoResponse.response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 

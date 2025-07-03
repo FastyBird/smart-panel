@@ -1,4 +1,6 @@
 import { plainToInstance } from 'class-transformer';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 import {
 	BadRequestException,
@@ -9,12 +11,13 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
+import { Public } from '../../auth/guards/auth.guard';
 import {
 	PlatformException,
 	PlatformNotSupportedException,
 	PlatformValidationException,
 } from '../../platform/platform.exceptions';
-import { SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
+import { SystemHealthModel, SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
 
 @Controller('system')
@@ -22,6 +25,30 @@ export class SystemController {
 	private readonly logger = new Logger(SystemController.name);
 
 	constructor(private readonly systemService: SystemService) {}
+
+	@Public()
+	@Get('health')
+	async getSystemHealth(): Promise<SystemHealthModel> {
+		this.logger.debug('[LOOKUP] Health check');
+
+		try {
+			const pkgJson = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8'));
+
+			return plainToInstance(
+				SystemHealthModel,
+				{
+					status: 'ok',
+					version: pkgJson.version ?? '0.0.0',
+				},
+				{
+					enableImplicitConversion: true,
+					exposeUnsetFields: false,
+				},
+			);
+		} catch (error) {
+			this.handleError(error, 'Failed to create health response');
+		}
+	}
 
 	@Get('info')
 	async getSystemInfo(): Promise<SystemInfoModel> {
