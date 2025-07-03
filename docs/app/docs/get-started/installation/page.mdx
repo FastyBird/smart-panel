@@ -222,6 +222,13 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	sudo chown -R ${USER}:${USER} /opt/smart-panel
 	```
 
+	Create the storage directory and give your user ownership:
+
+	```bash copy
+	sudo mkdir -p /var/smart-panel
+	sudo chown -R ${USER}:${USER} /var/smart-panel
+	```
+
 	Move into the project directory:
 
 	```bash copy
@@ -238,6 +245,16 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 
 	<Callout type="info">
 		This archive contains everything you need: backend, admin UI, and the prebuilt display app.
+	</Callout>
+
+	Run the database migrations to initialize the database:
+
+	```bash copy
+	npm run migration:run
+	```
+
+	<Callout type="success">
+		This creates all required tables in the application database so your Smart Panel can start working right away.
 	</Callout>
 
 	## Run Backend, Admin & Display as Services

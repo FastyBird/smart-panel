@@ -5,9 +5,9 @@ const path = require("node:path");
 const child_process = require("node:child_process");
 
 const PACKAGES = [
-	{ name: "@fastybird/smart-panel-admin", path: "apps/admin" },
-	{ name: "@fastybird/smart-panel-backend", path: "apps/backend" },
-	{ name: "@fastybird/smart-panel-docs", path: "docs" },
+	{ name: "@fastybird/smart-panel-admin", path: "apps/admin", check: true },
+	{ name: "@fastybird/smart-panel-backend", path: "apps/backend", check: true },
+	{ name: "@fastybird/smart-panel-docs", path: "docs", check: false },
 ];
 
 const ROOT_PKG_PATH = "package.json";
@@ -160,9 +160,11 @@ const updatePubspecYaml = (filePath, baseVersion, tag, buildNumber) => {
 (async () => {
 	const baseVersion = parseBaseVersion(ref);
 
-	const allPublishedVersions = PACKAGES.flatMap((pkg) =>
-		getPublishedVersions(pkg.name, baseVersion, tag)
-	);
+	const allPublishedVersions = PACKAGES
+		.filter((pkg) => pkg.check === true)
+		.flatMap((pkg) =>
+			getPublishedVersions(pkg.name, baseVersion, tag)
+		);
 
 	const { fullVersion, buildNumber } = computeVersionInfo(baseVersion, allPublishedVersions);
 

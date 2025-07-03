@@ -185,15 +185,18 @@ jobs:
           flutter-version: "${{ matrix.flutter-version }}"
           flutter-channel: "${{ matrix.flutter-channel }}"
 
-      - name: "Build Flutter Bundle"
+      - name: "Build ARMv7 Flutter Bundle (32-bit)"
+        env:
+          FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_FLUTTERPI_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
         run: "melos build-panel-arm-release"
 
-      - name: "Archive Flutter Assets"
+      - name: "Archive ARMv7 Flutter Assets (32-bit)"
         run: |
           tar -czvf smart-panel-display-armv7.tar.gz -C ./apps/panel/build/flutter_assets .
           shasum -a 256 smart-panel-display-armv7.tar.gz > SHASUMS256-armv7.txt
 
-      - name: "Upload Artifact"
+      - name: "Upload ARMv7 Artifact (32-bit)"
         uses: "actions/upload-artifact@v4"
         with:
           name: "flutter-assets"
@@ -201,16 +204,18 @@ jobs:
             smart-panel-display-armv7.tar.gz
             SHASUMS256-armv7.txt
 
-      - name: "Build Flutter Bundle for (arm64)"
-        working-directory: "./apps/panel"
+      - name: "Build ARM64 Flutter Bundle for (64-bit)"
+        env:
+          FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
+          FB_FLUTTERPI_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
         run: "melos build-panel-arm64-release"
 
-      - name: "Archive Flutter Assets for (arm64)"
+      - name: "Archive ARM64 Flutter Assets for (64-bit)"
         run: |
           tar -czvf smart-panel-display-arm64.tar.gz -C ./apps/panel/build/flutter_assets .
           shasum -a 256 smart-panel-display-arm64.tar.gz > SHASUMS256-arm64.txt
 
-      - name: "Upload Artifact for (arm64)"
+      - name: "Upload ARM64 Artifact for (64-bit)"
         uses: "actions/upload-artifact@v4"
         with:
           name: "flutter-assets-arm64"
@@ -375,24 +380,24 @@ jobs:
           echo "- Backend App: v${{ needs.publish-backend.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- Display App: v${{ needs.sync-versions.outputs.version }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: "Download Application Build"
+      - name: "Download ARMv7 Application Build (32-bit)"
         uses: "actions/download-artifact@v4"
         with:
           name: "application-build-armv7"
 
-      - name: "Attach Application Build"
+      - name: "Attach ARMv7 Application Build (32-bit)"
         uses: "AButler/upload-release-assets@v3.0"
         with:
           files: "smart-panel.tar.gz;SHASUMS256.txt"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           release-tag: v${{ needs.sync-versions.outputs.version }}
 
-      - name: "Download Application Build (arm64)"
+      - name: "Download ARM64 Application Build (64-bit)"
         uses: "actions/download-artifact@v4"
         with:
           name: "application-build-arm64"
 
-      - name: "Attach Application Build (arm64)"
+      - name: "Attach ARM64 Application Build (64-bit)"
         uses: "AButler/upload-release-assets@v3.0"
         with:
           files: "smart-panel-arm64.tar.gz;SHASUMS256-arm64.txt"

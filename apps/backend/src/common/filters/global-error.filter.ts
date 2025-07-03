@@ -13,7 +13,6 @@ export class GlobalErrorFilter implements ExceptionFilter {
 		const request = ctx.getRequest<Request>();
 		const response = ctx.getResponse<Response>();
 		const requestId = uuidv4();
-		console.log('ERROR', exception);
 
 		// Handle known HTTP exceptions
 		const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
