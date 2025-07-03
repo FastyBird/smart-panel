@@ -5127,6 +5127,51 @@
         ]
       }
     },
+    "/system-module/system/health": {
+      "get": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Check backend health status",
+        "description": "Returns a summary of the backend system health, including status and version.",
+        "operationId": "get-system-module-system-health",
+        "responses": {
+          "200": {
+            "description": "Backend is healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResSystemHealth"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/system-module/system/health",
+                      "method": "GET",
+                      "data": {
+                        "status": "ok",
+                        "version": "1.0.0"
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend is not ready"
+          }
+        }
+      }
+    },
     "/system-module/system/info": {
       "get": {
         "tags": [
@@ -11955,6 +12000,35 @@
           }
         }
       },
+      "SystemModuleSystemHealth": {
+        "title": "System Health",
+        "description": "Schema representing basic health information about the system, including backend availability and version.",
+        "type": "object",
+        "required": [
+          "status",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Current backend status. Expected value is 'ok'.",
+            "example": "ok",
+            "readOnly": true
+          },
+          "version": {
+            "type": "string",
+            "description": "Semantic version of the backend service.",
+            "example": "1.0.0",
+            "readOnly": true
+          }
+        },
+        "examples": [
+          {
+            "status": "ok",
+            "version": "1.0.0"
+          }
+        ]
+      },
       "SystemModuleSystemInfo": {
         "title": "System Info",
         "description": "Schema for a detailed information about the system, including CPU load, memory, storage, temperature, operating system, network, and display.",
@@ -12100,6 +12174,86 @@
             "frequency_capping": false,
             "throttling": false,
             "soft_temp_limit": false
+          }
+        ]
+      },
+      "SystemModuleResSystemHealth": {
+        "title": "System Health Response",
+        "description": "Standard response wrapper for system health status.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/system-module/system/health",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleSystemHealth",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/system-module/system/health",
+            "method": "GET",
+            "data": {
+              "status": "ok",
+              "version": "1.0.0"
+            },
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
           }
         ]
       },

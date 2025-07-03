@@ -113,6 +113,16 @@ export class DefaultNetworkModel {
 	mac: string;
 }
 
+export class SystemHealthModel {
+	@Expose()
+	@IsString()
+	status: string;
+
+	@Expose()
+	@IsString()
+	version: string;
+}
+
 export class SystemInfoModel {
 	@Expose({ name: 'cpu_load' })
 	@IsNumber()
