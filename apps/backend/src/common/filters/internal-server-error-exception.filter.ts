@@ -14,7 +14,7 @@ export class InternalServerErrorExceptionFilter implements ExceptionFilter {
 		const response = ctx.getResponse<Response>();
 		const status = exception.getStatus() || HttpStatus.INTERNAL_SERVER_ERROR;
 		const requestId = uuidv4();
-		console.log('ERROR', exception);
+
 		return response
 			.code(status)
 			.type('application/json')
