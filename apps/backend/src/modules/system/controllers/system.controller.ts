@@ -32,9 +32,9 @@ export class SystemController {
 		this.logger.debug('[LOOKUP] Health check');
 
 		try {
-			const pkgJson: { version: string } | undefined = JSON.parse(
-				readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8'),
-			);
+			const pkgJson = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8')) as
+				| { version: string }
+				| undefined;
 
 			return plainToInstance(
 				SystemHealthModel,
