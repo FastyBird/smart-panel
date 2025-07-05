@@ -1,3 +1,10 @@
+/*
+eslint-disable @typescript-eslint/unbound-method
+*/
+/*
+Reason: The mocking and test setup requires dynamic assignment and
+handling of Jest mocks, which ESLint rules flag unnecessarily.
+*/
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
