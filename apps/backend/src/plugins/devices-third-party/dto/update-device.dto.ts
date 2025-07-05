@@ -3,13 +3,14 @@ import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 import { UpdateDeviceDto } from '../../../modules/devices/dto/update-device.dto';
 import type { components } from '../../../openapi';
+import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
 type UpdateThirdPartyDevice = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyDevice'];
 
 export class UpdateThirdPartyDeviceDto extends UpdateDeviceDto implements UpdateThirdPartyDevice {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid device type string."}]' })
-	type: 'third-party';
+	type: typeof DEVICES_THIRD_PARTY_TYPE;
 
 	@Expose()
 	@IsOptional()

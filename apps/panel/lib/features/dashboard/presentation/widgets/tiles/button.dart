@@ -244,7 +244,6 @@ class ButtonTileTitle extends StatelessWidget {
         fontFamily: 'DIN1451',
         fontSize: AppFontSize.small,
         fontWeight: FontWeight.bold,
-        height: 0.9,
       ),
     );
   }

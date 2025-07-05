@@ -2,7 +2,7 @@ import { useContainer } from 'class-validator';
 
 import { LogLevel, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { API_PREFIX } from './app.constants';
@@ -33,6 +33,8 @@ async function bootstrap() {
 		logger: logLevels.filter((level): level is LogLevel => validLogLevels.includes(level)),
 	});
 
+	const reflector = app.get(Reflector);
+
 	const configService = app.get(NestConfigService);
 	const port = getEnvValue<number>(configService, 'FB_BACKEND_PORT', 3000);
 
@@ -60,7 +62,7 @@ async function bootstrap() {
 	);
 
 	app.useGlobalInterceptors(
-		new ResponseInterceptor(),
+		new ResponseInterceptor(reflector),
 		new TransformResponseInterceptor(),
 		new HeaderLocationInterceptor(app.get(NestConfigService)),
 	);

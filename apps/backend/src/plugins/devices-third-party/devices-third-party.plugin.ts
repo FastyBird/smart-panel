@@ -7,6 +7,8 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
+import { ThirdPartyDemoController } from './controllers/third-party-demo.controller';
+import { DEVICES_THIRD_PARTY_TYPE } from './devices-third-party.constants';
 import { CreateThirdPartyChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateThirdPartyChannelDto } from './dto/create-channel.dto';
 import { CreateThirdPartyDeviceDto } from './dto/create-device.dto';
@@ -23,6 +25,7 @@ import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platfor
 @Module({
 	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule],
 	providers: [ThirdPartyDevicePlatform],
+	controllers: [ThirdPartyDemoController],
 })
 export class DevicesThirdPartyPlugin {
 	constructor(
@@ -35,7 +38,7 @@ export class DevicesThirdPartyPlugin {
 
 	onModuleInit() {
 		this.devicesMapper.registerMapping<ThirdPartyDeviceEntity, CreateThirdPartyDeviceDto, UpdateThirdPartyDeviceDto>({
-			type: 'third-party',
+			type: DEVICES_THIRD_PARTY_TYPE,
 			class: ThirdPartyDeviceEntity,
 			createDto: CreateThirdPartyDeviceDto,
 			updateDto: UpdateThirdPartyDeviceDto,
@@ -46,7 +49,7 @@ export class DevicesThirdPartyPlugin {
 			CreateThirdPartyChannelDto,
 			UpdateThirdPartyChannelDto
 		>({
-			type: 'third-party',
+			type: DEVICES_THIRD_PARTY_TYPE,
 			class: ThirdPartyChannelEntity,
 			createDto: CreateThirdPartyChannelDto,
 			updateDto: UpdateThirdPartyChannelDto,
@@ -57,7 +60,7 @@ export class DevicesThirdPartyPlugin {
 			CreateThirdPartyChannelPropertyDto,
 			UpdateThirdPartyChannelPropertyDto
 		>({
-			type: 'third-party',
+			type: DEVICES_THIRD_PARTY_TYPE,
 			class: ThirdPartyChannelPropertyEntity,
 			createDto: CreateThirdPartyChannelPropertyDto,
 			updateDto: UpdateThirdPartyChannelPropertyDto,

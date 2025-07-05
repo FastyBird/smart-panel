@@ -79,7 +79,7 @@ export class SeedService {
 					name: 'truncate',
 					message:
 						'Do you want to truncate the database before seeding? (WARNING: This will delete all existing data!)',
-					default: true,
+					default: false,
 				},
 			]);
 

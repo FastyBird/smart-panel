@@ -3,6 +3,7 @@ import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 import { UpdateChannelPropertyDto } from '../../../modules/devices/dto/update-channel-property.dto';
 import type { components } from '../../../openapi';
+import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
 type UpdateHomeAssistantChannelProperty =
 	components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty'];
@@ -13,7 +14,7 @@ export class UpdateHomeAssistantChannelPropertyDto
 {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid channel property type string."}]' })
-	type: 'home-assistant';
+	type: typeof DEVICES_HOME_ASSISTANT_TYPE;
 
 	@Expose()
 	@IsOptional()

@@ -238,7 +238,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	Download and Unpack the Latest Release:
 
 	```bash copy
-	wget https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
+	curl --http1.1 -L -C - -o smart-panel.tar.gz https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.tar.gz
 	tar -xzf smart-panel.tar.gz -C .
 	rm smart-panel.tar.gz
 	```
@@ -253,7 +253,7 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	npm run migration:run
 	```
 
-	<Callout type="success">
+	<Callout type="info">
 		This creates all required tables in the application database so your Smart Panel can start working right away.
 	</Callout>
 
