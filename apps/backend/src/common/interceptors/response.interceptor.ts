@@ -3,13 +3,25 @@ import os from 'os';
 import { Observable, map } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor } from '@nestjs/common';
+import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor, SetMetadata } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
 import { RequestResultState } from '../../app.constants';
 
+export const SKIP_APPLICATION_INTERCEPTOR = 'skipApplicationInterceptor';
+export const SkipApplicationInterceptor = () => SetMetadata(SKIP_APPLICATION_INTERCEPTOR, true);
+
 @Injectable()
 export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
+	constructor(private readonly reflector: Reflector) {}
+
 	intercept(context: ExecutionContext, next: CallHandler<T>): Observable<any> {
+		const skip = this.reflector.get<boolean>('skipApplicationInterceptor', context.getHandler());
+
+		if (skip) {
+			return next.handle();
+		}
+
 		const request = context.switchToHttp().getRequest<Request>();
 		const response = context.switchToHttp().getResponse<Response>();
 		const startTime = Date.now();

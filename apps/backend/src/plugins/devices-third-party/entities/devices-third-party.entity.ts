@@ -3,6 +3,7 @@ import { IsString } from 'class-validator';
 import { ChildEntity, Column } from 'typeorm';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
 @ChildEntity()
 export class ThirdPartyDeviceEntity extends DeviceEntity {
@@ -18,7 +19,7 @@ export class ThirdPartyDeviceEntity extends DeviceEntity {
 
 	@Expose()
 	get type(): string {
-		return 'third-party';
+		return DEVICES_THIRD_PARTY_TYPE;
 	}
 }
 
@@ -26,7 +27,7 @@ export class ThirdPartyDeviceEntity extends DeviceEntity {
 export class ThirdPartyChannelEntity extends ChannelEntity {
 	@Expose()
 	get type(): string {
-		return 'third-party';
+		return DEVICES_THIRD_PARTY_TYPE;
 	}
 }
 
@@ -34,6 +35,6 @@ export class ThirdPartyChannelEntity extends ChannelEntity {
 export class ThirdPartyChannelPropertyEntity extends ChannelPropertyEntity {
 	@Expose()
 	get type(): string {
-		return 'third-party';
+		return DEVICES_THIRD_PARTY_TYPE;
 	}
 }

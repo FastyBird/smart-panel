@@ -5,7 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
-import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
+import { DEVICES_THIRD_PARTY_TYPE, ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
 import { PropertiesUpdateResponseDto, PropertyUpdateResultDto } from '../dto/third-party-property-update-response.dto';
 import { ThirdPartyDeviceEntity } from '../entities/devices-third-party.entity';
@@ -19,7 +19,7 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 	private readonly logger = new Logger(ThirdPartyDevicePlatform.name);
 
 	getType(): string {
-		return 'third-party';
+		return DEVICES_THIRD_PARTY_TYPE;
 	}
 
 	async process({ device, channel, property, value }: IThirdPartyDevicePropertyData): Promise<boolean> {

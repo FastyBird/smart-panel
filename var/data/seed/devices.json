@@ -5,7 +5,7 @@
     "category": "thermostat",
     "name": "Thermostat",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -14,7 +14,7 @@
     "name": "TV LED Strip",
     "description": null,
     "icon": 58235,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -23,7 +23,7 @@
     "name": "Couch LED Strip",
     "description": null,
     "icon": 58235,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -32,7 +32,7 @@
     "name": "Main Light",
     "description": null,
     "icon": 58233,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -41,7 +41,7 @@
     "name": "Entry Light",
     "description": null,
     "icon": 59099,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -50,7 +50,7 @@
     "name": "Dining Room Light",
     "description": null,
     "icon": 59099,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -59,7 +59,7 @@
     "name": "TV Spot Light",
     "description": null,
     "icon": 59099,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -68,7 +68,7 @@
     "name": "Couch Spot Light",
     "description": null,
     "icon": 59099,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -76,7 +76,7 @@
     "category": "lighting",
     "name": "Living Room Terrace Light",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -84,7 +84,7 @@
     "category": "sensor",
     "name": "Terrace Door",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -92,7 +92,7 @@
     "category": "television",
     "name": "TV",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -101,7 +101,7 @@
     "name": "Vacuum Cleaner",
     "description": null,
     "icon": 57703,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -109,7 +109,7 @@
     "category": "sensor",
     "name": "Living Room Temperature & Humidity",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -117,7 +117,7 @@
     "category": "sensor",
     "name": "Terrace Motion Detection",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -125,7 +125,7 @@
     "category": "sensor",
     "name": "Entrance Motion Detection",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -134,7 +134,7 @@
     "name": "Terrace Blind",
     "description": null,
     "icon": 985020,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -143,7 +143,7 @@
     "name": "Window Blind",
     "description": null,
     "icon": 985020,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -151,7 +151,7 @@
     "category": "thermostat",
     "name": "Kitchen Thermostat",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -160,7 +160,7 @@
     "name": "Main Light",
     "description": null,
     "icon": 58233,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -168,7 +168,7 @@
     "category": "lighting",
     "name": "Spot Light",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -176,7 +176,7 @@
     "category": "lighting",
     "name": "Bar",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -184,7 +184,7 @@
     "category": "lighting",
     "name": "Under Cabinet",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -192,7 +192,7 @@
     "category": "lighting",
     "name": "High Cabinet",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -200,7 +200,7 @@
     "category": "lighting",
     "name": "Stove Light",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -208,7 +208,7 @@
     "category": "fan",
     "name": "Stove Fan",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -217,7 +217,7 @@
     "name": "Window Blind",
     "description": null,
     "icon": 985020,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -225,7 +225,7 @@
     "category": "outlet",
     "name": "Kitchen Wall Outlet 01",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -233,7 +233,7 @@
     "category": "outlet",
     "name": "Kitchen Wall Outlet 02",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -241,7 +241,7 @@
     "category": "sensor",
     "name": "Kitchen Temperature & Humidity",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
     "type": "third-party",
@@ -249,6 +249,6 @@
     "category": "sensor",
     "name": "Kitchen Window",
     "description": null,
-    "service_address": "http://localhost/webhook"
+    "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   }
 ]

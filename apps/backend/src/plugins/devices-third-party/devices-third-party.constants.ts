@@ -1,3 +1,9 @@
+export const DEVICES_THIRD_PARTY_PLUGIN_PREFIX = 'devices-third-party-plugin';
+
+export const DEVICES_THIRD_PARTY_PLUGIN_NAME = 'devices-third-party-plugin';
+
+export const DEVICES_THIRD_PARTY_TYPE = 'third-party';
+
 export enum ThirdPartyPropertiesUpdateStatus {
 	SUCCESS = 0, // The request was processed successfully.
 	INSUFFICIENT_PRIVILEGES = -80001, // Request denied due to insufficient privileges.

@@ -23,7 +23,7 @@ export class HeaderLocationInterceptor implements NestInterceptor {
 		const request: Request = httpContext.getRequest<Request>();
 		const response: Response = httpContext.getResponse<Response>();
 
-		// Extract version dynamically from request URL (assuming format "/api/vX/...")
+		// Extract a version dynamically from request URL (assuming format "/api/vX/...")
 		const versionMatch = request.url.match(new RegExp(`/${API_PREFIX}/(v\\d+)`));
 		const version = versionMatch ? versionMatch[1] : 'v1'; // Default to v1 if not found
 
