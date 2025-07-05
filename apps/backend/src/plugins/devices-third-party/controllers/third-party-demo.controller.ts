@@ -7,7 +7,7 @@ import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
-import { ThirdPartyDemoControlModel, ThirdPartyDemoControlPropertyModel } from '../models/demo-control.model';
+import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
 
 @Controller('demo')
 @SkipApplicationInterceptor()
