@@ -7,7 +7,7 @@ import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-request.dto';
-import { ThirdPartyDemoControlPropertyModel } from '../models/demo-control.model';
+import { ThirdPartyDemoControlModel, ThirdPartyDemoControlPropertyModel } from '../models/demo-control.model';
 
 @Controller('demo')
 @SkipApplicationInterceptor()
@@ -20,7 +20,7 @@ export class ThirdPartyDemoController {
 	@Public()
 	@Put('webhook')
 	@HttpCode(204)
-	async controlDevice(@Body() body: PropertiesUpdateRequestDto): Promise<ThirdPartyDemoControlPropertyModel> {
+	async controlDevice(@Body() body: PropertiesUpdateRequestDto): Promise<ThirdPartyDemoControlModel> {
 		this.logger.debug('[EXECUTE] Execute demo property update');
 
 		const response = {
@@ -47,19 +47,21 @@ export class ThirdPartyDemoController {
 				clearTimeout(this.queue[property.id]);
 			}
 
-			this.queue[property.id] = setTimeout(async () => {
-				this.logger.debug(`[EXECUTE] Updating property ${property.id} with value ${update.value}`);
+			this.queue[property.id] = setTimeout(() => {
+				void (async () => {
+					this.logger.debug(`[EXECUTE] Updating property ${property.id} with value ${update.value}`);
 
-				await this.channelsPropertiesService.update(property.id, {
-					type: property.type,
-					value: update.value,
-				});
+					await this.channelsPropertiesService.update(property.id, {
+						type: property.type,
+						value: update.value,
+					});
 
-				delete this.queue[property.id];
+					delete this.queue[property.id];
+				})();
 			}, 500);
 		}
 
-		return plainToInstance(ThirdPartyDemoControlPropertyModel, response, {
+		return plainToInstance(ThirdPartyDemoControlModel, response, {
 			enableImplicitConversion: true,
 			exposeUnsetFields: false,
 		});
