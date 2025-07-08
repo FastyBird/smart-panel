@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/system/constants.dart';
 import 'package:fastybird_smart_panel/modules/system/export.dart';
+import 'package:flutter/foundation.dart';
 
 class SystemModuleService {
   final SocketService _socketService;
@@ -47,6 +50,81 @@ class SystemModuleService {
       SystemModuleConstants.systemInfoEvent,
       _socketEventHandler,
     );
+  }
+
+  Future<bool> rebootDevice() {
+    final completer = Completer<bool>();
+
+    _socketService.sendCommand(
+      SystemModuleConstants.systemRebootEvent,
+      null,
+      SystemModuleEventHandlerName.systemInternalPlatformAction,
+      onAck: (SocketCommandResponseModel? result) {
+        bool success = !(result == null || result.status == false);
+
+        if (kDebugMode) {
+          debugPrint(
+            success
+                ? '[SYSTEM MODULE] Successfully process reboot request command'
+                : '[SYSTEM MODULE] Failed process reboot request command',
+          );
+        }
+
+        completer.complete(success);
+      },
+    );
+
+    return completer.future;
+  }
+
+  Future<bool> powerOffDevice() {
+    final completer = Completer<bool>();
+
+    _socketService.sendCommand(
+      SystemModuleConstants.systemPowerOffEvent,
+      null,
+      SystemModuleEventHandlerName.systemInternalPlatformAction,
+      onAck: (SocketCommandResponseModel? result) {
+        bool success = !(result == null || result.status == false);
+
+        if (kDebugMode) {
+          debugPrint(
+            success
+                ? '[SYSTEM MODULE] Successfully process power off request command'
+                : '[SYSTEM MODULE] Failed process power off request command',
+          );
+        }
+
+        completer.complete(success);
+      },
+    );
+
+    return completer.future;
+  }
+
+  Future<bool> factoryResetDevice() {
+    final completer = Completer<bool>();
+
+    _socketService.sendCommand(
+      SystemModuleConstants.systemFactoryResetEvent,
+      null,
+      SystemModuleEventHandlerName.systemInternalPlatformAction,
+      onAck: (SocketCommandResponseModel? result) {
+        bool success = !(result == null || result.status == false);
+
+        if (kDebugMode) {
+          debugPrint(
+            success
+                ? '[SYSTEM MODULE] Successfully process factory reset request command'
+                : '[SYSTEM MODULE] Failed process factory reset request command',
+          );
+        }
+
+        completer.complete(success);
+      },
+    );
+
+    return completer.future;
   }
 
   Future<void> _initializeSystemData() async {

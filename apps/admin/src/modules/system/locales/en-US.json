@@ -17,22 +17,34 @@
     "manageSystem": "Manage system",
     "restart": "Restart",
     "powerOff": "Power Off",
-    "factoryReset": "Factory reset"
+    "factoryReset": "Factory reset",
+    "poweredOff": "Power Off Complete"
   },
   "subHeadings": {
-    "system": "Smart panel system status information"
+    "system": "Smart panel system status information",
+    "poweredOff": "The Smart Panel has been successfully powered off"
   },
   "messages": {
     "confirmRestart": "Are you sure you want to restart the device? This action will temporarily interrupt functionality.",
     "confirmPowerOff": "Are you sure you want to power off the device? It will need to be manually turned on again.",
-    "confirmFactoryReset": "Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible."
+    "confirmFactoryReset": "Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible.",
+    "waitingToBoot": "Waiting for panel to boot up...",
+    "panelBackOnline": "Smart Panel is back online.",
+    "rebootTakesTooLong": "Reboot is taking longer than expected. Please check the panel manually.",
+    "rebootFailed": "Failed to reboot the Smart Panel. Please try again or check the device manually.",
+    "powerOffFailed": "Failed to power off the Smart Panel. Please try again or check the device manually.",
+    "factoryResetSuccess": "All data has been cleared. Let’s start fresh — sign in to begin.",
+    "factoryResetFailed": "Failed to factory reset the Smart Panel. Please try again or check the device manually."
   },
   "texts": {
     "loadingSystemInfo": "Loading system information...",
-    "restartDevice": "Restart the device to apply changes or resolve issues.",
+    "rebootDevice": "Restart the device to apply changes or resolve issues.",
     "powerOffDevice": "Power off the device completely.",
     "factoryResetDevice": "Restore the device to its original factory settings.",
-    "about": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities."
+    "rebootInProcess": "Smart Panel is rebooting...",
+    "powerOffInProcess": "Smart Panel is powering off...",
+    "about": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities.",
+    "poweredOff": "You can close this window — no further action is required."
   },
   "buttons": {
     "about": {

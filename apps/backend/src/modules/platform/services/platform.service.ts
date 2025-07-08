@@ -84,6 +84,24 @@ export class PlatformService {
 		return this.platform.muteMicrophone(mute);
 	}
 
+	reboot() {
+		this.logger.log('[SYSTEM] Restarting device');
+
+		return this.platform.rebootDevice();
+	}
+
+	powerOff() {
+		this.logger.log('[SYSTEM] Power off device');
+
+		return this.platform.powerOffDevice();
+	}
+
+	factoryReset() {
+		this.logger.log('[SYSTEM] Resting device its factory state');
+
+		return this.platform.factoryReset();
+	}
+
 	private async detectPlatform(): Promise<Platform> {
 		const systemInfo = await si.system();
 		const osInfo = await si.osInfo();

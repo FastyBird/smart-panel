@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RouteNames } from '../../../app.constants';
+import { EventHandlerName, EventType } from '../system.constants';
 
 import { useSystemActions } from './useSystemActions';
 
@@ -47,6 +47,31 @@ vi.mock('element-plus', async () => {
 	};
 });
 
+const backendClient = {
+	GET: vi.fn(),
+};
+
+const socketClient = {
+	sendCommand: vi.fn(),
+};
+
+vi.mock('../../../common', () => ({
+	useBackend: () => ({
+		client: backendClient,
+	}),
+	useFlashMessage: () => ({
+		success: vi.fn(),
+		error: vi.fn(),
+	}),
+	useSockets: () => socketClient,
+	injectAccountManager: () => ({
+		signOut: vi.fn(),
+		routes: {
+			signIn: 'signIn',
+		},
+	}),
+}));
+
 describe('useSystemActions', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -65,7 +90,7 @@ describe('useSystemActions', () => {
 		expect(mocks.confirm).toHaveBeenCalled();
 		expect(mocks.service).toHaveBeenCalled();
 
-		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.ROOT });
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
 
 	it('onPowerOff shows confirm and navigates', async () => {
@@ -78,7 +103,8 @@ describe('useSystemActions', () => {
 		await vi.runAllTimersAsync();
 
 		expect(mocks.confirm).toHaveBeenCalled();
-		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.ROOT });
+
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_POWER_OFF, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
 
 	it('onFactoryReset shows confirm and navigates', async () => {
@@ -91,7 +117,8 @@ describe('useSystemActions', () => {
 		await vi.runAllTimersAsync();
 
 		expect(mocks.confirm).toHaveBeenCalled();
-		expect(mocks.routerPush).toHaveBeenCalledWith({ name: RouteNames.ROOT });
+
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_FACTORY_RESET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
 
 	it('canceling confirm does nothing', async () => {
@@ -104,6 +131,7 @@ describe('useSystemActions', () => {
 		await vi.runAllTimersAsync();
 
 		expect(mocks.confirm).toHaveBeenCalled();
-		expect(mocks.routerPush).not.toHaveBeenCalled();
+
+		expect(socketClient.sendCommand).not.toHaveBeenCalled();
 	});
 });

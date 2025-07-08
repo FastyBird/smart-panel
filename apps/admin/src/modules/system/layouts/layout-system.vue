@@ -77,7 +77,7 @@
 		v-model="showManageSystem"
 		:title="t('systemModule.headings.manageSystem')"
 	>
-		<system-reset />
+		<manage-system />
 
 		<template #footer>
 			<el-button
@@ -100,7 +100,7 @@ import { ElButton, ElDialog } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { AboutApplication, SystemReset } from '../components/components';
+import { AboutApplication, ManageSystem } from '../components/components';
 import { RouteNames } from '../system.constants';
 
 defineOptions({

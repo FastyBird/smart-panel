@@ -138,4 +138,16 @@ export class GenericPlatform extends Platform {
 	async muteMicrophone(): Promise<void> {
 		return Promise.reject(new PlatformNotSupportedException('Mute microphone is not supported on this platform'));
 	}
+
+	async rebootDevice(): Promise<void> {
+		return Promise.reject(new PlatformNotSupportedException('Reboot device is not supported on this platform'));
+	}
+
+	async powerOffDevice(): Promise<void> {
+		return Promise.reject(new PlatformNotSupportedException('Power off is not supported on this platform'));
+	}
+
+	async factoryReset(): Promise<void> {
+		return Promise.reject(new PlatformNotSupportedException('Factory reset is not supported on this platform'));
+	}
 }

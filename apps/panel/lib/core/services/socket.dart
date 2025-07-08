@@ -114,6 +114,28 @@ class SocketCommandAckModel {
   }
 }
 
+class SocketCommandResponseModel {
+  final bool _status;
+  final String _message;
+
+  SocketCommandResponseModel({
+    required bool status,
+    required String message,
+  })  : _status = status,
+        _message = message;
+
+  bool get status => _status;
+
+  String get message => _message;
+
+  factory SocketCommandResponseModel.fromJson(Map<String, dynamic> json) {
+    return SocketCommandResponseModel(
+      status: json['status'],
+      message: json['message'],
+    );
+  }
+}
+
 class SocketService {
   late io.Socket _socket;
 
@@ -187,8 +209,8 @@ class SocketService {
     _socket.connect();
   }
 
-  Future<void> sendEvent(String event, dynamic data,
-      {Function(SocketCommandAckModel?)? onAck}) async {
+  Future<void> sendCommand(String event, dynamic data, String handler,
+      {Function(SocketCommandResponseModel?)? onAck}) async {
     Map<String, dynamic> payload = {
       'event': event,
       'payload': data,
@@ -200,14 +222,46 @@ class SocketService {
       ack: (dynamic response) {
         if (onAck != null) {
           try {
-            SocketCommandAckModel res =
-                SocketCommandAckModel.fromJson(response);
+            SocketCommandAckModel res = SocketCommandAckModel.fromJson(
+              response,
+            );
 
             if (kDebugMode) {
               debugPrint('[SOCKETS] Received command acknowledge');
             }
 
-            onAck(res);
+            if (res.status != 'ok') {
+              onAck(
+                SocketCommandResponseModel.fromJson({
+                  "status": false,
+                  "message": res.message,
+                }),
+              );
+
+              return;
+            }
+
+            // Search for the relevant handler result
+            final SocketCommandAckResultModel? result =
+                response.res.firstWhereOrNull(
+              (r) => r.handler == handler,
+            );
+
+            if (result == null || result.success != true) {
+              onAck(
+                SocketCommandResponseModel.fromJson({
+                  "status": false,
+                  "message": result?.reason ?? 'Unknown error',
+                }),
+              );
+            }
+
+            onAck(
+              SocketCommandResponseModel.fromJson({
+                "status": true,
+                "message": result?.reason ?? 'ok',
+              }),
+            );
           } catch (e) {
             if (kDebugMode) {
               debugPrint(

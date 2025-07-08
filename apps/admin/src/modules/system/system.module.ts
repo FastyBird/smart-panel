@@ -8,7 +8,7 @@ import type { IModuleOptions } from '../../app.types';
 import { injectSockets, injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
-import { ModuleRoutes } from './router';
+import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
 import { systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
 import { registerSystemInfoStore } from './store/system-info.store';
 import { registerThrottleStatusStore } from './store/throttle-status.store';
@@ -35,6 +35,10 @@ export default {
 
 		app.provide(throttleStatusStoreKey, throttleStatusStore);
 		storesManager.addStore(throttleStatusStoreKey, throttleStatusStore);
+
+		ModuleMaintenanceRoutes.forEach((route): void => {
+			options.router.addRoute(route);
+		});
 
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 
