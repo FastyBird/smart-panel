@@ -35,8 +35,8 @@ describe('FactoryResetRegistryService', () => {
 
 			const handlers = service.get();
 
-			expect(handlers).toContainEqual(mockHandler1);
-			expect(handlers).toContainEqual(mockHandler2);
+			expect(handlers).toContainEqual({ priority: 10, handler: mockHandler1 });
+			expect(handlers).toContainEqual({ priority: 20, handler: mockHandler2 });
 			expect(handlers.length).toBe(2);
 		});
 	});
@@ -51,8 +51,8 @@ describe('FactoryResetRegistryService', () => {
 
 			const handlers = service.get();
 
-			expect(handlers).toContainEqual(mockHandler1);
-			expect(handlers).toContainEqual(mockHandler2);
+			expect(handlers).toContainEqual({ priority: 20, handler: mockHandler1 });
+			expect(handlers).toContainEqual({ priority: 10, handler: mockHandler2 });
 			expect(handlers.length).toBe(2);
 		});
 	});
