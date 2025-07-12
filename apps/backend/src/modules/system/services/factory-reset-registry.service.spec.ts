@@ -19,40 +19,40 @@ describe('FactoryResetRegistryService', () => {
 
 	describe('registerHandler', () => {
 		it('should register a new factory reset handler', () => {
-			const mockHandler = { name: 'HandlerName', handler: jest.fn() };
-			service.register(mockHandler.name, 10, mockHandler.handler);
+			const mockHandler = { name: 'HandlerName', priority: 10, handler: jest.fn() };
+			service.register(mockHandler.name, mockHandler.priority, mockHandler.handler);
 
 			expect(service.has('HandlerName')).toBe(true);
 			expect(service.get()).toContainEqual(mockHandler);
 		});
 
 		it('should add multiple handlers', () => {
-			const mockHandler1 = { name: 'Handler1Name', handler: jest.fn() };
-			const mockHandler2 = { name: 'Handler2Name', handler: jest.fn() };
+			const mockHandler1 = { name: 'Handler1Name', priority: 10, handler: jest.fn() };
+			const mockHandler2 = { name: 'Handler2Name', priority: 20, handler: jest.fn() };
 
-			service.register(mockHandler1.name, 10, mockHandler1.handler);
-			service.register(mockHandler2.name, 20, mockHandler2.handler);
+			service.register(mockHandler1.name, mockHandler1.priority, mockHandler1.handler);
+			service.register(mockHandler2.name, mockHandler2.priority, mockHandler2.handler);
 
 			const handlers = service.get();
 
-			expect(handlers).toContainEqual({ priority: 10, handler: mockHandler1 });
-			expect(handlers).toContainEqual({ priority: 20, handler: mockHandler2 });
+			expect(handlers).toContainEqual(mockHandler1);
+			expect(handlers).toContainEqual(mockHandler2);
 			expect(handlers.length).toBe(2);
 		});
 	});
 
 	describe('getHandlers', () => {
 		it('should return all handlers for a registered event', () => {
-			const mockHandler1 = { name: 'Handler1Name', handler: jest.fn() };
-			const mockHandler2 = { name: 'Handler2Name', handler: jest.fn() };
+			const mockHandler1 = { name: 'Handler1Name', priority: 20, handler: jest.fn() };
+			const mockHandler2 = { name: 'Handler2Name', priority: 10, handler: jest.fn() };
 
-			service.register(mockHandler1.name, 20, mockHandler1.handler);
-			service.register(mockHandler2.name, 10, mockHandler2.handler);
+			service.register(mockHandler1.name, mockHandler1.priority, mockHandler1.handler);
+			service.register(mockHandler2.name, mockHandler2.priority, mockHandler2.handler);
 
 			const handlers = service.get();
 
-			expect(handlers).toContainEqual({ priority: 20, handler: mockHandler1 });
-			expect(handlers).toContainEqual({ priority: 10, handler: mockHandler2 });
+			expect(handlers).toContainEqual(mockHandler1);
+			expect(handlers).toContainEqual(mockHandler2);
 			expect(handlers.length).toBe(2);
 		});
 	});
