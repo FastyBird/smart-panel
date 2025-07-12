@@ -1,0 +1,3 @@
+class FactoryResetDoneEvent {
+  FactoryResetDoneEvent();
+}

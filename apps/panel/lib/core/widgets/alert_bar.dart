@@ -68,7 +68,7 @@ class AlertBar {
         backgroundColor: backgroundColor,
         closeIconColor: closeIconColor,
         duration: duration,
-        margin: EdgeInsets.all(0),
+        margin: AppSpacings.paddingXs,
         padding: EdgeInsets.all(0),
       ),
     );

@@ -8,6 +8,8 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
 
+import { SeedRegistryService } from './seed-registry.service';
+
 export interface Seeder {
 	seed(): Promise<void>;
 }
@@ -61,13 +63,11 @@ export class SeedTools {
 @Injectable()
 export class SeedService {
 	private readonly logger = new Logger(SeedService.name);
-	private readonly seeders: { seeder: Seeder; priority: number }[] = [];
 
-	constructor(private readonly dataSource: DataSource) {}
-
-	registerSeeder(seeder: Seeder, priority = 10) {
-		this.seeders.push({ seeder, priority });
-	}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly seedRegistryService: SeedRegistryService,
+	) {}
 
 	async seed() {
 		try {
@@ -91,15 +91,15 @@ export class SeedService {
 			}
 
 			// Sort seeders by priority (lower first)
-			this.seeders.sort((a, b) => a.priority - b.priority);
+			const seeders = this.seedRegistryService.get().sort((a, b) => a.priority - b.priority);
 
-			for (const { seeder } of this.seeders) {
+			for (const { name, seeder } of seeders) {
 				try {
-					await seeder.seed();
+					await seeder();
 				} catch (error) {
 					const err = error as Error;
 
-					this.logger.error(`[SEED] Failed in ${seeder.constructor.name}`, { message: err.message, stack: err.stack });
+					this.logger.error(`[SEED] Failed in ${name}`, { message: err.message, stack: err.stack });
 				}
 			}
 

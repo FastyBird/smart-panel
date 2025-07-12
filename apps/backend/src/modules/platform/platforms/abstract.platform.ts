@@ -22,6 +22,8 @@ export abstract class Platform {
 	abstract muteSpeaker(mute: boolean): Promise<void>;
 	abstract setMicrophoneVolume(volume: number): Promise<void>;
 	abstract muteMicrophone(mute: boolean): Promise<void>;
+	abstract rebootDevice(): Promise<void>;
+	abstract powerOffDevice(): Promise<void>;
 
 	protected validateDto<T extends object>(dtoClass: new () => T, rawData: unknown): T {
 		const instance = plainToInstance(dtoClass, rawData);

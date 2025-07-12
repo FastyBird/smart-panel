@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 
@@ -23,8 +23,8 @@ import { WsAuthService } from './services/ws-auth.service';
 				};
 			},
 		}),
-		AuthModule,
-		UsersModule,
+		forwardRef(() => AuthModule),
+		forwardRef(() => UsersModule),
 	],
 	providers: [WebsocketGateway, CommandEventRegistryService, WsAuthService],
 	exports: [WebsocketGateway, CommandEventRegistryService],

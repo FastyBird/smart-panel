@@ -210,6 +210,40 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 		Make sure you're using InfluxDB **v1.8**. Installing **InfluxDB 2.x** will not work.
 	</Callout>
 
+    ## Allow Reboot & Power Off Commands
+
+    To allow the Smart Panel backend to reboot or shut down the Raspberry Pi, you need to give it
+    permission to execute system commands without a password.
+
+    The backend uses the following commands internally:
+
+    - `sudo /sbin/reboot`
+    - `sudo /sbin/poweroff`
+
+    By default, these require elevated privileges and will prompt for a password — which is not
+    suitable for automated use.
+
+
+    ### Grant Password-less Access for the `pi` User
+
+    Edit the `sudoers` file using the safe `visudo` tool:
+
+    ```bash copy
+    sudo visudo
+    ```
+
+    Then add this line at the bottom:
+
+    ```bash copy
+    pi ALL=(ALL) NOPASSWD: /sbin/reboot, /sbin/poweroff
+    ```
+
+    This gives the default pi user permission to execute reboot and poweroff without entering a password.
+
+    <Callout type="warning">
+        Only allow specific commands like `reboot` and `poweroff`. Never use `NOPASSWD: ALL`, as it poses a security risk.
+    </Callout>
+
 	## Install the Smart Panel Application
 
 	To get the full Smart Panel software—including the backend, admin UI, and the display app—you’ll need to download and

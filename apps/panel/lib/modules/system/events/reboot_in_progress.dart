@@ -1,0 +1,3 @@
+class RebootInProgressEvent {
+  RebootInProgressEvent();
+}

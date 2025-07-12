@@ -67,7 +67,7 @@ export default {
 				return;
 			}
 
-			if (typeof data.payload !== 'object' || !('type' in data.payload) || typeof data.payload.type !== 'string') {
+			if (data.payload === null || typeof data.payload !== 'object' || !('type' in data.payload) || typeof data.payload.type !== 'string') {
 				return;
 			}
 

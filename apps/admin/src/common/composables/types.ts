@@ -2,6 +2,7 @@ import type { ComputedRef, Ref } from 'vue';
 
 import type { Emitter, Handler } from 'mitt';
 import type { Client } from 'openapi-fetch';
+import type { Socket } from 'socket.io-client';
 
 import type { paths } from '../../openapi';
 import type { Events } from '../services/event-bus';
@@ -37,6 +38,13 @@ export interface IUseFlashMessage {
 	info: (message: string) => void;
 	error: (message: string) => void;
 	exception: (errorMessage: string) => void;
+}
+
+export interface IUseSockets {
+	sockets: Socket;
+	connected: ComputedRef<boolean>;
+	active: ComputedRef<boolean>;
+	sendCommand: <Payload extends object>(event: string, payload: Payload | null, handler: string) => Promise<true | string>;
 }
 
 export interface IUseUuid {

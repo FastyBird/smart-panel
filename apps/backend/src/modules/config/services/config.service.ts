@@ -387,4 +387,10 @@ export class ConfigService {
 
 		this.logger.log(`[UPDATE] Configuration update for plugin=${plugin} completed successfully`);
 	}
+
+	async resetConfig(): Promise<void> {
+		await fs.promises.unlink(path.resolve(this.configPath, this.filename));
+
+		this.eventEmitter.emit(EventType.CONFIG_RESET, null);
+	}
 }

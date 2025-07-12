@@ -1,15 +1,19 @@
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 
-import { ElLoading, ElMessageBox } from 'element-plus';
+import { ElMessageBox } from 'element-plus';
 
-import { RouteNames } from '../../../app.constants';
+import { useFlashMessage, useSockets } from '../../../common';
+import { injectSystemActionsService } from '../services/system-actions-service';
+import { EventHandlerName, EventType } from '../system.constants';
 
 import type { IUseSystemActions } from './types';
 
 export const useSystemActions = (): IUseSystemActions => {
-	const router = useRouter();
+	const systemActions = injectSystemActionsService();
+
 	const { t } = useI18n();
+	const { sendCommand } = useSockets();
+	const flashMessage = useFlashMessage();
 
 	const onRestart = (): void => {
 		ElMessageBox.confirm(t('systemModule.messages.confirmRestart'), t('systemModule.headings.restart'), {
@@ -18,16 +22,25 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				const loading = ElLoading.service({
-					lock: true,
-					text: 'Processing request...',
-					closed: () => {
-						router.push({ name: RouteNames.ROOT });
-					},
-				});
-				setTimeout(() => {
-					loading.close();
-				}, 2000);
+				systemActions.reboot('in-progress', 'action');
+
+				try {
+					const response = await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+
+					if (response !== true) {
+						systemActions.reboot('err', 'action');
+
+						flashMessage.error(t('systemModule.messages.rebootFailed'));
+
+						return;
+					}
+
+					systemActions.reboot('ok', 'action');
+				} catch {
+					systemActions.reboot('err', 'action');
+
+					flashMessage.error(t('systemModule.messages.rebootFailed'));
+				}
 			})
 			.catch((): void => {
 				// Just ignore
@@ -41,16 +54,25 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				const loading = ElLoading.service({
-					lock: true,
-					text: 'Processing request...',
-					closed: () => {
-						router.push({ name: RouteNames.ROOT });
-					},
-				});
-				setTimeout(() => {
-					loading.close();
-				}, 2000);
+				systemActions.powerOff('in-progress', 'action');
+
+				try {
+					const response = await sendCommand(EventType.SYSTEM_POWER_OFF_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+
+					if (response !== true) {
+						systemActions.powerOff('err', 'action');
+
+						flashMessage.error(t('systemModule.messages.powerOffFailed'));
+
+						return;
+					}
+
+					systemActions.powerOff('ok', 'action');
+				} catch {
+					systemActions.powerOff('err', 'action');
+
+					flashMessage.error(t('systemModule.messages.rebootFailed'));
+				}
 			})
 			.catch((): void => {
 				// Just ignore
@@ -64,16 +86,25 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				const loading = ElLoading.service({
-					lock: true,
-					text: 'Processing request...',
-					closed: () => {
-						router.push({ name: RouteNames.ROOT });
-					},
-				});
-				setTimeout(() => {
-					loading.close();
-				}, 2000);
+				systemActions.factoryReset('in-progress', 'action');
+
+				try {
+					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+
+					if (response !== true) {
+						systemActions.factoryReset('err', 'action');
+
+						flashMessage.error(t('systemModule.messages.factoryResetFailed'));
+
+						return;
+					}
+
+					systemActions.factoryReset('ok', 'action');
+				} catch {
+					systemActions.factoryReset('err', 'action');
+
+					flashMessage.error(t('systemModule.messages.factoryResetFailed'));
+				}
 			})
 			.catch((): void => {
 				// Just ignore

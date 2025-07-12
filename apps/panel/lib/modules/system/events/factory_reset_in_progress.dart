@@ -1,0 +1,3 @@
+class FactoryResetInProgressEvent {
+  FactoryResetInProgressEvent();
+}

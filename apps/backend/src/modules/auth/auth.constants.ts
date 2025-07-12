@@ -4,6 +4,8 @@ import { UserRole } from '../users/users.constants';
 
 export const AUTH_MODULE_PREFIX = 'auth-module';
 
+export const AUTH_MODULE_NAME = 'auth-module';
+
 export enum TokenType {
 	ACCESS = 'access',
 	REFRESH = 'refresh',

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/models/auth_module_register_display.dart';
 import 'package:fastybird_smart_panel/api/models/auth_module_req_register_display.dart';
@@ -8,6 +9,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/application.dart';
 import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
@@ -33,6 +35,8 @@ class StartupManagerService {
   late Dio _apiIoService;
 
   late SocketService _socketClient;
+
+  late EventBus _eventBus;
 
   late FlutterSecureStorage _securedStorage;
   late SecureStorageFallback _securedStorageFallback;
@@ -86,6 +90,8 @@ class StartupManagerService {
 
     _socketClient = SocketService();
 
+    _eventBus = EventBus();
+
     var configModuleService = ConfigModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
@@ -93,6 +99,7 @@ class StartupManagerService {
     var systemModuleService = SystemModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
+      eventBus: _eventBus,
     );
     var weatherModuleService = WeatherModuleService(
       apiClient: _apiClient,
@@ -129,6 +136,7 @@ class StartupManagerService {
     } else {
       locator.registerSingleton(_securedStorageFallback);
     }
+    locator.registerSingleton(_eventBus);
 
     // Register modules
     locator.registerSingleton(configModuleService);
@@ -143,6 +151,11 @@ class StartupManagerService {
 
     // Sockets client
     locator.registerSingleton(_socketClient);
+
+    // Misc services
+    locator.registerSingleton<SystemActionsService>(
+      SystemActionsService(_eventBus),
+    );
   }
 
   Future<void> initialize() async {

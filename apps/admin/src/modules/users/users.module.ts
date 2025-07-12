@@ -49,7 +49,7 @@ export default {
 				return;
 			}
 
-			if (typeof data.payload !== 'object' || !('id' in data.payload) || typeof data.payload.id !== 'string') {
+			if (data.payload === null || typeof data.payload !== 'object' || !('id' in data.payload) || typeof data.payload.id !== 'string') {
 				return;
 			}
 

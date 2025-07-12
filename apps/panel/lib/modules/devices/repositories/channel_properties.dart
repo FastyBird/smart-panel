@@ -159,7 +159,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     if (channel != null) {
       final completer = Completer<bool>();
 
-      await _socketService.sendEvent(
+      await _socketService.sendCommand(
         DevicesModuleConstants.channelPropertySetEvent,
         {
           'properties': [
@@ -171,13 +171,27 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
             },
           ],
         },
-        onAck: (SocketCommandAckModel? response) {
-          bool isSuccess = _handleCommandResponse(
-            id: id,
-            response: response,
-          );
+        DevicesModuleEventHandlerName.internalSetProperty,
+        onAck: (SocketCommandResponseModel? response) {
+          if (response == null || response.status == false) {
+            if (kDebugMode) {
+              debugPrint(
+                '[DEVICES MODULE][CHANNEL PROPERTIES] Failed process command by backend for property: $id, reason: ${response?.message ?? 'N/A'}',
+              );
+            }
 
-          completer.complete(isSuccess);
+            _revertValue(id: id);
+
+            completer.complete(false);
+          } else {
+            if (kDebugMode) {
+              debugPrint(
+                '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully send command to backend for property: $id',
+              );
+            }
+
+            completer.complete(true);
+          }
         },
       );
 
@@ -207,52 +221,6 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     _valueBackup.remove(id);
 
     return false;
-  }
-
-  bool _handleCommandResponse({
-    required String id,
-    required SocketCommandAckModel? response,
-  }) {
-    bool cmdResult = false;
-
-    if (response != null && response.status == 'ok') {
-      for (var result in response.results) {
-        if (result.handler == DevicesModuleConstants.setPropertyHandlerName) {
-          /// Failed to set prop state
-          if (result.success == false) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DEVICES MODULE][CHANNEL PROPERTIES] Failed process command by backend for property: $id, reason: ${result.reason}',
-              );
-            }
-
-            _revertValue(id: id);
-
-            return false;
-          } else {
-            if (kDebugMode) {
-              debugPrint(
-                '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully send command to backend for property: $id',
-              );
-            }
-
-            cmdResult = true;
-          }
-        }
-      }
-    } else {
-      if (response != null && kDebugMode) {
-        debugPrint(
-          '[DEVICES MODULE][CHANNEL PROPERTIES] Failed process command by backend for property: $id, reason: ${response.message}',
-        );
-      }
-
-      _revertValue(id: id);
-
-      return false;
-    }
-
-    return cmdResult;
   }
 
   void _revertValue({required String id}) {

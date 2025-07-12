@@ -1,0 +1,3 @@
+class PowerOffInProgressEvent {
+  PowerOffInProgressEvent();
+}

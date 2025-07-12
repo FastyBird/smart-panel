@@ -28,7 +28,7 @@
 				class="block"
 				data-test-id="restart-info"
 			>
-				{{ t('systemModule.texts.restartDevice') }}
+				{{ t('systemModule.texts.rebootDevice') }}
 			</el-text>
 		</el-col>
 		<el-col
@@ -149,7 +149,7 @@ import { Icon } from '@iconify/vue';
 import { useSystemActions } from '../composables/composables';
 
 defineOptions({
-	name: 'SystemReset',
+	name: 'ManageSystem',
 });
 
 const { t } = useI18n();

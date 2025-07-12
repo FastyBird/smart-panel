@@ -5,7 +5,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { InfluxDbService } from '../influxdb/services/influxdb.service';
 import { SeedModule } from '../seed/seeding.module';
-import { SeedService } from '../seed/services/seed.service';
+import { SeedRegistryService } from '../seed/services/seed-registry.service';
+import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
+import { SystemModule } from '../system/system.module';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
@@ -18,7 +20,7 @@ import { DevicesChannelsControlsController } from './controllers/devices.channel
 import { DevicesChannelsPropertiesController } from './controllers/devices.channels.properties.controller';
 import { DevicesController } from './controllers/devices.controller';
 import { DevicesControlsController } from './controllers/devices.controls.controller';
-import { EventHandlerName, EventType, PropertyInfluxDbSchema } from './devices.constants';
+import { DEVICES_MODULE_NAME, EventHandlerName, EventType, PropertyInfluxDbSchema } from './devices.constants';
 import {
 	ChannelControlEntity,
 	ChannelEntity,
@@ -35,6 +37,7 @@ import { DevicesSeederService } from './services/devices-seeder.service';
 import { DevicesTypeMapperService } from './services/devices-type-mapper.service';
 import { DevicesControlsService } from './services/devices.controls.service';
 import { DevicesService } from './services/devices.service';
+import { ModuleResetService } from './services/module-reset.service';
 import { PlatformRegistryService } from './services/platform.registry.service';
 import { PropertyCommandService } from './services/property-command.service';
 import { PropertyValueService } from './services/property-value.service';
@@ -59,6 +62,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		]),
 		InfluxDbModule,
 		SeedModule,
+		SystemModule,
 		WebsocketModule,
 	],
 	providers: [
@@ -82,6 +86,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		PlatformRegistryService,
 		PropertyValueService,
 		PropertyCommandService,
+		ModuleResetService,
 	],
 	controllers: [
 		DevicesController,
@@ -113,9 +118,11 @@ export class DevicesModule {
 	constructor(
 		private readonly eventRegistry: CommandEventRegistryService,
 		private readonly moduleSeeder: DevicesSeederService,
+		private readonly moduleReset: ModuleResetService,
 		private readonly propertyCommandService: PropertyCommandService,
 		private readonly influxDbService: InfluxDbService,
-		private readonly seedService: SeedService,
+		private readonly seedRegistry: SeedRegistryService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -127,6 +134,20 @@ export class DevicesModule {
 
 		this.influxDbService.registerSchema(PropertyInfluxDbSchema);
 
-		this.seedService.registerSeeder(this.moduleSeeder, 100);
+		this.seedRegistry.register(
+			DEVICES_MODULE_NAME,
+			async (): Promise<void> => {
+				await this.moduleSeeder.seed();
+			},
+			100,
+		);
+
+		this.factoryResetRegistry.register(
+			DEVICES_MODULE_NAME,
+			200,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				return this.moduleReset.reset();
+			},
+		);
 	}
 }

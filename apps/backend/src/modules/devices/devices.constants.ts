@@ -2,6 +2,8 @@ import { FieldType, ISchemaOptions } from 'influx';
 
 export const DEVICES_MODULE_PREFIX = 'devices-module';
 
+export const DEVICES_MODULE_NAME = 'devices-module';
+
 export enum EventHandlerName {
 	/**
 	 * Internal command sent from the UI (Flutter Display App or Vue Admin Panel)
@@ -22,17 +24,23 @@ export enum EventType {
 	DEVICE_CREATED = 'DevicesModule.Device.Created',
 	DEVICE_UPDATED = 'DevicesModule.Device.Updated',
 	DEVICE_DELETED = 'DevicesModule.Device.Deleted',
+	DEVICE_RESET = 'DevicesModule.Device.Reset',
 	DEVICE_CONTROL_CREATED = 'DevicesModule.DeviceControl.Created',
 	DEVICE_CONTROL_DELETED = 'DevicesModule.DeviceControl.Deleted',
+	DEVICE_CONTROL_RESET = 'DevicesModule.DeviceControl.Reset',
 	CHANNEL_CREATED = 'DevicesModule.Channel.Created',
 	CHANNEL_UPDATED = 'DevicesModule.Channel.Updated',
 	CHANNEL_DELETED = 'DevicesModule.Channel.Deleted',
+	CHANNEL_RESET = 'DevicesModule.Channel.Reset',
 	CHANNEL_CONTROL_CREATED = 'DevicesModule.ChannelControl.Created',
 	CHANNEL_CONTROL_DELETED = 'DevicesModule.ChannelControl.Deleted',
+	CHANNEL_CONTROL_RESET = 'DevicesModule.ChannelControl.Reset',
 	CHANNEL_PROPERTY_CREATED = 'DevicesModule.ChannelProperty.Created',
 	CHANNEL_PROPERTY_UPDATED = 'DevicesModule.ChannelProperty.Updated',
 	CHANNEL_PROPERTY_DELETED = 'DevicesModule.ChannelProperty.Deleted',
+	CHANNEL_PROPERTY_RESET = 'DevicesModule.ChannelProperty.Reset',
 	CHANNEL_PROPERTY_SET = 'DevicesModule.ChannelProperty.Set',
+	MODULE_RESET = 'DevicesModule.All.Reset',
 }
 
 export enum DeviceCategory {

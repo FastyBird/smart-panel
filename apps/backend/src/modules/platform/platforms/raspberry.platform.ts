@@ -174,6 +174,18 @@ export class RaspberryPlatform extends Platform {
 		await this.executeCommand(command);
 	}
 
+	async rebootDevice(): Promise<void> {
+		this.logger.log('[SYSTEM] Rebooting device...');
+
+		await this.executeCommand('sudo /sbin/reboot');
+	}
+
+	async powerOffDevice(): Promise<void> {
+		this.logger.log('[SYSTEM] Powering off device...');
+
+		await this.executeCommand('sudo /sbin/poweroff');
+	}
+
 	private executeCommand(command: string): Promise<void> {
 		return new Promise((resolve, reject) => {
 			exec(command, (error, stdout, stderr) => {

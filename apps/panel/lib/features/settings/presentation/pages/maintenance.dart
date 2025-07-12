@@ -1,12 +1,13 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/app/routes.dart';
+import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
-import 'package:fastybird_smart_panel/features/overlay/presentation/power_off.dart';
-import 'package:fastybird_smart_panel/features/overlay/presentation/reboot.dart';
-import 'package:fastybird_smart_panel/features/overlay/presentation/reset.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/system/module.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -14,6 +15,8 @@ class MaintenancePage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
+  final SystemModuleService _systemModuleService =
+      locator<SystemModuleService>();
 
   MaintenancePage({super.key});
 
@@ -75,14 +78,19 @@ class MaintenancePage extends StatelessWidget {
                         content: localizations
                             .settings_maintenance_restart_confirm_description,
                         onConfirm: () {
-                          Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute(
-                              builder: (context) => const RebootScreen(),
-                              settings: RouteSettings(
-                                name: 'reboot',
-                              ),
-                            ),
+                          locator<NavigationService>().navigateTo(
+                            AppRouteNames.reboot,
                           );
+
+                          _systemModuleService
+                              .rebootDevice()
+                              .then((bool result) {
+                            if (!result) {
+                              if (!context.mounted) return;
+
+                              _handleCommandError(context: context);
+                            }
+                          });
                         },
                       );
                     },
@@ -143,14 +151,19 @@ class MaintenancePage extends StatelessWidget {
                         content: localizations
                             .settings_maintenance_power_off_confirm_description,
                         onConfirm: () {
-                          Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute(
-                              builder: (context) => const PowerOffScreen(),
-                              settings: RouteSettings(
-                                name: 'power_off',
-                              ),
-                            ),
+                          locator<NavigationService>().navigateTo(
+                            AppRouteNames.powerOff,
                           );
+
+                          _systemModuleService
+                              .powerOffDevice()
+                              .then((bool result) {
+                            if (!result) {
+                              if (!context.mounted) return;
+
+                              _handleCommandError(context: context);
+                            }
+                          });
                         },
                       );
                     },
@@ -212,14 +225,19 @@ class MaintenancePage extends StatelessWidget {
                         content: localizations
                             .settings_maintenance_factory_reset_confirm_description,
                         onConfirm: () {
-                          Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute(
-                              builder: (context) => const ResetScreen(),
-                              settings: RouteSettings(
-                                name: 'reset',
-                              ),
-                            ),
+                          locator<NavigationService>().navigateTo(
+                            AppRouteNames.factoryReset,
                           );
+
+                          _systemModuleService
+                              .factoryResetDevice()
+                              .then((bool result) {
+                            if (!result) {
+                              if (!context.mounted) return;
+
+                              _handleCommandError(context: context);
+                            }
+                          });
                         },
                       );
                     },
@@ -303,6 +321,27 @@ class MaintenancePage extends StatelessWidget {
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _handleCommandError({
+    required BuildContext context,
+  }) {
+    final localizations = AppLocalizations.of(context)!;
+
+    Future.delayed(
+      const Duration(milliseconds: 2000),
+      () {
+        if (!context.mounted) return;
+
+        // Hide he processing screen
+        Navigator.of(context, rootNavigator: true).pop();
+
+        AlertBar.showError(
+          context,
+          message: localizations.action_failed,
         );
       },
     );
