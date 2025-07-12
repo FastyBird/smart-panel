@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SystemActionsService, injectSystemActionsService } from '../services/system-actions-service.ts';
 import { EventHandlerName, EventType } from '../system.constants';
 
 import { useSystemActions } from './useSystemActions';
@@ -46,6 +47,10 @@ vi.mock('element-plus', async () => {
 		},
 	};
 });
+
+vi.mock('../services/system-actions-service', () => ({
+	injectSystemActionsService: vi.fn(() => SystemActionsService),
+}));
 
 const backendClient = {
 	GET: vi.fn(),
