@@ -23,11 +23,11 @@ export class ModuleResetService {
 		try {
 			this.logger.debug(`[RESET] Resetting all module data`);
 
-			await this.displaysRepository.delete({});
+			await this.displaysRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.DISPLAY_RESET, null);
 
-			await this.usersRepository.delete({});
+			await this.usersRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.USER_RESET, null);
 

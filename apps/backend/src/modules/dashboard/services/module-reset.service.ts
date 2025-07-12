@@ -25,15 +25,15 @@ export class ModuleResetService {
 		try {
 			this.logger.debug(`[RESET] Resetting all module data`);
 
-			await this.dataSourcesRepository.delete({});
+			await this.dataSourcesRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.DATA_SOURCE_RESET, null);
 
-			await this.tilesRepository.delete({});
+			await this.tilesRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.TILE_RESET, null);
 
-			await this.pagesRepository.delete({});
+			await this.pagesRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.PAGE_RESET, null);
 

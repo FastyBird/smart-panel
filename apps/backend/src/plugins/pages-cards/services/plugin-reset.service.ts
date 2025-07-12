@@ -21,7 +21,7 @@ export class PluginResetService {
 		try {
 			this.logger.debug(`[RESET] Resetting all plugin data`);
 
-			await this.cardsRepository.delete({});
+			await this.cardsRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.CARD_RESET, null);
 

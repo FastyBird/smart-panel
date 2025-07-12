@@ -22,22 +22,22 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				systemActions.reboot('in-progress');
+				systemActions.reboot('in-progress', 'action');
 
 				try {
 					const response = await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 
 					if (response !== true) {
-						systemActions.reboot('err');
+						systemActions.reboot('err', 'action');
 
 						flashMessage.error(t('systemModule.messages.rebootFailed'));
 
 						return;
 					}
 
-					systemActions.reboot('ok');
+					systemActions.reboot('ok', 'action');
 				} catch {
-					systemActions.reboot('err');
+					systemActions.reboot('err', 'action');
 
 					flashMessage.error(t('systemModule.messages.rebootFailed'));
 				}
@@ -54,22 +54,22 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				systemActions.powerOff('in-progress');
+				systemActions.powerOff('in-progress', 'action');
 
 				try {
 					const response = await sendCommand(EventType.SYSTEM_POWER_OFF_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 
 					if (response !== true) {
-						systemActions.powerOff('err');
+						systemActions.powerOff('err', 'action');
 
 						flashMessage.error(t('systemModule.messages.powerOffFailed'));
 
 						return;
 					}
 
-					systemActions.powerOff('ok');
+					systemActions.powerOff('ok', 'action');
 				} catch {
-					systemActions.powerOff('err');
+					systemActions.powerOff('err', 'action');
 
 					flashMessage.error(t('systemModule.messages.rebootFailed'));
 				}
@@ -86,22 +86,22 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				systemActions.factoryReset('in-progress');
+				systemActions.factoryReset('in-progress', 'action');
 
 				try {
 					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 
 					if (response !== true) {
-						systemActions.factoryReset('err');
+						systemActions.factoryReset('err', 'action');
 
 						flashMessage.error(t('systemModule.messages.factoryResetFailed'));
 
 						return;
 					}
 
-					systemActions.factoryReset('ok');
+					systemActions.factoryReset('ok', 'action');
 				} catch {
-					systemActions.factoryReset('err');
+					systemActions.factoryReset('err', 'action');
 
 					flashMessage.error(t('systemModule.messages.factoryResetFailed'));
 				}

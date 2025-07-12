@@ -6,15 +6,16 @@ import { ElLoading, ElNotification } from 'element-plus';
 import type { LoadingInstance } from 'element-plus/es/components/loading/src/loading';
 import type { Client } from 'openapi-fetch';
 
-import { type IAccountManager, injectAccountManager, injectBackendClient } from '../../../common';
+import { injectAccountManager, injectBackendClient } from '../../../common';
 import type { paths } from '../../../openapi';
 import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 export const systemActionsKey: InjectionKey<SystemActionsService | undefined> = Symbol('FB-System-Module-SystemActionsService');
 
 export class SystemActionsService {
+	private readonly app: App;
+
 	private readonly backend: Client<paths>;
-	private readonly accountManager: IAccountManager | undefined;
 	private readonly router: Router;
 	private readonly t: Composer['t'];
 
@@ -22,22 +23,29 @@ export class SystemActionsService {
 	private powerOffLoading: LoadingInstance | null = null;
 	private factoryResetLoading: LoadingInstance | null = null;
 
+	private rebootTriggeredBy: 'action' | 'event' | null = null;
+	private powerOffTriggeredBy: 'action' | 'event' | null = null;
+	private factoryResetTriggeredBy: 'action' | 'event' | null = null;
+
 	private rebootWaiting: LoadingInstance | null = null;
 
 	constructor(app: App, router: Router, i18n: Composer) {
+		this.app = app;
+
 		this.backend = injectBackendClient(app);
-		this.accountManager = injectAccountManager(app);
 		this.router = router;
-		this.t = i18n.t; // store the `t` function
+		this.t = i18n.t;
 	}
 
-	reboot(state: 'in-progress' | 'err' | 'ok'): void {
+	reboot(state: 'in-progress' | 'err' | 'ok', trigger: 'action' | 'event'): void {
 		if (this.rebootLoading === null && state === 'in-progress') {
+			this.rebootTriggeredBy = trigger;
+
 			this.rebootLoading = ElLoading.service({
 				lock: true,
 				text: this.t('systemModule.texts.rebootInProcess'),
 			});
-		} else if (state === 'err' || state === 'ok') {
+		} else if (this.rebootTriggeredBy === trigger && this.rebootLoading !== null && (state === 'err' || state === 'ok')) {
 			setTimeout(() => {
 				if (this.rebootWaiting !== null) {
 					return;
@@ -76,13 +84,15 @@ export class SystemActionsService {
 		}
 	}
 
-	powerOff(state: 'in-progress' | 'err' | 'ok'): void {
+	powerOff(state: 'in-progress' | 'err' | 'ok', trigger: 'action' | 'event'): void {
 		if (this.powerOffLoading === null && state === 'in-progress') {
+			this.powerOffTriggeredBy = trigger;
+
 			this.powerOffLoading = ElLoading.service({
 				lock: true,
 				text: this.t('systemModule.texts.powerOffInProcess'),
 			});
-		} else if (state === 'err' || state === 'ok') {
+		} else if (this.powerOffTriggeredBy === trigger && this.powerOffLoading !== null && (state === 'err' || state === 'ok')) {
 			setTimeout(() => {
 				this.powerOffLoading?.close();
 
@@ -97,13 +107,15 @@ export class SystemActionsService {
 		}
 	}
 
-	factoryReset(state: 'in-progress' | 'err' | 'ok'): void {
+	factoryReset(state: 'in-progress' | 'err' | 'ok', trigger: 'action' | 'event'): void {
 		if (this.factoryResetLoading === null && state === 'in-progress') {
+			this.factoryResetTriggeredBy = trigger;
+
 			this.factoryResetLoading = ElLoading.service({
 				lock: true,
 				text: this.t('systemModule.texts.factoryResetInProcess'),
 			});
-		} else if (state === 'err' || state === 'ok') {
+		} else if (this.factoryResetTriggeredBy === trigger && this.factoryResetLoading !== null && (state === 'err' || state === 'ok')) {
 			setTimeout(() => {
 				this.factoryResetLoading?.close();
 
@@ -111,10 +123,12 @@ export class SystemActionsService {
 
 				if (state === 'ok') {
 					void (async () => {
-						if (this.accountManager) {
-							await this.accountManager.signOut();
+						const accountManager = injectAccountManager(this.app);
 
-							await this.router.push({ name: this.accountManager.routes.signIn });
+						if (accountManager) {
+							await accountManager.signOut();
+
+							await this.router.push({ name: accountManager.routes.signIn });
 
 							ElNotification.success(this.t('systemModule.messages.factoryResetSuccess'));
 						}

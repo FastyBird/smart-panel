@@ -66,11 +66,11 @@ export default {
 				case EventType.SYSTEM_REBOOT:
 					if (data.payload && 'status' in data.payload) {
 						if (data.payload.status === 'processing') {
-							systemActions.reboot('in-progress');
+							systemActions.reboot('in-progress', 'event');
 						} else if (data.payload.status === 'err') {
-							systemActions.reboot('err');
+							systemActions.reboot('err', 'event');
 						} else if (data.payload.status === 'ok') {
-							systemActions.reboot('ok');
+							systemActions.reboot('ok', 'event');
 						}
 					}
 					break;
@@ -78,11 +78,11 @@ export default {
 				case EventType.SYSTEM_POWER_OFF:
 					if (data.payload && 'status' in data.payload) {
 						if (data.payload.status === 'processing') {
-							systemActions.powerOff('in-progress');
+							systemActions.powerOff('in-progress', 'event');
 						} else if (data.payload.status === 'err') {
-							systemActions.powerOff('err');
+							systemActions.powerOff('err', 'event');
 						} else if (data.payload.status === 'ok') {
-							systemActions.powerOff('ok');
+							systemActions.powerOff('ok', 'event');
 						}
 					}
 					break;
@@ -90,11 +90,11 @@ export default {
 				case EventType.SYSTEM_FACTORY_RESET:
 					if (data.payload && 'status' in data.payload) {
 						if (data.payload.status === 'processing') {
-							systemActions.factoryReset('in-progress');
+							systemActions.factoryReset('in-progress', 'event');
 						} else if (data.payload.status === 'err') {
-							systemActions.factoryReset('err');
+							systemActions.factoryReset('err', 'event');
 						} else if (data.payload.status === 'ok') {
-							systemActions.factoryReset('ok');
+							systemActions.factoryReset('ok', 'event');
 						}
 					}
 					break;

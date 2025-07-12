@@ -37,23 +37,23 @@ export class ModuleResetService {
 		try {
 			this.logger.debug(`[RESET] Resetting all module data`);
 
-			await this.channelsPropertiesRepository.delete({});
+			await this.channelsPropertiesRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.DEVICE_RESET, null);
 
-			await this.channelsControlsRepository.delete({});
+			await this.channelsControlsRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.DEVICE_CONTROL_RESET, null);
 
-			await this.channelsRepository.delete({});
+			await this.channelsRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.CHANNEL_RESET, null);
 
-			await this.devicesControlsRepository.delete({});
+			await this.devicesControlsRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.CHANNEL_CONTROL_RESET, null);
 
-			await this.devicesRepository.delete({});
+			await this.devicesRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_RESET, null);
 
