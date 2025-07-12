@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SystemActionsService, injectSystemActionsService } from '../services/system-actions-service.ts';
 import { EventHandlerName, EventType } from '../system.constants';
 
 import { useSystemActions } from './useSystemActions';
@@ -42,14 +41,17 @@ vi.mock('element-plus', async () => {
 		ElMessageBox: {
 			confirm: mocks.confirm,
 		},
-		ElLoading: {
-			service: mocks.service,
-		},
 	};
 });
 
+const systemActionsService = {
+	reboot: vi.fn(),
+	powerOff: vi.fn(),
+	factoryReset: vi.fn(),
+};
+
 vi.mock('../services/system-actions-service', () => ({
-	injectSystemActionsService: vi.fn(() => SystemActionsService),
+	injectSystemActionsService: vi.fn(() => systemActionsService),
 }));
 
 const backendClient = {
@@ -93,7 +95,6 @@ describe('useSystemActions', () => {
 		await vi.runAllTimersAsync();
 
 		expect(mocks.confirm).toHaveBeenCalled();
-		expect(mocks.service).toHaveBeenCalled();
 
 		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
