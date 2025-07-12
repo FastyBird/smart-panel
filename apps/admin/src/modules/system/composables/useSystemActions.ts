@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 import { ElMessageBox } from 'element-plus';
 
 import { useFlashMessage, useSockets } from '../../../common';
-import { injectSystemActionsService } from '../services/system-actions-service.ts';
+import { injectSystemActionsService } from '../services/system-actions-service';
 import { EventHandlerName, EventType } from '../system.constants';
 
 import type { IUseSystemActions } from './types';

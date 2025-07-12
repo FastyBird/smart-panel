@@ -10,7 +10,7 @@ import { injectSockets, injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
-import { SystemActionsService, provideSystemActionsService } from './services/system-actions-service.ts';
+import { SystemActionsService, provideSystemActionsService } from './services/system-actions-service';
 import { systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
 import { registerSystemInfoStore } from './store/system-info.store';
 import { registerThrottleStatusStore } from './store/throttle-status.store';

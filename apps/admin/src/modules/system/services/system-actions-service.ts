@@ -7,8 +7,8 @@ import type { LoadingInstance } from 'element-plus/es/components/loading/src/loa
 import type { Client } from 'openapi-fetch';
 
 import { type IAccountManager, injectAccountManager, injectBackendClient } from '../../../common';
-import type { paths } from '../../../openapi.ts';
-import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants.ts';
+import type { paths } from '../../../openapi';
+import { RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
 
 export const systemActionsKey: InjectionKey<SystemActionsService | undefined> = Symbol('FB-System-Module-SystemActionsService');
 

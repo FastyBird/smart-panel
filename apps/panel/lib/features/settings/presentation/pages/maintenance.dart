@@ -328,7 +328,6 @@ class MaintenancePage extends StatelessWidget {
 
   void _handleCommandError({
     required BuildContext context,
-    String? reason,
   }) {
     final localizations = AppLocalizations.of(context)!;
 
