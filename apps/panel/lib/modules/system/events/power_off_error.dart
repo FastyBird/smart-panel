@@ -1,0 +1,3 @@
+class PowerOffErrorEvent {
+  PowerOffErrorEvent();
+}

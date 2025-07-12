@@ -1,4 +1,5 @@
 import type { App } from 'vue';
+import type { Composer } from 'vue-i18n';
 import type { RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
@@ -9,6 +10,7 @@ import { injectSockets, injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
+import { SystemActionsService, provideSystemActionsService } from './services/system-actions-service.ts';
 import { systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
 import { registerSystemInfoStore } from './store/system-info.store';
 import { registerThrottleStatusStore } from './store/throttle-status.store';
@@ -48,6 +50,9 @@ export default {
 			});
 		}
 
+		const systemActions = new SystemActionsService(app, options.router, options.i18n.global as Composer);
+		provideSystemActionsService(app, systemActions);
+
 		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {
 			if (!data?.event?.startsWith(SYSTEM_MODULE_EVENT_PREFIX)) {
 				return;
@@ -58,6 +63,42 @@ export default {
 			}
 
 			switch (data.event) {
+				case EventType.SYSTEM_REBOOT:
+					if (data.payload && 'status' in data.payload) {
+						if (data.payload.status === 'processing') {
+							systemActions.reboot('in-progress');
+						} else if (data.payload.status === 'err') {
+							systemActions.reboot('err');
+						} else if (data.payload.status === 'ok') {
+							systemActions.reboot('ok');
+						}
+					}
+					break;
+
+				case EventType.SYSTEM_POWER_OFF:
+					if (data.payload && 'status' in data.payload) {
+						if (data.payload.status === 'processing') {
+							systemActions.powerOff('in-progress');
+						} else if (data.payload.status === 'err') {
+							systemActions.powerOff('err');
+						} else if (data.payload.status === 'ok') {
+							systemActions.powerOff('ok');
+						}
+					}
+					break;
+
+				case EventType.SYSTEM_FACTORY_RESET:
+					if (data.payload && 'status' in data.payload) {
+						if (data.payload.status === 'processing') {
+							systemActions.factoryReset('in-progress');
+						} else if (data.payload.status === 'err') {
+							systemActions.factoryReset('err');
+						} else if (data.payload.status === 'ok') {
+							systemActions.factoryReset('ok');
+						}
+					}
+					break;
+
 				case EventType.SYSTEM_INFO:
 					systemInfoStore.onEvent({
 						data: data.payload,

@@ -90,7 +90,7 @@ describe('useSystemActions', () => {
 		expect(mocks.confirm).toHaveBeenCalled();
 		expect(mocks.service).toHaveBeenCalled();
 
-		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
 
 	it('onPowerOff shows confirm and navigates', async () => {
@@ -104,7 +104,7 @@ describe('useSystemActions', () => {
 
 		expect(mocks.confirm).toHaveBeenCalled();
 
-		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_POWER_OFF, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_POWER_OFF_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
 
 	it('onFactoryReset shows confirm and navigates', async () => {
@@ -118,7 +118,7 @@ describe('useSystemActions', () => {
 
 		expect(mocks.confirm).toHaveBeenCalled();
 
-		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_FACTORY_RESET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+		expect(socketClient.sendCommand).toHaveBeenCalledWith(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 	});
 
 	it('canceling confirm does nothing', async () => {

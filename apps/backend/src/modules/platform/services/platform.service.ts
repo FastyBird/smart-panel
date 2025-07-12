@@ -96,12 +96,6 @@ export class PlatformService {
 		return this.platform.powerOffDevice();
 	}
 
-	factoryReset() {
-		this.logger.log('[SYSTEM] Resting device its factory state');
-
-		return this.platform.factoryReset();
-	}
-
 	private async detectPlatform(): Promise<Platform> {
 		const systemInfo = await si.system();
 		const osInfo = await si.osInfo();

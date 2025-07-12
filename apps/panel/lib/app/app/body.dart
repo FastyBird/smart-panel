@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
+import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/details/device.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/lock.dart';
@@ -26,6 +27,7 @@ class _AppBodyState extends State<AppBody> {
       locator<DisplayConfigRepository>();
   final LanguageConfigRepository _languageConfigRepository =
       locator<LanguageConfigRepository>();
+  final NavigationService _navigator = locator<NavigationService>();
 
   bool _hasDarkMode = false;
   Language _language = Language.english;
@@ -45,6 +47,8 @@ class _AppBodyState extends State<AppBody> {
 
     _displayConfigRepository.addListener(_syncStateWithRepository);
     _languageConfigRepository.addListener(_syncStateWithRepository);
+
+    locator<SystemActionsService>().init();
   }
 
   @override
@@ -53,6 +57,8 @@ class _AppBodyState extends State<AppBody> {
 
     _displayConfigRepository.removeListener(_syncStateWithRepository);
     _languageConfigRepository.removeListener(_syncStateWithRepository);
+
+    locator<SystemActionsService>().dispose();
 
     super.dispose();
   }
@@ -70,21 +76,27 @@ class _AppBodyState extends State<AppBody> {
 
     if (_screenLockDuration > 0) {
       _inactivityTimer = Timer(Duration(seconds: _screenLockDuration), () {
-        // After configured time of inactivity, navigate to the screen saver
-        locator<NavigationService>().navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (context) {
-              if (_displayConfigRepository.hasScreenSaver) {
-                return ScreenSaverScreen();
-              }
+        if (_navigator.getCurrentRouteName() != AppRouteNames.reboot &&
+            _navigator.getCurrentRouteName() != AppRouteNames.powerOff &&
+            _navigator.getCurrentRouteName() != AppRouteNames.factoryReset) {
+          // After configured time of inactivity, navigate to the screen saver
+          _navigator.navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) {
+                if (_displayConfigRepository.hasScreenSaver) {
+                  return ScreenSaverScreen();
+                }
 
-              return LockScreen();
-            },
-          ),
-        ).then((_) {
-          // Reset inactivity timer or perform necessary actions
+                return LockScreen();
+              },
+            ),
+          ).then((_) {
+            // Reset inactivity timer or perform necessary actions
+            _resetInactivityTimer();
+          });
+        } else {
           _resetInactivityTimer();
-        });
+        }
       });
     }
   }
@@ -97,7 +109,7 @@ class _AppBodyState extends State<AppBody> {
       themeMode: _hasDarkMode ? ThemeMode.dark : ThemeMode.light,
       debugShowCheckedModeBanner: false,
       title: 'FastyBird Smart Panel',
-      navigatorKey: locator<NavigationService>().navigatorKey,
+      navigatorKey: _navigator.navigatorKey,
       navigatorObservers: [
         OverlayScreenObserver(
           onOverlayScreenPushed: () {
@@ -131,10 +143,7 @@ class _AppBodyState extends State<AppBody> {
             if (_isSwipingVertically) {
               if (delta.dy > 20) {
                 // Swipe down detected
-                locator<NavigationService>()
-                    .navigatorKey
-                    .currentState
-                    ?.pushNamed('/settings');
+                _navigator.navigateTo(AppRouteNames.settings);
               } else if (delta.dy < -20) {
                 // Swipe up detected
               }
@@ -147,7 +156,7 @@ class _AppBodyState extends State<AppBody> {
           child: child,
         );
       },
-      initialRoute: '/',
+      initialRoute: AppRouteNames.root,
       routes: appRoutes,
       onGenerateRoute: (settings) {
         if (settings.name != null) {
@@ -161,6 +170,7 @@ class _AppBodyState extends State<AppBody> {
             );
           }
         }
+
         return null; // Fallback to default behavior
       },
       localizationsDelegates: const [

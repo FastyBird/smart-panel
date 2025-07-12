@@ -43,6 +43,7 @@
     "factoryResetDevice": "Restore the device to its original factory settings.",
     "rebootInProcess": "Smart Panel is rebooting...",
     "powerOffInProcess": "Smart Panel is powering off...",
+    "factoryResetInProcess": "Smart Panel is reset to factory state...",
     "about": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities.",
     "poweredOff": "You can close this window — no further action is required."
   },

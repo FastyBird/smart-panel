@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
@@ -243,7 +244,7 @@ class SocketService {
 
             // Search for the relevant handler result
             final SocketCommandAckResultModel? result =
-                response.res.firstWhereOrNull(
+                res.results.firstWhereOrNull(
               (r) => r.handler == handler,
             );
 

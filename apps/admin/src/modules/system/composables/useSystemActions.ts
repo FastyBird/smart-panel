@@ -1,21 +1,19 @@
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 
-import { ElLoading, ElMessageBox } from 'element-plus';
+import { ElMessageBox } from 'element-plus';
 
-import { injectAccountManager, useBackend, useFlashMessage, useSockets } from '../../../common';
-import { EventHandlerName, EventType, RouteNames, SYSTEM_MODULE_PREFIX } from '../system.constants';
+import { useFlashMessage, useSockets } from '../../../common';
+import { injectSystemActionsService } from '../services/system-actions-service.ts';
+import { EventHandlerName, EventType } from '../system.constants';
 
 import type { IUseSystemActions } from './types';
 
 export const useSystemActions = (): IUseSystemActions => {
-	const router = useRouter();
+	const systemActions = injectSystemActionsService();
+
 	const { t } = useI18n();
 	const { sendCommand } = useSockets();
 	const flashMessage = useFlashMessage();
-	const backend = useBackend();
-
-	const accountManager = injectAccountManager();
 
 	const onRestart = (): void => {
 		ElMessageBox.confirm(t('systemModule.messages.confirmRestart'), t('systemModule.headings.restart'), {
@@ -24,60 +22,22 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				const loading = ElLoading.service({
-					lock: true,
-					text: t('systemModule.texts.rebootInProcess'),
-				});
+				systemActions.reboot('in-progress');
 
 				try {
-					const response = await sendCommand(EventType.SYSTEM_REBOOT, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+					const response = await sendCommand(EventType.SYSTEM_REBOOT_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 
 					if (response !== true) {
-						loading.close();
+						systemActions.reboot('err');
 
 						flashMessage.error(t('systemModule.messages.rebootFailed'));
 
 						return;
 					}
 
-					const timeoutMs = 2 * 60 * 1000; // 2 minutes
-					const pollIntervalMs = 3000;
-					const startTime = Date.now();
-
-					const waiting = ElLoading.service({
-						lock: true,
-						text: t('systemModule.messages.waitingToBoot'),
-					});
-
-					const checkHealth = async (): Promise<void> => {
-						try {
-							await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/system/health`);
-
-							waiting.close();
-
-							flashMessage.success(t('systemModule.messages.panelBackOnline'));
-						} catch {
-							if (Date.now() - startTime > timeoutMs) {
-								waiting.close();
-
-								flashMessage.error(t('systemModule.messages.rebootTakesTooLong'));
-
-								return;
-							}
-
-							setTimeout(checkHealth, pollIntervalMs);
-						}
-					};
-
-					setTimeout(() => {
-						void (async () => {
-							loading.close();
-
-							await checkHealth();
-						})();
-					}, 1000);
+					systemActions.reboot('ok');
 				} catch {
-					loading.close();
+					systemActions.reboot('err');
 
 					flashMessage.error(t('systemModule.messages.rebootFailed'));
 				}
@@ -94,31 +54,22 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				const loading = ElLoading.service({
-					lock: true,
-					text: t('systemModule.texts.powerOffInProcess'),
-				});
+				systemActions.powerOff('in-progress');
 
 				try {
-					const response = await sendCommand(EventType.SYSTEM_POWER_OFF, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+					const response = await sendCommand(EventType.SYSTEM_POWER_OFF_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 
 					if (response !== true) {
-						loading.close();
+						systemActions.powerOff('err');
 
 						flashMessage.error(t('systemModule.messages.powerOffFailed'));
 
 						return;
 					}
 
-					setTimeout(() => {
-						void (async () => {
-							loading.close();
-
-							await router.push({ name: RouteNames.POWER_OFF });
-						})();
-					}, 1000);
+					systemActions.powerOff('ok');
 				} catch {
-					loading.close();
+					systemActions.powerOff('err');
 
 					flashMessage.error(t('systemModule.messages.rebootFailed'));
 				}
@@ -135,34 +86,25 @@ export const useSystemActions = (): IUseSystemActions => {
 			type: 'warning',
 		})
 			.then(async (): Promise<void> => {
-				const loading = ElLoading.service({
-					lock: true,
-					text: 'Processing request...',
-				});
+				systemActions.factoryReset('in-progress');
 
-				const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
+				try {
+					const response = await sendCommand(EventType.SYSTEM_FACTORY_RESET_SET, null, EventHandlerName.INTERNAL_PLATFORM_ACTION);
 
-				if (response !== true) {
-					loading.close();
+					if (response !== true) {
+						systemActions.factoryReset('err');
+
+						flashMessage.error(t('systemModule.messages.factoryResetFailed'));
+
+						return;
+					}
+
+					systemActions.factoryReset('ok');
+				} catch {
+					systemActions.factoryReset('err');
 
 					flashMessage.error(t('systemModule.messages.factoryResetFailed'));
-
-					return;
 				}
-
-				setTimeout(() => {
-					void (async () => {
-						loading.close();
-
-						if (accountManager) {
-							await accountManager.signOut();
-
-							await router.push({ name: accountManager.routes.signIn });
-
-							flashMessage.success(t('systemModule.messages.factoryResetSuccess'));
-						}
-					})();
-				}, 1000);
 			})
 			.catch((): void => {
 				// Just ignore

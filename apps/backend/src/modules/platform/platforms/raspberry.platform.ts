@@ -7,7 +7,7 @@ import { SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
 import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { WifiNetworksDto } from '../dto/wifi-networks.dto';
-import { PlatformException, PlatformNotSupportedException, PlatformValidationException } from '../platform.exceptions';
+import { PlatformException, PlatformValidationException } from '../platform.exceptions';
 
 import { Platform } from './abstract.platform';
 
@@ -184,10 +184,6 @@ export class RaspberryPlatform extends Platform {
 		this.logger.log('[SYSTEM] Powering off device...');
 
 		await this.executeCommand('sudo /sbin/poweroff');
-	}
-
-	async factoryReset(): Promise<void> {
-		return Promise.reject(new PlatformNotSupportedException('Factory reset is not supported on this platform'));
 	}
 
 	private executeCommand(command: string): Promise<void> {

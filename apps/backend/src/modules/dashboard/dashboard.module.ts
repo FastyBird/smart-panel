@@ -3,17 +3,21 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { SeedModule } from '../seed/seeding.module';
-import { SeedService } from '../seed/services/seed.service';
+import { SeedRegistryService } from '../seed/services/seed-registry.service';
+import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
+import { SystemModule } from '../system/system.module';
 
 import { DataSourceController } from './controllers/data-source.controller';
 import { PagesController } from './controllers/pages.controller';
 import { TilesController } from './controllers/tiles.controller';
+import { DASHBOARD_MODULE_NAME } from './dashboard.constants';
 import { DataSourceEntity, PageEntity, TileEntity } from './entities/dashboard.entity';
 import { DashboardSeederService } from './services/dashboard-seeder.service';
 import { DataSourceCreateBuilderRegistryService } from './services/data-source-create-builder-registry.service';
 import { DataSourceRelationsLoaderRegistryService } from './services/data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from './services/data-source-type-mapper.service';
 import { DataSourceService } from './services/data-source.service';
+import { ModuleResetService } from './services/module-reset.service';
 import { PageCreateBuilderRegistryService } from './services/page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from './services/page-relations-loader-registry.service';
 import { PagesTypeMapperService } from './services/pages-type-mapper.service';
@@ -26,7 +30,12 @@ import { DataSourceTypeConstraintValidator } from './validators/data-source-type
 import { TileTypeConstraintValidator } from './validators/tile-type-constraint.validator';
 
 @Module({
-	imports: [NestConfigModule, TypeOrmModule.forFeature([PageEntity, TileEntity, DataSourceEntity]), SeedModule],
+	imports: [
+		NestConfigModule,
+		TypeOrmModule.forFeature([PageEntity, TileEntity, DataSourceEntity]),
+		SeedModule,
+		SystemModule,
+	],
 	providers: [
 		PagesService,
 		TilesService,
@@ -43,6 +52,7 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 		PageCreateBuilderRegistryService,
 		TileCreateBuilderRegistryService,
 		DataSourceCreateBuilderRegistryService,
+		ModuleResetService,
 	],
 	controllers: [PagesController, TilesController, DataSourceController],
 	exports: [
@@ -64,10 +74,26 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 export class DashboardModule {
 	constructor(
 		private readonly moduleSeeder: DashboardSeederService,
-		private readonly seedService: SeedService,
+		private readonly moduleReset: ModuleResetService,
+		private readonly seedRegistry: SeedRegistryService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
 	onModuleInit() {
-		this.seedService.registerSeeder(this.moduleSeeder, 200);
+		this.seedRegistry.register(
+			DASHBOARD_MODULE_NAME,
+			async (): Promise<void> => {
+				await this.moduleSeeder.seed();
+			},
+			100,
+		);
+
+		this.factoryResetRegistry.register(
+			DASHBOARD_MODULE_NAME,
+			100,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				return this.moduleReset.reset();
+			},
+		);
 	}
 }

@@ -146,8 +146,4 @@ export class GenericPlatform extends Platform {
 	async powerOffDevice(): Promise<void> {
 		return Promise.reject(new PlatformNotSupportedException('Power off is not supported on this platform'));
 	}
-
-	async factoryReset(): Promise<void> {
-		return Promise.reject(new PlatformNotSupportedException('Factory reset is not supported on this platform'));
-	}
 }
