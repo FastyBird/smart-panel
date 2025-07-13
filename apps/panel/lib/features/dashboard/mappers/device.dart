@@ -23,6 +23,7 @@ import 'package:fastybird_smart_panel/features/dashboard/presentation/devices/te
 import 'package:fastybird_smart_panel/features/dashboard/presentation/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/devices/valve.dart';
 import 'package:fastybird_smart_panel/features/dashboard/presentation/devices/window_covering.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
@@ -51,8 +52,9 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:flutter/material.dart';
 
-Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
-  DeviceCategory.airConditioner: (device) {
+Map<DeviceCategory, Widget Function(DeviceView, DeviceDetailPageView? page)>
+    deviceDetailMappers = {
+  DeviceCategory.airConditioner: (device, page) {
     if (device is! AirConditionerDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Air conditioner device detail',
@@ -61,9 +63,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return AirConditionerDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.airDehumidifier: (device) {
+  DeviceCategory.airDehumidifier: (device, page) {
     if (device is! AirDehumidifierDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Air dehumidifier device detail',
@@ -72,9 +75,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return AirDehumidifierDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.airHumidifier: (device) {
+  DeviceCategory.airHumidifier: (device, page) {
     if (device is! AirHumidifierDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Air humidifier device detail',
@@ -83,9 +87,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return AirHumidifierDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.airPurifier: (device) {
+  DeviceCategory.airPurifier: (device, page) {
     if (device is! AirPurifierDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Air purifier device detail',
@@ -94,9 +99,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return AirPurifierDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.alarm: (device) {
+  DeviceCategory.alarm: (device, page) {
     if (device is! AlarmDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Alarm device detail',
@@ -105,9 +111,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return AlarmDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.camera: (device) {
+  DeviceCategory.camera: (device, page) {
     if (device is! CameraDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Camera device detail',
@@ -116,9 +123,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return CameraDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.door: (device) {
+  DeviceCategory.door: (device, page) {
     if (device is! DoorDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Door device detail',
@@ -127,9 +135,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return DoorDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.doorbell: (device) {
+  DeviceCategory.doorbell: (device, page) {
     if (device is! DoorbellDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Doorbell device detail',
@@ -138,9 +147,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return DoorbellDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.fan: (device) {
+  DeviceCategory.fan: (device, page) {
     if (device is! FanDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Fan device detail',
@@ -149,9 +159,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return FanDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.heater: (device) {
+  DeviceCategory.heater: (device, page) {
     if (device is! HeaterDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Heater device detail',
@@ -160,9 +171,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return HeaterDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.lighting: (device) {
+  DeviceCategory.lighting: (device, page) {
     if (device is! LightingDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Lighting device detail',
@@ -171,9 +183,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return LightingDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.lock: (device) {
+  DeviceCategory.lock: (device, page) {
     if (device is! LockDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Lock device detail',
@@ -182,9 +195,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return LockDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.media: (device) {
+  DeviceCategory.media: (device, page) {
     if (device is! MediaDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Media device detail',
@@ -193,9 +207,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return MediaDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.outlet: (device) {
+  DeviceCategory.outlet: (device, page) {
     if (device is! OutletDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Outlet device detail',
@@ -204,9 +219,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return OutletDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.pump: (device) {
+  DeviceCategory.pump: (device, page) {
     if (device is! PumpDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Pump device detail',
@@ -215,9 +231,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return PumpDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.robotVacuum: (device) {
+  DeviceCategory.robotVacuum: (device, page) {
     if (device is! RobotVacuumDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Robot vacuum device detail',
@@ -226,9 +243,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return RobotVacuumDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.sensor: (device) {
+  DeviceCategory.sensor: (device, page) {
     if (device is! SensorDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Sensor device detail',
@@ -237,9 +255,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return SensorDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.speaker: (device) {
+  DeviceCategory.speaker: (device, page) {
     if (device is! SpeakerDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Speaker device detail',
@@ -248,9 +267,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return SpeakerDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.sprinkler: (device) {
+  DeviceCategory.sprinkler: (device, page) {
     if (device is! SprinklerDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Sprinkler device detail',
@@ -259,9 +279,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return SprinklerDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.switcher: (device) {
+  DeviceCategory.switcher: (device, page) {
     if (device is! SwitcherDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Switcher device detail',
@@ -270,9 +291,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return SwitcherDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.television: (device) {
+  DeviceCategory.television: (device, page) {
     if (device is! TelevisionDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Television device detail',
@@ -281,9 +303,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return TelevisionDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.thermostat: (device) {
+  DeviceCategory.thermostat: (device, page) {
     if (device is! ThermostatDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Thermostat device detail',
@@ -292,9 +315,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return ThermostatDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.valve: (device) {
+  DeviceCategory.valve: (device, page) {
     if (device is! ValveDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Valve device detail',
@@ -303,9 +327,10 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return ValveDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
-  DeviceCategory.windowCovering: (device) {
+  DeviceCategory.windowCovering: (device, page) {
     if (device is! WindowCoveringDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Window covering device detail',
@@ -314,16 +339,17 @@ Map<DeviceCategory, Widget Function(DeviceView)> deviceDetailMappers = {
 
     return WindowCoveringDeviceDetailPage(
       device: device,
+      page: page,
     );
   },
 };
 
-Widget buildDeviceDetail(DeviceView device) {
+Widget buildDeviceDetail(DeviceView device, [DeviceDetailPageView? page]) {
   final builder = deviceDetailMappers[device.category];
 
   if (builder == null) {
-    return GenericDeviceDetailPage(device: device);
+    return GenericDeviceDetailPage(device: device, page: page);
   }
 
-  return builder(device);
+  return builder(device, page);
 }

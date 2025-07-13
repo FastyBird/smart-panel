@@ -254,7 +254,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 	const writeCookie = (name: string, value: string): void => {
 		const decodedValue = jwtDecode<ITokenPayload>(value);
 
-		cookies.set(name, value, new Date(decodedValue.exp * 1000).getTime() / 1000 - new Date().getTime() / 1000, '/');
+		cookies.set(name, value, new Date(decodedValue.exp * 1000).toUTCString(), '/');
 	};
 
 	const deleteCookie = (name: string): void => {

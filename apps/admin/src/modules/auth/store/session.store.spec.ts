@@ -153,8 +153,8 @@ describe('Session Store', (): void => {
 			updatedAt: null,
 		});
 
-		expect(cookiesMock.set).toHaveBeenCalledWith(ACCESS_TOKEN_COOKIE_NAME, 'mockAccessToken', expect.any(Number), '/');
-		expect(cookiesMock.set).toHaveBeenCalledWith(REFRESH_TOKEN_COOKIE_NAME, 'mockRefreshToken', expect.any(Number), '/');
+		expect(cookiesMock.set).toHaveBeenCalledWith(ACCESS_TOKEN_COOKIE_NAME, 'mockAccessToken', expect.any(String), '/');
+		expect(cookiesMock.set).toHaveBeenCalledWith(REFRESH_TOKEN_COOKIE_NAME, 'mockRefreshToken', expect.any(String), '/');
 	});
 
 	it('should throw error when session creation fails', async (): Promise<void> => {
@@ -183,8 +183,8 @@ describe('Session Store', (): void => {
 
 		expect(result).toBe(true);
 
-		expect(cookiesMock.set).toHaveBeenCalledWith(ACCESS_TOKEN_COOKIE_NAME, 'mockNewAccessToken', expect.any(Number), '/');
-		expect(cookiesMock.set).toHaveBeenCalledWith(REFRESH_TOKEN_COOKIE_NAME, 'mockNewRefreshToken', expect.any(Number), '/');
+		expect(cookiesMock.set).toHaveBeenCalledWith(ACCESS_TOKEN_COOKIE_NAME, 'mockNewAccessToken', expect.any(String), '/');
+		expect(cookiesMock.set).toHaveBeenCalledWith(REFRESH_TOKEN_COOKIE_NAME, 'mockNewRefreshToken', expect.any(String), '/');
 	});
 
 	it('should fail refresh when no refresh token is available', async (): Promise<void> => {

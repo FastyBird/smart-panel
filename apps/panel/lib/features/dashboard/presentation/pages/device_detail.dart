@@ -64,7 +64,7 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
-      return buildDeviceDetail(device);
+      return buildDeviceDetail(device, page);
     });
   }
 }

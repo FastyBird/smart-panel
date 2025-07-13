@@ -105,7 +105,7 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
       return deviceIcon;
     }
 
-    return buildDeviceIcon(device.category);
+    return buildDeviceIcon(device.category, device.icon);
   }
 
   Widget _renderLoader(BuildContext context) {

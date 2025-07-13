@@ -60,6 +60,6 @@ describe('usePageIcon', () => {
 
 		const { icon } = usePageIcon({ id: pageId });
 
-		expect(icon.value).toBe('custom-icon');
+		expect(icon.value).toBe('mdi:custom-icon');
 	});
 });

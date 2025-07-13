@@ -73,6 +73,14 @@ class _ColoredSliderState extends State<ColoredSlider> {
 
     actualValue = widget.value;
 
+    if (actualValue < widget.min) {
+      actualValue = widget.min;
+    }
+
+    if (actualValue > widget.max) {
+      actualValue = widget.max;
+    }
+
     trackHeight = widget.trackHeight != null
         ? widget.trackHeight!
         : screenService.scale(

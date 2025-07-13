@@ -13,7 +13,7 @@
     "category": "lighting",
     "name": "TV LED Strip",
     "description": null,
-    "icon": 58235,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -22,7 +22,7 @@
     "category": "lighting",
     "name": "Couch LED Strip",
     "description": null,
-    "icon": 58235,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -31,7 +31,7 @@
     "category": "lighting",
     "name": "Main Light",
     "description": null,
-    "icon": 58233,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -40,7 +40,7 @@
     "category": "lighting",
     "name": "Entry Light",
     "description": null,
-    "icon": 59099,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -49,7 +49,7 @@
     "category": "lighting",
     "name": "Dining Room Light",
     "description": null,
-    "icon": 59099,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -58,7 +58,7 @@
     "category": "lighting",
     "name": "TV Spot Light",
     "description": null,
-    "icon": 59099,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -67,7 +67,7 @@
     "category": "lighting",
     "name": "Couch Spot Light",
     "description": null,
-    "icon": 59099,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -100,7 +100,7 @@
     "category": "robot_vacuum",
     "name": "Vacuum Cleaner",
     "description": null,
-    "icon": 57703,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -133,7 +133,7 @@
     "category": "window_covering",
     "name": "Terrace Blind",
     "description": null,
-    "icon": 985020,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -142,7 +142,7 @@
     "category": "window_covering",
     "name": "Window Blind",
     "description": null,
-    "icon": 985020,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -159,7 +159,7 @@
     "category": "lighting",
     "name": "Main Light",
     "description": null,
-    "icon": 58233,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {
@@ -216,7 +216,7 @@
     "category": "window_covering",
     "name": "Window Blind",
     "description": null,
-    "icon": 985020,
+    "icon": null,
     "service_address": "http://localhost:3000/api/v1/plugins/devices-third-party-plugin/demo/webhook"
   },
   {

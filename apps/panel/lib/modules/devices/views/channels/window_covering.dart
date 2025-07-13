@@ -61,9 +61,7 @@ class WindowCoveringChannelView extends ChannelView
       }
     }
 
-    throw Exception(
-      'Channel is missing required value for property: ${statusProp.category.value}',
-    );
+    return WindowCoveringStatusValue.unknown;
   }
 
   bool get isOpen => status == WindowCoveringStatusValue.open;

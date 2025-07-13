@@ -507,7 +507,8 @@ enum WindowCoveringStatusValue {
   closed('closed'),
   opening('opening'),
   closing('closing'),
-  stopped('stopped');
+  stopped('stopped'),
+  unknown('unknown');
 
   final String value;
 

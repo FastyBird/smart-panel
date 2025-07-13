@@ -1,6 +1,7 @@
 <template>
-	<el-select
+	<el-select-v2
 		v-model="selectedIcon"
+		:options="options"
 		:placeholder="props.placeholder"
 		:filter-method="filterIcons"
 		size="large"
@@ -18,46 +19,23 @@
 			</div>
 		</template>
 
-		<dynamic-scroller
-			class="scroller"
-			:items="filteredIcons"
-			:item-size="32"
-			:min-item-size="32"
-			:buffer="300"
-		>
-			<template #default="{ item, index, active }">
-				<DynamicScrollerItem
-					:item="item"
-					:active="active"
-					:size-dependencies="[item.message]"
-					:data-index="index"
-				>
-					<el-option
-						:key="item"
-						:label="`${props.iconSet}:${item}`"
-						:value="item"
-					>
-						<div class="flex flex-row items-center gap-2">
-							<icon
-								:icon="`${props.iconSet}:${item}`"
-								class="w[20px] h[20px]"
-							/>
+		<template #default="{ item }">
+			<div class="flex flex-row items-center gap-2">
+				<icon
+					:icon="`${props.iconSet}:${item.value}`"
+					class="w[20px] h[20px]"
+				/>
 
-							{{ `${props.iconSet}:${item}` }}
-						</div>
-					</el-option>
-				</DynamicScrollerItem>
-			</template>
-		</dynamic-scroller>
-	</el-select>
+				{{ `${item.label}` }}
+			</div>
+		</template>
+	</el-select-v2>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-// @ts-expect-error This plugin is without TS support
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 
-import { ElOption, ElSelect } from 'element-plus';
+import { ElSelectV2 } from 'element-plus';
 
 import icIcons from '@iconify/json/json/ic.json';
 import mdiIcons from '@iconify/json/json/mdi.json';
@@ -74,7 +52,7 @@ const props = withDefaults(defineProps<IIconPickerProps>(), {
 });
 
 const emit = defineEmits<{
-	(e: 'update:modelValue', selected: string): void;
+	(e: 'update:modelValue', selected: string | null): void;
 }>();
 
 const iconNames = computed<string[]>((): string[] => {
@@ -85,18 +63,31 @@ const iconNames = computed<string[]>((): string[] => {
 	return Object.keys(mdiIcons.icons);
 });
 
-const selectedIcon = ref<string>(props.modelValue ?? '');
+const selectedIcon = ref<string | undefined>(props.modelValue ?? '');
 
-const filteredIcons = ref(iconNames.value.slice(0, 1000));
+const filterIconsBy = ref<string>('');
+
+const options = computed(() => {
+	let icons = iconNames.value;
+
+	if (filterIconsBy.value) {
+		icons = icons.filter((icon) => icon.includes(filterIconsBy.value.toLowerCase()));
+	}
+
+	return icons.map((icon) => ({
+		value: icon,
+		label: icon,
+	}));
+});
 
 const filterIcons = (query: string) => {
-	filteredIcons.value = iconNames.value.filter((icon) => icon.includes(query.toLowerCase())).slice(0, 100);
+	filterIconsBy.value = query;
 };
 
 watch(
-	(): string => selectedIcon.value,
-	(val: string) => {
-		emit('update:modelValue', val);
+	(): string | undefined => selectedIcon.value,
+	(val: string | undefined) => {
+		emit('update:modelValue', typeof val === 'undefined' ? null : val);
 	}
 );
 </script>

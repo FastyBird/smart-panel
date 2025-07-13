@@ -10,9 +10,9 @@ import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/rounded_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/details/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
@@ -25,11 +25,14 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 class ThermostatDeviceDetailPage extends StatefulWidget {
   final ThermostatDeviceView _device;
+  final DeviceDetailPageView? _page;
 
   const ThermostatDeviceDetailPage({
     super.key,
     required ThermostatDeviceView device,
-  }) : _device = device;
+    required DeviceDetailPageView? page,
+  })  : _device = device,
+        _page = page;
 
   @override
   State<ThermostatDeviceDetailPage> createState() =>
@@ -86,14 +89,12 @@ class _ThermostatDeviceDetailPageState
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final parentDetailPage =
-        context.findAncestorWidgetOfExactType<DeviceDetailPage>();
-
     return Scaffold(
       appBar: AppTopBar(
         title: widget._device.name,
-        icon: parentDetailPage == null
-            ? buildDeviceIcon(widget._device.category)
+        icon: widget._page != null
+            ? widget._page?.icon ??
+                buildDeviceIcon(widget._device.category, widget._device.icon)
             : null,
       ),
       body: SafeArea(

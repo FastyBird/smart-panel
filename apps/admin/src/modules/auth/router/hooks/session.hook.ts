@@ -20,7 +20,7 @@ const sessionHook = async (storesManager: IStoresManager): Promise<boolean | Rou
 		const decodedAccessToken = jwtDecode<ITokenPayload>(sessionStore.accessToken()!);
 		const decodedRefreshToken = jwtDecode<ITokenPayload>(sessionStore.refreshToken()!);
 
-		// Check if refresh token is expired
+		// Check if the refresh token is expired
 		if (new Date().getTime() / 1000 >= new Date(decodedRefreshToken.exp * 1000).getTime() / 1000) {
 			sessionStore.clear();
 
