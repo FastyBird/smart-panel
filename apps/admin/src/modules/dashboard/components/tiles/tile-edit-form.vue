@@ -78,7 +78,6 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
 import { ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, type FormRules } from 'element-plus';
 

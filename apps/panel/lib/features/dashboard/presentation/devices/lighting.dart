@@ -10,9 +10,9 @@ import 'package:fastybird_smart_panel/core/widgets/bottom_navigation.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/colored_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
-import 'package:fastybird_smart_panel/features/dashboard/presentation/details/device.dart';
 import 'package:fastybird_smart_panel/features/dashboard/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/pages/device_detail.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
@@ -25,13 +25,16 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 class LightingDeviceDetailPage extends StatefulWidget {
   final LightingDeviceView _device;
+  final DeviceDetailPageView? _page;
 
   final bool _supportSwatches = false;
 
   const LightingDeviceDetailPage({
     super.key,
     required LightingDeviceView device,
-  }) : _device = device;
+    required DeviceDetailPageView? page,
+  })  : _device = device,
+        _page = page;
 
   @override
   State<LightingDeviceDetailPage> createState() =>
@@ -98,9 +101,6 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final parentDetailPage =
-        context.findAncestorWidgetOfExactType<DeviceDetailPage>();
-
     if (!widget._device.isSimpleLight &&
         !widget._device.isSingleBrightness &&
         _channels.length > 1) {
@@ -110,8 +110,10 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
         child: Scaffold(
           appBar: AppTopBar(
             title: widget._device.name,
-            icon: parentDetailPage == null
-                ? buildDeviceIcon(widget._device.category)
+            icon: widget._page != null
+                ? widget._page?.icon ??
+                    buildDeviceIcon(
+                        widget._device.category, widget._device.icon)
                 : null,
             bottom: TabBar(
               tabs: _channels
@@ -161,7 +163,10 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
     return Scaffold(
       appBar: AppTopBar(
         title: widget._device.name,
-        icon: parentDetailPage == null ? widget._device.icon : null,
+        icon: widget._page != null
+            ? widget._page?.icon ??
+                buildDeviceIcon(widget._device.category, widget._device.icon)
+            : null,
       ),
       body: LayoutBuilder(builder: (
         BuildContext context,

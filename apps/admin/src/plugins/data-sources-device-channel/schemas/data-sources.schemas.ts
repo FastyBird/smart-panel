@@ -11,6 +11,7 @@ export const DeviceChannelDataSourceAddFormSchema = DataSourceAddFormSchema.exte
 		.trim()
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
+		.default(null)
 		.optional(),
 });
 
@@ -23,5 +24,6 @@ export const DeviceChannelDataSourceEditFormSchema = DataSourceEditFormSchema.ex
 		.trim()
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
+		.default(null)
 		.optional(),
 });

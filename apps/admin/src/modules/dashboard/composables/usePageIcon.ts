@@ -18,7 +18,7 @@ export const usePageIcon = ({ id }: IUsePageIconProps): IUsePageIcon => {
 	const icon = computed<string>((): string => {
 		const page = pagesStore.findById(id);
 
-		return page?.icon ?? 'mdi:monitor-dashboard';
+		return `mdi:${page?.icon ?? 'monitor-dashboard'}`;
 	});
 
 	return {

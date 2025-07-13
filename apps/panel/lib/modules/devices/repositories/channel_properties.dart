@@ -17,6 +17,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
   final ChannelsRepository _channelsRepository;
 
   final Map<String, ValueType?> _valueBackup = {};
+  final Map<String, Timer> _debounceTimers = {};
 
   ChannelPropertiesRepository({
     required super.apiClient,
@@ -159,41 +160,18 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     if (channel != null) {
       final completer = Completer<bool>();
 
-      await _socketService.sendCommand(
-        DevicesModuleConstants.channelPropertySetEvent,
-        {
-          'properties': [
-            {
-              'device': channel.device,
-              'channel': property.channel,
-              'property': property.id,
-              'value': property.value?.value,
-            },
-          ],
-        },
-        DevicesModuleEventHandlerName.internalSetProperty,
-        onAck: (SocketCommandResponseModel? response) {
-          if (response == null || response.status == false) {
-            if (kDebugMode) {
-              debugPrint(
-                '[DEVICES MODULE][CHANNEL PROPERTIES] Failed process command by backend for property: $id, reason: ${response?.message ?? 'N/A'}',
-              );
-            }
+      // Cancel previous debounce if it exists
+      _debounceTimers[id]?.cancel();
 
-            _revertValue(id: id);
+      // Start new debounce timer
+      _debounceTimers[id] = Timer(const Duration(milliseconds: 300), () async {
+        await _sendCommandToBackend(channel, property!, completer);
 
-            completer.complete(false);
-          } else {
-            if (kDebugMode) {
-              debugPrint(
-                '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully send command to backend for property: $id',
-              );
-            }
+        _debounceTimers.remove(id);
 
-            completer.complete(true);
-          }
-        },
-      );
+        /// Clearing of backup value
+        _valueBackup.remove(id);
+      });
 
       if (kDebugMode) {
         debugPrint(
@@ -202,9 +180,6 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
       }
 
       notifyListeners();
-
-      /// Clearing of backup value
-      _valueBackup.remove(id);
 
       return completer.future;
     }
@@ -221,6 +196,48 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     _valueBackup.remove(id);
 
     return false;
+  }
+
+  Future<void> _sendCommandToBackend(
+    ChannelModel channel,
+    ChannelPropertyModel property,
+    Completer<bool> completer,
+  ) async {
+    await _socketService.sendCommand(
+      DevicesModuleConstants.channelPropertySetEvent,
+      {
+        'properties': [
+          {
+            'device': channel.device,
+            'channel': property.channel,
+            'property': property.id,
+            'value': property.value?.value,
+          },
+        ],
+      },
+      DevicesModuleEventHandlerName.internalSetProperty,
+      onAck: (SocketCommandResponseModel? response) {
+        if (response == null || response.status == false) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DEVICES MODULE][CHANNEL PROPERTIES] Failed process command by backend for property: ${property.id}, reason: ${response?.message ?? 'N/A'}',
+            );
+          }
+
+          _revertValue(id: property.id);
+
+          completer.complete(false);
+        } else {
+          if (kDebugMode) {
+            debugPrint(
+              '[DEVICES MODULE][CHANNEL PROPERTIES] Successfully send command to backend for property: ${property.id}',
+            );
+          }
+
+          completer.complete(true);
+        }
+      },
+    );
   }
 
   void _revertValue({required String id}) {

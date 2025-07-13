@@ -300,7 +300,11 @@ Map<DeviceCategory, IconData Function()> deviceIconMappers = {
   },
 };
 
-IconData buildDeviceIcon(DeviceCategory category) {
+IconData buildDeviceIcon(DeviceCategory category, [IconData? icon]) {
+  if (icon != null) {
+    return icon;
+  }
+
   final builder = deviceIconMappers[category];
 
   if (builder != null) {
