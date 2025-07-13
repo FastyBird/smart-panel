@@ -67,7 +67,6 @@ export const useDataSourceEditForm = <TForm extends IDataSourceEditForm = IDataS
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
 		const parsedModel = (plugin.value?.schemas?.dataSourceEditFormSchema || DataSourceEditFormSchema).safeParse(model);
-		console.log(parsedModel);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);
