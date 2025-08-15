@@ -36,9 +36,9 @@ describe('ManageSystem.vue', () => {
 	});
 
 	it('renders all three system action rows with correct text', () => {
-		expect(wrapper.find('[data-test-id="restart-info"]').text()).toContain('systemModule.texts.rebootDevice');
-		expect(wrapper.find('[data-test-id="power-off-info"]').text()).toContain('systemModule.texts.powerOffDevice');
-		expect(wrapper.find('[data-test-id="factory-reset-info"]').text()).toContain('systemModule.texts.factoryResetDevice');
+		expect(wrapper.find('[data-test-id="restart-info"]').text()).toContain('systemModule.texts.manage.rebootDevice');
+		expect(wrapper.find('[data-test-id="power-off-info"]').text()).toContain('systemModule.texts.manage.powerOffDevice');
+		expect(wrapper.find('[data-test-id="factory-reset-info"]').text()).toContain('systemModule.texts.manage.factoryResetDevice');
 	});
 
 	it('calls onRestart when restart row is clicked', async () => {

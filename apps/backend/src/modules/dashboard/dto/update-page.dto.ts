@@ -1,7 +1,8 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
+import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
 
 type ReqUpdatePage = components['schemas']['DashboardModuleReqUpdatePage'];
 type UpdatePage = components['schemas']['DashboardModuleUpdatePage'];
@@ -32,6 +33,12 @@ export abstract class UpdatePageDto implements UpdatePage {
 		{ each: false, message: '[{"field":"order","reason":"Order must be a positive number greater than zero."}]' },
 	)
 	order?: number;
+
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
+	@ValidateDisplayProfileExists({ message: '[{"field":"display","reason":"The specified display does not exist."}]' })
+	display?: string;
 }
 
 export class ReqUpdatePageDto implements ReqUpdatePage {

@@ -1,12 +1,12 @@
 import bcrypt from 'bcrypt';
 import { Cache } from 'cache-manager';
-import { plainToInstance } from 'class-transformer';
 import { Socket } from 'socket.io';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { AccessTokenEntity, LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
@@ -103,7 +103,7 @@ export class WsAuthService {
 				throw new WebsocketNotAllowedException('Invalid user');
 			}
 
-			(client.data as object)['user'] = plainToInstance(ClientUserDto, { id: user.id, role: user.role });
+			(client.data as object)['user'] = toInstance(ClientUserDto, { id: user.id, role: user.role });
 
 			this.logger.debug(`[WS AUTH] JWT authentication successful for user=${user.id}`);
 
@@ -123,7 +123,7 @@ export class WsAuthService {
 		}
 
 		if (storedLongLiveToken) {
-			(client.data as object)['user'] = plainToInstance(ClientUserDto, { id: null, role: UserRole.USER });
+			(client.data as object)['user'] = toInstance(ClientUserDto, { id: null, role: UserRole.USER });
 
 			this.logger.debug('[WS AUTH] JWT authentication successful for long live token');
 
@@ -183,7 +183,7 @@ export class WsAuthService {
 			this.logger.error('[WS AUTH] Failed to store authentication data', { message: err.message, stack: err.stack });
 		}
 
-		(client.data as object)['user'] = plainToInstance(ClientUserDto, { id: null, role: UserRole.DISPLAY });
+		(client.data as object)['user'] = toInstance(ClientUserDto, { id: null, role: UserRole.DISPLAY });
 
 		this.logger.debug('[WS AUTH] Display authentication successful');
 

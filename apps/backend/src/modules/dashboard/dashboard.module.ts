@@ -85,15 +85,15 @@ export class DashboardModule {
 			async (): Promise<void> => {
 				await this.moduleSeeder.seed();
 			},
-			100,
+			200,
 		);
 
 		this.factoryResetRegistry.register(
 			DASHBOARD_MODULE_NAME,
-			100,
 			async (): Promise<{ success: boolean; reason?: string }> => {
 				return this.moduleReset.reset();
 			},
+			100,
 		);
 	}
 }

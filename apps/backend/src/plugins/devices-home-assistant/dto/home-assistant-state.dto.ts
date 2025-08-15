@@ -84,7 +84,7 @@ export class HomeAssistantStateChangedEventDataDto {
 	@Expose()
 	@ValidateNested()
 	@Type(() => HomeAssistantStateDto)
-	new_state: HomeAssistantStateDto;
+	new_state: HomeAssistantStateDto | null;
 }
 
 export class HomeAssistantStateChangedEventDto {

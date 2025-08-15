@@ -13,10 +13,16 @@
 		</template>
 	</app-bar-heading>
 
-	<div class="flex flex-col h-full w-full overflow-hidden">
+	<div
+		:class="[ns.b()]"
+		class="flex flex-col h-full w-full overflow-hidden"
+	>
 		<el-scrollbar class="flex-grow">
 			<el-collapse v-model="activeBoxes">
-				<el-collapse-item name="types">
+				<el-collapse-item
+					name="types"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('dashboardModule.filters.dataSources.types.title') }}
@@ -66,7 +72,7 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText } from 'element-plus';
+import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -88,6 +94,7 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 }>();
 
+const ns = useNamespace('list-data-sources-adjust');
 const { t } = useI18n();
 
 const { options: typesOptions } = useDataSourcesPlugins();
@@ -96,3 +103,7 @@ const activeBoxes = ref<string[]>(['types']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'list-data-sources-adjust.scss';
+</style>

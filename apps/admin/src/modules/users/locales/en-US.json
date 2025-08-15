@@ -147,7 +147,8 @@
   "role": {
     "user": "User",
     "admin": "Admin",
-    "owner": "Owner"
+    "owner": "Owner",
+    "display": "Display"
   },
   "buttons": {
     "add": {

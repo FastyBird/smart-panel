@@ -11,10 +11,10 @@
  *
  * Please keep this in mind when updating entity fields or OpenAPI schemas.
  */
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
 
 import { TimeTileEntity } from './tiles-time.entity';
@@ -62,10 +62,7 @@ describe('Time tiles plugin entity and OpenAPI Model Synchronization', () => {
 			parent_id: uuid().toString(),
 		};
 
-		const entityInstance = plainToInstance(TimeTileEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(TimeTileEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 

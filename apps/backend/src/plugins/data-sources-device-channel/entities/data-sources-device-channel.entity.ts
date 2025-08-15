@@ -52,7 +52,7 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
-	icon?: string | null = null;
+	icon?: string | null;
 
 	@Exclude({ toPlainOnly: true })
 	@RelationId((entity: DeviceChannelDataSourceEntity) => entity.device)

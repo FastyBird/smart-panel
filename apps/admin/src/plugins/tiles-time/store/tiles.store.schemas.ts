@@ -21,7 +21,7 @@ export const TimeTileCreateReqSchema: ZodType<ApiCreateTimeTile & { parent: { ty
 	})
 );
 
-export const TimeTileUpdateReqSchema: ZodType<ApiUpdateTimeTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
+export const TimeTileUpdateReqSchema: ZodType<ApiUpdateTimeTile> = TileUpdateReqSchema.and(
 	z.object({
 		type: z.nativeEnum(TilesTimePluginTimeTileType),
 	})

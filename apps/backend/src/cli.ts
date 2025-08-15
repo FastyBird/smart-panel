@@ -10,6 +10,8 @@ import { AppModule } from './app.module';
 async function bootstrap() {
 	const isProduction = process.env.NODE_ENV === 'production';
 
+	process.env.FB_CLI = 'on';
+
 	const validLogLevels: LogLevel[] = ['verbose', 'debug', 'log', 'warn', 'error', 'fatal'];
 
 	const logLevels =

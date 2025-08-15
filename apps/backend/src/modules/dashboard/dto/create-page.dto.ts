@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 
 import type { components } from '../../../openapi';
+import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
 import { ValidateDataSourceType } from '../validators/data-source-type-constraint.validator';
 
 import { CreateDataSourceDto } from './create-data-source.dto';
@@ -55,6 +56,12 @@ export class CreatePageDto implements CreatePage {
 	@ValidateDataSourceType()
 	@Type(() => CreateDataSourceDto)
 	data_source?: CreateDataSourceDto[];
+
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
+	@ValidateDisplayProfileExists({ message: '[{"field":"display","reason":"The specified display does not exist."}]' })
+	display?: string;
 }
 
 export class ReqCreatePageDto implements ReqCreatePage {

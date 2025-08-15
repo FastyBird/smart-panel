@@ -56,7 +56,7 @@ class ChannelsRepository extends Repository<ChannelModel> {
     }
   }
 
-  Future<void> fetchChannel(
+  Future<void> fetchOne(
     String id,
   ) async {
     return handleApiCall(
@@ -73,7 +73,7 @@ class ChannelsRepository extends Repository<ChannelModel> {
     );
   }
 
-  Future<void> fetchChannels() async {
+  Future<void> fetchAll() async {
     return handleApiCall(
       () async {
         final response = await apiClient.getDevicesModuleChannels();

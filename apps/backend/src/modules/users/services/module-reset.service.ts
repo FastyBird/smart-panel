@@ -4,7 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { DisplayEntity, UserEntity } from '../entities/users.entity';
+import { DisplayInstanceEntity, UserEntity } from '../entities/users.entity';
 import { EventType } from '../users.constants';
 
 @Injectable()
@@ -14,8 +14,8 @@ export class ModuleResetService {
 	constructor(
 		@InjectRepository(UserEntity)
 		private readonly usersRepository: Repository<UserEntity>,
-		@InjectRepository(DisplayEntity)
-		private readonly displaysRepository: Repository<DisplayEntity>,
+		@InjectRepository(DisplayInstanceEntity)
+		private readonly displaysRepository: Repository<DisplayInstanceEntity>,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -25,7 +25,7 @@ export class ModuleResetService {
 
 			await this.displaysRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.DISPLAY_RESET, null);
+			this.eventEmitter.emit(EventType.DISPLAY_INSTANCE_RESET, null);
 
 			await this.usersRepository.deleteAll();
 

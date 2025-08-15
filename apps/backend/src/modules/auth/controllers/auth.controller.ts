@@ -1,5 +1,3 @@
-import { plainToInstance } from 'class-transformer';
-
 import {
 	Body,
 	Controller,
@@ -13,9 +11,10 @@ import {
 	Req,
 } from '@nestjs/common';
 
-import { CreateDisplayDto } from '../../users/dto/create-display.dto';
+import { toInstance } from '../../../common/utils/transform.utils';
+import { CreateDisplayInstanceDto } from '../../users/dto/create-display-instance.dto';
 import { UserEntity } from '../../users/entities/users.entity';
-import { DisplaysService } from '../../users/services/displays.service';
+import { DisplaysInstancesService } from '../../users/services/displays-instances.service';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { AuthenticatedRequest } from '../auth.constants';
@@ -41,7 +40,7 @@ export class AuthController {
 	constructor(
 		private readonly authService: AuthService,
 		private readonly userService: UsersService,
-		private readonly displayService: DisplaysService,
+		private readonly displayService: DisplaysInstancesService,
 		private readonly cryptoService: CryptoService,
 	) {}
 
@@ -115,7 +114,7 @@ export class AuthController {
 
 		const displayUser = await this.userService.findByUsername(createDto.data.uid);
 
-		if (displayUser !== null) {
+		if (displayUser !== null && displayUser.password !== null) {
 			this.logger.warn('[REGISTER DISPLAY] Display user already registered');
 
 			throw new ForbiddenException('Access Denied');
@@ -130,23 +129,16 @@ export class AuthController {
 				role: UserRole.DISPLAY,
 			});
 
-			const dtoInstance = plainToInstance(
-				CreateDisplayDto,
-				{
-					...createDto.data,
-					user: displayUser.id,
-				},
-				{
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				},
-			);
+			const dtoInstance = toInstance(CreateDisplayInstanceDto, {
+				...createDto.data,
+				user: displayUser.id,
+			});
 
 			await this.displayService.create(displayUser.id, dtoInstance);
 
 			this.logger.debug('[REGISTER DISPLAY] Display user successfully registered');
 
-			return plainToInstance(RegisteredDisplayResponseDto, { secret: password }, { excludeExtraneousValues: true });
+			return toInstance(RegisteredDisplayResponseDto, { secret: password });
 		} catch (error) {
 			const err = error as Error;
 

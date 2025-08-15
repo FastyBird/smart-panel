@@ -45,7 +45,7 @@ class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
     }
   }
 
-  Future<void> fetchControl(
+  Future<void> fetchOne(
     String channelId,
     String id,
   ) async {
@@ -64,7 +64,7 @@ class ChannelControlsRepository extends Repository<ChannelControlDataModel> {
     );
   }
 
-  Future<void> fetchControls(
+  Future<void> fetchAll(
     String channelId,
   ) async {
     return handleApiCall(

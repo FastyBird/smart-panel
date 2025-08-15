@@ -1,13 +1,14 @@
 /*
 eslint-disable @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-member-access,
+@typescript-eslint/no-unsafe-argument
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { plainToInstance } from 'class-transformer';
 import { Expose, Transform } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, useContainer } from 'class-validator';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -16,6 +17,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { DisplayProfileEntity } from '../../system/entities/system.entity';
+import { DisplaysProfilesService } from '../../system/services/displays-profiles.service';
+import { DisplayProfileExistsConstraintValidator } from '../../system/validators/display-profile-exists-constraint.validator';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException } from '../dashboard.exceptions';
 import { CreatePageDto } from '../dto/create-page.dto';
@@ -30,14 +35,14 @@ import { PagesTypeMapperService } from './pages-type-mapper.service';
 import { PagesService } from './pages.service';
 
 class CreateMockPageDto extends CreatePageDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	mockValue: string;
 }
 
 class UpdateMockPageDto extends UpdatePageDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -65,12 +70,27 @@ describe('PagesService', () => {
 	let eventEmitter: EventEmitter2;
 	let dataSource: OrmDataSource;
 
+	const mockDisplay: DisplayProfileEntity = {
+		id: uuid().toString(),
+		uid: uuid().toString(),
+		screenWidth: 1280,
+		screenHeight: 720,
+		pixelRatio: 2,
+		unitSize: 120,
+		rows: 6,
+		cols: 4,
+		primary: true,
+		createdAt: new Date(),
+		updatedAt: undefined,
+	};
+
 	const mockPageOne: MockPageEntity = {
 		id: uuid().toString(),
 		type: 'mock',
 		title: 'Mock page one',
 		order: 0,
 		dataSource: [],
+		display: mockDisplay.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -82,9 +102,18 @@ describe('PagesService', () => {
 		title: 'Mock page two',
 		order: 0,
 		dataSource: [],
+		display: mockDisplay.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Other mock value',
+	};
+
+	const mockDisplaysService = {
+		findAll: jest.fn().mockResolvedValue([toInstance(DisplayProfileEntity, mockDisplay)]),
+		findOne: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
+		findByUid: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
+		findPrimary: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
+		getOneOrThrow: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
 	};
 
 	beforeEach(async () => {
@@ -106,6 +135,7 @@ describe('PagesService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				PagesService,
+				DisplayProfileExistsConstraintValidator,
 				{ provide: getRepositoryToken(PageEntity), useFactory: mockRepository },
 				{
 					provide: DataSourceService,
@@ -140,6 +170,10 @@ describe('PagesService', () => {
 					},
 				},
 				{
+					provide: DisplaysProfilesService,
+					useValue: mockDisplaysService,
+				},
+				{
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(() => {}),
@@ -154,6 +188,8 @@ describe('PagesService', () => {
 			],
 		}).compile();
 
+		useContainer(module, { fallbackOnErrors: true });
+
 		service = module.get<PagesService>(PagesService);
 		repository = module.get<Repository<PageEntity>>(getRepositoryToken(PageEntity));
 		mapper = module.get<PagesTypeMapperService>(PagesTypeMapperService);
@@ -164,6 +200,10 @@ describe('PagesService', () => {
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -178,33 +218,41 @@ describe('PagesService', () => {
 		it('should return all pages', async () => {
 			const mockPages: PageEntity[] = [mockPageOne];
 
-			jest
-				.spyOn(repository, 'find')
-				.mockResolvedValue(mockPages.map((entity) => plainToInstance(MockPageEntity, entity)));
+			jest.spyOn(repository, 'find').mockResolvedValue(mockPages.map((entity) => toInstance(MockPageEntity, entity)));
 
 			const result = await service.findAll();
 
-			expect(result).toEqual(mockPages.map((entity) => plainToInstance(MockPageEntity, entity)));
+			expect(result).toEqual(mockPages.map((entity) => toInstance(MockPageEntity, entity)));
 			expect(repository.find).toHaveBeenCalled();
 		});
 	});
 
 	describe('findOne', () => {
 		it('should return a page by ID', async () => {
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockPageEntity, mockPageOne));
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockPageOne)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findOne(mockPageOne.id);
 
-			expect(result).toEqual(plainToInstance(MockPageEntity, mockPageOne));
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockPageOne.id },
-			});
+			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :id', { id: mockPageOne.id });
 		});
 
 		it('should return null if page not found', async () => {
 			const id = uuid().toString();
 
-			jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(null),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findOne(id);
 
@@ -218,8 +266,8 @@ describe('PagesService', () => {
 			const mockCratePage: Partial<MockPageEntity> = {
 				type: createDto.type,
 				title: createDto.title,
-				icon: null,
 				order: createDto.order,
+				display: mockDisplay.id,
 				mockValue: createDto.mockValue,
 			};
 			const mockCratedPage: MockPageEntity = {
@@ -228,6 +276,7 @@ describe('PagesService', () => {
 				title: mockCratePage.title,
 				icon: null,
 				order: mockCratePage.order,
+				display: mockCratePage.display,
 				createdAt: new Date(),
 				dataSource: [],
 				updatedAt: null,
@@ -243,27 +292,26 @@ describe('PagesService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedPage);
-			jest.spyOn(repository, 'create').mockReturnValue(mockCratedPage);
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(MockPageEntity, mockCratedPage));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockPageEntity, mockCratedPage));
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(MockPageEntity, mockCratedPage));
+
+			const queryBuilderMock: any = {
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockCratedPage)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.create(createDto);
 
-			expect(result).toEqual(plainToInstance(MockPageEntity, mockCratedPage));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(MockPageEntity, mockCratePage, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCratedPage);
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockCratedPage.id },
-			});
+			expect(result).toEqual(toInstance(MockPageEntity, mockCratedPage));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(MockPageEntity, mockCratePage));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockPageEntity, mockCratedPage));
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :id', { id: mockCratedPage.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_CREATED,
-				plainToInstance(MockPageEntity, mockCratedPage),
+				toInstance(MockPageEntity, mockCratedPage),
 			);
 		});
 
@@ -289,6 +337,7 @@ describe('PagesService', () => {
 				title: updateDto.title,
 				order: mockPageTwo.order,
 				dataSource: mockPageTwo.dataSource,
+				display: mockDisplay.id,
 				createdAt: mockPageTwo.createdAt,
 				updatedAt: mockPageTwo.updatedAt,
 				mockValue: updateDto.mockValue,
@@ -299,6 +348,7 @@ describe('PagesService', () => {
 				title: mockUpdatePage.title,
 				order: mockUpdatePage.order,
 				dataSource: mockUpdatePage.dataSource,
+				display: mockUpdatePage.display,
 				createdAt: mockUpdatePage.createdAt,
 				updatedAt: new Date(),
 				mockValue: mockUpdatePage.mockValue,
@@ -313,38 +363,40 @@ describe('PagesService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest
-				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(MockPageEntity, mockPageTwo))
-				.mockResolvedValueOnce(plainToInstance(MockPageEntity, mockUpdatedPage));
-			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedPage);
+			const queryBuilderMock: any = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				leftJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				getOne: jest
+					.fn()
+					.mockResolvedValueOnce(toInstance(MockPageEntity, mockPageTwo))
+					.mockResolvedValueOnce(toInstance(MockPageEntity, mockUpdatedPage)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockPageEntity, mockUpdatedPage));
 
 			const result = await service.update(mockPageTwo.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(MockPageEntity, mockUpdatedPage));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockPageEntity, mockUpdatePage));
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockPageTwo.id },
-			});
+			expect(result).toEqual(toInstance(MockPageEntity, mockUpdatedPage));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockPageEntity, mockUpdatePage));
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('page.id = :id', { id: mockPageTwo.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.PAGE_UPDATED,
-				plainToInstance(MockPageEntity, mockUpdatedPage),
+				toInstance(MockPageEntity, mockUpdatedPage),
 			);
 		});
 	});
 
 	describe('remove', () => {
 		it('should delete a page', async () => {
-			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(MockPageEntity, mockPageOne));
+			jest.spyOn(service, 'findOne').mockResolvedValue(toInstance(MockPageEntity, mockPageOne));
 			jest.spyOn(repository, 'delete');
 
 			await service.remove(mockPageOne.id);
 
 			expect(repository.delete).toHaveBeenCalledWith(mockPageOne.id);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				EventType.PAGE_DELETED,
-				plainToInstance(MockPageEntity, mockPageOne),
-			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.PAGE_DELETED, toInstance(MockPageEntity, mockPageOne));
 		});
 
 		it('should throw an exception if page is not found', async () => {

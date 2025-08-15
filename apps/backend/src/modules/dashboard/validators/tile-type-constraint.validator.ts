@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import {
 	ValidationArguments,
 	ValidationError,
@@ -13,6 +12,7 @@ import {
 import { Injectable } from '@nestjs/common';
 
 import { IValidationResult } from '../../../app.interfaces';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateTileDto } from '../dto/create-tile.dto';
 import { TilesTypeMapperService } from '../services/tiles-type-mapper.service';
 
@@ -36,14 +36,9 @@ export class TileTypeConstraintValidator implements ValidatorConstraintInterface
 		for (const [index, tile] of tiles.entries()) {
 			const mapping = this.mapper.getMapping(tile.type);
 
-			const instance = plainToInstance(
-				mapping.createDto,
-				{ ...tile },
-				{
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				},
-			);
+			const instance = toInstance(mapping.createDto, tile, {
+				excludeExtraneousValues: false,
+			});
 
 			const tileErrors: ValidationError[] = await validate(instance, {
 				whitelist: true,

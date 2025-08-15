@@ -8,7 +8,6 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import bcrypt from 'bcrypt';
-import { plainToInstance } from 'class-transformer';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -16,6 +15,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenType } from '../auth.constants';
 import { AuthException, AuthNotFoundException } from '../auth.exceptions';
 import { CreateLongLiveTokenDto, CreateTokenDto } from '../dto/create-token.dto';
@@ -103,6 +103,10 @@ describe('TokensService', () => {
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(service).toBeDefined();
 		expect(repository).toBeDefined();
@@ -116,7 +120,7 @@ describe('TokensService', () => {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(LongLiveTokenEntity, mockToken)),
+				getOne: jest.fn().mockResolvedValue(toInstance(LongLiveTokenEntity, mockToken)),
 			};
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
@@ -125,7 +129,7 @@ describe('TokensService', () => {
 
 			const result = await service.getOneOrThrow(mockToken.id);
 
-			expect(result).toEqual(plainToInstance(LongLiveTokenEntity, mockToken));
+			expect(result).toEqual(toInstance(LongLiveTokenEntity, mockToken));
 		});
 
 		it('should throw an error if token not found', async () => {
@@ -171,28 +175,24 @@ describe('TokensService', () => {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(LongLiveTokenEntity, mockCreatedToken)),
+				getOne: jest.fn().mockResolvedValue(toInstance(LongLiveTokenEntity, mockCreatedToken)),
 			};
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedToken);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedToken);
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(LongLiveTokenEntity, mockCreatedToken));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(LongLiveTokenEntity, mockCreatedToken));
 
 			jest.spyOn(service, 'findAll').mockResolvedValue([]);
 
 			const result = await service.create(createDto);
 
-			expect(result).toEqual(plainToInstance(LongLiveTokenEntity, mockCreatedToken));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(LongLiveTokenEntity, mockCreateToken, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCreatedToken);
+			expect(result).toEqual(toInstance(LongLiveTokenEntity, mockCreatedToken));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(LongLiveTokenEntity, mockCreateToken));
+			const saveToken = toInstance(LongLiveTokenEntity, mockCreatedToken);
+			saveToken.hashedToken = mockCreateToken.token;
+			expect(repository.save).toHaveBeenCalledWith(saveToken);
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('token');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('token.owner', 'owner');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('token.id = :fieldValue', {
@@ -251,19 +251,19 @@ describe('TokensService', () => {
 				where: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
-					.mockResolvedValueOnce(plainToInstance(LongLiveTokenEntity, mockToken))
-					.mockResolvedValueOnce(plainToInstance(LongLiveTokenEntity, mockUpdatedToken)),
+					.mockResolvedValueOnce(toInstance(LongLiveTokenEntity, mockToken))
+					.mockResolvedValueOnce(toInstance(LongLiveTokenEntity, mockUpdatedToken)),
 			};
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedToken);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(LongLiveTokenEntity, mockUpdatedToken));
 
 			const result = await service.update(mockToken.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(LongLiveTokenEntity, mockUpdatedToken));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(LongLiveTokenEntity, mockUpdateToken));
+			expect(result).toEqual(toInstance(LongLiveTokenEntity, mockUpdatedToken));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(LongLiveTokenEntity, mockUpdateToken));
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('token');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('token.owner', 'owner');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('token.id = :fieldValue', { fieldValue: mockToken.id });

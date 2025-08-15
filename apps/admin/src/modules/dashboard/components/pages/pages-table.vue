@@ -135,12 +135,28 @@
 		</el-table-column>
 
 		<el-table-column
+			:label="t('dashboardModule.table.pages.columns.display.title')"
+			prop="display"
+			sortable="custom"
+			:sort-orders="['ascending', 'descending']"
+			:width="150"
+		>
+			<template #default="scope">
+				<table-column-display-profile
+					:row="scope.row"
+					:filters="innerFilters"
+					@filter-by="(value: string, add: boolean) => onFilterBy('display', value, add)"
+				/>
+			</template>
+		</el-table-column>
+
+		<el-table-column
 			:label="t('dashboardModule.table.pages.columns.order.title')"
 			prop="order"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
 			align="center"
-			:width="200"
+			:width="120"
 		>
 			<template #default="scope">
 				{{ scope.row.order }}
@@ -173,6 +189,7 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../../common';
+import { TableColumnDisplayProfile } from '../../../system';
 import type { IPagesFilter } from '../../composables/types';
 import type { IPage } from '../../store/pages.store.types';
 
@@ -221,6 +238,10 @@ const onRowClick = (row: IPage): void => {
 
 const onFilterBy = (column: string, data: string, add?: boolean): void => {
 	if (column === 'type') {
+		if (data === null) {
+			return;
+		}
+
 		let filteredTypes = innerFilters.value.types;
 
 		if (add === true) {
@@ -230,6 +251,16 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		}
 
 		innerFilters.value.types = Array.from(new Set(filteredTypes));
+	} else if (column === 'display') {
+		let filteredTypes = innerFilters.value.displays;
+
+		if (add === true) {
+			filteredTypes.push(data);
+		} else {
+			filteredTypes = innerFilters.value.types.filter((item) => item !== data);
+		}
+
+		innerFilters.value.displays = Array.from(new Set(filteredTypes));
 	}
 };
 </script>

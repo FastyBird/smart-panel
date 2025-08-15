@@ -7,7 +7,6 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { plainToInstance } from 'class-transformer';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -16,6 +15,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { DataSourcesTypeMapperService } from '../../../modules/dashboard/services/data-source-type-mapper.service';
 import { PagesService } from '../../../modules/dashboard/services/pages.service';
 import { TilesTypeMapperService } from '../../../modules/dashboard/services/tiles-type-mapper.service';
@@ -43,6 +43,7 @@ describe('CardsService', () => {
 		order: 0,
 		cards: [],
 		dataSource: [],
+		display: uuid().toString(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};
@@ -129,6 +130,10 @@ describe('CardsService', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(pagesService).toBeDefined();
 		expect(cardsService).toBeDefined();
@@ -143,19 +148,19 @@ describe('CardsService', () => {
 		it('should return all cards', async () => {
 			const mockCards: CardEntity[] = [mockCard];
 
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
+			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(toInstance(CardsPageEntity, mockCardsPage));
 
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getMany: jest.fn().mockResolvedValue(mockCards.map((entity) => plainToInstance(CardsPageEntity, entity))),
+				getMany: jest.fn().mockResolvedValue(mockCards.map((entity) => toInstance(CardsPageEntity, entity))),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await cardsService.findAll(mockCardsPage.id);
 
-			expect(result).toEqual(mockCards.map((entity) => plainToInstance(CardsPageEntity, entity)));
+			expect(result).toEqual(mockCards.map((entity) => toInstance(CardsPageEntity, entity)));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('card');
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('card.page', 'page');
@@ -166,20 +171,20 @@ describe('CardsService', () => {
 
 	describe('findOne', () => {
 		it('should return a card by ID', async () => {
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
+			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(toInstance(CardsPageEntity, mockCardsPage));
 
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(CardEntity, mockCard)),
+				getOne: jest.fn().mockResolvedValue(toInstance(CardEntity, mockCard)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await cardsService.findOne(mockCard.id, mockCardsPage.id);
 
-			expect(result).toEqual(plainToInstance(CardEntity, mockCard));
+			expect(result).toEqual(toInstance(CardEntity, mockCard));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('card');
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('card.page', 'page');
@@ -191,7 +196,7 @@ describe('CardsService', () => {
 		it('should return null if page not found', async () => {
 			const cardId = uuid().toString();
 
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
+			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(toInstance(CardsPageEntity, mockCardsPage));
 
 			const queryBuilderMock: any = {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -240,10 +245,10 @@ describe('CardsService', () => {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValueOnce(plainToInstance(CardEntity, mockCratedCard)),
+				getOne: jest.fn().mockResolvedValueOnce(toInstance(CardEntity, mockCratedCard)),
 			};
 
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
+			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(toInstance(CardsPageEntity, mockCardsPage));
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
@@ -253,19 +258,10 @@ describe('CardsService', () => {
 
 			const result = await cardsService.create(createDto);
 
-			expect(result).toEqual(plainToInstance(CardEntity, mockCratedCard));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(CardEntity, mockCrateCard, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
+			expect(result).toEqual(toInstance(CardEntity, mockCratedCard));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(CardEntity, mockCrateCard));
 			expect(repository.save).toHaveBeenCalledWith(mockCratedCard);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				EventType.CARD_CREATED,
-				plainToInstance(CardEntity, mockCratedCard),
-			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CARD_CREATED, toInstance(CardEntity, mockCratedCard));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('card.id = :id', { id: mockCratedCard.id });
 			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('page.id = :pageId', { pageId: mockCardsPage.id });
 			expect(queryBuilderMock.getOne).toHaveBeenCalled();
@@ -277,7 +273,7 @@ describe('CardsService', () => {
 				title: 'Card title',
 			};
 
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
+			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(toInstance(CardsPageEntity, mockCardsPage));
 
 			await expect(cardsService.create(createDto as CreateSingleCardDto)).rejects.toThrow(
 				PagesCardsValidationException,
@@ -321,7 +317,7 @@ describe('CardsService', () => {
 				getOne: jest
 					.fn()
 					.mockResolvedValueOnce(mockCard)
-					.mockResolvedValueOnce(plainToInstance(CardEntity, mockUpdatedCard)),
+					.mockResolvedValueOnce(toInstance(CardEntity, mockUpdatedCard)),
 			};
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
@@ -331,12 +327,9 @@ describe('CardsService', () => {
 
 			const result = await cardsService.update(mockCard.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(CardEntity, mockUpdatedCard));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(CardEntity, mockUpdatedCard));
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				EventType.CARD_UPDATED,
-				plainToInstance(CardEntity, mockUpdatedCard),
-			);
+			expect(result).toEqual(toInstance(CardEntity, mockUpdatedCard));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(CardEntity, mockUpdatedCard));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CARD_UPDATED, toInstance(CardEntity, mockUpdatedCard));
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('card');
 			expect(queryBuilderMock.leftJoinAndSelect).toHaveBeenCalledWith('card.page', 'page');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('card.id = :id', { id: mockCard.id });
@@ -346,15 +339,15 @@ describe('CardsService', () => {
 
 	describe('remove', () => {
 		it('should remove a card', async () => {
-			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(CardsPageEntity, mockCardsPage));
-			jest.spyOn(cardsService, 'findOne').mockResolvedValue(plainToInstance(CardEntity, mockCard));
+			jest.spyOn(pagesService, 'getOneOrThrow').mockResolvedValue(toInstance(CardsPageEntity, mockCardsPage));
+			jest.spyOn(cardsService, 'findOne').mockResolvedValue(toInstance(CardEntity, mockCard));
 
 			jest.spyOn(repository, 'remove').mockResolvedValue(mockCard);
 
 			await cardsService.remove(mockCard.id, mockCardsPage.id);
 
-			expect(repository.remove).toHaveBeenCalledWith(plainToInstance(CardEntity, mockCard));
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CARD_DELETED, plainToInstance(CardEntity, mockCard));
+			expect(repository.remove).toHaveBeenCalledWith(toInstance(CardEntity, mockCard));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CARD_DELETED, toInstance(CardEntity, mockCard));
 		});
 	});
 });

@@ -46,10 +46,12 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		// Mock sendCommand method
 		mockSendCommand = jest.spyOn(platform as any, 'sendCommand');
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	it('should return true on successful 204 response', async () => {

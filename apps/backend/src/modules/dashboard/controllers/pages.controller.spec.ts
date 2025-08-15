@@ -12,6 +12,8 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { DisplayProfileEntity } from '../../system/entities/system.entity';
 import { CreatePageDto } from '../dto/create-page.dto';
 import { UpdatePageDto } from '../dto/update-page.dto';
 import { PageEntity } from '../entities/dashboard.entity';
@@ -23,14 +25,14 @@ import { TilesTypeMapperService } from '../services/tiles-type-mapper.service';
 import { PagesController } from './pages.controller';
 
 class CreateMockPageDto extends CreatePageDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	mockValue: string;
 }
 
 class UpdateMockPageDto extends UpdatePageDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -58,12 +60,27 @@ describe('PagesController', () => {
 	let tileMapper: TilesTypeMapperService;
 	let dataSourceMapper: DataSourcesTypeMapperService;
 
+	const mockDisplay: DisplayProfileEntity = {
+		id: uuid().toString(),
+		uid: uuid().toString(),
+		screenWidth: 1280,
+		screenHeight: 720,
+		pixelRatio: 2,
+		unitSize: 120,
+		rows: 6,
+		cols: 4,
+		primary: true,
+		createdAt: new Date(),
+		updatedAt: undefined,
+	};
+
 	const mockPageOne: MockPageEntity = {
 		id: uuid().toString(),
 		type: 'mock',
 		title: 'Mock page one',
 		order: 0,
 		dataSource: [],
+		display: mockDisplay.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -97,10 +114,10 @@ describe('PagesController', () => {
 				{
 					provide: PagesService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockPageOne]),
-						findOne: jest.fn().mockResolvedValue(mockPageOne),
-						create: jest.fn().mockResolvedValue(mockPageOne),
-						update: jest.fn().mockResolvedValue(mockPageOne),
+						findAll: jest.fn().mockResolvedValue([toInstance(MockPageEntity, mockPageOne)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockPageOne)),
+						create: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockPageOne)),
+						update: jest.fn().mockResolvedValue(toInstance(MockPageEntity, mockPageOne)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -119,6 +136,10 @@ describe('PagesController', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(controller).toBeDefined();
 		expect(service).toBeDefined();
@@ -131,14 +152,14 @@ describe('PagesController', () => {
 		it('should return all pages', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([mockPageOne]);
+			expect(result).toEqual([toInstance(MockPageEntity, mockPageOne)]);
 			expect(service.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single page', async () => {
 			const result = await controller.findOne(mockPageOne.id);
 
-			expect(result).toEqual(mockPageOne);
+			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.findOne).toHaveBeenCalledWith(mockPageOne.id);
 		});
 
@@ -159,7 +180,7 @@ describe('PagesController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(mockPageOne);
+			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.create).toHaveBeenCalledWith(createDto);
 		});
 
@@ -178,7 +199,7 @@ describe('PagesController', () => {
 
 			const result = await controller.update(mockPageOne.id, { data: updateDto });
 
-			expect(result).toEqual(mockPageOne);
+			expect(result).toEqual(toInstance(MockPageEntity, mockPageOne));
 			expect(service.update).toHaveBeenCalledWith(mockPageOne.id, updateDto);
 		});
 

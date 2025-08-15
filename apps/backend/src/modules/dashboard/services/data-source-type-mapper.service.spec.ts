@@ -28,6 +28,10 @@ describe('DataSourceTypeMapperService', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(service).toBeDefined();
 	});

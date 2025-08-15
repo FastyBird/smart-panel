@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import {
 	ValidationArguments,
 	ValidationError,
@@ -13,6 +12,7 @@ import {
 import { Injectable } from '@nestjs/common';
 
 import { IValidationResult } from '../../../app.interfaces';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
 
@@ -36,14 +36,9 @@ export class DataSourceTypeConstraintValidator implements ValidatorConstraintInt
 		for (const [index, dataSource] of dataSources.entries()) {
 			const mapping = this.mapper.getMapping(dataSource.type);
 
-			const instance = plainToInstance(
-				mapping.createDto,
-				{ ...dataSource },
-				{
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				},
-			);
+			const instance = toInstance(mapping.createDto, dataSource, {
+				excludeExtraneousValues: false,
+			});
 
 			const dataSourcesErrors: ValidationError[] = await validate(instance, {
 				whitelist: true,

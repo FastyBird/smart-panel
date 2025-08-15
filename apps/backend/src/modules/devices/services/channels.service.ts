@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
@@ -8,6 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
@@ -142,6 +142,7 @@ export class ChannelsService {
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {
@@ -152,13 +153,7 @@ export class ChannelsService {
 
 		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
 
-		const channel = repository.create(
-			plainToInstance(mapping.class, dtoInstance, {
-				enableImplicitConversion: true,
-				excludeExtraneousValues: true,
-				exposeUnsetFields: false,
-			}),
-		);
+		const channel = repository.create(toInstance(mapping.class, dtoInstance));
 
 		// Save the channel
 		const raw = await repository.save(channel);
@@ -198,17 +193,7 @@ export class ChannelsService {
 
 		const repository: Repository<TChannel> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(
-			channel,
-			omitBy(
-				plainToInstance(mapping.class, dtoInstance, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeDefaultValues: false,
-				}),
-				isUndefined,
-			),
-		);
+		Object.assign(channel, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
 
 		await repository.save(channel as TChannel);
 
@@ -252,15 +237,14 @@ export class ChannelsService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

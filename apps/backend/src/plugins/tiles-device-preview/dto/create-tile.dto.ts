@@ -1,13 +1,13 @@
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 
-import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
+import { CreateSingleTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
 import type { components } from '../../../openapi';
 
 type CreateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginCreateDevicePreviewTile'];
 
-export class CreateDevicePreviewTileDto extends CreateTileDto implements CreateDevicePreviewTile {
+export class CreateDevicePreviewTileDto extends CreateSingleTileDto implements CreateDevicePreviewTile {
 	readonly type: 'device-preview';
 
 	@Expose()

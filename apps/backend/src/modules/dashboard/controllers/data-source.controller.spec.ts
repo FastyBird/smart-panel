@@ -13,6 +13,7 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateSingleDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
@@ -22,14 +23,14 @@ import { DataSourceService } from '../services/data-source.service';
 import { DataSourceController } from './data-source.controller';
 
 class CreateMockDataSourceDto extends CreateSingleDataSourceDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	mockValue: string;
 }
 
 class UpdateMockDataSourceDto extends UpdateDataSourceDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -80,6 +81,7 @@ describe('DataSourceController', () => {
 		title: 'Tiles detail',
 		order: 0,
 		dataSource: [],
+		display: uuid().toString(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -110,10 +112,10 @@ describe('DataSourceController', () => {
 				{
 					provide: DataSourceService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockDataSource]),
-						findOne: jest.fn().mockResolvedValue(mockDataSource),
-						create: jest.fn().mockResolvedValue(mockDataSource),
-						update: jest.fn().mockResolvedValue(mockDataSource),
+						findAll: jest.fn().mockResolvedValue([toInstance(MockDataSourceEntity, mockDataSource)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(MockDataSourceEntity, mockDataSource)),
+						create: jest.fn().mockResolvedValue(toInstance(MockDataSourceEntity, mockDataSource)),
+						update: jest.fn().mockResolvedValue(toInstance(MockDataSourceEntity, mockDataSource)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -132,6 +134,10 @@ describe('DataSourceController', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(controller).toBeDefined();
 		expect(dataSourceService).toBeDefined();
@@ -142,14 +148,14 @@ describe('DataSourceController', () => {
 		it('should return all data sources', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([mockDataSource]);
+			expect(result).toEqual([toInstance(MockDataSourceEntity, mockDataSource)]);
 			expect(dataSourceService.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single data source', async () => {
 			const result = await controller.findOne(mockDataSource.id);
 
-			expect(result).toEqual(mockDataSource);
+			expect(result).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
 			expect(dataSourceService.findOne).toHaveBeenCalledWith(mockDataSource.id);
 		});
 
@@ -169,7 +175,7 @@ describe('DataSourceController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(mockDataSource);
+			expect(result).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
 			expect(dataSourceService.create).toHaveBeenCalledWith(createDto, { parentType: 'page', parentId: mockPage.id });
 		});
 
@@ -188,7 +194,7 @@ describe('DataSourceController', () => {
 
 			const result = await controller.update(mockDataSource.id, { data: updateDto });
 
-			expect(result).toEqual(mockDataSource);
+			expect(result).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
 			expect(dataSourceService.update).toHaveBeenCalledWith(mockDataSource.id, updateDto);
 		});
 

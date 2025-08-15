@@ -1,15 +1,20 @@
+import { Expose } from 'class-transformer';
 import { IsBoolean } from 'class-validator';
 
 export class ThrottleStatusDto {
+	@Expose()
 	@IsBoolean()
 	undervoltage: boolean;
 
+	@Expose()
 	@IsBoolean()
-	frequencyCapping: boolean;
+	frequency_capping: boolean;
 
+	@Expose()
 	@IsBoolean()
 	throttling: boolean;
 
+	@Expose()
 	@IsBoolean()
-	softTempLimit: boolean;
+	soft_temp_limit: boolean;
 }

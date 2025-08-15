@@ -11,6 +11,7 @@ import { Logger } from '@nestjs/common';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { AuthenticatedRequest } from '../../auth/auth.constants';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -38,10 +39,10 @@ describe('UsersController', () => {
 	};
 
 	const mockUserService = {
-		findAll: jest.fn().mockResolvedValue([mockUser]),
-		findOne: jest.fn().mockResolvedValue(mockUser),
-		create: jest.fn().mockResolvedValue(mockUser),
-		update: jest.fn().mockResolvedValue({ ...mockUser, firstName: 'UpdatedName' }),
+		findAll: jest.fn().mockResolvedValue([toInstance(UserEntity, mockUser)]),
+		findOne: jest.fn().mockResolvedValue(toInstance(UserEntity, mockUser)),
+		create: jest.fn().mockResolvedValue(toInstance(UserEntity, mockUser)),
+		update: jest.fn().mockResolvedValue(toInstance(UserEntity, { ...mockUser, firstName: 'UpdatedName' })),
 		remove: jest.fn().mockResolvedValue(undefined),
 		findByUsername: jest.fn().mockResolvedValue(null),
 		findByEmail: jest.fn().mockResolvedValue(null),
@@ -76,7 +77,7 @@ describe('UsersController', () => {
 		it('should return an array of users', async () => {
 			const users = await controller.findAll();
 
-			expect(users).toEqual([mockUser]);
+			expect(users).toEqual([toInstance(UserEntity, mockUser)]);
 			expect(service.findAll).toHaveBeenCalledTimes(1);
 		});
 	});
@@ -85,7 +86,7 @@ describe('UsersController', () => {
 		it('should return a user when found', async () => {
 			const user = await controller.findOne(mockUser.id);
 
-			expect(user).toEqual(mockUser);
+			expect(user).toEqual(toInstance(UserEntity, mockUser));
 			expect(service.findOne).toHaveBeenCalledWith(mockUser.id);
 		});
 
@@ -106,7 +107,7 @@ describe('UsersController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(mockUser);
+			expect(result).toEqual(toInstance(UserEntity, mockUser));
 			expect(service.create).toHaveBeenCalledWith(createDto);
 		});
 	});

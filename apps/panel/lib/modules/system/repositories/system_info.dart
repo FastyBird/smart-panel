@@ -1,11 +1,11 @@
-import 'package:fastybird_smart_panel/modules/system/models/default_network.dart';
-import 'package:fastybird_smart_panel/modules/system/models/display_info.dart';
-import 'package:fastybird_smart_panel/modules/system/models/memory_info.dart';
-import 'package:fastybird_smart_panel/modules/system/models/network_stats.dart';
-import 'package:fastybird_smart_panel/modules/system/models/operating_system_info.dart';
-import 'package:fastybird_smart_panel/modules/system/models/storage_info.dart';
-import 'package:fastybird_smart_panel/modules/system/models/system_info.dart';
-import 'package:fastybird_smart_panel/modules/system/models/temperature_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/default_network.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/display_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/memory_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/network_stats.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/operating_system_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/storage_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/system_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/temperature_info.dart';
 import 'package:fastybird_smart_panel/modules/system/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 
@@ -30,7 +30,7 @@ class SystemInfoRepository extends Repository<SystemInfoModel> {
 
   Future<bool> refresh() async {
     try {
-      await fetchSystemInfo();
+      await fetchOne();
 
       return true;
     } catch (e) {
@@ -38,7 +38,7 @@ class SystemInfoRepository extends Repository<SystemInfoModel> {
     }
   }
 
-  void insertSystemInfo(Map<String, dynamic> json) {
+  void insert(Map<String, dynamic> json) {
     try {
       SystemInfoModel newData = SystemInfoModel.fromJson(json);
 
@@ -64,14 +64,14 @@ class SystemInfoRepository extends Repository<SystemInfoModel> {
     }
   }
 
-  Future<void> fetchSystemInfo() async {
+  Future<void> fetchOne() async {
     return handleApiCall(
       () async {
         final response = await apiClient.getSystemModuleSystemInfo();
 
         final raw = response.response.data['data'] as Map<String, dynamic>;
 
-        insertSystemInfo(raw);
+        insert(raw);
       },
       'fetch system info',
     );

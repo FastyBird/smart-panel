@@ -22,13 +22,13 @@
 				size="large"
 				class="block font-600 text-lg"
 			>
-				{{ t('systemModule.headings.restart') }}
+				{{ t('systemModule.headings.manage.restart') }}
 			</el-text>
 			<el-text
 				class="block"
 				data-test-id="restart-info"
 			>
-				{{ t('systemModule.texts.rebootDevice') }}
+				{{ t('systemModule.texts.manage.rebootDevice') }}
 			</el-text>
 		</el-col>
 		<el-col
@@ -69,13 +69,13 @@
 				size="large"
 				class="block font-600 text-lg"
 			>
-				{{ t('systemModule.headings.powerOff') }}
+				{{ t('systemModule.headings.manage.powerOff') }}
 			</el-text>
 			<el-text
 				class="block"
 				data-test-id="power-off-info"
 			>
-				{{ t('systemModule.texts.powerOffDevice') }}
+				{{ t('systemModule.texts.manage.powerOffDevice') }}
 			</el-text>
 		</el-col>
 		<el-col
@@ -116,13 +116,13 @@
 				size="large"
 				class="block font-600 text-lg"
 			>
-				{{ t('systemModule.headings.factoryReset') }}
+				{{ t('systemModule.headings.manage.factoryReset') }}
 			</el-text>
 			<el-text
 				class="block"
 				data-test-id="factory-reset-info"
 			>
-				{{ t('systemModule.texts.factoryResetDevice') }}
+				{{ t('systemModule.texts.manage.factoryResetDevice') }}
 			</el-text>
 		</el-col>
 		<el-col

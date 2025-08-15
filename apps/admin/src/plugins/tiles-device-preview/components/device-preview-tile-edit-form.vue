@@ -146,11 +146,13 @@ const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): {
 });
 
 onBeforeMount((): void => {
-	fetchDevices().catch((error: unknown): void => {
-		const err = error as Error;
+	if (!loadingDevices.value) {
+		fetchDevices().catch((error: unknown): void => {
+			const err = error as Error;
 
-		throw new DashboardException('Something went wrong', err);
-	});
+			throw new DashboardException('Something went wrong', err);
+		});
+	}
 });
 
 watch(

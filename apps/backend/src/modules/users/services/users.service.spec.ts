@@ -6,7 +6,6 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import bcrypt from 'bcrypt';
-import { plainToInstance } from 'class-transformer';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
@@ -15,6 +14,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
@@ -88,22 +88,22 @@ describe('UsersService', () => {
 
 	describe('findAll', () => {
 		it('should return all users', async () => {
-			jest.spyOn(repository, 'find').mockResolvedValue([plainToInstance(UserEntity, mockUser)]);
+			jest.spyOn(repository, 'find').mockResolvedValue([toInstance(UserEntity, mockUser)]);
 
 			const result = await service.findAll();
 
-			expect(result).toEqual([plainToInstance(UserEntity, mockUser)]);
+			expect(result).toEqual([toInstance(UserEntity, mockUser)]);
 			expect(repository.find).toHaveBeenCalledTimes(1);
 		});
 	});
 
 	describe('findOne', () => {
 		it('should return a user if found', async () => {
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(UserEntity, mockUser));
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(UserEntity, mockUser));
 
 			const result = await service.findOne(mockUser.id);
 
-			expect(result).toEqual(plainToInstance(UserEntity, mockUser));
+			expect(result).toEqual(toInstance(UserEntity, mockUser));
 		});
 
 		it('should return null if the user is not found', async () => {
@@ -145,29 +145,27 @@ describe('UsersService', () => {
 			// @ts-expect-error: bcrypt is mocked, but TypeScript still reports an error when mocking the method
 			jest.spyOn(bcrypt, 'hash').mockResolvedValue('securepassword');
 
-			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedUser);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedUser);
-			jest.spyOn(repository, 'findOne').mockResolvedValue(plainToInstance(UserEntity, mockCreatedUser));
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(UserEntity, mockCreatedUser));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(UserEntity, mockCreatedUser));
+			jest.spyOn(repository, 'findOne').mockResolvedValue(toInstance(UserEntity, mockCreatedUser));
 
 			const result = await service.create(createDto);
 
-			expect(result).toEqual(plainToInstance(UserEntity, mockCreatedUser));
+			expect(result).toEqual(toInstance(UserEntity, mockCreatedUser));
 			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(UserEntity, mockCreateUser, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-					groups: ['internal'],
-				}),
+				toInstance(
+					UserEntity,
+					{ ...mockCreateUser, isHidden: false },
+					{
+						groups: ['internal'],
+					},
+				),
 			);
-			expect(repository.save).toHaveBeenCalledWith(mockCreatedUser);
+			expect(repository.save).toHaveBeenCalledWith(toInstance(UserEntity, mockCreatedUser));
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockCreatedUser.id },
 			});
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				EventType.USER_CREATED,
-				plainToInstance(UserEntity, mockCreatedUser),
-			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_CREATED, toInstance(UserEntity, mockCreatedUser));
 		});
 
 		it('should throw validation exception when dto is invalid', async () => {
@@ -207,21 +205,18 @@ describe('UsersService', () => {
 
 			jest
 				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(UserEntity, mockUser))
-				.mockResolvedValueOnce(plainToInstance(UserEntity, mockUpdatedUser));
-			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedUser);
+				.mockResolvedValueOnce(toInstance(UserEntity, mockUser))
+				.mockResolvedValueOnce(toInstance(UserEntity, mockUpdatedUser));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(UserEntity, mockUpdatedUser));
 
 			const result = await service.update(mockUser.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(UserEntity, mockUpdatedUser));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(UserEntity, mockUpdateUser));
+			expect(result).toEqual(toInstance(UserEntity, mockUpdatedUser));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(UserEntity, mockUpdateUser));
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockUser.id },
 			});
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				EventType.USER_UPDATED,
-				plainToInstance(UserEntity, mockUpdatedUser),
-			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_UPDATED, toInstance(UserEntity, mockUpdatedUser));
 		});
 
 		it('should throw UsersNotFoundException if user not found', async () => {
@@ -237,13 +232,13 @@ describe('UsersService', () => {
 		it('should delete the user', async () => {
 			delete mockUser.password;
 
-			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(UserEntity, mockUser));
+			jest.spyOn(service, 'findOne').mockResolvedValue(toInstance(UserEntity, mockUser));
 			jest.spyOn(repository, 'delete');
 
 			await service.remove(mockUser.id);
 
 			expect(repository.delete).toHaveBeenCalledWith(mockUser.id);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_DELETED, plainToInstance(UserEntity, mockUser));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.USER_DELETED, toInstance(UserEntity, mockUser));
 		});
 
 		it('should throw UsersNotFoundException if user not found', async () => {

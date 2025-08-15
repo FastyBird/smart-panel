@@ -30,10 +30,28 @@ class DashboardService extends ChangeNotifier {
         _cardsRepository = cardsRepository;
 
   Future<void> initialize() async {
+    await _pagesRepository.fetchAll();
+
+    for (var page in _pagesRepository.getItems()) {
+      await _cardsRepository.fetchAll(page.id);
+      await _tilesRepository.fetchAll('page', page.id);
+      await _dataSourcesRepository.fetchAll('page', page.id);
+    }
+
+    for (var card in _cardsRepository.getItems()) {
+      await _tilesRepository.fetchAll('card', card.id);
+      await _dataSourcesRepository.fetchAll('card', card.id);
+    }
+
+    for (var tile in _tilesRepository.getItems()) {
+      await _tilesRepository.fetchAll('tile', tile.id);
+      await _dataSourcesRepository.fetchAll('tile', tile.id);
+    }
+
     _pagesRepository.addListener(_updateData);
+    _cardsRepository.addListener(_updateData);
     _tilesRepository.addListener(_updateData);
     _dataSourcesRepository.addListener(_updateData);
-    _cardsRepository.addListener(_updateData);
 
     _updateData();
   }
@@ -145,6 +163,7 @@ class DashboardService extends ChangeNotifier {
         }
       }
     }
+
     if (!mapEquals(_cards, newCardsViews)) {
       _cards = newCardsViews;
 
@@ -169,6 +188,8 @@ class DashboardService extends ChangeNotifier {
 
     if (!mapEquals(_pages, newPagesViews)) {
       _pages = newPagesViews;
+
+      triggerNotifyListeners = true;
     }
 
     if (triggerNotifyListeners) {

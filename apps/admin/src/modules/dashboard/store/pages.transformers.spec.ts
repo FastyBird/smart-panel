@@ -8,13 +8,15 @@ import type { IPageRes, IPagesAddActionPayload, IPagesEditActionPayload } from '
 import { transformPageCreateRequest, transformPageResponse, transformPageUpdateRequest } from './pages.transformers';
 
 const pageId = uuid();
+const displayId = uuid();
 
 const validPageResponse: IPageRes = {
-	id: pageId.toString(),
+	id: pageId,
 	type: 'some-page',
 	title: 'Page title',
 	order: 0,
 	icon: 'test',
+	display: displayId,
 	created_at: '2024-03-01T12:00:00Z',
 	updated_at: '2024-03-02T12:00:00Z',
 	data_source: [],
@@ -25,6 +27,7 @@ const validPageCreatePayload: IPagesAddActionPayload['data'] = {
 	title: 'Page title',
 	order: 0,
 	icon: null,
+	display: displayId,
 };
 
 const validPageUpdatePayload: IPagesEditActionPayload['data'] = {
@@ -39,11 +42,12 @@ describe('Pages Transformers', (): void => {
 			const result = transformPageResponse(validPageResponse, PageSchema);
 
 			expect(result).toEqual({
-				id: pageId.toString(),
+				id: pageId,
 				type: 'some-page',
 				title: 'Page title',
 				order: 0,
 				icon: 'test',
+				display: displayId,
 				draft: false,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
 				updatedAt: new Date('2024-03-02T12:00:00Z'),
@@ -66,6 +70,7 @@ describe('Pages Transformers', (): void => {
 				title: 'Page title',
 				order: 0,
 				icon: null,
+				display: displayId,
 			});
 		});
 

@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
@@ -8,6 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { DataSourceEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
@@ -110,15 +110,7 @@ export class CardsService {
 
 		const dtoInstance = await this.validateDto<CreateSingleCardDto>(CreateSingleCardDto, createDto);
 
-		const card = plainToInstance(
-			CardEntity,
-			{ ...dtoInstance, page: page.id },
-			{
-				enableImplicitConversion: true,
-				excludeExtraneousValues: true,
-				exposeUnsetFields: false,
-			},
-		);
+		const card = toInstance(CardEntity, { ...dtoInstance, page: page.id });
 
 		card.tiles = (dtoInstance.tiles || []).map((createTileDto: CreateTileDto) => {
 			const tileMapping = this.tilesMapperService.getMapping(createTileDto.type);
@@ -126,15 +118,7 @@ export class CardsService {
 			const tileRepository: Repository<TileEntity> = this.dataSource.getRepository(tileMapping.class);
 
 			const tile = tileRepository.create(
-				plainToInstance(
-					tileMapping.class,
-					{ ...createTileDto, parentType: 'card', parentId: card.id },
-					{
-						enableImplicitConversion: true,
-						excludeExtraneousValues: true,
-						exposeUnsetFields: false,
-					},
-				),
+				toInstance(tileMapping.class, { ...createTileDto, parentType: 'card', parentId: card.id }),
 			);
 
 			tile.dataSource = (createTileDto.data_source ?? []).map((createDataSourceDto: CreateDataSourceDto) => {
@@ -145,15 +129,7 @@ export class CardsService {
 				);
 
 				return dataSourceRepository.create(
-					plainToInstance(
-						dataSourceMapping.class,
-						{ ...createDataSourceDto, parentType: 'tile', parentId: tile.id },
-						{
-							enableImplicitConversion: true,
-							excludeExtraneousValues: true,
-							exposeUnsetFields: false,
-						},
-					),
+					toInstance(dataSourceMapping.class, { ...createDataSourceDto, parentType: 'tile', parentId: tile.id }),
 				);
 			});
 
@@ -166,15 +142,7 @@ export class CardsService {
 			const dataSourceRepository: Repository<DataSourceEntity> = this.dataSource.getRepository(dataSourceMapping.class);
 
 			return dataSourceRepository.create(
-				plainToInstance(
-					dataSourceMapping.class,
-					{ ...createDataSourceDto, parentType: 'card', parentId: card.id },
-					{
-						enableImplicitConversion: true,
-						excludeExtraneousValues: true,
-						exposeUnsetFields: false,
-					},
-				),
+				toInstance(dataSourceMapping.class, { ...createDataSourceDto, parentType: 'card', parentId: card.id }),
 			);
 		});
 
@@ -202,17 +170,7 @@ export class CardsService {
 
 		const dtoInstance = await this.validateDto<UpdateCardDto>(UpdateCardDto, updateDto);
 
-		Object.assign(
-			card,
-			omitBy(
-				plainToInstance(CardEntity, dtoInstance, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeDefaultValues: false,
-				}),
-				isUndefined,
-			),
-		);
+		Object.assign(card, omitBy(toInstance(CardEntity, dtoInstance), isUndefined));
 
 		await this.repository.save(card);
 
@@ -251,15 +209,14 @@ export class CardsService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

@@ -111,25 +111,9 @@ describe('Tiles Transformers', (): void => {
 
 			expect(result).toEqual({
 				type: 'some-tile',
-				parent: {
-					type: 'page',
-					id: pageId,
-				},
 				row: 0,
 				col: 0,
 			});
-		});
-
-		it('should throw an error for an invalid tile update request', (): void => {
-			expect(() =>
-				transformTileUpdateRequest(
-					{
-						...validTileUpdatePayload,
-						parent: undefined,
-					} as unknown as ITilesEditActionPayload['data'],
-					TileUpdateReqSchema
-				)
-			).toThrow(DashboardValidationException);
 		});
 	});
 });

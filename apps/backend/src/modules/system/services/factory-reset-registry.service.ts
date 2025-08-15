@@ -6,7 +6,7 @@ type FactoryResetHandler = () => Promise<{ success: boolean; reason?: string } |
 export class FactoryResetRegistryService {
 	private readonly handlers = new Map<string, { priority: number; handler: FactoryResetHandler }>();
 
-	register(name: string, priority: number, handler: FactoryResetHandler): void {
+	register(name: string, handler: FactoryResetHandler, priority: number): void {
 		if (this.handlers.has(name)) {
 			throw new Error(`Factory reset handler "${name}" is already registered.`);
 		}
@@ -14,7 +14,7 @@ export class FactoryResetRegistryService {
 		this.handlers.set(name, { priority, handler });
 	}
 
-	get(): { name: string; priority: number; handler: FactoryResetHandler }[] {
+	get(): { name: string; handler: FactoryResetHandler; priority: number }[] {
 		return Array.from(this.handlers.entries()).map(([name, { priority, handler }]) => ({
 			name,
 			priority,

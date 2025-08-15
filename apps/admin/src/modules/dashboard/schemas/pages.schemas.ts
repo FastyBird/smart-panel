@@ -11,6 +11,7 @@ export const PageAddFormSchema = z.object({
 		.nullable()
 		.optional(),
 	order: z.number().optional(),
+	display: z.string().uuid().nullable().optional(),
 });
 
 export const PageEditFormSchema = z.object({
@@ -24,4 +25,5 @@ export const PageEditFormSchema = z.object({
 		.nullable()
 		.optional(),
 	order: z.number().optional(),
+	display: z.string().uuid().nullable().optional(),
 });

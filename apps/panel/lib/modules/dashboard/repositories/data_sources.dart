@@ -1,6 +1,10 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data_source.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/cards.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/pages.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/repositories/tiles.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
 import 'package:flutter/foundation.dart';
 
@@ -16,7 +20,11 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
         .toList();
   }
 
-  void insertDataSources(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
+    final PagesRepository pagesRepository = locator<PagesRepository>();
+    final CardsRepository cardsRepository = locator<CardsRepository>();
+    final TilesRepository tilesRepository = locator<TilesRepository>();
+
     late Map<String, DataSourceModel> insertData = {...data};
 
     for (var row in json) {
@@ -45,6 +53,21 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
 
       try {
         DataSourceModel dataSource = buildDataSourceModel(dataSourceType, row);
+
+        if (dataSource.parentType == 'page' &&
+            pagesRepository.getItem(dataSource.parentId) == null) {
+          continue;
+        }
+
+        if (dataSource.parentType == 'card' &&
+            cardsRepository.getItem(dataSource.parentId) == null) {
+          continue;
+        }
+
+        if (dataSource.parentType == 'tile' &&
+            tilesRepository.getItem(dataSource.parentId) == null) {
+          continue;
+        }
 
         insertData[dataSource.id] = dataSource;
       } catch (e) {
@@ -77,7 +100,7 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
     }
   }
 
-  Future<void> fetchDataSource(
+  Future<void> fetchOne(
     String id,
   ) async {
     return handleApiCall(
@@ -86,9 +109,28 @@ class DataSourcesRepository extends Repository<DataSourceModel> {
 
         final raw = response.response.data['data'] as Map<String, dynamic>;
 
-        insertDataSources([raw]);
+        insert([raw]);
       },
       'fetch data source',
+    );
+  }
+
+  Future<void> fetchAll(
+    String parentType,
+    String parentId,
+  ) async {
+    return handleApiCall(
+      () async {
+        final response = await apiClient.getDashboardModuleDataSources(
+          parentType: parentType,
+          parentId: parentId,
+        );
+
+        final raw = response.response.data['data'] as List;
+
+        insert(raw.cast<Map<String, dynamic>>());
+      },
+      'fetch $parentType data sources',
     );
   }
 }

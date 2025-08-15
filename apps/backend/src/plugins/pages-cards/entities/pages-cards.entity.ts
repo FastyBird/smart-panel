@@ -40,12 +40,12 @@ export class CardEntity extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
-	icon?: string | null = null;
+	icon?: string | null;
 
 	@Expose()
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
 	@Column({ type: 'int', default: 0 })
-	order: number = 0;
+	order: number;
 
 	@Expose()
 	@IsOptional()

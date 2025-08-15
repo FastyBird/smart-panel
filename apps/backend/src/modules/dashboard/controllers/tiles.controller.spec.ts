@@ -12,6 +12,7 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateSingleTileDto } from '../dto/create-tile.dto';
 import { UpdateTileDto } from '../dto/update-tile.dto';
 import { PageEntity, TileEntity } from '../entities/dashboard.entity';
@@ -21,14 +22,14 @@ import { TilesService } from '../services/tiles.service';
 import { TilesController } from './tiles.controller';
 
 class CreateMockTileDto extends CreateSingleTileDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	mockValue: string;
 }
 
 class UpdateMockTileDto extends UpdateTileDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -79,6 +80,7 @@ describe('TilesController', () => {
 		title: 'Tiles detail',
 		order: 0,
 		dataSource: [],
+		display: uuid().toString(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -114,10 +116,10 @@ describe('TilesController', () => {
 				{
 					provide: TilesService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockTile]),
-						findOne: jest.fn().mockResolvedValue(mockTile),
-						create: jest.fn().mockResolvedValue(mockTile),
-						update: jest.fn().mockResolvedValue(mockTile),
+						findAll: jest.fn().mockResolvedValue([toInstance(MockTileEntity, mockTile)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(MockTileEntity, mockTile)),
+						create: jest.fn().mockResolvedValue(toInstance(MockTileEntity, mockTile)),
+						update: jest.fn().mockResolvedValue(toInstance(MockTileEntity, mockTile)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -134,6 +136,10 @@ describe('TilesController', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(controller).toBeDefined();
 		expect(tilesService).toBeDefined();
@@ -144,14 +150,14 @@ describe('TilesController', () => {
 		it('should return all tiles', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([mockTile]);
+			expect(result).toEqual([toInstance(MockTileEntity, mockTile)]);
 			expect(tilesService.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single tile', async () => {
 			const result = await controller.findOne(mockTile.id);
 
-			expect(result).toEqual(mockTile);
+			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.findOne).toHaveBeenCalledWith(mockTile.id);
 		});
 
@@ -173,7 +179,7 @@ describe('TilesController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(mockTile);
+			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.create).toHaveBeenCalledWith(createDto, { parentType: 'page', parentId: mockPage.id });
 		});
 
@@ -193,7 +199,7 @@ describe('TilesController', () => {
 
 			const result = await controller.update(mockTile.id, { data: updateDto });
 
-			expect(result).toEqual(mockTile);
+			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
 			expect(tilesService.update).toHaveBeenCalledWith(mockTile.id, updateDto);
 		});
 

@@ -3,12 +3,50 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 import type { FormInstance } from 'element-plus';
 
 import { UsersModuleUserRole } from '../../../openapi';
+import type { IDisplayInstance } from '../store/displays-instances.store.types';
 import type { IUser } from '../store/users.store.types';
 import type { FormResultType } from '../users.constants';
+
+export interface IDisplaysInstancesFilter {
+	search: string | undefined;
+}
 
 export interface IUsersFilter {
 	search: string | undefined;
 	roles: UsersModuleUserRole[];
+}
+
+export interface IUseDisplayInstance {
+	display: ComputedRef<IDisplayInstance | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchDisplay: () => Promise<void>;
+}
+
+export interface IUseDisplaysInstances {
+	displays: ComputedRef<IDisplayInstance[]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchDisplays: () => Promise<void>;
+}
+
+export interface IUseDisplaysInstancesActions {
+	remove: (id: IDisplayInstance['id']) => Promise<void>;
+}
+
+export interface IUseDisplaysInstancesDataSource {
+	displays: ComputedRef<IDisplayInstance[]>;
+	displaysPaginated: ComputedRef<IDisplayInstance[]>;
+	totalRows: ComputedRef<number>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchDisplays: () => Promise<void>;
+	filters: Ref<IDisplaysInstancesFilter>;
+	filtersActive: ComputedRef<boolean>;
+	paginateSize: Ref<number>;
+	paginatePage: Ref<number>;
+	sortBy: Ref<'uid' | 'mac' | 'version' | 'build' | 'user'>;
+	sortDir: Ref<'ascending' | 'descending' | null>;
+	resetFilter: () => void;
 }
 
 export interface IUserAddForm {

@@ -68,6 +68,23 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					icon: 'mdi:cellphone-information',
 					menu: false,
 				},
+				children: [
+					{
+						path: 'display/:display/edit',
+						name: RouteNames.DISPLAY_EDIT,
+						component: () => import('../views/view-display-profile-edit.vue'),
+						props: true,
+						meta: {
+							guards: {
+								authenticated: true,
+								roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+							},
+							title: 'Edit display',
+							icon: 'mdi:monitor-edit',
+							menu: false,
+						},
+					},
+				],
 			},
 		],
 	},

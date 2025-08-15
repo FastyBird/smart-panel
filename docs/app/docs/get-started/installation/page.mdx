@@ -281,6 +281,38 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 		This archive contains everything you need: backend, admin UI, and the prebuilt display app.
 	</Callout>
 
+	<Callout type="tip">
+		Running this on a Raspberry Pi Zero 2W?
+		Because of the device's limited network and CPU performance, the download may take several minutes or could be interrupted.
+		To avoid starting over, the `-C -` flag in the `curl` command tells it to **resume** the download if it gets interrupted.
+		If your connection drops, simply run the same command again and it will pick up where it left off.
+	</Callout>
+
+	<Callout type="warning">
+		Make sure you have at least **300 MB of free space** on your SD card before starting the download and extraction process.
+	</Callout>
+
+	Optional: Verify Download Integrity
+
+	To ensure your downloaded archive is not corrupted, you can optionally verify the SHA-256 checksum:
+
+	Download the checksum file:
+
+	```bash copy
+	curl -LO https://github.com/FastyBird/smart-panel/releases/latest/download/smart-panel.sha256
+	```
+
+	Verify the archive:
+
+	```bash copy
+	sha256sum -c smart-panel.sha256
+	```
+
+	<Callout type="info">
+		If the archive is valid, the output will show:
+		<code>smart-panel.tar.gz: OK</code>
+	</Callout>
+
 	Run the database migrations to initialize the database:
 
 	```bash copy
@@ -359,10 +391,10 @@ Now that your Raspberry Pi is set up, it’s time to install the software that p
 	```
 
 	<Callout type="default">
-		Want to rotate the display? Add the `-p` (physical rotation) flag to the `ExecStart` line. For example:
+		Want to rotate the display? Add the `-r` (physical rotation) flag to the `ExecStart` line. For example:
 
 		```bash copy
-		ExecStart=/usr/local/bin/flutter-pi -p 270 --release .
+		ExecStart=/usr/local/bin/flutter-pi -r 270 --release .
 		```
 
 		Valid rotation values: `0`, `90`, `180`, `270`

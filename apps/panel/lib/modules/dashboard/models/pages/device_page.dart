@@ -12,6 +12,7 @@ class DeviceDetailPageModel extends PageModel {
     required super.title,
     required super.icon,
     super.order,
+    required super.display,
     super.createdAt,
     super.updatedAt,
   })  : _device = UuidUtils.validateUuid(device),
@@ -30,6 +31,7 @@ class DeviceDetailPageModel extends PageModel {
           ? MdiIcons.fromString(json['icon'])
           : null,
       order: json['order'],
+      display: json['display'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

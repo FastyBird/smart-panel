@@ -1,8 +1,9 @@
-import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { instanceToPlain } from 'class-transformer';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as DevicesModuleEventType } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -64,6 +65,10 @@ export class StateChangedEventService implements WsEventService {
 			return;
 		}
 
+		if (event.data.new_state === null) {
+			return;
+		}
+
 		const entityId = event.data.new_state.entity_id;
 
 		if (this.debounceTimers.has(entityId)) {
@@ -100,7 +105,7 @@ export class StateChangedEventService implements WsEventService {
 
 							await this.channelsPropertiesService.update(
 								property.id,
-								plainToInstance(UpdateHomeAssistantChannelPropertyDto, {
+								toInstance(UpdateHomeAssistantChannelPropertyDto, {
 									...instanceToPlain(property),
 									value,
 								}),

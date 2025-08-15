@@ -13,10 +13,16 @@
 		</template>
 	</app-bar-heading>
 
-	<div class="flex flex-col h-full w-full overflow-hidden">
+	<div
+		:class="[ns.b()]"
+		class="flex flex-col h-full w-full overflow-hidden"
+	>
 		<el-scrollbar class="flex-grow">
 			<el-collapse v-model="activeBoxes">
-				<el-collapse-item name="categories">
+				<el-collapse-item
+					name="categories"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('devicesModule.filters.channels.category.title') }}
@@ -65,14 +71,14 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCollapse, ElCollapseItem, ElOption, ElScrollbar, ElSelect, ElText } from 'element-plus';
+import { ElButton, ElCollapse, ElCollapseItem, ElOption, ElScrollbar, ElSelect, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
 import { DevicesModuleChannelCategory } from '../../../../openapi';
-import type { IDevicesFilter } from '../../composables/composables';
+import type { IDevicesFilter } from '../../composables/types';
 
 import { type IListChannelsAdjustProps } from './list-channels-adjust.types';
 
@@ -87,6 +93,7 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 }>();
 
+const ns = useNamespace('list-channels-adjust');
 const { t } = useI18n();
 
 const categories: string[] = Object.values(DevicesModuleChannelCategory);
@@ -95,3 +102,7 @@ const activeBoxes = ref<string[]>(['categories']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'list-channels-adjust.scss';
+</style>

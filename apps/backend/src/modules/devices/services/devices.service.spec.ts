@@ -8,7 +8,6 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
-import { plainToInstance } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
@@ -18,6 +17,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceCategory, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
@@ -139,6 +139,10 @@ describe('DevicesService', () => {
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(service).toBeDefined();
 		expect(repository).toBeDefined();
@@ -150,13 +154,11 @@ describe('DevicesService', () => {
 	describe('findAll', () => {
 		it('should return all devices', async () => {
 			const mockDevices: DeviceEntity[] = [mockDevice];
-			jest
-				.spyOn(repository, 'find')
-				.mockResolvedValue(mockDevices.map((entity) => plainToInstance(MockDevice, entity)));
+			jest.spyOn(repository, 'find').mockResolvedValue(mockDevices.map((entity) => toInstance(MockDevice, entity)));
 
 			const result = await service.findAll();
 
-			expect(result).toEqual(mockDevices.map((entity) => plainToInstance(MockDevice, entity)));
+			expect(result).toEqual(mockDevices.map((entity) => toInstance(MockDevice, entity)));
 			expect(repository.find).toHaveBeenCalledWith({
 				relations: [
 					'controls',
@@ -178,14 +180,14 @@ describe('DevicesService', () => {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockDevice, mockDevice)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, mockDevice)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findOne(mockDevice.id);
 
-			expect(result).toEqual(plainToInstance(MockDevice, mockDevice));
+			expect(result).toEqual(toInstance(MockDevice, mockDevice));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockDevice.id });
 		});
 
@@ -219,7 +221,6 @@ describe('DevicesService', () => {
 				type: createDto.type,
 				category: createDto.category,
 				name: createDto.name,
-				description: null,
 				mockValue: createDto.mock_value,
 			};
 			const mockCratedDevice: MockDevice = {
@@ -244,33 +245,27 @@ describe('DevicesService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest.spyOn(repository, 'create').mockReturnValue(mockCratedDevice);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedDevice);
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(MockDevice, mockCratedDevice));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, mockCratedDevice));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockDevice, mockCratedDevice)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, mockCratedDevice)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.create(createDto);
 
-			expect(result).toEqual(plainToInstance(MockDevice, mockCratedDevice));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(MockDevice, mockCrateDevice, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCratedDevice);
+			expect(result).toEqual(toInstance(MockDevice, mockCratedDevice));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(MockDevice, mockCrateDevice));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockDevice, mockCratedDevice));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockCratedDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CREATED,
-				plainToInstance(MockDevice, mockCratedDevice),
+				toInstance(MockDevice, mockCratedDevice),
 			);
 		});
 
@@ -331,21 +326,21 @@ describe('DevicesService', () => {
 				where: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
-					.mockResolvedValueOnce(plainToInstance(MockDevice, mockDevice))
-					.mockResolvedValueOnce(plainToInstance(MockDevice, mockUpdatedDevice)),
+					.mockResolvedValueOnce(toInstance(MockDevice, mockDevice))
+					.mockResolvedValueOnce(toInstance(MockDevice, mockUpdatedDevice)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedDevice);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDevice, mockUpdatedDevice));
 
 			const result = await service.update(mockDevice.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(MockDevice, mockUpdatedDevice));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockDevice, mockUpdateDevice));
+			expect(result).toEqual(toInstance(MockDevice, mockUpdatedDevice));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockDevice, mockUpdateDevice));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('device.id = :id', { id: mockDevice.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_UPDATED,
-				plainToInstance(MockDevice, mockUpdatedDevice),
+				toInstance(MockDevice, mockUpdatedDevice),
 			);
 		});
 	});
@@ -356,7 +351,7 @@ describe('DevicesService', () => {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockDevice, mockDevice)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDevice, mockDevice)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
@@ -365,7 +360,7 @@ describe('DevicesService', () => {
 			await service.remove(mockDevice.id);
 
 			expect(repository.delete).toHaveBeenCalledWith(mockDevice.id);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DEVICE_DELETED, plainToInstance(MockDevice, mockDevice));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DEVICE_DELETED, toInstance(MockDevice, mockDevice));
 		});
 	});
 });

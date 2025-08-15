@@ -32,5 +32,5 @@ export class CommandResultDto {
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => HandlerResultDto)
-	results?: HandlerResultDto[] = [];
+	results?: HandlerResultDto[];
 }

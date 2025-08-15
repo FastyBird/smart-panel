@@ -1,9 +1,9 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
@@ -134,9 +134,15 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 	}
 
 	private async validateDto<T extends object>(dtoClass: new () => T, data: unknown): Promise<boolean> {
-		const instance = plainToInstance(dtoClass, data, { excludeExtraneousValues: true });
+		const instance = toInstance(dtoClass, data, {
+			excludeExtraneousValues: false,
+		});
 
-		const errors = await validate(instance, { whitelist: true, forbidNonWhitelisted: true });
+		const errors = await validate(instance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
+		});
 
 		if (errors.length > 0) {
 			this.logger.error(`[HOME ASSISTANT DEVICE] Request payload validation failed error=${JSON.stringify(errors)}`);

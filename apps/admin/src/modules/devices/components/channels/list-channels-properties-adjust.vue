@@ -13,10 +13,16 @@
 		</template>
 	</app-bar-heading>
 
-	<div class="flex flex-col h-full w-full overflow-hidden">
+	<div
+		:class="[ns.b()]"
+		class="flex flex-col h-full w-full overflow-hidden"
+	>
 		<el-scrollbar class="flex-grow">
 			<el-collapse v-model="activeBoxes">
-				<el-collapse-item name="categories">
+				<el-collapse-item
+					name="categories"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('devicesModule.filters.channelsProperties.category.title') }}
@@ -44,7 +50,10 @@
 					</div>
 				</el-collapse-item>
 
-				<el-collapse-item name="dataTypes">
+				<el-collapse-item
+					name="dataTypes"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('devicesModule.filters.channelsProperties.dataType.title') }}
@@ -63,7 +72,10 @@
 					</el-checkbox-group>
 				</el-collapse-item>
 
-				<el-collapse-item name="permissions">
+				<el-collapse-item
+					name="permissions"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('devicesModule.filters.channelsProperties.permission.title') }}
@@ -103,7 +115,18 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElOption, ElScrollbar, ElSelect, ElText } from 'element-plus';
+import {
+	ElButton,
+	ElCheckbox,
+	ElCheckboxGroup,
+	ElCollapse,
+	ElCollapseItem,
+	ElOption,
+	ElScrollbar,
+	ElSelect,
+	ElText,
+	useNamespace,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -114,7 +137,7 @@ import {
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
 } from '../../../../openapi';
-import type { IDevicesFilter } from '../../composables/composables';
+import type { IDevicesFilter } from '../../composables/types';
 
 import { type IListChannelsPropertiesAdjustProps } from './list-channels-properties-adjust.types';
 
@@ -129,6 +152,7 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 }>();
 
+const ns = useNamespace('list-channels-properties-adjust');
 const { t } = useI18n();
 
 const categories: string[] = Object.values(DevicesModuleChannelPropertyCategory);
@@ -141,3 +165,7 @@ const activeBoxes = ref<string[]>(['categories', 'dataTypes', 'permissions']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'list-channels-properties-adjust.scss';
+</style>

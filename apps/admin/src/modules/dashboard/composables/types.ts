@@ -23,6 +23,7 @@ import type { ITile } from '../store/tiles.store.types';
 export interface IPagesFilter {
 	search: string | undefined;
 	types: string[];
+	displays: string[];
 }
 
 export interface ITilesFilter {

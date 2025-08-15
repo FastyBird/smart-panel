@@ -87,4 +87,6 @@ void main() async {
 }
 
 String _camelToEnum(String input) => input.replaceAllMapped(
-    RegExp(r'_([a-z])'), (m) => m.group(1)!.toUpperCase());
+      RegExp(r'_([a-z])'),
+      (m) => m.group(1)!.toUpperCase(),
+    );

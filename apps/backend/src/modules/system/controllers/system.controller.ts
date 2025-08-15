@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -11,6 +10,7 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { Public } from '../../auth/guards/auth.guard';
 import {
 	PlatformException,
@@ -36,17 +36,10 @@ export class SystemController {
 				| { version: string }
 				| undefined;
 
-			return plainToInstance(
-				SystemHealthModel,
-				{
-					status: 'ok',
-					version: pkgJson.version ?? '0.0.0',
-				},
-				{
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				},
-			);
+			return toInstance(SystemHealthModel, {
+				status: 'ok',
+				version: pkgJson.version ?? '0.0.0',
+			});
 		} catch (error) {
 			this.handleError(error, 'Failed to create health response');
 		}
@@ -61,10 +54,7 @@ export class SystemController {
 
 			this.logger.debug('[LOOKUP] Successfully retrieved system info');
 
-			return plainToInstance(SystemInfoModel, systemInfo, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
-			});
+			return toInstance(SystemInfoModel, systemInfo);
 		} catch (error) {
 			this.handleError(error, 'Failed to retrieve system info');
 		}
@@ -79,10 +69,7 @@ export class SystemController {
 
 			this.logger.debug('[LOOKUP] Successfully retrieved throttle status');
 
-			return plainToInstance(ThrottleStatusModel, throttleStatus, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
-			});
+			return toInstance(ThrottleStatusModel, throttleStatus);
 		} catch (error) {
 			this.handleError(error, 'Failed to retrieve throttle status');
 		}

@@ -11,10 +11,10 @@
  *
  * Please keep this in mind when updating entity fields or OpenAPI schemas.
  */
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
 
 import { DayWeatherTileEntity, ForecastWeatherTileEntity } from './tiles-weather.entity';
@@ -63,10 +63,7 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 			parent_id: uuid().toString(),
 		};
 
-		const entityInstance = plainToInstance(DayWeatherTileEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(DayWeatherTileEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -98,10 +95,7 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 			parent_id: uuid().toString(),
 		};
 
-		const entityInstance = plainToInstance(ForecastWeatherTileEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(ForecastWeatherTileEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 

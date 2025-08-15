@@ -1,9 +1,8 @@
-import { plainToInstance } from 'class-transformer';
-
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import { NetworkStatsModel, SystemInfoModel, TemperatureInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { EventType } from '../system.constants';
@@ -20,33 +19,25 @@ export class SystemService {
 	async getSystemInfo(): Promise<SystemInfoModel> {
 		const rawInfo = await this.platformService.getSystemInfo();
 
-		return plainToInstance(SystemInfoModel, rawInfo, { enableImplicitConversion: true, exposeUnsetFields: false });
+		return toInstance(SystemInfoModel, rawInfo);
 	}
 
 	async getThrottleStatus(): Promise<ThrottleStatusModel> {
 		const rawStatus = await this.platformService.getThrottleStatus();
 
-		return plainToInstance(ThrottleStatusModel, rawStatus, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
-		});
+		return toInstance(ThrottleStatusModel, rawStatus);
 	}
 
 	async getTemperature(): Promise<TemperatureInfoModel> {
 		const rawStatus = await this.platformService.getTemperature();
 
-		return plainToInstance(TemperatureInfoModel, rawStatus, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
-		});
+		return toInstance(TemperatureInfoModel, rawStatus);
 	}
 
 	async getNetworkStats(): Promise<NetworkStatsModel[]> {
 		const rawStatus = await this.platformService.getNetworkStats();
 
-		return rawStatus.map((item) =>
-			plainToInstance(NetworkStatsModel, item, { enableImplicitConversion: true, exposeUnsetFields: false }),
-		);
+		return rawStatus.map((item) => toInstance(NetworkStatsModel, item));
 	}
 
 	@Cron(CronExpression.EVERY_5_SECONDS)

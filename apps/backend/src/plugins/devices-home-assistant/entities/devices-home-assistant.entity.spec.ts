@@ -1,7 +1,7 @@
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -57,10 +57,7 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			ha_device_id: 'light.hall_cabinet_lights_lights',
 		};
 
-		const entityInstance = plainToInstance(HomeAssistantDeviceEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(HomeAssistantDeviceEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -85,10 +82,7 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(HomeAssistantChannelEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(HomeAssistantChannelEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -119,10 +113,7 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			ha_attribute: 'brightness',
 		};
 
-		const entityInstance = plainToInstance(HomeAssistantChannelPropertyEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(HomeAssistantChannelPropertyEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 

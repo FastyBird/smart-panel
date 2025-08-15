@@ -1,51 +1,142 @@
 {
   "meta": {
     "system": {
-      "title": "System"
+      "system": {
+        "title": "System"
+      },
+      "systemInfo": {
+        "title": "System info"
+      }
     },
-    "systemInfo": {
-      "title": "System info"
+    "displaysProfiles": {
+      "list": {
+        "title": "List displays"
+      },
+      "edit": {
+        "title": "Edit display: {display}"
+      }
     }
   },
   "breadcrumbs": {
-    "system": "system",
-    "systemInfo": "info"
+    "system": {
+      "system": "system",
+      "systemInfo": "info"
+    },
+    "displaysProfiles": {
+      "edit": "edit display: {display}"
+    }
   },
   "headings": {
-    "system": "System",
-    "about": "About application",
-    "manageSystem": "Manage system",
-    "restart": "Restart",
-    "powerOff": "Power Off",
-    "factoryReset": "Factory reset",
-    "poweredOff": "Power Off Complete"
+    "system": {
+      "system": "System",
+      "about": "About application"
+    },
+    "manage": {
+      "manageSystem": "Manage system",
+      "restart": "Restart",
+      "powerOff": "Power Off",
+      "factoryReset": "Factory reset",
+      "poweredOff": "Power Off Complete"
+    },
+    "displaysProfiles": {
+      "list": "Displays",
+      "edit": "Edit display",
+      "remove": "Remove display?",
+      "layout": "Configure Display Layout",
+      "profileTip": "Tip"
+    },
+    "misc": {
+      "discard": "Discard changes?"
+    }
   },
   "subHeadings": {
     "system": "Smart panel system status information",
-    "poweredOff": "The Smart Panel has been successfully powered off"
+    "poweredOff": "The Smart Panel has been successfully powered off",
+    "displaysProfiles": {
+      "list": "Manage smart panel displays",
+      "edit": "Edit smart panel display"
+    }
   },
   "messages": {
-    "confirmRestart": "Are you sure you want to restart the device? This action will temporarily interrupt functionality.",
-    "confirmPowerOff": "Are you sure you want to power off the device? It will need to be manually turned on again.",
-    "confirmFactoryReset": "Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible.",
-    "waitingToBoot": "Waiting for panel to boot up...",
-    "panelBackOnline": "Smart Panel is back online.",
-    "rebootTakesTooLong": "Reboot is taking longer than expected. Please check the panel manually.",
-    "rebootFailed": "Failed to reboot the Smart Panel. Please try again or check the device manually.",
-    "powerOffFailed": "Failed to power off the Smart Panel. Please try again or check the device manually.",
-    "factoryResetSuccess": "All data has been cleared. Let’s start fresh — sign in to begin.",
-    "factoryResetFailed": "Failed to factory reset the Smart Panel. Please try again or check the device manually."
+    "manage": {
+      "confirmRestart": "Are you sure you want to restart the device? This action will temporarily interrupt functionality.",
+      "confirmPowerOff": "Are you sure you want to power off the device? It will need to be manually turned on again.",
+      "confirmFactoryReset": "Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible.",
+      "waitingToBoot": "Waiting for panel to boot up...",
+      "panelBackOnline": "Smart Panel is back online.",
+      "rebootTakesTooLong": "Reboot is taking longer than expected. Please check the panel manually.",
+      "rebootFailed": "Failed to reboot the Smart Panel. Please try again or check the device manually.",
+      "powerOffFailed": "Failed to power off the Smart Panel. Please try again or check the device manually.",
+      "factoryResetSuccess": "All data has been cleared. Let’s start fresh — sign in to begin.",
+      "factoryResetFailed": "Failed to factory reset the Smart Panel. Please try again or check the device manually."
+    },
+    "displaysProfiles": {
+      "notFound": "The display you are looking for doesn’t exist or may have been removed.",
+      "confirmRemove": "Are you sure you want to remove display: {display}? This cannot be reversed.",
+      "edited": "Changes saved! The display: {display} has been updated.",
+      "notEdited": "Something went wrong. Display update was not successful.",
+      "removed": "The display: {display} was successfully removed.",
+      "removeCanceled": "Display: {display} removal has been canceled.",
+      "notRemoved": "Something went wrong, and the display: {display} was not removed."
+    },
+    "misc": {
+      "requestError": "Something went wrong, please try again later."
+    }
   },
   "texts": {
-    "loadingSystemInfo": "Loading system information...",
-    "rebootDevice": "Restart the device to apply changes or resolve issues.",
-    "powerOffDevice": "Power off the device completely.",
-    "factoryResetDevice": "Restore the device to its original factory settings.",
-    "rebootInProcess": "Smart Panel is rebooting...",
-    "powerOffInProcess": "Smart Panel is powering off...",
-    "factoryResetInProcess": "Smart Panel is reset to factory state...",
-    "about": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities.",
-    "poweredOff": "You can close this window — no further action is required."
+    "system": {
+      "loadingSystemInfo": "Loading system information...",
+      "about": "FastyBird Smart Panel is a home automation app that enables seamless integration with your smart devices, offering enhanced control and monitoring capabilities."
+    },
+    "manage": {
+      "rebootDevice": "Restart the device to apply changes or resolve issues.",
+      "powerOffDevice": "Power off the device completely.",
+      "factoryResetDevice": "Restore the device to its original factory settings.",
+      "rebootInProcess": "Smart Panel is rebooting...",
+      "powerOffInProcess": "Smart Panel is powering off...",
+      "factoryResetInProcess": "Smart Panel is reset to factory state...",
+      "poweredOff": "You can close this window — no further action is required."
+    },
+    "displaysProfiles": {
+      "noDisplays": "You don't have configured any display",
+      "noFilteredDisplays": "No displays found matching the active filter criteria",
+      "loadingDisplays": "Loading displays...",
+      "loadingDisplay": "Loading display...",
+      "confirmRemove": "Are you sure you want to remove display: {display}? This cannot be reversed.",
+      "layout": "Adjust the number of rows and columns used to arrange tiles on this display. These values determine how much content can fit on each screen of your panel.",
+      "unitSize": "Pixel size of one tile. Smaller tiles fit more on screen.",
+      "displayRows": "Number of vertical sections (rows).",
+      "displayCols": "Number of horizontal sections (columns).",
+      "profileTip": "Changing tile size automatically adjusts rows and columns to fit the screen, but you can override them for custom layouts.",
+      "notSelected": "On all displays"
+    },
+    "misc": {
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+    }
+  },
+  "fields": {
+    "displaysProfiles": {
+      "display": {
+        "title": "Select display",
+        "placeholder": "Select connected display",
+        "notSet": "On all displays",
+        "validation": {
+          "required": "Please select display"
+        }
+      },
+      "unitSize": {
+        "title": "Unit size",
+        "placeholder": "Unit size"
+      },
+      "rows": {
+        "title": "Display rows",
+        "placeholder": "Rows count"
+      },
+      "cols": {
+        "title": "Display cols",
+        "placeholder": "Columns count"
+      }
+    }
   },
   "buttons": {
     "about": {
@@ -59,6 +150,21 @@
     },
     "no": {
       "title": "No"
+    },
+    "edit": {
+      "title": "Edit"
+    },
+    "discard": {
+      "title": "Discard"
+    },
+    "cancel": {
+      "title": "Cancel"
+    },
+    "close": {
+      "title": "Close"
+    },
+    "save": {
+      "title": "Save"
     }
   },
   "systemInfo": {
@@ -74,10 +180,11 @@
     "ip4Address": "IP address",
     "ip6Address": "IPv6 address",
     "macAddress": "MAC address",
-    "resolutionX": "Max width",
-    "resolutionY": "Max height",
-    "currentResolutionX": "Current width",
-    "currentResolutionY": "Current height",
+    "screenWidth": "Screen height",
+    "screenHeight": "Screen width",
+    "pixelRatio": "Screen pixel ratio",
+    "layout": "Grid layout",
+    "layoutSettings": "{cols} x {rows} (unit size: {unitSize}px)",
     "undervoltage": "Undervoltage detected",
     "frequencyCapping": "Frequency capped",
     "throttling": "CPU throttling active",

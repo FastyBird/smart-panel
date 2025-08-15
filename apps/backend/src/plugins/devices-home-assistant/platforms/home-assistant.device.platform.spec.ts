@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -55,6 +56,12 @@ describe('HomeAssistantDevicePlatform', () => {
 
 		// Mock the sendCommand method
 		sendCommandMock = jest.spyOn(platform as any, 'sendCommand').mockResolvedValue({});
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {

@@ -1,10 +1,10 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Repository } from 'typeorm';
 import { DataSource as OrmDataSource } from 'typeorm/data-source/DataSource';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
@@ -37,17 +37,7 @@ export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
 		page['cards'] = (dtoInstance.cards || []).map((createCardDto: CreateCardDto) => {
 			const cardRepository: Repository<CardEntity> = this.dataSource.getRepository(CardEntity);
 
-			const card = cardRepository.create(
-				plainToInstance(
-					CardEntity,
-					{ ...createCardDto, page: page.id },
-					{
-						enableImplicitConversion: true,
-						excludeExtraneousValues: true,
-						exposeUnsetFields: false,
-					},
-				),
-			);
+			const card = cardRepository.create(toInstance(CardEntity, { ...createCardDto, page: page.id }));
 
 			card.tiles = (createCardDto.tiles || []).map((createTileDto: CreateTileDto) => {
 				const tileMapping = this.tilesMapperService.getMapping(createTileDto.type);
@@ -55,15 +45,7 @@ export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
 				const tileRepository: Repository<TileEntity> = this.dataSource.getRepository(tileMapping.class);
 
 				const tile = tileRepository.create(
-					plainToInstance(
-						tileMapping.class,
-						{ ...createTileDto, parentType: 'card', parentId: card.id },
-						{
-							enableImplicitConversion: true,
-							excludeExtraneousValues: true,
-							exposeUnsetFields: false,
-						},
-					),
+					toInstance(tileMapping.class, { ...createTileDto, parentType: 'card', parentId: card.id }),
 				);
 
 				tile.dataSource = (createTileDto.data_source ?? []).map((createDataSourceDto: CreateDataSourceDto) => {
@@ -74,15 +56,7 @@ export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
 					);
 
 					return dataSourceRepository.create(
-						plainToInstance(
-							dataSourceMapping.class,
-							{ ...createDataSourceDto, parentType: 'tile', parentId: tile.id },
-							{
-								enableImplicitConversion: true,
-								excludeExtraneousValues: true,
-								exposeUnsetFields: false,
-							},
-						),
+						toInstance(dataSourceMapping.class, { ...createDataSourceDto, parentType: 'tile', parentId: tile.id }),
 					);
 				});
 
@@ -97,15 +71,7 @@ export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
 				);
 
 				return dataSourceRepository.create(
-					plainToInstance(
-						dataSourceMapping.class,
-						{ ...createDataSourceDto, parentType: 'card', parentId: card.id },
-						{
-							enableImplicitConversion: true,
-							excludeExtraneousValues: true,
-							exposeUnsetFields: false,
-						},
-					),
+					toInstance(dataSourceMapping.class, { ...createDataSourceDto, parentType: 'card', parentId: card.id }),
 				);
 			});
 
@@ -114,15 +80,14 @@ export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

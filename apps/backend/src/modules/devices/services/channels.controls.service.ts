@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { Repository } from 'typeorm';
 
@@ -6,6 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType } from '../devices.constants';
 import { DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
@@ -100,18 +100,10 @@ export class ChannelsControlsService {
 		const dtoInstance = await this.validateDto<CreateChannelControlDto>(CreateChannelControlDto, createDto);
 
 		const control = this.repository.create(
-			plainToInstance(
-				ChannelControlEntity,
-				{
-					...dtoInstance,
-					channel: channel.id,
-				},
-				{
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				},
-			),
+			toInstance(ChannelControlEntity, {
+				...dtoInstance,
+				channel: channel.id,
+			}),
 		);
 		await this.repository.save(control);
 
@@ -150,15 +142,14 @@ export class ChannelsControlsService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

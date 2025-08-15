@@ -45,7 +45,7 @@ class DeviceControlsRepository extends Repository<DeviceControlModel> {
     }
   }
 
-  Future<void> fetchControl(
+  Future<void> fetchOne(
     String deviceId,
     String id,
   ) async {
@@ -64,7 +64,7 @@ class DeviceControlsRepository extends Repository<DeviceControlModel> {
     );
   }
 
-  Future<void> fetchControls(
+  Future<void> fetchAll(
     String deviceId,
   ) async {
     return handleApiCall(

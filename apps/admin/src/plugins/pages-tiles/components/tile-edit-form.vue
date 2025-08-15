@@ -34,7 +34,7 @@ const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
 
-const { tile, fetchTile } = useTile({
+const { tile, fetchTile, isLoading } = useTile({
 	id: props.id,
 	parent: 'page',
 	parentId: props.page.id,
@@ -46,15 +46,17 @@ const formReset = ref<boolean>(props.remoteFormReset);
 const formChanged = ref<boolean>(props.remoteFormChanged);
 
 onBeforeMount(async (): Promise<void> => {
-	fetchTile().catch((error: unknown): void => {
-		const err = error as Error;
+	if (!isLoading.value) {
+		fetchTile().catch((error: unknown): void => {
+			const err = error as Error;
 
-		if (err instanceof DashboardApiException && err.code === 404) {
-			throw new DashboardException('Tile not found');
-		} else {
-			throw new DashboardException('Something went wrong', err);
-		}
-	});
+			if (err instanceof DashboardApiException && err.code === 404) {
+				throw new DashboardException('Tile not found');
+			} else {
+				throw new DashboardException('Something went wrong', err);
+			}
+		});
+	}
 });
 
 watch(

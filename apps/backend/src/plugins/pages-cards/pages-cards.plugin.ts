@@ -43,10 +43,10 @@ export class PagesCardsPlugin {
 
 		this.factoryResetRegistry.register(
 			PAGES_CARDS_PLUGIN_NAME,
-			90,
 			async (): Promise<{ success: boolean; reason?: string }> => {
 				return this.pluginReset.reset();
 			},
+			90,
 		);
 	}
 }

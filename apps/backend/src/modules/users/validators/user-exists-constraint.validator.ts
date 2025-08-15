@@ -18,7 +18,7 @@ export class UserExistsConstraintValidator implements ValidatorConstraintInterfa
 	async validate(userId: string | undefined): Promise<boolean> {
 		if (!userId) return false; // Prevent empty values
 
-		// Check if the channel exists and belongs to the user
+		// Check if the user exists and belongs to the user
 		const userExists = await this.usersService.findOne(userId);
 
 		return !!userExists;

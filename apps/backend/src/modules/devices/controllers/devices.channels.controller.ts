@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import {
@@ -17,6 +16,7 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
@@ -103,18 +103,18 @@ export class DevicesChannelsController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(
+		const dtoInstance = toInstance(
 			mapping.createDto,
 			{ ...createDto.data, device: device.id },
 			{
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+				excludeExtraneousValues: false,
 			},
 		);
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {
@@ -173,14 +173,14 @@ export class DevicesChannelsController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(mapping.updateDto, updateDto.data, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

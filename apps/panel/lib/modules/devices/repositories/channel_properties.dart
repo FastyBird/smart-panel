@@ -287,7 +287,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     throw ArgumentError('Cannot convert value to number: $value');
   }
 
-  Future<void> fetchProperty(
+  Future<void> fetchOne(
     String channelId,
     String id,
   ) async {
@@ -306,7 +306,7 @@ class ChannelPropertiesRepository extends Repository<ChannelPropertyModel> {
     );
   }
 
-  Future<void> fetchProperties(
+  Future<void> fetchAll(
     String channelId,
   ) async {
     return handleApiCall(

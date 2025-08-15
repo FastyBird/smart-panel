@@ -54,7 +54,7 @@ class DevicesRepository extends Repository<DeviceModel> {
     }
   }
 
-  Future<void> fetchDevice(
+  Future<void> fetchOne(
     String id,
   ) async {
     return handleApiCall(
@@ -71,7 +71,7 @@ class DevicesRepository extends Repository<DeviceModel> {
     );
   }
 
-  Future<void> fetchDevices() async {
+  Future<void> fetchAll() async {
     return handleApiCall(
       () async {
         final response = await apiClient.getDevicesModuleDevices();

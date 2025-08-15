@@ -13,10 +13,16 @@
 		</template>
 	</app-bar-heading>
 
-	<div class="flex flex-col h-full w-full overflow-hidden">
+	<div
+		:class="[ns.b()]"
+		class="flex flex-col h-full w-full overflow-hidden"
+	>
 		<el-scrollbar class="flex-grow">
 			<el-collapse v-model="activeBoxes">
-				<el-collapse-item name="types">
+				<el-collapse-item
+					name="types"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('dashboardModule.filters.pages.types.title') }}
@@ -44,6 +50,38 @@
 						</el-alert>
 					</div>
 				</el-collapse-item>
+
+				<el-collapse-item
+					name="displays"
+					:class="[ns.e('filter-item')]"
+				>
+					<template #title>
+						<el-text class="!px-2">
+							{{ t('dashboardModule.filters.pages.displays.title') }}
+						</el-text>
+					</template>
+					<el-checkbox-group
+						v-if="displaysOptions.length"
+						v-model="innerFilters.displays"
+						class="flex flex-col px-4"
+					>
+						<el-checkbox
+							v-for="type of displaysOptions"
+							:key="type.value"
+							:label="type.label"
+							:value="type.value"
+						/>
+					</el-checkbox-group>
+
+					<div
+						v-else
+						class="px-2"
+					>
+						<el-alert :closable="false">
+							{{ t('dashboardModule.texts.pages.noDisplays') }}
+						</el-alert>
+					</div>
+				</el-collapse-item>
 			</el-collapse>
 		</el-scrollbar>
 
@@ -66,12 +104,13 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText } from 'element-plus';
+import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElScrollbar, ElText, useNamespace } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { AppBarHeading } from '../../../../common';
+import { useDisplaysProfiles } from '../../../system';
 import { type IPagesFilter } from '../../composables/types';
 import { usePagesPlugins } from '../../composables/usePagesPlugins';
 
@@ -88,11 +127,17 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 }>();
 
+const ns = useNamespace('list-pages-adjust');
 const { t } = useI18n();
 
 const { options: typesOptions } = usePagesPlugins();
+const { options: displaysOptions } = useDisplaysProfiles();
 
-const activeBoxes = ref<string[]>(['types']);
+const activeBoxes = ref<string[]>(['types', 'displays']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'list-pages-adjust.scss';
+</style>

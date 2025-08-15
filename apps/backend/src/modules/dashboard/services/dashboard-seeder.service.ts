@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import inquirer from 'inquirer';
 import { validate as uuidValidate } from 'uuid';
 
@@ -6,6 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
 import { CreatePageDto } from '../dto/create-page.dto';
@@ -91,7 +91,7 @@ export class DashboardSeederService implements Seeder {
 				continue;
 			}
 
-			const dtoInstance = plainToInstance(mapping.createDto, item, { excludeExtraneousValues: true });
+			const dtoInstance = toInstance(mapping.createDto, item);
 
 			try {
 				await this.pagesService.create(dtoInstance);
@@ -141,7 +141,7 @@ export class DashboardSeederService implements Seeder {
 				continue;
 			}
 
-			const dtoInstance = plainToInstance(mapping.createDto, item, { excludeExtraneousValues: true });
+			const dtoInstance = toInstance(mapping.createDto, item);
 
 			try {
 				await this.tilesService.create(dtoInstance, { parentType: 'page', parentId: page.id });
@@ -191,7 +191,7 @@ export class DashboardSeederService implements Seeder {
 				continue;
 			}
 
-			const dtoInstance = plainToInstance(mapping.createDto, item, { excludeExtraneousValues: true });
+			const dtoInstance = toInstance(mapping.createDto, item);
 
 			try {
 				await this.dataSourceService.create(dtoInstance, { parentType: 'tile', parentId: tile.id });

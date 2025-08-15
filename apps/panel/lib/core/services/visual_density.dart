@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum DisplayDensity { compact, normal }
+enum DisplayDensity { compact, normal, large }
 
 class VisualDensityService {
   final double pixelRatio;
@@ -18,6 +18,10 @@ class VisualDensityService {
 
     if (envDensity == 'normal') {
       return DisplayDensity.normal;
+    }
+
+    if (envDensity == 'large') {
+      return DisplayDensity.large;
     }
 
     return pixelRatio >= 2.5 ? DisplayDensity.compact : DisplayDensity.normal;

@@ -156,7 +156,8 @@
       "loadingPage": "Loading page...",
       "confirmRemove": "Are you sure you want to remove page: {page}? This cannot be reversed.",
       "selectPlugin": "To create a new page, please select a compatible plugin from the list. Plugins provide the necessary configuration options for specific page types.",
-      "noPlugins": "No page plugins have been configured yet."
+      "noPlugins": "No page plugins have been configured yet.",
+      "noDisplays": "No displays have been paired yet."
     },
     "tiles": {
       "noTiles": "You don't have configured any tile",
@@ -280,6 +281,9 @@
         "type": {
           "title": "Type"
         },
+        "display": {
+          "title": "Display"
+        },
         "order": {
           "title": "Order"
         }
@@ -319,6 +323,9 @@
     "pages": {
       "types": {
         "title": "Filter by page type"
+      },
+      "displays": {
+        "title": "Filter by page display"
       }
     },
     "tiles": {

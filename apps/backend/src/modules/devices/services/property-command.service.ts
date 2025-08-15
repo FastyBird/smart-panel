@@ -1,8 +1,8 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
@@ -34,15 +34,14 @@ export class PropertyCommandService {
 			throw new WebsocketNotAllowedException('This action is not allowed for this user');
 		}
 
-		const dtoInstance = plainToInstance(PropertyCommandDto, payload, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(PropertyCommandDto, payload, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

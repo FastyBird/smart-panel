@@ -8,15 +8,16 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
-import { plainToInstance } from 'class-transformer';
 import { IsString } from 'class-validator';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceCategory, EventType } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
@@ -107,6 +108,12 @@ describe('DevicesControlsService', () => {
 		devicesControlsService = module.get<DevicesControlsService>(DevicesControlsService);
 		repository = module.get<Repository<DeviceControlEntity>>(getRepositoryToken(DeviceControlEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -120,21 +127,21 @@ describe('DevicesControlsService', () => {
 		it('should return all controls for a device', async () => {
 			const mockDeviceControls: DeviceControlEntity[] = [mockDeviceControl];
 
-			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				getMany: jest
 					.fn()
-					.mockResolvedValue(mockDeviceControls.map((entity) => plainToInstance(DeviceControlEntity, entity))),
+					.mockResolvedValue(mockDeviceControls.map((entity) => toInstance(DeviceControlEntity, entity))),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await devicesControlsService.findAll(mockDevice.id);
 
-			expect(result).toEqual(mockDeviceControls.map((entity) => plainToInstance(DeviceControlEntity, entity)));
+			expect(result).toEqual(mockDeviceControls.map((entity) => toInstance(DeviceControlEntity, entity)));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('control');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('control.device', 'device');
@@ -145,20 +152,20 @@ describe('DevicesControlsService', () => {
 
 	describe('findOneControl', () => {
 		it('should return a device control if found', async () => {
-			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(DeviceControlEntity, mockDeviceControl)),
+				getOne: jest.fn().mockResolvedValue(toInstance(DeviceControlEntity, mockDeviceControl)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await devicesControlsService.findOne(mockDeviceControl.id, mockDevice.id);
 
-			expect(result).toEqual(plainToInstance(DeviceControlEntity, mockDeviceControl));
+			expect(result).toEqual(toInstance(DeviceControlEntity, mockDeviceControl));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('control');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('control.device', 'device');
@@ -170,7 +177,7 @@ describe('DevicesControlsService', () => {
 		it('should return null if the device control is not found', async () => {
 			const controlId = uuid().toString();
 
-			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
@@ -215,29 +222,23 @@ describe('DevicesControlsService', () => {
 				getOne: jest
 					.fn()
 					.mockReturnValueOnce(null)
-					.mockResolvedValueOnce(plainToInstance(DeviceControlEntity, mockCreatedControl)),
+					.mockResolvedValueOnce(toInstance(DeviceControlEntity, mockCreatedControl)),
 			};
 
-			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedControl);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedControl);
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(DeviceControlEntity, mockCreatedControl));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(DeviceControlEntity, mockCreatedControl));
 
 			const result = await devicesControlsService.create(mockDevice.id, createDto);
 
-			expect(result).toEqual(plainToInstance(DeviceControlEntity, mockCreatedControl));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(DeviceControlEntity, mockCreateControl, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCreatedControl);
+			expect(result).toEqual(toInstance(DeviceControlEntity, mockCreatedControl));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(DeviceControlEntity, mockCreateControl));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(DeviceControlEntity, mockCreatedControl));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CONTROL_CREATED,
-				plainToInstance(DeviceControlEntity, mockCreatedControl),
+				toInstance(DeviceControlEntity, mockCreatedControl),
 			);
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('control');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('control.device', 'device');
@@ -264,7 +265,7 @@ describe('DevicesControlsService', () => {
 				getOne: jest.fn().mockResolvedValueOnce(mockCreatedControl),
 			};
 
-			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(toInstance(MockDevice, mockDevice));
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
@@ -280,10 +281,10 @@ describe('DevicesControlsService', () => {
 
 	describe('remove', () => {
 		it('should remove a device control', async () => {
-			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(plainToInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'getOneOrThrow').mockResolvedValue(toInstance(MockDevice, mockDevice));
 			jest
 				.spyOn(devicesControlsService, 'findOne')
-				.mockResolvedValue(plainToInstance(DeviceControlEntity, mockDeviceControl));
+				.mockResolvedValue(toInstance(DeviceControlEntity, mockDeviceControl));
 
 			jest.spyOn(repository, 'delete');
 
@@ -292,7 +293,7 @@ describe('DevicesControlsService', () => {
 			expect(repository.delete).toHaveBeenCalledWith(mockDeviceControl.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CONTROL_DELETED,
-				plainToInstance(DeviceControlEntity, mockDeviceControl),
+				toInstance(DeviceControlEntity, mockDeviceControl),
 			);
 		});
 	});

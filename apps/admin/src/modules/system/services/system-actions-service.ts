@@ -43,7 +43,7 @@ export class SystemActionsService {
 
 			this.rebootLoading = ElLoading.service({
 				lock: true,
-				text: this.t('systemModule.texts.rebootInProcess'),
+				text: this.t('systemModule.texts.manage.rebootInProcess'),
 			});
 		} else if (this.rebootTriggeredBy === trigger && this.rebootLoading !== null && (state === 'err' || state === 'ok')) {
 			setTimeout(() => {
@@ -60,7 +60,7 @@ export class SystemActionsService {
 
 					this.rebootWaiting = ElLoading.service({
 						lock: true,
-						text: this.t('systemModule.messages.waitingToBoot'),
+						text: this.t('systemModule.messages.manage.waitingToBoot'),
 					});
 
 					void (async () => {
@@ -90,7 +90,7 @@ export class SystemActionsService {
 
 			this.powerOffLoading = ElLoading.service({
 				lock: true,
-				text: this.t('systemModule.texts.powerOffInProcess'),
+				text: this.t('systemModule.texts.manage.powerOffInProcess'),
 			});
 		} else if (this.powerOffTriggeredBy === trigger && this.powerOffLoading !== null && (state === 'err' || state === 'ok')) {
 			setTimeout(() => {
@@ -113,7 +113,7 @@ export class SystemActionsService {
 
 			this.factoryResetLoading = ElLoading.service({
 				lock: true,
-				text: this.t('systemModule.texts.factoryResetInProcess'),
+				text: this.t('systemModule.texts.manage.factoryResetInProcess'),
 			});
 		} else if (this.factoryResetTriggeredBy === trigger && this.factoryResetLoading !== null && (state === 'err' || state === 'ok')) {
 			setTimeout(() => {
@@ -130,7 +130,7 @@ export class SystemActionsService {
 
 							await this.router.push({ name: accountManager.routes.signIn });
 
-							ElNotification.success(this.t('systemModule.messages.factoryResetSuccess'));
+							ElNotification.success(this.t('systemModule.messages.manage.factoryResetSuccess'));
 						}
 					})();
 				}
@@ -152,12 +152,12 @@ export class SystemActionsService {
 		try {
 			await this.backend.GET(`/${SYSTEM_MODULE_PREFIX}/system/health`);
 
-			ElNotification.success(this.t('systemModule.messages.panelBackOnline'));
+			ElNotification.success(this.t('systemModule.messages.manage.panelBackOnline'));
 
 			onDone?.();
 		} catch {
 			if (Date.now() - startTime > timeoutMs) {
-				ElNotification.error(this.t('systemModule.messages.rebootTakesTooLong'));
+				ElNotification.error(this.t('systemModule.messages.manage.rebootTakesTooLong'));
 
 				onFail?.();
 

@@ -91,10 +91,6 @@ describe('DataSources Transformers', (): void => {
 
 			expect(result).toEqual({
 				type: 'some-datasource',
-				parent: {
-					type: 'page',
-					id: parentId.toString(),
-				},
 			});
 		});
 

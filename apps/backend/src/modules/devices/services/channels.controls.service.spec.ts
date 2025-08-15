@@ -7,15 +7,17 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Expose, Transform, plainToInstance } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsString } from 'class-validator';
 import { Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, EventType } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
@@ -107,6 +109,12 @@ describe('ChannelsControlsService', () => {
 		channelsControlsService = module.get<ChannelsControlsService>(ChannelsControlsService);
 		repository = module.get<Repository<ChannelControlEntity>>(getRepositoryToken(ChannelControlEntity));
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -120,21 +128,21 @@ describe('ChannelsControlsService', () => {
 		it('should return all controls for a channel', async () => {
 			const mockChannelControls = [mockChannelControl];
 
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				getMany: jest
 					.fn()
-					.mockResolvedValue(mockChannelControls.map((entity) => plainToInstance(ChannelControlEntity, entity))),
+					.mockResolvedValue(mockChannelControls.map((entity) => toInstance(ChannelControlEntity, entity))),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await channelsControlsService.findAll(mockChannel.id);
 
-			expect(result).toEqual(mockChannelControls.map((entity) => plainToInstance(ChannelControlEntity, entity)));
+			expect(result).toEqual(mockChannelControls.map((entity) => toInstance(ChannelControlEntity, entity)));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('control');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('control.channel', 'channel');
@@ -145,20 +153,20 @@ describe('ChannelsControlsService', () => {
 
 	describe('findOneControl', () => {
 		it('should return a channel control if found', async () => {
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(ChannelControlEntity, mockChannelControl)),
+				getOne: jest.fn().mockResolvedValue(toInstance(ChannelControlEntity, mockChannelControl)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await channelsControlsService.findOne(mockChannelControl.id, mockChannel.id);
 
-			expect(result).toEqual(plainToInstance(ChannelControlEntity, mockChannelControl));
+			expect(result).toEqual(toInstance(ChannelControlEntity, mockChannelControl));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('control');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('control.channel', 'channel');
@@ -170,7 +178,7 @@ describe('ChannelsControlsService', () => {
 		it('should return null if the channel control is not found', async () => {
 			const controlId = uuid().toString();
 
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
@@ -215,29 +223,23 @@ describe('ChannelsControlsService', () => {
 				getOne: jest
 					.fn()
 					.mockReturnValueOnce(null)
-					.mockResolvedValueOnce(plainToInstance(ChannelControlEntity, mockCreatedControl)),
+					.mockResolvedValueOnce(toInstance(ChannelControlEntity, mockCreatedControl)),
 			};
 
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedControl);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedControl);
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(ChannelControlEntity, mockCreatedControl));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelControlEntity, mockCreatedControl));
 
 			const result = await channelsControlsService.create(mockChannel.id, createDto);
 
-			expect(result).toEqual(plainToInstance(ChannelControlEntity, mockCreatedControl));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(ChannelControlEntity, mockCreateControl, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCreatedControl);
+			expect(result).toEqual(toInstance(ChannelControlEntity, mockCreatedControl));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(ChannelControlEntity, mockCreateControl));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(ChannelControlEntity, mockCreatedControl));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CONTROL_CREATED,
-				plainToInstance(ChannelControlEntity, mockCreatedControl),
+				toInstance(ChannelControlEntity, mockCreatedControl),
 			);
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('control.channel', 'channel');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('control.name = :name', { name: createDto.name });
@@ -256,7 +258,7 @@ describe('ChannelsControlsService', () => {
 				getOne: jest.fn().mockResolvedValueOnce(mockChannelControl),
 			};
 
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
@@ -273,10 +275,10 @@ describe('ChannelsControlsService', () => {
 
 	describe('remove', () => {
 		it('should remove a channel control', async () => {
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 			jest
 				.spyOn(channelsControlsService, 'findOne')
-				.mockResolvedValue(plainToInstance(ChannelControlEntity, mockChannelControl));
+				.mockResolvedValue(toInstance(ChannelControlEntity, mockChannelControl));
 
 			jest.spyOn(repository, 'delete');
 
@@ -285,7 +287,7 @@ describe('ChannelsControlsService', () => {
 			expect(repository.delete).toHaveBeenCalledWith(mockChannelControl.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CONTROL_DELETED,
-				plainToInstance(ChannelControlEntity, mockChannelControl),
+				toInstance(ChannelControlEntity, mockChannelControl),
 			);
 		});
 	});

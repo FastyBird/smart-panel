@@ -27,7 +27,7 @@ describe('AboutApplication', () => {
 	});
 
 	it('renders the translated about text', () => {
-		expect(wrapper.find('[data-test-id="about-info"]').text()).toContain('systemModule.texts.about');
+		expect(wrapper.find('[data-test-id="about-info"]').text()).toContain('systemModule.texts.system.about');
 	});
 
 	it('renders social media links', () => {

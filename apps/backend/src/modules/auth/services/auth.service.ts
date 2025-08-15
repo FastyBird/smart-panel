@@ -1,6 +1,5 @@
 import bcrypt from 'bcrypt';
 import { Cache } from 'cache-manager';
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
@@ -8,6 +7,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
@@ -109,6 +109,12 @@ export class AuthService {
 			throw new AuthNotFoundException('Invalid email or password');
 		}
 
+		if (user.password === null) {
+			this.logger.warn(`[LOGIN] Failed login attempt for username=${username} (User password not set)`);
+
+			throw new AuthNotFoundException('User is not activated');
+		}
+
 		// Verify password
 		const match = await bcrypt.compare(password, user.password);
 
@@ -124,11 +130,7 @@ export class AuthService {
 
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
-		return plainToInstance(
-			LoggedInResponseDto,
-			{ ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt },
-			{ excludeExtraneousValues: true },
-		);
+		return toInstance(LoggedInResponseDto, { ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt });
 	}
 
 	async register(registerDto: RegisterDto): Promise<UserEntity> {
@@ -143,6 +145,10 @@ export class AuthService {
 			this.logger.warn(`[REGISTER] Registration failed - owner already exists`);
 
 			throw new AuthException('Owner already registered');
+		}
+
+		if (registerDto.role === UserRole.DISPLAY) {
+			return this.registerDisplay(registerDto);
 		}
 
 		// Check if email or username already exists
@@ -170,11 +176,36 @@ export class AuthService {
 			role: dtoInstance.role ?? (ownerExists ? UserRole.USER : UserRole.OWNER),
 		});
 
-		if (registerDto.role === UserRole.DISPLAY) {
-			await this.cacheManager.del(DISPLAY_SECRET_CACHE_KEY);
+		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);
+
+		return user;
+	}
+
+	private async registerDisplay(dto: RegisterDto): Promise<UserEntity> {
+		this.logger.debug(`[REGISTER] Registering new display display=${dto.username}`);
+
+		const existingUser = await this.usersService.findByUsername(dto.username);
+
+		let user: UserEntity;
+
+		if (existingUser !== null) {
+			this.logger.log(`[REGISTER] Updating existing display - display=${dto.username}`);
+
+			user = await this.usersService.update(existingUser.id, {
+				password: dto.password,
+			});
+		} else {
+			user = await this.usersService.create({
+				id: dto.id,
+				username: dto.username,
+				password: dto.password,
+				role: UserRole.DISPLAY,
+			});
 		}
 
-		this.logger.debug(`[REGISTER] Successfully registered user id=${user.id}`);
+		await this.cacheManager.del(DISPLAY_SECRET_CACHE_KEY);
+
+		this.logger.debug(`[REGISTER] Successfully registered display id=${user.id}`);
 
 		return user;
 	}
@@ -248,11 +279,11 @@ export class AuthService {
 
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
-		return plainToInstance(
-			RefreshTokenResponseDto,
-			{ ...tokens, type: ACCESS_TOKEN_TYPE, expiration: accessTokenExpiresAt },
-			{ excludeExtraneousValues: true },
-		);
+		return toInstance(RefreshTokenResponseDto, {
+			...tokens,
+			type: ACCESS_TOKEN_TYPE,
+			expiration: accessTokenExpiresAt,
+		});
 	}
 
 	private async createTokenPair(user: UserEntity): Promise<{ accessToken: string; refreshToken: string }> {
@@ -301,12 +332,14 @@ export class AuthService {
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
 		this.logger.debug(`[VALIDATE] Validating DTO for class=${DtoClass.name}`);
 
-		const dtoInstance = plainToInstance(DtoClass, dto, { excludeExtraneousValues: true });
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
+		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
-			validationError: { target: false },
+			stopAtFirstError: false,
 		});
 
 		if (errors.length) {

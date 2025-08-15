@@ -14,6 +14,7 @@ import type { IPagesFilter, IUsePagesDataSource } from './types';
 export const defaultPagesFilter: IPagesFilter = {
 	search: undefined,
 	types: [],
+	displays: [],
 };
 
 export const usePagesDataSource = (): IUsePagesDataSource => {
@@ -30,7 +31,11 @@ export const usePagesDataSource = (): IUsePagesDataSource => {
 	const filters = ref<IPagesFilter>(cloneDeep<IPagesFilter>(defaultPagesFilter));
 
 	const filtersActive = computed<boolean>((): boolean => {
-		return filters.value.search !== defaultPagesFilter.search || !isEqual(filters.value.types, defaultPagesFilter.types);
+		return (
+			filters.value.search !== defaultPagesFilter.search ||
+			!isEqual(filters.value.types, defaultPagesFilter.types) ||
+			!isEqual(filters.value.displays, defaultPagesFilter.displays)
+		);
 	});
 
 	const sortBy = ref<'title' | 'order' | 'type'>('order');
@@ -45,7 +50,10 @@ export const usePagesDataSource = (): IUsePagesDataSource => {
 					(page) =>
 						!page.draft &&
 						(!filters.value.search || page.title.toLowerCase().includes(filters.value.search.toLowerCase())) &&
-						(filters.value.types.length === 0 || filters.value.types.includes(page.type))
+						(filters.value.types.length === 0 || filters.value.types.includes(page.type)) &&
+						(filters.value.displays.length === 0 ||
+							(filters.value.displays.includes('all') && page.display === null) ||
+							(page.display !== null && filters.value.displays.includes(page.display)))
 				),
 			[(page: IPage) => page[sortBy.value as keyof IPage] ?? ''],
 			[sortDir.value === 'ascending' ? 'asc' : 'desc']

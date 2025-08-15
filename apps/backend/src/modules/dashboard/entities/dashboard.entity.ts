@@ -1,8 +1,20 @@
 import { Exclude, Expose, Transform } from 'class-transformer';
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
-import { BeforeInsert, BeforeUpdate, Column, Entity, TableInheritance } from 'typeorm';
+import {
+	IsArray,
+	IsBoolean,
+	IsNumber,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Validate,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
+import { BeforeInsert, BeforeUpdate, Column, Entity, JoinColumn, ManyToOne, TableInheritance } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
+import { DisplayProfileEntity } from '../../system/entities/system.entity';
 
 @Entity('dashboard_module_pages')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
@@ -16,12 +28,12 @@ export abstract class PageEntity extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
-	icon?: string | null = null;
+	icon?: string | null;
 
 	@Expose()
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
 	@Column({ type: 'int', default: 0 })
-	order: number = 0;
+	order: number;
 
 	@Expose({ name: 'data_source' })
 	@IsArray()
@@ -34,6 +46,18 @@ export abstract class PageEntity extends BaseEntity {
 		},
 	)
 	dataSource: DataSourceEntity[] = [];
+
+	@Expose()
+	@ValidateIf((_, value) => typeof value === 'string')
+	@IsUUID('4', { message: '[{"field":"display","reason":"Display must be a valid UUID (version 4)."}]' })
+	@ValidateIf((_, value) => typeof value === 'object')
+	@Validate(AbstractInstanceValidator, [DisplayProfileEntity], {
+		message: '[{"field":"display","reason":"Display must be a valid subclass of DisplayProfileEntity."}]',
+	})
+	@Transform(({ value }: { value: DisplayProfileEntity | null }) => value?.id ?? null, { toPlainOnly: true })
+	@ManyToOne(() => DisplayProfileEntity, { cascade: true, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'displayId' })
+	display: DisplayProfileEntity | string | null;
 
 	@Expose()
 	get type(): string {
@@ -81,7 +105,7 @@ export abstract class TileEntity extends BaseEntity {
 		toClassOnly: true,
 	})
 	@Column({ type: 'int', nullable: false, default: 1 })
-	rowSpan: number = 1;
+	rowSpan: number;
 
 	@Expose({ name: 'col_span' })
 	@IsOptional()
@@ -90,12 +114,12 @@ export abstract class TileEntity extends BaseEntity {
 		toClassOnly: true,
 	})
 	@Column({ type: 'int', nullable: false, default: 1 })
-	colSpan: number = 1;
+	colSpan: number;
 
 	@Expose()
 	@IsBoolean()
 	@Column({ default: false })
-	hidden: boolean = false;
+	hidden: boolean;
 
 	@Expose({ name: 'data_source' })
 	@IsArray()

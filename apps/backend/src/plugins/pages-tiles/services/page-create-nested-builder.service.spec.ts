@@ -2,13 +2,15 @@ import { useContainer } from 'class-validator';
 import { DataSource as OrmDataSource } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
+import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { UpdateDataSourceDto } from '../../../modules/dashboard/dto/update-data-source.dto';
 import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
-import { DataSourceEntity, PageEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
+import { DataSourceEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { DataSourcesTypeMapperService } from '../../../modules/dashboard/services/data-source-type-mapper.service';
 import { TilesTypeMapperService } from '../../../modules/dashboard/services/tiles-type-mapper.service';
 import { DataSourceTypeConstraintValidator } from '../../../modules/dashboard/validators/data-source-type-constraint.validator';
@@ -78,6 +80,12 @@ describe('TilesPageNestedBuilderService', () => {
 		tileMapperService = module.get(TilesTypeMapperService);
 		dataSourceMapperService = module.get(DataSourcesTypeMapperService);
 		ormDataSource = module.get(OrmDataSource);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -88,11 +96,11 @@ describe('TilesPageNestedBuilderService', () => {
 	});
 
 	it('should support "tiles" page type', () => {
-		expect(service.supports({ type: 'tiles' } as TilesPageEntity)).toBe(true);
+		expect(service.supports({ type: 'tiles' } as CreateTilesPageDto)).toBe(true);
 	});
 
 	it('should not support other page types', () => {
-		expect(service.supports({ type: 'cards' } as PageEntity)).toBe(false);
+		expect(service.supports({ type: 'cards' } as CreatePageDto)).toBe(false);
 	});
 
 	it('should build tiles with data sources', async () => {

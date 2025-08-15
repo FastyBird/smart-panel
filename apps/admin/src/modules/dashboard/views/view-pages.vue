@@ -154,6 +154,7 @@ import { ElButton, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-p
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { useDisplaysProfiles } from '../../system';
 import { ListPages, ListPagesAdjust } from '../components/components';
 import { usePagesActions, usePagesDataSource } from '../composables/composables';
 import { RouteNames } from '../dashboard.constants';
@@ -181,6 +182,7 @@ const { isMDDevice, isLGDevice } = useBreakpoints();
 const { fetchPages, pages, pagesPaginated, totalRows, filters, filtersActive, sortBy, sortDir, paginateSize, paginatePage, areLoading, resetFilter } =
 	usePagesDataSource();
 const pageActions = usePagesActions();
+const { fetchDisplays } = useDisplaysProfiles();
 
 const mounted = ref<boolean>(false);
 
@@ -303,6 +305,12 @@ const onAdjustList = (): void => {
 
 onBeforeMount((): void => {
 	fetchPages().catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new DashboardException('Something went wrong', err);
+	});
+
+	fetchDisplays().catch((error: unknown): void => {
 		const err = error as Error;
 
 		throw new DashboardException('Something went wrong', err);

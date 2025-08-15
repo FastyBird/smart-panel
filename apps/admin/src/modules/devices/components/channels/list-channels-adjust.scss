@@ -1,0 +1,9 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+
+@include b(list-channels-adjust) {
+  @include e(filter-item) {
+    :deep(.el-collapse-item__header) {
+      width: auto;
+    }
+  }
+}

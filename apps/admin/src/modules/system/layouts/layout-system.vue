@@ -13,7 +13,7 @@
 		</template>
 
 		<template #title>
-			{{ t('systemModule.headings.system') }}
+			{{ t('systemModule.headings.system.system') }}
 		</template>
 
 		<template #subtitle>
@@ -22,7 +22,7 @@
 	</app-bar-heading>
 
 	<view-header
-		:heading="t('systemModule.headings.system')"
+		:heading="t('systemModule.headings.system.system')"
 		:sub-heading="t('systemModule.subHeadings.system')"
 		icon="mdi:hammer"
 	>
@@ -55,11 +55,13 @@
 		</template>
 	</view-header>
 
-	<router-view class="lt-md:px-1 lt-md:py-1" />
+	<div class="lt-md:px-1 lt-md:py-1">
+		<router-view />
+	</div>
 
 	<el-dialog
 		v-model="showAboutInfo"
-		:title="t('systemModule.headings.about')"
+		:title="t('systemModule.headings.system.about')"
 	>
 		<about-application />
 
@@ -75,7 +77,7 @@
 
 	<el-dialog
 		v-model="showManageSystem"
-		:title="t('systemModule.headings.manageSystem')"
+		:title="t('systemModule.headings.manage.manageSystem')"
 	>
 		<manage-system />
 
@@ -119,11 +121,11 @@ const showManageSystem = ref<boolean>(false);
 const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
 	return [
 		{
-			label: t('systemModule.breadcrumbs.system'),
+			label: t('systemModule.breadcrumbs.system.system'),
 			route: router.resolve({ name: RouteNames.SYSTEM }),
 		},
 		{
-			label: t('systemModule.breadcrumbs.systemInfo'),
+			label: t('systemModule.breadcrumbs.system.systemInfo'),
 			route: router.resolve({ name: RouteNames.SYSTEM_INFO }),
 		},
 	];

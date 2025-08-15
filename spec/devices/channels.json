@@ -1962,7 +1962,7 @@
       },
       "distance": {
         "category": "distance",
-        "required": true,
+        "required": false,
         "description": {
           "en": ""
         },

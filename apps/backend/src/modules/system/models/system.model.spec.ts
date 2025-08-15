@@ -1,7 +1,7 @@
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import 'reflect-metadata';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
 
 import {
@@ -56,10 +56,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			free: 4188608000,
 		};
 
-		const modelInstance = plainToInstance(MemoryInfoModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(MemoryInfoModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -78,10 +75,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			available: 17000000000,
 		};
 
-		const modelInstance = plainToInstance(StorageInfoModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(StorageInfoModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -98,10 +92,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			gpu: 60,
 		};
 
-		const modelInstance = plainToInstance(TemperatureInfoModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(TemperatureInfoModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -120,10 +111,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			uptime: 36000,
 		};
 
-		const modelInstance = plainToInstance(OperatingSystemInfoModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(OperatingSystemInfoModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -142,10 +130,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			current_res_y: 720,
 		};
 
-		const modelInstance = plainToInstance(DisplayInfoModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(DisplayInfoModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -163,10 +148,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			tx_bytes: 98765432,
 		};
 
-		const modelInstance = plainToInstance(NetworkStatsModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(NetworkStatsModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -224,10 +206,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			},
 		};
 
-		const modelInstance = plainToInstance(SystemInfoModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(SystemInfoModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -244,10 +223,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			version: '1.0.0',
 		};
 
-		const modelInstance = plainToInstance(SystemHealthModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(SystemHealthModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -266,10 +242,7 @@ describe('System module model and OpenAPI component synchronization', () => {
 			soft_temp_limit: false,
 		};
 
-		const modelInstance = plainToInstance(ThrottleStatusModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(ThrottleStatusModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 

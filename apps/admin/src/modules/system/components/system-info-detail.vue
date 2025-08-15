@@ -15,7 +15,7 @@
 					border
 				>
 					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2">
+						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
 							<el-icon
 								class="mr-2"
 								size="28"
@@ -76,7 +76,7 @@
 					border
 				>
 					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2">
+						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
 							<el-icon
 								class="mr-2"
 								size="28"
@@ -118,7 +118,7 @@
 					border
 				>
 					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2">
+						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
 							<el-icon
 								class="mr-2"
 								size="28"
@@ -146,6 +146,8 @@
 		</el-col>
 
 		<el-col
+			v-for="display in props.displays"
+			:key="display.id"
 			:xs="24"
 			:sm="12"
 			:md="8"
@@ -160,28 +162,42 @@
 					border
 				>
 					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2">
+						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
 							<el-icon
 								class="mr-2"
 								size="28"
 							>
 								<icon icon="mdi:monitor" />
 							</el-icon>
-							Display
+							<div class="flex flex-col">
+								Display
+								<small class="block text-">{{ display.uid }}</small>
+							</div>
 						</div>
 					</template>
 
-					<el-descriptions-item :label="t('systemModule.systemInfo.resolutionX')">
-						{{ props.systemInfo?.display.resolutionX }} px
+					<el-descriptions-item :label="t('systemModule.systemInfo.screenWidth')">{{ display.screenWidth }}px</el-descriptions-item>
+					<el-descriptions-item :label="t('systemModule.systemInfo.screenHeight')">{{ display.screenHeight }}px</el-descriptions-item>
+					<el-descriptions-item :label="t('systemModule.systemInfo.pixelRatio')">
+						{{ display.pixelRatio }}
 					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.resolutionY')">
-						{{ props.systemInfo?.display.resolutionY }} px
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.currentResolutionX')">
-						{{ props.systemInfo?.display.currentResX }} px
-					</el-descriptions-item>
-					<el-descriptions-item :label="t('systemModule.systemInfo.currentResolutionY')">
-						{{ props.systemInfo?.display.currentResY }} px
+					<el-descriptions-item>
+						<template #label>
+							{{ t('systemModule.systemInfo.layout') }}
+							<el-button
+								type="primary"
+								size="small"
+								plain
+								class="ml-2"
+								:title="t('systemModule.buttons.edit.title')"
+								@click="emit('edit-display', display.id)"
+							>
+								<template #icon>
+									<icon icon="mdi:pencil" />
+								</template>
+							</el-button>
+						</template>
+						{{ t('systemModule.systemInfo.layoutSettings', { cols: display.cols, rows: display.rows, unitSize: display.unitSize }) }}
 					</el-descriptions-item>
 				</el-descriptions>
 			</el-card>
@@ -202,7 +218,7 @@
 					border
 				>
 					<template #title>
-						<div class="flex flex-row items-center pt-2 pl-2">
+						<div class="flex flex-row items-center pt-2 pl-2 min-h-10">
 							<el-icon
 								class="mr-2"
 								size="28"
@@ -302,11 +318,12 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElIcon, ElRow, ElTag } from 'element-plus';
+import { ElButton, ElCard, ElCol, ElDescriptions, ElDescriptionsItem, ElIcon, ElRow, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { formatNumber } from '../../../common';
+import type { IDisplayProfile } from '../store/displays-profiles.store.types';
 import { Layout } from '../system.constants';
 
 import type { ISystemInfoDetailProps } from './system-info-detail.types';
@@ -314,6 +331,10 @@ import type { ISystemInfoDetailProps } from './system-info-detail.types';
 defineOptions({
 	name: 'SystemInfoDetail',
 });
+
+const emit = defineEmits<{
+	(e: 'edit-display', id: IDisplayProfile['id']): void;
+}>();
 
 const props = withDefaults(defineProps<ISystemInfoDetailProps>(), {
 	layout: Layout.DEFAULT,

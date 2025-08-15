@@ -7,7 +7,6 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { plainToInstance } from 'class-transformer';
 import { Expose, Transform } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
@@ -18,6 +17,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateSingleTileDto } from '../dto/create-tile.dto';
@@ -32,14 +32,14 @@ import { TilesTypeMapperService } from './tiles-type-mapper.service';
 import { TilesService } from './tiles.service';
 
 class CreateMockTileDto extends CreateSingleTileDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	mockValue: string;
 }
 
 class UpdateMockTileDto extends UpdateTileDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -93,6 +93,7 @@ describe('TilesService', () => {
 		title: 'Tiles detail',
 		order: 0,
 		dataSource: [],
+		display: uuid().toString(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -195,6 +196,10 @@ describe('TilesService', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(tilesService).toBeDefined();
 		expect(repository).toBeDefined();
@@ -211,14 +216,14 @@ describe('TilesService', () => {
 			const queryBuilderMock: any = {
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getMany: jest.fn().mockResolvedValue(mockTiles.map((entity) => plainToInstance(MockTileEntity, entity))),
+				getMany: jest.fn().mockResolvedValue(mockTiles.map((entity) => toInstance(MockTileEntity, entity))),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await tilesService.findAll({ parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(mockTiles.map((entity) => plainToInstance(MockTileEntity, entity)));
+			expect(result).toEqual(mockTiles.map((entity) => toInstance(MockTileEntity, entity)));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('tile');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.parentType = :parentType', { parentType: 'page' });
@@ -232,14 +237,14 @@ describe('TilesService', () => {
 			const queryBuilderMock: any = {
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockTileEntity, mockTile)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockTileEntity, mockTile)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await tilesService.findOne(mockTile.id, { parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(plainToInstance(MockTileEntity, mockTile));
+			expect(result).toEqual(toInstance(MockTileEntity, mockTile));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('tile');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.id = :id', { id: mockTile.id });
@@ -313,7 +318,7 @@ describe('TilesService', () => {
 			const queryBuilderMock: any = {
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValueOnce(plainToInstance(MockTileEntity, mockCratedTile)),
+				getOne: jest.fn().mockResolvedValueOnce(toInstance(MockTileEntity, mockCratedTile)),
 			};
 
 			jest.spyOn(tilesMapper, 'getMapping').mockReturnValue({
@@ -326,23 +331,17 @@ describe('TilesService', () => {
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'create').mockReturnValue(mockCratedTile);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedTile);
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(MockTileEntity, mockCratedTile));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockTileEntity, mockCratedTile));
 
 			const result = await tilesService.create(createDto, { parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(plainToInstance(MockTileEntity, mockCratedTile));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(MockTileEntity, mockCrateTile, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCratedTile);
+			expect(result).toEqual(toInstance(MockTileEntity, mockCratedTile));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(MockTileEntity, mockCrateTile));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockTileEntity, mockCratedTile));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.TILE_CREATED,
-				plainToInstance(MockTileEntity, mockCratedTile),
+				toInstance(MockTileEntity, mockCratedTile),
 			);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.id = :id', { id: mockCratedTile.id });
 			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('tile.parentType = :parentType', { parentType: 'page' });
@@ -416,17 +415,17 @@ describe('TilesService', () => {
 
 			jest
 				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(MockTileEntity, mockTile))
-				.mockResolvedValueOnce(plainToInstance(MockTileEntity, mockUpdatedTile));
-			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedTile);
+				.mockResolvedValueOnce(toInstance(MockTileEntity, mockTile))
+				.mockResolvedValueOnce(toInstance(MockTileEntity, mockUpdatedTile));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockTileEntity, mockUpdatedTile));
 
 			const result = await tilesService.update(mockTile.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(MockTileEntity, mockUpdatedTile));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockTileEntity, mockUpdatedTile));
+			expect(result).toEqual(toInstance(MockTileEntity, mockUpdatedTile));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockTileEntity, mockUpdatedTile));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.TILE_UPDATED,
-				plainToInstance(MockTileEntity, mockUpdatedTile),
+				toInstance(MockTileEntity, mockUpdatedTile),
 			);
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockTile.id },
@@ -436,14 +435,14 @@ describe('TilesService', () => {
 
 	describe('remove', () => {
 		it('should remove a tile', async () => {
-			jest.spyOn(tilesService, 'findOne').mockResolvedValue(plainToInstance(MockTileEntity, mockTile));
+			jest.spyOn(tilesService, 'findOne').mockResolvedValue(toInstance(MockTileEntity, mockTile));
 
 			jest.spyOn(repository, 'delete');
 
 			await tilesService.remove(mockTile.id);
 
 			expect(repository.delete).toHaveBeenCalledWith(mockTile.id);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.TILE_DELETED, plainToInstance(MockTileEntity, mockTile));
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.TILE_DELETED, toInstance(MockTileEntity, mockTile));
 		});
 	});
 });

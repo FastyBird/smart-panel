@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/pages_cards_plugin/pages_cards_plugin_client.dart';
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/cards/card.dart';
 import 'package:flutter/foundation.dart';
 
@@ -46,12 +48,18 @@ class CardsRepository extends ChangeNotifier {
     return true;
   }
 
-  void insertCards(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
+    final PagesRepository pagesRepository = locator<PagesRepository>();
+
     late Map<String, CardModel> insertData = {...data};
 
     for (var row in json) {
       try {
         CardModel card = CardModel.fromJson(row);
+
+        if (pagesRepository.getItem(card.page) == null) {
+          continue;
+        }
 
         insertData[card.id] = card;
       } catch (e) {
@@ -84,7 +92,7 @@ class CardsRepository extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchCard(
+  Future<void> fetchOne(
     String pageId,
     String id,
   ) async {
@@ -96,13 +104,13 @@ class CardsRepository extends ChangeNotifier {
 
         final raw = response.response.data['data'] as Map<String, dynamic>;
 
-        insertCards([raw]);
+        insert([raw]);
       },
       'fetch page card',
     );
   }
 
-  Future<void> fetchCards(
+  Future<void> fetchAll(
     String pageId,
   ) async {
     return handleApiCall(
@@ -113,7 +121,7 @@ class CardsRepository extends ChangeNotifier {
 
         final raw = response.response.data['data'] as List;
 
-        insertCards(raw.cast<Map<String, dynamic>>());
+        insert(raw.cast<Map<String, dynamic>>());
       },
       'fetch page cards',
     );

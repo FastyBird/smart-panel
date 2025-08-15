@@ -5,7 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Expose, Transform, plainToInstance } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 import * as fs from 'fs';
 import path from 'path';
@@ -16,6 +16,7 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import {
 	EventType,
@@ -175,16 +176,8 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			const toCompare = plainToInstance(AppConfigModel, mockConfig, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
-			});
-			toCompare.plugins = [
-				plainToInstance(MockPluginConfig, mockConfig.plugins[0], {
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				}),
-			];
+			const toCompare = toInstance(AppConfigModel, mockConfig);
+			toCompare.plugins = [toInstance(MockPluginConfig, mockConfig.plugins[0])];
 
 			expect(service.getConfig()).toEqual(toCompare);
 
@@ -214,16 +207,8 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
-			const toCompare = plainToInstance(AppConfigModel, mockConfig, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
-			});
-			toCompare.plugins = [
-				plainToInstance(MockPluginConfig, mockConfig.plugins[0], {
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				}),
-			];
+			const toCompare = toInstance(AppConfigModel, mockConfig);
+			toCompare.plugins = [toInstance(MockPluginConfig, mockConfig.plugins[0])];
 
 			expect(service.getConfig()).toEqual(toCompare);
 

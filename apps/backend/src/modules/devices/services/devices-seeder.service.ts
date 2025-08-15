@@ -1,4 +1,4 @@
-import { ClassConstructor, plainToInstance } from 'class-transformer';
+import { ClassConstructor } from 'class-transformer';
 import inquirer from 'inquirer';
 import { validate as uuidValidate } from 'uuid';
 
@@ -7,6 +7,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { SeedTools, Seeder } from '../../seed/services/seed.service';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -180,7 +181,7 @@ export class DevicesSeederService implements Seeder {
 			return;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, device, { excludeExtraneousValues: true });
+		const dtoInstance = toInstance(mapping.createDto, device);
 
 		await this.devicesService.create(dtoInstance);
 	}
@@ -202,7 +203,7 @@ export class DevicesSeederService implements Seeder {
 			return;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, channel, { excludeExtraneousValues: true });
+		const dtoInstance = toInstance(mapping.createDto, channel);
 
 		await this.channelsService.create(dtoInstance);
 	}
@@ -228,7 +229,7 @@ export class DevicesSeederService implements Seeder {
 			return;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, property, { excludeExtraneousValues: true });
+		const dtoInstance = toInstance(mapping.createDto, property);
 
 		await this.channelsPropertiesService.create(channelId, dtoInstance);
 	}
@@ -254,7 +255,7 @@ export class DevicesSeederService implements Seeder {
 				continue;
 			}
 
-			const dtoInstance = plainToInstance(dto, item, { excludeExtraneousValues: true });
+			const dtoInstance = toInstance(dto, item);
 
 			try {
 				await service.create(relationId, dtoInstance);

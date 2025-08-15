@@ -97,7 +97,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
-                      "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                      "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
                       "mac": "00:1A:2B:3C:4D:5E",
                       "version": "1.0.0",
                       "build": "42"
@@ -829,6 +829,434 @@
             "x-display-secret": []
           }
         ]
+      }
+    },
+    "/users-module/displays-instances": {
+      "get": {
+        "tags": [
+          "Users module"
+        ],
+        "summary": "Retrieve a list of displays",
+        "description": "Fetch a paginated list of displays, including details such as display app version, mac addres, and build version.",
+        "operationId": "get-users-module-displays-instances",
+        "responses": {
+          "200": {
+            "description": "A list of displays successfully retrieved. Each display includes its metadata (ID, display uid, mac address).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsersModuleResDisplayInstances"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/users-module/displays-instances",
+                      "method": "GET",
+                      "data": [
+                        {
+                          "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                          "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                          "mac": "00:1A:2B:3C:4D:5E",
+                          "version": "1.0.0",
+                          "build": "42",
+                          "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                          "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+                          "created_at": "2025-01-25T12:00:00Z",
+                          "updated_at": "2025-01-25T12:00:00Z"
+                        }
+                      ],
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Users module"
+        ],
+        "summary": "Create a new displays",
+        "description": "Register a new displays by providing necessary details such as uid, mac address, display app version.",
+        "operationId": "create-users-module-display-instance",
+        "requestBody": {
+          "description": "The data required to create a new display",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsersModuleReqCreateDisplayInstance"
+              },
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "data": {
+                      "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                      "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                      "mac": "00:1A:2B:3C:4D:5E",
+                      "version": "1.0.0",
+                      "build": "42",
+                      "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                      "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Response returned after successfully creating a display.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsersModuleResDisplayInstance"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/users-module/displays-instances/e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                      "method": "GET",
+                      "data": {
+                        "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                        "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                        "mac": "00:1A:2B:3C:4D:5E",
+                        "version": "1.0.0",
+                        "build": "42",
+                        "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                        "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+                        "created_at": "2025-01-25T12:00:00Z",
+                        "updated_at": "2025-01-25T12:00:00Z"
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "description": "The URI of the newly created displays resource, which can be used to retrieve, update, or delete the displays."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/users-module/displays-instances/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Users module"
+        ],
+        "summary": "Retrieve details of a specific display",
+        "description": "Fetch detailed information about a specific display, including its mac address, display app version, and associated data.",
+        "operationId": "get-users-module-display-instance",
+        "responses": {
+          "200": {
+            "description": "The display details were successfully retrieved. The response contains detailed information about the display.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsersModuleResDisplayInstance"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/users-module/displays-instances/e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                      "method": "GET",
+                      "data": {
+                        "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                        "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                        "mac": "00:1A:2B:3C:4D:5E",
+                        "version": "1.0.0",
+                        "build": "42",
+                        "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                        "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+                        "created_at": "2025-01-25T12:00:00Z",
+                        "updated_at": "2025-01-25T12:00:00Z"
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Users module"
+        ],
+        "summary": "Update an existing display",
+        "description": "Modify display details such as display app version, build. Partial updates are supported.",
+        "operationId": "update-users-module-display-instance",
+        "requestBody": {
+          "description": "The data required to update a existing display",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsersModuleReqUpdateDisplayInstance"
+              },
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "data": {
+                      "version": "1.0.0",
+                      "build": "42"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response returned after successfully updating a display.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsersModuleResDisplayInstance"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/users-module/displays-instances/f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                      "method": "GET",
+                      "data": {
+                        "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                        "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                        "mac": "00:1A:2B:3C:4D:5E",
+                        "version": "1.0.0",
+                        "build": "42",
+                        "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                        "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+                        "created_at": "2025-01-25T12:00:00Z",
+                        "updated_at": "2025-01-25T12:00:00Z"
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Users module"
+        ],
+        "summary": "Delete an existing display",
+        "description": "Remove a display from the system. This action is irreversible.",
+        "operationId": "delete-users-module-display-instance",
+        "responses": {
+          "204": {
+            "description": "The display was successfully deleted. No content is returned in the response body."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/users-module/displays-instances/by-uid/{uid}": {
+      "parameters": [
+        {
+          "name": "uid",
+          "in": "path",
+          "required": true,
+          "description": "The UID of the resource to retrieve.",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+          },
+          "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Users module"
+        ],
+        "summary": "Retrieve details of a specific display",
+        "description": "Fetch detailed information about a specific display, including its mac address, display app version, and associated data.",
+        "operationId": "get-users-module-display-instance-by-uid",
+        "responses": {
+          "200": {
+            "description": "The display details were successfully retrieved. The response contains detailed information about the display.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsersModuleResDisplayInstanceByUid"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/users-module/displays-instances/by-uid/fcab917a-f889-47cf-9ace-ef085774864e",
+                      "method": "GET",
+                      "data": {
+                        "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                        "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                        "mac": "00:1A:2B:3C:4D:5E",
+                        "version": "1.0.0",
+                        "build": "42",
+                        "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                        "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+                        "created_at": "2025-01-25T12:00:00Z",
+                        "updated_at": "2025-01-25T12:00:00Z"
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ],
+        "x-stoplight": {
+          "id": "6clvc8ih516ee"
+        }
       }
     },
     "/devices-module/devices": {
@@ -5327,6 +5755,296 @@
         ]
       }
     },
+    "/system-module/displays-profiles": {
+      "get": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Retrieve a list of displays",
+        "description": "Fetch a paginated list of displays, including details such as display app version, mac addres, and build version.",
+        "operationId": "get-system-module-displays-profiles",
+        "responses": {
+          "200": {
+            "description": "A list of displays successfully retrieved. Each display includes its metadata (ID, display uid, mac address).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResDisplayProfiles"
+                },
+                "examples": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Create a new displays",
+        "description": "Register a new displays by providing necessary details such as uid, mac address, display app version.",
+        "operationId": "create-system-module-display-profile",
+        "requestBody": {
+          "description": "The data required to create a new display",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemModuleReqCreateDisplayProfile"
+              },
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "data": {
+                      "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+                      "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                      "screen_width": 1280,
+                      "screen_height": 720,
+                      "pixel_ratio": 1,
+                      "unit_size": 120,
+                      "rows": 6,
+                      "cols": 4
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Response returned after successfully creating a display.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResDisplayProfile"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "description": "The URI of the newly created displays resource, which can be used to retrieve, update, or delete the displays."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/system-module/displays-profiles/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/id"
+        }
+      ],
+      "get": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Retrieve details of a specific display",
+        "description": "Fetch detailed information about a specific display, including its mac address, display app version, and associated data.",
+        "operationId": "get-system-module-display-profile",
+        "responses": {
+          "200": {
+            "description": "The display details were successfully retrieved. The response contains detailed information about the display.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResDisplayProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Update an existing display",
+        "description": "Modify display details such as display app version, build. Partial updates are supported.",
+        "operationId": "update-system-module-display-profile",
+        "requestBody": {
+          "description": "The data required to update a existing display",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemModuleReqUpdateDisplayProfile"
+              },
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "data": {
+                      "rows": 6,
+                      "cols": 4
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response returned after successfully updating a display.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResDisplayProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Delete an existing display",
+        "description": "Remove a display from the system. This action is irreversible.",
+        "operationId": "delete-system-module-display-profile",
+        "responses": {
+          "204": {
+            "description": "The display was successfully deleted. No content is returned in the response body."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/system-module/displays-profiles/by-uid/{uid}": {
+      "parameters": [
+        {
+          "name": "uid",
+          "in": "path",
+          "required": true,
+          "description": "The UID of the resource to retrieve.",
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+          },
+          "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+        }
+      ],
+      "get": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Retrieve details of a specific display by UID",
+        "description": "Fetch detailed information about a specific display by UID, including its mac address, display app version, and associated data.",
+        "operationId": "get-system-module-display-profile-by-uid",
+        "responses": {
+          "200": {
+            "description": "The display details were successfully retrieved. The response contains detailed information about the display.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResDisplayProfileByUid"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
     "/weather-module/weather": {
       "get": {
         "tags": [
@@ -6387,7 +7105,7 @@
             "type": "string",
             "format": "uuid",
             "description": "Unique identifier for the display device (e.g., UUID).",
-            "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
           },
           "mac": {
             "type": "string",
@@ -6408,7 +7126,7 @@
         },
         "examples": [
           {
-            "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
             "mac": "00:1A:2B:3C:4D:5E",
             "version": "1.0.0",
             "build": "42"
@@ -6626,7 +7344,7 @@
         "examples": [
           {
             "data": {
-              "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
               "mac": "00:1A:2B:3C:4D:5E",
               "version": "1.0.0",
               "build": "42"
@@ -7295,7 +8013,7 @@
           }
         ]
       },
-      "UsersModuleDisplay": {
+      "UsersModuleDisplayInstance": {
         "title": "Display",
         "description": "Schema for a registered display within the system.",
         "type": "object",
@@ -7320,7 +8038,7 @@
             "type": "string",
             "format": "uuid",
             "description": "Unique identifier for the display device (e.g., UUID).",
-            "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
           },
           "mac": {
             "type": "string",
@@ -7345,6 +8063,14 @@
             "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
             "readOnly": true
           },
+          "display_profile": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Unique identifier for the display profile.",
+            "example": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+            "readOnly": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7365,11 +8091,12 @@
         "examples": [
           {
             "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
-            "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
             "mac": "00:1A:2B:3C:4D:5E",
             "version": "1.0.0",
             "build": "42",
             "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
             "created_at": "2025-01-25T12:00:00Z",
             "updated_at": "2025-01-25T12:00:00Z"
           }
@@ -7397,7 +8124,7 @@
           },
           "password": {
             "type": "string",
-            "format": "password",
+            "nullable": true,
             "description": "Password for the new user. Must be at least 6 characters long.",
             "example": "superstrongpassword",
             "writeOnly": true
@@ -7446,7 +8173,7 @@
           }
         ]
       },
-      "UsersModuleCreateDisplay": {
+      "UsersModuleCreateDisplayInstance": {
         "title": "Create Display",
         "description": "Schema for creating a new display.",
         "type": "object",
@@ -7468,7 +8195,7 @@
             "type": "string",
             "format": "uuid",
             "description": "Unique identifier for the display device (e.g., UUID).",
-            "example": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6"
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
           },
           "mac": {
             "type": "string",
@@ -7496,7 +8223,7 @@
         "examples": [
           {
             "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
-            "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
             "mac": "00:1A:2B:3C:4D:5E",
             "version": "1.0.0",
             "build": "42",
@@ -7511,6 +8238,7 @@
         "properties": {
           "password": {
             "type": "string",
+            "nullable": true,
             "format": "password",
             "description": "New password for the user.",
             "example": "superstrongpassword",
@@ -7556,8 +8284,11 @@
           }
         ]
       },
-      "UsersModuleUpdateDisplay": {
+      "UsersModuleUpdateDisplayInstance": {
         "title": "Update Display",
+        "x-stoplight": {
+          "id": "79645dc1fb028"
+        },
         "description": "Schema for modifying an existing display.",
         "type": "object",
         "properties": {
@@ -7570,6 +8301,14 @@
             "type": "string",
             "description": "Build number or identifier of the app.",
             "example": "42"
+          },
+          "display_profile": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Unique identifier for the display profile.",
+            "example": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+            "readOnly": true
           }
         },
         "examples": [
@@ -7605,7 +8344,7 @@
           }
         ]
       },
-      "UsersModuleReqCreateDisplay": {
+      "UsersModuleReqCreateDisplayInstance": {
         "title": "Create Display Request",
         "description": "Request schema for creating new display.",
         "type": "object",
@@ -7614,14 +8353,14 @@
         ],
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UsersModuleCreateDisplay"
+            "$ref": "#/components/schemas/UsersModuleCreateDisplayInstance"
           }
         },
         "examples": [
           {
             "data": {
               "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
-              "uid": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
               "mac": "00:1A:2B:3C:4D:5E",
               "version": "1.0.0",
               "build": "42",
@@ -7653,7 +8392,7 @@
           }
         ]
       },
-      "UsersModuleReqUpdateDisplay": {
+      "UsersModuleReqUpdateDisplayInstance": {
         "title": "Update Display Request",
         "description": "Request schema for updating an existing display.",
         "type": "object",
@@ -7662,7 +8401,7 @@
         ],
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UsersModuleUpdateDisplay"
+            "$ref": "#/components/schemas/UsersModuleUpdateDisplayInstance"
           }
         },
         "examples": [
@@ -7845,6 +8584,275 @@
                 "updated_at": "2025-01-25T12:00:00Z"
               }
             ],
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "UsersModuleResDisplayInstance": {
+        "title": "Display Response",
+        "description": "Response schema containing a single display.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/users-module/displays-instances/f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UsersModuleDisplayInstance",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/users-module/displays-instances/e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+            "method": "GET",
+            "data": {
+              "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+              "mac": "00:1A:2B:3C:4D:5E",
+              "version": "1.0.0",
+              "build": "42",
+              "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+              "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+              "created_at": "2025-01-25T12:00:00Z",
+              "updated_at": "2025-01-25T12:00:00Z"
+            },
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "UsersModuleResDisplayInstances": {
+        "title": "Displays Response",
+        "description": "Response schema containing a list of displays.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/users-module/displays-instances",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UsersModuleDisplayInstance"
+            },
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/users-module/displays-instances",
+            "method": "GET",
+            "data": [
+              {
+                "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+                "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                "mac": "00:1A:2B:3C:4D:5E",
+                "version": "1.0.0",
+                "build": "42",
+                "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+                "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+                "created_at": "2025-01-25T12:00:00Z",
+                "updated_at": "2025-01-25T12:00:00Z"
+              }
+            ],
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "UsersModuleResDisplayInstanceByUid": {
+        "title": "Display by UID Response",
+        "x-stoplight": {
+          "id": "a56a0566be91c"
+        },
+        "description": "Response schema containing a single display by UID.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/users-module/displays-instances/by-uid/fcab917a-f889-47cf-9ace-ef085774864e",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UsersModuleDisplayInstance",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/users-module/displays-instances/e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+            "method": "GET",
+            "data": {
+              "id": "e39936d6-ef14-41fb-b614-8baa6f46d2ff",
+              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+              "mac": "00:1A:2B:3C:4D:5E",
+              "version": "1.0.0",
+              "build": "42",
+              "user": "f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6",
+              "display_profile": "e328b39a-92db-4ea4-a34d-7ec3ba81fe64",
+              "created_at": "2025-01-25T12:00:00Z",
+              "updated_at": "2025-01-25T12:00:00Z"
+            },
             "metadata": {
               "request_duration_ms": 57,
               "server_time": "2025-01-18T12:00:00Z",
@@ -10635,6 +11643,7 @@
           "icon",
           "order",
           "data_source",
+          "display",
           "created_at",
           "updated_at"
         ],
@@ -10679,6 +11688,15 @@
               "$ref": "#/components/schemas/DashboardModuleDataSource"
             },
             "description": "A list of data sources used by the page, typically for real-time updates."
+          },
+          "display": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Unique identifier for the display.",
+            "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+            "default": null,
+            "readOnly": true
           },
           "created_at": {
             "type": "string",
@@ -10944,6 +11962,14 @@
               "$ref": "#/components/schemas/DashboardModuleCreateDataSource"
             },
             "description": "A list of data sources used by the page, typically for real-time updates."
+          },
+          "display": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Unique identifier for the display.",
+            "default": null,
+            "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
           }
         },
         "discriminator": {
@@ -11090,6 +12116,13 @@
             "multipleOf": 1,
             "description": "The display order of the page.",
             "example": 1
+          },
+          "display": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "Unique identifier for the display.",
+            "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
           }
         },
         "discriminator": {
@@ -12257,6 +13290,231 @@
           }
         ]
       },
+      "SystemModuleDisplayProfile": {
+        "title": "System Module Display",
+        "description": "Represents a physical display registered in the system, providing resolution, pixel ratio, and layout defaults for UI rendering.",
+        "type": "object",
+        "required": [
+          "id",
+          "uid",
+          "screen_width",
+          "screen_height",
+          "pixel_ratio",
+          "unit_size",
+          "rows",
+          "cols",
+          "primary",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier for the display profile.",
+            "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+            "readOnly": true
+          },
+          "uid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier of the physical display device (e.g., generated by the panel during onboarding).",
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+          },
+          "screen_width": {
+            "type": "integer",
+            "description": "Display resolution width in pixels.",
+            "example": 1280,
+            "readOnly": true
+          },
+          "screen_height": {
+            "type": "integer",
+            "description": "Display resolution height in pixels.",
+            "example": 720,
+            "readOnly": true
+          },
+          "pixel_ratio": {
+            "type": "number",
+            "description": "Pixel density ratio (device pixel ratio).",
+            "example": 1,
+            "readOnly": true
+          },
+          "unit_size": {
+            "type": "number",
+            "description": "Base size (in pixels) of one layout unit used for rendering tiles etc.",
+            "example": 120,
+            "readOnly": true
+          },
+          "rows": {
+            "type": "integer",
+            "description": "Number of layout rows available on this display, calculated by the panel app based on screen size and resolution.",
+            "example": 6,
+            "readOnly": true
+          },
+          "cols": {
+            "type": "integer",
+            "description": "Number of layout columns available on this display, calculated by the panel app based on screen size and resolution.",
+            "example": 4,
+            "readOnly": true
+          },
+          "primary": {
+            "type": "boolean",
+            "description": "Indicates whether this display is the primary display used by the system.",
+            "default": false,
+            "example": true,
+            "readOnly": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when the user was created.",
+            "example": "2025-01-25T12:00:00Z",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "The timestamp when the user was updated.",
+            "default": null,
+            "example": "2025-01-25T12:00:00Z",
+            "readonly": true
+          }
+        },
+        "examples": [
+          {
+            "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+            "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+            "screen_width": 1280,
+            "screen_height": 720,
+            "pixel_ratio": 1,
+            "unit_size": 120,
+            "rows": 6,
+            "cols": 4,
+            "primary": true,
+            "created_at": "2025-01-25T12:00:00Z",
+            "updated_at": "2025-01-25T12:00:00Z"
+          }
+        ]
+      },
+      "SystemModuleCreateDisplayProfile": {
+        "title": "Create Display",
+        "x-stoplight": {
+          "id": "66f22da96ee66"
+        },
+        "description": "Schema for creating a new display.",
+        "type": "object",
+        "required": [
+          "uid",
+          "screen_width",
+          "screen_height",
+          "pixel_ratio",
+          "unit_size",
+          "rows",
+          "cols"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the display.",
+            "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
+          },
+          "uid": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the display device (e.g., UUID).",
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+          },
+          "screen_width": {
+            "type": "integer",
+            "description": "Display resolution width in pixels.",
+            "example": 1280
+          },
+          "screen_height": {
+            "type": "integer",
+            "description": "Display resolution height in pixels.",
+            "example": 720
+          },
+          "pixel_ratio": {
+            "type": "number",
+            "description": "Pixel density ratio (device pixel ratio).",
+            "example": 1
+          },
+          "unit_size": {
+            "type": "number",
+            "description": "Base size (in pixels) of one layout unit used for rendering tiles etc.",
+            "example": 120
+          },
+          "rows": {
+            "type": "integer",
+            "description": "Initial number of layout rows for this display, calculated by the panel app during onboarding.",
+            "example": 6
+          },
+          "cols": {
+            "type": "integer",
+            "description": "Initial number of layout columns for this display, calculated by the panel app during onboarding.",
+            "example": 4
+          },
+          "primary": {
+            "type": "boolean",
+            "description": "Indicates whether this display is the primary display used by the system.",
+            "default": false,
+            "example": true
+          }
+        },
+        "examples": [
+          {
+            "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+            "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+            "screen_width": 1280,
+            "screen_height": 720,
+            "pixel_ratio": 1,
+            "unit_size": 120,
+            "rows": 6,
+            "cols": 4,
+            "primary": true
+          }
+        ]
+      },
+      "SystemModuleUpdateDisplayProfile": {
+        "title": "Update Display",
+        "x-stoplight": {
+          "id": "cea77c43f685b"
+        },
+        "description": "Schema for modifying an existing display.",
+        "type": "object",
+        "properties": {
+          "unit_size": {
+            "type": "number",
+            "description": "Base size (in pixels) of one layout unit used for rendering tiles etc.",
+            "example": 120
+          },
+          "rows": {
+            "type": "integer",
+            "description": "Number of layout rows for this display. Can be modified to adjust the display layout.",
+            "example": 6
+          },
+          "cols": {
+            "type": "integer",
+            "description": "Number of layout columns for this display. Can be modified to adjust the display layout.",
+            "example": 4
+          },
+          "primary": {
+            "type": "boolean",
+            "description": "Indicates whether this display is the primary display used by the system.",
+            "default": false,
+            "example": true
+          }
+        },
+        "examples": [
+          {
+            "rows": 6,
+            "cols": 4,
+            "primary": false
+          }
+        ]
+      },
       "SystemModuleResSystemInfo": {
         "title": "System Info Response",
         "description": "Response containing detailed system information, including CPU load, memory usage, storage, temperature, OS, network, and display details.",
@@ -12451,6 +13709,332 @@
               "frequency_capping": false,
               "throttling": false,
               "soft_temp_limit": false
+            },
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "SystemModuleReqCreateDisplayProfile": {
+        "title": "Create Display Request",
+        "x-stoplight": {
+          "id": "9dc5fad5ef4cb"
+        },
+        "description": "Request schema for creating new display.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleCreateDisplayProfile"
+          }
+        },
+        "examples": [
+          {
+            "data": {
+              "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+              "screen_width": 1280,
+              "screen_height": 720,
+              "pixel_ratio": 1,
+              "unit_size": 120,
+              "rows": 6,
+              "cols": 4
+            }
+          }
+        ]
+      },
+      "SystemModuleReqUpdateDisplayProfile": {
+        "title": "Update Display Request",
+        "x-stoplight": {
+          "id": "bf607c4151749"
+        },
+        "description": "Request schema for updating an existing display.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleUpdateDisplayProfile"
+          }
+        },
+        "examples": [
+          {
+            "data": {
+              "rows": 6,
+              "cols": 4
+            }
+          }
+        ]
+      },
+      "SystemModuleResDisplayProfile": {
+        "title": "Display Response",
+        "description": "Response containing the registered display's information including resolution, size, pixel ratio, and default layout settings.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/system-module/displays-profiles/00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleDisplayProfile",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/system-module/displays-profiles/00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+            "method": "GET",
+            "data": {
+              "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+              "screen_width": 1280,
+              "screen_height": 720,
+              "pixel_ratio": 1,
+              "unit_size": 120,
+              "rows": 6,
+              "cols": 4,
+              "created_at": "2025-01-25T12:00:00Z",
+              "updated_at": "2025-01-25T12:00:00Z"
+            },
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "SystemModuleResDisplayProfiles": {
+        "title": "Displays Response",
+        "description": "Response schema containing a list of displays.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/system-module/displays-profiles",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SystemModuleDisplayProfile"
+            },
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/systen-module/displays",
+            "method": "GET",
+            "data": [
+              {
+                "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+                "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+                "screen_width": 1280,
+                "screen_height": 720,
+                "pixel_ratio": 1,
+                "unit_size": 120,
+                "rows": 6,
+                "cols": 4,
+                "created_at": "2025-01-25T12:00:00Z",
+                "updated_at": "2025-01-25T12:00:00Z"
+              }
+            ],
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "SystemModuleResDisplayProfileByUid": {
+        "title": "Display by UID Response",
+        "x-stoplight": {
+          "id": "2a2a7e64d5fc6"
+        },
+        "description": "Response containing the registered display's information including resolution, size, pixel ratio, and default layout settings.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/system-module/displays-profiles/by-uid/fcab917a-f889-47cf-9ace-ef085774864e",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleDisplayProfile",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/system-module/displays-profiles/by-uid/fcab917a-f889-47cf-9ace-ef085774864e",
+            "method": "GET",
+            "data": {
+              "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+              "screen_width": 1280,
+              "screen_height": 720,
+              "pixel_ratio": 1,
+              "unit_size": 120,
+              "rows": 6,
+              "cols": 4,
+              "created_at": "2025-01-25T12:00:00Z",
+              "updated_at": "2025-01-25T12:00:00Z"
             },
             "metadata": {
               "request_duration_ms": 57,
@@ -14401,7 +15985,10 @@
           {
             "type": "object",
             "required": [
-              "tiles"
+              "tiles",
+              "tile_size",
+              "rows",
+              "cols"
             ],
             "properties": {
               "tiles": {
@@ -14410,6 +15997,27 @@
                 "items": {
                   "$ref": "#/components/schemas/DashboardModuleTile"
                 }
+              },
+              "tile_size": {
+                "type": "number",
+                "nullable": true,
+                "description": "Size of one square layout tile in pixels, used for grid rendering. If not set, default layout will be used.",
+                "default": null,
+                "example": 120
+              },
+              "rows": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid rows used to layout tiles on the page. If not set, default layout will be used.",
+                "default": null,
+                "example": 10
+              },
+              "cols": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
+                "default": null,
+                "example": 4
               }
             }
           }
@@ -14432,6 +16040,27 @@
                   "$ref": "#/components/schemas/DashboardModuleCreateTile"
                 },
                 "description": "A list of tiles associated with the tiles page."
+              },
+              "tile_size": {
+                "type": "number",
+                "nullable": true,
+                "description": "Size of one square layout tile in pixels, used for grid rendering. If not set, default layout will be used.",
+                "default": null,
+                "example": 120
+              },
+              "rows": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid rows used to layout tiles on the page. If not set, default layout will be used.",
+                "default": null,
+                "example": 10
+              },
+              "cols": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
+                "default": null,
+                "example": 4
               }
             }
           }
@@ -14444,6 +16073,29 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DashboardModuleUpdatePage"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tile_size": {
+                "type": "number",
+                "nullable": true,
+                "description": "Size of one square layout tile in pixels, used for grid rendering. If not set, default layout will be used.",
+                "example": 120
+              },
+              "rows": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid rows used to layout tiles on the page. If not set, default layout will be used.",
+                "example": 10
+              },
+              "cols": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
+                "example": 4
+              }
+            }
           }
         ]
       },

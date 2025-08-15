@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/modules/system/models/throttle_status.dart';
+import 'package:fastybird_smart_panel/modules/system/models/throttle_status/throttle_status.dart';
 import 'package:fastybird_smart_panel/modules/system/repositories/repository.dart';
 import 'package:flutter/foundation.dart';
 
@@ -7,7 +7,7 @@ class ThrottleStatusRepository extends Repository<ThrottleStatusModel> {
 
   Future<bool> refresh() async {
     try {
-      await fetchThrottleStatus();
+      await fetchOne();
 
       return true;
     } catch (e) {
@@ -15,7 +15,7 @@ class ThrottleStatusRepository extends Repository<ThrottleStatusModel> {
     }
   }
 
-  Future<void> insertThrottleStatus(Map<String, dynamic> json) async {
+  Future<void> insert(Map<String, dynamic> json) async {
     try {
       ThrottleStatusModel newData = ThrottleStatusModel.fromJson(json);
 
@@ -41,14 +41,14 @@ class ThrottleStatusRepository extends Repository<ThrottleStatusModel> {
     }
   }
 
-  Future<void> fetchThrottleStatus() async {
+  Future<void> fetchOne() async {
     return handleApiCall(
       () async {
         final response = await apiClient.getSystemModuleSystemThrottle();
 
         final raw = response.response.data['data'] as Map<String, dynamic>;
 
-        insertThrottleStatus(raw);
+        insert(raw);
       },
       'fetch throttle status',
     );

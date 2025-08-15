@@ -11,11 +11,11 @@
  *
  * Please keep this in mind when updating entity fields or OpenAPI schemas.
  */
-import { plainToInstance } from 'class-transformer';
 import { Expose } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
 
 import { DataSourceEntity, PageEntity, TileEntity } from './dashboard.entity';
@@ -74,14 +74,12 @@ describe('Dashboard module entity and OpenAPI component synchronization', () => 
 			icon: 'cards-icon',
 			order: 1,
 			data_source: [],
+			display: uuid().toString(),
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(PageBaseEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(PageBaseEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -112,10 +110,7 @@ describe('Dashboard module entity and OpenAPI component synchronization', () => 
 			parent_id: uuid().toString(),
 		};
 
-		const entityInstance = plainToInstance(TileBaseEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(TileBaseEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -141,10 +136,7 @@ describe('Dashboard module entity and OpenAPI component synchronization', () => 
 			parent_id: uuid().toString(),
 		};
 
-		const entityInstance = plainToInstance(DataSourceBaseEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(DataSourceBaseEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 

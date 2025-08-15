@@ -1,0 +1,18 @@
+{
+  "defaultScalingFactor": 0.1667,
+  "fallbackDivisor": 10,
+  "minUnitSize": 40,
+  "maxUnitSize": 200,
+  "defaultRows": 6,
+  "defaultCols": 4,
+  "scaleAdjustments": {
+    "compact": 0.9,
+    "normal": 1.0,
+    "large": 1.2
+  },
+  "breakpoints": [
+    { "maxWidth": 480, "divisor": 4 },
+    { "maxWidth": 600, "divisor": 6 },
+    { "maxWidth": 720, "divisor": 8 }
+  ]
+}

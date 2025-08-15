@@ -1,8 +1,8 @@
-import { plainToInstance } from 'class-transformer';
-import { validateSync } from 'class-validator';
+import { validate } from 'class-validator';
 
 import { Logger } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { NetworkStatsDto } from '../dto/network-stats.dto';
 import { SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
@@ -25,9 +25,10 @@ export abstract class Platform {
 	abstract rebootDevice(): Promise<void>;
 	abstract powerOffDevice(): Promise<void>;
 
-	protected validateDto<T extends object>(dtoClass: new () => T, rawData: unknown): T {
-		const instance = plainToInstance(dtoClass, rawData);
-		const errors = validateSync(instance, { whitelist: true });
+	protected async validateDto<T extends object>(dtoClass: new () => T, rawData: unknown): Promise<T> {
+		const instance = toInstance(dtoClass, rawData);
+
+		const errors = await validate(instance, { whitelist: true });
 
 		if (errors.length > 0) {
 			this.logger.error(

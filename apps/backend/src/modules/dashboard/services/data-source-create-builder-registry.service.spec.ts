@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { IDataSourceNestedCreateBuilder } from '../entities/dashboard.relations';
@@ -18,6 +19,12 @@ describe('DataSourceCreateBuilderRegistryService', () => {
 		}).compile();
 
 		service = module.get<DataSourceCreateBuilderRegistryService>(DataSourceCreateBuilderRegistryService);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {

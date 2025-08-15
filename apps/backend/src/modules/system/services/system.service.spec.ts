@@ -5,12 +5,12 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { plainToInstance } from 'class-transformer';
-
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { SystemInfoDto } from '../../platform/dto/system-info.dto';
 import { PlatformService } from '../../platform/services/platform.service';
 import { SystemInfoModel } from '../models/system.model';
 import { EventType } from '../system.constants';
@@ -98,7 +98,7 @@ describe('SystemService', () => {
 				},
 			};
 
-			jest.spyOn(service['platformService'], 'getSystemInfo').mockResolvedValue(mockInfo);
+			jest.spyOn(service['platformService'], 'getSystemInfo').mockResolvedValue(toInstance(SystemInfoDto, mockInfo));
 
 			const result = await service.getSystemInfo();
 
@@ -119,7 +119,7 @@ describe('SystemService', () => {
 		it('should broadcast system info over WebSocket', async () => {
 			const mockInfo = { cpuLoad: 10 };
 
-			jest.spyOn(service, 'getSystemInfo').mockResolvedValue(plainToInstance(SystemInfoModel, mockInfo));
+			jest.spyOn(service, 'getSystemInfo').mockResolvedValue(toInstance(SystemInfoModel, mockInfo));
 
 			await service.broadcastSystemInfo();
 

@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
@@ -16,7 +18,10 @@ class TilesRepository extends Repository<TileModel> {
         .toList();
   }
 
-  void insertTiles(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
+    final PagesRepository pagesRepository = locator<PagesRepository>();
+    final CardsRepository cardsRepository = locator<CardsRepository>();
+
     late Map<String, TileModel> insertData = {...data};
 
     for (var row in json) {
@@ -44,6 +49,16 @@ class TilesRepository extends Repository<TileModel> {
 
       try {
         TileModel tile = buildTileModel(tileType, row);
+
+        if (tile.parentType == 'page' &&
+            pagesRepository.getItem(tile.parentId) == null) {
+          continue;
+        }
+
+        if (tile.parentType == 'card' &&
+            cardsRepository.getItem(tile.parentId) == null) {
+          continue;
+        }
 
         insertData[tile.id] = tile;
       } catch (e) {
@@ -76,7 +91,7 @@ class TilesRepository extends Repository<TileModel> {
     }
   }
 
-  Future<void> fetchTile(
+  Future<void> fetchOne(
     String id,
   ) async {
     return handleApiCall(
@@ -85,9 +100,28 @@ class TilesRepository extends Repository<TileModel> {
 
         final raw = response.response.data['data'] as Map<String, dynamic>;
 
-        insertTiles([raw]);
+        insert([raw]);
       },
       'fetch tile',
+    );
+  }
+
+  Future<void> fetchAll(
+    String parentType,
+    String parentId,
+  ) async {
+    return handleApiCall(
+      () async {
+        final response = await apiClient.getDashboardModuleTiles(
+          parentType: parentType,
+          parentId: parentId,
+        );
+
+        final raw = response.response.data['data'] as List;
+
+        insert(raw.cast<Map<String, dynamic>>());
+      },
+      'fetch $parentType tiles',
     );
   }
 }

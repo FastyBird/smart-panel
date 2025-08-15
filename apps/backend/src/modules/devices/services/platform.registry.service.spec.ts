@@ -19,11 +19,13 @@ describe('PlatformRegistryService', () => {
 	beforeEach(() => {
 		service = new PlatformRegistryService();
 		mockLogger = jest.spyOn(Logger.prototype, 'log').mockImplementation();
-		jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+
+		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	const mockPlatform: IDevicePlatform = {

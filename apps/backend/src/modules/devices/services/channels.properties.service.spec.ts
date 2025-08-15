@@ -7,15 +7,17 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { Expose, Transform, plainToInstance } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, DataTypeType, EventType, PermissionType, PropertyCategory } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -175,6 +177,12 @@ describe('ChannelsPropertiesService', () => {
 		mapper = module.get<ChannelsPropertiesTypeMapperService>(ChannelsPropertiesTypeMapperService);
 		eventEmitter = module.get<EventEmitter2>(EventEmitter2);
 		dataSource = module.get<DataSource>(DataSource);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -190,21 +198,19 @@ describe('ChannelsPropertiesService', () => {
 		it('should return all properties for a channel', async () => {
 			const mockProperties: MockChannelProperty[] = [mockChannelProperty];
 
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getMany: jest
-					.fn()
-					.mockResolvedValue(mockProperties.map((entity) => plainToInstance(MockChannelProperty, entity))),
+				getMany: jest.fn().mockResolvedValue(mockProperties.map((entity) => toInstance(MockChannelProperty, entity))),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await channelsPropertiesService.findAll(mockChannel.id);
 
-			expect(result).toEqual(mockProperties.map((entity) => plainToInstance(MockChannelProperty, entity)));
+			expect(result).toEqual(mockProperties.map((entity) => toInstance(MockChannelProperty, entity)));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('property');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('property.channel', 'channel');
@@ -215,20 +221,20 @@ describe('ChannelsPropertiesService', () => {
 
 	describe('findOne', () => {
 		it('should return a channel property if found', async () => {
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockChannelProperty, mockChannelProperty)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await channelsPropertiesService.findOne(mockChannelProperty.id, mockChannel.id);
 
-			expect(result).toEqual(plainToInstance(MockChannelProperty, mockChannelProperty));
+			expect(result).toEqual(toInstance(MockChannelProperty, mockChannelProperty));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('property');
 			expect(queryBuilderMock.innerJoinAndSelect).toHaveBeenCalledWith('property.channel', 'channel');
@@ -240,7 +246,7 @@ describe('ChannelsPropertiesService', () => {
 		it('should return null if the channel property is not found', async () => {
 			const propertyId = uuid().toString();
 
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
@@ -278,11 +284,6 @@ describe('ChannelsPropertiesService', () => {
 				name: createDto.name,
 				permissions: createDto.permissions,
 				dataType: createDto.data_type,
-				unit: null,
-				format: null,
-				invalid: null,
-				step: null,
-				value: null,
 				channel: mockChannel.id,
 				mockValue: createDto.mock_value,
 			};
@@ -313,34 +314,28 @@ describe('ChannelsPropertiesService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockCreatedProperty)),
+				getOne: jest.fn().mockResolvedValueOnce(toInstance(MockChannelProperty, mockCreatedProperty)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
-			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedProperty);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedProperty);
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(ChannelPropertyEntity, mockCreatedProperty));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelPropertyEntity, mockCreatedProperty));
 
 			const result = await channelsPropertiesService.create(mockChannel.id, createDto);
 
-			expect(result).toEqual(plainToInstance(MockChannelProperty, mockCreatedProperty));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(MockChannelProperty, mockCreateProperty, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCreatedProperty);
+			expect(result).toEqual(toInstance(MockChannelProperty, mockCreatedProperty));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(MockChannelProperty, mockCreateProperty));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(ChannelPropertyEntity, mockCreatedProperty));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_CREATED,
-				plainToInstance(MockChannelProperty, mockCreatedProperty),
+				toInstance(MockChannelProperty, mockCreatedProperty),
 			);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('property.id = :id', { id: mockCreatedProperty.id });
 		});
@@ -408,7 +403,7 @@ describe('ChannelsPropertiesService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
@@ -416,21 +411,21 @@ describe('ChannelsPropertiesService', () => {
 				where: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
-					.mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockChannelProperty))
-					.mockResolvedValueOnce(plainToInstance(MockChannelProperty, mockUpdatedProperty)),
+					.mockResolvedValueOnce(toInstance(MockChannelProperty, mockChannelProperty))
+					.mockResolvedValueOnce(toInstance(MockChannelProperty, mockUpdatedProperty)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
-			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedProperty);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelPropertyEntity, mockUpdatedProperty));
 
 			const result = await channelsPropertiesService.update(mockChannelProperty.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(MockChannelProperty, mockUpdatedProperty));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockChannelProperty, mockUpdateProperty));
+			expect(result).toEqual(toInstance(MockChannelProperty, mockUpdatedProperty));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockChannelProperty, mockUpdateProperty));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_UPDATED,
-				plainToInstance(MockChannelProperty, mockUpdatedProperty),
+				toInstance(MockChannelProperty, mockUpdatedProperty),
 			);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('property.id = :id', { id: mockUpdatedProperty.id });
 		});
@@ -438,10 +433,10 @@ describe('ChannelsPropertiesService', () => {
 
 	describe('remove', () => {
 		it('should remove a channel property', async () => {
-			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(plainToInstance(ChannelEntity, mockChannel));
+			jest.spyOn(channelsService, 'getOneOrThrow').mockResolvedValue(toInstance(ChannelEntity, mockChannel));
 			jest
 				.spyOn(channelsPropertiesService, 'findOne')
-				.mockResolvedValue(plainToInstance(MockChannelProperty, mockChannelProperty));
+				.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
 
 			jest.spyOn(repository, 'delete');
 
@@ -450,7 +445,7 @@ describe('ChannelsPropertiesService', () => {
 			expect(repository.delete).toHaveBeenCalledWith(mockChannelProperty.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_DELETED,
-				plainToInstance(MockChannelProperty, mockChannelProperty),
+				toInstance(MockChannelProperty, mockChannelProperty),
 			);
 		});
 	});

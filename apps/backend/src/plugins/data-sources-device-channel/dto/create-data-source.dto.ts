@@ -1,7 +1,7 @@
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-validator';
 
-import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
+import { CreateSingleDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import type { components } from '../../../openapi';
 import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
 import { ValidateChannelExists } from '../validators/device-channel-exists-constraint.validator';
@@ -10,7 +10,10 @@ import { ValidateDeviceExists } from '../validators/device-exists-constraint.val
 type CreateDeviceChannelDataSource =
 	components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
 
-export class CreateDeviceChannelDataSourceDto extends CreateDataSourceDto implements CreateDeviceChannelDataSource {
+export class CreateDeviceChannelDataSourceDto
+	extends CreateSingleDataSourceDto
+	implements CreateDeviceChannelDataSource
+{
 	readonly type: 'device-channel';
 
 	@Expose()

@@ -7,9 +7,12 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { DataSourceEntity } from '../../../modules/dashboard/entities/dashboard.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -34,19 +37,19 @@ describe('DataSourceRelationsLoaderService', () => {
 				{
 					provide: DevicesService,
 					useValue: {
-						findOne: jest.fn().mockResolvedValue(mockDevice),
+						findOne: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
 					},
 				},
 				{
 					provide: ChannelsService,
 					useValue: {
-						findOne: jest.fn().mockResolvedValue(mockChannel),
+						findOne: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),
 					},
 				},
 				{
 					provide: ChannelsPropertiesService,
 					useValue: {
-						findOne: jest.fn().mockResolvedValue(mockProperty),
+						findOne: jest.fn().mockResolvedValue(toInstance(ChannelPropertyEntity, mockProperty)),
 					},
 				},
 			],
@@ -56,6 +59,12 @@ describe('DataSourceRelationsLoaderService', () => {
 		devicesService = module.get(DevicesService);
 		channelsService = module.get(ChannelsService);
 		propertiesService = module.get(ChannelsPropertiesService);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -88,9 +97,9 @@ describe('DataSourceRelationsLoaderService', () => {
 			expect(channelsService.findOne).toHaveBeenCalledWith(mockChannel.id, mockDevice.id);
 			expect(propertiesService.findOne).toHaveBeenCalledWith(mockProperty.id, mockChannel.id);
 
-			expect(entity.device).toBe(mockDevice);
-			expect(entity.channel).toBe(mockChannel);
-			expect(entity.property).toBe(mockProperty);
+			expect(entity.device).toEqual(toInstance(DeviceEntity, mockDevice));
+			expect(entity.channel).toEqual(toInstance(ChannelEntity, mockChannel));
+			expect(entity.property).toEqual(toInstance(ChannelPropertyEntity, mockProperty));
 		});
 
 		it('should skip loading when deviceId is invalid', async () => {
