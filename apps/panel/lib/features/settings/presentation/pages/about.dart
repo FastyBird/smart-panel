@@ -219,13 +219,13 @@ class _AboutPageState extends State<AboutPage> {
   Widget _renderIpAddressTile(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Consumer<SystemInfoRepository>(
+    return Consumer<SystemService>(
       builder: (
         context,
-        systemInfoRepository,
+        systemService,
         _,
       ) {
-        String? ipAddress = systemInfoRepository.defaultNetwork?.ip4;
+        String? ipAddress = systemService.getSystemInfo()?.ipAddress;
 
         return _renderInfoTile(
           context: context,
@@ -240,13 +240,13 @@ class _AboutPageState extends State<AboutPage> {
   Widget _renderMacAddressTile(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Consumer<SystemInfoRepository>(
+    return Consumer<SystemService>(
       builder: (
         context,
-        systemInfoRepository,
+        systemService,
         _,
       ) {
-        String? macAddress = systemInfoRepository.defaultNetwork?.mac;
+        String? macAddress = systemService.getSystemInfo()?.macAddress;
 
         return _renderInfoTile(
           context: context,
@@ -261,13 +261,13 @@ class _AboutPageState extends State<AboutPage> {
   Widget _renderCpuUsageTile(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Consumer<SystemInfoRepository>(
+    return Consumer<SystemService>(
       builder: (
         context,
-        systemInfoRepository,
+        systemService,
         _,
       ) {
-        double? cpuLoad = systemInfoRepository.cpuLoad;
+        double? cpuLoad = systemService.getSystemInfo()?.cpuLoad;
 
         return _renderInfoTile(
           context: context,
@@ -285,13 +285,13 @@ class _AboutPageState extends State<AboutPage> {
   Widget _renderMemoryUsageTile(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    return Consumer<SystemInfoRepository>(
+    return Consumer<SystemService>(
       builder: (
         context,
-        systemInfoRepository,
+        systemService,
         _,
       ) {
-        double? memoryUsed = systemInfoRepository.memory?.used.toDouble();
+        double? memoryUsed = systemService.getSystemInfo()?.memoryUsed.toDouble();
 
         return _renderInfoTile(
           context: context,

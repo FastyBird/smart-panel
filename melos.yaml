@@ -33,6 +33,8 @@ scripts:
       dart tools/build_device_spec.dart && \
       echo "🛠️  Building channel spec..." && \
       dart tools/build_channel_spec.dart && \
+      echo "🛠️  Building display config spec..." && \
+      dart tools/build_display_grid_spec.dart && \
       echo "✅ Spec rebuild complete!"
     description: Cleans the Spec directory, regenerates device and channel specification Dart files.
 
@@ -41,9 +43,6 @@ scripts:
       echo "🧹 Cleaning previous build artifacts..." && \
       cd ./apps/panel && \
       rm -rf build flutter_assets && \
-      flutter build bundle \
-        --dart-define=APP_VERSION=1.0.0 \
-        --dart-define=APP_BUILD=1 && \
       dart run flutterpi_tool build \
         --arch=${FB_FLUTTERPI_ARCH:-arm64} \
         ${FB_FLUTTERPI_RELEASE:+--release} \

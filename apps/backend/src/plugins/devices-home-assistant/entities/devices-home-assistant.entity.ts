@@ -52,7 +52,7 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 		},
 	)
 	@Column({ nullable: true })
-	haEntityId: string | null = null;
+	haEntityId: string | null;
 
 	@Expose({ name: 'ha_attribute' })
 	@IsOptional()
@@ -65,7 +65,7 @@ export class HomeAssistantChannelPropertyEntity extends ChannelPropertyEntity {
 		},
 	)
 	@Column({ nullable: true })
-	haAttribute: string | null = null;
+	haAttribute: string | null;
 
 	get haDomain(): HomeAssistantDomain {
 		const domain = this.haEntityId.toLowerCase().split('.')[0] as HomeAssistantDomain;

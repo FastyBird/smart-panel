@@ -2,17 +2,22 @@ import { useContainer } from 'class-validator';
 import { DataSource as OrmDataSource } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
+import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { UpdateDataSourceDto } from '../../../modules/dashboard/dto/update-data-source.dto';
 import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
-import { DataSourceEntity, PageEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
+import { DataSourceEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { DataSourcesTypeMapperService } from '../../../modules/dashboard/services/data-source-type-mapper.service';
 import { TilesTypeMapperService } from '../../../modules/dashboard/services/tiles-type-mapper.service';
 import { DataSourceTypeConstraintValidator } from '../../../modules/dashboard/validators/data-source-type-constraint.validator';
 import { TileTypeConstraintValidator } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
+import { DisplayProfileEntity } from '../../../modules/system/entities/system.entity';
+import { DisplaysProfilesService } from '../../../modules/system/services/displays-profiles.service';
+import { DisplayProfileExistsConstraintValidator } from '../../../modules/system/validators/display-profile-exists-constraint.validator';
 import { CreateCardsPageDto } from '../dto/create-page.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
 import { PagesCardsValidationException } from '../pages-cards.exceptions';
@@ -24,6 +29,20 @@ describe('CardsPageNestedBuilderService', () => {
 	let tileMapperService: TilesTypeMapperService;
 	let dataSourceMapperService: DataSourcesTypeMapperService;
 	let ormDataSource: OrmDataSource;
+
+	const mockDisplay: DisplayProfileEntity = {
+		id: uuid().toString(),
+		uid: uuid().toString(),
+		screenWidth: 1280,
+		screenHeight: 720,
+		pixelRatio: 2,
+		unitSize: 120,
+		rows: 6,
+		cols: 4,
+		primary: true,
+		createdAt: new Date(),
+		updatedAt: undefined,
+	};
 
 	beforeEach(async () => {
 		const tileRepository = {
@@ -74,8 +93,15 @@ describe('CardsPageNestedBuilderService', () => {
 						}),
 					},
 				},
+				{
+					provide: DisplaysProfilesService,
+					useValue: {
+						findOne: jest.fn().mockResolvedValue(mockDisplay),
+					},
+				},
 				TileTypeConstraintValidator,
 				DataSourceTypeConstraintValidator,
+				DisplayProfileExistsConstraintValidator,
 			],
 		}).compile();
 
@@ -85,6 +111,12 @@ describe('CardsPageNestedBuilderService', () => {
 		tileMapperService = module.get(TilesTypeMapperService);
 		dataSourceMapperService = module.get(DataSourcesTypeMapperService);
 		ormDataSource = module.get(OrmDataSource);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -95,12 +127,12 @@ describe('CardsPageNestedBuilderService', () => {
 	});
 
 	it('should support "cards" page type', () => {
-		const result = service.supports({ type: 'cards' } as CardsPageEntity);
+		const result = service.supports({ type: 'cards' } as CreateCardsPageDto);
 		expect(result).toBe(true);
 	});
 
 	it('should not support other page types', () => {
-		const result = service.supports({ type: 'tiles' } as PageEntity);
+		const result = service.supports({ type: 'tiles' } as unknown as CreatePageDto);
 		expect(result).toBe(false);
 	});
 
@@ -112,6 +144,7 @@ describe('CardsPageNestedBuilderService', () => {
 			type: 'cards',
 			title: 'Test Page',
 			order: 1,
+			display: uuid().toString(),
 			cards: [
 				{
 					title: 'Card 1',

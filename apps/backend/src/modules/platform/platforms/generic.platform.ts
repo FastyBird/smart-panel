@@ -101,7 +101,7 @@ export class GenericPlatform extends Platform {
 			txBytes: iface.tx_bytes,
 		}));
 
-		return rawData.map((item) => this.validateDto(NetworkStatsDto, item));
+		return await Promise.all(rawData.map((item) => this.validateDto(NetworkStatsDto, item)));
 	}
 
 	async getWifiNetworks() {
@@ -120,7 +120,7 @@ export class GenericPlatform extends Platform {
 			rsnFlags: network.rsnFlags,
 		}));
 
-		return rawData.map((item) => this.validateDto(WifiNetworksDto, item));
+		return await Promise.all(rawData.map((item) => this.validateDto(WifiNetworksDto, item)));
 	}
 
 	async setSpeakerVolume(): Promise<void> {

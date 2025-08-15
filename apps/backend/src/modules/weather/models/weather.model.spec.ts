@@ -1,7 +1,7 @@
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import 'reflect-metadata';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import type { components } from '../../../openapi';
 
 import { LocationWeatherModel } from './weather.model';
@@ -103,10 +103,7 @@ describe('Weather module model and OpenAPI component synchronization', () => {
 			},
 		};
 
-		const modelInstance = plainToInstance(LocationWeatherModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(LocationWeatherModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 

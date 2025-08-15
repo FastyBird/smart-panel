@@ -9,7 +9,7 @@
 		>
 			<el-card
 				body-class="p-1!"
-				class="max-w-[540px]"
+				:class="`max-w-[${displayProfile?.screenWidth ?? 540}px]`"
 			>
 				<div ref="pageGridContainer" />
 			</el-card>
@@ -21,7 +21,7 @@
 		>
 			<el-card
 				body-class="p-1!"
-				class="max-w-[540px]"
+				:class="`max-w-[${displayProfile?.screenWidth ?? 540}px]`"
 			>
 				<div
 					id="trash"
@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
+import { computed, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 
 import { ElCard, ElCol, ElIcon, ElRow, ElText } from 'element-plus';
 import { GridStack, type GridStackWidget } from 'gridstack';
@@ -75,6 +75,8 @@ import {
 	tilesStoreKey,
 	useTiles,
 } from '../../../modules/dashboard';
+import { type IDisplayProfile, useDisplaysProfiles } from '../../../modules/system';
+import { calculateLayout } from '../../../modules/system/utils/gird-layout.utils.ts';
 
 import type { IPageConfigureProps } from './page-configure.types';
 import TilePreview from './tile-preview.vue';
@@ -82,10 +84,6 @@ import TilePreview from './tile-preview.vue';
 defineOptions({
 	name: 'PageConfigure',
 });
-
-// TODO: Make it configurable
-const MAX_ROWS = 10;
-const MAX_COLS = 6;
 
 const props = withDefaults(defineProps<IPageConfigureProps>(), {
 	remotePageResult: FormResult.NONE,
@@ -103,7 +101,8 @@ const emit = defineEmits<{
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
 
-const { tiles, fetchTiles } = useTiles({ parent: 'page', parentId: props.page.id });
+const { displays, fetchDisplays, areLoading: loadingDisplays } = useDisplaysProfiles();
+const { tiles, fetchTiles, areLoading: loadingTiles } = useTiles({ parent: 'page', parentId: props.page.id });
 
 const storesManager = injectStoresManager();
 
@@ -131,6 +130,33 @@ const initialized = ref<boolean>(false);
 
 const pageChanged = ref<boolean>(false);
 
+const displayProfile = computed<IDisplayProfile | null>((): IDisplayProfile | null => {
+	const primary = displays.value.find((display) => display.primary);
+
+	if (props.page.display !== null) {
+		return displays.value.find((display) => display.id === props.page.display) ?? primary ?? null;
+	}
+
+	return primary ?? null;
+});
+
+const gridLayout = computed<{ rows: number; cols: number } | null>((): { rows: number; cols: number } | null => {
+	if (displayProfile.value === null) {
+		return null;
+	}
+
+	const grid = calculateLayout(displayProfile.value, {
+		rows: props.page.rows,
+		cols: props.page.cols,
+		tileSize: props.page.tileSize,
+	});
+
+	return {
+		rows: grid.rows,
+		cols: grid.cols,
+	};
+});
+
 let changeTimeout: ReturnType<typeof setTimeout>;
 
 const onTileRemove = (id: ITile['id']): void => {
@@ -152,7 +178,7 @@ const updateSquareCells = (): void => {
 		pageGrid.cellHeight(size);
 
 		if (trashContainer.value) {
-			trashContainer.value.style.height = `${2 * size - (draftGrid?.getMargin() || 0)}px`;
+			trashContainer.value.style.height = `${2 * size - (draftGrid?.getMargin() || 0) - 4}px`;
 		}
 	}
 
@@ -166,10 +192,14 @@ const updateSquareCells = (): void => {
 };
 
 const initializeGrids = (): void => {
+	if (gridLayout.value === null) {
+		return;
+	}
+
 	pageGrid = GridStack.init(
 		{
-			column: MAX_COLS,
-			row: MAX_ROWS,
+			column: gridLayout.value.cols,
+			row: gridLayout.value.rows,
 			cellHeight: 'auto',
 			margin: 4,
 			float: true,
@@ -181,8 +211,8 @@ const initializeGrids = (): void => {
 
 	draftGrid = GridStack.init(
 		{
-			column: MAX_COLS,
-			minRow: MAX_ROWS - 2,
+			column: gridLayout.value.cols,
+			minRow: gridLayout.value.rows - 2,
 			cellHeight: 'auto',
 			margin: 4,
 			float: true,
@@ -406,11 +436,21 @@ const markChanged = () => {
 };
 
 onBeforeMount((): void => {
-	fetchTiles().catch((error: unknown): void => {
-		const err = error as Error;
+	if (!loadingDisplays.value) {
+		fetchDisplays().catch((error: unknown): void => {
+			const err = error as Error;
 
-		throw new DashboardException('Something went wrong', err);
-	});
+			throw new DashboardException('Something went wrong', err);
+		});
+	}
+
+	if (!loadingTiles.value) {
+		fetchTiles().catch((error: unknown): void => {
+			const err = error as Error;
+
+			throw new DashboardException('Something went wrong', err);
+		});
+	}
 });
 
 onMounted((): void => {
@@ -438,8 +478,8 @@ watch(
 	(): ITile[] => tiles.value,
 	(val: ITile[]): void => {
 		for (const tile of val) {
-			const fitsHorizontally = tile.col + tile.colSpan - 1 <= MAX_COLS;
-			const fitsVertically = tile.row + tile.rowSpan - 1 <= MAX_ROWS;
+			const fitsHorizontally = tile.col + tile.colSpan - 1 <= (gridLayout.value?.cols ?? 0);
+			const fitsVertically = tile.row + tile.rowSpan - 1 <= (gridLayout.value?.rows ?? 0);
 
 			if (fitsHorizontally && fitsVertically && !tile.hidden && !tile.draft) {
 				if (!pageTiles.has(tile.id)) {
@@ -555,6 +595,13 @@ watch(
 	(): boolean => pageChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-page-changed', val);
+	}
+);
+
+watch(
+	(): { rows: number; cols: number } | null => gridLayout.value,
+	(): void => {
+		initializeGrids();
 	}
 );
 </script>

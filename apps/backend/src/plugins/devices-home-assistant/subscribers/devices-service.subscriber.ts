@@ -1,8 +1,8 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelSpecModel } from '../../../modules/devices/models/devices.model';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -72,15 +72,14 @@ export class DevicesServiceSubscriber {
 			return device;
 		}
 
-		const categorySpec = plainToInstance(
+		const categorySpec = toInstance(
 			ChannelSpecModel,
 			{
 				...rawSchema,
 				properties: 'properties' in rawSchema && rawSchema.properties ? Object.values(rawSchema.properties) : [],
 			},
 			{
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+				excludeExtraneousValues: false,
 			},
 		);
 
@@ -94,7 +93,7 @@ export class DevicesServiceSubscriber {
 			return device;
 		}
 
-		const createChannelDto = plainToInstance(CreateHomeAssistantChannelDto, {
+		const createChannelDto = toInstance(CreateHomeAssistantChannelDto, {
 			device: device.id,
 			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: ChannelCategory.DEVICE_INFORMATION,

@@ -39,7 +39,7 @@ export class DeviceEntity extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true })
-	description: string | null = null;
+	description: string | null;
 
 	@Expose()
 	@IsArray()
@@ -102,7 +102,7 @@ export class ChannelEntity extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true })
-	description: string | null = null;
+	description: string | null;
 
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')
@@ -169,7 +169,7 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true })
-	name: string | null = null;
+	name: string | null;
 
 	@Expose()
 	@IsEnum(PermissionType, { each: true })
@@ -197,7 +197,7 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true })
-	unit: string | null = null;
+	unit: string | null;
 
 	@Expose()
 	@IsOptional()
@@ -211,22 +211,22 @@ export class ChannelPropertyEntity extends BaseEntity {
 	)
 	@IsNumber({}, { each: true })
 	@Column({ type: 'json', nullable: true })
-	format: string[] | number[] | null = null;
+	format: string[] | number[] | null;
 
 	@Expose()
 	@IsOptional()
 	@Column({ type: 'text', nullable: true })
-	invalid: string | boolean | number | null = null;
+	invalid: string | boolean | number | null;
 
 	@Expose()
 	@IsOptional()
 	@IsNumber()
 	@Column({ type: 'real', nullable: true })
-	step: number | null = null;
+	step: number | null;
 
 	@Expose()
 	@IsOptional()
-	value: string | boolean | number | null = null;
+	value: string | boolean | number | null;
 
 	@Expose()
 	@ValidateIf((_, value) => typeof value === 'string')

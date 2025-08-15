@@ -1,7 +1,7 @@
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import type { components } from '../../../openapi';
 
@@ -44,10 +44,7 @@ describe('Devices Third-Party plugin entity and OpenAPI Model Synchronization', 
 			service_address: 'http://localhost:8080',
 		};
 
-		const entityInstance = plainToInstance(ThirdPartyDeviceEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(ThirdPartyDeviceEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 

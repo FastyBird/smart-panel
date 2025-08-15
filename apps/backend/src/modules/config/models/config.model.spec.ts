@@ -1,7 +1,7 @@
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import 'reflect-metadata';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
 import {
 	LanguageType,
@@ -57,10 +57,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 			microphone_volume: 30,
 		};
 
-		const modelInstance = plainToInstance(AudioConfigModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(AudioConfigModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -80,10 +77,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 			screen_saver: false,
 		};
 
-		const modelInstance = plainToInstance(DisplayConfigModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(DisplayConfigModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -102,10 +96,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 			time_format: TimeFormatType.HOUR_24,
 		};
 
-		const modelInstance = plainToInstance(LanguageConfigModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(LanguageConfigModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -125,10 +116,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 			open_weather_api_key: null,
 		};
 
-		const modelInstance = plainToInstance(WeatherConfigModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(WeatherConfigModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -171,10 +159,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 			plugins: [],
 		};
 
-		const modelInstance = plainToInstance(AppConfigModel, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const modelInstance = toInstance(AppConfigModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 

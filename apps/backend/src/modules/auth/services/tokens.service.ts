@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
@@ -7,6 +6,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { AuthException, AuthNotFoundException, AuthValidationException } from '../auth.exceptions';
 import { CreateTokenDto } from '../dto/create-token.dto';
 import { UpdateTokenDto } from '../dto/update-token.dto';
@@ -105,13 +105,7 @@ export class TokensService {
 			throw new AuthException('A token with the same hash already exists.');
 		}
 
-		const token = repository.create(
-			plainToInstance(mapping.class, dtoInstance, {
-				enableImplicitConversion: true,
-				excludeExtraneousValues: true,
-				exposeUnsetFields: false,
-			}),
-		);
+		const token = repository.create(toInstance(mapping.class, dtoInstance));
 
 		token.hashedToken = dtoInstance.token;
 
@@ -140,17 +134,7 @@ export class TokensService {
 
 		const repository: Repository<TToken> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(
-			token,
-			omitBy(
-				plainToInstance(mapping.class, dtoInstance, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeDefaultValues: false,
-				}),
-				isUndefined,
-			),
-		);
+		Object.assign(token, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
 
 		await repository.save(token as TToken);
 
@@ -218,15 +202,14 @@ export class TokensService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

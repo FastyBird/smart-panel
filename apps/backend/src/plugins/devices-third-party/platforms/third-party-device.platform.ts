@@ -1,8 +1,8 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
 import { DEVICES_THIRD_PARTY_TYPE, ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
@@ -61,9 +61,7 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 					return false;
 				}
 
-				const responseDto = plainToInstance(PropertiesUpdateResponseDto, responseBody, {
-					excludeExtraneousValues: true,
-				});
+				const responseDto = toInstance(PropertiesUpdateResponseDto, responseBody);
 
 				const failedProperties = responseDto.properties.filter(
 					(p: PropertyUpdateResultDto) => p.status != ThirdPartyPropertiesUpdateStatus.SUCCESS,
@@ -102,9 +100,15 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 		data: unknown,
 		context: 'request' | 'response',
 	): Promise<boolean> {
-		const instance = plainToInstance(dtoClass, data, { excludeExtraneousValues: true });
+		const instance = toInstance(dtoClass, data, {
+			excludeExtraneousValues: false,
+		});
 
-		const errors = await validate(instance, { whitelist: true, forbidNonWhitelisted: true });
+		const errors = await validate(instance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
+		});
 
 		if (errors.length > 0) {
 			this.logger.error(

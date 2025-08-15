@@ -33,18 +33,17 @@ export const ForecastWeatherTileCreateReqSchema: ZodType<ApiCreateForecastWeathe
 		})
 	);
 
-export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile & { parent: { type: string; id: string } }> = TileUpdateReqSchema.and(
+export const DayWeatherTileUpdateReqSchema: ZodType<ApiUpdateDayWeatherTile> = TileUpdateReqSchema.and(
 	z.object({
 		type: z.nativeEnum(TilesWeatherPluginDayWeatherTileType),
 	})
 );
 
-export const ForecastWeatherTileUpdateReqSchema: ZodType<ApiUpdateForecastWeatherTile & { parent: { type: string; id: string } }> =
-	TileUpdateReqSchema.and(
-		z.object({
-			type: z.nativeEnum(TilesWeatherPluginForecastWeatherTileType),
-		})
-	);
+export const ForecastWeatherTileUpdateReqSchema: ZodType<ApiUpdateForecastWeatherTile> = TileUpdateReqSchema.and(
+	z.object({
+		type: z.nativeEnum(TilesWeatherPluginForecastWeatherTileType),
+	})
+);
 
 export const DayWeatherTileResSchema: ZodType<ApiDayWeatherTile> = TileResSchema.and(
 	z.object({

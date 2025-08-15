@@ -1,5 +1,4 @@
 import { instanceToPlain } from 'class-transformer';
-import { plainToInstance } from 'class-transformer';
 import { isArray } from 'class-validator';
 import { Server, Socket } from 'socket.io';
 
@@ -16,6 +15,7 @@ import {
 	WebSocketServer,
 } from '@nestjs/websockets';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
@@ -127,7 +127,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		if (!this.commandEventRegistry.has(event)) {
 			this.logger.warn(`[WS GATEWAY] No subscribers for event: ${event}`);
 
-			return plainToInstance(CommandResultDto, { status: 'error', message: `Event '${event}' is not supported.` });
+			return toInstance(CommandResultDto, { status: 'error', message: `Event '${event}' is not supported.` });
 		}
 
 		try {
@@ -157,13 +157,17 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 				)
 			).filter((result) => result !== null);
 
-			return plainToInstance(CommandResultDto, { status: 'ok', message: 'Event handled successfully', results });
+			return toInstance(
+				CommandResultDto,
+				{ status: 'ok', message: 'Event handled successfully', results },
+				{ excludeExtraneousValues: false },
+			);
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`[WS GATEWAY] Error handling event: ${event}`, { message: err.message, stack: err.stack });
 
-			return plainToInstance(CommandResultDto, { status: 'error', message: `Failed to handle event: ${event}` });
+			return toInstance(CommandResultDto, { status: 'error', message: `Failed to handle event: ${event}` });
 		}
 	}
 

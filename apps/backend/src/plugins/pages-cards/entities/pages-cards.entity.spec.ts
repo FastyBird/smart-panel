@@ -11,10 +11,10 @@
  *
  * Please keep this in mind when updating entity fields or OpenAPI schemas.
  */
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
 
 import { CardEntity, CardsPageEntity } from './pages-cards.entity';
@@ -52,14 +52,12 @@ describe('Cards pages plugin entity and OpenAPI Model Synchronization', () => {
 			order: 1,
 			cards: [],
 			data_source: [],
+			display: uuid().toString(),
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(CardsPageEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(CardsPageEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -83,10 +81,7 @@ describe('Cards pages plugin entity and OpenAPI Model Synchronization', () => {
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(CardEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(CardEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 

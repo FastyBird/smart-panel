@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
@@ -176,7 +177,7 @@ describe('PropertyCommandService', () => {
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		jest.clearAllMocks();
 	});
 
 	const validPayload: PropertyCommandDto = {
@@ -191,9 +192,11 @@ describe('PropertyCommandService', () => {
 	};
 
 	it('should validate and process a valid command', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
-		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
-		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(mockChannelProperty);
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+		jest
+			.spyOn(channelsPropertiesService, 'findOne')
+			.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
 		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
 
@@ -226,7 +229,7 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if channel is not found', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
@@ -236,8 +239,8 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if property is not found', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
-		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
@@ -247,9 +250,11 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if platform is not registered', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
-		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
-		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(mockChannelProperty);
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+		jest
+			.spyOn(channelsPropertiesService, 'findOne')
+			.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
@@ -262,9 +267,11 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if batch execution fails', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(mockDevice);
-		jest.spyOn(channelsService, 'findOne').mockResolvedValue(mockChannel);
-		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(mockChannelProperty);
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+		jest
+			.spyOn(channelsPropertiesService, 'findOne')
+			.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
 		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(false);
 

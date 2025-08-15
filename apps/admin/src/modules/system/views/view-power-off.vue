@@ -10,7 +10,7 @@
 				{{ t('systemModule.subHeadings.poweredOff') }}
 			</span>
 			<br />
-			{{ t('systemModule.texts.poweredOff') }}
+			{{ t('systemModule.texts.manage.poweredOff') }}
 		</div>
 	</el-alert>
 </template>

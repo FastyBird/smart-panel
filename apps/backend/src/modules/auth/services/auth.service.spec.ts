@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt';
-import { plainToInstance } from 'class-transformer';
 import { v4 as uuid } from 'uuid';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -7,6 +6,7 @@ import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
@@ -93,6 +93,10 @@ describe('AuthService', () => {
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(authService).toBeDefined();
 		expect(tokensService).toBeDefined();
@@ -102,7 +106,7 @@ describe('AuthService', () => {
 
 	describe('generateToken', () => {
 		it('should return a JWT token', () => {
-			const user = plainToInstance(UserEntity, mockUser);
+			const user = toInstance(UserEntity, mockUser);
 
 			expect(authService.generateToken(user)).toBe('mocked-jwt-token');
 		});
@@ -110,7 +114,7 @@ describe('AuthService', () => {
 
 	describe('checkUsername', () => {
 		it('should return valid false if username exists', async () => {
-			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(plainToInstance(UserEntity, mockUser));
+			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(toInstance(UserEntity, mockUser));
 
 			const result: CheckResponseDto = await authService.checkUsername({ username: 'testuser' });
 
@@ -128,7 +132,7 @@ describe('AuthService', () => {
 
 	describe('checkEmail', () => {
 		it('should return valid false if email exists', async () => {
-			jest.spyOn(usersService, 'findByEmail').mockResolvedValue(plainToInstance(UserEntity, mockUser));
+			jest.spyOn(usersService, 'findByEmail').mockResolvedValue(toInstance(UserEntity, mockUser));
 
 			const result: CheckResponseDto = await authService.checkEmail({ email: 'test@example.com' });
 
@@ -146,11 +150,11 @@ describe('AuthService', () => {
 
 	describe('getProfile', () => {
 		it('should return user profile when user exists', async () => {
-			jest.spyOn(usersService, 'getOneOrThrow').mockResolvedValue(plainToInstance(UserEntity, mockUser));
+			jest.spyOn(usersService, 'getOneOrThrow').mockResolvedValue(toInstance(UserEntity, mockUser));
 
 			const result = await authService.getProfile(mockUser.id);
 
-			expect(result).toEqual(plainToInstance(UserEntity, mockUser));
+			expect(result).toEqual(toInstance(UserEntity, mockUser));
 		});
 
 		it('should throw exception if user does not exist', async () => {
@@ -173,14 +177,12 @@ describe('AuthService', () => {
 
 			jest
 				.spyOn(usersService, 'findByUsername')
-				.mockResolvedValue(
-					plainToInstance(UserEntity, { ...mockUser, password: await bcrypt.hash('validPassword', 10) }),
-				);
+				.mockResolvedValue(toInstance(UserEntity, { ...mockUser, password: await bcrypt.hash('validPassword', 10) }));
 
 			jest
 				.spyOn(tokensService, 'create')
-				.mockResolvedValue(plainToInstance(AccessTokenEntity, { hashedToken: 'mocked-jwt-token' }))
-				.mockResolvedValue(plainToInstance(RefreshTokenEntity, { hashedToken: 'mocked-jwt-token' }));
+				.mockResolvedValue(toInstance(AccessTokenEntity, { hashedToken: 'mocked-jwt-token' }))
+				.mockResolvedValue(toInstance(RefreshTokenEntity, { hashedToken: 'mocked-jwt-token' }));
 
 			// @ts-expect-error: bcrypt is mocked, but TypeScript still reports an error when mocking the method
 			jest.spyOn(bcrypt, 'compare').mockResolvedValue(true);
@@ -190,7 +192,7 @@ describe('AuthService', () => {
 			const result = await authService.login(loginDto);
 
 			expect(result).toEqual(
-				plainToInstance(LoggedInResponseDto, {
+				toInstance(LoggedInResponseDto, {
 					accessToken: 'mocked-jwt-token',
 					refreshToken: 'mocked-jwt-token',
 					type: ACCESS_TOKEN_TYPE,
@@ -219,9 +221,7 @@ describe('AuthService', () => {
 
 			jest
 				.spyOn(usersService, 'findByUsername')
-				.mockResolvedValue(
-					plainToInstance(UserEntity, { ...mockUser, password: await bcrypt.hash('validPassword', 10) }),
-				);
+				.mockResolvedValue(toInstance(UserEntity, { ...mockUser, password: await bcrypt.hash('validPassword', 10) }));
 
 			// @ts-expect-error: bcrypt is mocked, but TypeScript still reports an error when mocking the method
 			jest.spyOn(bcrypt, 'compare').mockResolvedValue(false);
@@ -237,7 +237,7 @@ describe('AuthService', () => {
 				password: 'securePassword',
 			};
 
-			jest.spyOn(usersService, 'findOwner').mockResolvedValue(plainToInstance(UserEntity, mockUser));
+			jest.spyOn(usersService, 'findOwner').mockResolvedValue(toInstance(UserEntity, mockUser));
 
 			await expect(authService.register(registerDto)).rejects.toThrow(AuthException);
 		});
@@ -270,19 +270,19 @@ describe('AuthService', () => {
 
 			jest
 				.spyOn(tokensService, 'create')
-				.mockResolvedValue(plainToInstance(AccessTokenEntity, { hashedToken: 'mocked-jwt-token' }))
-				.mockResolvedValue(plainToInstance(RefreshTokenEntity, { hashedToken: 'mocked-jwt-token' }));
+				.mockResolvedValue(toInstance(AccessTokenEntity, { hashedToken: 'mocked-jwt-token' }))
+				.mockResolvedValue(toInstance(RefreshTokenEntity, { hashedToken: 'mocked-jwt-token' }));
 
 			// @ts-expect-error: bcrypt is mocked, but TypeScript still reports an error when mocking the method
 			jest.spyOn(bcrypt, 'hash').mockResolvedValue(hashedPassword);
 
-			jest.spyOn(usersService, 'create').mockResolvedValue(plainToInstance(UserEntity, registeredUser));
+			jest.spyOn(usersService, 'create').mockResolvedValue(toInstance(UserEntity, registeredUser));
 
 			jest.spyOn(jwtService, 'decode').mockReturnValue({ exp: mockDate.getTime() / 1000 });
 
 			const result = await authService.register(registerDto);
 
-			expect(result).toEqual(plainToInstance(UserEntity, registeredUser));
+			expect(result).toEqual(toInstance(UserEntity, registeredUser));
 		});
 
 		it('should throw AuthException if email is already registered', async () => {
@@ -293,7 +293,7 @@ describe('AuthService', () => {
 			};
 
 			jest.spyOn(usersService, 'findOwner').mockResolvedValue(null);
-			jest.spyOn(usersService, 'findByEmail').mockResolvedValue(plainToInstance(UserEntity, mockUser));
+			jest.spyOn(usersService, 'findByEmail').mockResolvedValue(toInstance(UserEntity, mockUser));
 
 			await expect(authService.register(registerDto)).rejects.toThrow(AuthException);
 		});
@@ -306,7 +306,7 @@ describe('AuthService', () => {
 
 			jest.spyOn(usersService, 'findOwner').mockResolvedValue(null);
 			jest.spyOn(usersService, 'findByEmail').mockResolvedValue(null);
-			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(plainToInstance(UserEntity, mockUser));
+			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(toInstance(UserEntity, mockUser));
 
 			await expect(authService.register(registerDto)).rejects.toThrow(AuthException);
 		});

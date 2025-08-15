@@ -5,10 +5,12 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { instanceToPlain } from 'class-transformer';
 
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { HomeAssistantStateChangedEventDto } from '../dto/home-assistant-state.dto';
@@ -48,6 +50,8 @@ describe('StateChangedEventService', () => {
 		httpService = module.get(HomeAssistantHttpService);
 
 		jest.useFakeTimers();
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {
@@ -103,7 +107,7 @@ describe('StateChangedEventService', () => {
 
 		expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 			property.id,
-			plainToInstance(UpdateHomeAssistantChannelPropertyDto, {
+			toInstance(UpdateHomeAssistantChannelPropertyDto, {
 				...instanceToPlain(property),
 				value: 25,
 			}),

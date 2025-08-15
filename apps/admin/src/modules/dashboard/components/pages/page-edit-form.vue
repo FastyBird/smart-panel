@@ -51,6 +51,11 @@
 				name="order"
 			/>
 		</el-form-item>
+
+		<display-profile-select
+			v-model="model.display"
+			:required="false"
+		/>
 	</el-form>
 </template>
 
@@ -61,6 +66,7 @@ import { useI18n } from 'vue-i18n';
 import { ElForm, ElFormItem, ElInput, ElInputNumber, type FormRules } from 'element-plus';
 
 import { IconPicker } from '../../../../common';
+import { DisplayProfileSelect } from '../../../system';
 import { usePageEditForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../dashboard.constants';
 import type { IPageEditForm } from '../../schemas/pages.types';

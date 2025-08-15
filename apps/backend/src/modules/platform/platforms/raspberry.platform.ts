@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import fs from 'fs/promises';
 import si, { Systeminformation } from 'systeminformation';
 import { promisify } from 'util';
 
@@ -41,6 +42,8 @@ export class RaspberryPlatform extends Platform {
 			Array.isArray(networkInterface) ? networkInterface[0] : networkInterface
 		) as Systeminformation.NetworkInterfacesData;
 
+		const resolution = await this.getCurrentResolution();
+
 		const rawData = {
 			cpuLoad: cpu.currentLoad,
 			memory: {
@@ -75,10 +78,10 @@ export class RaspberryPlatform extends Platform {
 				mac: defaultNetworkInterface.mac,
 			},
 			display: {
-				resolutionX: graphics.displays[0]?.resolutionX || 0,
-				resolutionY: graphics.displays[0]?.resolutionY || 0,
-				currentResX: graphics.displays[0]?.currentResX || 0,
-				currentResY: graphics.displays[0]?.currentResY || 0,
+				resolutionX: graphics.displays[0]?.resolutionX || resolution?.width || 0,
+				resolutionY: graphics.displays[0]?.resolutionY || resolution?.height || 0,
+				currentResX: resolution?.width || 0,
+				currentResY: resolution?.height || 0,
 			},
 		};
 
@@ -126,7 +129,7 @@ export class RaspberryPlatform extends Platform {
 			txBytes: iface.tx_bytes,
 		}));
 
-		return rawData.map((item) => this.validateDto(NetworkStatsDto, item));
+		return await Promise.all(rawData.map((item) => this.validateDto(NetworkStatsDto, item)));
 	}
 
 	async getWifiNetworks() {
@@ -145,7 +148,7 @@ export class RaspberryPlatform extends Platform {
 			rsnFlags: network.rsnFlags,
 		}));
 
-		return rawData.map((item) => this.validateDto(WifiNetworksDto, item));
+		return await Promise.all(rawData.map((item) => this.validateDto(WifiNetworksDto, item)));
 	}
 
 	async setSpeakerVolume(volume: number): Promise<void> {
@@ -199,5 +202,48 @@ export class RaspberryPlatform extends Platform {
 				}
 			});
 		});
+	}
+
+	private async getCurrentResolution(): Promise<{ width: number; height: number } | null> {
+		try {
+			const data = await fs.readFile('/sys/class/graphics/fb0/virtual_size', 'utf-8');
+
+			const [width, height] = data.trim().split(',').map(Number);
+
+			if (!isNaN(width) && !isNaN(height)) {
+				return { width, height };
+			}
+		} catch {
+			// Error could be ignored
+		}
+
+		try {
+			const output = await new Promise<string>((resolve, reject) => {
+				exec('fbset -s', (err, stdout) => (err ? reject(err) : resolve(stdout)));
+			});
+
+			const match = output.match(/geometry\s+(\d+)\s+(\d+)/);
+
+			if (match) {
+				const [, widthStr, heightStr] = match;
+
+				return { width: parseInt(widthStr), height: parseInt(heightStr) };
+			}
+		} catch {
+			// Error could be ignored
+		}
+
+		try {
+			const graphics = await si.graphics();
+			const display = graphics.displays.find((d) => d.currentResX && d.currentResY);
+
+			if (display) {
+				return { width: display.currentResX, height: display.currentResY };
+			}
+		} catch {
+			// Error could be ignored
+		}
+
+		return null;
 	}
 }

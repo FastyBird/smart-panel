@@ -4,8 +4,8 @@
 		:options="options"
 		:placeholder="props.placeholder"
 		:filter-method="filterIcons"
+		:clearable="props.clearable"
 		size="large"
-		clearable
 		filterable
 	>
 		<template #label="{ label, value }">
@@ -49,6 +49,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<IIconPickerProps>(), {
 	iconSet: 'mdi',
+	clearable: true,
 });
 
 const emit = defineEmits<{

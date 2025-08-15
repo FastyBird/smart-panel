@@ -25,7 +25,7 @@ export class DevicePreviewTileEntity extends TileEntity {
 	@IsOptional()
 	@IsString()
 	@Column({ nullable: true, default: null })
-	icon?: string | null = null;
+	icon?: string | null;
 
 	@Exclude({ toPlainOnly: true })
 	@RelationId((tile: DevicePreviewTileEntity) => tile.device)

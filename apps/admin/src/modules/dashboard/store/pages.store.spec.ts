@@ -11,6 +11,7 @@ import { usePages } from './pages.store';
 import type { IPage, IPagesSetActionPayload } from './pages.store.types';
 
 const pageId = uuid();
+const displayId = uuid();
 
 const mockBackendClient = {
 	GET: vi.fn(),
@@ -74,7 +75,7 @@ describe('Pages Store', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should fetch pages for a page', async () => {
+	it('should fetch pages', async () => {
 		(mockBackendClient.GET as Mock).mockResolvedValue({
 			data: {
 				data: [
@@ -82,6 +83,7 @@ describe('Pages Store', () => {
 						id: pageId,
 						type: 'some-page',
 						title: 'Page title',
+						display: displayId,
 						created_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					},
@@ -111,6 +113,7 @@ describe('Pages Store', () => {
 			id: pageId,
 			type: 'some-page',
 			title: 'Page title',
+			display: displayId,
 			created_at: new Date().toISOString(),
 			updatedAt: null,
 		};
@@ -128,6 +131,7 @@ describe('Pages Store', () => {
 				type: 'some-page',
 				title: 'Page title',
 				order: 0,
+				display: displayId,
 				createdAt: new Date(),
 			},
 		};
@@ -145,6 +149,7 @@ describe('Pages Store', () => {
 				type: 'some-page',
 				title: 'Page title',
 				order: 0,
+				display: displayId,
 				createdAt: new Date(),
 			},
 		};

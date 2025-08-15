@@ -1,10 +1,11 @@
-import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { instanceToPlain } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
@@ -247,7 +248,7 @@ export class HomeAssistantHttpService {
 
 						await this.channelsPropertiesService.update(
 							property.id,
-							plainToInstance(UpdateHomeAssistantChannelPropertyDto, {
+							toInstance(UpdateHomeAssistantChannelPropertyDto, {
 								...instanceToPlain(property),
 								value,
 							}),
@@ -271,7 +272,7 @@ export class HomeAssistantHttpService {
 
 					await this.channelsPropertiesService.update(
 						stateProperty.id,
-						plainToInstance(UpdateHomeAssistantChannelPropertyDto, {
+						toInstance(UpdateHomeAssistantChannelPropertyDto, {
 							...instanceToPlain(stateProperty),
 							value: isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
 						}),
@@ -330,7 +331,7 @@ export class HomeAssistantHttpService {
 	}
 
 	private toDiscoveredDeviceModel(dto: HomeAssistantDiscoveredDeviceDto): HomeAssistantDiscoveredDeviceModel {
-		return plainToInstance(
+		return toInstance(
 			HomeAssistantDiscoveredDeviceModel,
 			{
 				id: dto.id,
@@ -340,14 +341,13 @@ export class HomeAssistantHttpService {
 				adoptedDeviceId: null,
 			},
 			{
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+				excludeExtraneousValues: false,
 			},
 		);
 	}
 
 	private toStateModel(dto: HomeAssistantStateDto): HomeAssistantStateModel {
-		return plainToInstance(
+		return toInstance(
 			HomeAssistantStateModel,
 			{
 				entityId: dto.entity_id,
@@ -358,8 +358,7 @@ export class HomeAssistantHttpService {
 				lastUpdated: dto.last_updated,
 			},
 			{
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+				excludeExtraneousValues: false,
 			},
 		);
 	}
@@ -390,9 +389,8 @@ export class HomeAssistantHttpService {
 				return null;
 			}
 
-			const devices = plainToInstance(HomeAssistantDiscoveredDeviceDto, data as object[], {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const devices = toInstance(HomeAssistantDiscoveredDeviceDto, data as object[], {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await Promise.all(
@@ -447,9 +445,8 @@ export class HomeAssistantHttpService {
 				return null;
 			}
 
-			const devices = plainToInstance(HomeAssistantDiscoveredDeviceDto, data as object[], {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const devices = toInstance(HomeAssistantDiscoveredDeviceDto, data as object[], {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await Promise.all(
@@ -497,9 +494,8 @@ export class HomeAssistantHttpService {
 				return null;
 			}
 
-			const state = plainToInstance(HomeAssistantStateDto, data as object, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const state = toInstance(HomeAssistantStateDto, data as object, {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await validate(state);
@@ -545,9 +541,8 @@ export class HomeAssistantHttpService {
 				return null;
 			}
 
-			const states = plainToInstance(HomeAssistantStateDto, data as object[], {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const states = toInstance(HomeAssistantStateDto, data as object[], {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await Promise.all(

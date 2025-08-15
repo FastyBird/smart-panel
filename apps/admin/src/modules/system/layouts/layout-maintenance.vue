@@ -18,7 +18,7 @@
 					class="text-center capitalize mx-0 my-8 font-300 font-size-[1.8rem]"
 					data-test-id="power-off-heading"
 				>
-					{{ t('systemModule.headings.poweredOff') }}
+					{{ t('systemModule.headings.manage.poweredOff') }}
 				</h1>
 
 				<router-view />
@@ -38,7 +38,7 @@
 				</div>
 
 				<h1 class="text-center capitalize mx-0 my-8 font-300 font-size-[1.8rem]">
-					{{ t('systemModule.headings.poweredOff') }}
+					{{ t('systemModule.headings.manage.poweredOff') }}
 				</h1>
 
 				<router-view />

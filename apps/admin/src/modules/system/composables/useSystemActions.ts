@@ -16,7 +16,7 @@ export const useSystemActions = (): IUseSystemActions => {
 	const flashMessage = useFlashMessage();
 
 	const onRestart = (): void => {
-		ElMessageBox.confirm(t('systemModule.messages.confirmRestart'), t('systemModule.headings.restart'), {
+		ElMessageBox.confirm(t('systemModule.messages.manage.confirmRestart'), t('systemModule.headings.manage.restart'), {
 			confirmButtonText: t('systemModule.buttons.yes.title'),
 			cancelButtonText: t('systemModule.buttons.no.title'),
 			type: 'warning',
@@ -30,7 +30,7 @@ export const useSystemActions = (): IUseSystemActions => {
 					if (response !== true) {
 						systemActions.reboot('err', 'action');
 
-						flashMessage.error(t('systemModule.messages.rebootFailed'));
+						flashMessage.error(t('systemModule.messages.manage.rebootFailed'));
 
 						return;
 					}
@@ -39,7 +39,7 @@ export const useSystemActions = (): IUseSystemActions => {
 				} catch {
 					systemActions.reboot('err', 'action');
 
-					flashMessage.error(t('systemModule.messages.rebootFailed'));
+					flashMessage.error(t('systemModule.messages.manage.rebootFailed'));
 				}
 			})
 			.catch((): void => {
@@ -48,7 +48,7 @@ export const useSystemActions = (): IUseSystemActions => {
 	};
 
 	const onPowerOff = (): void => {
-		ElMessageBox.confirm(t('systemModule.messages.confirmPowerOff'), t('systemModule.headings.powerOff'), {
+		ElMessageBox.confirm(t('systemModule.messages.manage.confirmPowerOff'), t('systemModule.headings.manage.powerOff'), {
 			confirmButtonText: t('systemModule.buttons.yes.title'),
 			cancelButtonText: t('systemModule.buttons.no.title'),
 			type: 'warning',
@@ -62,7 +62,7 @@ export const useSystemActions = (): IUseSystemActions => {
 					if (response !== true) {
 						systemActions.powerOff('err', 'action');
 
-						flashMessage.error(t('systemModule.messages.powerOffFailed'));
+						flashMessage.error(t('systemModule.messages.manage.powerOffFailed'));
 
 						return;
 					}
@@ -71,7 +71,7 @@ export const useSystemActions = (): IUseSystemActions => {
 				} catch {
 					systemActions.powerOff('err', 'action');
 
-					flashMessage.error(t('systemModule.messages.rebootFailed'));
+					flashMessage.error(t('systemModule.messages.manage.rebootFailed'));
 				}
 			})
 			.catch((): void => {
@@ -80,7 +80,7 @@ export const useSystemActions = (): IUseSystemActions => {
 	};
 
 	const onFactoryReset = (): void => {
-		ElMessageBox.confirm(t('systemModule.messages.confirmFactoryReset'), t('systemModule.headings.factoryReset'), {
+		ElMessageBox.confirm(t('systemModule.messages.manage.confirmFactoryReset'), t('systemModule.headings.manage.factoryReset'), {
 			confirmButtonText: t('systemModule.buttons.yes.title'),
 			cancelButtonText: t('systemModule.buttons.no.title'),
 			type: 'warning',
@@ -94,7 +94,7 @@ export const useSystemActions = (): IUseSystemActions => {
 					if (response !== true) {
 						systemActions.factoryReset('err', 'action');
 
-						flashMessage.error(t('systemModule.messages.factoryResetFailed'));
+						flashMessage.error(t('systemModule.messages.manage.factoryResetFailed'));
 
 						return;
 					}
@@ -103,7 +103,7 @@ export const useSystemActions = (): IUseSystemActions => {
 				} catch {
 					systemActions.factoryReset('err', 'action');
 
-					flashMessage.error(t('systemModule.messages.factoryResetFailed'));
+					flashMessage.error(t('systemModule.messages.manage.factoryResetFailed'));
 				}
 			})
 			.catch((): void => {

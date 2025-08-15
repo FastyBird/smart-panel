@@ -12,8 +12,10 @@ import 'package:flutter/foundation.dart';
 
 class DevicesService extends ChangeNotifier {
   final DevicesRepository _devicesRepository;
+  final DeviceControlsRepository _devicesControlsRepository;
   final ChannelsRepository _channelsRepository;
   final ChannelPropertiesRepository _channelPropertiesRepository;
+  final ChannelControlsRepository _channelControlsRepository;
 
   Map<String, DeviceView> _devices = {};
   Map<String, ChannelView> _channels = {};
@@ -21,13 +23,30 @@ class DevicesService extends ChangeNotifier {
 
   DevicesService({
     required DevicesRepository devicesRepository,
+    required DeviceControlsRepository devicesControlsRepository,
     required ChannelsRepository channelsRepository,
     required ChannelPropertiesRepository channelPropertiesRepository,
+    required ChannelControlsRepository channelControlsRepository,
   })  : _devicesRepository = devicesRepository,
+        _devicesControlsRepository = devicesControlsRepository,
         _channelsRepository = channelsRepository,
-        _channelPropertiesRepository = channelPropertiesRepository;
+        _channelPropertiesRepository = channelPropertiesRepository,
+        _channelControlsRepository = channelControlsRepository;
 
   Future<void> initialize() async {
+    await _devicesRepository.fetchAll();
+
+    for (var device in _devicesRepository.getItems()) {
+      await _devicesControlsRepository.fetchAll(device.id);
+    }
+
+    await _channelsRepository.fetchAll();
+
+    for (var channel in _channelsRepository.getItems()) {
+      await _channelPropertiesRepository.fetchAll(channel.id);
+      await _channelControlsRepository.fetchAll(channel.id);
+    }
+
     _devicesRepository.addListener(_updateData);
     _channelsRepository.addListener(_updateData);
     _channelPropertiesRepository.addListener(_updateData);

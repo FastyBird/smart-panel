@@ -8,17 +8,30 @@ class TilesPageModel extends PageModel {
 
   final List<String> _dataSource;
 
+  final double? _tileSize;
+
+  final int? _rows;
+
+  final int? _cols;
+
   TilesPageModel({
     List<String> tiles = const [],
     List<String> dataSource = const [],
+    double? tileSize,
+    int? rows,
+    int? cols,
     required super.id,
     required super.title,
     required super.icon,
     super.order,
+    required super.display,
     super.createdAt,
     super.updatedAt,
   })  : _tiles = UuidUtils.validateUuidList(tiles),
         _dataSource = UuidUtils.validateUuidList(dataSource),
+        _tileSize = tileSize,
+        _rows = rows,
+        _cols = cols,
         super(
           type: PageType.tiles,
         );
@@ -26,6 +39,12 @@ class TilesPageModel extends PageModel {
   List<String> get tiles => _tiles;
 
   List<String> get dataSource => _dataSource;
+
+  double? get tileSize => _tileSize;
+
+  int? get rows => _rows;
+
+  int? get cols => _cols;
 
   factory TilesPageModel.fromJson(Map<String, dynamic> json) {
     List<String> tiles = [];
@@ -60,6 +79,10 @@ class TilesPageModel extends PageModel {
           ? MdiIcons.fromString(json['icon'])
           : null,
       order: json['order'],
+      display: json['display'],
+      tileSize: json['tile_size'] != null ? json['tile_size'].toDouble() : null,
+      rows: json['rows'],
+      cols: json['cols'],
       tiles: UuidUtils.validateUuidList(tiles),
       dataSource: UuidUtils.validateUuidList(dataSources),
       createdAt: json['created_at'] != null

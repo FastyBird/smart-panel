@@ -37,6 +37,8 @@ describe('PropertyValueService', () => {
 
 		service = module.get<PropertyValueService>(PropertyValueService);
 		influxDbService = module.get<InfluxDbService>(InfluxDbService) as jest.Mocked<InfluxDbService>;
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
 	afterEach(() => {

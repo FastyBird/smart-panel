@@ -10,7 +10,8 @@ import { injectRouterGuard, injectSockets, injectStoresManager } from '../../com
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
 import roleGuard from './router/guards/role.guard';
-import { usersStoreKey } from './store/keys';
+import { displaysInstancesStoreKey, usersStoreKey } from './store/keys';
+import { registerDisplaysInstancesStore } from './store/stores';
 import { registerUsersStore } from './store/users.store';
 import { EventType, USERS_MODULE_EVENT_PREFIX } from './users.constants';
 
@@ -31,6 +32,11 @@ export default {
 
 		app.provide(usersStoreKey, usersStore);
 		storesManager.addStore(usersStoreKey, usersStore);
+
+		const displaysInstancesStore = registerDisplaysInstancesStore(options.store);
+
+		app.provide(displaysInstancesStoreKey, displaysInstancesStore);
+		storesManager.addStore(displaysInstancesStoreKey, displaysInstancesStore);
 
 		routerGuard.register((appUser: IAppUser | undefined, route: RouteRecordRaw): Error | boolean | RouteLocationRaw => {
 			return roleGuard(appUser, route);
@@ -63,7 +69,21 @@ export default {
 					break;
 
 				case EventType.USER_DELETED:
-					usersStore.unset({
+					displaysInstancesStore.unset({
+						id: data.payload.id,
+					});
+					break;
+
+				case EventType.DISPLAY_INSTANCE_CREATED:
+				case EventType.DISPLAY_INSTANCE_UPDATED:
+					displaysInstancesStore.onEvent({
+						id: data.payload.id,
+						data: data.payload,
+					});
+					break;
+
+				case EventType.DISPLAY_INSTANCE_DELETED:
+					displaysInstancesStore.unset({
 						id: data.payload.id,
 					});
 					break;

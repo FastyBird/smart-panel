@@ -134,7 +134,11 @@ class _MyAppState extends State<MyApp> {
         return MultiProvider(
           providers: [
             ChangeNotifierProvider.value(
-                value: locator<config_module.AudioConfigRepository>()),
+              value: locator<ScreenService>(),
+            ),
+            ChangeNotifierProvider.value(
+              value: locator<config_module.AudioConfigRepository>(),
+            ),
             ChangeNotifierProvider.value(
               value: locator<config_module.DisplayConfigRepository>(),
             ),
@@ -158,6 +162,9 @@ class _MyAppState extends State<MyApp> {
             ),
             ChangeNotifierProvider.value(
               value: locator<system_module.ThrottleStatusRepository>(),
+            ),
+            ChangeNotifierProvider.value(
+              value: locator<system_module.SystemService>(),
             ),
             ChangeNotifierProvider.value(
               value: locator<devices_module.DevicesRepository>(),

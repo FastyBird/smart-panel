@@ -1,6 +1,4 @@
-import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
-import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
@@ -13,8 +11,6 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:flutter/foundation.dart';
 
 class DevicesModuleService {
-  final DevicesModuleClient _apiClient;
-
   final SocketService _socketService;
 
   late DevicesRepository _devicesRepository;
@@ -30,8 +26,7 @@ class DevicesModuleService {
   DevicesModuleService({
     required ApiClient apiClient,
     required SocketService socketService,
-  })  : _apiClient = apiClient.devicesModule,
-        _socketService = socketService {
+  }) : _socketService = socketService {
     _devicesRepository = DevicesRepository(
       apiClient: apiClient.devicesModule,
     );
@@ -52,8 +47,10 @@ class DevicesModuleService {
 
     _devicesService = DevicesService(
       devicesRepository: _devicesRepository,
+      devicesControlsRepository: _deviceControlsRepository,
       channelsRepository: _channelsRepository,
       channelPropertiesRepository: _channelPropertiesRepository,
+      channelControlsRepository: _channelControlsRepository,
     );
 
     locator.registerSingleton(_devicesRepository);
@@ -69,8 +66,6 @@ class DevicesModuleService {
   Future<void> initialize() async {
     _isLoading = true;
 
-    await _initializeDevices();
-
     await _devicesService.initialize();
 
     _isLoading = false;
@@ -79,6 +74,12 @@ class DevicesModuleService {
       DevicesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
+
+    if (kDebugMode) {
+      debugPrint(
+        '[DEVICES MODULE][MODULE] Module was successfully initialized',
+      );
+    }
   }
 
   bool get isLoading => _isLoading;
@@ -88,77 +89,6 @@ class DevicesModuleService {
       DevicesModuleConstants.moduleWildcardEvent,
       _socketEventHandler,
     );
-  }
-
-  Future<void> _initializeDevices() async {
-    var devices = await _fetchDevices();
-
-    _devicesRepository.insert(devices);
-
-    for (var device in devices) {
-      final deviceControls = (device['controls'] ?? []) as List;
-
-      _deviceControlsRepository
-          .insert(deviceControls.cast<Map<String, dynamic>>());
-
-      final channels = (device['channels'] ?? []) as List;
-
-      _channelsRepository.insert(channels.cast<Map<String, dynamic>>());
-
-      for (var channel in channels) {
-        final channelControls = (channel['controls'] ?? []) as List;
-
-        _channelControlsRepository
-            .insert(channelControls.cast<Map<String, dynamic>>());
-
-        final channelProperties = (channel['properties'] ?? []) as List;
-
-        _channelPropertiesRepository
-            .insert(channelProperties.cast<Map<String, dynamic>>());
-      }
-    }
-  }
-
-  /// ////////////
-  /// API HANDLERS
-  /// ////////////
-
-  Future<List<Map<String, dynamic>>> _fetchDevices() async {
-    return _handleApiCall(
-      () async {
-        final response = await _apiClient.getDevicesModuleDevices();
-
-        final raw = response.response.data['data'] as List;
-
-        return raw.cast<Map<String, dynamic>>();
-      },
-      'fetch devices',
-    );
-  }
-
-  Future<T> _handleApiCall<T>(
-    Future<T> Function() apiCall,
-    String operation,
-  ) async {
-    try {
-      return await apiCall();
-    } on DioException catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[DEVICES MODULE][${operation.toUpperCase()}] API error: ${e.response?.statusCode} - ${e.message}',
-        );
-      }
-
-      throw Exception('Failed to $operation: ${e.response?.statusCode}');
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[DEVICES MODULE][${operation.toUpperCase()}] Unexpected error: ${e.toString()}',
-        );
-      }
-
-      throw Exception('Unexpected error when calling backend service');
-    }
   }
 
   /// ////////////////

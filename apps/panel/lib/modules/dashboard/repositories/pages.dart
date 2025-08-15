@@ -1,13 +1,17 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/repositories/repository.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/types/ui.dart';
+import 'package:fastybird_smart_panel/modules/system/service.dart';
 import 'package:flutter/foundation.dart';
 
 class PagesRepository extends Repository<PageModel> {
+  final SystemService _systemService = locator<SystemService>();
+
   PagesRepository({required super.apiClient});
 
-  void insertPages(List<Map<String, dynamic>> json) {
+  void insert(List<Map<String, dynamic>> json) {
     late Map<String, PageModel> insertData = {...data};
 
     for (var row in json) {
@@ -36,7 +40,10 @@ class PagesRepository extends Repository<PageModel> {
       try {
         PageModel page = buildPageModel(pageType, row);
 
-        insertData[page.id] = page;
+        if (page.display == null ||
+            page.display == _systemService.displayProfile?.id) {
+          insertData[page.id] = page;
+        }
       } catch (e) {
         if (kDebugMode) {
           debugPrint(
@@ -67,7 +74,7 @@ class PagesRepository extends Repository<PageModel> {
     }
   }
 
-  Future<void> fetchPage(
+  Future<void> fetchOne(
     String id,
   ) async {
     return handleApiCall(
@@ -76,20 +83,20 @@ class PagesRepository extends Repository<PageModel> {
 
         final raw = response.response.data['data'] as Map<String, dynamic>;
 
-        insertPages([raw]);
+        insert([raw]);
       },
       'fetch page',
     );
   }
 
-  Future<void> fetchPages() async {
+  Future<void> fetchAll() async {
     return handleApiCall(
       () async {
         final response = await apiClient.getDashboardModulePages();
 
         final raw = response.response.data['data'] as List;
 
-        insertPages(raw.cast<Map<String, dynamic>>());
+        insert(raw.cast<Map<String, dynamic>>());
       },
       'fetch pages',
     );

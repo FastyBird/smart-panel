@@ -1,8 +1,9 @@
-import type { IDataSource, IPage, ITile } from '../../../modules/dashboard';
+import type { IDataSource, ITile } from '../../../modules/dashboard';
+import type { ITilesPage } from '../store/pages.store.types';
 
 export interface IViewPageConfigureProps {
-	id: IPage['id'];
-	page: IPage;
+	id: ITilesPage['id'];
+	page: ITilesPage;
 	tileId?: ITile['id'];
 	dataSourceId?: IDataSource['id'];
 }

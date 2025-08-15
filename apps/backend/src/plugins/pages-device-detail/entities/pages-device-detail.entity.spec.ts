@@ -11,10 +11,10 @@
  *
  * Please keep this in mind when updating entity fields or OpenAPI schemas.
  */
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
 
 import { DeviceDetailPageEntity } from './pages-device-detail.entity';
@@ -51,14 +51,12 @@ describe('Device detail pages plugin entity and OpenAPI Model Synchronization', 
 			order: 1,
 			device: uuid().toString(),
 			data_source: [],
+			display: uuid().toString(),
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(DeviceDetailPageEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(DeviceDetailPageEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 

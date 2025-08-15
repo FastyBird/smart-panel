@@ -71,6 +71,11 @@
 				name="order"
 			/>
 		</el-form-item>
+
+		<display-profile-select
+			v-model="model.display"
+			:required="false"
+		/>
 	</el-form>
 </template>
 
@@ -84,6 +89,7 @@ import { orderBy } from 'natural-orderby';
 import { IconPicker } from '../../../common';
 import { DashboardException, FormResult, type FormResultType, type IPageEditFormProps, usePageEditForm } from '../../../modules/dashboard';
 import { type IDevice, useDevices } from '../../../modules/devices';
+import { DisplayProfileSelect } from '../../../modules/system';
 import type { IDeviceDetailPageEditForm } from '../schemas/pages.types';
 
 defineOptions({
@@ -119,11 +125,13 @@ const devicesOptions = computed<{ value: IDevice['id']; label: string }[]>((): {
 });
 
 onBeforeMount((): void => {
-	fetchDevices().catch((error: unknown): void => {
-		const err = error as Error;
+	if (!loadingDevices.value) {
+		fetchDevices().catch((error: unknown): void => {
+			const err = error as Error;
 
-		throw new DashboardException('Something went wrong', err);
-	});
+			throw new DashboardException('Something went wrong', err);
+		});
+	}
 });
 
 watch(

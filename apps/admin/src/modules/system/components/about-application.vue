@@ -19,7 +19,7 @@
 			class="block text-justify max-w-[500px]"
 			data-test-id="about-info"
 		>
-			{{ t('systemModule.texts.about') }}
+			{{ t('systemModule.texts.system.about') }}
 		</el-text>
 
 		<el-divider />

@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
@@ -8,6 +7,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { DisplaysProfilesService } from '../../system/services/displays-profiles.service';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
@@ -33,6 +34,7 @@ export class PagesService {
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 		private readonly relationsRegistryService: PageRelationsLoaderRegistryService,
 		private readonly nestedCreateBuilders: PageCreateBuilderRegistryService,
+		private readonly displaysService: DisplaysProfilesService,
 		private readonly dataSource: OrmDataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -40,7 +42,9 @@ export class PagesService {
 	async findAll<TPage extends PageEntity>(): Promise<TPage[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all pages');
 
-		const pages = await this.repository.find();
+		const pages = await this.repository.find({
+			relations: ['display'],
+		});
 
 		this.logger.debug(`[LOOKUP ALL] Found ${pages.length} pages`);
 
@@ -54,9 +58,11 @@ export class PagesService {
 	async findOne<TPage extends PageEntity>(id: string): Promise<TPage | null> {
 		this.logger.debug(`[LOOKUP] Fetching page with id=${id}`);
 
-		const page = await this.repository.findOne({
-			where: { id },
-		});
+		const page = (await this.repository
+			.createQueryBuilder('page')
+			.leftJoinAndSelect('page.display', 'display')
+			.where('page.id = :id', { id })
+			.getOne()) as TPage | null;
 
 		if (!page) {
 			this.logger.warn(`[LOOKUP] Page with id=${id} not found`);
@@ -68,7 +74,7 @@ export class PagesService {
 
 		await this.loadRelations(page);
 
-		return page as TPage;
+		return page;
 	}
 
 	async create<TPage extends PageEntity, TCreateDTO extends CreatePageDto>(createDto: CreatePageDto): Promise<TPage> {
@@ -86,13 +92,29 @@ export class PagesService {
 
 		const dtoInstance = await this.validateDto<TCreateDTO>(mapping.createDto, createDto);
 
+		if (dtoInstance.display) {
+			const display = await this.displaysService.findOne(dtoInstance.display);
+
+			if (display === null) {
+				this.logger.error(`[VALIDATION FAILED] Page display with id ${dtoInstance.display} is not found`);
+
+				throw new DashboardValidationException('Provided page display identifier is invalid.');
+			}
+		} else {
+			const display = await this.displaysService.findPrimary();
+
+			if (display === null) {
+				this.logger.error(`[VALIDATION FAILED] Primary display is missing in system`);
+
+				throw new DashboardValidationException('Primary display is not configured.');
+			}
+
+			dtoInstance.display = display.id;
+		}
+
 		const repository: Repository<TPage> = this.dataSource.getRepository(mapping.class);
 
-		const page = plainToInstance(mapping.class, dtoInstance, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
-		});
+		const page = toInstance(mapping.class, dtoInstance);
 
 		for (const builder of this.nestedCreateBuilders.getBuilders()) {
 			if (builder.supports(dtoInstance)) {
@@ -106,15 +128,7 @@ export class PagesService {
 			const dataSourceRepository: Repository<DataSourceEntity> = this.dataSource.getRepository(dataSourceMapping.class);
 
 			return dataSourceRepository.create(
-				plainToInstance(
-					dataSourceMapping.class,
-					{ ...createDataSourceDto, parentType: 'page', parentId: page.id },
-					{
-						enableImplicitConversion: true,
-						excludeExtraneousValues: true,
-						exposeUnsetFields: false,
-					},
-				),
+				toInstance(dataSourceMapping.class, { ...createDataSourceDto, parentType: 'page', parentId: page.id }),
 			);
 		});
 
@@ -145,19 +159,19 @@ export class PagesService {
 
 		const dtoInstance = await this.validateDto<TUpdateDTO>(mapping.updateDto, updateDto);
 
+		if (dtoInstance.display) {
+			const display = await this.displaysService.findOne(dtoInstance.display);
+
+			if (display === null) {
+				this.logger.error(`[VALIDATION FAILED] Page display with id ${dtoInstance.display} is not found`);
+
+				throw new DashboardValidationException('Provided page display identifier is invalid.');
+			}
+		}
+
 		const repository: Repository<TPage> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(
-			page,
-			omitBy(
-				plainToInstance(mapping.class, dtoInstance, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeDefaultValues: false,
-				}),
-				isUndefined,
-			),
-		);
+		Object.assign(page, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
 
 		await repository.save(page);
 
@@ -195,15 +209,14 @@ export class PagesService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

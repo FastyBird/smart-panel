@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceCategory } from '../devices.constants';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
@@ -58,20 +59,20 @@ describe('DevicesControlsController', () => {
 				{
 					provide: DevicesService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockDevice]),
-						findOne: jest.fn().mockResolvedValue(mockDevice),
-						create: jest.fn().mockResolvedValue(mockDevice),
-						update: jest.fn().mockResolvedValue(mockDevice),
+						findAll: jest.fn().mockResolvedValue([toInstance(DeviceEntity, mockDevice)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
+						create: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
+						update: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{
 					provide: DevicesControlsService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockDeviceControl]),
-						findOne: jest.fn().mockResolvedValue(mockDeviceControl),
-						findOneByName: jest.fn().mockResolvedValue(mockDeviceControl),
-						create: jest.fn().mockResolvedValue(mockDeviceControl),
+						findAll: jest.fn().mockResolvedValue([toInstance(DeviceControlEntity, mockDeviceControl)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(DeviceControlEntity, mockDeviceControl)),
+						findOneByName: jest.fn().mockResolvedValue(toInstance(DeviceControlEntity, mockDeviceControl)),
+						create: jest.fn().mockResolvedValue(toInstance(DeviceControlEntity, mockDeviceControl)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -95,14 +96,14 @@ describe('DevicesControlsController', () => {
 		it('should return all device controls for a device', async () => {
 			const result = await controller.findAll(mockDevice.id);
 
-			expect(result).toEqual([mockDeviceControl]);
+			expect(result).toEqual([toInstance(DeviceControlEntity, mockDeviceControl)]);
 			expect(devicesControlsService.findAll).toHaveBeenCalledWith(mockDevice.id);
 		});
 
 		it('should return a single device control for a device', async () => {
 			const result = await controller.findOneControl(mockDevice.id, mockDeviceControl.id);
 
-			expect(result).toEqual(mockDeviceControl);
+			expect(result).toEqual(toInstance(DeviceControlEntity, mockDeviceControl));
 			expect(devicesControlsService.findOne).toHaveBeenCalledWith(mockDeviceControl.id, mockDevice.id);
 		});
 
@@ -111,7 +112,7 @@ describe('DevicesControlsController', () => {
 
 			const result = await controller.create(mockDevice.id, { data: createDto });
 
-			expect(result).toEqual(mockDeviceControl);
+			expect(result).toEqual(toInstance(DeviceControlEntity, mockDeviceControl));
 			expect(devicesControlsService.create).toHaveBeenCalledWith(mockDevice.id, createDto);
 		});
 

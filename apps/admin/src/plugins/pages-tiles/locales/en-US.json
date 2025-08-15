@@ -41,7 +41,8 @@
       "editDataSource": "Edit page data source"
     },
     "misc": {
-      "discard": "Discard changes?"
+      "discard": "Discard changes?",
+      "tip": "Tip"
     }
   },
   "subHeadings": {
@@ -56,7 +57,8 @@
   },
   "texts": {
     "misc": {
-      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?"
+      "confirmDiscard": "You have unsaved changes. Are you sure you want to discard them?",
+      "gridLayoutTip": "You can change how many tiles fit on the page — set Rows and Columns or choose a Tile size."
     }
   },
   "buttons": {
@@ -92,6 +94,23 @@
     },
     "addPageDataSource": {
       "title": "Add page data source"
+    }
+  },
+  "fields": {
+    "rows": {
+      "title": "Rows",
+      "placeholder": "Rows count",
+      "description": "Optional page rows count"
+    },
+    "cols": {
+      "title": "Cols",
+      "placeholder": "Cols count",
+      "description": "Optional page columns count"
+    },
+    "tileSize": {
+      "title": "Tile size",
+      "placeholder": "Tile size",
+      "description": "Optional tile size"
     }
   }
 }

@@ -6,20 +6,22 @@ import { FactoryResetRegistryService } from '../system/services/factory-reset-re
 import { SystemModule } from '../system/system.module';
 
 import { ListUsersCommand } from './commands/list-users.command';
+import { DisplaysInstancesController } from './controllers/displays-instances.controller';
 import { UsersController } from './controllers/users.controller';
-import { DisplayEntity, UserEntity } from './entities/users.entity';
+import { DisplayInstanceEntity, UserEntity } from './entities/users.entity';
 import { RolesGuard } from './guards/roles.guard';
-import { DisplaysService } from './services/displays.service';
+import { DisplaysInstancesService } from './services/displays-instances.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { UsersService } from './services/users.service';
+import { SystemDisplayEntitySubscriber } from './subscribers/system-display-entity.subscriber';
 import { USERS_MODULE_NAME } from './users.constants';
 import { UserExistsConstraintValidator } from './validators/user-exists-constraint.validator';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([UserEntity, DisplayEntity]), SystemModule],
+	imports: [TypeOrmModule.forFeature([UserEntity, DisplayInstanceEntity]), SystemModule],
 	providers: [
 		UsersService,
-		DisplaysService,
+		DisplaysInstancesService,
 		UserExistsConstraintValidator,
 		ListUsersCommand,
 		{
@@ -27,9 +29,10 @@ import { UserExistsConstraintValidator } from './validators/user-exists-constrai
 			useClass: RolesGuard,
 		},
 		ModuleResetService,
+		SystemDisplayEntitySubscriber,
 	],
-	controllers: [UsersController],
-	exports: [UsersService, DisplaysService, UserExistsConstraintValidator],
+	controllers: [UsersController, DisplaysInstancesController],
+	exports: [UsersService, DisplaysInstancesService, UserExistsConstraintValidator],
 })
 export class UsersModule {
 	constructor(
@@ -40,10 +43,10 @@ export class UsersModule {
 	onModuleInit() {
 		this.factoryResetRegistry.register(
 			USERS_MODULE_NAME,
-			300,
 			async (): Promise<{ success: boolean; reason?: string }> => {
 				return this.moduleReset.reset();
 			},
+			300,
 		);
 	}
 }

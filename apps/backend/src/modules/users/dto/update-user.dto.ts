@@ -18,7 +18,8 @@ export class UpdateUserDto implements UpdateUser {
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
-	password?: string;
+	@ValidateIf((_, value) => value !== null)
+	password?: string | null;
 
 	@Expose()
 	@IsOptional()

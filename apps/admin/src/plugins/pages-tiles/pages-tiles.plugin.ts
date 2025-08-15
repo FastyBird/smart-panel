@@ -15,9 +15,11 @@ import {
 	type IPagePluginsSchemas,
 } from '../../modules/dashboard';
 
+import { TilesPageAddForm, TilesPageEditForm } from './components/components';
 import enUS from './locales/en-US.json';
 import { RouteNames } from './pages-tiles.constants';
 import { PluginRoutes } from './router';
+import { TilesPageAddFormSchema, TilesPageEditFormSchema } from './schemas/pages.schemas';
 import { TilesPageCreateReqSchema, TilesPageSchema, TilesPageUpdateReqSchema } from './store/pages.store.schemas';
 
 export const pagesTilesPluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes>> =
@@ -52,9 +54,14 @@ export default {
 				devDocumentation: 'http://www.fastybird.com',
 				bugsTracking: 'http://www.fastybird.com',
 			},
-			components: {},
+			components: {
+				pageAddForm: TilesPageAddForm,
+				pageEditForm: TilesPageEditForm,
+			},
 			schemas: {
 				pageSchema: TilesPageSchema,
+				pageAddFormSchema: TilesPageAddFormSchema,
+				pageEditFormSchema: TilesPageEditFormSchema,
 				pageCreateReqSchema: TilesPageCreateReqSchema,
 				pageUpdateReqSchema: TilesPageUpdateReqSchema,
 			},

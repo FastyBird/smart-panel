@@ -1,8 +1,7 @@
-import { plainToInstance } from 'class-transformer';
-
 import { Body, Controller, HttpCode, Logger, Put } from '@nestjs/common';
 
 import { SkipApplicationInterceptor } from '../../../common/interceptors/response.interceptor';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
@@ -61,9 +60,6 @@ export class ThirdPartyDemoController {
 			}, 500);
 		}
 
-		return plainToInstance(ThirdPartyDemoControlModel, response, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
-		});
+		return toInstance(ThirdPartyDemoControlModel, response);
 	}
 }

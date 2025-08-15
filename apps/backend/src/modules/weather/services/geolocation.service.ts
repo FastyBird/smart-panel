@@ -1,9 +1,9 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import fetch from 'node-fetch';
 
 import { Injectable, Logger } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { SectionType } from '../../config/config.constants';
 import { WeatherConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
@@ -41,7 +41,11 @@ export class GeolocationService {
 				return null;
 			}
 
-			const locations = data.map((item) => plainToInstance(GeolocationDto, item, { excludeExtraneousValues: true }));
+			const locations = data.map((item) =>
+				toInstance(GeolocationDto, item, {
+					excludeExtraneousValues: false,
+				}),
+			);
 
 			const errors = await Promise.all(locations.map((location) => validate(location)));
 
@@ -79,7 +83,11 @@ export class GeolocationService {
 				return null;
 			}
 
-			const locations = data.map((item) => plainToInstance(GeolocationDto, item, { excludeExtraneousValues: true }));
+			const locations = data.map((item) =>
+				toInstance(GeolocationDto, item, {
+					excludeExtraneousValues: false,
+				}),
+			);
 
 			const errors = await Promise.all(locations.map((location) => validate(location)));
 

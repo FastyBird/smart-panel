@@ -18,6 +18,12 @@ export abstract class TokenEntity extends BaseEntity {
 
 	@IsNotEmpty()
 	@IsString()
+	@Transform(
+		({ obj }: { obj: { hashed_token?: string; hashedToken?: string } }) => {
+			return obj.hashed_token || obj.hashedToken;
+		},
+		{ toClassOnly: true },
+	)
 	@Index()
 	@Column()
 	hashedToken: string;
@@ -42,7 +48,7 @@ export abstract class TokenEntity extends BaseEntity {
 	@IsBoolean()
 	@Index()
 	@Column({ default: false })
-	revoked: boolean = false;
+	revoked: boolean;
 
 	@Expose()
 	get type(): string {

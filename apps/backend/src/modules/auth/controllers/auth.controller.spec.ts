@@ -6,18 +6,21 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { plainToInstance } from 'class-transformer';
 import { v4 as uuid } from 'uuid';
 
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { DisplayEntity, UserEntity } from '../../users/entities/users.entity';
-import { DisplaysService } from '../../users/services/displays.service';
+import { toInstance } from '../../../common/utils/transform.utils';
+import { DisplayInstanceEntity, UserEntity } from '../../users/entities/users.entity';
+import { DisplaysInstancesService } from '../../users/services/displays-instances.service';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
+import { CheckEmailDto } from '../dto/check-email.dto';
 import { CheckResponseDto } from '../dto/check-response.dto';
+import { CheckUsernameDto } from '../dto/check-username.dto';
 import { LoggedInResponseDto } from '../dto/logged-in-response.dto';
+import { LoginDto } from '../dto/login.dto';
 import { ReqRegisterDisplayDto } from '../dto/register-display.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { RegisteredDisplayResponseDto } from '../dto/registered-display-response.dto';
@@ -31,7 +34,7 @@ describe('AuthController', () => {
 	let authService: AuthService;
 	let cryptoService: CryptoService;
 	let usersService: UsersService;
-	let displayService: DisplaysService;
+	let displayService: DisplaysInstancesService;
 
 	const displayUid = uuid.toString();
 
@@ -63,7 +66,7 @@ describe('AuthController', () => {
 					},
 				},
 				{
-					provide: DisplaysService,
+					provide: DisplaysInstancesService,
 					useValue: {
 						findForUser: jest.fn(),
 						create: jest.fn(),
@@ -76,7 +79,13 @@ describe('AuthController', () => {
 		authService = module.get<AuthService>(AuthService);
 		cryptoService = module.get<CryptoService>(CryptoService);
 		usersService = module.get<UsersService>(UsersService);
-		displayService = module.get<DisplaysService>(DisplaysService);
+		displayService = module.get<DisplaysInstancesService>(DisplaysInstancesService);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -89,8 +98,8 @@ describe('AuthController', () => {
 
 	describe('login', () => {
 		it('should return a valid token', async () => {
-			const loginDto = { username: 'testuser', password: 'password' };
-			const expectedResponse = plainToInstance(LoggedInResponseDto, { accessToken: 'valid-token' });
+			const loginDto: LoginDto = { username: 'testuser', password: 'password' };
+			const expectedResponse = toInstance(LoggedInResponseDto, { accessToken: 'valid-token' });
 
 			jest.spyOn(authService, 'login').mockResolvedValue(expectedResponse);
 
@@ -112,14 +121,14 @@ describe('AuthController', () => {
 
 	describe('registerDisplay', () => {
 		it('should register a display when no display user exists', async () => {
-			const expectedResponse = plainToInstance(RegisteredDisplayResponseDto, { secret: 'secure-password' });
+			const expectedResponse = toInstance(RegisteredDisplayResponseDto, { secret: 'secure-password' });
 
 			const displayId = uuid().toString();
 
 			jest.spyOn(cryptoService, 'generateSecureSecret').mockReturnValue('secure-password');
 			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(null);
 			jest.spyOn(authService, 'register').mockResolvedValue(
-				plainToInstance(UserEntity, {
+				toInstance(UserEntity, {
 					id: displayId,
 					isHidden: false,
 					username: displayUid,
@@ -133,7 +142,7 @@ describe('AuthController', () => {
 				}),
 			);
 			jest.spyOn(displayService, 'create').mockResolvedValue(
-				plainToInstance(DisplayEntity, {
+				toInstance(DisplayInstanceEntity, {
 					id: displayId,
 					uid: displayUid,
 					mac: '00:1A:2B:3C:4D:5E',
@@ -184,7 +193,7 @@ describe('AuthController', () => {
 		});
 
 		it('should throw ForbiddenException if display user already exists', async () => {
-			jest.spyOn(usersService, 'findByUsername').mockResolvedValue({ username: displayUid } as UserEntity);
+			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(toInstance(UserEntity, { username: displayUid }));
 
 			await expect(
 				controller.registerDisplay('FlutterApp', {
@@ -201,7 +210,7 @@ describe('AuthController', () => {
 
 	describe('checkUsername', () => {
 		it('should check username availability', async () => {
-			const username = { username: 'testuser' };
+			const username: CheckUsernameDto = { username: 'testuser' };
 			const expectedResponse: CheckResponseDto = { valid: true };
 
 			jest.spyOn(authService, 'checkUsername').mockResolvedValue(expectedResponse);
@@ -213,7 +222,7 @@ describe('AuthController', () => {
 
 	describe('checkEmail', () => {
 		it('should check email availability', async () => {
-			const email = { email: 'test@example.com' };
+			const email: CheckEmailDto = { email: 'test@example.com' };
 			const expectedResponse: CheckResponseDto = { valid: true };
 
 			jest.spyOn(authService, 'checkEmail').mockResolvedValue(expectedResponse);

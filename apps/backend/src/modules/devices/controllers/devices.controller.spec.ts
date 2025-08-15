@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceCategory } from '../devices.constants';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
@@ -49,10 +50,10 @@ describe('DevicesController', () => {
 				{
 					provide: DevicesService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockDevice]),
-						findOne: jest.fn().mockResolvedValue(mockDevice),
-						create: jest.fn().mockResolvedValue(mockDevice),
-						update: jest.fn().mockResolvedValue(mockDevice),
+						findAll: jest.fn().mockResolvedValue([toInstance(DeviceEntity, mockDevice)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
+						create: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
+						update: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -74,14 +75,14 @@ describe('DevicesController', () => {
 		it('should return all devices', async () => {
 			const result = await controller.findAll();
 
-			expect(result).toEqual([mockDevice]);
+			expect(result).toEqual([toInstance(DeviceEntity, mockDevice)]);
 			expect(service.findAll).toHaveBeenCalled();
 		});
 
 		it('should return a single device', async () => {
 			const result = await controller.findOne(mockDevice.id);
 
-			expect(result).toEqual(mockDevice);
+			expect(result).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.findOne).toHaveBeenCalledWith(mockDevice.id);
 		});
 
@@ -101,7 +102,7 @@ describe('DevicesController', () => {
 
 			const result = await controller.create({ data: createDto });
 
-			expect(result).toEqual(mockDevice);
+			expect(result).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.create).toHaveBeenCalledWith(createDto);
 		});
 
@@ -120,7 +121,7 @@ describe('DevicesController', () => {
 
 			const result = await controller.update(mockDevice.id, { data: updateDto });
 
-			expect(result).toEqual(mockDevice);
+			expect(result).toEqual(toInstance(DeviceEntity, mockDevice));
 			expect(service.update).toHaveBeenCalledWith(mockDevice.id, updateDto);
 		});
 

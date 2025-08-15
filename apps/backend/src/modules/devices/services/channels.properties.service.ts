@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
@@ -8,6 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -147,6 +147,7 @@ export class ChannelsPropertiesService {
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {
@@ -160,18 +161,10 @@ export class ChannelsPropertiesService {
 		const repository: Repository<TProperty> = this.dataSource.getRepository(mapping.class);
 
 		const property = repository.create(
-			plainToInstance(
-				mapping.class,
-				{
-					...dtoInstance,
-					channel: channelId,
-				},
-				{
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				},
-			),
+			toInstance(mapping.class, {
+				...dtoInstance,
+				channel: channelId,
+			}),
 		);
 
 		// Save the property
@@ -210,17 +203,7 @@ export class ChannelsPropertiesService {
 
 		const repository: Repository<TProperty> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(
-			property,
-			omitBy(
-				plainToInstance(mapping.class, dtoInstance, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeDefaultValues: false,
-				}),
-				isUndefined,
-			),
-		);
+		Object.assign(property, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
 
 		const raw = await repository.save(property as TProperty);
 
@@ -268,15 +251,14 @@ export class ChannelsPropertiesService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

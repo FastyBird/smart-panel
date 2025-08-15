@@ -7,10 +7,10 @@ export enum EventType {
 	USER_UPDATED = 'UsersModule.User.Updated',
 	USER_DELETED = 'UsersModule.User.Deleted',
 	USER_RESET = 'UsersModule.User.Reset',
-	DISPLAY_CREATED = 'UsersModule.Display.Created',
-	DISPLAY_UPDATED = 'UsersModule.Display.Updated',
-	DISPLAY_DELETED = 'UsersModule.Display.Deleted',
-	DISPLAY_RESET = 'UsersModule.Display.Reset',
+	DISPLAY_INSTANCE_CREATED = 'UsersModule.DisplayInstance.Created',
+	DISPLAY_INSTANCE_UPDATED = 'UsersModule.DisplayInstance.Updated',
+	DISPLAY_INSTANCE_DELETED = 'UsersModule.DisplayInstance.Deleted',
+	DISPLAY_INSTANCE_RESET = 'UsersModule.DisplayInstance.Reset',
 	MODULE_RESET = 'UsersModule.All.Reset',
 }
 

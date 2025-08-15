@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AuthException } from '../auth.exceptions';
@@ -20,6 +21,12 @@ describe('TokensTypeMapperService', () => {
 		}).compile();
 
 		service = module.get<TokensTypeMapperService>(TokensTypeMapperService);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {

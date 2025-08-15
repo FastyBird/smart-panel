@@ -25,7 +25,6 @@ export class ConfigModule {
 	onModuleInit() {
 		this.factoryResetRegistry.register(
 			CONFIG_MODULE_NAME,
-			500,
 			async (): Promise<{ success: boolean; reason?: string }> => {
 				await this.configService.resetConfig();
 
@@ -33,6 +32,7 @@ export class ConfigModule {
 					success: true,
 				};
 			},
+			500,
 		);
 	}
 }

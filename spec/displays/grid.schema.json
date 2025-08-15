@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grid Configuration",
+  "type": "object",
+  "properties": {
+    "defaultScalingFactor": {
+      "type": "number",
+      "description": "Base scaling factor for calculating unit size."
+    },
+    "fallbackDivisor": {
+      "type": "integer",
+      "description": "Divisor used when no breakpoint matches.",
+      "minimum": 1
+    },
+    "minUnitSize": {
+      "type": "number",
+      "description": "Minimum allowed unit size in pixels."
+    },
+    "maxUnitSize": {
+      "type": "number",
+      "description": "Maximum allowed unit size in pixels."
+    },
+    "defaultRows": {
+      "type": "integer",
+      "description": "Default number of grid rows.",
+      "minimum": 1
+    },
+    "defaultCols": {
+      "type": "integer",
+      "description": "Default number of grid columns.",
+      "minimum": 1
+    },
+    "scaleAdjustments": {
+      "type": "object",
+      "description": "Scale multipliers for various density settings.",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "breakpoints": {
+      "type": "array",
+      "description": "List of breakpoints based on screen width.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "maxWidth": {
+            "type": "number",
+            "description": "Maximum screen width for this breakpoint."
+          },
+          "divisor": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Divisor used to calculate unit size."
+          }
+        },
+        "required": ["maxWidth", "divisor"]
+      }
+    },
+    "orientationOverrides": {
+      "type": "object",
+      "description": "Overrides for portrait and landscape orientations.",
+      "properties": {
+        "portrait": {
+          "type": "array",
+          "items": { "$ref": "#/properties/breakpoints/items" }
+        },
+        "landscape": {
+          "type": "array",
+          "items": { "$ref": "#/properties/breakpoints/items" }
+        }
+      }
+    },
+    "dpiBreakpoints": {
+      "type": "array",
+      "description": "Adjustments based on display DPI.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "minDpi": {
+            "type": "number",
+            "description": "Minimum DPI for this adjustment."
+          },
+          "factor": {
+            "type": "number",
+            "description": "Multiplier to apply to unit size."
+          }
+        },
+        "required": ["minDpi", "factor"]
+      }
+    }
+  },
+  "required": ["defaultScalingFactor", "breakpoints"]
+}

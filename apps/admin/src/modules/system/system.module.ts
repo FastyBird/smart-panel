@@ -11,7 +11,8 @@ import { injectSockets, injectStoresManager } from '../../common';
 import enUS from './locales/en-US.json';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
 import { SystemActionsService, provideSystemActionsService } from './services/system-actions-service';
-import { systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
+import { registerDisplaysProfilesStore } from './store/displays-profiles.store';
+import { displaysStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
 import { registerSystemInfoStore } from './store/system-info.store';
 import { registerThrottleStatusStore } from './store/throttle-status.store';
 import { EventType, SYSTEM_MODULE_EVENT_PREFIX } from './system.constants';
@@ -37,6 +38,15 @@ export default {
 
 		app.provide(throttleStatusStoreKey, throttleStatusStore);
 		storesManager.addStore(throttleStatusStoreKey, throttleStatusStore);
+
+		ModuleMaintenanceRoutes.forEach((route): void => {
+			options.router.addRoute(route);
+		});
+
+		const displaysStore = registerDisplaysProfilesStore(options.store);
+
+		app.provide(displaysStoreKey, displaysStore);
+		storesManager.addStore(displaysStoreKey, displaysStore);
 
 		ModuleMaintenanceRoutes.forEach((route): void => {
 			options.router.addRoute(route);

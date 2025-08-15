@@ -8,8 +8,10 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { useContainer } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, DeviceCategory } from '../devices.constants';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { CreateDeviceChannelDto } from '../dto/create-device-channel.dto';
@@ -70,20 +72,20 @@ describe('DevicesChannelsController', () => {
 				{
 					provide: DevicesService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockDevice]),
-						findOne: jest.fn().mockResolvedValue(mockDevice),
-						create: jest.fn().mockResolvedValue(mockDevice),
-						update: jest.fn().mockResolvedValue(mockDevice),
+						findAll: jest.fn().mockResolvedValue([toInstance(DeviceEntity, mockDevice)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
+						create: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
+						update: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{
 					provide: ChannelsService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockChannel]),
-						findOne: jest.fn().mockResolvedValue(mockChannel),
-						create: jest.fn().mockResolvedValue(mockChannel),
-						update: jest.fn().mockResolvedValue(mockChannel),
+						findAll: jest.fn().mockResolvedValue([toInstance(ChannelEntity, mockChannel)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),
+						create: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),
+						update: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -96,6 +98,12 @@ describe('DevicesChannelsController', () => {
 		devicesService = module.get<DevicesService>(DevicesService);
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		mapper = module.get<ChannelsTypeMapperService>(ChannelsTypeMapperService);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -109,14 +117,14 @@ describe('DevicesChannelsController', () => {
 		it('should return all device channels for a device', async () => {
 			const result = await controller.findAll(mockDevice.id);
 
-			expect(result).toEqual([mockChannel]);
+			expect(result).toEqual([toInstance(ChannelEntity, mockChannel)]);
 			expect(channelsService.findAll).toHaveBeenCalledWith(mockDevice.id);
 		});
 
 		it('should return a single device channel for a device', async () => {
 			const result = await controller.findOne(mockDevice.id, mockChannel.id);
 
-			expect(result).toEqual(mockChannel);
+			expect(result).toEqual(toInstance(ChannelEntity, mockChannel));
 			expect(channelsService.findOne).toHaveBeenCalledWith(mockChannel.id, mockDevice.id);
 		});
 
@@ -136,7 +144,7 @@ describe('DevicesChannelsController', () => {
 
 			const result = await controller.create(mockDevice.id, { data: createDto });
 
-			expect(result).toEqual(mockChannel);
+			expect(result).toEqual(toInstance(ChannelEntity, mockChannel));
 			expect(channelsService.create).toHaveBeenCalledWith({ ...createDto, device: mockDevice.id });
 		});
 

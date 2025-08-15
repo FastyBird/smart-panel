@@ -174,12 +174,8 @@ export const TileCreateReqSchema: ZodType<ApiCreateTile & { parent: { type: stri
 	data_source: z.array(DataSourceCreateReqSchema).optional(),
 });
 
-export const TileUpdateReqSchema: ZodType<ApiUpdateTile & { parent: { type: string; id: string } }> = z.object({
+export const TileUpdateReqSchema: ZodType<ApiUpdateTile> = z.object({
 	type: z.string().trim().nonempty(),
-	parent: z.object({
-		id: z.string().uuid(),
-		type: z.string().trim().nonempty(),
-	}),
 	row: z.number().optional(),
 	col: z.number().optional(),
 	row_span: z.number().optional(),

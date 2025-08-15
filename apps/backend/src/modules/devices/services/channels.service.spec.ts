@@ -7,7 +7,6 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { plainToInstance } from 'class-transformer';
 import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString, useContainer } from 'class-validator';
 import { DataSource, Repository } from 'typeorm';
@@ -18,6 +17,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, DeviceCategory, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
@@ -178,6 +178,10 @@ describe('ChannelsService', () => {
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(service).toBeDefined();
 		expect(repository).toBeDefined();
@@ -190,13 +194,11 @@ describe('ChannelsService', () => {
 		it('should return all channels', async () => {
 			const mockChannels: MockChannel[] = [mockChannel];
 
-			jest
-				.spyOn(repository, 'find')
-				.mockResolvedValue(mockChannels.map((entity) => plainToInstance(MockChannel, entity)));
+			jest.spyOn(repository, 'find').mockResolvedValue(mockChannels.map((entity) => toInstance(MockChannel, entity)));
 
 			const result = await service.findAll();
 
-			expect(result).toEqual(mockChannels.map((entity) => plainToInstance(MockChannel, entity)));
+			expect(result).toEqual(mockChannels.map((entity) => toInstance(MockChannel, entity)));
 			expect(repository.find).toHaveBeenCalledWith({
 				relations: ['device', 'controls', 'controls.channel', 'properties', 'properties.channel'],
 			});
@@ -209,14 +211,14 @@ describe('ChannelsService', () => {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockChannel, mockChannel)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockChannel, mockChannel)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.findOne(mockChannel.id);
 
-			expect(result).toEqual(plainToInstance(MockChannel, mockChannel));
+			expect(result).toEqual(toInstance(MockChannel, mockChannel));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id: mockChannel.id });
 		});
 
@@ -252,7 +254,6 @@ describe('ChannelsService', () => {
 				type: createDto.type,
 				category: createDto.category,
 				name: createDto.name,
-				description: null,
 				device: createDto.device,
 				mockValue: createDto.mock_value,
 			};
@@ -279,33 +280,27 @@ describe('ChannelsService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest.spyOn(repository, 'create').mockReturnValue(mockCreatedChannel);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCreatedChannel);
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(ChannelEntity, mockCreatedChannel));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelEntity, mockCreatedChannel));
 
 			const queryBuilderMock: any = {
 				innerJoinAndSelect: jest.fn().mockReturnThis(),
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockChannel, mockCreatedChannel)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockChannel, mockCreatedChannel)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await service.create(createDto);
 
-			expect(result).toEqual(plainToInstance(MockChannel, mockCreatedChannel));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(MockChannel, mockCreateChannel, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCreatedChannel);
+			expect(result).toEqual(toInstance(MockChannel, mockCreatedChannel));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(MockChannel, mockCreateChannel));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(ChannelEntity, mockCreatedChannel));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id: mockCreatedChannel.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CREATED,
-				plainToInstance(MockChannel, mockCreatedChannel),
+				toInstance(MockChannel, mockCreatedChannel),
 			);
 		});
 
@@ -368,37 +363,34 @@ describe('ChannelsService', () => {
 				where: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
-					.mockResolvedValueOnce(plainToInstance(MockChannel, mockChannel))
-					.mockResolvedValueOnce(plainToInstance(MockChannel, mockUpdatedChannel)),
+					.mockResolvedValueOnce(toInstance(MockChannel, mockChannel))
+					.mockResolvedValueOnce(toInstance(MockChannel, mockUpdatedChannel)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedChannel);
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelEntity, mockUpdatedChannel));
 
 			const result = await service.update(mockChannel.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(MockChannel, mockUpdatedChannel));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockChannel, mockUpdateChannel));
+			expect(result).toEqual(toInstance(MockChannel, mockUpdatedChannel));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockChannel, mockUpdateChannel));
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('channel.id = :id', { id: mockChannel.id });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_UPDATED,
-				plainToInstance(MockChannel, mockUpdatedChannel),
+				toInstance(MockChannel, mockUpdatedChannel),
 			);
 		});
 	});
 
 	describe('remove', () => {
 		it('should remove a channel', async () => {
-			jest.spyOn(service, 'findOne').mockResolvedValue(plainToInstance(MockChannel, mockChannel));
+			jest.spyOn(service, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 			jest.spyOn(repository, 'delete');
 
 			await service.remove(mockChannel.id);
 
 			expect(repository.delete).toHaveBeenCalledWith(mockChannel.id);
-			expect(eventEmitter.emit).toHaveBeenCalledWith(
-				EventType.CHANNEL_DELETED,
-				plainToInstance(MockChannel, mockChannel),
-			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_DELETED, toInstance(MockChannel, mockChannel));
 		});
 	});
 });

@@ -16,6 +16,7 @@
 			<el-input
 				v-model="signForm.username"
 				name="username"
+				@keyup.enter="handleEnterUsername"
 			/>
 		</el-form-item>
 
@@ -25,10 +26,12 @@
 			class="mb-5"
 		>
 			<el-input
+				ref="passwordInputEl"
 				v-model="signForm.password"
 				type="password"
 				name="password"
 				show-password
+				@keyup.enter="handleEnterPassword"
 			/>
 		</el-form-item>
 
@@ -47,7 +50,7 @@
 import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules } from 'element-plus';
+import { ElButton, ElForm, ElFormItem, ElInput, type FormInstance, type FormRules, type InputInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../../common';
 import { FormResult, type FormResultType } from '../../auth.constants';
@@ -77,6 +80,8 @@ const storesManager = injectStoresManager();
 const sessionStore = storesManager.getStore(sessionStoreKey);
 
 const signFormEl = ref<FormInstance | undefined>(undefined);
+
+const passwordInputEl = ref<InputInstance | undefined>(undefined);
 
 const rules = reactive<FormRules<SignInFormFields>>({
 	username: [{ required: true, message: t('authModule.fields.username.validation.required'), trigger: 'change' }],
@@ -112,6 +117,14 @@ const onSubmit = async (formEl: FormInstance | undefined): Promise<void> => {
 			}
 		}
 	});
+};
+
+const handleEnterUsername = (): void => {
+	passwordInputEl.value?.focus();
+};
+
+const handleEnterPassword = (): void => {
+	onSubmit(signFormEl.value);
 };
 
 watch(

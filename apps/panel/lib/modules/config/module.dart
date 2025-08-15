@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/modules/config/repositories/audio.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/language.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/weather.dart';
+import 'package:flutter/foundation.dart';
 
 class ConfigModuleService {
   final SocketService _socketService;
@@ -51,6 +52,12 @@ class ConfigModuleService {
       ConfigModuleConstants.configUpdatedEvent,
       _socketEventHandler,
     );
+
+    if (kDebugMode) {
+      debugPrint(
+        '[CONFIG MODULE][MODULE] Module was successfully initialized',
+      );
+    }
   }
 
   bool get isLoading => _isLoading;

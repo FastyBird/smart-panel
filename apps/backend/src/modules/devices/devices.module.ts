@@ -144,10 +144,10 @@ export class DevicesModule {
 
 		this.factoryResetRegistry.register(
 			DEVICES_MODULE_NAME,
-			200,
 			async (): Promise<{ success: boolean; reason?: string }> => {
 				return this.moduleReset.reset();
 			},
+			200,
 		);
 	}
 }

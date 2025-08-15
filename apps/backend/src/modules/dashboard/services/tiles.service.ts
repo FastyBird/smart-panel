@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
@@ -8,6 +7,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType } from '../dashboard.constants';
 import { DashboardException, DashboardNotFoundException, DashboardValidationException } from '../dashboard.exceptions';
 import { CreateDataSourceDto } from '../dto/create-data-source.dto';
@@ -147,15 +147,11 @@ export class TilesService {
 
 		const repository: Repository<TTile> = this.dataSource.getRepository(mapping.class);
 
-		const tile = plainToInstance(
-			mapping.class,
-			{ ...dtoInstance, parentType: relation.parentType, parentId: relation.parentId },
-			{
-				enableImplicitConversion: true,
-				excludeExtraneousValues: true,
-				exposeUnsetFields: false,
-			},
-		);
+		const tile = toInstance(mapping.class, {
+			...dtoInstance,
+			parentType: relation.parentType,
+			parentId: relation.parentId,
+		});
 
 		for (const builder of this.nestedCreateBuilders.getBuilders()) {
 			if (builder.supports(dtoInstance)) {
@@ -169,15 +165,7 @@ export class TilesService {
 			const dataSourceRepository: Repository<DataSourceEntity> = this.dataSource.getRepository(dataSourceMapping.class);
 
 			return dataSourceRepository.create(
-				plainToInstance(
-					dataSourceMapping.class,
-					{ ...createDataSourceDto, parentType: 'tile', parentId: tile.id },
-					{
-						enableImplicitConversion: true,
-						excludeExtraneousValues: true,
-						exposeUnsetFields: false,
-					},
-				),
+				toInstance(dataSourceMapping.class, { ...createDataSourceDto, parentType: 'tile', parentId: tile.id }),
 			);
 		});
 
@@ -210,17 +198,7 @@ export class TilesService {
 
 		const repository: Repository<TTile> = this.dataSource.getRepository(mapping.class);
 
-		Object.assign(
-			tile,
-			omitBy(
-				plainToInstance(mapping.class, dtoInstance, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeDefaultValues: false,
-				}),
-				isUndefined,
-			),
-		);
+		Object.assign(tile, omitBy(toInstance(mapping.class, dtoInstance), isUndefined));
 
 		await repository.save(tile);
 
@@ -260,15 +238,14 @@ export class TilesService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

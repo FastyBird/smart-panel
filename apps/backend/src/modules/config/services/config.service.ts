@@ -1,4 +1,4 @@
-import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { instanceToPlain } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -9,6 +9,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { PlatformService } from '../../platform/services/platform.service';
 import { EventType, SectionType } from '../config.constants';
 import { ConfigCorruptedException, ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
@@ -64,9 +65,8 @@ export class ConfigService {
 			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigModel>;
 
 			// Transform YAML data into AppConfig instance
-			const appConfigInstance = plainToInstance(AppConfigModel, parsedConfig, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const appConfigInstance = toInstance(AppConfigModel, parsedConfig, {
+				excludeExtraneousValues: false,
 			});
 			appConfigInstance.plugins = this.loadPlugins(parsedConfig);
 
@@ -74,6 +74,7 @@ export class ConfigService {
 			const errors = validateSync(appConfigInstance, {
 				whitelist: true,
 				forbidNonWhitelisted: true,
+				stopAtFirstError: false,
 			});
 
 			if (errors.length > 0) {
@@ -88,14 +89,7 @@ export class ConfigService {
 		} else {
 			this.logger.warn('[LOAD] Configuration file not found. Initializing default configuration');
 
-			const config = plainToInstance(
-				AppConfigModel,
-				{},
-				{
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				},
-			);
+			const config = toInstance(AppConfigModel, {});
 			config.plugins = this.loadPlugins({});
 
 			this.saveConfig(config);
@@ -141,34 +135,25 @@ export class ConfigService {
 			const pluginConfig = existingPlugins?.[pluginType] as object | undefined;
 
 			try {
-				const instance = plainToInstance(
+				const instance = toInstance(
 					mapping.class,
 					{ ...pluginConfig, type: pluginType }, // if pluginConfig is undefined, it still works
 					{
-						enableImplicitConversion: true,
-						exposeUnsetFields: false,
+						excludeExtraneousValues: false,
 					},
 				);
 
 				const errors = validateSync(instance, {
 					whitelist: true,
 					forbidNonWhitelisted: true,
+					stopAtFirstError: false,
 				});
 
 				if (errors.length > 0) {
 					this.logger.warn(`[VALIDATION] Plugin '${pluginType}' is invalid, initializing with defaults`);
 
 					// If validation fails, still push a default
-					pluginsArray.push(
-						plainToInstance(
-							mapping.class,
-							{},
-							{
-								enableImplicitConversion: true,
-								exposeUnsetFields: false,
-							},
-						),
-					);
+					pluginsArray.push(toInstance(mapping.class, {}));
 
 					continue;
 				}
@@ -199,12 +184,11 @@ export class ConfigService {
 			throw new ConfigNotFoundException(`Configuration section '${key}' not found.`);
 		}
 
-		const instance = plainToInstance(type, instanceToPlain(configSection), {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
+		const instance = toInstance(type, instanceToPlain(configSection), {
+			excludeExtraneousValues: false,
 		});
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true });
+		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
 
 		if (errors.length > 0) {
 			this.logger.error(`[VALIDATION] Configuration section=${key} is corrupted error=${JSON.stringify(errors)}`);
@@ -232,12 +216,11 @@ export class ConfigService {
 			throw new ConfigNotFoundException(`Configuration section '${key}' not found.`);
 		}
 
-		const instance = plainToInstance(type, value, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
+		const instance = toInstance(type, value, {
+			excludeExtraneousValues: false,
 		});
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true });
+		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
 
 		if (errors.length > 0) {
 			this.logger.error(`[VALIDATION] Validation failed for section=${key} error=${JSON.stringify(errors)}`);
@@ -321,12 +304,11 @@ export class ConfigService {
 			throw new ConfigNotFoundException(`Configuration plugin '${plugin}' not found.`);
 		}
 
-		const instance = plainToInstance(mapping.class, pluginConfig, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
+		const instance = toInstance(mapping.class, pluginConfig, {
+			excludeExtraneousValues: false,
 		});
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true });
+		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
 
 		if (errors.length > 0) {
 			this.logger.error(`[VALIDATION] Configuration plugin=${plugin} is corrupted error=${JSON.stringify(errors)}`);
@@ -344,12 +326,11 @@ export class ConfigService {
 
 		const existingPlugin = (this.appConfig.plugins ?? []).find((existingPlugin) => existingPlugin.type === plugin);
 
-		const instance = plainToInstance(mapping.configDto, value, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
+		const instance = toInstance(mapping.configDto, value, {
+			excludeExtraneousValues: false,
 		});
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true });
+		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
 
 		if (errors.length > 0) {
 			this.logger.error(`[VALIDATION] Validation failed for plugin=${plugin} error=${JSON.stringify(errors)}`);
@@ -365,18 +346,11 @@ export class ConfigService {
 		appConfig.plugins = (appConfig.plugins ?? []).filter((existingPlugin) => existingPlugin.type !== plugin);
 		// Add the new plugin config
 		appConfig.plugins.push(
-			plainToInstance(
-				mapping.class,
-				{
-					type: plugin,
-					...instanceToPlain(existingPlugin),
-					...instance,
-				},
-				{
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				},
-			),
+			toInstance(mapping.class, {
+				type: plugin,
+				...instanceToPlain(existingPlugin),
+				...instance,
+			}),
 		);
 
 		this.logger.log(`[SAVE] Saving updated configuration for plugin=${plugin}`);

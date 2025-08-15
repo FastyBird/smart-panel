@@ -1,7 +1,7 @@
-import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import type { components } from '../../../openapi';
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 
@@ -55,10 +55,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(DeviceEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(DeviceEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -78,10 +75,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(DeviceControlEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(DeviceControlEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -106,10 +100,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(ChannelEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(ChannelEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -129,10 +120,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(ChannelControlEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(ChannelControlEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -161,10 +149,7 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = plainToInstance(ChannelPropertyEntity, openApiModel, {
-			excludeExtraneousValues: true,
-			enableImplicitConversion: true,
-		});
+		const entityInstance = toInstance(ChannelPropertyEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 

@@ -1,18 +1,28 @@
 import { existsSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { join, resolve } from 'path';
+import { Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { EventType } from '../../users/users.constants';
+import { DisplayProfileEntity } from '../entities/system.entity';
 
 @Injectable()
 export class ModuleResetService {
 	private readonly logger = new Logger(ModuleResetService.name);
 
-	constructor(private readonly configService: NestConfigService) {}
+	constructor(
+		@InjectRepository(DisplayProfileEntity)
+		private readonly displaysRepository: Repository<DisplayProfileEntity>,
+		private readonly configService: NestConfigService,
+		private readonly eventEmitter: EventEmitter2,
+	) {}
 
-	reset(): Promise<{ success: boolean; reason?: string }> {
+	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
 			this.logger.debug(`[RESET] Resetting all module data`);
 
@@ -36,6 +46,10 @@ export class ModuleResetService {
 					this.logger.debug(`[RESET] Removed secure file: ${file}`);
 				}
 			}
+
+			await this.displaysRepository.deleteAll();
+
+			this.eventEmitter.emit(EventType.DISPLAY_INSTANCE_RESET, null);
 
 			this.logger.log('[RESET] Module data were successfully reset');
 

@@ -167,11 +167,13 @@ const propertiesOptions = computed<{ value: IChannelProperty['id']; label: strin
 });
 
 onBeforeMount((): void => {
-	fetchDevices().catch((error: unknown): void => {
-		const err = error as Error;
+	if (!loadingDevices.value) {
+		fetchDevices().catch((error: unknown): void => {
+			const err = error as Error;
 
-		throw new DashboardException('Something went wrong', err);
-	});
+			throw new DashboardException('Something went wrong', err);
+		});
+	}
 });
 
 watch(
@@ -221,11 +223,13 @@ watch(
 			return;
 		}
 
-		fetchChannels().catch((error: unknown): void => {
-			const err = error as Error;
+		if (!loadingChannels.value) {
+			fetchChannels().catch((error: unknown): void => {
+				const err = error as Error;
 
-			throw new DashboardException('Something went wrong', err);
-		});
+				throw new DashboardException('Something went wrong', err);
+			});
+		}
 	},
 	{
 		immediate: true,
@@ -239,11 +243,13 @@ watch(
 			return;
 		}
 
-		fetchProperties().catch((error: unknown): void => {
-			const err = error as Error;
+		if (!loadingProperties.value) {
+			fetchProperties().catch((error: unknown): void => {
+				const err = error as Error;
 
-			throw new DashboardException('Something went wrong', err);
-		});
+				throw new DashboardException('Something went wrong', err);
+			});
+		}
 	},
 	{
 		immediate: true,

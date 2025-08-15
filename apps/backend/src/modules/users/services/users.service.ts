@@ -1,5 +1,4 @@
 import bcrypt from 'bcrypt';
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
@@ -9,6 +8,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserEntity } from '../entities/users.entity';
@@ -70,13 +70,14 @@ export class UsersService {
 		const hashedPassword = await bcrypt.hash(dtoInstance.password, 10);
 
 		const user = this.repository.create(
-			plainToInstance(
+			toInstance(
 				UserEntity,
-				{ ...dtoInstance, password: hashedPassword },
 				{
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
+					...dtoInstance,
+					password: hashedPassword,
+					is_hidden: dtoInstance.role === UserRole.DISPLAY,
+				},
+				{
 					groups: ['internal'],
 				},
 			),
@@ -108,13 +109,10 @@ export class UsersService {
 		Object.assign(
 			user,
 			omitBy(
-				plainToInstance(
+				toInstance(
 					UserEntity,
 					{ ...dtoInstance, password: hashedPassword },
 					{
-						enableImplicitConversion: true,
-						excludeExtraneousValues: true,
-						exposeDefaultValues: false,
 						groups: ['internal'],
 					},
 				),
@@ -174,15 +172,14 @@ export class UsersService {
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {
-		const dtoInstance = plainToInstance(DtoClass, dto, {
-			enableImplicitConversion: true,
-			excludeExtraneousValues: true,
-			exposeUnsetFields: false,
+		const dtoInstance = toInstance(DtoClass, dto, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

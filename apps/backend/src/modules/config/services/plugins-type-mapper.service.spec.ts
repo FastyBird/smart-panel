@@ -23,6 +23,10 @@ describe('PluginsTypeMapperService', () => {
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(service).toBeDefined();
 	});

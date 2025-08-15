@@ -8,7 +8,6 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
-import { plainToInstance } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { useContainer } from 'class-validator';
 import { DataSource as OrmDataSource, Repository } from 'typeorm';
@@ -19,6 +18,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
 import { CreateSingleDataSourceDto } from '../dto/create-data-source.dto';
@@ -31,14 +31,14 @@ import { DataSourcesTypeMapperService } from './data-source-type-mapper.service'
 import { DataSourceService } from './data-source.service';
 
 class CreateMockDataSourceDto extends CreateSingleDataSourceDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	mockValue: string;
 }
 
 class UpdateMockDataSourceDto extends UpdateDataSourceDto {
-	@Expose()
+	@Expose({ name: 'mock_value' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -90,6 +90,7 @@ describe('DataSourceService', () => {
 		type: 'mock',
 		title: 'Tiles detail',
 		order: 0,
+		display: uuid().toString(),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		mockValue: 'Some mock value',
@@ -175,6 +176,10 @@ describe('DataSourceService', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(dataSourceService).toBeDefined();
 		expect(repository).toBeDefined();
@@ -190,16 +195,14 @@ describe('DataSourceService', () => {
 			const queryBuilderMock: any = {
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getMany: jest
-					.fn()
-					.mockResolvedValue(mockDataSources.map((entity) => plainToInstance(MockDataSourceEntity, entity))),
+				getMany: jest.fn().mockResolvedValue(mockDataSources.map((entity) => toInstance(MockDataSourceEntity, entity))),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await dataSourceService.findAll({ parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(mockDataSources.map((entity) => plainToInstance(MockDataSourceEntity, entity)));
+			expect(result).toEqual(mockDataSources.map((entity) => toInstance(MockDataSourceEntity, entity)));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('dataSource');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('dataSource.parentType = :parentType', {
@@ -217,14 +220,14 @@ describe('DataSourceService', () => {
 			const queryBuilderMock: any = {
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(plainToInstance(MockDataSourceEntity, mockDataSource)),
+				getOne: jest.fn().mockResolvedValue(toInstance(MockDataSourceEntity, mockDataSource)),
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
 
 			const result = await dataSourceService.findOne(mockDataSource.id, { parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(plainToInstance(MockDataSourceEntity, mockDataSource));
+			expect(result).toEqual(toInstance(MockDataSourceEntity, mockDataSource));
 
 			expect(repository.createQueryBuilder).toHaveBeenCalledWith('dataSource');
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('dataSource.id = :id', { id: mockDataSource.id });
@@ -292,7 +295,7 @@ describe('DataSourceService', () => {
 			const queryBuilderMock: any = {
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValueOnce(plainToInstance(MockDataSourceEntity, mockCratedDataSource)),
+				getOne: jest.fn().mockResolvedValueOnce(toInstance(MockDataSourceEntity, mockCratedDataSource)),
 			};
 
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
@@ -305,23 +308,17 @@ describe('DataSourceService', () => {
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'create').mockReturnValue(mockCratedDataSource);
-			jest.spyOn(repository, 'save').mockResolvedValue(mockCratedDataSource);
+			jest.spyOn(repository, 'create').mockReturnValue(toInstance(MockDataSourceEntity, mockCratedDataSource));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDataSourceEntity, mockCratedDataSource));
 
 			const result = await dataSourceService.create(createDto, { parentType: 'page', parentId: mockPage.id });
 
-			expect(result).toEqual(plainToInstance(MockDataSourceEntity, mockCratedDataSource));
-			expect(repository.create).toHaveBeenCalledWith(
-				plainToInstance(MockDataSourceEntity, mockCrateDataSource, {
-					enableImplicitConversion: true,
-					excludeExtraneousValues: true,
-					exposeUnsetFields: false,
-				}),
-			);
-			expect(repository.save).toHaveBeenCalledWith(mockCratedDataSource);
+			expect(result).toEqual(toInstance(MockDataSourceEntity, mockCratedDataSource));
+			expect(repository.create).toHaveBeenCalledWith(toInstance(MockDataSourceEntity, mockCrateDataSource));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockDataSourceEntity, mockCratedDataSource));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DATA_SOURCE_CREATED,
-				plainToInstance(MockDataSourceEntity, mockCratedDataSource),
+				toInstance(MockDataSourceEntity, mockCratedDataSource),
 			);
 			expect(queryBuilderMock.where).toHaveBeenCalledWith('dataSource.id = :id', { id: mockCratedDataSource.id });
 			expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('dataSource.parentType = :parentType', {
@@ -382,17 +379,17 @@ describe('DataSourceService', () => {
 
 			jest
 				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(plainToInstance(MockDataSourceEntity, mockDataSource))
-				.mockResolvedValueOnce(plainToInstance(MockDataSourceEntity, mockUpdatedDataSource));
-			jest.spyOn(repository, 'save').mockResolvedValue(mockUpdatedDataSource);
+				.mockResolvedValueOnce(toInstance(MockDataSourceEntity, mockDataSource))
+				.mockResolvedValueOnce(toInstance(MockDataSourceEntity, mockUpdatedDataSource));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockDataSourceEntity, mockUpdatedDataSource));
 
 			const result = await dataSourceService.update(mockDataSource.id, updateDto);
 
-			expect(result).toEqual(plainToInstance(MockDataSourceEntity, mockUpdatedDataSource));
-			expect(repository.save).toHaveBeenCalledWith(plainToInstance(MockDataSourceEntity, mockUpdatedDataSource));
+			expect(result).toEqual(toInstance(MockDataSourceEntity, mockUpdatedDataSource));
+			expect(repository.save).toHaveBeenCalledWith(toInstance(MockDataSourceEntity, mockUpdatedDataSource));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DATA_SOURCE_UPDATED,
-				plainToInstance(MockDataSourceEntity, mockUpdatedDataSource),
+				toInstance(MockDataSourceEntity, mockUpdatedDataSource),
 			);
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: mockDataSource.id },
@@ -402,7 +399,7 @@ describe('DataSourceService', () => {
 
 	describe('remove', () => {
 		it('should remove a data source', async () => {
-			jest.spyOn(dataSourceService, 'findOne').mockResolvedValue(plainToInstance(MockDataSourceEntity, mockDataSource));
+			jest.spyOn(dataSourceService, 'findOne').mockResolvedValue(toInstance(MockDataSourceEntity, mockDataSource));
 
 			jest.spyOn(repository, 'delete');
 
@@ -411,7 +408,7 @@ describe('DataSourceService', () => {
 			expect(repository.delete).toHaveBeenCalledWith(mockDataSource.id);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DATA_SOURCE_DELETED,
-				plainToInstance(MockDataSourceEntity, mockDataSource),
+				toInstance(MockDataSourceEntity, mockDataSource),
 			);
 		});
 	});

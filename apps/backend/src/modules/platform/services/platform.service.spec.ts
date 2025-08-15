@@ -10,7 +10,10 @@ import si, { Systeminformation } from 'systeminformation';
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { NetworkStatsDto } from '../dto/network-stats.dto';
 import { SystemInfoDto } from '../dto/system-info.dto';
+import { TemperatureDto } from '../dto/temperature.dto';
 import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { GenericPlatform } from '../platforms/generic.platform';
 import { RaspberryPlatform } from '../platforms/raspberry.platform';
@@ -80,41 +83,45 @@ describe('PlatformService', () => {
 
 		it('should delegate getSystemInfo to platform', async () => {
 			const mockSystemInfo = { cpuLoad: 10 };
-			jest.spyOn(service['platform'], 'getSystemInfo').mockResolvedValue(mockSystemInfo as SystemInfoDto);
+			jest.spyOn(service['platform'], 'getSystemInfo').mockResolvedValue(toInstance(SystemInfoDto, mockSystemInfo));
 
 			const result = await service.getSystemInfo();
 
-			expect(result).toEqual(mockSystemInfo);
+			expect(result).toEqual(toInstance(SystemInfoDto, mockSystemInfo));
 			expect(service['platform'].getSystemInfo).toHaveBeenCalled();
 		});
 
 		it('should delegate getThrottleStatus to platform', async () => {
 			const mockThrottleStatus = { undervoltage: false };
-			jest.spyOn(service['platform'], 'getThrottleStatus').mockResolvedValue(mockThrottleStatus as ThrottleStatusDto);
+			jest
+				.spyOn(service['platform'], 'getThrottleStatus')
+				.mockResolvedValue(toInstance(ThrottleStatusDto, mockThrottleStatus));
 
 			const result = await service.getThrottleStatus();
 
-			expect(result).toEqual(mockThrottleStatus);
+			expect(result).toEqual(toInstance(ThrottleStatusDto, mockThrottleStatus));
 			expect(service['platform'].getThrottleStatus).toHaveBeenCalled();
 		});
 
 		it('should delegate getTemperature to platform', async () => {
 			const mockTemperature = { cpu: 40, gpu: 50 };
-			jest.spyOn(service['platform'], 'getTemperature').mockResolvedValue(mockTemperature);
+			jest.spyOn(service['platform'], 'getTemperature').mockResolvedValue(toInstance(TemperatureDto, mockTemperature));
 
 			const result = await service.getTemperature();
 
-			expect(result).toEqual(mockTemperature);
+			expect(result).toEqual(toInstance(TemperatureDto, mockTemperature));
 			expect(service['platform'].getTemperature).toHaveBeenCalled();
 		});
 
 		it('should delegate getNetworkStats to platform', async () => {
 			const mockNetworkStats = [{ interface: 'eth0', rxBytes: 1000, txBytes: 500 }];
-			jest.spyOn(service['platform'], 'getNetworkStats').mockResolvedValue(mockNetworkStats);
+			jest
+				.spyOn(service['platform'], 'getNetworkStats')
+				.mockResolvedValue(toInstance(NetworkStatsDto, mockNetworkStats));
 
 			const result = await service.getNetworkStats();
 
-			expect(result).toEqual(mockNetworkStats);
+			expect(result).toEqual(toInstance(NetworkStatsDto, mockNetworkStats));
 			expect(service['platform'].getNetworkStats).toHaveBeenCalled();
 		});
 	});

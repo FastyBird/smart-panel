@@ -36,6 +36,13 @@ export const usePageAddForm = <TForm extends IPageAddForm = IPageAddForm>({ id, 
 	let timer: number;
 
 	const model = reactive<TForm>({
+		...(plugin.value?.schemas?.pageAddFormSchema || PageAddFormSchema).parse({
+			id,
+			type,
+			title: 'title',
+			icon: null,
+			order: 0,
+		}),
 		id,
 		type,
 		title: '',
@@ -111,6 +118,7 @@ export const usePageAddForm = <TForm extends IPageAddForm = IPageAddForm>({ id, 
 	};
 
 	watch(model, (): void => {
+		console.log(toRaw(model), initialModel);
 		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 

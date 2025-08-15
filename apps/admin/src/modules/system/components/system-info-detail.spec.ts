@@ -1,9 +1,11 @@
 import type { ComponentPublicInstance } from 'vue';
 
+import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
+import type { IDisplayProfile } from '../store/displays-profiles.store.types';
 import type { ISystemInfo } from '../store/system-info.store.types';
 import type { IThrottleStatus } from '../store/throttle-status.store.types';
 
@@ -11,6 +13,9 @@ import type { ISystemInfoDetailProps } from './system-info-detail.types';
 import SystemInfoDetail from './system-info-detail.vue';
 
 type SystemInfoDetailInstance = ComponentPublicInstance<ISystemInfoDetailProps>;
+
+const displayId = uuid();
+const displayUid = uuid();
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -60,6 +65,22 @@ const mockThrottleStatus: IThrottleStatus = {
 	softTempLimit: false,
 };
 
+const mockDisplays: IDisplayProfile[] = [
+	{
+		id: displayId,
+		uid: displayUid,
+		screenWidth: 1920,
+		screenHeight: 1080,
+		pixelRatio: 2,
+		unitSize: 70,
+		rows: 6,
+		cols: 4,
+		primary: true,
+		createdAt: new Date(),
+		updatedAt: null,
+	},
+];
+
 describe('SystemInfoDetail.vue', () => {
 	let wrapper: VueWrapper<SystemInfoDetailInstance>;
 
@@ -68,6 +89,7 @@ describe('SystemInfoDetail.vue', () => {
 			props: {
 				systemInfo: mockSystemInfo,
 				throttleStatus: mockThrottleStatus,
+				displays: mockDisplays,
 			},
 		});
 	});
@@ -89,8 +111,8 @@ describe('SystemInfoDetail.vue', () => {
 	});
 
 	it('renders display section', () => {
-		expect(wrapper.text()).toContain('1920 px');
-		expect(wrapper.text()).toContain('1080 px');
+		expect(wrapper.text()).toContain('1920px');
+		expect(wrapper.text()).toContain('1080px');
 	});
 
 	it('renders throttle status tags correctly', () => {
@@ -108,6 +130,7 @@ describe('SystemInfoDetail.vue', () => {
 			props: {
 				systemInfo: mockSystemInfo,
 				throttleStatus: null,
+				displays: mockDisplays,
 			},
 		});
 

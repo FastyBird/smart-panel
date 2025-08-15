@@ -1,12 +1,12 @@
 import 'package:collection/collection.dart';
-import 'package:fastybird_smart_panel/modules/system/models/default_network.dart';
-import 'package:fastybird_smart_panel/modules/system/models/display_info.dart';
-import 'package:fastybird_smart_panel/modules/system/models/memory_info.dart';
 import 'package:fastybird_smart_panel/modules/system/models/model.dart';
-import 'package:fastybird_smart_panel/modules/system/models/network_stats.dart';
-import 'package:fastybird_smart_panel/modules/system/models/operating_system_info.dart';
-import 'package:fastybird_smart_panel/modules/system/models/storage_info.dart';
-import 'package:fastybird_smart_panel/modules/system/models/temperature_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/default_network.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/display_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/memory_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/network_stats.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/operating_system_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/storage_info.dart';
+import 'package:fastybird_smart_panel/modules/system/models/system_info/temperature_info.dart';
 
 class SystemInfoModel extends Model {
   final double _cpuLoad;

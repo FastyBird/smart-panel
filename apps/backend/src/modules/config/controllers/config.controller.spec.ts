@@ -91,6 +91,10 @@ describe('ConfigController', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	it('should be defined', () => {
 		expect(controller).toBeDefined();
 		expect(configService).toBeDefined();

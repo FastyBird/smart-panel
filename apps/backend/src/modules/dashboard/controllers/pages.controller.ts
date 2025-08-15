@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import {
@@ -17,6 +16,7 @@ import {
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { DashboardException } from '../dashboard.exceptions';
@@ -72,13 +72,13 @@ export class PagesController {
 			throw new BadRequestException([JSON.stringify({ field: 'type', reason: 'Page property type is required.' })]);
 		}
 
-		const baseDtoInstance = plainToInstance(CreatePageDto, createDto.data, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
+		const baseDtoInstance = toInstance(CreatePageDto, createDto.data, {
+			excludeExtraneousValues: false,
 		});
 
 		const baseErrors = await validate(baseDtoInstance, {
 			whitelist: true,
+			stopAtFirstError: false,
 		});
 
 		if (baseErrors.length > 0) {
@@ -103,10 +103,8 @@ export class PagesController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.createDto, createDto.data, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
-			excludeExtraneousValues: true,
+		const dtoInstance = toInstance(mapping.createDto, createDto.data, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
@@ -166,15 +164,14 @@ export class PagesController {
 			throw error;
 		}
 
-		const dtoInstance = plainToInstance(mapping.updateDto, updateDto.data, {
-			enableImplicitConversion: true,
-			exposeUnsetFields: false,
-			excludeExtraneousValues: true,
+		const dtoInstance = toInstance(mapping.updateDto, updateDto.data, {
+			excludeExtraneousValues: false,
 		});
 
 		const errors = await validate(dtoInstance, {
 			whitelist: true,
 			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
 		});
 
 		if (errors.length > 0) {

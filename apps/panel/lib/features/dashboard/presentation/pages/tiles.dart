@@ -2,7 +2,8 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/fixed_screen_grid.dart';
+import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
+import 'package:fastybird_smart_panel/core/widgets/fixed_tile_size_grid.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/features/dashboard/mappers/tile.dart';
@@ -133,24 +134,48 @@ class TilesPage extends StatelessWidget {
         body: SafeArea(
           child: Padding(
             padding: AppSpacings.paddingSm,
-            child: FixedScreenGrid(
-              children: freshPage.tiles
-                  .map(
-                    (tile) => _buildTile(context, tile),
+            child: freshPage.pageModel.tileSize != null
+                ? FixedTileSizeGrid(
+                    unitSize: freshPage.pageModel.tileSize,
+                    children: freshPage.tiles
+                        .map(
+                          (tile) => _buildFixedGridTile(context, tile),
+                        )
+                        .toList(),
                   )
-                  .toList(),
-            ),
+                : FixedGridSizeGrid(
+                    mainAxisSize: freshPage.pageModel.rows,
+                    crossAxisSize: freshPage.pageModel.cols,
+                    children: freshPage.tiles
+                        .map(
+                          (tile) => _buildDynamicGridTile(context, tile),
+                        )
+                        .toList(),
+                  ),
           ),
         ),
       );
     });
   }
 
-  FixedScreenGridItem _buildTile(
+  FixedTileSizeGridItem _buildFixedGridTile(
     BuildContext context,
     TileView tile,
   ) {
-    return FixedScreenGridItem(
+    return FixedTileSizeGridItem(
+      mainAxisIndex: tile.row,
+      crossAxisIndex: tile.col,
+      mainAxisCellCount: tile.rowSpan,
+      crossAxisCellCount: tile.colSpan,
+      child: buildTileWidget(tile),
+    );
+  }
+
+  FixedGridSizeGridItem _buildDynamicGridTile(
+    BuildContext context,
+    TileView tile,
+  ) {
+    return FixedGridSizeGridItem(
       mainAxisIndex: tile.row,
       crossAxisIndex: tile.col,
       mainAxisCellCount: tile.rowSpan,

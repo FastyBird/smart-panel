@@ -5,6 +5,11 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/models/auth_module_register_display.dart';
 import 'package:fastybird_smart_panel/api/models/auth_module_req_register_display.dart';
+import 'package:fastybird_smart_panel/api/models/system_module_create_display_profile.dart';
+import 'package:fastybird_smart_panel/api/models/system_module_display_profile.dart';
+import 'package:fastybird_smart_panel/api/models/system_module_req_create_display_profile.dart';
+import 'package:fastybird_smart_panel/api/models/users_module_req_update_display_instance.dart';
+import 'package:fastybird_smart_panel/api/models/users_module_update_display_instance.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -92,28 +97,6 @@ class StartupManagerService {
 
     _eventBus = EventBus();
 
-    var configModuleService = ConfigModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-    var systemModuleService = SystemModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-      eventBus: _eventBus,
-    );
-    var weatherModuleService = WeatherModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-    var devicesModuleService = DevicesModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-    var dashboardModuleService = DashboardModuleService(
-      apiClient: _apiClient,
-      socketService: _socketClient,
-    );
-
     // Register core services
     locator.registerLazySingleton(
       () => NavigationService(),
@@ -139,6 +122,28 @@ class StartupManagerService {
     locator.registerSingleton(_eventBus);
 
     // Register modules
+    var configModuleService = ConfigModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var systemModuleService = SystemModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+      eventBus: _eventBus,
+    );
+    var weatherModuleService = WeatherModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var devicesModuleService = DevicesModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+    var dashboardModuleService = DashboardModuleService(
+      apiClient: _apiClient,
+      socketService: _socketClient,
+    );
+
     locator.registerSingleton(configModuleService);
     locator.registerSingleton(systemModuleService);
     locator.registerSingleton(weatherModuleService);
@@ -181,10 +186,12 @@ class StartupManagerService {
       );
     }
 
+    final appUid = await _getAppUid();
+
     try {
       await Future.wait([
         locator.get<ConfigModuleService>().initialize(),
-        locator.get<SystemModuleService>().initialize(),
+        locator.get<SystemModuleService>().initialize(appUid),
         locator.get<WeatherModuleService>().initialize(),
         locator.get<DevicesModuleService>().initialize(),
         locator.get<DashboardModuleService>().initialize(),
@@ -223,8 +230,10 @@ class StartupManagerService {
 
     if (_apiSecret == null) {
       await _obtainApiSecret();
+      await _notifyDisplayProfile();
     } else {
       await _checkApiConnection();
+      await _notifyDisplayInstance();
     }
   }
 
@@ -312,6 +321,160 @@ class StartupManagerService {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[OBTAIN SECRET] Unexpected error: ${e.toString()}');
+      }
+
+      throw StateError('Unexpected backend error.');
+    }
+  }
+
+  Future<void> _notifyDisplayInstance() async {
+    final appUid = await _getAppUid();
+
+    String? existingInstanceId;
+
+    try {
+      final existingProfile = await _apiClient.usersModule
+          .getUsersModuleDisplayInstanceByUid(uid: appUid);
+
+      existingInstanceId = existingProfile.data.data.id;
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[READ DISPLAY INSTANCE] API error: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+
+      if (e.response?.statusCode != 404) {
+        throw Exception(
+          'Reading display instance failed. Ensure the server is running.',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[READ DISPLAY INSTANCE] Unexpected error: ${e.toString()}');
+      }
+
+      throw StateError('Unexpected backend error.');
+    }
+
+    final versionInfo = await AppInfo.getAppVersionInfo();
+
+    try {
+      if (existingInstanceId != null) {
+        await _apiClient.usersModule.updateUsersModuleDisplayInstance(
+          id: existingInstanceId,
+          body: UsersModuleReqUpdateDisplayInstance(
+            data: UsersModuleUpdateDisplayInstance(
+              version: versionInfo.version,
+              build: versionInfo.build,
+            ),
+          ),
+        );
+      }
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[UPDATE DISPLAY INSTANCE] API error: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        if (kDebugMode) {
+          debugPrint(
+              '[UPDATE DISPLAY INSTANCE] Stored secret key is not valid');
+        }
+      }
+
+      throw Exception(
+        'Backend initialization failed. Ensure the server is running.',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[UPDATE DISPLAY INSTANCE] Unexpected error: ${e.toString()}');
+      }
+
+      throw StateError('Unexpected backend error.');
+    }
+  }
+
+  Future<void> _notifyDisplayProfile() async {
+    final appUid = await _getAppUid();
+
+    final ScreenService screenService = locator.get<ScreenService>();
+
+    SystemModuleDisplayProfile? existingProfile;
+
+    try {
+      final existingProfileResponse = await _apiClient.systemModule
+          .getSystemModuleDisplayProfileByUid(uid: appUid);
+
+      existingProfile = existingProfileResponse.data.data;
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[READ DISPLAY PROFILE] API error: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+
+      if (e.response?.statusCode != 404) {
+        throw Exception(
+          'Reading display profile failed. Ensure the server is running.',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[READ DISPLAY PROFILE] Unexpected error: ${e.toString()}');
+      }
+
+      throw StateError('Unexpected backend error.');
+    }
+
+    if (existingProfile != null) {
+      screenService.updateFromProfile(
+        profileCols: existingProfile.cols,
+        profileRows: existingProfile.rows,
+        profileUnitSize: existingProfile.unitSize.toDouble(),
+      );
+
+      return;
+    }
+
+    try {
+      await _apiClient.systemModule.createSystemModuleDisplayProfile(
+        body: SystemModuleReqCreateDisplayProfile(
+          data: SystemModuleCreateDisplayProfile(
+            id: const Uuid().v4(),
+            uid: appUid,
+            screenWidth: screenService.screenWidth.toInt(),
+            screenHeight: screenService.screenHeight.toInt(),
+            pixelRatio: screenService.pixelRatio,
+            unitSize: screenService.unitSize,
+            rows: screenService.rows,
+            cols: screenService.columns,
+          ),
+        ),
+      );
+    } on DioException catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[UPDATE DISPLAY PROFILE] API error: ${e.response?.statusCode} - ${e.message}',
+        );
+      }
+
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        if (kDebugMode) {
+          debugPrint('[UPDATE DISPLAY PROFILE] Stored secret key is not valid');
+        }
+      }
+
+      throw Exception(
+        'Backend initialization failed. Ensure the server is running.',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[UPDATE DISPLAY PROFILE] Unexpected error: ${e.toString()}');
       }
 
       throw StateError('Unexpected backend error.');

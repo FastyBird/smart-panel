@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { FactoryResetRegistryService } from './factory-reset-registry.service';
@@ -11,6 +12,12 @@ describe('FactoryResetRegistryService', () => {
 		}).compile();
 
 		service = module.get<FactoryResetRegistryService>(FactoryResetRegistryService);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -20,7 +27,7 @@ describe('FactoryResetRegistryService', () => {
 	describe('registerHandler', () => {
 		it('should register a new factory reset handler', () => {
 			const mockHandler = { name: 'HandlerName', priority: 10, handler: jest.fn() };
-			service.register(mockHandler.name, mockHandler.priority, mockHandler.handler);
+			service.register(mockHandler.name, mockHandler.handler, mockHandler.priority);
 
 			expect(service.has('HandlerName')).toBe(true);
 			expect(service.get()).toContainEqual(mockHandler);
@@ -30,8 +37,8 @@ describe('FactoryResetRegistryService', () => {
 			const mockHandler1 = { name: 'Handler1Name', priority: 10, handler: jest.fn() };
 			const mockHandler2 = { name: 'Handler2Name', priority: 20, handler: jest.fn() };
 
-			service.register(mockHandler1.name, mockHandler1.priority, mockHandler1.handler);
-			service.register(mockHandler2.name, mockHandler2.priority, mockHandler2.handler);
+			service.register(mockHandler1.name, mockHandler1.handler, mockHandler1.priority);
+			service.register(mockHandler2.name, mockHandler2.handler, mockHandler2.priority);
 
 			const handlers = service.get();
 
@@ -46,8 +53,8 @@ describe('FactoryResetRegistryService', () => {
 			const mockHandler1 = { name: 'Handler1Name', priority: 20, handler: jest.fn() };
 			const mockHandler2 = { name: 'Handler2Name', priority: 10, handler: jest.fn() };
 
-			service.register(mockHandler1.name, mockHandler1.priority, mockHandler1.handler);
-			service.register(mockHandler2.name, mockHandler2.priority, mockHandler2.handler);
+			service.register(mockHandler1.name, mockHandler1.handler, mockHandler1.priority);
+			service.register(mockHandler2.name, mockHandler2.handler, mockHandler2.priority);
 
 			const handlers = service.get();
 
@@ -64,7 +71,7 @@ describe('FactoryResetRegistryService', () => {
 
 		it('should return true if handler is registered', () => {
 			const mockHandler = jest.fn();
-			service.register('HandlerName', 10, mockHandler);
+			service.register('HandlerName', mockHandler, 10);
 
 			expect(service.has('HandlerName')).toBe(true);
 		});

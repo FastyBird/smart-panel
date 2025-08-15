@@ -1,10 +1,10 @@
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import WebSocket from 'ws';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
@@ -127,9 +127,8 @@ export class HomeAssistantWsService {
 
 			const msg: object = JSON.parse(response) as object;
 
-			const devicesRegistry = plainToInstance(HomeAssistantDeviceRegistryResponseModel, msg, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const devicesRegistry = toInstance(HomeAssistantDeviceRegistryResponseModel, msg, {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await validate(devicesRegistry);
@@ -175,9 +174,8 @@ export class HomeAssistantWsService {
 
 			const msg: object = JSON.parse(response) as object;
 
-			const entitiesRegistry = plainToInstance(HomeAssistantEntityRegistryResponseModel, msg, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const entitiesRegistry = toInstance(HomeAssistantEntityRegistryResponseModel, msg, {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await validate(entitiesRegistry);
@@ -316,10 +314,7 @@ export class HomeAssistantWsService {
 				const handler = this.eventsHandlers.get(msg.event.event_type) ?? this.eventsHandlers.get('*');
 
 				if (handler) {
-					const event = plainToInstance(HomeAssistantStateChangedEventDto, msg.event as object, {
-						enableImplicitConversion: true,
-						exposeUnsetFields: false,
-					});
+					const event = toInstance(HomeAssistantStateChangedEventDto, msg.event as object);
 
 					await handler.handle(event);
 				}

@@ -7,8 +7,10 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { v4 as uuid } from 'uuid';
 
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ChannelCategory, DeviceCategory } from '../devices.constants';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
@@ -62,20 +64,20 @@ describe('ChannelsControlsController', () => {
 				{
 					provide: ChannelsService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockChannel]),
-						findOne: jest.fn().mockResolvedValue(mockChannel),
-						create: jest.fn().mockResolvedValue(mockChannel),
-						update: jest.fn().mockResolvedValue(mockChannel),
+						findAll: jest.fn().mockResolvedValue([toInstance(ChannelEntity, mockChannel)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),
+						create: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),
+						update: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{
 					provide: ChannelsControlsService,
 					useValue: {
-						findAll: jest.fn().mockResolvedValue([mockChannelControl]),
-						findOne: jest.fn().mockResolvedValue(mockChannelControl),
-						findOneByName: jest.fn().mockResolvedValue(mockChannelControl),
-						create: jest.fn().mockResolvedValue(mockChannelControl),
+						findAll: jest.fn().mockResolvedValue([toInstance(ChannelControlEntity, mockChannelControl)]),
+						findOne: jest.fn().mockResolvedValue(toInstance(ChannelControlEntity, mockChannelControl)),
+						findOneByName: jest.fn().mockResolvedValue(toInstance(ChannelControlEntity, mockChannelControl)),
+						create: jest.fn().mockResolvedValue(toInstance(ChannelControlEntity, mockChannelControl)),
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
@@ -85,6 +87,12 @@ describe('ChannelsControlsController', () => {
 		controller = module.get<ChannelsControlsController>(ChannelsControlsController);
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsControlsService = module.get<ChannelsControlsService>(ChannelsControlsService);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {
@@ -97,14 +105,14 @@ describe('ChannelsControlsController', () => {
 		it('should return all controls for a channel', async () => {
 			const result = await controller.findAll(mockChannel.id);
 
-			expect(result).toEqual([mockChannelControl]);
+			expect(result).toEqual([toInstance(ChannelControlEntity, mockChannelControl)]);
 			expect(channelsControlsService.findAll).toHaveBeenCalledWith(mockChannel.id);
 		});
 
 		it('should return a single control for a channel', async () => {
 			const result = await controller.findOneControl(mockChannel.id, mockChannelControl.id);
 
-			expect(result).toEqual(mockChannelControl);
+			expect(result).toEqual(toInstance(ChannelControlEntity, mockChannelControl));
 			expect(channelsControlsService.findOne).toHaveBeenCalledWith(mockChannelControl.id, mockChannel.id);
 		});
 
@@ -113,7 +121,7 @@ describe('ChannelsControlsController', () => {
 
 			const result = await controller.create(mockChannel.id, { data: createDto });
 
-			expect(result).toEqual(mockChannelControl);
+			expect(result).toEqual(toInstance(ChannelControlEntity, mockChannelControl));
 			expect(channelsControlsService.create).toHaveBeenCalledWith(mockChannel.id, createDto);
 		});
 

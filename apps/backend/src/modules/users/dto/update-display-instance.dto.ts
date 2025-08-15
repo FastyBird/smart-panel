@@ -1,12 +1,12 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, Matches, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, Matches, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
-type ReqUpdateDisplay = components['schemas']['UsersModuleReqUpdateDisplay'];
-type UpdateDisplay = components['schemas']['UsersModuleUpdateDisplay'];
+type ReqUpdateDisplayInstance = components['schemas']['UsersModuleReqUpdateDisplayInstance'];
+type UpdateDisplayInstance = components['schemas']['UsersModuleUpdateDisplayInstance'];
 
-export class UpdateDisplayDto implements UpdateDisplay {
+export class UpdateDisplayInstanceDto implements UpdateDisplayInstance {
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"version","reason":"Version must be a non-empty string."}]' })
@@ -24,11 +24,18 @@ export class UpdateDisplayDto implements UpdateDisplay {
 	@IsNotEmpty({ message: '[{"field":"build","reason":"Build must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"build","reason":"Build must be a non-empty string."}]' })
 	build?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', {
+		message: '[{"field":"display_profile","reason":"Display profile ID must be a valid UUID (version 4)."}]',
+	})
+	display_profile?: string;
 }
 
-export class ReqUpdateDisplayDto implements ReqUpdateDisplay {
+export class ReqUpdateDisplayInstanceDto implements ReqUpdateDisplayInstance {
 	@Expose()
 	@ValidateNested()
-	@Type(() => UpdateDisplayDto)
-	data: UpdateDisplayDto;
+	@Type(() => UpdateDisplayInstanceDto)
+	data: UpdateDisplayInstanceDto;
 }

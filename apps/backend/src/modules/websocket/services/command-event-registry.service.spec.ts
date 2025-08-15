@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { CommandEventRegistryService } from './command-event-registry.service';
@@ -11,6 +12,12 @@ describe('CommandEventRegistryService', () => {
 		}).compile();
 
 		service = module.get<CommandEventRegistryService>(CommandEventRegistryService);
+
+		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
 	});
 
 	it('should be defined', () => {

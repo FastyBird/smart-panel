@@ -70,7 +70,7 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 					entities: [__dirname + '/**/*.entity{.ts,.js}'],
 					subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
 					migrations: [__dirname + '/migrations/*{.ts,.js}'],
-					synchronize: getEnvValue<boolean>(configService, 'FB_DB_SYNC', false),
+					synchronize: true,
 					logging: getEnvValue<boolean>(configService, 'FB_DB_LOGGING', false),
 				};
 			},

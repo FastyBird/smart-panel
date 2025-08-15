@@ -4,10 +4,10 @@ import { IsMACAddress, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, Valida
 import type { components } from '../../../openapi';
 import { ValidateUserExists } from '../validators/user-exists-constraint.validator';
 
-type ReqCreateDisplay = components['schemas']['UsersModuleReqCreateDisplay'];
-type CreateDisplay = components['schemas']['UsersModuleCreateDisplay'];
+type ReqCreateDisplayInstance = components['schemas']['UsersModuleReqCreateDisplayInstance'];
+type CreateDisplayInstance = components['schemas']['UsersModuleCreateDisplayInstance'];
 
-export class CreateDisplayDto implements CreateDisplay {
+export class CreateDisplayInstanceDto implements CreateDisplayInstance {
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
@@ -45,9 +45,9 @@ export class CreateDisplayDto implements CreateDisplay {
 	user: string;
 }
 
-export class ReqCreateDisplayDto implements ReqCreateDisplay {
+export class ReqCreateDisplayInstanceDto implements ReqCreateDisplayInstance {
 	@Expose()
 	@ValidateNested()
-	@Type(() => CreateDisplayDto)
-	data: CreateDisplayDto;
+	@Type(() => CreateDisplayInstanceDto)
+	data: CreateDisplayInstanceDto;
 }

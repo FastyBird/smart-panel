@@ -1,6 +1,9 @@
 import { Logger, Module } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
+import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -40,7 +43,7 @@ import { StateChangedEventService } from './services/state-changed.event.service
 import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([HomeAssistantDeviceEntity]), DevicesModule, ConfigModule],
+	imports: [NestConfigModule, TypeOrmModule.forFeature([HomeAssistantDeviceEntity]), DevicesModule, ConfigModule],
 	providers: [
 		HomeAssistantHttpService,
 		HomeAssistantWsService,
@@ -66,6 +69,7 @@ export class DevicesHomeAssistantPlugin {
 	private readonly logger = new Logger(DevicesHomeAssistantPlugin.name);
 
 	constructor(
+		private readonly configService: NestConfigService,
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly devicesMapper: DevicesTypeMapperService,
 		private readonly channelsMapper: ChannelsTypeMapperService,
@@ -85,6 +89,8 @@ export class DevicesHomeAssistantPlugin {
 	) {}
 
 	onModuleInit() {
+		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
+
 		this.configMapper.registerMapping<HomeAssistantConfigModel, HomeAssistantUpdatePluginConfigDto>({
 			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 			class: HomeAssistantConfigModel,
@@ -135,20 +141,22 @@ export class DevicesHomeAssistantPlugin {
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSwitchEntityMapper);
 
-		this.homeAssistantWsService.connect();
-		this.homeAssistantWsService.registerEventsHandler(
-			this.stateChangedEventService.event,
-			this.stateChangedEventService,
-		);
+		if (!isCli) {
+			this.homeAssistantWsService.connect();
+			this.homeAssistantWsService.registerEventsHandler(
+				this.stateChangedEventService.event,
+				this.stateChangedEventService,
+			);
 
-		this.homeAssistantHttpService.loadStates().catch((error: unknown) => {
-			const err = error as Error;
+			this.homeAssistantHttpService.loadStates().catch((error: unknown) => {
+				const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][PLUGIN] Failed to initialize devices states', {
-				message: err.message,
-				stack: err.stack,
+				this.logger.error('[HOME ASSISTANT][PLUGIN] Failed to initialize devices states', {
+					message: err.message,
+					stack: err.stack,
+				});
 			});
-		});
+		}
 	}
 
 	onModuleDestroy() {

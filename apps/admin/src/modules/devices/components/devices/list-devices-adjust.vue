@@ -13,10 +13,16 @@
 		</template>
 	</app-bar-heading>
 
-	<div class="flex flex-col h-full w-full overflow-hidden">
+	<div
+		:class="[ns.b()]"
+		class="flex flex-col h-full w-full overflow-hidden"
+	>
 		<el-scrollbar class="flex-grow">
 			<el-collapse v-model="activeBoxes">
-				<el-collapse-item name="types">
+				<el-collapse-item
+					name="types"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('devicesModule.filters.devices.types.title') }}
@@ -35,7 +41,10 @@
 					</el-checkbox-group>
 				</el-collapse-item>
 
-				<el-collapse-item name="states">
+				<el-collapse-item
+					name="states"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('devicesModule.filters.devices.states.title') }}
@@ -54,7 +63,10 @@
 					</el-checkbox-group>
 				</el-collapse-item>
 
-				<el-collapse-item name="categories">
+				<el-collapse-item
+					name="categories"
+					:class="[ns.e('filter-item')]"
+				>
 					<template #title>
 						<el-text class="!px-2">
 							{{ t('devicesModule.filters.devices.category.title') }}
@@ -103,7 +115,18 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCheckbox, ElCheckboxGroup, ElCollapse, ElCollapseItem, ElOption, ElScrollbar, ElSelect, ElText } from 'element-plus';
+import {
+	ElButton,
+	ElCheckbox,
+	ElCheckboxGroup,
+	ElCollapse,
+	ElCollapseItem,
+	ElOption,
+	ElScrollbar,
+	ElSelect,
+	ElText,
+	useNamespace,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
@@ -126,6 +149,7 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 }>();
 
+const ns = useNamespace('list-devices-adjust');
 const { t } = useI18n();
 
 const { options: typesOptions } = useDevicesPlugins();
@@ -149,3 +173,7 @@ const activeBoxes = ref<string[]>(['types', 'states', 'categories']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>
+
+<style rel="stylesheet/scss" lang="scss" scoped>
+@use 'list-devices-adjust.scss';
+</style>

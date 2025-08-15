@@ -1,5 +1,4 @@
 import { Cache } from 'cache-manager';
-import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CronJob } from 'cron';
 import fetch from 'node-fetch';
@@ -9,6 +8,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	EventType as ConfigModuleEventType,
 	LanguageType,
@@ -77,18 +77,11 @@ export class WeatherService {
 			]);
 
 			if (current && forecast) {
-				return plainToInstance(
-					LocationWeatherModel,
-					{
-						current: current.current,
-						forecast,
-						location: current.location,
-					},
-					{
-						enableImplicitConversion: true,
-						exposeUnsetFields: false,
-					},
-				);
+				return toInstance(LocationWeatherModel, {
+					current: current.current,
+					forecast,
+					location: current.location,
+				});
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -116,10 +109,7 @@ export class WeatherService {
 			const current = await this.fetchCurrentWeather(force);
 
 			if (current) {
-				return plainToInstance(CurrentDayModel, current.current, {
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				});
+				return toInstance(CurrentDayModel, current.current);
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -147,12 +137,7 @@ export class WeatherService {
 			const forecast = await this.fetchWeatherForecast(force);
 
 			if (forecast) {
-				return forecast.map((day) =>
-					plainToInstance(ForecastDayModel, day, {
-						enableImplicitConversion: true,
-						exposeUnsetFields: false,
-					}),
-				);
+				return forecast.map((day) => toInstance(ForecastDayModel, day));
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -230,17 +215,10 @@ export class WeatherService {
 
 			const current = this.transformWeatherDto(cachedData);
 
-			const location = plainToInstance(
-				LocationModel,
-				{
-					name: cachedData.name,
-					country: cachedData.sys.country,
-				},
-				{
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				},
-			);
+			const location = toInstance(LocationModel, {
+				name: cachedData.name,
+				country: cachedData.sys.country,
+			});
 
 			return {
 				current,
@@ -263,9 +241,8 @@ export class WeatherService {
 				return null;
 			}
 
-			const weather = plainToInstance(WeatherDto, data, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const weather = toInstance(WeatherDto, data, {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await validate(weather);
@@ -280,17 +257,10 @@ export class WeatherService {
 
 			const current = this.transformWeatherDto(weather);
 
-			const location = plainToInstance(
-				LocationModel,
-				{
-					name: weather.name,
-					country: weather.sys.country,
-				},
-				{
-					enableImplicitConversion: true,
-					exposeUnsetFields: false,
-				},
-			);
+			const location = toInstance(LocationModel, {
+				name: weather.name,
+				country: weather.sys.country,
+			});
 
 			return {
 				current,
@@ -312,9 +282,8 @@ export class WeatherService {
 		if (cachedData && !force) {
 			this.logger.debug(`[WEATHER] Returning cached forecast weather data for location=${this.location}`);
 
-			const forecast = plainToInstance(ForecastDto, cachedData, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const forecast = toInstance(ForecastDto, cachedData, {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await validate(forecast);
@@ -343,9 +312,8 @@ export class WeatherService {
 				return null;
 			}
 
-			const forecast = plainToInstance(ForecastDto, data, {
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			const forecast = toInstance(ForecastDto, data, {
+				excludeExtraneousValues: false,
 			});
 
 			const errors = await validate(forecast);
@@ -395,38 +363,31 @@ export class WeatherService {
 	}
 
 	private transformWeatherDto(dto: WeatherDto): CurrentDayModel {
-		return plainToInstance(
-			CurrentDayModel,
-			{
-				temperature: dto.main.temp,
-				temperatureMin: dto.main.temp_min,
-				temperatureMax: dto.main.temp_max,
-				feelsLike: dto.main.feels_like,
-				pressure: dto.main.pressure,
-				humidity: dto.main.humidity,
-				weather: {
-					code: dto.weather[0].id,
-					main: dto.weather[0].main,
-					description: dto.weather[0].description,
-					icon: dto.weather[0].icon,
-				},
-				wind: {
-					speed: dto.wind.speed,
-					deg: dto.wind.deg,
-					gust: dto.wind.gust,
-				},
-				clouds: dto.clouds.all,
-				rain: dto.rain && '1h' in dto.rain ? dto.rain['1h'] : undefined,
-				snow: dto.snow && '1h' in dto.snow ? dto.snow['1h'] : undefined,
-				sunrise: new Date(dto.sys.sunrise * 1000),
-				sunset: new Date(dto.sys.sunset * 1000),
-				dayTime: new Date(dto.dt * 1000),
+		return toInstance(CurrentDayModel, {
+			temperature: dto.main.temp,
+			temperatureMin: dto.main.temp_min,
+			temperatureMax: dto.main.temp_max,
+			feelsLike: dto.main.feels_like,
+			pressure: dto.main.pressure,
+			humidity: dto.main.humidity,
+			weather: {
+				code: dto.weather[0].id,
+				main: dto.weather[0].main,
+				description: dto.weather[0].description,
+				icon: dto.weather[0].icon,
 			},
-			{
-				enableImplicitConversion: true,
-				exposeUnsetFields: false,
+			wind: {
+				speed: dto.wind.speed,
+				deg: dto.wind.deg,
+				gust: dto.wind.gust,
 			},
-		);
+			clouds: dto.clouds.all,
+			rain: dto.rain && '1h' in dto.rain ? dto.rain['1h'] : undefined,
+			snow: dto.snow && '1h' in dto.snow ? dto.snow['1h'] : undefined,
+			sunrise: new Date(dto.sys.sunrise * 1000),
+			sunset: new Date(dto.sys.sunset * 1000),
+			dayTime: new Date(dto.dt * 1000),
+		});
 	}
 
 	private transformForecastDto(dto: ForecastDto): ForecastDayModel[] {
@@ -484,47 +445,43 @@ export class WeatherService {
 		});
 
 		return Object.entries(dailyData).map(([date, data]) =>
-			plainToInstance(
-				ForecastDayModel,
-				{
-					temperature: {
-						day: this.average(data.segments.day),
-						min: Math.min(...data.temps),
-						max: Math.max(...data.temps),
-						night: this.average(data.segments.night),
-						eve: this.average(data.segments.eve),
-						morn: this.average(data.segments.morn),
-					},
-					feelsLike: {
-						day: this.average(data.segments.day),
-						night: this.average(data.segments.night),
-						eve: this.average(data.segments.eve),
-						morn: this.average(data.segments.morn),
-					},
-					pressure: data.item.main.pressure,
-					humidity: data.item.main.humidity,
-					weather: {
-						code: data.item.weather[0].id,
-						main: data.item.weather[0].main,
-						description: data.item.weather[0].description,
-						icon: data.item.weather[0].icon,
-					},
-					wind: {
-						speed: data.item.wind.speed,
-						deg: data.item.wind.deg,
-						gust: data.item.wind.gust,
-					},
-					clouds: data.item.clouds.all,
-					rain: data.item.rain && '3h' in data.item.rain ? data.item.rain['3h'] : undefined,
-					snow: data.item.snow && '3h' in data.item.snow ? data.item.snow['3h'] : undefined,
-					sunrise: undefined,
-					sunset: undefined,
-					moonrise: undefined,
-					moonset: undefined,
-					dayTime: new Date(date),
+			toInstance(ForecastDayModel, {
+				temperature: {
+					day: this.average(data.segments.day),
+					min: Math.min(...data.temps),
+					max: Math.max(...data.temps),
+					night: this.average(data.segments.night),
+					eve: this.average(data.segments.eve),
+					morn: this.average(data.segments.morn),
 				},
-				{ enableImplicitConversion: true, exposeUnsetFields: false },
-			),
+				feelsLike: {
+					day: this.average(data.segments.day),
+					night: this.average(data.segments.night),
+					eve: this.average(data.segments.eve),
+					morn: this.average(data.segments.morn),
+				},
+				pressure: data.item.main.pressure,
+				humidity: data.item.main.humidity,
+				weather: {
+					code: data.item.weather[0].id,
+					main: data.item.weather[0].main,
+					description: data.item.weather[0].description,
+					icon: data.item.weather[0].icon,
+				},
+				wind: {
+					speed: data.item.wind.speed,
+					deg: data.item.wind.deg,
+					gust: data.item.wind.gust,
+				},
+				clouds: data.item.clouds.all,
+				rain: data.item.rain && '3h' in data.item.rain ? data.item.rain['3h'] : undefined,
+				snow: data.item.snow && '3h' in data.item.snow ? data.item.snow['3h'] : undefined,
+				sunrise: undefined,
+				sunset: undefined,
+				moonrise: undefined,
+				moonset: undefined,
+				dayTime: new Date(date),
+			}),
 		);
 	}
 
