@@ -11644,7 +11644,6 @@
           "order",
           "data_source",
           "display",
-          "display",
           "created_at",
           "updated_at"
         ],
@@ -13310,16 +13309,11 @@
         ],
         "properties": {
           "id": {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Unique identifier of the display entry in the system database.",
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
-            },
-            "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier for the display profile.",
+            "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+            "readOnly": true
           },
           "uid": {
             "type": "string",

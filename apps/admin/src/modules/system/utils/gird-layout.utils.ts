@@ -1,4 +1,4 @@
-import type { IDisplayProfile } from '../store/displays-profiles.store.types.ts';
+import type { IDisplayProfile } from '../store/displays-profiles.store.types';
 
 export type LayoutOverride = {
 	rows?: number | null;

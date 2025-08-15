@@ -76,7 +76,7 @@ import {
 	useTiles,
 } from '../../../modules/dashboard';
 import { type IDisplayProfile, useDisplaysProfiles } from '../../../modules/system';
-import { calculateLayout } from '../../../modules/system/utils/gird-layout.utils.ts';
+import { calculateLayout } from '../../../modules/system/utils/gird-layout.utils';
 
 import type { IPageConfigureProps } from './page-configure.types';
 import TilePreview from './tile-preview.vue';

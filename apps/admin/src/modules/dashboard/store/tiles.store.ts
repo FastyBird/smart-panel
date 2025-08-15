@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { isUndefined, omit, omitBy } from 'lodash';
+import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
 import type { operations } from '../../../openapi';
