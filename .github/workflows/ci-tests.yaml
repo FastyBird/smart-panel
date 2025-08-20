@@ -217,7 +217,7 @@ jobs:
   devices-schemas:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'
-    name: "Devices mapping analysis"
+    name: "System schemas analysis"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
