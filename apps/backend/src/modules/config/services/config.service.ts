@@ -122,7 +122,7 @@ export class ConfigService {
 		this.logger.log('[SAVE] Configuration saved successfully');
 	}
 
-	private loadPlugins(parsedConfig: Partial<AppConfigModel>): PluginConfigModel[] {
+	private loadPlugins(parsedConfig: { [keys: string]: unknown }): PluginConfigModel[] {
 		const pluginsArray: PluginConfigModel[] = [];
 
 		const existingPlugins =
@@ -249,9 +249,12 @@ export class ConfigService {
 
 			this.logger.log(`[UPDATE] Updating configuration for section=${key}`);
 
-			const plainAppConfig = instanceToPlain(this.appConfig);
+			const plainAppConfig = instanceToPlain(this.appConfig) as {
+				[key: string]: object;
+				plugins: { [key: string]: object };
+			};
 
-			plainAppConfig.plugins = {};
+			plainAppConfig.plugins = {} as { [key: string]: object };
 
 			for (const plugin of this.appConfig.plugins) {
 				plainAppConfig.plugins[plugin.type] = instanceToPlain(plugin);

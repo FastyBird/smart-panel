@@ -244,5 +244,5 @@ jobs:
       - name: "Validate channels.json"
         run: "ajv validate -s spec/devices/channels.schema.json -d spec/devices/channels.json"
 
-      - name: "Validate openweather city.list.json"
+      - name: "Validate OpenWeather city.list.json"
         run: "ajv validate -s spec/weather/city.list.schema.json -d spec/weather/city.list.json"
