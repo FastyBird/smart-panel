@@ -12,7 +12,7 @@ const raw = fs.readFileSync(inputPath, 'utf-8');
 const json = JSON.parse(raw);
 
 const output = `
-// This file is generated from devices.json
+// This file is generated from ${path.relative(path.dirname(outputPath), inputPath)}
 // Do not edit manually!
 
 export const devicesSchema = ${JSON.stringify(json, null, 2)} as const;

@@ -217,7 +217,7 @@ jobs:
   devices-schemas:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'
-    name: "Devices mapping analysis"
+    name: "System schemas analysis"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -243,3 +243,6 @@ jobs:
 
       - name: "Validate channels.json"
         run: "ajv validate -s spec/devices/channels.schema.json -d spec/devices/channels.json"
+
+      - name: "Validate OpenWeather city.list.json"
+        run: "ajv validate -s spec/weather/city.list.schema.json -d spec/weather/city.list.json"

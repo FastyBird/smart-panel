@@ -132,7 +132,8 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
     return handleApiCall(
       () async {
         final response = await apiClient.getConfigModuleConfigSection(
-            section: Section.language);
+          section: Section.language,
+        );
 
         final data = response.data.data;
 
@@ -165,7 +166,7 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
 
   Language _convertLanguageFromApi(ConfigModuleLanguageLanguage language) {
     switch (language) {
-      case ConfigModuleLanguageLanguage.csCZ:
+      case ConfigModuleLanguageLanguage.csCz:
         return Language.czech;
       default:
         return Language.english;
@@ -175,9 +176,9 @@ class LanguageConfigRepository extends Repository<LanguageConfigModel> {
   ConfigModuleUpdateLanguageLanguage _convertLanguageToApi(Language language) {
     switch (language) {
       case Language.czech:
-        return ConfigModuleUpdateLanguageLanguage.csCZ;
+        return ConfigModuleUpdateLanguageLanguage.csCz;
       default:
-        return ConfigModuleUpdateLanguageLanguage.enUS;
+        return ConfigModuleUpdateLanguageLanguage.enUs;
     }
   }
 

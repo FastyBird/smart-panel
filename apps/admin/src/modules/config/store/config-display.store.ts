@@ -5,7 +5,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 import { isUndefined, omitBy } from 'lodash';
 
 import { getErrorReason, useBackend } from '../../../common';
-import { ConfigModuleDisplayType, PathsConfigModuleConfigSectionParametersParametersPathSection, type operations } from '../../../openapi';
+import { ConfigModuleDisplayType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
 
@@ -80,7 +80,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 				const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
 					params: {
 						path: {
-							section: PathsConfigModuleConfigSectionParametersParametersPathSection.display,
+							section: PathsConfigModuleConfigSectionGetParametersPathSection.display,
 						},
 					},
 				});
@@ -144,7 +144,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 			const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
 				params: {
 					path: {
-						section: PathsConfigModuleConfigSectionParametersParametersPathSection.display,
+						section: PathsConfigModuleConfigSectionGetParametersPathSection.display,
 					},
 				},
 				body: {

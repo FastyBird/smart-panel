@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenWeatherCityList",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "minimum": 0 },
+      "name": { "type": "string" },
+      "state": { "type": "string" },
+      "country": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 2,
+        "description": "ISO 3166-1 alpha-2 country code"
+      },
+      "coord": {
+        "type": "object",
+        "properties": {
+          "lon": { "type": "number" },
+          "lat": { "type": "number" }
+        },
+        "required": ["lon", "lat"],
+        "additionalProperties": false
+      }
+    },
+    "required": ["id", "name", "state", "country", "coord"],
+    "additionalProperties": false
+  }
+}

@@ -29,7 +29,7 @@ export enum LanguageType {
 	CZECH = 'cs_CZ',
 }
 
-export enum WeatherLocationTypeType {
+export enum WeatherLocationType {
 	LAT_LON = 'lat_lon',
 	CITY_NAME = 'city_name',
 	CITY_ID = 'city_id',

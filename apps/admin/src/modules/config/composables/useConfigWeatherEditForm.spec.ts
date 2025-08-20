@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { FormInstance } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleWeatherType, ConfigModuleWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
+import { ConfigModuleWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi';
 import { FormResult } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
@@ -11,8 +11,8 @@ import { useConfigWeatherEditForm } from './useConfigWeatherEditForm';
 
 const mockConfig = {
 	type: ConfigModuleWeatherType.weather,
-	location: 'Prague',
-	locationType: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
+	cityName: 'Prague,CZ',
+	locationType: ConfigModuleWeatherCityNameLocation_type.city_name,
 	unit: ConfigModuleWeatherUnit.celsius,
 	openWeatherApiKey: null,
 };
@@ -53,8 +53,8 @@ describe('useConfigWeatherEditForm', () => {
 	it('initializes model with config data', () => {
 		const form = useConfigWeatherEditForm({ config: mockConfig });
 
-		expect(form.model.location).toBe('Prague');
-		expect(form.model.locationType).toBe(PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name);
+		expect(form.model.cityName).toBe('Prague,CZ');
+		expect(form.model.locationType).toBe(ConfigModuleWeatherCityNameLocation_type.city_name);
 		expect(form.model.unit).toBe(ConfigModuleWeatherUnit.celsius);
 		expect(form.model.openWeatherApiKey).toBe('');
 	});
@@ -91,10 +91,14 @@ describe('useConfigWeatherEditForm', () => {
 
 		expect(mockEdit).toHaveBeenCalledWith({
 			data: {
-				location: form.model.location,
+				cityName: form.model.cityName,
 				locationType: form.model.locationType,
 				unit: form.model.unit,
 				openWeatherApiKey: null,
+				latitude: null,
+				longitude: null,
+				cityId: null,
+				zipCode: null,
 			},
 		});
 

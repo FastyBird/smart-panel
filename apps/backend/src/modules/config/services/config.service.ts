@@ -122,7 +122,7 @@ export class ConfigService {
 		this.logger.log('[SAVE] Configuration saved successfully');
 	}
 
-	private loadPlugins(parsedConfig: Partial<AppConfigModel>): PluginConfigModel[] {
+	private loadPlugins(parsedConfig: { [keys: string]: unknown }): PluginConfigModel[] {
 		const pluginsArray: PluginConfigModel[] = [];
 
 		const existingPlugins =
@@ -173,7 +173,7 @@ export class ConfigService {
 		return this.appConfig;
 	}
 
-	getConfigSection<T extends BaseConfigModel>(key: keyof AppConfigModel, type: new () => T): T {
+	getConfigSection<T extends BaseConfigModel>(key: keyof AppConfigModel, type: (new () => T) | (new () => T)[]): T {
 		this.logger.log(`[LOOKUP] Fetching configuration section=${key}`);
 
 		const configSection = this.appConfig[key];
@@ -184,27 +184,39 @@ export class ConfigService {
 			throw new ConfigNotFoundException(`Configuration section '${key}' not found.`);
 		}
 
-		const instance = toInstance(type, instanceToPlain(configSection), {
-			excludeExtraneousValues: false,
-		});
+		const types = Array.isArray(type) ? type : [type];
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+		for (const type of types) {
+			const instance = toInstance(type, instanceToPlain(configSection), {
+				excludeExtraneousValues: false,
+			});
 
-		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION] Configuration section=${key} is corrupted error=${JSON.stringify(errors)}`);
+			const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
 
-			throw new ConfigCorruptedException(`Configuration section '${key}' is corrupted and can not be loaded.`);
+			if (errors.length > 0 && types.length > 1) {
+				continue;
+			}
+
+			if (errors.length > 0) {
+				this.logger.error(`[VALIDATION] Configuration section=${key} is corrupted error=${JSON.stringify(errors)}`);
+
+				throw new ConfigCorruptedException(`Configuration section '${key}' is corrupted and can not be loaded.`);
+			}
+
+			this.logger.log(`[LOOKUP] Successfully retrieved configuration section=${key}`);
+
+			return instance;
 		}
 
-		this.logger.log(`[LOOKUP] Successfully retrieved configuration section=${key}`);
+		this.logger.error(`[VALIDATION] Configuration section=${key} is corrupted`);
 
-		return instance;
+		throw new ConfigCorruptedException(`Configuration section '${key}' is corrupted and can not be loaded.`);
 	}
 
 	async setConfigSection<TUpdateDto extends BaseConfigDto>(
 		key: keyof AppConfigModel,
 		value: TUpdateDto,
-		type: new () => TUpdateDto,
+		type: (new () => TUpdateDto) | (new () => TUpdateDto)[],
 	): Promise<void> {
 		this.logger.log(`[UPDATE] Attempting to update configuration section=${key}`);
 
@@ -216,71 +228,100 @@ export class ConfigService {
 			throw new ConfigNotFoundException(`Configuration section '${key}' not found.`);
 		}
 
-		const instance = toInstance(type, value, {
-			excludeExtraneousValues: false,
-		});
+		const types = Array.isArray(type) ? type : [type];
 
-		const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+		for (const type of types) {
+			const instance = toInstance(type, value, {
+				excludeExtraneousValues: false,
+			});
 
-		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION] Validation failed for section=${key} error=${JSON.stringify(errors)}`);
+			const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
 
-			throw new ConfigValidationException(`New configuration for section '${key}' is invalid.`);
+			if (errors.length > 0 && types.length > 1) {
+				continue;
+			}
+
+			if (errors.length > 0) {
+				this.logger.error(`[VALIDATION] Validation failed for section=${key} error=${JSON.stringify(errors)}`);
+
+				throw new ConfigValidationException(`New configuration for section '${key}' is invalid.`);
+			}
+
+			this.logger.log(`[UPDATE] Updating configuration for section=${key}`);
+
+			const plainAppConfig = instanceToPlain(this.appConfig) as {
+				[key: string]: object;
+				plugins: { [key: string]: object };
+			};
+
+			plainAppConfig.plugins = {} as { [key: string]: object };
+
+			for (const plugin of this.appConfig.plugins) {
+				plainAppConfig.plugins[plugin.type] = instanceToPlain(plugin);
+			}
+
+			Object.assign(plainAppConfig, { [key]: { ...instanceToPlain(configSection), ...instance } });
+
+			const appConfig = toInstance(AppConfigModel, plainAppConfig, {
+				excludeExtraneousValues: true,
+			});
+			appConfig.plugins = this.loadPlugins(plainAppConfig);
+
+			this.logger.log(`[SAVE] Saving updated configuration for section=${key}`);
+
+			this.saveConfig(appConfig);
+
+			if (key === SectionType.AUDIO) {
+				this.logger.log('[AUDIO] Applying updated audio configuration');
+
+				try {
+					this.logger.debug(`[AUDIO] Setting speaker volume: ${this.appConfig.audio.speakerVolume}`);
+					await this.platform.setSpeakerVolume(this.appConfig.audio.speakerVolume);
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.error('[ERROR] Failed to set speaker volume', { message: err.message, stack: err.stack });
+				}
+
+				try {
+					this.logger.debug(`[AUDIO] Setting speaker mute state: ${!this.appConfig.audio.speaker}`);
+					await this.platform.muteSpeaker(!this.appConfig.audio.speaker);
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.error('[ERROR] Failed to mute/unmute speaker', { message: err.message, stack: err.stack });
+				}
+
+				try {
+					this.logger.debug(`[AUDIO] Setting microphone volume: ${this.appConfig.audio.microphoneVolume}`);
+					await this.platform.setMicrophoneVolume(this.appConfig.audio.microphoneVolume);
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.error('[ERROR] Failed to set microphone volume', { message: err.message, stack: err.stack });
+				}
+
+				try {
+					this.logger.debug(`[AUDIO] Setting microphone mute state: ${!this.appConfig.audio.microphone}`);
+					await this.platform.muteMicrophone(!this.appConfig.audio.microphone);
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.error('[ERROR] Failed to mute/unmute microphone', { message: err.message, stack: err.stack });
+				}
+			}
+
+			this.logger.log(`[EVENT] Broadcasting configuration change for section=${key}`);
+			this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
+
+			this.logger.log(`[UPDATE] Configuration update for section=${key} completed successfully`);
+
+			return;
 		}
 
-		this.logger.log(`[UPDATE] Updating configuration for section=${key}`);
+		this.logger.error(`[VALIDATION] Validation failed for section=${key}`);
 
-		const appConfig = this.appConfig;
-
-		Object.assign(appConfig, { [key]: { ...configSection, ...instance } });
-
-		this.logger.log(`[SAVE] Saving updated configuration for section=${key}`);
-		this.saveConfig(appConfig);
-
-		if (key === SectionType.AUDIO) {
-			this.logger.log('[AUDIO] Applying updated audio configuration');
-
-			try {
-				this.logger.debug(`[AUDIO] Setting speaker volume: ${this.appConfig.audio.speakerVolume}`);
-				await this.platform.setSpeakerVolume(this.appConfig.audio.speakerVolume);
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error('[ERROR] Failed to set speaker volume', { message: err.message, stack: err.stack });
-			}
-
-			try {
-				this.logger.debug(`[AUDIO] Setting speaker mute state: ${!this.appConfig.audio.speaker}`);
-				await this.platform.muteSpeaker(!this.appConfig.audio.speaker);
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error('[ERROR] Failed to mute/unmute speaker', { message: err.message, stack: err.stack });
-			}
-
-			try {
-				this.logger.debug(`[AUDIO] Setting microphone volume: ${this.appConfig.audio.microphoneVolume}`);
-				await this.platform.setMicrophoneVolume(this.appConfig.audio.microphoneVolume);
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error('[ERROR] Failed to set microphone volume', { message: err.message, stack: err.stack });
-			}
-
-			try {
-				this.logger.debug(`[AUDIO] Setting microphone mute state: ${!this.appConfig.audio.microphone}`);
-				await this.platform.muteMicrophone(!this.appConfig.audio.microphone);
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error('[ERROR] Failed to mute/unmute microphone', { message: err.message, stack: err.stack });
-			}
-		}
-
-		this.logger.log(`[EVENT] Broadcasting configuration change for section=${key}`);
-		this.eventEmitter.emit(EventType.CONFIG_UPDATED, this.appConfig);
-
-		this.logger.log(`[UPDATE] Configuration update for section=${key} completed successfully`);
+		throw new ConfigValidationException(`New configuration for section '${key}' is invalid.`);
 	}
 
 	getPluginConfig<TConfig extends PluginConfigModel>(plugin: string): TConfig {

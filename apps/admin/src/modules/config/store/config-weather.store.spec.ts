@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigModuleWeatherType, ConfigModuleWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
+import { ConfigModuleWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 
 import { useConfigWeather } from './config-weather.store';
@@ -10,16 +10,16 @@ import type { IConfigWeatherEditActionPayload, IConfigWeatherSetActionPayload } 
 
 const mockWeatherRes = {
 	type: ConfigModuleWeatherType.weather,
-	location: 'Prague',
-	location_type: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
+	cityName: 'Prague,CZ',
+	locationType: ConfigModuleWeatherCityNameLocation_type.city_name,
 	unit: ConfigModuleWeatherUnit.celsius,
 	open_weather_api_key: null,
 };
 
 const mockWeather = {
 	type: ConfigModuleWeatherType.weather,
-	location: 'Prague',
-	locationType: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type.city_name,
+	cityName: 'Prague,CZ',
+	locationType: ConfigModuleWeatherCityNameLocation_type.city_name,
 	unit: ConfigModuleWeatherUnit.celsius,
 	openWeatherApiKey: null,
 };

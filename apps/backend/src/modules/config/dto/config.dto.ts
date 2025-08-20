@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 import {
@@ -7,7 +7,7 @@ import {
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
-	WeatherLocationTypeType,
+	WeatherLocationType,
 } from '../config.constants';
 
 type ReqUpdateSection = components['schemas']['ConfigModuleReqUpdateSection'];
@@ -15,7 +15,10 @@ type ReqUpdatePlugin = components['schemas']['ConfigModuleReqUpdatePlugin'];
 type UpdateAudio = components['schemas']['ConfigModuleUpdateAudio'];
 type UpdateDisplay = components['schemas']['ConfigModuleUpdateDisplay'];
 type UpdateLanguage = components['schemas']['ConfigModuleUpdateLanguage'];
-type UpdateWeather = components['schemas']['ConfigModuleUpdateWeather'];
+type UpdateWeatherLatLon = components['schemas']['ConfigModuleUpdateWeatherLatLon'];
+type UpdateWeatherCityName = components['schemas']['ConfigModuleUpdateWeatherCityName'];
+type UpdateWeatherCityId = components['schemas']['ConfigModuleUpdateWeatherCityId'];
+type UpdateWeatherZipCode = components['schemas']['ConfigModuleUpdateWeatherZipCode'];
 type UpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
 
 const determineConfigDto = (obj: unknown): new () => object => {
@@ -41,7 +44,23 @@ const determineConfigDto = (obj: unknown): new () => object => {
 			case SectionType.LANGUAGE:
 				return UpdateLanguageConfigDto;
 			case SectionType.WEATHER:
-				return UpdateWeatherConfigDto;
+				if ('location_type' in obj.data) {
+					const locationType = (obj.data as { location_type: string }).location_type as WeatherLocationType;
+
+					switch (locationType) {
+						case WeatherLocationType.LAT_LON:
+							return UpdateWeatherLatLonConfigDto;
+						case WeatherLocationType.CITY_NAME:
+							return UpdateWeatherCityNameConfigDto;
+						case WeatherLocationType.CITY_ID:
+							return UpdateWeatherCityIdConfigDto;
+						case WeatherLocationType.ZIP_CODE:
+							return UpdateWeatherZipCodeConfigDto;
+						default:
+							throw new Error(`Unknown location type ${(obj.data as { location_type: string }).location_type}`);
+					}
+				}
+				throw new Error('Invalid object format for determining config weather DTO');
 			default:
 				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
 		}
@@ -153,30 +172,17 @@ export class UpdateLanguageConfigDto extends BaseConfigDto implements UpdateLang
 	time_format?: TimeFormatType;
 }
 
-export class UpdateWeatherConfigDto extends BaseConfigDto implements UpdateWeather {
+export abstract class UpdateWeatherConfigDto extends BaseConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a weather string."}]' })
 	type: SectionType.WEATHER;
 
 	@Expose()
 	@IsOptional()
-	@IsString({ message: '[{"field":"location","reason":"Location must be a valid string."}]' })
-	location?: string;
-
-	@Expose()
-	@IsOptional()
-	@IsEnum(WeatherLocationTypeType, {
+	@IsEnum(WeatherLocationType, {
 		message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]',
 	})
-	location_type?: WeatherLocationTypeType;
-
-	@Expose()
-	@IsOptional()
-	@IsNumber(
-		{ allowNaN: false, allowInfinity: false },
-		{ message: '[{"field":"location_lon","reason":"Location longitude must be a valid string."}]' },
-	)
-	location_lon?: string;
+	location_type?: WeatherLocationType;
 
 	@Expose()
 	@IsEnum(TemperatureUnitType, { message: '[{"field":"unit","reason":"Unit must be a valid string."}]' })
@@ -188,11 +194,117 @@ export class UpdateWeatherConfigDto extends BaseConfigDto implements UpdateWeath
 	open_weather_api_key?: string;
 }
 
+export class UpdateWeatherLatLonConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherLatLon {
+	@Expose()
+	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
+	location_type: WeatherLocationType.LAT_LON;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber(
+		{ allowNaN: false, allowInfinity: false },
+		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
+	)
+	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
+	latitude?: number;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber(
+		{ allowNaN: false, allowInfinity: false },
+		{ each: false, message: '[{"field":"longitude","reason":"Longitude must be a valid number."}]' },
+	)
+	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
+	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
+	longitude?: number;
+}
+
+export class UpdateWeatherCityNameConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherCityName {
+	@Expose()
+	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
+	location_type: WeatherLocationType.CITY_NAME;
+
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"city_name","reason":"City name must be a valid string."}]' })
+	city_name?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber(
+		{ allowNaN: false, allowInfinity: false },
+		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
+	)
+	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
+	latitude?: number;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber(
+		{ allowNaN: false, allowInfinity: false },
+		{ each: false, message: '[{"field":"longitude","reason":"Longitude must be a valid number."}]' },
+	)
+	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
+	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
+	longitude?: number;
+}
+
+export class UpdateWeatherCityIdConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherCityId {
+	@Expose()
+	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
+	location_type: WeatherLocationType.CITY_ID;
+
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"city_id","reason":"City ID must be a valid number."}]' })
+	city_id?: number;
+}
+
+export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implements UpdateWeatherZipCode {
+	@Expose()
+	@IsString({ message: '[{"field":"location_type","reason":"Location type must be a valid location type."}]' })
+	location_type: WeatherLocationType.ZIP_CODE;
+
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"zip_code","reason":"ZIP code must be a valid string."}]' })
+	zip_code?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber(
+		{ allowNaN: false, allowInfinity: false },
+		{ each: false, message: '[{"field":"latitude","reason":"Latitude must be a valid number."}]' },
+	)
+	@Min(-90, { message: '[{"field":"latitude","reason":"Latitude must be greater than -90."}]' })
+	@Max(90, { message: '[{"field":"latitude","reason":"Latitude must be lower than -90."}]' })
+	latitude?: number;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber(
+		{ allowNaN: false, allowInfinity: false },
+		{ each: false, message: '[{"field":"longitude","reason":"Longitude must be a valid number."}]' },
+	)
+	@Min(-180, { message: '[{"field":"longitude","reason":"Longitude must be greater than -180."}]' })
+	@Max(180, { message: '[{"field":"longitude","reason":"Longitude must be lower than -180."}]' })
+	longitude?: number;
+}
+
 export class ReqUpdateSectionDto implements ReqUpdateSection {
 	@Expose()
 	@ValidateNested()
 	@Type((options) => determineConfigDto(options?.object ?? {}))
-	data: UpdateAudioConfigDto | UpdateDisplayConfigDto | UpdateLanguageConfigDto | UpdateWeatherConfigDto;
+	data:
+		| UpdateAudioConfigDto
+		| UpdateDisplayConfigDto
+		| UpdateLanguageConfigDto
+		| UpdateWeatherLatLonConfigDto
+		| UpdateWeatherCityNameConfigDto
+		| UpdateWeatherCityIdConfigDto
+		| UpdateWeatherZipCodeConfigDto;
 }
 
 export class UpdatePluginConfigDto implements UpdatePlugin {

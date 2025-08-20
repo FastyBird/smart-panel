@@ -5,7 +5,13 @@ import { ConfigValidationException } from '../config.exceptions';
 import type { IConfigAudioRes } from './config-audio.store.types';
 import type { IConfigDisplayRes } from './config-display.store.types';
 import type { IConfigLanguageRes } from './config-language.store.types';
-import { ConfigWeatherSchema, ConfigWeatherUpdateReqSchema } from './config-weather.store.schemas';
+import {
+	ConfigWeatherCityIdUpdateReqSchema,
+	ConfigWeatherCityNameUpdateReqSchema,
+	ConfigWeatherLatLonUpdateReqSchema,
+	ConfigWeatherSchema,
+	ConfigWeatherZipCodeUpdateReqSchema,
+} from './config-weather.store.schemas';
 import type { IConfigWeather, IConfigWeatherEditActionPayload, IConfigWeatherRes, IConfigWeatherUpdateReq } from './config-weather.store.types';
 
 export const transformConfigWeatherResponse = (
@@ -23,13 +29,18 @@ export const transformConfigWeatherResponse = (
 };
 
 export const transformConfigWeatherUpdateRequest = (config: IConfigWeatherEditActionPayload['data']): IConfigWeatherUpdateReq => {
-	const parsedRequest = ConfigWeatherUpdateReqSchema.safeParse({ ...camelToSnake(config), type: ConfigModuleWeatherType.weather });
+	for (const schema of [
+		ConfigWeatherLatLonUpdateReqSchema,
+		ConfigWeatherCityNameUpdateReqSchema,
+		ConfigWeatherCityIdUpdateReqSchema,
+		ConfigWeatherZipCodeUpdateReqSchema,
+	]) {
+		const parsedRequest = schema.safeParse({ ...camelToSnake(config), type: ConfigModuleWeatherType.weather });
 
-	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
-
-		throw new ConfigValidationException('Failed to validate update weather config request.');
+		if (parsedRequest.success) {
+			return parsedRequest.data as unknown as IConfigWeatherUpdateReq;
+		}
 	}
 
-	return parsedRequest.data;
+	throw new ConfigValidationException('Failed to validate update weather config request.');
 };

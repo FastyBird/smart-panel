@@ -24,7 +24,7 @@ import {
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
-	WeatherLocationTypeType,
+	WeatherLocationType,
 } from '../config.constants';
 import { ConfigNotFoundException, ConfigValidationException } from '../config.exceptions';
 import { UpdateAudioConfigDto, UpdatePluginConfigDto } from '../dto/config.dto';
@@ -95,8 +95,10 @@ describe('ConfigService', () => {
 		},
 		weather: {
 			type: SectionType.WEATHER,
-			location: null,
-			locationType: WeatherLocationTypeType.CITY_NAME,
+			cityName: null,
+			latitude: null,
+			longitude: null,
+			locationType: WeatherLocationType.CITY_NAME,
 			openWeatherApiKey: null,
 			unit: TemperatureUnitType.CELSIUS,
 		},

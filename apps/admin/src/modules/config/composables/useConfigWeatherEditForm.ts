@@ -4,7 +4,13 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ConfigModuleWeatherUnit, PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type } from '../../../openapi';
+import {
+	ConfigModuleWeatherCityIdLocation_type,
+	ConfigModuleWeatherCityNameLocation_type,
+	ConfigModuleWeatherLatLonLocation_type,
+	ConfigModuleWeatherUnit,
+	ConfigModuleWeatherZipCodeLocation_type,
+} from '../../../openapi';
 import { FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IConfigWeather } from '../store/config-weather.store.types';
@@ -30,9 +36,19 @@ export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditF
 
 	let timer: number;
 
-	const locationTypeOptions: { value: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type; label: string }[] = Object.values(
-		PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type
-	).map((value) => ({
+	const locationTypeOptions: {
+		value:
+			| ConfigModuleWeatherLatLonLocation_type
+			| ConfigModuleWeatherCityNameLocation_type
+			| ConfigModuleWeatherCityIdLocation_type
+			| ConfigModuleWeatherZipCodeLocation_type;
+		label: string;
+	}[] = [
+		...Object.values(ConfigModuleWeatherLatLonLocation_type),
+		...Object.values(ConfigModuleWeatherCityNameLocation_type),
+		...Object.values(ConfigModuleWeatherCityIdLocation_type),
+		...Object.values(ConfigModuleWeatherZipCodeLocation_type),
+	].map((value) => ({
 		value,
 		label: t(`configModule.locationTypes.${value}`),
 	}));
@@ -43,7 +59,11 @@ export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditF
 	}));
 
 	const model = reactive<IConfigWeatherEditForm>({
-		location: config.location || '',
+		longitude: config.longitude || null,
+		latitude: config.latitude || null,
+		cityName: config.cityName || null,
+		cityId: config.cityId || null,
+		zipCode: config.zipCode || null,
 		locationType: config.locationType,
 		unit: config.unit,
 		openWeatherApiKey: config.openWeatherApiKey || '',
@@ -67,7 +87,11 @@ export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditF
 		try {
 			await configWeatherStore.edit({
 				data: {
-					location: !model.location || model.location?.trim() === '' ? null : model.location,
+					longitude: !model.longitude ? null : model.longitude,
+					latitude: !model.latitude ? null : model.latitude,
+					cityName: !model.cityName || model.cityName?.trim() === '' ? null : model.cityName,
+					cityId: !model.cityId ? null : model.cityId,
+					zipCode: !model.zipCode || model.zipCode?.trim() === '' ? null : model.zipCode,
 					locationType: model.locationType,
 					unit: model.unit,
 					openWeatherApiKey: !model.openWeatherApiKey || model.openWeatherApiKey?.trim() === '' ? null : model.openWeatherApiKey,
@@ -105,7 +129,15 @@ export const useConfigWeatherEditForm = ({ config, messages }: IUseLanguageEditF
 	};
 
 	watch(model, (val: IConfigWeatherEditForm): void => {
-		if (val.location !== config.location) {
+		if (val.longitude !== config.longitude) {
+			formChanged.value = true;
+		} else if (val.latitude !== config.latitude) {
+			formChanged.value = true;
+		} else if (val.cityName !== config.cityName) {
+			formChanged.value = true;
+		} else if (val.cityId !== config.cityId) {
+			formChanged.value = true;
+		} else if (val.zipCode !== config.zipCode) {
 			formChanged.value = true;
 		} else if (val.locationType !== config.locationType) {
 			formChanged.value = true;
