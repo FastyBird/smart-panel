@@ -2,7 +2,6 @@ import 'package:fastybird_smart_panel/api/models/config_module_req_update_sectio
 import 'package:fastybird_smart_panel/api/models/config_module_req_update_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_res_section_data_union.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_update_weather_location_type.dart';
-import 'package:fastybird_smart_panel/api/models/config_module_update_weather_type.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_update_weather_unit.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_weather_location_type.dart';
 import 'package:fastybird_smart_panel/api/models/config_module_weather_unit.dart';
@@ -23,11 +22,11 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
     return data!;
   }
 
-  String? get location => _getConfig().location;
-
   WeatherLocationType get locationType => _getConfig().locationType;
 
   WeatherUnit get unit => _getConfig().unit;
+
+  String? get openWeatherApiKey => _getConfig().openWeatherApiKey;
 
   Future<bool> refresh() async {
     try {
@@ -77,25 +76,25 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
     return true;
   }
 
-  Future<void> _storeWeatherSection({
-    WeatherLocationType? locationType,
-    WeatherUnit? unit,
-  }) async {
+  Future<void> _storeWeatherSection({required WeatherUnit unit}) async {
     final updated = await _updateConfiguration(
       section: Section.weather,
       data: ConfigModuleReqUpdateSectionDataUnionWeather(
-          type: ConfigModuleUpdateWeatherType.weather,
-          locationType: _convertWeatherLocationTypeToApi(
-            locationType ?? _getConfig().locationType,
-          ),
-          unit: _convertWeatherUnitToApi(unit ?? _getConfig().unit)),
+        unit: _convertWeatherUnitToApi(unit),
+        locationType: _convertWeatherLocationTypeToApi(locationType),
+        openWeatherApiKey: openWeatherApiKey,
+      ),
     );
 
     if (updated is ConfigModuleResSectionDataUnionWeather) {
       data = _getConfig().copyWith(
-        locationType: _convertWeatherLocationTypeFromApi(updated.locationType),
-        unit: _convertWeatherUnitFromApi(updated.unit),
-        location: updated.location,
+        locationType: _convertWeatherLocationTypeFromApi(
+          updated.locationType,
+        ),
+        unit: _convertWeatherUnitFromApi(
+          updated.unit,
+        ),
+        openWeatherApiKey: updated.openWeatherApiKey,
       );
     } else {
       throw Exception('Received data from backend are not valid');
@@ -103,38 +102,33 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
   }
 
   Future<void> fetchConfiguration() async {
-    return handleApiCall(
-      () async {
-        final response = await apiClient.getConfigModuleConfigSection(
-            section: Section.weather);
+    return handleApiCall(() async {
+      final response = await apiClient.getConfigModuleConfigSection(
+        section: Section.weather,
+      );
 
-        final data = response.data.data;
+      final data = response.data.data;
 
-        if (data is ConfigModuleResSectionDataUnionWeather) {
-          final raw = response.response.data['data'] as Map<String, dynamic>;
+      if (data is ConfigModuleResSectionDataUnionWeather) {
+        final raw = response.response.data['data'] as Map<String, dynamic>;
 
-          insertConfiguration(raw);
-        }
-      },
-      'fetch weather configuration',
-    );
+        insertConfiguration(raw);
+      }
+    }, 'fetch weather configuration');
   }
 
   Future<ConfigModuleResSectionDataUnion> _updateConfiguration({
     required Section section,
     required ConfigModuleReqUpdateSectionDataUnion data,
   }) async {
-    return await handleApiCall(
-      () async {
-        final response = await apiClient.updateConfigModuleConfigSection(
-          section: section,
-          body: ConfigModuleReqUpdateSection(data: data),
-        );
+    return await handleApiCall(() async {
+      final response = await apiClient.updateConfigModuleConfigSection(
+        section: section,
+        body: ConfigModuleReqUpdateSection(data: data),
+      );
 
-        return response.data.data;
-      },
-      'update weather configuration',
-    );
+      return response.data.data;
+    }, 'update weather configuration');
   }
 
   WeatherLocationType _convertWeatherLocationTypeFromApi(
@@ -176,7 +170,9 @@ class WeatherConfigRepository extends Repository<WeatherConfigModel> {
     }
   }
 
-  ConfigModuleUpdateWeatherUnit _convertWeatherUnitToApi(WeatherUnit unit) {
+  ConfigModuleUpdateWeatherUnit _convertWeatherUnitToApi(
+    WeatherUnit unit,
+  ) {
     switch (unit) {
       case WeatherUnit.fahrenheit:
         return ConfigModuleUpdateWeatherUnit.fahrenheit;

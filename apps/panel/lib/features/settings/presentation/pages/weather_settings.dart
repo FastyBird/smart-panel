@@ -28,7 +28,6 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
       locator<WeatherConfigRepository>();
 
   late WeatherUnit _unit;
-  late String? _location;
 
   @override
   void initState() {
@@ -49,7 +48,6 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
   void _syncStateWithRepository() {
     setState(() {
       _unit = _repository.unit;
-      _location = _repository.location;
     });
   }
 
@@ -58,9 +56,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
     final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppTopBar(
-        title: localizations.settings_weather_settings_title,
-      ),
+      appBar: AppTopBar(title: localizations.settings_weather_settings_title),
       body: SingleChildScrollView(
         child: Padding(
           padding: AppSpacings.paddingMd,
@@ -110,9 +106,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                           child: Text(
                             item,
                             textAlign: TextAlign.end,
-                            style: TextStyle(
-                              fontSize: AppFontSize.extraSmall,
-                            ),
+                            style: TextStyle(fontSize: AppFontSize.extraSmall),
                           ),
                         );
                       }).toList();
@@ -161,19 +155,6 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                     ),
                   ),
                 ),
-                trailing: Tooltip(
-                  message: _location ?? localizations.value_not_set,
-                  child: Text(
-                    _location ?? localizations.value_not_set,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: AppTextColorLight.placeholder,
-                      fontStyle: FontStyle.italic,
-                      fontSize: AppFontSize.extraSmall,
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
@@ -193,9 +174,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
         value: entry.key,
         child: Text(
           entry.value,
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-          ),
+          style: TextStyle(fontSize: AppFontSize.extraSmall),
         ),
       );
     }).toList();
@@ -221,25 +200,18 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 
     final success = await _repository.setWeatherUnit(_unit);
 
-    Future.microtask(
-      () async {
-        await Future.delayed(
-          const Duration(milliseconds: 500),
-        );
+    Future.microtask(() async {
+      await Future.delayed(const Duration(milliseconds: 500));
 
-        if (!context.mounted) return;
+      if (!context.mounted) return;
 
-        if (!success) {
-          setState(() {
-            _unit = backup;
-          });
+      if (!success) {
+        setState(() {
+          _unit = backup;
+        });
 
-          AlertBar.showError(
-            context,
-            message: 'Save settings failed.',
-          );
-        }
-      },
-    );
+        AlertBar.showError(context, message: 'Save settings failed.');
+      }
+    });
   }
 }

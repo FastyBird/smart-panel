@@ -1,12 +1,12 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 
 import {
 	LanguageType,
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
-	WeatherLocationTypeType,
+	WeatherLocationType,
 } from '../config.constants';
 
 export abstract class BaseConfigModel {
@@ -84,20 +84,14 @@ export class LanguageConfigModel extends BaseConfigModel {
 	timeFormat: TimeFormatType = TimeFormatType.HOUR_24;
 }
 
-export class WeatherConfigModel extends BaseConfigModel {
+export abstract class WeatherConfigModel extends BaseConfigModel {
 	@Expose({ groups: ['api'] })
 	@IsOptional()
 	type = SectionType.WEATHER;
 
-	@Expose()
-	@IsOptional()
-	@IsString()
-	location: string | null = null;
-
 	@Expose({ name: 'location_type' })
-	@IsOptional()
-	@IsEnum(WeatherLocationTypeType)
-	locationType: WeatherLocationTypeType = WeatherLocationTypeType.CITY_NAME;
+	@IsEnum(WeatherLocationType)
+	locationType: WeatherLocationType = WeatherLocationType.CITY_NAME;
 
 	@Expose()
 	@IsEnum(TemperatureUnitType)
@@ -107,6 +101,87 @@ export class WeatherConfigModel extends BaseConfigModel {
 	@IsOptional()
 	@IsString()
 	openWeatherApiKey: string | null = null;
+}
+
+export class WeatherLatLonConfigModel extends WeatherConfigModel {
+	@Expose({ name: 'location_type' })
+	@IsOptional()
+	locationType: WeatherLocationType.LAT_LON = WeatherLocationType.LAT_LON;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-90)
+	@Max(90)
+	latitude: number | null = null;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-180)
+	@Max(180)
+	longitude: number | null = null;
+}
+
+export class WeatherCityNameConfigModel extends WeatherConfigModel {
+	@Expose({ name: 'location_type' })
+	@IsOptional()
+	locationType: WeatherLocationType.CITY_NAME = WeatherLocationType.CITY_NAME;
+
+	@Expose({ name: 'city_name' })
+	@IsOptional()
+	@IsString()
+	cityName: string | null = null;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-90)
+	@Max(90)
+	latitude: number | null = null;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-180)
+	@Max(180)
+	longitude: number | null = null;
+}
+
+export class WeatherCityIdConfigModel extends WeatherConfigModel {
+	@Expose({ name: 'location_type' })
+	@IsOptional()
+	locationType: WeatherLocationType.CITY_ID = WeatherLocationType.CITY_ID;
+
+	@Expose({ name: 'city_id' })
+	@IsOptional()
+	@IsInt()
+	cityId: number | null = null;
+}
+
+export class WeatherZipCodeConfigModel extends WeatherConfigModel {
+	@Expose({ name: 'location_type' })
+	@IsOptional()
+	locationType: WeatherLocationType.ZIP_CODE = WeatherLocationType.ZIP_CODE;
+
+	@Expose({ name: 'zip_code' })
+	@IsOptional()
+	@IsString()
+	zipCode: string | null = null;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-90)
+	@Max(90)
+	latitude: number | null = null;
+
+	@Expose()
+	@IsOptional()
+	@IsNumber()
+	@Min(-180)
+	@Max(180)
+	longitude: number | null = null;
 }
 
 export abstract class PluginConfigModel {
@@ -133,8 +208,23 @@ export class AppConfigModel {
 
 	@Expose()
 	@ValidateNested()
-	@Type(() => WeatherConfigModel)
-	weather: WeatherConfigModel = new WeatherConfigModel();
+	@Type(() => WeatherConfigModel, {
+		discriminator: {
+			property: 'location_type',
+			subTypes: [
+				{ value: WeatherLatLonConfigModel, name: WeatherLocationType.LAT_LON },
+				{ value: WeatherCityNameConfigModel, name: WeatherLocationType.CITY_NAME },
+				{ value: WeatherCityIdConfigModel, name: WeatherLocationType.CITY_ID },
+				{ value: WeatherZipCodeConfigModel, name: WeatherLocationType.ZIP_CODE },
+			],
+		},
+		keepDiscriminatorProperty: true,
+	})
+	weather:
+		| WeatherLatLonConfigModel
+		| WeatherCityNameConfigModel
+		| WeatherCityIdConfigModel
+		| WeatherZipCodeConfigModel = new WeatherCityNameConfigModel();
 
 	@Expose()
 	@ValidateNested({ each: true })

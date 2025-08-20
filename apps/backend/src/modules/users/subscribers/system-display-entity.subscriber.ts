@@ -22,7 +22,6 @@ export class SystemDisplayEntitySubscriber implements EntitySubscriberInterface<
 	}
 
 	afterInsert(event: InsertEvent<DisplayProfileEntity>): void {
-		console.log('INSERT DISPLAY');
 		this.connectDisplays(event.entity.id, event.entity.uid).catch((error) => {
 			const err = error as Error;
 
@@ -51,14 +50,12 @@ export class SystemDisplayEntitySubscriber implements EntitySubscriberInterface<
 	}
 
 	private async connectDisplays(systemDisplayId: string, systemDisplayUid: string): Promise<void> {
-		console.log('CONNECT DISPLAY');
 		const display = await this.displaysService.findByUid(systemDisplayUid);
 
 		if (!display) {
-			console.log('NO DISPLAY');
 			return;
 		}
-		console.log('UPDATE DISPLAY');
+
 		await this.displaysService.update(display.id, {
 			display_profile: systemDisplayId,
 		});

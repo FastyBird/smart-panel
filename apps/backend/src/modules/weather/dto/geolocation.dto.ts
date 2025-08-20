@@ -1,7 +1,7 @@
 import { Expose, Type } from 'class-transformer';
-import { IsDefined, IsNumber, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsDefined, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
 
-export class GeolocationDto {
+export class GeolocationCityDto {
 	@Expose()
 	@IsString()
 	@IsDefined()
@@ -10,7 +10,6 @@ export class GeolocationDto {
 	@Expose()
 	@IsOptional()
 	@IsObject()
-	@ValidateNested()
 	@Type(() => Object)
 	local_names?: Record<string, string>;
 
@@ -30,4 +29,28 @@ export class GeolocationDto {
 	@IsOptional()
 	@IsString()
 	state?: string;
+}
+
+export class GeolocationZipDto {
+	@Expose()
+	@IsString()
+	@IsDefined()
+	zip: string;
+
+	@Expose()
+	@IsString()
+	@IsDefined()
+	name: string;
+
+	@Expose()
+	@IsNumber()
+	lat: number;
+
+	@Expose()
+	@IsNumber()
+	lon: number;
+
+	@Expose()
+	@IsString()
+	country: string;
 }

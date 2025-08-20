@@ -5,13 +5,17 @@ import type { Store } from 'pinia';
 import { z } from 'zod';
 
 import {
+	ConfigWeatherBaseResSchema,
+	ConfigWeatherBaseUpdateReqSchema,
+	ConfigWeatherCityIdResSchema,
+	ConfigWeatherCityNameResSchema,
 	ConfigWeatherEditActionPayloadSchema,
+	ConfigWeatherLatLonResSchema,
 	ConfigWeatherOnEventActionPayloadSchema,
-	ConfigWeatherResSchema,
 	ConfigWeatherSchema,
 	ConfigWeatherSetActionPayloadSchema,
 	ConfigWeatherStateSemaphoreSchema,
-	ConfigWeatherUpdateReqSchema,
+	ConfigWeatherZipCodeResSchema,
 } from './config-weather.store.schemas';
 
 // STORE STATE
@@ -55,9 +59,14 @@ export type ConfigWeatherStoreSetup = IConfigWeatherStoreState & IConfigWeatherS
 // BACKEND API
 // ===========
 
-export type IConfigWeatherUpdateReq = z.infer<typeof ConfigWeatherUpdateReqSchema>;
+export type IConfigWeatherUpdateReq = z.infer<typeof ConfigWeatherBaseUpdateReqSchema>;
 
-export type IConfigWeatherRes = z.infer<typeof ConfigWeatherResSchema>;
+export type IConfigWeatherRes =
+	| z.infer<typeof ConfigWeatherBaseResSchema>
+	| z.infer<typeof ConfigWeatherLatLonResSchema>
+	| z.infer<typeof ConfigWeatherCityNameResSchema>
+	| z.infer<typeof ConfigWeatherCityIdResSchema>
+	| z.infer<typeof ConfigWeatherZipCodeResSchema>;
 
 // STORE
 export type ConfigWeatherStore = Store<string, IConfigWeatherStoreState, object, IConfigWeatherStoreActions>;

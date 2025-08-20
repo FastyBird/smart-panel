@@ -5,23 +5,28 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { SectionType } from '../../config/config.constants';
-import { WeatherConfigModel } from '../../config/models/config.model';
+import {
+	WeatherCityIdConfigModel,
+	WeatherCityNameConfigModel,
+	WeatherLatLonConfigModel,
+	WeatherZipCodeConfigModel,
+} from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
-import { GeolocationDto } from '../dto/geolocation.dto';
+import { GeolocationCityDto, GeolocationZipDto } from '../dto/geolocation.dto';
 
 @Injectable()
 export class GeolocationService {
 	private readonly logger = new Logger(GeolocationService.name);
 	private readonly apiKey: string | null;
-	private readonly itemsLimit: 5;
+	private readonly itemsLimit: number = 5;
 
 	private readonly API_URL = 'https://api.openweathermap.org/geo/1.0';
 
 	constructor(private readonly configService: ConfigService) {
-		this.apiKey = this.configService.getConfigSection(SectionType.WEATHER, WeatherConfigModel).openWeatherApiKey;
+		this.apiKey = this.getConfig().openWeatherApiKey;
 	}
 
-	async getCoordinatesByCity(city: string): Promise<GeolocationDto[] | null> {
+	async getCoordinatesByCity(city: string): Promise<GeolocationCityDto[] | null> {
 		try {
 			const url = `${this.API_URL}/direct?q=${encodeURIComponent(city)}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -42,7 +47,7 @@ export class GeolocationService {
 			}
 
 			const locations = data.map((item) =>
-				toInstance(GeolocationDto, item, {
+				toInstance(GeolocationCityDto, item, {
 					excludeExtraneousValues: false,
 				}),
 			);
@@ -63,7 +68,35 @@ export class GeolocationService {
 		}
 	}
 
-	async getCityByCoordinates(lat: number, lon: number): Promise<GeolocationDto[] | null> {
+	async getCoordinatesByZip(zip: string): Promise<GeolocationZipDto | null> {
+		try {
+			const url = `${this.API_URL}/zip?zip=${encodeURIComponent(zip)}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
+
+			const response = await fetch(url);
+
+			const data = (await response.json()) as unknown;
+
+			const location = toInstance(GeolocationZipDto, data, {
+				excludeExtraneousValues: false,
+			});
+
+			const errors = await validate(location);
+
+			if (errors.length > 0) {
+				this.logger.error(`[VALIDATION] Geolocation response validation failed error=${JSON.stringify(errors)}`);
+
+				return null;
+			}
+
+			return location;
+		} catch (error) {
+			this.logger.error(`[GEOLOCATION] Failed to fetch coordinates for zip=${zip}`, error);
+
+			return null;
+		}
+	}
+
+	async getCityByCoordinates(lat: number, lon: number): Promise<GeolocationCityDto[] | null> {
 		try {
 			const url = `${this.API_URL}/reverse?lat=${lat}&lon=${lon}&limit=${this.itemsLimit}&appid=${this.apiKey}`;
 
@@ -84,7 +117,7 @@ export class GeolocationService {
 			}
 
 			const locations = data.map((item) =>
-				toInstance(GeolocationDto, item, {
+				toInstance(GeolocationCityDto, item, {
 					excludeExtraneousValues: false,
 				}),
 			);
@@ -101,5 +134,20 @@ export class GeolocationService {
 
 			return null;
 		}
+	}
+
+	private getConfig():
+		| WeatherLatLonConfigModel
+		| WeatherCityNameConfigModel
+		| WeatherCityIdConfigModel
+		| WeatherZipCodeConfigModel {
+		return this.configService.getConfigSection<
+			WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
+		>(SectionType.WEATHER, [
+			WeatherLatLonConfigModel,
+			WeatherCityNameConfigModel,
+			WeatherCityIdConfigModel,
+			WeatherZipCodeConfigModel,
+		]);
 	}
 }

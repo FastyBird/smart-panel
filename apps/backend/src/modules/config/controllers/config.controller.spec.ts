@@ -13,20 +13,26 @@ import {
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
-	WeatherLocationTypeType,
+	WeatherLocationType,
 } from '../config.constants';
 import {
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
-	UpdateWeatherConfigDto,
+	UpdateWeatherCityIdConfigDto,
+	UpdateWeatherCityNameConfigDto,
+	UpdateWeatherLatLonConfigDto,
+	UpdateWeatherZipCodeConfigDto,
 } from '../dto/config.dto';
 import {
 	AppConfigModel,
 	AudioConfigModel,
 	DisplayConfigModel,
 	LanguageConfigModel,
-	WeatherConfigModel,
+	WeatherCityIdConfigModel,
+	WeatherCityNameConfigModel,
+	WeatherLatLonConfigModel,
+	WeatherZipCodeConfigModel,
 } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 
@@ -59,8 +65,10 @@ describe('ConfigController', () => {
 		},
 		weather: {
 			type: SectionType.WEATHER,
-			location: 'New York',
-			locationType: WeatherLocationTypeType.CITY_NAME,
+			cityName: 'New York,US',
+			latitude: 0,
+			longitude: 0,
+			locationType: WeatherLocationType.CITY_NAME,
 			unit: TemperatureUnitType.CELSIUS,
 			openWeatherApiKey: 'dummy-api-key',
 		},
@@ -177,9 +185,10 @@ describe('ConfigController', () => {
 
 	describe('updateWeatherConfig', () => {
 		it('should update and return the weather configuration', async () => {
-			const updateDto: UpdateWeatherConfigDto = {
+			const updateDto: UpdateWeatherCityNameConfigDto = {
 				type: SectionType.WEATHER,
-				location: 'Paris',
+				location_type: WeatherLocationType.CITY_NAME,
+				city_name: 'Paris,FR',
 				unit: TemperatureUnitType.FAHRENHEIT,
 			};
 			const updatedConfig = { ...mockConfig.weather, ...updateDto };
@@ -189,8 +198,18 @@ describe('ConfigController', () => {
 			const result = await controller.updateWeatherConfig({ data: updateDto });
 
 			expect(result).toEqual(updatedConfig);
-			expect(configService.setConfigSection).toHaveBeenCalledWith('weather', updateDto, UpdateWeatherConfigDto);
-			expect(configService.getConfigSection).toHaveBeenCalledWith('weather', WeatherConfigModel);
+			expect(configService.setConfigSection).toHaveBeenCalledWith('weather', updateDto, [
+				UpdateWeatherLatLonConfigDto,
+				UpdateWeatherCityNameConfigDto,
+				UpdateWeatherCityIdConfigDto,
+				UpdateWeatherZipCodeConfigDto,
+			]);
+			expect(configService.getConfigSection).toHaveBeenCalledWith('weather', [
+				WeatherLatLonConfigModel,
+				WeatherCityNameConfigModel,
+				WeatherCityIdConfigModel,
+				WeatherZipCodeConfigModel,
+			]);
 		});
 	});
 });

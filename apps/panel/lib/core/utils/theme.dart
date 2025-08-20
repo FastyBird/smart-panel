@@ -99,11 +99,9 @@ class AppTheme {
         inactiveTrackColor: AppBorderColorLight.light,
         disabledActiveTrackColor: AppTextColorLight.disabled,
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         dividerColor: AppBorderColorLight.light,
-        labelStyle: TextStyle(
-          fontSize: AppFontSize.base,
-        ),
+        labelStyle: TextStyle(fontSize: AppFontSize.base),
       ),
       listTileTheme: ListTileThemeData(
         dense: true,
@@ -117,9 +115,7 @@ class AppTheme {
             ),
           ),
         ),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
         horizontalTitleGap: AppSpacings.pSm,
         textColor: AppTextColorLight.regular,
         titleAlignment: ListTileTitleAlignment.center,
@@ -160,11 +156,9 @@ class AppTheme {
         inactiveTrackColor: AppBorderColorDark.light,
         disabledActiveTrackColor: AppTextColorDark.placeholder,
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         dividerColor: AppBorderColorDark.light,
-        labelStyle: TextStyle(
-          fontSize: AppFontSize.base,
-        ),
+        labelStyle: TextStyle(fontSize: AppFontSize.base),
       ),
       listTileTheme: ListTileThemeData(
         dense: true,
@@ -178,9 +172,7 @@ class AppTheme {
             ),
           ),
         ),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
         horizontalTitleGap: AppSpacings.pSm,
         textColor: AppTextColorDark.regular,
       ),
@@ -424,25 +416,17 @@ class AppBorderRadius {
   static final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
-  static double get medium => _screenService.scale(
-        12.0,
-        density: _visualDensityService.density,
-      );
+  static double get medium =>
+      _screenService.scale(12.0, density: _visualDensityService.density);
 
-  static double get base => _screenService.scale(
-        6.0,
-        density: _visualDensityService.density,
-      );
+  static double get base =>
+      _screenService.scale(6.0, density: _visualDensityService.density);
 
-  static double get small => _screenService.scale(
-        2.0,
-        density: _visualDensityService.density,
-      );
+  static double get small =>
+      _screenService.scale(2.0, density: _visualDensityService.density);
 
-  static double get round => _screenService.scale(
-        20.0,
-        density: _visualDensityService.density,
-      );
+  static double get round =>
+      _screenService.scale(20.0, density: _visualDensityService.density);
 }
 
 class AppFontSize {
@@ -450,30 +434,20 @@ class AppFontSize {
   static final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
-  static double get large => _screenService.scale(
-        16.0,
-        density: _visualDensityService.density,
-      );
+  static double get large =>
+      _screenService.scale(16.0, density: _visualDensityService.density);
 
-  static double get base => _screenService.scale(
-        14.0,
-        density: _visualDensityService.density,
-      );
+  static double get base =>
+      _screenService.scale(14.0, density: _visualDensityService.density);
 
-  static double get small => _screenService.scale(
-        12.0,
-        density: _visualDensityService.density,
-      );
+  static double get small =>
+      _screenService.scale(12.0, density: _visualDensityService.density);
 
-  static double get extraSmall => _screenService.scale(
-        10.0,
-        density: _visualDensityService.density,
-      );
+  static double get extraSmall =>
+      _screenService.scale(10.0, density: _visualDensityService.density);
 
-  static double get extraExtraSmall => _screenService.scale(
-        8.0,
-        density: _visualDensityService.density,
-      );
+  static double get extraExtraSmall =>
+      _screenService.scale(8.0, density: _visualDensityService.density);
 }
 
 // Centralized spacing
@@ -482,25 +456,17 @@ class AppSpacings {
   static final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
-  static double get pXs => _screenService.scale(
-        2.0,
-        density: _visualDensityService.density,
-      );
+  static double get pXs =>
+      _screenService.scale(2.0, density: _visualDensityService.density);
 
-  static double get pSm => _screenService.scale(
-        4.0,
-        density: _visualDensityService.density,
-      );
+  static double get pSm =>
+      _screenService.scale(4.0, density: _visualDensityService.density);
 
-  static double get pMd => _screenService.scale(
-        8.0,
-        density: _visualDensityService.density,
-      );
+  static double get pMd =>
+      _screenService.scale(8.0, density: _visualDensityService.density);
 
-  static double get pLg => _screenService.scale(
-        16.0,
-        density: _visualDensityService.density,
-      );
+  static double get pLg =>
+      _screenService.scale(16.0, density: _visualDensityService.density);
 
   static EdgeInsets get paddingXs => EdgeInsets.all(pXs);
 
@@ -529,728 +495,728 @@ class AppSpacings {
 
 class AppFilledButtonsLightThemes {
   static FilledButtonThemeData get base => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppTextColorLight.regular,
-          pressedColor: AppColorsLight.primary,
-          hoveredColor: AppColorsLight.primary,
-          disabledColor: AppTextColorLight.placeholder,
-          bgColor: AppFillColorLight.blank,
-          pressedBgColor: AppFillColorLight.blank,
-          hoveredBgColor: AppFillColorLight.blank,
-          disabledBgColor: AppFillColorLight.blank,
-          borderColor: AppBorderColorLight.base,
-          pressedBorderColor: AppColorsLight.primary,
-          hoveredBorderColor: AppColorsLight.primary,
-          disabledBorderColor: AppBorderColorLight.light,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppTextColorLight.regular,
+      pressedColor: AppColorsLight.primary,
+      hoveredColor: AppColorsLight.primary,
+      disabledColor: AppTextColorLight.placeholder,
+      bgColor: AppFillColorLight.blank,
+      pressedBgColor: AppFillColorLight.blank,
+      hoveredBgColor: AppFillColorLight.blank,
+      disabledBgColor: AppFillColorLight.blank,
+      borderColor: AppBorderColorLight.base,
+      pressedBorderColor: AppColorsLight.primary,
+      hoveredBorderColor: AppColorsLight.primary,
+      disabledBorderColor: AppBorderColorLight.light,
+    ),
+  );
 
   static FilledButtonThemeData get primary => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.primary,
-          pressedBgColor: AppColorsLight.primaryDark2,
-          hoveredBgColor: AppColorsLight.primaryLight3,
-          disabledBgColor: AppColorsLight.primaryLight5,
-          borderColor: AppColorsLight.primary,
-          pressedBorderColor: AppColorsLight.primaryDark2,
-          hoveredBorderColor: AppColorsLight.primaryLight3,
-          disabledBorderColor: AppColorsLight.primaryLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.primary,
+      pressedBgColor: AppColorsLight.primaryDark2,
+      hoveredBgColor: AppColorsLight.primaryLight3,
+      disabledBgColor: AppColorsLight.primaryLight5,
+      borderColor: AppColorsLight.primary,
+      pressedBorderColor: AppColorsLight.primaryDark2,
+      hoveredBorderColor: AppColorsLight.primaryLight3,
+      disabledBorderColor: AppColorsLight.primaryLight5,
+    ),
+  );
 
   static FilledButtonThemeData get success => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.success,
-          pressedBgColor: AppColorsLight.successDark2,
-          hoveredBgColor: AppColorsLight.successLight3,
-          disabledBgColor: AppColorsLight.successLight5,
-          borderColor: AppColorsLight.success,
-          pressedBorderColor: AppColorsLight.successDark2,
-          hoveredBorderColor: AppColorsLight.successLight3,
-          disabledBorderColor: AppColorsLight.successLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.success,
+      pressedBgColor: AppColorsLight.successDark2,
+      hoveredBgColor: AppColorsLight.successLight3,
+      disabledBgColor: AppColorsLight.successLight5,
+      borderColor: AppColorsLight.success,
+      pressedBorderColor: AppColorsLight.successDark2,
+      hoveredBorderColor: AppColorsLight.successLight3,
+      disabledBorderColor: AppColorsLight.successLight5,
+    ),
+  );
 
   static FilledButtonThemeData get warning => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.warning,
-          pressedBgColor: AppColorsLight.warningDark2,
-          hoveredBgColor: AppColorsLight.warningLight3,
-          disabledBgColor: AppColorsLight.warningLight5,
-          borderColor: AppColorsLight.warning,
-          pressedBorderColor: AppColorsLight.warningDark2,
-          hoveredBorderColor: AppColorsLight.warningLight3,
-          disabledBorderColor: AppColorsLight.warningLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.warning,
+      pressedBgColor: AppColorsLight.warningDark2,
+      hoveredBgColor: AppColorsLight.warningLight3,
+      disabledBgColor: AppColorsLight.warningLight5,
+      borderColor: AppColorsLight.warning,
+      pressedBorderColor: AppColorsLight.warningDark2,
+      hoveredBorderColor: AppColorsLight.warningLight3,
+      disabledBorderColor: AppColorsLight.warningLight5,
+    ),
+  );
 
   static FilledButtonThemeData get danger => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.danger,
-          pressedBgColor: AppColorsLight.dangerDark2,
-          hoveredBgColor: AppColorsLight.dangerLight3,
-          disabledBgColor: AppColorsLight.dangerLight5,
-          borderColor: AppColorsLight.danger,
-          pressedBorderColor: AppColorsLight.dangerDark2,
-          hoveredBorderColor: AppColorsLight.dangerLight3,
-          disabledBorderColor: AppColorsLight.dangerLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.danger,
+      pressedBgColor: AppColorsLight.dangerDark2,
+      hoveredBgColor: AppColorsLight.dangerLight3,
+      disabledBgColor: AppColorsLight.dangerLight5,
+      borderColor: AppColorsLight.danger,
+      pressedBorderColor: AppColorsLight.dangerDark2,
+      hoveredBorderColor: AppColorsLight.dangerLight3,
+      disabledBorderColor: AppColorsLight.dangerLight5,
+    ),
+  );
 
   static FilledButtonThemeData get error => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.error,
-          pressedBgColor: AppColorsLight.errorDark2,
-          hoveredBgColor: AppColorsLight.errorLight3,
-          disabledBgColor: AppColorsLight.errorLight5,
-          borderColor: AppColorsLight.error,
-          pressedBorderColor: AppColorsLight.errorDark2,
-          hoveredBorderColor: AppColorsLight.errorLight3,
-          disabledBorderColor: AppColorsLight.errorLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.error,
+      pressedBgColor: AppColorsLight.errorDark2,
+      hoveredBgColor: AppColorsLight.errorLight3,
+      disabledBgColor: AppColorsLight.errorLight5,
+      borderColor: AppColorsLight.error,
+      pressedBorderColor: AppColorsLight.errorDark2,
+      hoveredBorderColor: AppColorsLight.errorLight3,
+      disabledBorderColor: AppColorsLight.errorLight5,
+    ),
+  );
 
   static FilledButtonThemeData get info => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.info,
-          pressedBgColor: AppColorsLight.infoDark2,
-          hoveredBgColor: AppColorsLight.infoLight3,
-          disabledBgColor: AppColorsLight.infoLight5,
-          borderColor: AppColorsLight.info,
-          pressedBorderColor: AppColorsLight.infoDark2,
-          hoveredBorderColor: AppColorsLight.infoLight3,
-          disabledBorderColor: AppColorsLight.infoLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.info,
+      pressedBgColor: AppColorsLight.infoDark2,
+      hoveredBgColor: AppColorsLight.infoLight3,
+      disabledBgColor: AppColorsLight.infoLight5,
+      borderColor: AppColorsLight.info,
+      pressedBorderColor: AppColorsLight.infoDark2,
+      hoveredBorderColor: AppColorsLight.infoLight3,
+      disabledBorderColor: AppColorsLight.infoLight5,
+    ),
+  );
 }
 
 class AppFilledButtonsDarkThemes {
   static FilledButtonThemeData get base => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppTextColorDark.regular,
-          pressedColor: AppColorsDark.primary,
-          hoveredColor: AppColorsDark.primary,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppFillColorDark.blank,
-          pressedBgColor: AppFillColorDark.blank,
-          hoveredBgColor: AppFillColorDark.blank,
-          disabledBgColor: AppFillColorDark.blank,
-          borderColor: AppBorderColorDark.base,
-          pressedBorderColor: AppColorsDark.primary,
-          hoveredBorderColor: AppColorsDark.primary,
-          disabledBorderColor: AppBorderColorDark.light,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppTextColorDark.regular,
+      pressedColor: AppColorsDark.primary,
+      hoveredColor: AppColorsDark.primary,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppFillColorDark.blank,
+      pressedBgColor: AppFillColorDark.blank,
+      hoveredBgColor: AppFillColorDark.blank,
+      disabledBgColor: AppFillColorDark.blank,
+      borderColor: AppBorderColorDark.base,
+      pressedBorderColor: AppColorsDark.primary,
+      hoveredBorderColor: AppColorsDark.primary,
+      disabledBorderColor: AppBorderColorDark.light,
+    ),
+  );
 
   static FilledButtonThemeData get primary => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.primary,
-          pressedBgColor: AppColorsDark.primaryDark2,
-          hoveredBgColor: AppColorsDark.primaryLight3,
-          disabledBgColor: AppColorsDark.primaryLight5,
-          borderColor: AppColorsDark.primary,
-          pressedBorderColor: AppColorsDark.primaryDark2,
-          hoveredBorderColor: AppColorsDark.primaryLight3,
-          disabledBorderColor: AppColorsDark.primaryLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.primary,
+      pressedBgColor: AppColorsDark.primaryDark2,
+      hoveredBgColor: AppColorsDark.primaryLight3,
+      disabledBgColor: AppColorsDark.primaryLight5,
+      borderColor: AppColorsDark.primary,
+      pressedBorderColor: AppColorsDark.primaryDark2,
+      hoveredBorderColor: AppColorsDark.primaryLight3,
+      disabledBorderColor: AppColorsDark.primaryLight5,
+    ),
+  );
 
   static FilledButtonThemeData get success => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.success,
-          pressedBgColor: AppColorsDark.successDark2,
-          hoveredBgColor: AppColorsDark.successLight3,
-          disabledBgColor: AppColorsDark.successLight5,
-          borderColor: AppColorsDark.success,
-          pressedBorderColor: AppColorsDark.successDark2,
-          hoveredBorderColor: AppColorsDark.successLight3,
-          disabledBorderColor: AppColorsDark.successLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.success,
+      pressedBgColor: AppColorsDark.successDark2,
+      hoveredBgColor: AppColorsDark.successLight3,
+      disabledBgColor: AppColorsDark.successLight5,
+      borderColor: AppColorsDark.success,
+      pressedBorderColor: AppColorsDark.successDark2,
+      hoveredBorderColor: AppColorsDark.successLight3,
+      disabledBorderColor: AppColorsDark.successLight5,
+    ),
+  );
 
   static FilledButtonThemeData get warning => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.warning,
-          pressedBgColor: AppColorsDark.warningDark2,
-          hoveredBgColor: AppColorsDark.warningLight3,
-          disabledBgColor: AppColorsDark.warningLight5,
-          borderColor: AppColorsDark.warning,
-          pressedBorderColor: AppColorsDark.warningDark2,
-          hoveredBorderColor: AppColorsDark.warningLight3,
-          disabledBorderColor: AppColorsDark.warningLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.warning,
+      pressedBgColor: AppColorsDark.warningDark2,
+      hoveredBgColor: AppColorsDark.warningLight3,
+      disabledBgColor: AppColorsDark.warningLight5,
+      borderColor: AppColorsDark.warning,
+      pressedBorderColor: AppColorsDark.warningDark2,
+      hoveredBorderColor: AppColorsDark.warningLight3,
+      disabledBorderColor: AppColorsDark.warningLight5,
+    ),
+  );
 
   static FilledButtonThemeData get error => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.error,
-          pressedBgColor: AppColorsDark.errorDark2,
-          hoveredBgColor: AppColorsDark.errorLight3,
-          disabledBgColor: AppColorsDark.errorLight5,
-          borderColor: AppColorsDark.error,
-          pressedBorderColor: AppColorsDark.errorDark2,
-          hoveredBorderColor: AppColorsDark.errorLight3,
-          disabledBorderColor: AppColorsDark.errorLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.error,
+      pressedBgColor: AppColorsDark.errorDark2,
+      hoveredBgColor: AppColorsDark.errorLight3,
+      disabledBgColor: AppColorsDark.errorLight5,
+      borderColor: AppColorsDark.error,
+      pressedBorderColor: AppColorsDark.errorDark2,
+      hoveredBorderColor: AppColorsDark.errorLight3,
+      disabledBorderColor: AppColorsDark.errorLight5,
+    ),
+  );
 
   static FilledButtonThemeData get danger => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.danger,
-          pressedBgColor: AppColorsDark.dangerDark2,
-          hoveredBgColor: AppColorsDark.dangerLight3,
-          disabledBgColor: AppColorsDark.dangerLight5,
-          borderColor: AppColorsDark.danger,
-          pressedBorderColor: AppColorsDark.dangerDark2,
-          hoveredBorderColor: AppColorsDark.dangerLight3,
-          disabledBorderColor: AppColorsDark.dangerLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.danger,
+      pressedBgColor: AppColorsDark.dangerDark2,
+      hoveredBgColor: AppColorsDark.dangerLight3,
+      disabledBgColor: AppColorsDark.dangerLight5,
+      borderColor: AppColorsDark.danger,
+      pressedBorderColor: AppColorsDark.dangerDark2,
+      hoveredBorderColor: AppColorsDark.dangerLight3,
+      disabledBorderColor: AppColorsDark.dangerLight5,
+    ),
+  );
 
   static FilledButtonThemeData get info => FilledButtonThemeData(
-        style: createButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.info,
-          pressedBgColor: AppColorsDark.infoDark2,
-          hoveredBgColor: AppColorsDark.infoLight3,
-          disabledBgColor: AppColorsDark.infoLight5,
-          borderColor: AppColorsDark.info,
-          pressedBorderColor: AppColorsDark.infoDark2,
-          hoveredBorderColor: AppColorsDark.infoLight3,
-          disabledBorderColor: AppColorsDark.infoLight5,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.info,
+      pressedBgColor: AppColorsDark.infoDark2,
+      hoveredBgColor: AppColorsDark.infoLight3,
+      disabledBgColor: AppColorsDark.infoLight5,
+      borderColor: AppColorsDark.info,
+      pressedBorderColor: AppColorsDark.infoDark2,
+      hoveredBorderColor: AppColorsDark.infoLight3,
+      disabledBorderColor: AppColorsDark.infoLight5,
+    ),
+  );
 }
 
 class AppOutlinedButtonsLightThemes {
   static OutlinedButtonThemeData get base => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppTextColorLight.regular,
-          pressedColor: AppColorsLight.primary,
-          hoveredColor: AppColorsLight.primary,
-          disabledColor: AppTextColorLight.placeholder,
-          bgColor: AppFillColorLight.blank,
-          pressedBgColor: AppFillColorLight.blank,
-          hoveredBgColor: AppFillColorLight.blank,
-          disabledBgColor: AppFillColorLight.blank,
-          borderColor: AppBorderColorLight.base,
-          pressedBorderColor: AppColorsLight.primary,
-          hoveredBorderColor: AppColorsLight.primary,
-          disabledBorderColor: AppBorderColorLight.light,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppTextColorLight.regular,
+      pressedColor: AppColorsLight.primary,
+      hoveredColor: AppColorsLight.primary,
+      disabledColor: AppTextColorLight.placeholder,
+      bgColor: AppFillColorLight.blank,
+      pressedBgColor: AppFillColorLight.blank,
+      hoveredBgColor: AppFillColorLight.blank,
+      disabledBgColor: AppFillColorLight.blank,
+      borderColor: AppBorderColorLight.base,
+      pressedBorderColor: AppColorsLight.primary,
+      hoveredBorderColor: AppColorsLight.primary,
+      disabledBorderColor: AppBorderColorLight.light,
+    ),
+  );
 
   static OutlinedButtonThemeData get primary => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsLight.primary,
-          pressedColor: AppColorsLight.primaryDark2,
-          hoveredColor: AppColorsLight.primary,
-          disabledColor: AppColorsLight.primaryLight5,
-          bgColor: AppColorsLight.primaryLight9,
-          pressedBgColor: AppColorsLight.primaryDark2,
-          hoveredBgColor: AppColorsLight.primary,
-          disabledBgColor: AppColorsLight.primaryLight9,
-          borderColor: AppColorsLight.primaryLight5,
-          pressedBorderColor: AppColorsLight.primaryDark2,
-          hoveredBorderColor: AppColorsLight.primary,
-          disabledBorderColor: AppColorsLight.primaryLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsLight.primary,
+      pressedColor: AppColorsLight.primaryDark2,
+      hoveredColor: AppColorsLight.primary,
+      disabledColor: AppColorsLight.primaryLight5,
+      bgColor: AppColorsLight.primaryLight9,
+      pressedBgColor: AppColorsLight.primaryDark2,
+      hoveredBgColor: AppColorsLight.primary,
+      disabledBgColor: AppColorsLight.primaryLight9,
+      borderColor: AppColorsLight.primaryLight5,
+      pressedBorderColor: AppColorsLight.primaryDark2,
+      hoveredBorderColor: AppColorsLight.primary,
+      disabledBorderColor: AppColorsLight.primaryLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get success => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsLight.success,
-          pressedColor: AppColorsLight.successDark2,
-          hoveredColor: AppColorsLight.success,
-          disabledColor: AppColorsLight.successLight5,
-          bgColor: AppColorsLight.successLight9,
-          pressedBgColor: AppColorsLight.successDark2,
-          hoveredBgColor: AppColorsLight.success,
-          disabledBgColor: AppColorsLight.successLight9,
-          borderColor: AppColorsLight.successLight5,
-          pressedBorderColor: AppColorsLight.successDark2,
-          hoveredBorderColor: AppColorsLight.success,
-          disabledBorderColor: AppColorsLight.successLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsLight.success,
+      pressedColor: AppColorsLight.successDark2,
+      hoveredColor: AppColorsLight.success,
+      disabledColor: AppColorsLight.successLight5,
+      bgColor: AppColorsLight.successLight9,
+      pressedBgColor: AppColorsLight.successDark2,
+      hoveredBgColor: AppColorsLight.success,
+      disabledBgColor: AppColorsLight.successLight9,
+      borderColor: AppColorsLight.successLight5,
+      pressedBorderColor: AppColorsLight.successDark2,
+      hoveredBorderColor: AppColorsLight.success,
+      disabledBorderColor: AppColorsLight.successLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get warning => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsLight.warning,
-          pressedColor: AppColorsLight.warningDark2,
-          hoveredColor: AppColorsLight.warning,
-          disabledColor: AppColorsLight.warningLight5,
-          bgColor: AppColorsLight.warningLight9,
-          pressedBgColor: AppColorsLight.warningDark2,
-          hoveredBgColor: AppColorsLight.warning,
-          disabledBgColor: AppColorsLight.warningLight9,
-          borderColor: AppColorsLight.warningLight5,
-          pressedBorderColor: AppColorsLight.warningDark2,
-          hoveredBorderColor: AppColorsLight.warning,
-          disabledBorderColor: AppColorsLight.warningLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsLight.warning,
+      pressedColor: AppColorsLight.warningDark2,
+      hoveredColor: AppColorsLight.warning,
+      disabledColor: AppColorsLight.warningLight5,
+      bgColor: AppColorsLight.warningLight9,
+      pressedBgColor: AppColorsLight.warningDark2,
+      hoveredBgColor: AppColorsLight.warning,
+      disabledBgColor: AppColorsLight.warningLight9,
+      borderColor: AppColorsLight.warningLight5,
+      pressedBorderColor: AppColorsLight.warningDark2,
+      hoveredBorderColor: AppColorsLight.warning,
+      disabledBorderColor: AppColorsLight.warningLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get danger => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsLight.danger,
-          pressedColor: AppColorsLight.dangerDark2,
-          hoveredColor: AppColorsLight.danger,
-          disabledColor: AppColorsLight.dangerLight5,
-          bgColor: AppColorsLight.dangerLight9,
-          pressedBgColor: AppColorsLight.dangerDark2,
-          hoveredBgColor: AppColorsLight.danger,
-          disabledBgColor: AppColorsLight.dangerLight9,
-          borderColor: AppColorsLight.dangerLight5,
-          pressedBorderColor: AppColorsLight.dangerDark2,
-          hoveredBorderColor: AppColorsLight.danger,
-          disabledBorderColor: AppColorsLight.dangerLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsLight.danger,
+      pressedColor: AppColorsLight.dangerDark2,
+      hoveredColor: AppColorsLight.danger,
+      disabledColor: AppColorsLight.dangerLight5,
+      bgColor: AppColorsLight.dangerLight9,
+      pressedBgColor: AppColorsLight.dangerDark2,
+      hoveredBgColor: AppColorsLight.danger,
+      disabledBgColor: AppColorsLight.dangerLight9,
+      borderColor: AppColorsLight.dangerLight5,
+      pressedBorderColor: AppColorsLight.dangerDark2,
+      hoveredBorderColor: AppColorsLight.danger,
+      disabledBorderColor: AppColorsLight.dangerLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get error => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsLight.error,
-          pressedColor: AppColorsLight.errorDark2,
-          hoveredColor: AppColorsLight.error,
-          disabledColor: AppColorsLight.errorLight5,
-          bgColor: AppColorsLight.errorLight9,
-          pressedBgColor: AppColorsLight.errorDark2,
-          hoveredBgColor: AppColorsLight.error,
-          disabledBgColor: AppColorsLight.errorLight9,
-          borderColor: AppColorsLight.errorLight5,
-          pressedBorderColor: AppColorsLight.errorDark2,
-          hoveredBorderColor: AppColorsLight.error,
-          disabledBorderColor: AppColorsLight.errorLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsLight.error,
+      pressedColor: AppColorsLight.errorDark2,
+      hoveredColor: AppColorsLight.error,
+      disabledColor: AppColorsLight.errorLight5,
+      bgColor: AppColorsLight.errorLight9,
+      pressedBgColor: AppColorsLight.errorDark2,
+      hoveredBgColor: AppColorsLight.error,
+      disabledBgColor: AppColorsLight.errorLight9,
+      borderColor: AppColorsLight.errorLight5,
+      pressedBorderColor: AppColorsLight.errorDark2,
+      hoveredBorderColor: AppColorsLight.error,
+      disabledBorderColor: AppColorsLight.errorLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get info => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsLight.info,
-          pressedColor: AppColorsLight.infoDark2,
-          hoveredColor: AppColorsLight.info,
-          disabledColor: AppColorsLight.infoLight5,
-          bgColor: AppColorsLight.infoLight9,
-          pressedBgColor: AppColorsLight.infoDark2,
-          hoveredBgColor: AppColorsLight.info,
-          disabledBgColor: AppColorsLight.infoLight9,
-          borderColor: AppColorsLight.infoLight5,
-          pressedBorderColor: AppColorsLight.infoDark2,
-          hoveredBorderColor: AppColorsLight.info,
-          disabledBorderColor: AppColorsLight.infoLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsLight.info,
+      pressedColor: AppColorsLight.infoDark2,
+      hoveredColor: AppColorsLight.info,
+      disabledColor: AppColorsLight.infoLight5,
+      bgColor: AppColorsLight.infoLight9,
+      pressedBgColor: AppColorsLight.infoDark2,
+      hoveredBgColor: AppColorsLight.info,
+      disabledBgColor: AppColorsLight.infoLight9,
+      borderColor: AppColorsLight.infoLight5,
+      pressedBorderColor: AppColorsLight.infoDark2,
+      hoveredBorderColor: AppColorsLight.info,
+      disabledBorderColor: AppColorsLight.infoLight8,
+    ),
+  );
 }
 
 class AppOutlinedButtonsDarkThemes {
   static OutlinedButtonThemeData get base => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppTextColorDark.regular,
-          pressedColor: AppColorsDark.primary,
-          hoveredColor: AppColorsDark.primary,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppFillColorDark.blank,
-          pressedBgColor: AppFillColorDark.blank,
-          hoveredBgColor: AppFillColorDark.blank,
-          disabledBgColor: AppFillColorDark.blank,
-          borderColor: AppBorderColorDark.base,
-          pressedBorderColor: AppColorsDark.primary,
-          hoveredBorderColor: AppColorsDark.primary,
-          disabledBorderColor: AppBorderColorDark.light,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppTextColorDark.regular,
+      pressedColor: AppColorsDark.primary,
+      hoveredColor: AppColorsDark.primary,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppFillColorDark.blank,
+      pressedBgColor: AppFillColorDark.blank,
+      hoveredBgColor: AppFillColorDark.blank,
+      disabledBgColor: AppFillColorDark.blank,
+      borderColor: AppBorderColorDark.base,
+      pressedBorderColor: AppColorsDark.primary,
+      hoveredBorderColor: AppColorsDark.primary,
+      disabledBorderColor: AppBorderColorDark.light,
+    ),
+  );
 
   static OutlinedButtonThemeData get primary => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsDark.primary,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColorsDark.primaryLight5,
-          bgColor: AppColorsDark.primaryLight9,
-          pressedBgColor: AppColorsDark.primaryDark2,
-          hoveredBgColor: AppColorsDark.primary,
-          disabledBgColor: AppColorsDark.primaryLight9,
-          borderColor: AppColorsDark.primaryLight5,
-          pressedBorderColor: AppColorsDark.primaryDark2,
-          hoveredBorderColor: AppColorsDark.primary,
-          disabledBorderColor: AppColorsDark.primaryLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsDark.primary,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.primaryLight5,
+      bgColor: AppColorsDark.primaryLight9,
+      pressedBgColor: AppColorsDark.primaryDark2,
+      hoveredBgColor: AppColorsDark.primary,
+      disabledBgColor: AppColorsDark.primaryLight9,
+      borderColor: AppColorsDark.primaryLight5,
+      pressedBorderColor: AppColorsDark.primaryDark2,
+      hoveredBorderColor: AppColorsDark.primary,
+      disabledBorderColor: AppColorsDark.primaryLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get success => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsDark.success,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColorsDark.successLight5,
-          bgColor: AppColorsDark.successLight9,
-          pressedBgColor: AppColorsDark.successDark2,
-          hoveredBgColor: AppColorsDark.success,
-          disabledBgColor: AppColorsDark.successLight9,
-          borderColor: AppColorsDark.successLight5,
-          pressedBorderColor: AppColorsDark.successDark2,
-          hoveredBorderColor: AppColorsDark.success,
-          disabledBorderColor: AppColorsDark.successLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsDark.success,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.successLight5,
+      bgColor: AppColorsDark.successLight9,
+      pressedBgColor: AppColorsDark.successDark2,
+      hoveredBgColor: AppColorsDark.success,
+      disabledBgColor: AppColorsDark.successLight9,
+      borderColor: AppColorsDark.successLight5,
+      pressedBorderColor: AppColorsDark.successDark2,
+      hoveredBorderColor: AppColorsDark.success,
+      disabledBorderColor: AppColorsDark.successLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get warning => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsDark.warning,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColorsDark.warningLight5,
-          bgColor: AppColorsDark.warningLight9,
-          pressedBgColor: AppColorsDark.warningDark2,
-          hoveredBgColor: AppColorsDark.warning,
-          disabledBgColor: AppColorsDark.warningLight9,
-          borderColor: AppColorsDark.warningLight5,
-          pressedBorderColor: AppColorsDark.warningDark2,
-          hoveredBorderColor: AppColorsDark.warning,
-          disabledBorderColor: AppColorsDark.warningLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsDark.warning,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.warningLight5,
+      bgColor: AppColorsDark.warningLight9,
+      pressedBgColor: AppColorsDark.warningDark2,
+      hoveredBgColor: AppColorsDark.warning,
+      disabledBgColor: AppColorsDark.warningLight9,
+      borderColor: AppColorsDark.warningLight5,
+      pressedBorderColor: AppColorsDark.warningDark2,
+      hoveredBorderColor: AppColorsDark.warning,
+      disabledBorderColor: AppColorsDark.warningLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get danger => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsDark.danger,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColorsDark.dangerLight5,
-          bgColor: AppColorsDark.dangerLight9,
-          pressedBgColor: AppColorsDark.dangerDark2,
-          hoveredBgColor: AppColorsDark.danger,
-          disabledBgColor: AppColorsDark.dangerLight9,
-          borderColor: AppColorsDark.dangerLight5,
-          pressedBorderColor: AppColorsDark.dangerDark2,
-          hoveredBorderColor: AppColorsDark.danger,
-          disabledBorderColor: AppColorsDark.dangerLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsDark.danger,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.dangerLight5,
+      bgColor: AppColorsDark.dangerLight9,
+      pressedBgColor: AppColorsDark.dangerDark2,
+      hoveredBgColor: AppColorsDark.danger,
+      disabledBgColor: AppColorsDark.dangerLight9,
+      borderColor: AppColorsDark.dangerLight5,
+      pressedBorderColor: AppColorsDark.dangerDark2,
+      hoveredBorderColor: AppColorsDark.danger,
+      disabledBorderColor: AppColorsDark.dangerLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get error => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsDark.error,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColorsDark.errorLight5,
-          bgColor: AppColorsDark.errorLight9,
-          pressedBgColor: AppColorsDark.errorDark2,
-          hoveredBgColor: AppColorsDark.error,
-          disabledBgColor: AppColorsDark.errorLight9,
-          borderColor: AppColorsDark.errorLight5,
-          pressedBorderColor: AppColorsDark.errorDark2,
-          hoveredBorderColor: AppColorsDark.error,
-          disabledBorderColor: AppColorsDark.errorLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsDark.error,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.errorLight5,
+      bgColor: AppColorsDark.errorLight9,
+      pressedBgColor: AppColorsDark.errorDark2,
+      hoveredBgColor: AppColorsDark.error,
+      disabledBgColor: AppColorsDark.errorLight9,
+      borderColor: AppColorsDark.errorLight5,
+      pressedBorderColor: AppColorsDark.errorDark2,
+      hoveredBorderColor: AppColorsDark.error,
+      disabledBorderColor: AppColorsDark.errorLight8,
+    ),
+  );
 
   static OutlinedButtonThemeData get info => OutlinedButtonThemeData(
-        style: createButtonTheme(
-          color: AppColorsDark.info,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColorsDark.infoLight5,
-          bgColor: AppColorsDark.infoLight9,
-          pressedBgColor: AppColorsLight.infoDark2,
-          hoveredBgColor: AppColorsDark.info,
-          disabledBgColor: AppColorsDark.infoLight9,
-          borderColor: AppColorsDark.infoLight5,
-          pressedBorderColor: AppColorsDark.infoDark2,
-          hoveredBorderColor: AppColorsDark.info,
-          disabledBorderColor: AppColorsDark.infoLight8,
-        ),
-      );
+    style: createButtonTheme(
+      color: AppColorsDark.info,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.infoLight5,
+      bgColor: AppColorsDark.infoLight9,
+      pressedBgColor: AppColorsLight.infoDark2,
+      hoveredBgColor: AppColorsDark.info,
+      disabledBgColor: AppColorsDark.infoLight9,
+      borderColor: AppColorsDark.infoLight5,
+      pressedBorderColor: AppColorsDark.infoDark2,
+      hoveredBorderColor: AppColorsDark.info,
+      disabledBorderColor: AppColorsDark.infoLight8,
+    ),
+  );
 }
 
 class AppIconButtonsLightThemes {
   static IconButtonThemeData get base => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppTextColorLight.regular,
-          pressedColor: AppColorsLight.primary,
-          hoveredColor: AppColorsLight.primary,
-          disabledColor: AppTextColorLight.placeholder,
-          bgColor: AppFillColorLight.blank,
-          pressedBgColor: AppFillColorLight.blank,
-          hoveredBgColor: AppFillColorLight.blank,
-          disabledBgColor: AppFillColorLight.blank,
-          borderColor: AppBorderColorLight.base,
-          pressedBorderColor: AppColorsLight.primary,
-          hoveredBorderColor: AppColorsLight.primary,
-          disabledBorderColor: AppBorderColorLight.light,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppTextColorLight.regular,
+      pressedColor: AppColorsLight.primary,
+      hoveredColor: AppColorsLight.primary,
+      disabledColor: AppTextColorLight.placeholder,
+      bgColor: AppFillColorLight.blank,
+      pressedBgColor: AppFillColorLight.blank,
+      hoveredBgColor: AppFillColorLight.blank,
+      disabledBgColor: AppFillColorLight.blank,
+      borderColor: AppBorderColorLight.base,
+      pressedBorderColor: AppColorsLight.primary,
+      hoveredBorderColor: AppColorsLight.primary,
+      disabledBorderColor: AppBorderColorLight.light,
+    ),
+  );
 
   static IconButtonThemeData get primary => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.primary,
-          pressedBgColor: AppColorsLight.primaryDark2,
-          hoveredBgColor: AppColorsLight.primaryLight3,
-          disabledBgColor: AppColorsLight.primaryLight5,
-          borderColor: AppColorsLight.primary,
-          pressedBorderColor: AppColorsLight.primaryDark2,
-          hoveredBorderColor: AppColorsLight.primaryLight3,
-          disabledBorderColor: AppColorsLight.primaryLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.primary,
+      pressedBgColor: AppColorsLight.primaryDark2,
+      hoveredBgColor: AppColorsLight.primaryLight3,
+      disabledBgColor: AppColorsLight.primaryLight5,
+      borderColor: AppColorsLight.primary,
+      pressedBorderColor: AppColorsLight.primaryDark2,
+      hoveredBorderColor: AppColorsLight.primaryLight3,
+      disabledBorderColor: AppColorsLight.primaryLight5,
+    ),
+  );
 
   static IconButtonThemeData get success => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.success,
-          pressedBgColor: AppColorsLight.successDark2,
-          hoveredBgColor: AppColorsLight.successLight3,
-          disabledBgColor: AppColorsLight.successLight5,
-          borderColor: AppColorsLight.success,
-          pressedBorderColor: AppColorsLight.successDark2,
-          hoveredBorderColor: AppColorsLight.successLight3,
-          disabledBorderColor: AppColorsLight.successLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.success,
+      pressedBgColor: AppColorsLight.successDark2,
+      hoveredBgColor: AppColorsLight.successLight3,
+      disabledBgColor: AppColorsLight.successLight5,
+      borderColor: AppColorsLight.success,
+      pressedBorderColor: AppColorsLight.successDark2,
+      hoveredBorderColor: AppColorsLight.successLight3,
+      disabledBorderColor: AppColorsLight.successLight5,
+    ),
+  );
 
   static IconButtonThemeData get warning => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.warning,
-          pressedBgColor: AppColorsLight.warningDark2,
-          hoveredBgColor: AppColorsLight.warningLight3,
-          disabledBgColor: AppColorsLight.warningLight5,
-          borderColor: AppColorsLight.warning,
-          pressedBorderColor: AppColorsLight.warningDark2,
-          hoveredBorderColor: AppColorsLight.warningLight3,
-          disabledBorderColor: AppColorsLight.warningLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.warning,
+      pressedBgColor: AppColorsLight.warningDark2,
+      hoveredBgColor: AppColorsLight.warningLight3,
+      disabledBgColor: AppColorsLight.warningLight5,
+      borderColor: AppColorsLight.warning,
+      pressedBorderColor: AppColorsLight.warningDark2,
+      hoveredBorderColor: AppColorsLight.warningLight3,
+      disabledBorderColor: AppColorsLight.warningLight5,
+    ),
+  );
 
   static IconButtonThemeData get danger => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.danger,
-          pressedBgColor: AppColorsLight.dangerDark2,
-          hoveredBgColor: AppColorsLight.dangerLight3,
-          disabledBgColor: AppColorsLight.dangerLight5,
-          borderColor: AppColorsLight.danger,
-          pressedBorderColor: AppColorsLight.dangerDark2,
-          hoveredBorderColor: AppColorsLight.dangerLight3,
-          disabledBorderColor: AppColorsLight.dangerLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.danger,
+      pressedBgColor: AppColorsLight.dangerDark2,
+      hoveredBgColor: AppColorsLight.dangerLight3,
+      disabledBgColor: AppColorsLight.dangerLight5,
+      borderColor: AppColorsLight.danger,
+      pressedBorderColor: AppColorsLight.dangerDark2,
+      hoveredBorderColor: AppColorsLight.dangerLight3,
+      disabledBorderColor: AppColorsLight.dangerLight5,
+    ),
+  );
 
   static IconButtonThemeData get error => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.error,
-          pressedBgColor: AppColorsLight.errorDark2,
-          hoveredBgColor: AppColorsLight.errorLight3,
-          disabledBgColor: AppColorsLight.errorLight5,
-          borderColor: AppColorsLight.error,
-          pressedBorderColor: AppColorsLight.errorDark2,
-          hoveredBorderColor: AppColorsLight.errorLight3,
-          disabledBorderColor: AppColorsLight.errorLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.error,
+      pressedBgColor: AppColorsLight.errorDark2,
+      hoveredBgColor: AppColorsLight.errorLight3,
+      disabledBgColor: AppColorsLight.errorLight5,
+      borderColor: AppColorsLight.error,
+      pressedBorderColor: AppColorsLight.errorDark2,
+      hoveredBorderColor: AppColorsLight.errorLight3,
+      disabledBorderColor: AppColorsLight.errorLight5,
+    ),
+  );
 
   static IconButtonThemeData get info => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: AppColors.white,
-          bgColor: AppColorsLight.info,
-          pressedBgColor: AppColorsLight.infoDark2,
-          hoveredBgColor: AppColorsLight.infoLight3,
-          disabledBgColor: AppColorsLight.infoLight5,
-          borderColor: AppColorsLight.info,
-          pressedBorderColor: AppColorsLight.infoDark2,
-          hoveredBorderColor: AppColorsLight.infoLight3,
-          disabledBorderColor: AppColorsLight.infoLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.info,
+      pressedBgColor: AppColorsLight.infoDark2,
+      hoveredBgColor: AppColorsLight.infoLight3,
+      disabledBgColor: AppColorsLight.infoLight5,
+      borderColor: AppColorsLight.info,
+      pressedBorderColor: AppColorsLight.infoDark2,
+      hoveredBorderColor: AppColorsLight.infoLight3,
+      disabledBorderColor: AppColorsLight.infoLight5,
+    ),
+  );
 }
 
 class AppIconButtonsDarkThemes {
   static IconButtonThemeData get base => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppTextColorDark.regular,
-          pressedColor: AppColorsDark.primary,
-          hoveredColor: AppColorsDark.primary,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppFillColorDark.blank,
-          pressedBgColor: AppFillColorDark.blank,
-          hoveredBgColor: AppFillColorDark.blank,
-          disabledBgColor: AppFillColorDark.blank,
-          borderColor: AppBorderColorDark.base,
-          pressedBorderColor: AppColorsDark.primary,
-          hoveredBorderColor: AppColorsDark.primary,
-          disabledBorderColor: AppBorderColorDark.light,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppTextColorDark.regular,
+      pressedColor: AppColorsDark.primary,
+      hoveredColor: AppColorsDark.primary,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppFillColorDark.blank,
+      pressedBgColor: AppFillColorDark.blank,
+      hoveredBgColor: AppFillColorDark.blank,
+      disabledBgColor: AppFillColorDark.blank,
+      borderColor: AppBorderColorDark.base,
+      pressedBorderColor: AppColorsDark.primary,
+      hoveredBorderColor: AppColorsDark.primary,
+      disabledBorderColor: AppBorderColorDark.light,
+    ),
+  );
 
   static IconButtonThemeData get primary => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.primary,
-          pressedBgColor: AppColorsDark.primaryDark2,
-          hoveredBgColor: AppColorsDark.primaryLight3,
-          disabledBgColor: AppColorsDark.primaryLight5,
-          borderColor: AppColorsDark.primary,
-          pressedBorderColor: AppColorsDark.primaryDark2,
-          hoveredBorderColor: AppColorsDark.primaryLight3,
-          disabledBorderColor: AppColorsDark.primaryLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.primary,
+      pressedBgColor: AppColorsDark.primaryDark2,
+      hoveredBgColor: AppColorsDark.primaryLight3,
+      disabledBgColor: AppColorsDark.primaryLight5,
+      borderColor: AppColorsDark.primary,
+      pressedBorderColor: AppColorsDark.primaryDark2,
+      hoveredBorderColor: AppColorsDark.primaryLight3,
+      disabledBorderColor: AppColorsDark.primaryLight5,
+    ),
+  );
 
   static IconButtonThemeData get success => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.success,
-          pressedBgColor: AppColorsDark.successDark2,
-          hoveredBgColor: AppColorsDark.successLight3,
-          disabledBgColor: AppColorsDark.successLight5,
-          borderColor: AppColorsDark.success,
-          pressedBorderColor: AppColorsDark.successDark2,
-          hoveredBorderColor: AppColorsDark.successLight3,
-          disabledBorderColor: AppColorsDark.successLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.success,
+      pressedBgColor: AppColorsDark.successDark2,
+      hoveredBgColor: AppColorsDark.successLight3,
+      disabledBgColor: AppColorsDark.successLight5,
+      borderColor: AppColorsDark.success,
+      pressedBorderColor: AppColorsDark.successDark2,
+      hoveredBorderColor: AppColorsDark.successLight3,
+      disabledBorderColor: AppColorsDark.successLight5,
+    ),
+  );
 
   static IconButtonThemeData get warning => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.warning,
-          pressedBgColor: AppColorsDark.warningDark2,
-          hoveredBgColor: AppColorsDark.warningLight3,
-          disabledBgColor: AppColorsDark.warningLight5,
-          borderColor: AppColorsDark.warning,
-          pressedBorderColor: AppColorsDark.warningDark2,
-          hoveredBorderColor: AppColorsDark.warningLight3,
-          disabledBorderColor: AppColorsDark.warningLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.warning,
+      pressedBgColor: AppColorsDark.warningDark2,
+      hoveredBgColor: AppColorsDark.warningLight3,
+      disabledBgColor: AppColorsDark.warningLight5,
+      borderColor: AppColorsDark.warning,
+      pressedBorderColor: AppColorsDark.warningDark2,
+      hoveredBorderColor: AppColorsDark.warningLight3,
+      disabledBorderColor: AppColorsDark.warningLight5,
+    ),
+  );
 
   static IconButtonThemeData get error => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.error,
-          pressedBgColor: AppColorsDark.errorDark2,
-          hoveredBgColor: AppColorsDark.errorLight3,
-          disabledBgColor: AppColorsDark.errorLight5,
-          borderColor: AppColorsDark.error,
-          pressedBorderColor: AppColorsDark.errorDark2,
-          hoveredBorderColor: AppColorsDark.errorLight3,
-          disabledBorderColor: AppColorsDark.errorLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.error,
+      pressedBgColor: AppColorsDark.errorDark2,
+      hoveredBgColor: AppColorsDark.errorLight3,
+      disabledBgColor: AppColorsDark.errorLight5,
+      borderColor: AppColorsDark.error,
+      pressedBorderColor: AppColorsDark.errorDark2,
+      hoveredBorderColor: AppColorsDark.errorLight3,
+      disabledBorderColor: AppColorsDark.errorLight5,
+    ),
+  );
 
   static IconButtonThemeData get danger => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.danger,
-          pressedBgColor: AppColorsDark.dangerDark2,
-          hoveredBgColor: AppColorsDark.dangerLight3,
-          disabledBgColor: AppColorsDark.dangerLight5,
-          borderColor: AppColorsDark.danger,
-          pressedBorderColor: AppColorsDark.dangerDark2,
-          hoveredBorderColor: AppColorsDark.dangerLight3,
-          disabledBorderColor: AppColorsDark.dangerLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.danger,
+      pressedBgColor: AppColorsDark.dangerDark2,
+      hoveredBgColor: AppColorsDark.dangerLight3,
+      disabledBgColor: AppColorsDark.dangerLight5,
+      borderColor: AppColorsDark.danger,
+      pressedBorderColor: AppColorsDark.dangerDark2,
+      hoveredBorderColor: AppColorsDark.dangerLight3,
+      disabledBorderColor: AppColorsDark.dangerLight5,
+    ),
+  );
 
   static IconButtonThemeData get info => IconButtonThemeData(
-        style: createIconButtonTheme(
-          color: AppColors.white,
-          pressedColor: AppColors.white,
-          hoveredColor: AppColors.white,
-          disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-          bgColor: AppColorsDark.info,
-          pressedBgColor: AppColorsDark.infoDark2,
-          hoveredBgColor: AppColorsDark.infoLight3,
-          disabledBgColor: AppColorsDark.infoLight5,
-          borderColor: AppColorsDark.info,
-          pressedBorderColor: AppColorsDark.infoDark2,
-          hoveredBorderColor: AppColorsDark.infoLight3,
-          disabledBorderColor: AppColorsDark.infoLight5,
-        ),
-      );
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.info,
+      pressedBgColor: AppColorsDark.infoDark2,
+      hoveredBgColor: AppColorsDark.infoLight3,
+      disabledBgColor: AppColorsDark.infoLight5,
+      borderColor: AppColorsDark.info,
+      pressedBorderColor: AppColorsDark.infoDark2,
+      hoveredBorderColor: AppColorsDark.infoLight3,
+      disabledBorderColor: AppColorsDark.infoLight5,
+    ),
+  );
 }
 
 class AppTextThemes {
@@ -1332,76 +1298,55 @@ ButtonStyle createButtonTheme({
       locator<VisualDensityService>();
 
   return ButtonStyle(
-    foregroundColor: WidgetStateProperty.resolveWith<Color>(
-      (states) {
-        if (states.contains(WidgetState.pressed)) {
-          return pressedColor;
-        } else if (states.contains(WidgetState.hovered)) {
-          return hoveredColor;
-        } else if (states.contains(WidgetState.disabled)) {
-          return disabledColor;
-        }
-        return color; // Default text color
-      },
-    ),
-    backgroundColor: WidgetStateProperty.resolveWith<Color>(
-      (states) {
-        if (states.contains(WidgetState.pressed)) {
-          return pressedBgColor;
-        } else if (states.contains(WidgetState.hovered)) {
-          return hoveredBgColor;
-        } else if (states.contains(WidgetState.disabled)) {
-          return disabledBgColor;
-        }
-        return bgColor;
-      },
-    ),
-    side: WidgetStateProperty.resolveWith<BorderSide>(
-      (states) {
-        if (states.contains(WidgetState.pressed)) {
-          return BorderSide(
-            color: pressedBorderColor,
-            width: screenService.scale(
-              1,
-              density: visualDensityService.density,
-            ),
-          );
-        } else if (states.contains(WidgetState.hovered)) {
-          return BorderSide(
-            color: hoveredBorderColor,
-            width: screenService.scale(
-              1,
-              density: visualDensityService.density,
-            ),
-          );
-        } else if (states.contains(WidgetState.disabled)) {
-          return BorderSide(
-            color: disabledBorderColor,
-            width: screenService.scale(
-              1,
-              density: visualDensityService.density,
-            ),
-          );
-        }
+    foregroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.pressed)) {
+        return pressedColor;
+      } else if (states.contains(WidgetState.hovered)) {
+        return hoveredColor;
+      } else if (states.contains(WidgetState.disabled)) {
+        return disabledColor;
+      }
+      return color; // Default text color
+    }),
+    backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.pressed)) {
+        return pressedBgColor;
+      } else if (states.contains(WidgetState.hovered)) {
+        return hoveredBgColor;
+      } else if (states.contains(WidgetState.disabled)) {
+        return disabledBgColor;
+      }
+      return bgColor;
+    }),
+    side: WidgetStateProperty.resolveWith<BorderSide>((states) {
+      if (states.contains(WidgetState.pressed)) {
         return BorderSide(
-          color: borderColor,
-          width: screenService.scale(
-            1,
-            density: visualDensityService.density,
-          ),
+          color: pressedBorderColor,
+          width: screenService.scale(1, density: visualDensityService.density),
         );
-      },
-    ),
+      } else if (states.contains(WidgetState.hovered)) {
+        return BorderSide(
+          color: hoveredBorderColor,
+          width: screenService.scale(1, density: visualDensityService.density),
+        );
+      } else if (states.contains(WidgetState.disabled)) {
+        return BorderSide(
+          color: disabledBorderColor,
+          width: screenService.scale(1, density: visualDensityService.density),
+        );
+      }
+      return BorderSide(
+        color: borderColor,
+        width: screenService.scale(1, density: visualDensityService.density),
+      );
+    }),
     padding: WidgetStateProperty.all(
       EdgeInsets.symmetric(
         horizontal: screenService.scale(
           49,
           density: visualDensityService.density,
         ),
-        vertical: screenService.scale(
-          8,
-          density: visualDensityService.density,
-        ),
+        vertical: screenService.scale(8, density: visualDensityService.density),
       ),
     ),
     textStyle: WidgetStateProperty.all(
@@ -1462,15 +1407,10 @@ ButtonStyle createIconButtonTheme({
           8,
           density: visualDensityService.density,
         ),
-        vertical: screenService.scale(
-          8,
-          density: visualDensityService.density,
-        ),
+        vertical: screenService.scale(8, density: visualDensityService.density),
       ),
     ),
-    shape: WidgetStateProperty.all(
-      const CircleBorder(),
-    ),
+    shape: WidgetStateProperty.all(const CircleBorder()),
     minimumSize: WidgetStateProperty.all(Size.zero),
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );

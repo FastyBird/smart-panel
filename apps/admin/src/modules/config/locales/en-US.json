@@ -125,9 +125,28 @@
       "title": "Weather location type",
       "placeholder": "Select how the weather is loaded"
     },
-    "location": {
-      "title": "Weather location",
-      "placeholder": "Select how the weather is loaded"
+    "coordinates": {
+      "title": "Location coordinates"
+    },
+    "latitude": {
+      "title": "Location latitude",
+      "placeholder": "Latitude"
+    },
+    "longitude": {
+      "title": "Location longitude",
+      "placeholder": "Longitude"
+    },
+    "cityName": {
+      "title": "Location city name",
+      "placeholder": "Fill in city name, possible to add state and country code"
+    },
+    "cityId": {
+      "title": "Location city ID",
+      "placeholder": "Select OpenWeather supported cities"
+    },
+    "zipCode": {
+      "title": "Location ZIP code",
+      "placeholder": "Search by ZIP/Post code, possible to add country code"
     },
     "unit": {
       "title": "Temperature unit",
@@ -141,6 +160,9 @@
   "buttons": {
     "save": {
       "title": "Save"
+    },
+    "myLocation": {
+      "title": "My location"
     }
   },
   "languages": {

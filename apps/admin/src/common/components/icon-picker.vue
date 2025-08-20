@@ -68,7 +68,7 @@ const selectedIcon = ref<string | undefined>(props.modelValue ?? '');
 
 const filterIconsBy = ref<string>('');
 
-const options = computed(() => {
+const options = computed<{ value: string; label: string }[]>((): { value: string; label: string }[] => {
 	let icons = iconNames.value;
 
 	if (filterIconsBy.value) {

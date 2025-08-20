@@ -67,43 +67,45 @@ export default {
 				return;
 			}
 
-			if (data.payload === null || typeof data.payload !== 'object' || !('type' in data.payload) || typeof data.payload.type !== 'string') {
+			if (data.payload === null || typeof data.payload !== 'object') {
 				return;
 			}
 
 			switch (data.event) {
 				case EventType.CONFIG_UPDATED:
-					switch (data.payload.type) {
-						case 'audio':
-							configAudioStore.onEvent({
-								data: data.payload,
-							});
-							break;
+					if ('audio' in data.payload && typeof data.payload.audio === 'object' && data.payload.audio !== null) {
+						configAudioStore.onEvent({
+							data: data.payload.audio,
+						});
+					}
 
-						case 'display':
-							configDisplayStore.onEvent({
-								data: data.payload,
-							});
-							break;
+					if ('display' in data.payload && typeof data.payload.display === 'object' && data.payload.display !== null) {
+						configDisplayStore.onEvent({
+							data: data.payload.display,
+						});
+					}
 
-						case 'language':
-							configLanguageStore.onEvent({
-								data: data.payload,
-							});
-							break;
+					if ('language' in data.payload && typeof data.payload.language === 'object' && data.payload.language !== null) {
+						configLanguageStore.onEvent({
+							data: data.payload.language,
+						});
+					}
 
-						case 'weather':
-							configWeatherStore.onEvent({
-								data: data.payload,
-							});
-							break;
+					if ('weather' in data.payload && typeof data.payload.weather === 'object' && data.payload.weather !== null) {
+						configWeatherStore.onEvent({
+							data: data.payload.weather,
+						});
+					}
 
-						default:
-							configPluginsStore.onEvent({
-								type: data.payload.type,
-								data: data.payload,
-							});
-							break;
+					if ('plugins' in data.payload && Array.isArray(data.payload.plugins)) {
+						data.payload.plugins.forEach((plugin) => {
+							if (typeof plugin === 'object' && plugin !== null && 'type' in plugin && typeof plugin.type === 'string') {
+								configPluginsStore.onEvent({
+									type: plugin.type,
+									data: plugin,
+								});
+							}
+						});
 					}
 					break;
 

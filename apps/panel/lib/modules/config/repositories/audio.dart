@@ -137,7 +137,8 @@ class AudioConfigRepository extends Repository<AudioConfigModel> {
     return handleApiCall(
       () async {
         final response = await apiClient.getConfigModuleConfigSection(
-            section: Section.audio);
+          section: Section.audio,
+        );
 
         final data = response.data.data;
 

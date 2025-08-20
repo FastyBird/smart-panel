@@ -6,8 +6,11 @@ import type { IPlugin } from '../../../common';
 import {
 	ConfigModuleLanguageLanguage,
 	ConfigModuleLanguageTime_format,
+	ConfigModuleWeatherCityIdLocation_type,
+	ConfigModuleWeatherCityNameLocation_type,
+	ConfigModuleWeatherLatLonLocation_type,
 	ConfigModuleWeatherUnit,
-	PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type,
+	ConfigModuleWeatherZipCodeLocation_type,
 } from '../../../openapi';
 import type { FormResultType } from '../config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
@@ -39,8 +42,16 @@ export interface IConfigLanguageEditForm {
 }
 
 export interface IConfigWeatherEditForm {
-	location: string;
-	locationType: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type;
+	longitude: number | null;
+	latitude: number | null;
+	cityId: number | null;
+	cityName: string | null;
+	zipCode: string | null;
+	locationType:
+		| ConfigModuleWeatherLatLonLocation_type
+		| ConfigModuleWeatherCityNameLocation_type
+		| ConfigModuleWeatherCityIdLocation_type
+		| ConfigModuleWeatherZipCodeLocation_type;
 	unit: ConfigModuleWeatherUnit;
 	openWeatherApiKey: string;
 }
@@ -101,7 +112,14 @@ export interface IUseConfigWeather {
 }
 
 export interface IUseConfigWeatherEditForm {
-	locationTypeOptions: { value: PathsWeatherModuleWeatherCurrentGetParametersQueryLocation_type; label: string }[];
+	locationTypeOptions: {
+		value:
+			| ConfigModuleWeatherLatLonLocation_type
+			| ConfigModuleWeatherCityNameLocation_type
+			| ConfigModuleWeatherCityIdLocation_type
+			| ConfigModuleWeatherZipCodeLocation_type;
+		label: string;
+	}[];
 	unitOptions: { value: ConfigModuleWeatherUnit; label: string }[];
 	model: IConfigWeatherEditForm;
 	formEl: Ref<FormInstance | undefined>;

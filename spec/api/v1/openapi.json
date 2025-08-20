@@ -645,14 +645,14 @@
       }
     },
     "/users-module/users/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Users module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific user",
         "description": "Fetch detailed information about a specific user, including their profile, role, and associated data.",
@@ -717,6 +717,11 @@
       "patch": {
         "tags": [
           "Users module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Update an existing user",
         "description": "Modify user details such as email, role, or profile information. Partial updates are supported.",
@@ -803,6 +808,11 @@
       "delete": {
         "tags": [
           "Users module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Delete an existing user",
         "description": "Remove a user from the system. This action is irreversible.",
@@ -992,14 +1002,14 @@
       }
     },
     "/users-module/displays-instances/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Users module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific display",
         "description": "Fetch detailed information about a specific display, including its mac address, display app version, and associated data.",
@@ -1064,6 +1074,11 @@
       "patch": {
         "tags": [
           "Users module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Update an existing display",
         "description": "Modify display details such as display app version, build. Partial updates are supported.",
@@ -1149,6 +1164,11 @@
         "tags": [
           "Users module"
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
         "summary": "Delete an existing display",
         "description": "Remove a display from the system. This action is irreversible.",
         "operationId": "delete-users-module-display-instance",
@@ -1177,23 +1197,23 @@
       }
     },
     "/users-module/displays-instances/by-uid/{uid}": {
-      "parameters": [
-        {
-          "name": "uid",
-          "in": "path",
-          "required": true,
-          "description": "The UID of the resource to retrieve.",
-          "schema": {
-            "type": "string",
-            "format": "uuid",
-            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
-          },
-          "example": "fcab917a-f889-47cf-9ace-ef085774864e"
-        }
-      ],
       "get": {
         "tags": [
           "Users module"
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "description": "The UID of the resource to retrieve.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+            },
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+          }
         ],
         "summary": "Retrieve details of a specific display",
         "description": "Fetch detailed information about a specific display, including its mac address, display app version, and associated data.",
@@ -1565,14 +1585,14 @@
       }
     },
     "/devices-module/devices/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific device",
         "description": "Fetches the details of a specific device using its unique ID. The response includes the device’s metadata (e.g., ID, name, and category), associated channels, controls, and properties.",
@@ -1689,6 +1709,11 @@
       "patch": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Update an existing device",
         "description": "Partially updates the attributes of an existing device identified by its unique ID. The update can modify metadata, such as the device’s name, category, or description, without requiring the full object.",
@@ -1828,6 +1853,11 @@
         "tags": [
           "Devices module"
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
         "summary": "Delete an existing device",
         "description": "Deletes a specific device identified by its unique ID from the system. This action is irreversible and will remove the device and its associated data from the system.",
         "operationId": "delete-devices-module-device",
@@ -1856,14 +1886,14 @@
       }
     },
     "/devices-module/devices/{deviceId}/controls": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/deviceId"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          }
         ],
         "summary": "Retrieve a list of all available device controls",
         "description": "Fetches a list of controls associated with a specific device. Controls represent actions that can be performed on the device, such as reboot or calibration.",
@@ -1926,6 +1956,11 @@
       "post": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          }
         ],
         "summary": "Create a new control for a device",
         "description": "Creates a new control associated with a specific device. Controls represent actions or commands that can be executed on the device, such as reboot or factory reset.",
@@ -2014,17 +2049,17 @@
       }
     },
     "/devices-module/devices/{deviceId}/controls/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/deviceId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific control for a device",
         "description": "Fetches detailed information about a specific control associated with a device using its unique ID. The response includes metadata such as the control’s name, ID, associated device, and timestamps.",
@@ -2086,6 +2121,14 @@
         "tags": [
           "Devices module"
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
         "summary": "Delete an existing control for a device",
         "description": "Deletes a specific control associated with a device using its unique ID. This action is irreversible and removes the control from the system.",
         "operationId": "delete-devices-module-device-control",
@@ -2114,14 +2157,14 @@
       }
     },
     "/devices-module/devices/{deviceId}/channels": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/deviceId"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          }
         ],
         "summary": "Retrieve a list of all available channels for a device",
         "description": "Fetches a list of channels associated with a specific device. Each channel includes metadata (e.g., ID, name, category), associated controls, and properties.",
@@ -2219,6 +2262,11 @@
       "post": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          }
         ],
         "summary": "Create a new channel for a device",
         "description": "Creates a new channel associated with a specific device. The channel can have attributes such as name, category, description, and optionally controls and properties.",
@@ -2371,17 +2419,17 @@
       }
     },
     "/devices-module/devices/{deviceId}/channels/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/deviceId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific channel for a device",
         "description": "Fetches detailed information about a specific channel associated with a device using its unique ID. The response includes metadata, category, associated controls, and properties for the channel.",
@@ -2477,6 +2525,14 @@
       "patch": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Update an existing channel for a device",
         "description": "Partially updates the attributes of a specific channel associated with a device using its unique ID. The update can modify metadata, such as the channel’s name, category, or description, without requiring the full object.",
@@ -2594,6 +2650,14 @@
         "tags": [
           "Devices module"
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
         "summary": "Delete a specific channel for a device",
         "description": "Deletes a specific channel associated with a device using its unique ID. This action is irreversible and will remove the channel and its associated data from the system.",
         "operationId": "delete-devices-module-device-channel",
@@ -2622,17 +2686,17 @@
       }
     },
     "/devices-module/devices/{deviceId}/channels/{channelId}/controls": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/deviceId"
-        },
-        {
-          "$ref": "#/components/parameters/channelId"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          }
         ],
         "summary": "Retrieve a list of all available controls for a device’s channel",
         "description": "Fetches a list of controls associated with a specific channel of a device. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.",
@@ -2695,6 +2759,14 @@
       "post": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          }
         ],
         "summary": "Create a new control for a specific device’s channel",
         "description": "Creates a new control associated with a specific device channel. Controls represent actions or commands that can be executed on the channel, such as reset or calibration.",
@@ -2783,20 +2855,20 @@
       }
     },
     "/devices-module/devices/{deviceId}/channels/{channelId}/controls/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/deviceId"
-        },
-        {
-          "$ref": "#/components/parameters/channelId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific control for a device’s channel",
         "description": "Fetches detailed information about a specific control associated with a device channel using its unique ID. The response includes metadata such as the control’s name, ID, associated channel, and timestamps.",
@@ -2858,6 +2930,17 @@
         "tags": [
           "Devices module"
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
         "summary": "Delete a specific control from a device’s channel",
         "description": "Deletes a specific control associated with a device channel using its unique ID. This action is irreversible and removes the control from the system.",
         "operationId": "delete-devices-module-device-channel-control",
@@ -2886,17 +2969,17 @@
       }
     },
     "/devices-module/devices/{deviceId}/channels/{channelId}/properties": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/deviceId"
-        },
-        {
-          "$ref": "#/components/parameters/channelId"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          }
         ],
         "summary": "Retrieve a list of all available properties for a device’s channel",
         "description": "Fetches a list of properties associated with a specific channel of a device. Properties represent attributes or measurements related to the channel, such as thermostat mode, temperature, or humidity.",
@@ -2973,6 +3056,14 @@
       "post": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          }
         ],
         "summary": "Create a new property for a specific device’s channel",
         "description": "Creates a new property for a specific device channel. The property can include metadata such as category, permissions, data type, unit, and initial value. The response contains the full representation of the created property, including its unique identifier, associated channel, and metadata.",
@@ -3089,20 +3180,20 @@
       }
     },
     "/devices-module/devices/{deviceId}/channels/{channelId}/properties/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/deviceId"
-        },
-        {
-          "$ref": "#/components/parameters/channelId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific property for a device’s channel",
         "description": "Fetches detailed information about a specific property associated with a device channel using its unique ID. The response includes metadata such as the property’s name, category, value, and associated channel.",
@@ -3177,6 +3268,17 @@
       "patch": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Update and existing property for a specific device’s channel",
         "description": "Partially updates the details of a specific property associated with a device channel. This operation allows modifications to attributes such as the property’s name, value, or metadata, while preserving its unique identifier and association with the channel.",
@@ -3279,6 +3381,17 @@
       "delete": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Delete a specific property from a device’s channel.",
         "description": "Deletes a specific property associated with a device channel using its unique ID. This operation is irreversible and removes the property from the system.",
@@ -3555,14 +3668,14 @@
       }
     },
     "/devices-module/channels/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific channel",
         "description": "Fetches detailed information about a specific channel using its unique ID. The response includes metadata, associated device information, controls, and properties for the channel.",
@@ -3658,6 +3771,11 @@
       "patch": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Update an existing channel",
         "description": "Partially updates the attributes of a specific channel using its unique ID. This allows modifications to properties such as the channel’s name, category, description, or associated controls and properties.",
@@ -3776,6 +3894,11 @@
         "tags": [
           "Devices module"
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
         "summary": "Delete an existing channel",
         "description": "Deletes a specific channel using its unique ID. This action is irreversible and removes the channel and all associated data from the system.",
         "operationId": "delete-devices-module-channel",
@@ -3804,14 +3927,14 @@
       }
     },
     "/devices-module/channels/{channelId}/controls": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/channelId"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          }
         ],
         "summary": "Retrieve a list of all available channel controls",
         "description": "Fetches a list of all controls available for channels in the system. Each control represents an actionable operation associated with a channel. The response includes details such as the control’s ID, name, associated channel, and timestamps.",
@@ -3874,6 +3997,11 @@
       "post": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          }
         ],
         "summary": "Create a new control for a channel",
         "description": "Allows the creation of a new control for a specific channel. A control represents an actionable operation or command associated with the channel. The response includes the complete details of the newly created control, including its ID, name, associated channel, and metadata.",
@@ -3962,17 +4090,17 @@
       }
     },
     "/devices-module/channels/{channelId}/controls/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/channelId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific control for a channel",
         "description": "Fetches the details of a specific control associated with a channel. The response includes the control’s unique identifier, name, associated channel, and metadata such as creation and update timestamps.",
@@ -4034,6 +4162,14 @@
         "tags": [
           "Devices module"
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
         "summary": "Delete an existing control for a channel",
         "description": "Deletes an existing control associated with a specific channel. This operation is irreversible and will remove the control permanently from the system.",
         "operationId": "delete-devices-module-channel-control",
@@ -4062,14 +4198,14 @@
       }
     },
     "/devices-module/channels/{channelId}/properties": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/channelId"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          }
         ],
         "summary": "Retrieve a list of all available channel properties",
         "description": "Fetches all properties associated with a specific channel. The response includes metadata for each property, such as category, name, permissions, data type, unit, and current value, along with the associated channel’s unique identifier.",
@@ -4146,6 +4282,11 @@
       "post": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          }
         ],
         "summary": "Create a new property for a channel",
         "description": "Creates a new property for a channel, such as thermostat mode or brightness level. The property includes metadata like category, permissions, data type, unit, and initial value. The response provides the full representation of the created property along with a Location header containing the URI for the new property resource.",
@@ -4262,17 +4403,17 @@
       }
     },
     "/devices-module/channels/{channelId}/properties/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/channelId"
-        },
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific property for a channel",
         "description": "Fetches detailed information about a specific property associated with a channel. The response includes metadata such as the property’s unique ID, category, permissions, data type, unit, and current value, along with timestamps and the associated channel’s identifier.",
@@ -4347,6 +4488,14 @@
       "patch": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Update an existing property for a channel",
         "description": "Allows partial updates to an existing property associated with a channel. You can update specific attributes such as the name, category, permissions, data type, unit, or current value. The response includes the updated representation of the property.",
@@ -4449,6 +4598,14 @@
       "delete": {
         "tags": [
           "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Delete an existing property for a channel",
         "description": "Deletes an existing property associated with a channel. This operation is irreversible and permanently removes the property from the system.",
@@ -4567,15 +4724,15 @@
       }
     },
     "/dashboard-module/pages/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "summary": "Retrieve details of a specific page",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "200": {
@@ -4613,6 +4770,11 @@
         "summary": "Update an existing page",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "200": {
@@ -4660,6 +4822,11 @@
         "summary": "Delete an existing page",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "204": {
@@ -4806,15 +4973,15 @@
       }
     },
     "/dashboard-module/tiles/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "summary": "Retrieve details of a specific tile",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "200": {
@@ -4852,6 +5019,11 @@
         "summary": "Update an existing tile",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "200": {
@@ -4899,6 +5071,11 @@
         "summary": "Delete a specific tile",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "204": {
@@ -5045,15 +5222,15 @@
       }
     },
     "/dashboard-module/data-source/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "summary": "Retrieve details of a specific data source",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "200": {
@@ -5091,6 +5268,11 @@
         "summary": "Update and existing data source",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "200": {
@@ -5138,6 +5320,11 @@
         "summary": "Delete a specific data source.",
         "tags": [
           "Dashboard module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "204": {
@@ -5212,8 +5399,9 @@
                         },
                         "weather": {
                           "type": "weather",
-                          "location": "Prague",
-                          "location_type": "city_name",
+                          "latitude": 50.083328,
+                          "longitude": 14.46667,
+                          "location_type": "lat_lon",
                           "unit": "celsius",
                           "open_weather_api_key": "string"
                         },
@@ -5248,27 +5436,27 @@
       }
     },
     "/config-module/config/{section}": {
-      "parameters": [
-        {
-          "schema": {
-            "type": "string",
-            "enum": [
-              "audio",
-              "display",
-              "language",
-              "weather"
-            ],
-            "example": "audio"
-          },
-          "name": "section",
-          "in": "path",
-          "required": true,
-          "description": "The configuration section name."
-        }
-      ],
       "get": {
         "tags": [
           "Configuration module"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "audio",
+                "display",
+                "language",
+                "weather"
+              ],
+              "example": "audio"
+            },
+            "name": "section",
+            "in": "path",
+            "required": true,
+            "description": "The configuration section name."
+          }
         ],
         "summary": "Retrieve specific configuration section",
         "description": "Retrieves a specific configuration section, such as audio, display, language, or weather.",
@@ -5329,6 +5517,24 @@
       "patch": {
         "tags": [
           "Configuration module"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "audio",
+                "display",
+                "language",
+                "weather"
+              ],
+              "example": "audio"
+            },
+            "name": "section",
+            "in": "path",
+            "required": true,
+            "description": "The configuration section name."
+          }
         ],
         "summary": "Update specific configuration section",
         "description": "Updates a specific configuration section, such as audio, display, language, or weather. Only the provided fields will be modified.",
@@ -5411,21 +5617,21 @@
       }
     },
     "/config-module/config/plugin/{plugin}": {
-      "parameters": [
-        {
-          "schema": {
-            "type": "string",
-            "example": "custom-plugin"
-          },
-          "name": "plugin",
-          "in": "path",
-          "required": true,
-          "description": "The configuration plugin name."
-        }
-      ],
       "get": {
         "tags": [
           "Configuration module"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "custom-plugin"
+            },
+            "name": "plugin",
+            "in": "path",
+            "required": true,
+            "description": "The configuration plugin name."
+          }
         ],
         "summary": "Retrieve specific plugin configuration",
         "description": "Retrieves a specific plugin configuration.",
@@ -5482,6 +5688,18 @@
       "patch": {
         "tags": [
           "Configuration module"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "custom-plugin"
+            },
+            "name": "plugin",
+            "in": "path",
+            "required": true,
+            "description": "The configuration plugin name."
+          }
         ],
         "summary": "Update specific plugin configuration",
         "description": "Updates a specific plugin configuration. Only the provided fields will be modified.",
@@ -5862,14 +6080,14 @@
       }
     },
     "/system-module/displays-profiles/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "tags": [
           "System module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Retrieve details of a specific display",
         "description": "Fetch detailed information about a specific display, including its mac address, display app version, and associated data.",
@@ -5907,6 +6125,11 @@
       "patch": {
         "tags": [
           "System module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "summary": "Update an existing display",
         "description": "Modify display details such as display app version, build. Partial updates are supported.",
@@ -5965,6 +6188,11 @@
         "tags": [
           "System module"
         ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
+        ],
         "summary": "Delete an existing display",
         "description": "Remove a display from the system. This action is irreversible.",
         "operationId": "delete-system-module-display-profile",
@@ -5993,23 +6221,23 @@
       }
     },
     "/system-module/displays-profiles/by-uid/{uid}": {
-      "parameters": [
-        {
-          "name": "uid",
-          "in": "path",
-          "required": true,
-          "description": "The UID of the resource to retrieve.",
-          "schema": {
-            "type": "string",
-            "format": "uuid",
-            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
-          },
-          "example": "fcab917a-f889-47cf-9ace-ef085774864e"
-        }
-      ],
       "get": {
         "tags": [
           "System module"
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "description": "The UID of the resource to retrieve.",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+            },
+            "example": "fcab917a-f889-47cf-9ace-ef085774864e"
+          }
         ],
         "summary": "Retrieve details of a specific display by UID",
         "description": "Fetch detailed information about a specific display by UID, including its mac address, display app version, and associated data.",
@@ -6234,31 +6462,7 @@
         },
         "operationId": "get-weather-module-current",
         "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a current day and for a specified location.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "location",
-            "description": "The location for weather updates, specified as a city name or coordinates (latitude, longitude)."
-          },
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "lat_lon",
-                "city_name",
-                "city_id",
-                "zip_code"
-              ],
-              "default": "city_name"
-            },
-            "in": "query",
-            "name": "location_type",
-            "description": "Specifies the method used to determine the location for weather updates."
-          }
-        ],
+        "parameters": [],
         "security": [
           {
             "authentication": []
@@ -6350,31 +6554,7 @@
         },
         "operationId": "get-weather-module-forecast",
         "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details forecast for a specified location.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "location",
-            "description": "The location for weather updates, specified as a city name or coordinates (latitude, longitude)."
-          },
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "lat_lon",
-                "city_name",
-                "city_id",
-                "zip_code"
-              ],
-              "default": "city_name"
-            },
-            "in": "query",
-            "name": "location_type",
-            "description": "Specifies the method used to determine the location for weather updates."
-          }
-        ],
+        "parameters": [],
         "security": [
           {
             "authentication": []
@@ -6392,7 +6572,7 @@
         ],
         "summary": "Convert city name to geographical coordinates",
         "description": "Retrieves latitude and longitude based on a given city name. Useful for mapping and location-based services.",
-        "operationId": "get-weather-module-geolocation",
+        "operationId": "get-weather-module-city-geolocation",
         "parameters": [
           {
             "name": "city",
@@ -6420,17 +6600,19 @@
                       "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
                       "path": "/api/v1/weather-module/geolocation/city-to-coordinates",
                       "method": "GET",
-                      "data": {
-                        "name": "Prague",
-                        "local_names": {
-                          "property1": "Prague",
-                          "property2": "Prague"
-                        },
-                        "lat": "50.0755",
-                        "lon": "14.4378",
-                        "country": "CZ",
-                        "state": "Prague Region"
-                      },
+                      "data": [
+                        {
+                          "name": "Prague",
+                          "local_names": {
+                            "property1": "Prague",
+                            "property2": "Prague"
+                          },
+                          "lat": 50.0755,
+                          "lon": 14.4378,
+                          "country": "CZ",
+                          "state": "Prague Region"
+                        }
+                      ],
                       "metadata": {
                         "request_duration_ms": 57,
                         "server_time": "2025-01-18T12:00:00Z",
@@ -6457,6 +6639,79 @@
             "x-display-secret": []
           }
         ]
+      }
+    },
+    "/weather-module/geolocation/zip-to-coordinates": {
+      "get": {
+        "tags": [
+          "Weather module"
+        ],
+        "summary": "Convert ZIP code to geographical coordinates",
+        "description": "Retrieves latitude and longitude based on a given ZIP code. Useful for mapping and location-based services.",
+        "operationId": "get-weather-module-zip-geolocation",
+        "parameters": [
+          {
+            "name": "zip",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ZIP code for which geographical coordinates are requested."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response containing geographical information related to a specified location.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherModuleResGeolocationZipToCoordinates"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/weather-module/geolocation/zip-to-coordinates",
+                      "method": "GET",
+                      "data": {
+                        "zip": "100 00",
+                        "name": "Prague",
+                        "lat": 50.0755,
+                        "lon": 14.4378,
+                        "country": "CZ"
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ],
+        "x-stoplight": {
+          "id": "6vk1i3us2yszs"
+        }
       }
     },
     "/weather-module/geolocation/coordinates-to-city": {
@@ -6511,8 +6766,8 @@
                           "property1": "Prague",
                           "property2": "Prague"
                         },
-                        "lat": "50.0755",
-                        "lon": "14.4378",
+                        "lat": 50.0755,
+                        "lon": 14.4378,
                         "country": "CZ",
                         "state": "Prague Region"
                       },
@@ -6545,15 +6800,15 @@
       }
     },
     "/third-party/webhook": {
-      "servers": [
-        {
-          "url": "http://third-party.device.local",
-          "description": "Dummy local URL for third-party device webhook"
-        }
-      ],
       "put": {
         "tags": [
           "Devices third-party plugin"
+        ],
+        "servers": [
+          {
+            "url": "http://third-party.device.local",
+            "description": "Dummy local URL for third-party device webhook"
+          }
         ],
         "summary": "Send command to third-party device",
         "description": "This endpoint is used to send property update commands to a third-party device. The backend calls this webhook with one or more property updates. The third-party device should process the updates and return a status response.\n\n**The actual webhook path must be defined on the third-party device level**, and the backend must be configured accordingly to call the correct endpoint.",
@@ -6660,19 +6915,19 @@
       }
     },
     "/plugins/devices-home-assistant-plugin/discovered-devices/{id}": {
-      "parameters": [
-        {
-          "schema": {
-            "type": "string",
-            "example": "6ab4250ba7c4216da36f3d6fb1514d03"
-          },
-          "name": "id",
-          "in": "path",
-          "required": true,
-          "description": "The ID of the Home Assisant discovered device to retrieve."
-        }
-      ],
       "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "6ab4250ba7c4216da36f3d6fb1514d03"
+            },
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the Home Assisant discovered device to retrieve."
+          }
+        ],
         "summary": "Retrieve details of a specific Home Assistant Device",
         "description": "Fetches details of a specific Home Assistant device by its Home Assistant ID. The response includes associated entities and their current states.",
         "operationId": "get-devices-home-assistant-plugin-device",
@@ -6750,19 +7005,19 @@
       }
     },
     "/plugins/devices-home-assistant-plugin/states/{entityId}": {
-      "parameters": [
-        {
-          "schema": {
-            "type": "string",
-            "example": "switch.hall_heater_actor"
-          },
-          "name": "entityId",
-          "in": "path",
-          "required": true,
-          "description": "The ID of the Home Assisant entity to retrieve state."
-        }
-      ],
       "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "switch.hall_heater_actor"
+            },
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the Home Assisant entity to retrieve state."
+          }
+        ],
         "summary": "Retrieve details of a specific Home Assistant State",
         "description": "Fetches the current state and attributes for a single entity by its Home Assistant entity ID. This includes state value and timestamp details.",
         "operationId": "get-devices-home-assistant-plugin-state",
@@ -6909,15 +7164,15 @@
       }
     },
     "/plugins/pages-cards-plugin/cards/{id}": {
-      "parameters": [
-        {
-          "$ref": "#/components/parameters/id"
-        }
-      ],
       "get": {
         "summary": "Retrieve details of a specific card for a page",
         "tags": [
           "Pages cards plugin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "200": {
@@ -6955,6 +7210,11 @@
         "summary": "Update an existing card for a page",
         "tags": [
           "Pages cards plugin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "200": {
@@ -7013,6 +7273,11 @@
         "summary": "Delete a specific card for a page",
         "tags": [
           "Pages cards plugin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/id"
+          }
         ],
         "responses": {
           "204": {
@@ -9042,7 +9307,6 @@
         "type": "object",
         "required": [
           "type",
-          "location",
           "location_type",
           "unit",
           "open_weather_api_key"
@@ -9056,12 +9320,6 @@
             "description": "Configuration section type",
             "default": "weather"
           },
-          "location": {
-            "type": "string",
-            "nullable": true,
-            "description": "The location for weather updates, specified as a city name or coordinates (latitude, longitude).",
-            "example": "Prague"
-          },
           "location_type": {
             "type": "string",
             "enum": [
@@ -9070,9 +9328,8 @@
               "city_id",
               "zip_code"
             ],
-            "description": "Specifies the method used to determine the location for weather updates.",
-            "default": "city_name",
-            "example": "city_name"
+            "description": "Specifies the location type used to determine the location for weather updates.",
+            "default": "lat_lon"
           },
           "unit": {
             "type": "string",
@@ -9087,16 +9344,200 @@
           "open_weather_api_key": {
             "type": "string",
             "nullable": true,
-            "description": "API key for OpenWeatherMap. Required only if using OpenWeatherMap as a data source."
+            "description": "API key for OpenWeatherMap. Required only if using OpenWeatherMap as a data source.",
+            "default": "null"
           }
         },
-        "examples": [
+        "discriminator": {
+          "propertyName": "location_type",
+          "mapping": {
+            "lat_lon": "#/components/schemas/ConfigModuleWeatherLatLon",
+            "city_name": "#/components/schemas/ConfigModuleWeatherCityName",
+            "city_id": "#/components/schemas/ConfigModuleWeatherCityId",
+            "zip_code": "#/components/schemas/ConfigModuleWeatherZipCode"
+          }
+        }
+      },
+      "ConfigModuleWeatherLatLon": {
+        "title": "Weather Configuration Latitude and Longitude",
+        "description": "Schema for weather configuration using latitude and longitude coordinates.",
+        "allOf": [
           {
-            "type": "weather",
-            "location": "Prague",
-            "location_type": "city_name",
-            "unit": "celsius",
-            "open_weather_api_key": "string"
+            "$ref": "#/components/schemas/ConfigModuleWeather"
+          },
+          {
+            "type": "object",
+            "required": [
+              "location_type",
+              "latitude",
+              "longitude"
+            ],
+            "properties": {
+              "location_type": {
+                "type": "string",
+                "enum": [
+                  "lat_lon"
+                ],
+                "description": "Specifies the location type used to determine the location for weather updates.",
+                "default": "lat_lon"
+              },
+              "latitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location latitude coordinates.",
+                "example": 50.083328,
+                "format": "float",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "longitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location longitude coordinates.",
+                "example": 14.46667,
+                "format": "float",
+                "minimum": -180,
+                "maximum": 180
+              }
+            }
+          }
+        ]
+      },
+      "ConfigModuleWeatherCityName": {
+        "title": "Weather Configuration City Name",
+        "description": "Schema for weather configuration using city name geolocation.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleWeather"
+          },
+          {
+            "type": "object",
+            "required": [
+              "location_type",
+              "city_name",
+              "latitude",
+              "longitude"
+            ],
+            "properties": {
+              "location_type": {
+                "type": "string",
+                "enum": [
+                  "city_name"
+                ],
+                "description": "Specifies the location type used to determine the location for weather updates.",
+                "default": "city_name"
+              },
+              "city_name": {
+                "type": "string",
+                "nullable": true,
+                "description": "Location city name optionaly with state name and country code.",
+                "default": "null",
+                "example": "Prague,CZ"
+              },
+              "latitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location latitude coordinates.",
+                "example": 50.083328,
+                "format": "float",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "longitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location longitude coordinates.",
+                "example": 14.46667,
+                "format": "float",
+                "minimum": -180,
+                "maximum": 180
+              }
+            }
+          }
+        ]
+      },
+      "ConfigModuleWeatherCityId": {
+        "title": "Weather Configuration City ID",
+        "description": "Schema for weather configuration using OpenWeather city identifier.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleWeather"
+          },
+          {
+            "type": "object",
+            "required": [
+              "location_type",
+              "city_id"
+            ],
+            "properties": {
+              "location_type": {
+                "type": "string",
+                "enum": [
+                  "city_id"
+                ],
+                "description": "Specifies the location type used to determine the location for weather updates.",
+                "default": "city_id"
+              },
+              "city_id": {
+                "type": "integer",
+                "nullable": true,
+                "description": "OpenWeather city identifier.",
+                "example": 3067696
+              }
+            }
+          }
+        ]
+      },
+      "ConfigModuleWeatherZipCode": {
+        "title": "Weather Configuration ZIP Code",
+        "description": "Schema for weather configuration using ZIP code geolocation.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleWeather"
+          },
+          {
+            "type": "object",
+            "required": [
+              "location_type",
+              "zip_code",
+              "latitude",
+              "longitude"
+            ],
+            "properties": {
+              "location_type": {
+                "type": "string",
+                "enum": [
+                  "zip_code"
+                ],
+                "description": "Specifies the location type used to determine the location for weather updates.",
+                "default": "zip_code"
+              },
+              "zip_code": {
+                "type": "string",
+                "nullable": true,
+                "description": "Location ZIP code optionaly with country code.",
+                "default": "null",
+                "example": "100 00,CZ"
+              },
+              "latitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location latitude coordinates.",
+                "example": 50.083328,
+                "format": "float",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "longitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location longitude coordinates.",
+                "example": 14.46667,
+                "format": "float",
+                "minimum": -180,
+                "maximum": 180
+              }
+            }
           }
         ]
       },
@@ -9124,37 +9565,6 @@
         "title": "Configuration",
         "type": "object",
         "description": "Schema for the complete configuration settings for the smart panel, including audio, display, language, and weather settings.",
-        "examples": [
-          {
-            "audio": {
-              "type": "audio",
-              "speaker": false,
-              "speaker_volume": 50,
-              "microphone": false,
-              "microphone_volume": 50
-            },
-            "display": {
-              "type": "display",
-              "dark_mode": false,
-              "brightness": 50,
-              "screen_lock_duration": 30,
-              "screen_saver": true
-            },
-            "language": {
-              "type": "language",
-              "language": "en_US",
-              "timezone": "Europe/Prague",
-              "time_format": "24h"
-            },
-            "weather": {
-              "type": "weather",
-              "location": "Prague",
-              "location_type": "city_name",
-              "unit": "celsius",
-              "open_weather_api_key": "string"
-            }
-          }
-        ],
         "required": [
           "audio",
           "display",
@@ -9185,7 +9595,38 @@
               "$ref": "#/components/schemas/ConfigModulePlugin"
             }
           }
-        }
+        },
+        "examples": [
+          {
+            "audio": {
+              "type": "audio",
+              "speaker": false,
+              "speaker_volume": 50,
+              "microphone": false,
+              "microphone_volume": 50
+            },
+            "display": {
+              "type": "display",
+              "dark_mode": false,
+              "brightness": 50,
+              "screen_lock_duration": 30,
+              "screen_saver": true
+            },
+            "language": {
+              "type": "language",
+              "language": "en_US",
+              "timezone": "Europe/Prague",
+              "time_format": "24h"
+            },
+            "weather": {
+              "type": "weather",
+              "city_name": "Prague,CZ",
+              "location_type": "city_name",
+              "unit": "celsius",
+              "open_weather_api_key": "string"
+            }
+          }
+        ]
       },
       "ConfigModuleUpdateAudio": {
         "title": "Update Audio",
@@ -9348,7 +9789,8 @@
         "description": "Schema for partial update settings for weather configuration, allowing changes to location, temperature unit, and API key.",
         "type": "object",
         "required": [
-          "type"
+          "type",
+          "location_type"
         ],
         "properties": {
           "type": {
@@ -9356,13 +9798,8 @@
             "enum": [
               "weather"
             ],
-            "description": "Configuration section type"
-          },
-          "location": {
-            "type": "string",
-            "nullable": true,
-            "description": "The location for weather updates, specified as a city name or coordinates (latitude, longitude).",
-            "example": "Prague"
+            "description": "Configuration section type",
+            "default": "weather"
           },
           "location_type": {
             "type": "string",
@@ -9372,8 +9809,8 @@
               "city_id",
               "zip_code"
             ],
-            "description": "Specifies the method used to determine the location for weather updates.",
-            "example": "city_name"
+            "description": "Specifies the location type used to determine the location for weather updates.",
+            "default": "lat_lon"
           },
           "unit": {
             "type": "string",
@@ -9390,11 +9827,224 @@
             "description": "API key for OpenWeatherMap. Required only if using OpenWeatherMap as a data source."
           }
         },
+        "discriminator": {
+          "propertyName": "location_type",
+          "mapping": {
+            "lat_lon": "#/components/schemas/ConfigModuleUpdateWeatherLatLon",
+            "city_name": "#/components/schemas/ConfigModuleUpdateWeatherCityName",
+            "city_id": "#/components/schemas/ConfigModuleUpdateWeatherCityId",
+            "zip_code": "#/components/schemas/ConfigModuleUpdateWeatherZipCode"
+          }
+        }
+      },
+      "ConfigModuleUpdateWeatherLatLon": {
+        "title": "Update Weather Latitude Longitude",
+        "description": "Schema for partial update settings for weather configuration, allowing changes to latitude and longitude coordinates.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleUpdateWeather"
+          },
+          {
+            "type": "object",
+            "required": [
+              "location_type"
+            ],
+            "properties": {
+              "location_type": {
+                "type": "string",
+                "enum": [
+                  "lat_lon"
+                ],
+                "description": "Specifies the location type used to determine the location for weather updates.",
+                "default": "lat_lon"
+              },
+              "latitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location latitude coordinates.",
+                "example": 50.083328,
+                "format": "float",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "longitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location longitude coordinates.",
+                "example": 14.46667,
+                "format": "float",
+                "minimum": -180,
+                "maximum": 180
+              }
+            }
+          }
+        ],
         "examples": [
           {
             "type": "weather",
-            "location": "Prague",
+            "latitude": 50.083328,
+            "longitude": 14.46667,
+            "location_type": "lat_lon",
+            "unit": "celsius",
+            "open_weather_api_key": "string"
+          }
+        ]
+      },
+      "ConfigModuleUpdateWeatherCityName": {
+        "title": "Update Weather City Name",
+        "description": "Schema for partial update settings for weather configuration, allowing changes to location city name.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleUpdateWeather"
+          },
+          {
+            "type": "object",
+            "required": [
+              "location_type"
+            ],
+            "properties": {
+              "location_type": {
+                "type": "string",
+                "enum": [
+                  "city_name"
+                ],
+                "description": "Specifies the location type used to determine the location for weather updates.",
+                "default": "city_name"
+              },
+              "city_name": {
+                "type": "string",
+                "nullable": true,
+                "description": "Location city name optionaly with state name and country code.",
+                "example": "Prague,CZ"
+              },
+              "latitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location latitude coordinates.",
+                "example": 50.083328,
+                "format": "float",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "longitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location longitude coordinates.",
+                "example": 14.46667,
+                "format": "float",
+                "minimum": -180,
+                "maximum": 180
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "type": "weather",
+            "city_name": "Prague,CZ",
+            "latitude": 50.083328,
+            "longitude": 14.46667,
             "location_type": "city_name",
+            "unit": "celsius",
+            "open_weather_api_key": "string"
+          }
+        ]
+      },
+      "ConfigModuleUpdateWeatherCityId": {
+        "title": "Update Weather City ID",
+        "description": "Schema for partial update settings for weather configuration, allowing changes to OpenWeather city identifier.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleUpdateWeather"
+          },
+          {
+            "type": "object",
+            "required": [
+              "location_type"
+            ],
+            "properties": {
+              "location_type": {
+                "type": "string",
+                "enum": [
+                  "city_id"
+                ],
+                "description": "Specifies the location type used to determine the location for weather updates.",
+                "default": "city_id"
+              },
+              "city_id": {
+                "type": "integer",
+                "nullable": true,
+                "description": "OpenWeather city identifier.",
+                "example": 3067696
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "type": "weather",
+            "city_id": 3067696,
+            "location_type": "city_id",
+            "unit": "celsius",
+            "open_weather_api_key": "string"
+          }
+        ]
+      },
+      "ConfigModuleUpdateWeatherZipCode": {
+        "title": "Update Weather ZIP Code",
+        "description": "Schema for partial update settings for weather configuration, allowing changes to location ZIP code.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleUpdateWeather"
+          },
+          {
+            "type": "object",
+            "required": [
+              "location_type"
+            ],
+            "properties": {
+              "location_type": {
+                "type": "string",
+                "enum": [
+                  "zip_code"
+                ],
+                "description": "Specifies the location type used to determine the location for weather updates.",
+                "default": "zip_code"
+              },
+              "zip_code": {
+                "type": "string",
+                "nullable": true,
+                "description": "Location ZIP code optionaly with country code.",
+                "example": "100 00,CZ"
+              },
+              "latitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location latitude coordinates.",
+                "example": 50.083328,
+                "format": "float",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "longitude": {
+                "type": "number",
+                "nullable": true,
+                "description": "Location longitude coordinates.",
+                "example": 14.46667,
+                "format": "float",
+                "minimum": -180,
+                "maximum": 180
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "type": "weather",
+            "zip_code": "100 00,CZ",
+            "latitude": 50.083328,
+            "longitude": 14.46667,
+            "location_type": "zip_code",
             "unit": "celsius",
             "open_weather_api_key": "string"
           }
@@ -9576,7 +10226,7 @@
               },
               "weather": {
                 "type": "weather",
-                "location": "Prague",
+                "city_name": "Prague,CZ",
                 "location_type": "city_name",
                 "unit": "celsius",
                 "open_weather_api_key": "string"
@@ -14582,8 +15232,11 @@
           }
         ]
       },
-      "WeatherModuleGeolocation": {
-        "title": "Geolocation",
+      "WeatherModuleCityGeolocation": {
+        "title": "City name geolocation",
+        "x-stoplight": {
+          "id": "81cc9fb62da76"
+        },
         "description": "Represents geographical location details, including city name, coordinates, and country information.",
         "type": "object",
         "required": [
@@ -14609,14 +15262,20 @@
             }
           },
           "lat": {
-            "type": "string",
+            "type": "number",
             "description": "Latitude coordinate of the location.",
-            "example": "50.0755"
+            "format": "float",
+            "minimum": -90,
+            "maximum": 90,
+            "example": 50.0755
           },
           "lon": {
-            "type": "string",
+            "type": "number",
             "description": "Longitude coordinate of the location.",
-            "example": "14.4378"
+            "format": "float",
+            "minimum": -180,
+            "maximum": 180,
+            "example": 14.4378
           },
           "country": {
             "type": "string",
@@ -14636,10 +15295,67 @@
               "property1": "Prague",
               "property2": "Prague"
             },
-            "lat": "50.0755",
-            "lon": "14.4378",
+            "lat": 50.0755,
+            "lon": 14.4378,
             "country": "CZ",
             "state": "Prague Region"
+          }
+        ]
+      },
+      "WeatherModuleZipGeolocation": {
+        "title": "ZIP code geolocation",
+        "x-stoplight": {
+          "id": "81cc9fb62da76"
+        },
+        "description": "Represents geographical location details, including city name, coordinates, and country information.",
+        "type": "object",
+        "required": [
+          "zip",
+          "name",
+          "lat",
+          "lon",
+          "country"
+        ],
+        "properties": {
+          "zip": {
+            "type": "string",
+            "description": "ZIP code of the searched location.",
+            "example": "Prague"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the city or location.",
+            "example": "Prague"
+          },
+          "lat": {
+            "type": "number",
+            "description": "Latitude coordinate of the location.",
+            "format": "float",
+            "minimum": -90,
+            "maximum": 90,
+            "example": 50.0755
+          },
+          "lon": {
+            "type": "number",
+            "description": "Longitude coordinate of the location.",
+            "format": "float",
+            "minimum": -180,
+            "maximum": 180,
+            "example": 14.4378
+          },
+          "country": {
+            "type": "string",
+            "description": "Country code (ISO 3166-1 alpha-2) or full country name.",
+            "example": "CZ"
+          }
+        },
+        "examples": [
+          {
+            "zip": "100 00",
+            "name": "Prague",
+            "lat": 50.0755,
+            "lon": 14.4378,
+            "country": "CZ"
           }
         ]
       },
@@ -15043,7 +15759,10 @@
             "readOnly": true
           },
           "data": {
-            "$ref": "#/components/schemas/WeatherModuleGeolocation",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeatherModuleCityGeolocation"
+            },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
           },
           "metadata": {
@@ -15058,16 +15777,101 @@
             "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
             "path": "/api/v1/weather-module/geolocation/city-to-coordinates",
             "method": "GET",
+            "data": [
+              {
+                "name": "Prague",
+                "local_names": {
+                  "property1": "Prague",
+                  "property2": "Prague"
+                },
+                "lat": 50.0755,
+                "lon": 14.4378,
+                "country": "CZ",
+                "state": "Prague Region"
+              }
+            ],
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
+      "WeatherModuleResGeolocationZipToCoordinates": {
+        "title": "ZIP code to Coordinates Geolocation Response",
+        "description": "Response providing latitude and longitude coordinates for a given ZIP code.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/weather-module/geolocation/zip-to-coordinates",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/WeatherModuleZipGeolocation",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/weather-module/geolocation/zip-to-coordinates",
+            "method": "GET",
             "data": {
+              "zip": "100 00",
               "name": "Prague",
-              "local_names": {
-                "property1": "Prague",
-                "property2": "Prague"
-              },
-              "lat": "50.0755",
-              "lon": "14.4378",
-              "country": "CZ",
-              "state": "Prague Region"
+              "lat": 50.0755,
+              "lon": 14.4378,
+              "country": "CZ"
             },
             "metadata": {
               "request_duration_ms": 57,
@@ -15130,7 +15934,7 @@
             "readOnly": true
           },
           "data": {
-            "$ref": "#/components/schemas/WeatherModuleGeolocation",
+            "$ref": "#/components/schemas/WeatherModuleCityGeolocation",
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
           },
           "metadata": {
@@ -15151,8 +15955,8 @@
                 "property1": "Prague",
                 "property2": "Prague"
               },
-              "lat": "50.0755",
-              "lon": "14.4378",
+              "lat": 50.0755,
+              "lon": 14.4378,
               "country": "CZ",
               "state": "Prague Region"
             },

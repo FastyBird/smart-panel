@@ -144,7 +144,8 @@ class DisplayConfigRepository extends Repository<DisplayConfigModel> {
     return handleApiCall(
       () async {
         final response = await apiClient.getConfigModuleConfigSection(
-            section: Section.display);
+          section: Section.display,
+        );
 
         final data = response.data.data;
 

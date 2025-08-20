@@ -7,7 +7,10 @@ import {
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
-	UpdateWeatherConfigDto,
+	UpdateWeatherCityIdConfigDto,
+	UpdateWeatherCityNameConfigDto,
+	UpdateWeatherLatLonConfigDto,
+	UpdateWeatherZipCodeConfigDto,
 } from '../dto/config.dto';
 import {
 	AppConfigModel,
@@ -16,7 +19,10 @@ import {
 	DisplayConfigModel,
 	LanguageConfigModel,
 	PluginConfigModel,
-	WeatherConfigModel,
+	WeatherCityIdConfigModel,
+	WeatherCityNameConfigModel,
+	WeatherLatLonConfigModel,
+	WeatherZipCodeConfigModel,
 } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
 
@@ -63,7 +69,14 @@ export class ConfigController {
 
 				return config;
 			case SectionType.WEATHER:
-				config = this.service.getConfigSection<WeatherConfigModel>(section, WeatherConfigModel);
+				config = this.service.getConfigSection<
+					WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
+				>(section, [
+					WeatherLatLonConfigModel,
+					WeatherCityNameConfigModel,
+					WeatherCityIdConfigModel,
+					WeatherZipCodeConfigModel,
+				]);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
@@ -115,12 +128,28 @@ export class ConfigController {
 	}
 
 	@Patch(SectionType.WEATHER)
-	async updateWeatherConfig(@Body() weatherConfig: ReqUpdateSectionDto): Promise<WeatherConfigModel> {
+	async updateWeatherConfig(
+		@Body() weatherConfig: ReqUpdateSectionDto,
+	): Promise<
+		WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
+	> {
 		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.WEATHER}`);
 
-		await this.service.setConfigSection(SectionType.WEATHER, weatherConfig.data, UpdateWeatherConfigDto);
+		await this.service.setConfigSection(SectionType.WEATHER, weatherConfig.data, [
+			UpdateWeatherLatLonConfigDto,
+			UpdateWeatherCityNameConfigDto,
+			UpdateWeatherCityIdConfigDto,
+			UpdateWeatherZipCodeConfigDto,
+		]);
 
-		const config = this.service.getConfigSection<WeatherConfigModel>(SectionType.WEATHER, WeatherConfigModel);
+		const config = this.service.getConfigSection<
+			WeatherLatLonConfigModel | WeatherCityNameConfigModel | WeatherCityIdConfigModel | WeatherZipCodeConfigModel
+		>(SectionType.WEATHER, [
+			WeatherLatLonConfigModel,
+			WeatherCityNameConfigModel,
+			WeatherCityIdConfigModel,
+			WeatherZipCodeConfigModel,
+		]);
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.WEATHER}`);
 

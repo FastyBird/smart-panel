@@ -80,7 +80,7 @@ class TilesPageModel extends PageModel {
           : null,
       order: json['order'],
       display: json['display'],
-      tileSize: json['tile_size'] != null ? json['tile_size'].toDouble() : null,
+      tileSize: json['tile_size']?.toDouble(),
       rows: json['rows'],
       cols: json['cols'],
       tiles: UuidUtils.validateUuidList(tiles),
