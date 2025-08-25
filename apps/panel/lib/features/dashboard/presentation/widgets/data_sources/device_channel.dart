@@ -37,33 +37,25 @@ class DeviceChannelDataSourceWidget
         return _renderError(context);
       }
 
-      final ChannelPropertyView? property =
-          channel.getProperty(dataSource.property);
+      final ChannelPropertyView? property = channel.getProperty(
+        dataSource.property,
+      );
 
       if (property == null) {
         return _renderError(context);
       }
 
       final List<Widget> parts = [
-        Baseline(
-          baseline: AppFontSize.small,
-          baselineType: TextBaseline.alphabetic,
-          child: Icon(
-            _getIcon(property),
-            size: AppFontSize.small,
-          ),
+        Icon(
+          _getIcon(property),
+          size: AppFontSize.small,
         ),
         AppSpacings.spacingSmHorizontal,
-        Baseline(
-          baseline: AppFontSize.small,
-          baselineType: TextBaseline.alphabetic,
-          child: Text(
-            _getValue(property, context),
-            style: TextStyle(
-              fontFamily: 'DIN1451',
-              fontSize: AppFontSize.small,
-              textBaseline: TextBaseline.alphabetic,
-            ),
+        Text(
+          _getValue(property, context),
+          style: TextStyle(
+            fontFamily: 'DIN1451',
+            fontSize: AppFontSize.small,
           ),
         ),
       ];
@@ -72,22 +64,19 @@ class DeviceChannelDataSourceWidget
 
       if (unit != null && property.value != null) {
         parts.add(
-          Baseline(
-            baseline: AppFontSize.small,
-            baselineType: TextBaseline.alphabetic,
-            child: Text(
-              unit,
-              style: TextStyle(
-                fontFamily: 'DIN1451',
-                fontSize: AppFontSize.small,
-                textBaseline: TextBaseline.alphabetic,
-              ),
+          Text(
+            unit,
+            style: TextStyle(
+              fontFamily: 'DIN1451',
+              fontSize: AppFontSize.small,
             ),
           ),
         );
       }
 
       return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: parts,
       );
     });
@@ -129,37 +118,30 @@ class DeviceChannelDataSourceWidget
     final localizations = AppLocalizations.of(context)!;
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Baseline(
-          baseline: AppFontSize.small,
-          baselineType: TextBaseline.alphabetic,
-          child: SizedBox(
-            width: AppFontSize.extraSmall,
-            height: AppFontSize.extraSmall,
-            child: Theme(
-              data: ThemeData(
-                progressIndicatorTheme: ProgressIndicatorThemeData(
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? AppColorsLight.info
-                      : AppColorsDark.info,
-                  linearTrackColor: AppColors.blank,
-                ),
+        SizedBox(
+          width: AppFontSize.extraSmall,
+          height: AppFontSize.extraSmall,
+          child: Theme(
+            data: ThemeData(
+              progressIndicatorTheme: ProgressIndicatorThemeData(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppColorsLight.info
+                    : AppColorsDark.info,
+                linearTrackColor: AppColors.blank,
               ),
-              child: const CircularProgressIndicator(strokeWidth: 2),
             ),
+            child: const CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
         AppSpacings.spacingSmHorizontal,
-        Baseline(
-          baseline: AppFontSize.small,
-          baselineType: TextBaseline.alphabetic,
-          child: Text(
-            localizations.value_loading,
-            style: TextStyle(
-              fontFamily: 'DIN1451',
-              fontSize: AppFontSize.small,
-              textBaseline: TextBaseline.alphabetic,
-            ),
+        Text(
+          localizations.value_loading,
+          style: TextStyle(
+            fontFamily: 'DIN1451',
+            fontSize: AppFontSize.small,
           ),
         ),
       ],
@@ -170,26 +152,19 @@ class DeviceChannelDataSourceWidget
     final localizations = AppLocalizations.of(context)!;
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Baseline(
-          baseline: AppFontSize.small,
-          baselineType: TextBaseline.alphabetic,
-          child: Icon(
-            MdiIcons.alertCircle,
-            size: AppFontSize.small,
-          ),
+        Icon(
+          MdiIcons.alertCircle,
+          size: AppFontSize.small,
         ),
         AppSpacings.spacingSmHorizontal,
-        Baseline(
-          baseline: AppFontSize.small,
-          baselineType: TextBaseline.alphabetic,
-          child: Text(
-            localizations.value_not_available,
-            style: TextStyle(
-              fontFamily: 'DIN1451',
-              fontSize: AppFontSize.small,
-              textBaseline: TextBaseline.alphabetic,
-            ),
+        Text(
+          localizations.value_not_available,
+          style: TextStyle(
+            fontFamily: 'DIN1451',
+            fontSize: AppFontSize.small,
           ),
         ),
       ],

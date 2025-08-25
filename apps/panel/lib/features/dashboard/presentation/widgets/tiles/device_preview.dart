@@ -77,6 +77,7 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: values
                 .expand((widget) => [
                       widget,
