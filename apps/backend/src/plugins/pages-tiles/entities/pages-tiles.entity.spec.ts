@@ -49,6 +49,7 @@ describe('Tiles pages plugin entity and OpenAPI Model Synchronization', () => {
 			title: 'Cards Dashboard',
 			icon: 'cards-icon',
 			order: 1,
+			show_top_bar: false,
 			tiles: [],
 			data_source: [],
 			tile_size: 120,

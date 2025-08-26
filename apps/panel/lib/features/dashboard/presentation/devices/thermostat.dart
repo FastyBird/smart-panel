@@ -90,13 +90,18 @@ class _ThermostatDeviceDetailPageState
     final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppTopBar(
-        title: widget._device.name,
-        icon: widget._page != null
-            ? widget._page?.icon ??
-                buildDeviceIcon(widget._device.category, widget._device.icon)
-            : null,
-      ),
+      appBar: widget._page == null || widget._page?.showTopBar == true
+          ? AppTopBar(
+              title: widget._device.name,
+              icon: widget._page != null
+                  ? widget._page?.icon ??
+                      buildDeviceIcon(
+                        widget._device.category,
+                        widget._device.icon,
+                      )
+                  : null,
+            )
+          : null,
       body: SafeArea(
         child: LayoutBuilder(builder: (
           BuildContext context,

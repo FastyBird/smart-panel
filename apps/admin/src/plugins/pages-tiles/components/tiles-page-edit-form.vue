@@ -52,6 +52,16 @@
 			/>
 		</el-form-item>
 
+		<el-form-item
+			:label="t('dashboardModule.fields.pages.showTopBar.title')"
+			:prop="['showTopBar']"
+		>
+			<el-switch
+				v-model="model.showTopBar"
+				name="showTopBar"
+			/>
+		</el-form-item>
+
 		<display-profile-select
 			v-model="model.display"
 			:required="false"
@@ -161,7 +171,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCol, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElCol, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, ElSwitch, type FormRules } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

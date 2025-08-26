@@ -10,6 +10,8 @@ abstract class PageModel extends Model {
 
   final int _order;
 
+  final bool _showTopBar;
+
   final String? _display;
 
   PageModel({
@@ -18,6 +20,7 @@ abstract class PageModel extends Model {
     required String title,
     IconData? icon,
     int order = 0,
+    bool showTopBar = true,
     String? display,
     super.createdAt,
     super.updatedAt,
@@ -25,6 +28,7 @@ abstract class PageModel extends Model {
         _title = title,
         _icon = icon,
         _order = order,
+        _showTopBar = showTopBar,
         _display = display;
 
   PageType get type => _type;
@@ -34,6 +38,8 @@ abstract class PageModel extends Model {
   IconData? get icon => _icon;
 
   int get order => _order;
+
+  bool get showTopBar => _showTopBar;
 
   String? get display => _display;
 }

@@ -16,6 +16,7 @@ const mockPage: IPage = {
 	type: 'test-plugin',
 	title: 'Test Page',
 	order: 99,
+	showTopBar: true,
 	draft: true,
 } as IPage;
 
@@ -87,6 +88,7 @@ describe('usePageEditForm', () => {
 		expect(form.model.id).toBe(mockPage.id);
 		expect(form.model.title).toBe(mockPage.title);
 		expect(form.model.order).toBe(mockPage.order);
+		expect(form.model.showTopBar).toBe(mockPage.showTopBar);
 	});
 
 	it('sets formChanged to true if title is edited', async () => {
@@ -126,6 +128,7 @@ describe('usePageEditForm', () => {
 				type: 'test-plugin',
 				title: mockPage.title,
 				order: mockPage.order,
+				showTopBar: mockPage.showTopBar,
 			},
 		});
 		expect(mockSave).toHaveBeenCalledWith({ id: mockPage.id });

@@ -217,6 +217,10 @@
       "order": {
         "title": "Order",
         "placeholder": "Page position"
+      },
+      "showTopBar": {
+        "title": "Show top bar",
+        "placeholder": "Show page top bar"
       }
     },
     "tiles": {
@@ -286,6 +290,9 @@
         },
         "order": {
           "title": "Order"
+        },
+        "showTopBar": {
+          "title": "Show top bar"
         }
       }
     },

@@ -15,6 +15,7 @@ class CardsPageModel extends PageModel {
     required super.title,
     required super.icon,
     super.order,
+    super.showTopBar,
     required super.display,
     super.createdAt,
     super.updatedAt,
@@ -63,6 +64,7 @@ class CardsPageModel extends PageModel {
       cards: UuidUtils.validateUuidList(cards),
       dataSource: UuidUtils.validateUuidList(dataSources),
       order: json['order'],
+      showTopBar: json['show_top_bar'],
       display: json['display'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])

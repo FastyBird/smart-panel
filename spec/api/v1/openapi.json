@@ -6462,7 +6462,6 @@
         },
         "operationId": "get-weather-module-current",
         "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details for a current day and for a specified location.",
-        "parameters": [],
         "security": [
           {
             "authentication": []
@@ -6554,7 +6553,6 @@
         },
         "operationId": "get-weather-module-forecast",
         "description": "Fetches real-time weather data, including temperature, humidity, wind speed, and other meteorological details forecast for a specified location.",
-        "parameters": [],
         "security": [
           {
             "authentication": []
@@ -12292,6 +12290,7 @@
           "title",
           "icon",
           "order",
+          "show_top_bar",
           "data_source",
           "display",
           "created_at",
@@ -12331,6 +12330,12 @@
             "description": "The display order of the dashboard page in the navigation or list.",
             "default": 0,
             "example": 1
+          },
+          "show_top_bar": {
+            "type": "boolean",
+            "description": "Determines whether the top bar (title, icon, and data sources) should be displayed on this page.",
+            "default": true,
+            "example": true
           },
           "data_source": {
             "type": "array",
@@ -12606,6 +12611,12 @@
             "default": 0,
             "example": 1
           },
+          "show_top_bar": {
+            "type": "boolean",
+            "description": "Determines whether the top bar (title, icon, and data sources) should be displayed on this page.",
+            "default": true,
+            "example": true
+          },
           "data_source": {
             "type": "array",
             "items": {
@@ -12766,6 +12777,12 @@
             "multipleOf": 1,
             "description": "The display order of the page.",
             "example": 1
+          },
+          "show_top_bar": {
+            "type": "boolean",
+            "description": "Determines whether the top bar (title, icon, and data sources) should be displayed on this page.",
+            "default": true,
+            "example": true
           },
           "display": {
             "type": "string",

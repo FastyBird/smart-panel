@@ -50,6 +50,7 @@ describe('Cards pages plugin entity and OpenAPI Model Synchronization', () => {
 			title: 'Cards Dashboard',
 			icon: 'cards-icon',
 			order: 1,
+			show_top_bar: false,
 			cards: [],
 			data_source: [],
 			display: uuid().toString(),

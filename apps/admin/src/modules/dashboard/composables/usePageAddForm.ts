@@ -5,6 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
+import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
 import { PageAddFormSchema } from '../schemas/pages.schemas';
@@ -36,18 +37,13 @@ export const usePageAddForm = <TForm extends IPageAddForm = IPageAddForm>({ id, 
 	let timer: number;
 
 	const model = reactive<TForm>({
-		...(plugin.value?.schemas?.pageAddFormSchema || PageAddFormSchema).parse({
-			id,
-			type,
-			title: 'title',
-			icon: null,
-			order: 0,
-		}),
+		...getSchemaDefaults(plugin.value?.schemas?.pageAddFormSchema || PageAddFormSchema),
 		id,
 		type,
 		title: '',
 		icon: '',
 		order: 0,
+		showTopBar: true,
 	} as TForm);
 
 	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
@@ -118,7 +114,6 @@ export const usePageAddForm = <TForm extends IPageAddForm = IPageAddForm>({ id, 
 	};
 
 	watch(model, (): void => {
-		console.log(toRaw(model), initialModel);
 		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
 

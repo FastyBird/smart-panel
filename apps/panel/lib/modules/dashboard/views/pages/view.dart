@@ -18,4 +18,6 @@ abstract class DashboardPageView<M extends PageModel> {
   String get title => _pageModel.title;
 
   IconData? get icon => _pageModel.icon;
+
+  bool get showTopBar => _pageModel.showTopBar;
 }

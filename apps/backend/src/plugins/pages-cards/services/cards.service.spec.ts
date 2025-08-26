@@ -41,6 +41,7 @@ describe('CardsService', () => {
 		type: 'cards',
 		title: 'Cards detail',
 		order: 0,
+		showTopBar: false,
 		cards: [],
 		dataSource: [],
 		display: uuid().toString(),

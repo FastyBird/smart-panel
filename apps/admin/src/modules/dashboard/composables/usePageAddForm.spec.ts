@@ -68,6 +68,7 @@ describe('usePageAddForm', () => {
 		expect(form.model.type).toBe('test-plugin');
 		expect(form.model.title).toBe('');
 		expect(form.model.order).toBe(0);
+		expect(form.model.showTopBar).toBe(true);
 	});
 
 	it('should mark form as changed when model updates', async () => {
@@ -92,6 +93,7 @@ describe('usePageAddForm', () => {
 				type: 'test-plugin',
 				title: 'New Page',
 				order: 0,
+				showTopBar: true,
 				icon: null,
 			},
 		});

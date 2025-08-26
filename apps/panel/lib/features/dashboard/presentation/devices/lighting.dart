@@ -108,23 +108,27 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
         initialIndex: 0,
         length: _channels.length,
         child: Scaffold(
-          appBar: AppTopBar(
-            title: widget._device.name,
-            icon: widget._page != null
-                ? widget._page?.icon ??
-                    buildDeviceIcon(
-                        widget._device.category, widget._device.icon)
-                : null,
-            bottom: TabBar(
-              tabs: _channels
-                  .map(
-                    (channel) => Tab(
-                      text: channel.name,
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
+          appBar: widget._page == null || widget._page?.showTopBar == true
+              ? AppTopBar(
+                  title: widget._device.name,
+                  icon: widget._page != null
+                      ? widget._page?.icon ??
+                          buildDeviceIcon(
+                            widget._device.category,
+                            widget._device.icon,
+                          )
+                      : null,
+                  bottom: TabBar(
+                    tabs: _channels
+                        .map(
+                          (channel) => Tab(
+                            text: channel.name,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                )
+              : null,
           body: Builder(
             builder: (BuildContext context) {
               final TabController tabController = DefaultTabController.of(
@@ -161,13 +165,18 @@ class _LightingDeviceDetailPageState extends State<LightingDeviceDetailPage> {
     }
 
     return Scaffold(
-      appBar: AppTopBar(
-        title: widget._device.name,
-        icon: widget._page != null
-            ? widget._page?.icon ??
-                buildDeviceIcon(widget._device.category, widget._device.icon)
-            : null,
-      ),
+      appBar: widget._page == null || widget._page?.showTopBar == true
+          ? AppTopBar(
+              title: widget._device.name,
+              icon: widget._page != null
+                  ? widget._page?.icon ??
+                      buildDeviceIcon(
+                        widget._device.category,
+                        widget._device.icon,
+                      )
+                  : null,
+            )
+          : null,
       body: LayoutBuilder(builder: (
         BuildContext context,
         BoxConstraints constraints,
