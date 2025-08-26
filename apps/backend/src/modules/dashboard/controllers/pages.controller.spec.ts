@@ -79,6 +79,7 @@ describe('PagesController', () => {
 		type: 'mock',
 		title: 'Mock page one',
 		order: 0,
+		showTopBar: false,
 		dataSource: [],
 		display: mockDisplay.id,
 		createdAt: new Date(),

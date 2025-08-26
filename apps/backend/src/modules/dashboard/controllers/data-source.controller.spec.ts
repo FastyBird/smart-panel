@@ -80,6 +80,7 @@ describe('DataSourceController', () => {
 		type: 'mock',
 		title: 'Tiles detail',
 		order: 0,
+		showTopBar: false,
 		dataSource: [],
 		display: uuid().toString(),
 		createdAt: new Date(),

@@ -89,6 +89,7 @@ describe('PagesService', () => {
 		type: 'mock',
 		title: 'Mock page one',
 		order: 0,
+		showTopBar: false,
 		dataSource: [],
 		display: mockDisplay.id,
 		createdAt: new Date(),
@@ -101,6 +102,7 @@ describe('PagesService', () => {
 		type: 'mock',
 		title: 'Mock page two',
 		order: 0,
+		showTopBar: false,
 		dataSource: [],
 		display: mockDisplay.id,
 		createdAt: new Date(),
@@ -262,11 +264,18 @@ describe('PagesService', () => {
 
 	describe('create', () => {
 		it('should create and return a new page', async () => {
-			const createDto: CreateMockPageDto = { type: 'tiles', title: 'New Page', order: 1, mockValue: 'New mock value' };
+			const createDto: CreateMockPageDto = {
+				type: 'tiles',
+				title: 'New Page',
+				order: 1,
+				mockValue: 'New mock value',
+				show_top_bar: true,
+			};
 			const mockCratePage: Partial<MockPageEntity> = {
 				type: createDto.type,
 				title: createDto.title,
 				order: createDto.order,
+				showTopBar: createDto.show_top_bar,
 				display: mockDisplay.id,
 				mockValue: createDto.mockValue,
 			};
@@ -276,6 +285,7 @@ describe('PagesService', () => {
 				title: mockCratePage.title,
 				icon: null,
 				order: mockCratePage.order,
+				showTopBar: mockCratePage.showTopBar,
 				display: mockCratePage.display,
 				createdAt: new Date(),
 				dataSource: [],
@@ -336,6 +346,7 @@ describe('PagesService', () => {
 				type: mockPageTwo.type,
 				title: updateDto.title,
 				order: mockPageTwo.order,
+				showTopBar: mockPageTwo.showTopBar,
 				dataSource: mockPageTwo.dataSource,
 				display: mockDisplay.id,
 				createdAt: mockPageTwo.createdAt,
@@ -347,6 +358,7 @@ describe('PagesService', () => {
 				type: mockUpdatePage.type,
 				title: mockUpdatePage.title,
 				order: mockUpdatePage.order,
+				showTopBar: mockUpdatePage.showTopBar,
 				dataSource: mockUpdatePage.dataSource,
 				display: mockUpdatePage.display,
 				createdAt: mockUpdatePage.createdAt,

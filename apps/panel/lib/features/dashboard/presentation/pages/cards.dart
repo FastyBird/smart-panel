@@ -103,31 +103,33 @@ class CardsPage extends StatelessWidget {
       }
 
       return Scaffold(
-        appBar: AppTopBar(
-          icon: freshPage.icon,
-          title: freshPage.title,
-          actions: [
-            LayoutBuilder(builder: (context, constraints) {
-              List<Widget> values = freshPage.dataSources
-                  .map(
-                    (dataSource) => buildDataSourceWidget(dataSource),
-                  )
-                  .toList();
+        appBar: freshPage.showTopBar
+            ? AppTopBar(
+                icon: freshPage.icon,
+                title: freshPage.title,
+                actions: [
+                  LayoutBuilder(builder: (context, constraints) {
+                    List<Widget> values = freshPage.dataSources
+                        .map(
+                          (dataSource) => buildDataSourceWidget(dataSource),
+                        )
+                        .toList();
 
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: values
-                    .expand((widget) => [
-                          widget,
-                          if (widget != values.last)
-                            AppSpacings.spacingSmHorizontal,
-                        ])
-                    .toList(),
-              );
-            }),
-          ],
-        ),
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: values
+                          .expand((widget) => [
+                                widget,
+                                if (widget != values.last)
+                                  AppSpacings.spacingSmHorizontal,
+                              ])
+                          .toList(),
+                    );
+                  }),
+                ],
+              )
+            : null,
         body: SafeArea(
           child: Padding(
             padding: AppSpacings.paddingSm,

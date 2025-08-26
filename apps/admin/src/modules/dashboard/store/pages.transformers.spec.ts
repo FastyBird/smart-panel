@@ -15,6 +15,7 @@ const validPageResponse: IPageRes = {
 	type: 'some-page',
 	title: 'Page title',
 	order: 0,
+	show_top_bar: true,
 	icon: 'test',
 	display: displayId,
 	created_at: '2024-03-01T12:00:00Z',
@@ -26,6 +27,7 @@ const validPageCreatePayload: IPagesAddActionPayload['data'] = {
 	type: 'some-page',
 	title: 'Page title',
 	order: 0,
+	showTopBar: true,
 	icon: null,
 	display: displayId,
 };
@@ -34,6 +36,7 @@ const validPageUpdatePayload: IPagesEditActionPayload['data'] = {
 	type: 'some-page',
 	title: 'Page title',
 	order: 0,
+	showTopBar: true,
 };
 
 describe('Pages Transformers', (): void => {
@@ -46,6 +49,7 @@ describe('Pages Transformers', (): void => {
 				type: 'some-page',
 				title: 'Page title',
 				order: 0,
+				showTopBar: true,
 				icon: 'test',
 				display: displayId,
 				draft: false,
@@ -69,6 +73,7 @@ describe('Pages Transformers', (): void => {
 				type: 'some-page',
 				title: 'Page title',
 				order: 0,
+				show_top_bar: true,
 				icon: null,
 				display: displayId,
 			});
@@ -89,6 +94,7 @@ describe('Pages Transformers', (): void => {
 				type: 'some-page',
 				title: 'Page title',
 				order: 0,
+				show_top_bar: true,
 			});
 		});
 

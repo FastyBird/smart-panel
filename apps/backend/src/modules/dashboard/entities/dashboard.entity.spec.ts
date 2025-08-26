@@ -73,6 +73,7 @@ describe('Dashboard module entity and OpenAPI component synchronization', () => 
 			title: 'Cards Dashboard',
 			icon: 'cards-icon',
 			order: 1,
+			show_top_bar: false,
 			data_source: [],
 			display: uuid().toString(),
 			created_at: new Date().toISOString(),

@@ -1,6 +1,7 @@
 import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
+	IsBoolean,
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
@@ -48,6 +49,11 @@ export class CreatePageDto implements CreatePage {
 		{ each: false, message: '[{"field":"order","reason":"Order must be a positive number."}]' },
 	)
 	order: number;
+
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"show_top_bar","reason":"Show top bar attribute must be a valid true or false."}]' })
+	show_top_bar?: boolean;
 
 	@Expose()
 	@IsOptional()

@@ -24,6 +24,7 @@ class TilesPageModel extends PageModel {
     required super.title,
     required super.icon,
     super.order,
+    super.showTopBar,
     required super.display,
     super.createdAt,
     super.updatedAt,
@@ -79,6 +80,7 @@ class TilesPageModel extends PageModel {
           ? MdiIcons.fromString(json['icon'])
           : null,
       order: json['order'],
+      showTopBar: json['show_top_bar'],
       display: json['display'],
       tileSize: json['tile_size']?.toDouble(),
       rows: json['rows'],

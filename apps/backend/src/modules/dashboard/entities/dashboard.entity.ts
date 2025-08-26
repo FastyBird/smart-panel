@@ -35,6 +35,11 @@ export abstract class PageEntity extends BaseEntity {
 	@Column({ type: 'int', default: 0 })
 	order: number;
 
+	@Expose({ name: 'show_top_bar' })
+	@IsBoolean()
+	@Column({ default: true })
+	showTopBar: boolean;
+
 	@Expose({ name: 'data_source' })
 	@IsArray()
 	@ValidateNested({ each: true })

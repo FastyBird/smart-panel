@@ -72,6 +72,16 @@
 			/>
 		</el-form-item>
 
+		<el-form-item
+			:label="t('dashboardModule.fields.pages.showTopBar.title')"
+			:prop="['showTopBar']"
+		>
+			<el-switch
+				v-model="model.showTopBar"
+				name="showTopBar"
+			/>
+		</el-form-item>
+
 		<display-profile-select
 			v-model="model.display"
 			:required="false"
@@ -83,7 +93,7 @@
 import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 import { orderBy } from 'natural-orderby';
 
 import { IconPicker } from '../../../common';

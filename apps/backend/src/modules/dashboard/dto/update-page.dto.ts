@@ -1,5 +1,14 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
+import {
+	IsBoolean,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	IsUUID,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
 
 import type { components } from '../../../openapi';
 import { ValidateDisplayProfileExists } from '../../system/validators/display-profile-exists-constraint.validator';
@@ -33,6 +42,11 @@ export abstract class UpdatePageDto implements UpdatePage {
 		{ each: false, message: '[{"field":"order","reason":"Order must be a positive number greater than zero."}]' },
 	)
 	order?: number;
+
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"show_top_bar","reason":"Show top bar attribute must be a valid true or false."}]' })
+	show_top_bar?: boolean;
 
 	@Expose()
 	@IsOptional()
