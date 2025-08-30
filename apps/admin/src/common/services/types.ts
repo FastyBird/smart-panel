@@ -42,6 +42,15 @@ export interface IRouterGuards {
 
 export type RouteGuard = (appUser: IAppUser | undefined, route: RouteRecordRaw) => Error | boolean | RouteLocationRaw;
 
+export interface IPluginElement<Components = {}, Schemas = {}> {
+	type: string;
+	name?: string;
+	description?: string;
+	components?: Components;
+	schemas?: Schemas;
+	modules?: string[];
+}
+
 export interface IPlugin<Components = {}, Schemas = {}, Routes = {}> {
 	type: string;
 	source: string;
@@ -56,9 +65,8 @@ export interface IPlugin<Components = {}, Schemas = {}, Routes = {}> {
 		devDocumentation: string;
 		bugsTracking: string;
 	};
+	elements: IPluginElement<Components, Schemas>[];
 	modules?: string[];
-	components?: Components;
-	schemas?: Schemas;
 	routes?: Routes;
 	isCore: boolean;
 	version?: string;

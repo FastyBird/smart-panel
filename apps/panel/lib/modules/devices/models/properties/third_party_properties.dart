@@ -22,7 +22,7 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: 'third-party',
+          type: 'devices-third-party-plugin',
         );
 
   factory ThirdPartyChannelPropertyModel.fromJson(Map<String, dynamic> json) {

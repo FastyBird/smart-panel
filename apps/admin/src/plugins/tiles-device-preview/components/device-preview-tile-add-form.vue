@@ -105,6 +105,7 @@ import { orderBy } from 'natural-orderby';
 import { DashboardException, FormResult, type FormResultType, type ITileAddFormProps, useTileAddForm } from '../../../modules/dashboard';
 import { type IDevice, useDevices } from '../../../modules/devices';
 import type { IDevicePreviewTileAddForm } from '../schemas/tiles.types';
+import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
 defineOptions({
 	name: 'DevicePreviewTileAddForm',
@@ -130,7 +131,7 @@ const { t } = useI18n();
 
 const { model, formEl, formChanged, submit, formResult } = useTileAddForm<IDevicePreviewTileAddForm>({
 	id: props.id,
-	type: 'device-preview',
+	type: TILES_DEVICE_PREVIEW_TYPE,
 	parent: props.parent,
 	parentId: props.parentId,
 	onlyDraft: props.onlyDraft,

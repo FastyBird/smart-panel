@@ -177,6 +177,7 @@ import { Icon } from '@iconify/vue';
 import { IconPicker } from '../../../common';
 import { FormResult, type FormResultType, type IPageAddFormProps, usePageAddForm } from '../../../modules/dashboard';
 import { DisplayProfileSelect } from '../../../modules/system';
+import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 import type { ITilesPageAddForm } from '../schemas/pages.types';
 
 defineOptions({
@@ -198,7 +199,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = usePageAddForm<ITilesPageAddForm>({ id: props.id, type: 'tiles' });
+const { model, formEl, formChanged, submit, formResult } = usePageAddForm<ITilesPageAddForm>({ id: props.id, type: PAGES_TILES_TYPE });
 
 const rules = reactive<FormRules<ITilesPageAddForm>>({
 	title: [{ required: true, message: t('dashboardModule.fields.pages.title.validation.required'), trigger: 'change' }],

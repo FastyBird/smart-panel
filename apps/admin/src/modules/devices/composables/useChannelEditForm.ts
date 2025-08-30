@@ -30,7 +30,7 @@ export const useChannelEditForm = <TForm extends IChannelEditForm = IChannelEdit
 }: IUseChannelEditFormProps): IUseChannelEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useChannelsPlugin({ type: channel.type });
+	const { element } = useChannelsPlugin({ type: channel.type });
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
 
@@ -121,7 +121,7 @@ export const useChannelEditForm = <TForm extends IChannelEditForm = IChannelEdit
 
 		if (!valid) throw new DevicesValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.channelEditFormSchema || ChannelEditFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.channelEditFormSchema || ChannelEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

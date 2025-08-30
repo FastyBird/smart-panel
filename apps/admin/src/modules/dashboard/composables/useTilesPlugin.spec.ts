@@ -18,9 +18,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			tileSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					tileSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
 	},
@@ -28,18 +33,28 @@ const mockPluginList = [
 
 vi.mock('./useTilesPlugins', () => ({
 	useTilesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
 describe('useTilesPlugin', () => {
 	it('returns plugin by type', () => {
-		const { plugin } = useTilesPlugin({ type: 'test-plugin' });
+		const { plugin } = useTilesPlugin({ type: 'test-type' });
 		expect(plugin.value?.name).toBe('Test Plugin');
 	});
 
-	it('returns undefined for unknown type', () => {
-		const { plugin } = useTilesPlugin({ type: 'unknown-plugin' });
+	it('returns undefined plugin for unknown type', () => {
+		const { plugin } = useTilesPlugin({ type: 'unknown-type' });
 		expect(plugin.value).toBeUndefined();
+	});
+
+	it('returns element by type', () => {
+		const { element } = useTilesPlugin({ type: 'test-type' });
+		expect(element.value?.type).toBe('test-type');
+	});
+
+	it('returns undefined element for unknown type', () => {
+		const { element } = useTilesPlugin({ type: 'unknown-type' });
+		expect(element.value).toBeUndefined();
 	});
 });

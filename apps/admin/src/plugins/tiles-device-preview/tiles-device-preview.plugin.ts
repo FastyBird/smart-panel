@@ -10,6 +10,7 @@ import { DevicePreviewTileAddForm, DevicePreviewTileEditForm } from './component
 import enUS from './locales/en-US.json';
 import { DevicePreviewTileAddFormSchema, DevicePreviewTileEditFormSchema } from './schemas/tiles.schemas';
 import { DevicePreviewTileCreateReqSchema, DevicePreviewTileSchema, DevicePreviewTileUpdateReqSchema } from './store/tiles.store.schemas';
+import { TILES_DEVICE_PREVIEW_PLUGIN_NAME, TILES_DEVICE_PREVIEW_TYPE } from './tiles-device-preview.constants';
 
 export const tilesDevicePreviewPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> =
 	Symbol('FB-Plugin-TilesDevicePreview');
@@ -26,7 +27,7 @@ export default {
 		}
 
 		pluginsManager.addPlugin(tilesDevicePreviewPluginKey, {
-			type: 'device-preview',
+			type: TILES_DEVICE_PREVIEW_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.tiles-device-preview',
 			name: 'Device Preview Tile',
 			description:
@@ -36,17 +37,22 @@ export default {
 				devDocumentation: 'http://www.fastybird.com',
 				bugsTracking: 'http://www.fastybird.com',
 			},
-			components: {
-				tileAddForm: DevicePreviewTileAddForm,
-				tileEditForm: DevicePreviewTileEditForm,
-			},
-			schemas: {
-				tileSchema: DevicePreviewTileSchema,
-				tileAddFormSchema: DevicePreviewTileAddFormSchema,
-				tileEditFormSchema: DevicePreviewTileEditFormSchema,
-				tileCreateReqSchema: DevicePreviewTileCreateReqSchema,
-				tileUpdateReqSchema: DevicePreviewTileUpdateReqSchema,
-			},
+			elements: [
+				{
+					type: TILES_DEVICE_PREVIEW_TYPE,
+					components: {
+						tileAddForm: DevicePreviewTileAddForm,
+						tileEditForm: DevicePreviewTileEditForm,
+					},
+					schemas: {
+						tileSchema: DevicePreviewTileSchema,
+						tileAddFormSchema: DevicePreviewTileAddFormSchema,
+						tileEditFormSchema: DevicePreviewTileEditFormSchema,
+						tileCreateReqSchema: DevicePreviewTileCreateReqSchema,
+						tileUpdateReqSchema: DevicePreviewTileUpdateReqSchema,
+					},
+				},
+			],
 			modules: [DASHBOARD_MODULE_NAME],
 			isCore: true,
 		});

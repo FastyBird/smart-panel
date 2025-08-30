@@ -5,6 +5,7 @@ import type { FormInstance } from 'element-plus';
 import { cloneDeep, isEqual } from 'lodash';
 
 import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
+import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
 import { DataSourceAddFormSchema } from '../schemas/dataSources.schemas';
@@ -32,7 +33,7 @@ export const useDataSourceAddForm = <TForm extends IDataSourceAddForm = IDataSou
 }: IUseDataSourceAddFormProps): IUseDataSourceAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useDataSourcesPlugin({ type });
+	const { element } = useDataSourcesPlugin({ type });
 
 	const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
@@ -45,6 +46,7 @@ export const useDataSourceAddForm = <TForm extends IDataSourceAddForm = IDataSou
 	let timer: number;
 
 	const model = reactive<TForm>({
+		...getSchemaDefaults(element.value?.schemas?.dataSourceAddFormSchema || DataSourceAddFormSchema),
 		id,
 		type,
 	} as TForm);
@@ -62,7 +64,7 @@ export const useDataSourceAddForm = <TForm extends IDataSourceAddForm = IDataSou
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.dataSourceAddFormSchema || DataSourceAddFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.dataSourceAddFormSchema || DataSourceAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

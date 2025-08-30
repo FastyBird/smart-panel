@@ -48,8 +48,8 @@
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
-				:is="plugin?.components?.pageEditForm"
-				v-if="typeof plugin?.components?.pageEditForm !== 'undefined'"
+				:is="element?.components?.pageEditForm"
+				v-if="typeof element?.components?.pageEditForm !== 'undefined'"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
@@ -129,7 +129,16 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import { PageEditForm } from '../components/components';
 import { usePage, usePageIcon, usePagesPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../dashboard.constants';
@@ -184,9 +193,13 @@ const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPa
 	return plugins.value.find((plugin) => plugin.type === page.value?.type);
 });
 
+const element = computed<IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === page.value?.type);
+});
+
 const formSchema = computed<typeof PageEditFormSchema>((): typeof PageEditFormSchema => {
-	if (plugin.value && plugin.value.schemas?.pageEditFormSchema) {
-		return plugin.value.schemas?.pageEditFormSchema;
+	if (element.value && element.value.schemas?.pageEditFormSchema) {
+		return element.value.schemas?.pageEditFormSchema;
 	}
 
 	return PageEditFormSchema;

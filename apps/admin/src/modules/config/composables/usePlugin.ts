@@ -1,23 +1,31 @@
 import { computed } from 'vue';
 
-import { type IPlugin } from '../../../common';
+import { type IPlugin, type IPluginElement } from '../../../common';
+import { CONFIG_MODULE_PLUGIN_TYPE } from '../config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
 
 import type { IUsePlugin } from './types';
 import { usePlugins } from './usePlugins';
 
 interface IUsePluginProps {
-	type: IPlugin['type'];
+	name: IPlugin['type'];
 }
 
-export const usePlugin = ({ type }: IUsePluginProps): IUsePlugin => {
-	const { getByType } = usePlugins();
+export const usePlugin = ({ name }: IUsePluginProps): IUsePlugin => {
+	const { getByName } = usePlugins();
 
 	const plugin = computed<IPlugin<IPluginsComponents, IPluginsSchemas> | undefined>((): IPlugin<IPluginsComponents, IPluginsSchemas> | undefined => {
-		return getByType(type);
+		return getByName(name);
 	});
+
+	const element = computed<IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined>(
+		(): IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined => {
+			return plugin.value?.elements?.find((element) => element.type === CONFIG_MODULE_PLUGIN_TYPE);
+		}
+	);
 
 	return {
 		plugin,
+		element,
 	};
 };

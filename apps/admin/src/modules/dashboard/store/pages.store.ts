@@ -59,9 +59,9 @@ const defaultSemaphore: IPagesStateSemaphore = {
 export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('dashboard_module-pages', (): PagesStoreSetup => {
 	const backend = useBackend();
 
-	const { getByType: getPluginByType } = usePagesPlugins();
-	const { getByType: getTilePluginByType } = useTilesPlugins();
-	const { getByType: getDataSourcePluginByType } = useDataSourcesPlugins();
+	const { getElement: getPluginElement } = usePagesPlugins();
+	const { getElement: getTilePluginElement } = useTilesPlugins();
+	const { getElement: getDataSourcePluginElement } = useDataSourcesPlugins();
 
 	const storesManager = injectStoresManager();
 
@@ -86,19 +86,19 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 	const pendingFetchPromises: Record<string, Promise<IPage[]>> = {};
 
 	const onEvent = (payload: IPagesOnEventActionPayload): IPage => {
-		const plugin = getPluginByType(payload.type);
+		const element = getPluginElement(payload.type);
 
 		return set({
 			id: payload.id,
-			data: transformPageResponse(payload.data as unknown as IPageRes, plugin?.schemas?.pageSchema || PageSchema),
+			data: transformPageResponse(payload.data as unknown as IPageRes, element?.schemas?.pageSchema || PageSchema),
 		});
 	};
 
 	const set = (payload: IPagesSetActionPayload): IPage => {
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
 		if (payload.id && data.value && payload.id in data.value) {
-			const parsed = (plugin?.schemas?.pageSchema || PageSchema).safeParse({ ...data.value[payload.id], ...payload.data });
+			const parsed = (element?.schemas?.pageSchema || PageSchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsed.success) {
 				console.error('Schema validation failed with:', parsed.error);
@@ -109,7 +109,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			return (data.value[parsed.data.id] = parsed.data);
 		}
 
-		const parsed = (plugin?.schemas?.pageSchema || PageSchema).safeParse({ ...payload.data, id: payload.id });
+		const parsed = (element?.schemas?.pageSchema || PageSchema).safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsed.success) {
 			console.error('Schema validation failed with:', parsed.error);
@@ -157,9 +157,9 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const plugin = getPluginByType(responseData.data.type);
+				const element = getPluginElement(responseData.data.type);
 
-				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
+				const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -215,9 +215,9 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 				data.value = Object.fromEntries(
 					responseData.data.map((page) => {
-						const plugin = getPluginByType(page.type);
+						const element = getPluginElement(page.type);
 
-						const transformed = transformPageResponse(page, plugin?.schemas?.pageSchema || PageSchema);
+						const transformed = transformPageResponse(page, element?.schemas?.pageSchema || PageSchema);
 
 						if ('data_source' in page && Array.isArray(page.data_source)) {
 							insertDataSourceRelations(transformed, page.data_source);
@@ -261,9 +261,9 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			throw new DashboardValidationException('Failed to add page.');
 		}
 
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
-		const parsedNewItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse({
+		const parsedNewItem = (element?.schemas?.pageSchema || PageSchema).safeParse({
 			...payload.data,
 			id: parsedPayload.data.id,
 			draft: parsedPayload.data.draft,
@@ -291,14 +291,14 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 				response,
 			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
 				body: {
-					data: transformPageCreateRequest<IPageCreateReq>(parsedNewItem.data, plugin?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
+					data: transformPageCreateRequest<IPageCreateReq>(parsedNewItem.data, element?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
 				},
 			});
 
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
+				const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -343,9 +343,9 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			throw new DashboardValidationException('Failed to edit page.');
 		}
 
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
-		const parsedEditedItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse({
+		const parsedEditedItem = (element?.schemas?.pageSchema || PageSchema).safeParse({
 			...data.value[payload.id],
 			...omitBy(payload.data, isUndefined),
 		});
@@ -376,14 +376,14 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 					},
 				},
 				body: {
-					data: transformPageUpdateRequest<IPageUpdateReq>(parsedEditedItem.data, plugin?.schemas?.pageUpdateReqSchema || PageUpdateReqSchema),
+					data: transformPageUpdateRequest<IPageUpdateReq>(parsedEditedItem.data, element?.schemas?.pageUpdateReqSchema || PageUpdateReqSchema),
 				},
 			});
 
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
+				const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -412,9 +412,9 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			throw new DashboardException('Failed to get page data to save.');
 		}
 
-		const plugin = getPluginByType(data.value[payload.id].type);
+		const element = getPluginElement(data.value[payload.id].type);
 
-		const parsedSaveItem = (plugin?.schemas?.pageSchema || PageSchema).safeParse(data.value[payload.id]);
+		const parsedSaveItem = (element?.schemas?.pageSchema || PageSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
 			console.error('Schema validation failed with:', parsedSaveItem.error);
@@ -430,14 +430,14 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			response,
 		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
 			body: {
-				data: transformPageCreateRequest<IPageCreateReq>(parsedSaveItem.data, plugin?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
+				data: transformPageCreateRequest<IPageCreateReq>(parsedSaveItem.data, element?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
 			},
 		});
 
 		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const transformed = transformPageResponse(responseData.data, plugin?.schemas?.pageSchema || PageSchema);
+			const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
 
 			data.value[transformed.id] = transformed;
 
@@ -525,12 +525,12 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
 		dataSources.forEach((dataSource) => {
-			const plugin = getDataSourcePluginByType(dataSource.type);
+			const element = getDataSourcePluginElement(dataSource.type);
 
 			dataSourcesStore.set({
 				id: dataSource.id,
 				parent: { type: 'page', id: page.id },
-				data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+				data: transformDataSourceResponse(dataSource, element?.schemas?.dataSourceSchema || DataSourceSchema),
 			});
 		});
 
@@ -542,21 +542,21 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
 		tiles.forEach((tile) => {
-			const plugin = getTilePluginByType(tile.type);
+			const element = getTilePluginElement(tile.type);
 
 			tilesStore.set({
 				id: tile.id,
 				parent: { type: 'page', id: page.id },
-				data: transformTileResponse(tile, plugin?.schemas?.tileSchema || TileSchema),
+				data: transformTileResponse(tile, element?.schemas?.tileSchema || TileSchema),
 			});
 
 			tile.data_source.forEach((dataSource) => {
-				const plugin = getDataSourcePluginByType(dataSource.type);
+				const element = getDataSourcePluginElement(dataSource.type);
 
 				dataSourcesStore.set({
 					id: dataSource.id,
 					parent: { type: 'tile', id: tile.id },
-					data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+					data: transformDataSourceResponse(dataSource, element?.schemas?.dataSourceSchema || DataSourceSchema),
 				});
 			});
 

@@ -50,8 +50,8 @@
 
 			<template v-if="selectedType">
 				<component
-					:is="plugin?.components?.dataSourceAddForm"
-					v-if="typeof plugin?.components?.dataSourceAddForm !== 'undefined'"
+					:is="element?.components?.dataSourceAddForm"
+					v-if="typeof element?.components?.dataSourceAddForm !== 'undefined'"
 					:id="newDataSourceId"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
@@ -148,7 +148,16 @@ import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import {
 	RouteNames as DashboardRouteNames,
 	DataSourceAddForm,
@@ -200,12 +209,12 @@ const plugin = computed<IPlugin<IDataSourcePluginsComponents, IDataSourcePlugins
 	return plugins.value.find((plugin) => plugin.type === selectedType.value);
 });
 
-const formSchema = computed<typeof DataSourceAddFormSchema>((): typeof DataSourceAddFormSchema => {
-	if (plugin.value && plugin.value.schemas?.dataSourceAddFormSchema) {
-		return plugin.value.schemas?.dataSourceAddFormSchema;
-	}
+const element = computed<IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === selectedType.value);
+});
 
-	return DataSourceAddFormSchema;
+const formSchema = computed<typeof DataSourceAddFormSchema>((): typeof DataSourceAddFormSchema => {
+	return element.value?.schemas?.dataSourceAddFormSchema ?? DataSourceAddFormSchema;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

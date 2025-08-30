@@ -52,8 +52,8 @@
 
 			<template v-if="selectedType">
 				<component
-					:is="plugin?.components?.channelAddForm"
-					v-if="typeof plugin?.components?.channelAddForm !== 'undefined'"
+					:is="element?.components?.channelAddForm"
+					v-if="typeof element?.components?.channelAddForm !== 'undefined'"
 					:id="newChannelId"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
@@ -77,8 +77,8 @@
 
 			<template v-else-if="props.device">
 				<component
-					:is="plugin?.components?.channelAddForm"
-					v-if="typeof plugin?.components?.channelAddForm !== 'undefined'"
+					:is="element?.components?.channelAddForm"
+					v-if="typeof element?.components?.channelAddForm !== 'undefined'"
 					:id="newChannelId"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
@@ -170,7 +170,16 @@ import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import SelectChannelPlugin from '../components/channels/select-channel-plugin.vue';
 import { ChannelAddForm } from '../components/components';
 import { useChannelsPlugins } from '../composables/useChannelsPlugins';
@@ -210,12 +219,16 @@ const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
-const selectedType = ref<IPlugin['type'] | undefined>(undefined);
+const selectedType = ref<IPluginElement['type'] | undefined>(undefined);
 
 const plugin = computed<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
 	const deviceType = props.device?.type;
 
 	return deviceType ? plugins.value.find((plugin) => plugin.type === deviceType) : plugins.value.find((plugin) => plugin.type === selectedType.value);
+});
+
+const element = computed<IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === props.device?.type);
 });
 
 const isDeviceDetailRoute = computed<boolean>(

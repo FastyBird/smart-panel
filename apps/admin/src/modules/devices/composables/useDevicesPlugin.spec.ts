@@ -18,9 +18,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			deviceSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					deviceSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},
@@ -28,18 +33,28 @@ const mockPluginList = [
 
 vi.mock('./useDevicesPlugins', () => ({
 	useDevicesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
 describe('useDevicesPlugin', () => {
 	it('returns plugin by type', () => {
-		const { plugin } = useDevicesPlugin({ type: 'test-plugin' });
+		const { plugin } = useDevicesPlugin({ type: 'test-type' });
 		expect(plugin.value?.name).toBe('Test Plugin');
 	});
 
-	it('returns undefined for unknown type', () => {
-		const { plugin } = useDevicesPlugin({ type: 'unknown-plugin' });
+	it('returns undefined plugin for unknown type', () => {
+		const { plugin } = useDevicesPlugin({ type: 'unknown-type' });
 		expect(plugin.value).toBeUndefined();
+	});
+
+	it('returns element by type', () => {
+		const { element } = useDevicesPlugin({ type: 'test-type' });
+		expect(element.value?.type).toBe('test-type');
+	});
+
+	it('returns undefined element for unknown type', () => {
+		const { element } = useDevicesPlugin({ type: 'unknown-type' });
+		expect(element.value).toBeUndefined();
 	});
 });

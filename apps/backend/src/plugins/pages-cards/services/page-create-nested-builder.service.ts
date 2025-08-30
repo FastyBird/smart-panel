@@ -15,6 +15,7 @@ import { TilesTypeMapperService } from '../../../modules/dashboard/services/tile
 import { CreateCardDto } from '../dto/create-card.dto';
 import { CreateCardsPageDto } from '../dto/create-page.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
+import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 import { PagesCardsValidationException } from '../pages-cards.exceptions';
 
 @Injectable()
@@ -28,7 +29,7 @@ export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
 	) {}
 
 	supports(dto: CreatePageDto): boolean {
-		return dto.type === 'cards';
+		return dto.type === PAGES_CARDS_TYPE;
 	}
 
 	async build(dto: CreateCardsPageDto, page: CardsPageEntity): Promise<void> {

@@ -16,6 +16,7 @@ import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
+import { TILES_TIME_TYPE } from '../tiles-time.constants';
 
 import { TimeTileEntity } from './tiles-time.entity';
 
@@ -45,7 +46,7 @@ describe('Time tiles plugin entity and OpenAPI Model Synchronization', () => {
 	test('TimeTileEntity matches DashboardTimeTile', () => {
 		const openApiModel: TimeTile & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
-			type: 'clock',
+			type: TILES_TIME_TYPE,
 			parent: {
 				type: 'page',
 				id: uuid().toString(),

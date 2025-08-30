@@ -6,6 +6,7 @@ import { DataSourceRelationsLoaderRegistryService } from '../../modules/dashboar
 import { DataSourcesTypeMapperService } from '../../modules/dashboard/services/data-source-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 
+import { DATA_SOURCES_DEVICE_TYPE } from './data-sources-device-channel.constants';
 import { CreateDeviceChannelDataSourceDto } from './dto/create-data-source.dto';
 import { UpdateDeviceChannelDataSourceDto } from './dto/update-data-source.dto';
 import { DeviceChannelDataSourceEntity } from './entities/data-sources-device-channel.entity';
@@ -36,7 +37,7 @@ export class DataSourcesDeviceChannelPlugin {
 			CreateDeviceChannelDataSourceDto,
 			UpdateDeviceChannelDataSourceDto
 		>({
-			type: 'device-channel',
+			type: DATA_SOURCES_DEVICE_TYPE,
 			class: DeviceChannelDataSourceEntity,
 			createDto: CreateDeviceChannelDataSourceDto,
 			updateDto: UpdateDeviceChannelDataSourceDto,

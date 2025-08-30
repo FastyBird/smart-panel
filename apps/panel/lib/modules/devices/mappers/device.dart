@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart
 import 'package:fastybird_smart_panel/modules/devices/models/devices/home_assistant_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/third_party_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
@@ -33,10 +34,10 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 Map<String, DeviceModel Function(Map<String, dynamic>)> deviceModelMappers = {
-  'third-party': (data) {
+  DeviceType.devicesThirdParty.value: (data) {
     return ThirdPartyDeviceModel.fromJson(data);
   },
-  'home-assistant': (data) {
+  DeviceType.devicesHomeAssistant.value: (data) {
     return HomeAssistantDeviceModel.fromJson(data);
   },
 };

@@ -24,7 +24,7 @@ interface IUsePageAddFormProps {
 export const usePageAddForm = <TForm extends IPageAddForm = IPageAddForm>({ id, type }: IUsePageAddFormProps): IUsePageAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = usePagesPlugin({ type });
+	const { element } = usePagesPlugin({ type });
 
 	const pagesStore = storesManager.getStore(pagesStoreKey);
 
@@ -37,7 +37,7 @@ export const usePageAddForm = <TForm extends IPageAddForm = IPageAddForm>({ id, 
 	let timer: number;
 
 	const model = reactive<TForm>({
-		...getSchemaDefaults(plugin.value?.schemas?.pageAddFormSchema || PageAddFormSchema),
+		...getSchemaDefaults(element.value?.schemas?.pageAddFormSchema || PageAddFormSchema),
 		id,
 		type,
 		title: '',
@@ -59,7 +59,7 @@ export const usePageAddForm = <TForm extends IPageAddForm = IPageAddForm>({ id, 
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.pageAddFormSchema || PageAddFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.pageAddFormSchema || PageAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

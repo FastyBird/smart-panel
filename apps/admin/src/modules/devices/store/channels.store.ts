@@ -59,8 +59,8 @@ const defaultSemaphore: IChannelsStateSemaphore = {
 export const useChannels = defineStore<'devices_module-channels', ChannelsStoreSetup>('devices_module-channels', (): ChannelsStoreSetup => {
 	const backend = useBackend();
 
-	const { getByType: getPluginByType } = useChannelsPlugins();
-	const { getByType: getChannelsPropertiesPluginByType } = useChannelsPropertiesPlugins();
+	const { getElement: getPluginElement } = useChannelsPlugins();
+	const { getElement: getChannelsPropertiesPluginElement } = useChannelsPropertiesPlugins();
 
 	const storesManager = injectStoresManager();
 
@@ -92,19 +92,19 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 	const pendingFetchPromises: Record<string, Promise<IChannel[]>> = {};
 
 	const onEvent = (payload: IChannelsOnEventActionPayload): IChannel => {
-		const plugin = getPluginByType(payload.type);
+		const element = getPluginElement(payload.type);
 
 		return set({
 			id: payload.id,
-			data: transformChannelResponse(payload.data as unknown as IChannelRes, plugin?.schemas?.channelSchema || ChannelSchema),
+			data: transformChannelResponse(payload.data as unknown as IChannelRes, element?.schemas?.channelSchema || ChannelSchema),
 		});
 	};
 
 	const set = (payload: IChannelsSetActionPayload): IChannel => {
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
 		if (payload.id && data.value && payload.id in data.value) {
-			const parsed = (plugin?.schemas?.channelSchema || ChannelSchema).safeParse({ ...data.value[payload.id], ...payload.data });
+			const parsed = (element?.schemas?.channelSchema || ChannelSchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsed.success) {
 				console.error('Schema validation failed with:', parsed.error);
@@ -115,7 +115,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			return (data.value[parsed.data.id] = parsed.data);
 		}
 
-		const parsed = (plugin?.schemas?.channelSchema || ChannelSchema).safeParse({ ...payload.data, id: payload.id });
+		const parsed = (element?.schemas?.channelSchema || ChannelSchema).safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsed.success) {
 			console.error('Schema validation failed with:', parsed.error);
@@ -185,9 +185,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const plugin = getPluginByType(responseData.data.type);
+				const element = getPluginElement(responseData.data.type);
 
-				const transformed = transformChannelResponse(responseData.data, plugin?.schemas?.channelSchema || ChannelSchema);
+				const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -261,9 +261,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 				const channels = Object.fromEntries(
 					responseData.data.map((channel) => {
-						const plugin = getPluginByType(channel.type);
+						const element = getPluginElement(channel.type);
 
-						const transformed = transformChannelResponse(channel, plugin?.schemas?.channelSchema || ChannelSchema);
+						const transformed = transformChannelResponse(channel, element?.schemas?.channelSchema || ChannelSchema);
 
 						insertChannelControlsRelations(transformed, channel.controls);
 						insertChannelPropertiesRelations(transformed, channel.properties);
@@ -312,9 +312,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			throw new DevicesValidationException('Failed to add channel.');
 		}
 
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
-		const parsedNewItem = (plugin?.schemas?.channelSchema || ChannelSchema).safeParse({
+		const parsedNewItem = (element?.schemas?.channelSchema || ChannelSchema).safeParse({
 			...payload.data,
 			id: parsedPayload.data.id,
 			device: parsedPayload.data.deviceId,
@@ -348,7 +348,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 				body: {
 					data: transformChannelCreateRequest<IChannelCreateReq>(
 						parsedNewItem.data,
-						plugin?.schemas?.channelCreateReqSchema || ChannelCreateReqSchema
+						element?.schemas?.channelCreateReqSchema || ChannelCreateReqSchema
 					),
 				},
 			});
@@ -356,9 +356,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const plugin = getPluginByType(responseData.data.type);
+				const element = getPluginElement(responseData.data.type);
 
-				const transformed = transformChannelResponse(responseData.data, plugin?.schemas?.channelSchema || ChannelSchema);
+				const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -398,9 +398,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			throw new DevicesValidationException('Failed to edit channel.');
 		}
 
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
-		const parsedEditedItem = (plugin?.schemas?.channelSchema || ChannelSchema).safeParse({
+		const parsedEditedItem = (element?.schemas?.channelSchema || ChannelSchema).safeParse({
 			...data.value[payload.id],
 			...omitBy(payload.data, isUndefined),
 		});
@@ -430,7 +430,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 					body: {
 						data: transformChannelUpdateRequest<IChannelUpdateReq>(
 							parsedEditedItem.data,
-							plugin?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
+							element?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
 						),
 					},
 				});
@@ -442,7 +442,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 					body: {
 						data: transformChannelUpdateRequest<IChannelUpdateReq>(
 							parsedEditedItem.data,
-							plugin?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
+							element?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
 						),
 					},
 				});
@@ -453,9 +453,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const plugin = getPluginByType(responseData.data.type);
+				const element = getPluginElement(responseData.data.type);
 
-				const transformed = transformChannelResponse(responseData.data, plugin?.schemas?.channelSchema || ChannelSchema);
+				const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -488,9 +488,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			throw new DevicesException('Failed to get channel data to save.');
 		}
 
-		const plugin = getPluginByType(data.value[payload.id].type);
+		const element = getPluginElement(data.value[payload.id].type);
 
-		const parsedSaveItem = (plugin?.schemas?.channelSchema || ChannelSchema).safeParse(data.value[payload.id]);
+		const parsedSaveItem = (element?.schemas?.channelSchema || ChannelSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
 			console.error('Schema validation failed with:', parsedSaveItem.error);
@@ -511,7 +511,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			body: {
 				data: transformChannelCreateRequest<IChannelCreateReq>(
 					parsedSaveItem.data,
-					plugin?.schemas?.channelCreateReqSchema || ChannelCreateReqSchema
+					element?.schemas?.channelCreateReqSchema || ChannelCreateReqSchema
 				),
 			},
 		});
@@ -519,9 +519,9 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const plugin = getPluginByType(responseData.data.type);
+			const element = getPluginElement(responseData.data.type);
 
-			const transformed = transformChannelResponse(responseData.data, plugin?.schemas?.channelSchema || ChannelSchema);
+			const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
 			data.value[transformed.id] = transformed;
 
@@ -626,11 +626,11 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
 		properties.forEach((property) => {
-			const plugin = getChannelsPropertiesPluginByType(property.type);
+			const element = getChannelsPropertiesPluginElement(property.type);
 
 			channelsPropertiesStore.set({
 				id: property.id,
-				data: transformChannelPropertyResponse(property, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema),
+				data: transformChannelPropertyResponse(property, element?.schemas?.channelPropertySchema || ChannelPropertySchema),
 			});
 		});
 

@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DASHBOARD_MODULE_NAME, FormResult } from '../dashboard.constants';
+import { PageSchema } from '../store/pages.store.schemas';
 
 import { usePageAddForm } from './usePageAddForm';
 
@@ -28,6 +29,8 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
+const pageSchema = PageSchema;
+
 const mockPluginList = [
 	{
 		type: 'test-plugin',
@@ -39,6 +42,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					pageSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
 	},
@@ -46,7 +57,7 @@ const mockPluginList = [
 
 vi.mock('./usePagesPlugins', () => ({
 	usePagesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
@@ -56,7 +67,7 @@ describe('usePageAddForm', () => {
 	const pageId = uuid().toString();
 
 	beforeEach(() => {
-		form = usePageAddForm({ id: pageId, type: 'test-plugin' });
+		form = usePageAddForm({ id: pageId, type: 'test-type' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -65,7 +76,7 @@ describe('usePageAddForm', () => {
 
 	it('should initialize with default values', () => {
 		expect(form.model.id).toBe(pageId);
-		expect(form.model.type).toBe('test-plugin');
+		expect(form.model.type).toBe('test-type');
 		expect(form.model.title).toBe('');
 		expect(form.model.order).toBe(0);
 		expect(form.model.showTopBar).toBe(true);
@@ -90,7 +101,7 @@ describe('usePageAddForm', () => {
 			draft: false,
 			data: {
 				id: pageId,
-				type: 'test-plugin',
+				type: 'test-type',
 				title: 'New Page',
 				order: 0,
 				showTopBar: true,

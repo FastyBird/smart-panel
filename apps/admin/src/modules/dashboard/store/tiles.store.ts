@@ -56,8 +56,8 @@ const defaultSemaphore: ITilesStateSemaphore = {
 export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('dashboard_module-tiles', (): TilesStoreSetup => {
 	const backend = useBackend();
 
-	const { getByType: getPluginByType } = useTilesPlugins();
-	const { getByType: getDataSourcePluginByType } = useDataSourcesPlugins();
+	const { getElement: getPluginElement } = useTilesPlugins();
+	const { getElement: getDataSourcePluginElement } = useDataSourcesPlugins();
 
 	const storesManager = injectStoresManager();
 
@@ -97,17 +97,17 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 	const pendingFetchPromises: Record<string, Promise<ITile[]>> = {};
 
 	const onEvent = (payload: ITilesOnEventActionPayload): ITile => {
-		const plugin = getPluginByType(payload.type);
+		const element = getPluginElement(payload.type);
 
 		return set({
 			id: payload.id,
 			parent: payload.parent,
-			data: transformTileResponse(payload.data as unknown as ITileRes, plugin?.schemas?.tileSchema || TileSchema),
+			data: transformTileResponse(payload.data as unknown as ITileRes, element?.schemas?.tileSchema || TileSchema),
 		});
 	};
 
 	const set = (payload: ITilesSetActionPayload): ITile => {
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
 		const toInsert = {
 			id: payload.id,
@@ -116,7 +116,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		};
 
 		if (payload.id && data.value && payload.id in data.value) {
-			const parsed = (plugin?.schemas?.tileSchema || TileSchema).safeParse({ ...data.value[payload.id], ...toInsert });
+			const parsed = (element?.schemas?.tileSchema || TileSchema).safeParse({ ...data.value[payload.id], ...toInsert });
 
 			if (!parsed.success) {
 				console.error('Schema validation failed with:', parsed.error);
@@ -127,7 +127,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			return (data.value[parsed.data.id] = parsed.data);
 		}
 
-		const parsed = (plugin?.schemas?.tileSchema || TileSchema).safeParse(toInsert);
+		const parsed = (element?.schemas?.tileSchema || TileSchema).safeParse(toInsert);
 
 		if (!parsed.success) {
 			console.error('Schema validation failed with:', parsed.error);
@@ -189,9 +189,9 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const plugin = getPluginByType(responseData.data.type);
+				const element = getPluginElement(responseData.data.type);
 
-				const transformed = transformTileResponse(responseData.data, plugin?.schemas?.tileSchema || TileSchema);
+				const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -250,9 +250,9 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 				const tiles = Object.fromEntries(
 					responseData.data.map((tile) => {
-						const plugin = getPluginByType(tile.type);
+						const element = getPluginElement(tile.type);
 
-						const transformed = transformTileResponse(tile, plugin?.schemas?.tileSchema || TileSchema);
+						const transformed = transformTileResponse(tile, element?.schemas?.tileSchema || TileSchema);
 
 						insertDataSourceRelations(transformed, tile.data_source);
 
@@ -292,9 +292,9 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			throw new DashboardValidationException('Failed to add tile.');
 		}
 
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
-		const parsedNewItem = (plugin?.schemas?.tileSchema || TileSchema).safeParse({
+		const parsedNewItem = (element?.schemas?.tileSchema || TileSchema).safeParse({
 			...payload.data,
 			id: payload.id,
 			type: payload.data.type,
@@ -324,14 +324,14 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 				response,
 			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
 				body: {
-					data: transformTileCreateRequest<ITileCreateReq>(parsedNewItem.data, plugin?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
+					data: transformTileCreateRequest<ITileCreateReq>(parsedNewItem.data, element?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
 				},
 			});
 
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const transformed = transformTileResponse(responseData.data, plugin?.schemas?.tileSchema || TileSchema);
+				const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -370,9 +370,9 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			throw new DashboardValidationException('Failed to edit tile.');
 		}
 
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
-		const parsedEditedItem = (plugin?.schemas?.tileSchema || TileSchema).safeParse({
+		const parsedEditedItem = (element?.schemas?.tileSchema || TileSchema).safeParse({
 			...data.value[payload.id],
 			...omitBy(payload.data, isUndefined),
 		});
@@ -401,14 +401,14 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 					path: { id: payload.id },
 				},
 				body: {
-					data: transformTileUpdateRequest<ITileUpdateReq>(parsedEditedItem.data, plugin?.schemas?.tileUpdateReqSchema || TileUpdateReqSchema),
+					data: transformTileUpdateRequest<ITileUpdateReq>(parsedEditedItem.data, element?.schemas?.tileUpdateReqSchema || TileUpdateReqSchema),
 				},
 			});
 
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const transformed = transformTileResponse(responseData.data, plugin?.schemas?.tileSchema || TileSchema);
+				const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -439,9 +439,9 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			throw new DashboardException('Failed to get tile data to save.');
 		}
 
-		const plugin = getPluginByType(data.value[payload.id].type);
+		const element = getPluginElement(data.value[payload.id].type);
 
-		const parsedSaveItem = (plugin?.schemas?.tileSchema || TileSchema).safeParse(data.value[payload.id]);
+		const parsedSaveItem = (element?.schemas?.tileSchema || TileSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
 			console.error('Schema validation failed with:', parsedSaveItem.error);
@@ -457,14 +457,14 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			response,
 		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
 			body: {
-				data: transformTileCreateRequest<ITileCreateReq>(parsedSaveItem.data, plugin?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
+				data: transformTileCreateRequest<ITileCreateReq>(parsedSaveItem.data, element?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
 			},
 		});
 
 		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const transformed = transformTileResponse(responseData.data, plugin?.schemas?.tileSchema || TileSchema);
+			const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
 
 			data.value[transformed.id] = transformed;
 
@@ -537,12 +537,12 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
 		dataSources.forEach((dataSource) => {
-			const plugin = getDataSourcePluginByType(dataSource.type);
+			const element = getDataSourcePluginElement(dataSource.type);
 
 			dataSourcesStore.set({
 				id: dataSource.id,
 				parent: { type: 'tile', id: tile.id },
-				data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+				data: transformDataSourceResponse(dataSource, element?.schemas?.dataSourceSchema || DataSourceSchema),
 			});
 		});
 

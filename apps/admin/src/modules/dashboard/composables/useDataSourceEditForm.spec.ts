@@ -26,7 +26,7 @@ type ITestDataSourceEditForm = z.infer<typeof TestDataSourceEditFormSchema>;
 
 const mockDataSource: ITestDataSourceSchema = {
 	id: uuid().toString(),
-	type: 'test-plugin',
+	type: 'test-type',
 	value: 'test-value',
 	draft: true,
 } as ITestDataSourceSchema;
@@ -69,10 +69,15 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			dataSourceSchema: TestDataSourceSchema,
-			dataSourceEditFormSchema: TestDataSourceEditFormSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					dataSourceSchema: TestDataSourceSchema,
+					dataSourceEditFormSchema: TestDataSourceEditFormSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
 	},
@@ -80,7 +85,7 @@ const mockPluginList = [
 
 vi.mock('./useDataSourcesPlugins', () => ({
 	useDataSourcesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
@@ -133,7 +138,7 @@ describe('useDataSourceEditForm', () => {
 			id: mockDataSource.id,
 			data: {
 				id: mockDataSource.id,
-				type: 'test-plugin',
+				type: 'test-type',
 				value: mockDataSource.value,
 			},
 		});

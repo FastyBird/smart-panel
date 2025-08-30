@@ -52,8 +52,8 @@
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
-				:is="plugin?.components?.channelPropertyAddForm"
-				v-if="typeof plugin?.components?.channelPropertyAddForm !== 'undefined'"
+				:is="element?.components?.channelPropertyAddForm"
+				v-if="typeof element?.components?.channelPropertyAddForm !== 'undefined'"
 				:id="newPropertyId"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
@@ -141,6 +141,7 @@ import {
 	AppBarHeading,
 	AppBreadcrumbs,
 	type IPlugin,
+	type IPluginElement,
 	useBreakpoints,
 	useFlashMessage,
 	useUuid,
@@ -209,9 +210,11 @@ const isChannelDetailRoute = computed<boolean>(
 );
 
 const plugin = computed<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
-	const channelType = channel.value?.type;
+	return plugins.value.find((plugin) => plugin.type === channel.value?.type) ?? undefined;
+});
 
-	return channelType ? plugins.value.find((plugin) => plugin.type === channelType) : undefined;
+const element = computed<IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === channel.value?.type);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

@@ -16,6 +16,7 @@ import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
+import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
 import { DeviceDetailPageEntity } from './pages-device-detail.entity';
 
@@ -45,7 +46,7 @@ describe('Device detail pages plugin entity and OpenAPI Model Synchronization', 
 	test('DeviceDetailPageEntity matches DashboardDeviceDetailPage', () => {
 		const openApiModel: DeviceDetailPage = {
 			id: uuid().toString(),
-			type: 'device-detail',
+			type: PAGES_DEVICE_DETAIL_TYPE,
 			title: 'Device Dashboard',
 			icon: 'device-icon',
 			order: 1,

@@ -10,6 +10,7 @@ import { CreateDevicePreviewTileDto } from './dto/create-tile.dto';
 import { UpdateDevicePreviewTileDto } from './dto/update-tile.dto';
 import { DevicePreviewTileEntity } from './entities/tiles-device-preview.entity';
 import { TileRelationsLoaderService } from './services/tile-relations-loader.service';
+import { TILES_DEVICE_PREVIEW_TYPE } from './tiles-device-preview.constants';
 
 @Module({
 	imports: [TypeOrmModule.forFeature([DevicePreviewTileEntity]), DashboardModule, DevicesModule],
@@ -24,7 +25,7 @@ export class TilesDevicePreviewPlugin {
 
 	onModuleInit() {
 		this.mapper.registerMapping<DevicePreviewTileEntity, CreateDevicePreviewTileDto, UpdateDevicePreviewTileDto>({
-			type: 'device-preview',
+			type: TILES_DEVICE_PREVIEW_TYPE,
 			class: DevicePreviewTileEntity,
 			createDto: CreateDevicePreviewTileDto,
 			updateDto: UpdateDevicePreviewTileDto,

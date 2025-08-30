@@ -7,7 +7,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
 	DevicesHomeAssistantNotFoundException,
@@ -237,9 +237,7 @@ export class HomeAssistantWsService {
 
 	private get config(): HomeAssistantConfigModel {
 		if (!this.pluginConfig) {
-			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(
-				DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
-			);
+			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_TYPE);
 		}
 
 		return this.pluginConfig;

@@ -50,8 +50,8 @@
 
 			<template v-if="selectedType">
 				<component
-					:is="plugin?.components?.deviceAddForm"
-					v-if="typeof plugin?.components?.deviceAddForm !== 'undefined'"
+					:is="element?.components?.deviceAddForm"
+					v-if="typeof element?.components?.deviceAddForm !== 'undefined'"
 					:id="newDeviceId"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
@@ -141,7 +141,16 @@ import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import { DeviceAddForm } from '../components/components';
 import SelectDevicePlugin from '../components/devices/select-device-plugin.vue';
 import { useDevicesPlugins } from '../composables/composables';
@@ -180,10 +189,14 @@ const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
-const selectedType = ref<IPlugin['type'] | undefined>(undefined);
+const selectedType = ref<IPluginElement['type'] | undefined>(undefined);
 
 const plugin = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
 	return plugins.value.find((plugin) => plugin.type === selectedType.value);
+});
+
+const element = computed<IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === selectedType.value);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

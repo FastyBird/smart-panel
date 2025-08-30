@@ -28,7 +28,7 @@ export const useTileEditForm = <TForm extends ITileEditForm = ITileEditForm>({
 }: IUseTileEditFormProps): IUseTileEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useTilesPlugin({ type: tile.type });
+	const { element } = useTilesPlugin({ type: tile.type });
 
 	const tilesStore = storesManager.getStore(tilesStoreKey);
 
@@ -66,7 +66,7 @@ export const useTileEditForm = <TForm extends ITileEditForm = ITileEditForm>({
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.tileEditFormSchema || TileEditFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.tileEditFormSchema || TileEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

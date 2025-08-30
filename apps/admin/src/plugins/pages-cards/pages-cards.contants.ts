@@ -1,4 +1,8 @@
-export const PAGES_CARDS_PLUGIN_PREFIX = 'pages-cards-plugin';
+export const PAGES_CARDS_PLUGIN_PREFIX = 'pages-cards';
+
+export const PAGES_CARDS_PLUGIN_NAME = 'pages-cards';
+
+export const PAGES_CARDS_TYPE = 'pages-cards';
 
 export const PAGES_CARDS_PLUGIN_EVENT_PREFIX = 'PagesCardsPlugin.';
 

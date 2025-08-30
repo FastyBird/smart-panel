@@ -57,8 +57,8 @@ const defaultSemaphore: ICardsStateSemaphore = {
 export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>('pages_cards_plugin-cards', (): CardsStoreSetup => {
 	const backend = useBackend();
 
-	const { getByType: getTilePluginByType } = useTilesPlugins();
-	const { getByType: getDataSourcePluginByType } = useDataSourcesPlugins();
+	const { getElement: getTilePluginElement } = useTilesPlugins();
+	const { getElement: getDataSourcePluginElement } = useDataSourcesPlugins();
 
 	const storesManager = injectStoresManager();
 
@@ -513,12 +513,12 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
 		dataSources.forEach((dataSource) => {
-			const plugin = getDataSourcePluginByType(dataSource.type);
+			const element = getDataSourcePluginElement(dataSource.type);
 
 			dataSourcesStore.set({
 				id: dataSource.id,
 				parent: { type: 'card', id: card.id },
-				data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+				data: transformDataSourceResponse(dataSource, element?.schemas?.dataSourceSchema || DataSourceSchema),
 			});
 		});
 
@@ -530,21 +530,21 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
 		tiles.forEach((tile) => {
-			const plugin = getTilePluginByType(tile.type);
+			const element = getTilePluginElement(tile.type);
 
 			tilesStore.set({
 				id: tile.id,
 				parent: { type: 'card', id: card.id },
-				data: transformTileResponse(tile, plugin?.schemas?.tileSchema || TileSchema),
+				data: transformTileResponse(tile, element?.schemas?.tileSchema || TileSchema),
 			});
 
 			tile.data_source.forEach((dataSource) => {
-				const plugin = getDataSourcePluginByType(dataSource.type);
+				const element = getDataSourcePluginElement(dataSource.type);
 
 				dataSourcesStore.set({
 					id: dataSource.id,
 					parent: { type: 'tile', id: tile.id },
-					data: transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+					data: transformDataSourceResponse(dataSource, element?.schemas?.dataSourceSchema || DataSourceSchema),
 				});
 			});
 

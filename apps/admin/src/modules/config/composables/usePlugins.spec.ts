@@ -15,6 +15,11 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
+		elements: [
+			{
+				type: 'test-plugin',
+			},
+		],
 		isCore: false,
 		modules: [CONFIG_MODULE_NAME],
 	},
@@ -28,6 +33,11 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
+		elements: [
+			{
+				type: 'another-type',
+			},
+		],
 		isCore: false,
 		modules: ['other-module'],
 	},
@@ -57,14 +67,14 @@ describe('usePlugins', () => {
 	});
 
 	it('getByType returns correct plugin', () => {
-		const { getByType } = usePlugins();
-		const plugin = getByType('test-plugin');
+		const { getByName } = usePlugins();
+		const plugin = getByName('test-plugin');
 		expect(plugin?.name).toBe('Test Plugin');
 	});
 
 	it('getByType returns undefined for unknown plugin', () => {
-		const { getByType } = usePlugins();
-		const plugin = getByType('nonexistent');
+		const { getByName } = usePlugins();
+		const plugin = getByName('nonexistent');
 		expect(plugin).toBeUndefined();
 	});
 });

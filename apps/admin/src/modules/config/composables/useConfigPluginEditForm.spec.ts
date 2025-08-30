@@ -64,10 +64,15 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			pluginConfigSchema: TestConfigPluginSchema,
-			pluginConfigEditFormSchema: TestConfigPluginEditFormSchema,
-		},
+		elements: [
+			{
+				type: 'test-plugin',
+				schemas: {
+					pluginConfigSchema: TestConfigPluginSchema,
+					pluginConfigEditFormSchema: TestConfigPluginEditFormSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [CONFIG_MODULE_NAME],
 	},
@@ -75,7 +80,7 @@ const mockPluginList = [
 
 vi.mock('./usePlugins', () => ({
 	usePlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByName: (name: string) => mockPluginList.find((p) => p.type === name),
 	}),
 }));
 

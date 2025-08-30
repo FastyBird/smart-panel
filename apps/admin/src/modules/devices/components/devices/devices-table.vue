@@ -141,7 +141,7 @@
 				<devices-table-column-plugin
 					:device="scope.row"
 					:filters="innerFilters"
-					@filter-by="(value: IPlugin['type'], add: boolean) => onFilterBy('type', value, add)"
+					@filter-by="(value: IPluginElement['type'], add: boolean) => onFilterBy('type', value, add)"
 				/>
 			</template>
 		</el-table-column>
@@ -244,7 +244,7 @@ import { ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElText, vLo
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import { type IPlugin, IconWithChild, useBreakpoints } from '../../../../common';
+import { type IPluginElement, IconWithChild, useBreakpoints } from '../../../../common';
 import type { DevicesModuleDeviceCategory } from '../../../../openapi';
 import type { IDevicesFilter } from '../../composables/composables';
 import type { ConnectionState } from '../../devices.constants';

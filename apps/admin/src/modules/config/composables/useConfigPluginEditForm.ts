@@ -1,12 +1,13 @@
-import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
+import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
 import { cloneDeep, isEqual } from 'lodash';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
-import { FormResult, type FormResultType } from '../config.constants';
+import { type IPluginElement, injectStoresManager, useFlashMessage } from '../../../common';
+import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
+import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
 import { ConfigPluginEditFormSchema } from '../schemas/plugins.schemas';
 import type { IConfigPluginEditForm } from '../schemas/plugins.types';
 import type { IConfigPlugin } from '../store/config-plugins.store.types';
@@ -26,7 +27,13 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 }: IUseConfigPluginEditFormProps): IUseConfigPluginEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = usePlugin({ type: config.type });
+	const { plugin } = usePlugin({ name: config.type });
+
+	const element = computed<IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined>(
+		(): IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined => {
+			return plugin.value?.elements?.find((element) => element.type === CONFIG_MODULE_PLUGIN_TYPE);
+		}
+	);
 
 	const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 
@@ -49,7 +56,7 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 	const submit = async (): Promise<'saved'> => {
 		formResult.value = FormResult.WORKING;
 
-		const errorMessage = messages && messages.error ? messages.error : t('configModule.messages.tiles.notEdited');
+		const errorMessage = messages && messages.error ? messages.error : t('configModule.messages.configPlugin.notEdited');
 
 		formEl.value!.clearValidate();
 
@@ -57,7 +64,7 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 
 		if (!valid) throw new ConfigValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.pluginConfigEditFormSchema || ConfigPluginEditFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.pluginConfigEditFormSchema || ConfigPluginEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);
@@ -90,7 +97,7 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 
 		timer = window.setTimeout(clear, 2000);
 
-		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.tiles.edited'));
+		flashMessage.success(t(messages && messages.success ? messages.success : 'configModule.messages.configPlugin.edited'));
 
 		formChanged.value = false;
 

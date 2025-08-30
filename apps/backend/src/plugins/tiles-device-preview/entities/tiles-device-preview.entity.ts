@@ -5,6 +5,7 @@ import { ChildEntity, Column, ManyToOne, RelationId } from 'typeorm';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
 @ChildEntity()
 export class DevicePreviewTileEntity extends TileEntity {
@@ -33,6 +34,6 @@ export class DevicePreviewTileEntity extends TileEntity {
 
 	@Expose()
 	get type(): string {
-		return 'device-preview';
+		return TILES_DEVICE_PREVIEW_TYPE;
 	}
 }

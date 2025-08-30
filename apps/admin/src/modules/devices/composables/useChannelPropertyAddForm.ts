@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { cloneDeep, isEqual } from 'lodash';
 
-import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPluginElement, injectStoresManager, useFlashMessage } from '../../../common';
+import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
@@ -26,7 +27,7 @@ import { useChannelsPropertiesPlugin } from './useChannelsPropertiesPlugin';
 
 interface IUseChannelPropertyAddFormProps {
 	id: IChannelProperty['id'];
-	type: IPlugin['type'];
+	type: IPluginElement['type'];
 	channelId?: IChannel['id'];
 }
 
@@ -37,7 +38,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 }: IUseChannelPropertyAddFormProps): IUseChannelPropertyAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useChannelsPropertiesPlugin({ type });
+	const { element } = useChannelsPropertiesPlugin({ type });
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
@@ -108,6 +109,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 	}));
 
 	const model = reactive<TForm>({
+		...getSchemaDefaults(element.value?.schemas?.channelPropertyAddFormSchema || ChannelPropertyAddFormSchema),
 		id,
 		type,
 		channel: channelId,
@@ -184,7 +186,7 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 			delete model.value;
 		}
 
-		const parsedModel = (plugin.value?.schemas?.channelPropertyAddFormSchema || ChannelPropertyAddFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.channelPropertyAddFormSchema || ChannelPropertyAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

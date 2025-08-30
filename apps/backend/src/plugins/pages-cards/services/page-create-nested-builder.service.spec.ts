@@ -20,6 +20,7 @@ import { DisplaysProfilesService } from '../../../modules/system/services/displa
 import { DisplayProfileExistsConstraintValidator } from '../../../modules/system/validators/display-profile-exists-constraint.validator';
 import { CreateCardsPageDto } from '../dto/create-page.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
+import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 import { PagesCardsValidationException } from '../pages-cards.exceptions';
 
 import { CardsPageNestedBuilderService } from './page-create-nested-builder.service';
@@ -127,7 +128,7 @@ describe('CardsPageNestedBuilderService', () => {
 	});
 
 	it('should support "cards" page type', () => {
-		const result = service.supports({ type: 'cards' } as CreateCardsPageDto);
+		const result = service.supports({ type: PAGES_CARDS_TYPE } as CreateCardsPageDto);
 		expect(result).toBe(true);
 	});
 
@@ -141,7 +142,7 @@ describe('CardsPageNestedBuilderService', () => {
 		page.id = uuid().toString();
 
 		const dto = {
-			type: 'cards',
+			type: PAGES_CARDS_TYPE,
 			title: 'Test Page',
 			order: 1,
 			display: uuid().toString(),

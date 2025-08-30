@@ -17,7 +17,7 @@ const propertyId = uuid().toString();
 
 const mockProperty: IChannelProperty = {
 	id: propertyId.toString(),
-	type: 'test-plugin',
+	type: 'test-type',
 	channel: channelId.toString(),
 	name: 'My Property',
 	category: DevicesModuleChannelPropertyCategory.brightness,
@@ -82,9 +82,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			channelPropertySchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					channelPropertySchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},

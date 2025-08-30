@@ -18,9 +18,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			dataSourceSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					dataSourceSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
 	},
@@ -34,6 +39,11 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
+		elements: [
+			{
+				type: 'another-type',
+			},
+		],
 		isCore: false,
 		modules: ['other-module'],
 	},
@@ -56,15 +66,27 @@ describe('usePlugins', () => {
 		const { options } = useDataSourcesPlugins();
 		expect(options.value).toEqual([
 			{
-				value: 'test-plugin',
+				value: 'test-type',
 				label: 'Test Plugin',
 			},
 		]);
 	});
 
+	it('getByName returns correct plugin', () => {
+		const { getByName } = useDataSourcesPlugins();
+		const plugin = getByName('test-plugin');
+		expect(plugin?.name).toBe('Test Plugin');
+	});
+
+	it('getByName returns undefined for unknown plugin', () => {
+		const { getByName } = useDataSourcesPlugins();
+		const plugin = getByName('nonexistent');
+		expect(plugin).toBeUndefined();
+	});
+
 	it('getByType returns correct plugin', () => {
 		const { getByType } = useDataSourcesPlugins();
-		const plugin = getByType('test-plugin');
+		const plugin = getByType('test-type');
 		expect(plugin?.name).toBe('Test Plugin');
 	});
 

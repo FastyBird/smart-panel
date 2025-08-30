@@ -2,6 +2,7 @@ export { default as HomeAssistantDeviceAddForm } from './home-assistant-device-a
 export { default as HomeAssistantDeviceEditForm } from './home-assistant-device-edit-form.vue';
 export { default as HomeAssistantChannelPropertyAddForm } from './home-assistant-channel-property-add-form.vue';
 export { default as HomeAssistantChannelPropertyEditForm } from './home-assistant-channel-property-edit-form.vue';
+export { default as HomeAssistantConfigForm } from './home-assistant-config-form.vue';
 export { default as SelectDiscoveredDeviceEntity } from './select-discovered-device-entity.vue';
 
 export * from './types';

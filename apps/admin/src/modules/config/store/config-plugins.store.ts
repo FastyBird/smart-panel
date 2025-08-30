@@ -36,7 +36,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 	(): ConfigPluginsStoreSetup => {
 		const backend = useBackend();
 
-		const { getByType: getPluginByType } = usePlugins();
+		const { getElement: getPluginElement } = usePlugins();
 
 		const semaphore = ref<IConfigPluginsStateSemaphore>(defaultSemaphore);
 
@@ -49,18 +49,18 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 		const pendingGetPromises: Record<IConfigPlugin['type'], Promise<IConfigPlugin>> = {};
 
 		const onEvent = (payload: IConfigPluginsOnEventActionPayload): IConfigPlugin => {
-			const plugin = getPluginByType(payload.type);
+			const element = getPluginElement(payload.type);
 
 			return set({
-				data: transformConfigPluginResponse(payload.data as unknown as IConfigPluginRes, plugin?.schemas?.pluginConfigSchema || ConfigPluginSchema),
+				data: transformConfigPluginResponse(payload.data as unknown as IConfigPluginRes, element?.schemas?.pluginConfigSchema || ConfigPluginSchema),
 			});
 		};
 
 		const set = (payload: IConfigPluginsSetActionPayload): IConfigPlugin => {
-			const plugin = getPluginByType(payload.data.type);
+			const element = getPluginElement(payload.data.type);
 
 			if (data.value && payload.data.type in data.value) {
-				const parsed = (plugin?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse({ ...data.value[payload.data.type], ...payload.data });
+				const parsed = (element?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse({ ...data.value[payload.data.type], ...payload.data });
 
 				if (!parsed.success) {
 					console.error('Schema validation failed with:', parsed.error);
@@ -71,7 +71,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				return (data.value[parsed.data.type] = parsed.data);
 			}
 
-			const parsed = (plugin?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse(payload.data);
+			const parsed = (element?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse(payload.data);
 
 			if (!parsed.success) {
 				console.error('Schema validation failed with:', parsed.error);
@@ -109,9 +109,9 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				semaphore.value.getting = semaphore.value.getting.filter((item) => item !== payload.type);
 
 				if (typeof responseData !== 'undefined') {
-					const plugin = getPluginByType(responseData.data.type);
+					const element = getPluginElement(responseData.data.type);
 
-					const transformed = transformConfigPluginResponse(responseData.data, plugin?.schemas?.pluginConfigSchema || ConfigPluginSchema);
+					const transformed = transformConfigPluginResponse(responseData.data, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
 
 					data.value[transformed.type] = transformed;
 
@@ -153,9 +153,9 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				throw new ConfigValidationException('Failed to edit plugin config.');
 			}
 
-			const plugin = getPluginByType(payload.data.type);
+			const element = getPluginElement(payload.data.type);
 
-			const parsedEditedConfig = (plugin?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse({
+			const parsedEditedConfig = (element?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse({
 				...data.value[payload.data.type],
 				...omitBy(payload.data, isUndefined),
 			});
@@ -183,7 +183,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				body: {
 					data: transformConfigPluginUpdateRequest<IConfigPluginUpdateReq>(
 						parsedEditedConfig.data,
-						plugin?.schemas?.pluginConfigUpdateReqSchema || ConfigPluginUpdateReqSchema
+						element?.schemas?.pluginConfigUpdateReqSchema || ConfigPluginUpdateReqSchema
 					),
 				},
 			});
@@ -191,7 +191,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.data.type);
 
 			if (typeof responseData !== 'undefined') {
-				const transformed = transformConfigPluginResponse(responseData.data, plugin?.schemas?.pluginConfigSchema || ConfigPluginSchema);
+				const transformed = transformConfigPluginResponse(responseData.data, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
 
 				data.value[transformed.type] = transformed;
 

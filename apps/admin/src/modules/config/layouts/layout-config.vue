@@ -140,6 +140,26 @@
 				v-model:remote-form-result="remoteFormResult"
 			/>
 		</el-tab-pane>
+
+		<el-tab-pane
+			:label="t('configModule.tabs.configPlugins')"
+			:name="'plugins'"
+		>
+			<template #label>
+				<span class="flex flex-row items-center gap-2">
+					<el-icon>
+						<icon icon="mdi:toy-brick" />
+					</el-icon>
+					<span>{{ t('configModule.tabs.configPlugins') }}</span>
+				</span>
+			</template>
+
+			<router-view
+				v-if="route.name === RouteNames.CONFIG_PLUGINS"
+				v-model:remote-form-submit="remoteFormSubmit"
+				v-model:remote-form-result="remoteFormResult"
+			/>
+		</el-tab-pane>
 	</el-tabs>
 
 	<router-view
@@ -162,7 +182,7 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { FormResult, RouteNames } from '../config.constants';
 
-type PageTabName = 'audio' | 'display' | 'language' | 'weather';
+type PageTabName = 'audio' | 'display' | 'language' | 'weather' | 'plugins';
 
 defineOptions({
 	name: 'LayoutConfig',
@@ -215,6 +235,13 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 		});
 	}
 
+	if (route.name === RouteNames.CONFIG_PLUGINS) {
+		items.push({
+			label: t('configModule.breadcrumbs.configPlugins'),
+			route: router.resolve({ name: RouteNames.CONFIG_PLUGINS }),
+		});
+	}
+
 	return items;
 });
 
@@ -231,6 +258,9 @@ const onTabClick = (pane: TabsPaneContext): void => {
 			break;
 		case 'weather':
 			router.push({ name: RouteNames.CONFIG_WEATHER });
+			break;
+		case 'plugins':
+			router.push({ name: RouteNames.CONFIG_PLUGINS });
 			break;
 	}
 };
@@ -250,6 +280,8 @@ onMounted((): void => {
 		activeTab.value = 'language';
 	} else if (route.name === RouteNames.CONFIG_WEATHER && activeTab.value !== 'weather') {
 		activeTab.value = 'weather';
+	} else if (route.name === RouteNames.CONFIG_PLUGINS && activeTab.value !== 'plugins') {
+		activeTab.value = 'plugins';
 	}
 });
 
@@ -265,6 +297,8 @@ watch(
 				activeTab.value = 'language';
 			} else if (val === RouteNames.CONFIG_WEATHER && activeTab.value !== 'weather') {
 				activeTab.value = 'weather';
+			} else if (val === RouteNames.CONFIG_PLUGINS && activeTab.value !== 'plugins') {
+				activeTab.value = 'plugins';
 			}
 		}
 	}

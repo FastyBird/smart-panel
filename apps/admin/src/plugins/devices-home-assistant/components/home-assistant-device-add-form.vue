@@ -105,7 +105,7 @@ import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ty
 
 import { FormResult, type FormResultType, useDeviceAddForm } from '../../../modules/devices';
 import { useDiscoveredDevicesOptions } from '../composables/useDiscoveredDevicesOptions';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import type { IHomeAssistantDeviceAddForm } from '../schemas/devices.types';
 
 import type { IHomeAssistantDeviceAddFormProps } from './home-assistant-device-add-form.types';
@@ -131,7 +131,7 @@ const { t } = useI18n();
 
 const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceAddForm<IHomeAssistantDeviceAddForm>({
 	id: props.id,
-	type: DEVICES_HOME_ASSISTANT_PLUGIN_TYPE,
+	type: DEVICES_HOME_ASSISTANT_TYPE,
 });
 
 const { devicesOptions, areLoading: devicesOptionsLoading } = useDiscoveredDevicesOptions();

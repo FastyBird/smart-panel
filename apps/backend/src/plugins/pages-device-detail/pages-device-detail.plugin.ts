@@ -9,6 +9,7 @@ import { DevicesModule } from '../../modules/devices/devices.module';
 import { CreateDeviceDetailPageDto } from './dto/create-page.dto';
 import { UpdateDeviceDetailPageDto } from './dto/update-page.dto';
 import { DeviceDetailPageEntity } from './entities/pages-device-detail.entity';
+import { PAGES_DEVICE_DETAIL_TYPE } from './pages-device-detail.constants';
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
 @Module({
@@ -24,7 +25,7 @@ export class PagesDeviceDetailPlugin {
 
 	onModuleInit() {
 		this.mapper.registerMapping<DeviceDetailPageEntity, CreateDeviceDetailPageDto, UpdateDeviceDetailPageDto>({
-			type: 'device-detail',
+			type: PAGES_DEVICE_DETAIL_TYPE,
 			class: DeviceDetailPageEntity,
 			createDto: CreateDeviceDetailPageDto,
 			updateDto: UpdateDeviceDetailPageDto,

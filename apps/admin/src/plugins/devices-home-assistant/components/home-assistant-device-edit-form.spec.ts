@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils';
 
 import { FormResult } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory } from '../../../openapi';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import type { IHomeAssistantDevice } from '../store/devices.store.types';
 
 import HomeAssistantDeviceEditForm from './home-assistant-device-edit-form.vue';
@@ -59,7 +59,7 @@ describe('HomeAssistantDeviceEditForm', () => {
 			props: {
 				device: {
 					id: '123',
-					type: DEVICES_HOME_ASSISTANT_PLUGIN_TYPE,
+					type: DEVICES_HOME_ASSISTANT_TYPE,
 					category: DevicesModuleDeviceCategory.generic,
 					name: '',
 					description: '',

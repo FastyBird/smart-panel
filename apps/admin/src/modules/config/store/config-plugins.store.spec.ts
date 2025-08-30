@@ -4,7 +4,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import type { IPlugin } from '../../../common';
-import { CONFIG_MODULE_NAME } from '../config.constants';
+import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
 
@@ -43,10 +43,15 @@ const mockGetPlugins = vi.fn().mockReturnValue([
 	{
 		type: 'custom-plugin',
 		modules: [CONFIG_MODULE_NAME],
-		schemas: {
-			pluginConfigSchema: CustomPluginConfigSchema,
-			pluginConfigUpdateReqSchema: CustomPluginConfigUpdateReqSchema,
-		},
+		elements: [
+			{
+				type: CONFIG_MODULE_PLUGIN_TYPE,
+				schemas: {
+					pluginConfigSchema: CustomPluginConfigSchema,
+					pluginConfigUpdateReqSchema: CustomPluginConfigUpdateReqSchema,
+				},
+			},
+		],
 	} as unknown as IPlugin<IPluginsComponents, IPluginsSchemas>,
 ]);
 

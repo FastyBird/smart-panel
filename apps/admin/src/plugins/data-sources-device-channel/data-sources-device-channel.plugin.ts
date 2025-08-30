@@ -7,6 +7,7 @@ import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../
 import { DASHBOARD_MODULE_NAME, type IDataSourcePluginsComponents, type IDataSourcePluginsSchemas } from '../../modules/dashboard';
 
 import { DeviceChannelDataSourceAddForm, DeviceChannelDataSourceEditForm } from './components/components';
+import { DATA_SOURCES_DEVICE_PLUGIN_NAME, DATA_SOURCES_DEVICE_TYPE } from './data-sources-device-channel.constants';
 import enUS from './locales/en-US.json';
 import { DeviceChannelDataSourceAddFormSchema, DeviceChannelDataSourceEditFormSchema } from './schemas/data-sources.schemas';
 import {
@@ -30,7 +31,7 @@ export default {
 		}
 
 		pluginsManager.addPlugin(dataSourcesDeviceChannelPluginKey, {
-			type: 'device-channel',
+			type: DATA_SOURCES_DEVICE_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.data-source-device-channel',
 			name: 'Device Channel Data Source',
 			description:
@@ -40,17 +41,22 @@ export default {
 				devDocumentation: 'http://www.fastybird.com',
 				bugsTracking: 'http://www.fastybird.com',
 			},
-			components: {
-				dataSourceAddForm: DeviceChannelDataSourceAddForm,
-				dataSourceEditForm: DeviceChannelDataSourceEditForm,
-			},
-			schemas: {
-				dataSourceSchema: DeviceChannelDataSourceSchema,
-				dataSourceAddFormSchema: DeviceChannelDataSourceAddFormSchema,
-				dataSourceEditFormSchema: DeviceChannelDataSourceEditFormSchema,
-				dataSourceCreateReqSchema: DeviceChannelDataSourceCreateReqSchema,
-				dataSourceUpdateReqSchema: DeviceChannelDataSourceUpdateReqSchema,
-			},
+			elements: [
+				{
+					type: DATA_SOURCES_DEVICE_TYPE,
+					components: {
+						dataSourceAddForm: DeviceChannelDataSourceAddForm,
+						dataSourceEditForm: DeviceChannelDataSourceEditForm,
+					},
+					schemas: {
+						dataSourceSchema: DeviceChannelDataSourceSchema,
+						dataSourceAddFormSchema: DeviceChannelDataSourceAddFormSchema,
+						dataSourceEditFormSchema: DeviceChannelDataSourceEditFormSchema,
+						dataSourceCreateReqSchema: DeviceChannelDataSourceCreateReqSchema,
+						dataSourceUpdateReqSchema: DeviceChannelDataSourceUpdateReqSchema,
+					},
+				},
+			],
 			modules: [DASHBOARD_MODULE_NAME],
 			isCore: true,
 		});

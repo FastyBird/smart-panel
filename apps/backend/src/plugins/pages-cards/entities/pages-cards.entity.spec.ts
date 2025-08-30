@@ -16,6 +16,7 @@ import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
+import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 
 import { CardEntity, CardsPageEntity } from './pages-cards.entity';
 
@@ -46,7 +47,7 @@ describe('Cards pages plugin entity and OpenAPI Model Synchronization', () => {
 	test('CardsPageEntity matches DashboardCardsPage', () => {
 		const openApiModel: CardsPage = {
 			id: uuid().toString(),
-			type: 'cards',
+			type: PAGES_CARDS_TYPE,
 			title: 'Cards Dashboard',
 			icon: 'cards-icon',
 			order: 1,

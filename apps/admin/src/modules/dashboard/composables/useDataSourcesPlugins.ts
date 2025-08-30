@@ -2,7 +2,7 @@ import { computed } from 'vue';
 
 import { orderBy } from 'natural-orderby';
 
-import { type IPlugin, injectPluginsManager } from '../../../common';
+import { type IPlugin, type IPluginElement, injectPluginsManager } from '../../../common';
 import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import type { IDataSourcePluginsComponents, IDataSourcePluginsSchemas } from '../dashboard.types';
 
@@ -21,32 +21,73 @@ export const useDataSourcesPlugins = (): IUseDataSourcesPlugins => {
 		'dataSourceUpdateReqSchema',
 	];
 
-	const plugins = computed<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas>[]>(
-		(): IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas>[] => {
-			return pluginsManager.getPlugins().filter((plugin) => {
-				const hasComponent = pluginComponents.some((key) => plugin.components && key in plugin.components) ?? true;
+	const plugins = computed<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas>[]>(() => {
+		return pluginsManager.getPlugins().filter((plugin) => {
+			const pluginModuleEligible = plugin.modules === undefined || plugin.modules.includes(DASHBOARD_MODULE_NAME);
 
-				const hasSchema = pluginSchemas.some((key) => plugin.schemas && key in plugin.schemas) ?? true;
+			if (!pluginModuleEligible) {
+				return false;
+			}
 
-				return plugin.modules?.includes(DASHBOARD_MODULE_NAME) && (hasComponent || hasSchema);
+			return (plugin.elements ?? []).some((el) => {
+				const elementModuleEligible = el.modules === undefined || el.modules.includes(DASHBOARD_MODULE_NAME);
+
+				if (!elementModuleEligible) {
+					return false;
+				}
+
+				const hasComponent =
+					pluginComponents.length === 0 || (!!el.components && pluginComponents.some((key) => el.components && key in el.components));
+
+				const hasSchema = pluginSchemas.length === 0 || (!!el.schemas && pluginSchemas.some((key) => el.schemas && key in el.schemas));
+
+				return hasComponent || hasSchema;
 			});
-		}
-	);
-
-	const options = computed<{ value: IPlugin['type']; label: IPlugin['name'] }[]>((): { value: IPlugin['type']; label: IPlugin['name'] }[] => {
-		return orderBy<IPlugin>(plugins.value, [(plugin) => plugin.name], ['asc']).map((plugin) => ({
-			value: plugin.type,
-			label: plugin.name,
-		}));
+		});
 	});
 
-	const getByType = (type: IPlugin['type']): IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined => {
+	const options = computed<{ value: IPluginElement['type']; label: string }[]>((): { value: IPluginElement['type']; label: string }[] => {
+		const flat: { value: IPluginElement['type']; label: string }[] = plugins.value.flatMap((plugin) => {
+			return (plugin.elements ?? [])
+				.filter((el) => el.modules === undefined || el.modules.includes(DASHBOARD_MODULE_NAME))
+				.map((el) => ({
+					value: el.type,
+					label: el.name?.trim() ? el.name : plugin.name,
+				}));
+		});
+
+		return orderBy(flat, [(o) => o.label], ['asc']);
+	});
+
+	const getByName = (type: IPlugin['type']): IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
+	};
+
+	const getByType = (type: IPluginElement['type']): IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined => {
+		return plugins.value.find((plugin) =>
+			(plugin.elements ?? []).some((el) => el.type === type && (typeof el.modules === 'undefined' || el.modules.includes(DASHBOARD_MODULE_NAME)))
+		);
+	};
+
+	const getElement = (type: IPluginElement['type']): IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined => {
+		for (const plugin of plugins.value) {
+			const element = (plugin.elements ?? []).find(
+				(el) => el.type === type && (typeof el.modules === 'undefined' || el.modules.includes(DASHBOARD_MODULE_NAME))
+			);
+
+			if (element) {
+				return element;
+			}
+		}
+
+		return undefined;
 	};
 
 	return {
 		plugins,
 		options,
+		getByName,
 		getByType,
+		getElement,
 	};
 };

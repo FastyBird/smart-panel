@@ -81,7 +81,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
 
-import type { IPlugin } from '../../../../common';
+import type { IPluginElement } from '../../../../common';
 import { useDeviceAddForm } from '../../composables/composables';
 import { FormResult, type FormResultType } from '../../devices.constants';
 import type { IDeviceAddForm } from '../../schemas/devices.types';
@@ -92,7 +92,7 @@ defineOptions({
 	name: 'DeviceAddForm',
 });
 
-const props = withDefaults(defineProps<IDeviceAddFormProps & { type: IPlugin['type'] }>(), {
+const props = withDefaults(defineProps<IDeviceAddFormProps & { type: IPluginElement['type'] }>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,

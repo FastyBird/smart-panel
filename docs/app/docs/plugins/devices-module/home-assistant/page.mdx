@@ -25,7 +25,17 @@ These limitations are temporary. Future versions of the plugin will support auto
 
 ## Configuration
 
-To enable the plugin, you must manually define its settings inside your `config.yaml` file:
+You can configure the Home Assistant plugin in two ways:
+
+### 1. Directly in the Admin App
+
+- Navigate to Settings → Plugins → Home Assistant in the admin interface.
+- Enter your API Key and Hostname in the provided form.
+- Changes are saved automatically and applied after a backend restart.
+
+### 2. Manually via config.yaml
+
+- For advanced users or headless setups, you can edit the configuration file directly.
 
 ### Getting Your Home Assistant Access Token
 
@@ -50,11 +60,15 @@ To connect the Smart Panel with your Home Assistant instance, you’ll need to g
 
 	#### Copy and Store the Token
 
-	The token will only be shown once. Copy it immediately and paste it into your configuration file under `/opt/smart-panel/var/data/config.yaml`. Treat it like a password.
+	The token will only be shown once. Copy it immediately and paste it into plugin configuration in the admin app or into your configuration file under `/opt/smart-panel/var/data/config.yaml`. Treat it like a password.
+
+	<p align="center">
+		<img src="/images/config-plugins.png" alt="Edit plugin configuration" />
+	</p>
 
 	```yaml
 	plugins:
-		devices-home-assistant-plugin:
+		devices-home-assistant:
 			api_key: generated-long-lived-access-token
 			hostname: home-assistant.local:8123
 	```

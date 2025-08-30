@@ -11,50 +11,48 @@ import {
 	ForecastWeatherTileSchema,
 	ForecastWeatherTileUpdateReqSchema,
 } from './store/tiles.store.schemas';
+import { TILES_WEATHER_PLUGIN_DAY_TYPE, TILES_WEATHER_PLUGIN_FORECAST_TYPE, TILES_WEATHER_PLUGIN_NAME } from './tiles-weather.constants';
 
-export const tilesWeatherDayPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> = Symbol('FB-Plugin-TilesWeatherDay');
-export const tilesWeatherForecastPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> =
-	Symbol('FB-Plugin-TilesWeatherForecast');
+export const tilesWeatherPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> = Symbol('FB-Plugin-TilesWeather');
 
 export default {
 	install: (app: App): void => {
 		const pluginsManager = injectPluginsManager(app);
 
-		pluginsManager.addPlugin(tilesWeatherDayPluginKey, {
-			type: 'weather-day',
+		pluginsManager.addPlugin(tilesWeatherPluginKey, {
+			type: TILES_WEATHER_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.tiles-weather',
 			name: 'Day Weather Tile',
 			description:
-				'Displays daily weather information including temperature, conditions, and icons. Perfect for showing today’s forecast in a compact tile.',
+				'Displays current weather conditions and daily details alongside a multi-day forecast. Provides temperature, conditions, and icons in a clear, compact tile layout—perfect for checking today’s weather or planning ahead at a glance.',
 			links: {
 				documentation: 'http://www.fastybird.com',
 				devDocumentation: 'http://www.fastybird.com',
 				bugsTracking: 'http://www.fastybird.com',
 			},
-			schemas: {
-				tileSchema: DayWeatherTileSchema,
-				tileCreateReqSchema: DayWeatherTileCreateReqSchema,
-				tileUpdateReqSchema: DayWeatherTileUpdateReqSchema,
-			},
-			modules: [DASHBOARD_MODULE_NAME],
-			isCore: true,
-		});
-
-		pluginsManager.addPlugin(tilesWeatherForecastPluginKey, {
-			type: 'weather-forecast',
-			source: 'com.fastybird.smart-panel.plugin.tiles-weather',
-			name: 'Forecast Weather Tile',
-			description: 'Shows a multi-day weather forecast in a clear and informative tile layout. Ideal for planning ahead at a glance.',
-			links: {
-				documentation: 'http://www.fastybird.com',
-				devDocumentation: 'http://www.fastybird.com',
-				bugsTracking: 'http://www.fastybird.com',
-			},
-			schemas: {
-				tileSchema: ForecastWeatherTileSchema,
-				tileCreateReqSchema: ForecastWeatherTileCreateReqSchema,
-				tileUpdateReqSchema: ForecastWeatherTileUpdateReqSchema,
-			},
+			elements: [
+				{
+					type: TILES_WEATHER_PLUGIN_DAY_TYPE,
+					name: 'Day Weather Tile',
+					description:
+						'Displays daily weather information including temperature, conditions, and icons. Perfect for showing today’s forecast in a compact tile.',
+					schemas: {
+						tileSchema: DayWeatherTileSchema,
+						tileCreateReqSchema: DayWeatherTileCreateReqSchema,
+						tileUpdateReqSchema: DayWeatherTileUpdateReqSchema,
+					},
+				},
+				{
+					type: TILES_WEATHER_PLUGIN_FORECAST_TYPE,
+					name: 'Forecast Weather Tile',
+					description: 'Shows a multi-day weather forecast in a clear and informative tile layout. Ideal for planning ahead at a glance.',
+					schemas: {
+						tileSchema: ForecastWeatherTileSchema,
+						tileCreateReqSchema: ForecastWeatherTileCreateReqSchema,
+						tileUpdateReqSchema: ForecastWeatherTileUpdateReqSchema,
+					},
+				},
+			],
 			modules: [DASHBOARD_MODULE_NAME],
 			isCore: true,
 		});

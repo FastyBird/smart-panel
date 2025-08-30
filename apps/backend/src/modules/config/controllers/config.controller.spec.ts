@@ -35,6 +35,7 @@ import {
 	WeatherZipCodeConfigModel,
 } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
+import { PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
 import { ConfigController } from './config.controller';
 
@@ -85,6 +86,12 @@ describe('ConfigController', () => {
 						getConfig: jest.fn().mockReturnValue(mockConfig),
 						getConfigSection: jest.fn((key: keyof AppConfigModel) => mockConfig[key]),
 						setConfigSection: jest.fn(),
+					},
+				},
+				{
+					provide: PluginsTypeMapperService,
+					useValue: {
+						getMapping: jest.fn(),
 					},
 				},
 			],

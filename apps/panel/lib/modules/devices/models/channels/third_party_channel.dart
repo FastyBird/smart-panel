@@ -14,7 +14,7 @@ class ThirdPartyChannelModel extends ChannelModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: 'third-party',
+          type: 'devices-third-party-plugin',
         );
 
   factory ThirdPartyChannelModel.fromJson(Map<String, dynamic> json) {

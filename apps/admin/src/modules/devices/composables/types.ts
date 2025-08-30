@@ -2,7 +2,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
-import type { IPlugin } from '../../../common';
+import type { IPlugin, IPluginElement } from '../../../common';
 import {
 	DevicesModuleChannelCategory,
 	DevicesModuleChannelPropertyCategory,
@@ -42,7 +42,7 @@ export interface IChannelsPropertiesFilter {
 
 export interface IDevicesFilter {
 	search: string | undefined;
-	types: IPlugin['type'][];
+	types: IPluginElement['type'][];
 	state: 'all' | 'offline' | 'online';
 	states: ConnectionState[];
 	categories: DevicesModuleDeviceCategory[];
@@ -116,12 +116,15 @@ export interface IUseChannelEditForm<TForm extends IChannelEditForm = IChannelEd
 
 export interface IUseChannelsPlugin {
 	plugin: ComputedRef<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>;
+	element: ComputedRef<IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>;
 }
 
 export interface IUseChannelsPlugins {
 	plugins: ComputedRef<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas>[]>;
-	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	getByName: (type: IPlugin['type']) => IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined;
+	getByType: (type: IPluginElement['type']) => IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined;
+	getElement: (type: IPluginElement['type']) => IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined;
 }
 
 export interface IUseChannelProperty {
@@ -197,12 +200,15 @@ export interface IUseChannelPropertyFormSpec<TValue> {
 
 export interface IUseChannelsPropertiesPlugin {
 	plugin: ComputedRef<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>;
+	element: ComputedRef<IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined>;
 }
 
 export interface IUseChannelsPropertiesPlugins {
 	plugins: ComputedRef<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas>[]>;
-	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	getByName: (type: IPlugin['type']) => IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined;
+	getByType: (type: IPluginElement['type']) => IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined;
+	getElement: (type: IPluginElement['type']) => IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined;
 }
 
 export interface IUseDevice {
@@ -274,10 +280,13 @@ export interface IUseDeviceEditForm<TForm extends IDeviceEditForm = IDeviceEditF
 
 export interface IUseDevicesPlugin {
 	plugin: ComputedRef<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>;
+	element: ComputedRef<IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>;
 }
 
 export interface IUseDevicesPlugins {
 	plugins: ComputedRef<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas>[]>;
-	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	getByName: (type: IPlugin['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
+	getByType: (type: IPluginElement['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
+	getElement: (type: IPluginElement['type']) => IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
 }

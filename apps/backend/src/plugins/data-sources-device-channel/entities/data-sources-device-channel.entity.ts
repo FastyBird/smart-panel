@@ -5,6 +5,7 @@ import { ChildEntity, Column, ManyToOne, RelationId } from 'typeorm';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { DataSourceEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 
 @ChildEntity()
 export class DeviceChannelDataSourceEntity extends DataSourceEntity {
@@ -68,6 +69,6 @@ export class DeviceChannelDataSourceEntity extends DataSourceEntity {
 
 	@Expose()
 	get type(): string {
-		return 'device-channel';
+		return DATA_SOURCES_DEVICE_TYPE;
 	}
 }

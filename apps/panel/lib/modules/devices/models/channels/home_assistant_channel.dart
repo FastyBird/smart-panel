@@ -14,7 +14,7 @@ class HomeAssistantChannelModel extends ChannelModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: 'home-assistant',
+          type: 'devices-home-assistant-plugin',
         );
 
   factory HomeAssistantChannelModel.fromJson(Map<String, dynamic> json) {

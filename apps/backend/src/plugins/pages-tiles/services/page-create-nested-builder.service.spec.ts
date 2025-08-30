@@ -17,6 +17,7 @@ import { DataSourceTypeConstraintValidator } from '../../../modules/dashboard/va
 import { TileTypeConstraintValidator } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
 import { CreateTilesPageDto } from '../dto/create-page.dto';
 import { TilesPageEntity } from '../entities/pages-tiles.entity';
+import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 import { PagesTilesValidationException } from '../pages-tiles.exceptions';
 
 import { TilesPageNestedBuilderService } from './page-create-nested-builder.service';
@@ -96,11 +97,11 @@ describe('TilesPageNestedBuilderService', () => {
 	});
 
 	it('should support "tiles" page type', () => {
-		expect(service.supports({ type: 'tiles' } as CreateTilesPageDto)).toBe(true);
+		expect(service.supports({ type: PAGES_TILES_TYPE } as CreateTilesPageDto)).toBe(true);
 	});
 
 	it('should not support other page types', () => {
-		expect(service.supports({ type: 'cards' } as CreatePageDto)).toBe(false);
+		expect(service.supports({ type: 'unknown' } as CreatePageDto)).toBe(false);
 	});
 
 	it('should build tiles with data sources', async () => {
@@ -108,7 +109,7 @@ describe('TilesPageNestedBuilderService', () => {
 		page.id = uuid();
 
 		const dto = {
-			type: 'tiles',
+			type: PAGES_TILES_TYPE,
 			title: 'Test Page',
 			order: 1,
 			tiles: [
