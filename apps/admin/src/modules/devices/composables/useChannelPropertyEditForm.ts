@@ -34,7 +34,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 }: IUseChannelPropertyEditFormProps): IUseChannelPropertyEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useChannelsPropertiesPlugin({ type: property.type });
+	const { element } = useChannelsPropertiesPlugin({ type: property.type });
 
 	const propertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
@@ -193,7 +193,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 			delete model.value;
 		}
 
-		const parsedModel = (plugin.value?.schemas?.channelPropertyEditFormSchema || ChannelPropertyEditFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.channelPropertyEditFormSchema || ChannelPropertyEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

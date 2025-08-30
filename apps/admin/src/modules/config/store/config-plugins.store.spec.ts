@@ -43,10 +43,15 @@ const mockGetPlugins = vi.fn().mockReturnValue([
 	{
 		type: 'custom-plugin',
 		modules: [CONFIG_MODULE_NAME],
-		schemas: {
-			pluginConfigSchema: CustomPluginConfigSchema,
-			pluginConfigUpdateReqSchema: CustomPluginConfigUpdateReqSchema,
-		},
+		elements: [
+			{
+				type: 'test-plugin',
+				schemas: {
+					pluginConfigSchema: CustomPluginConfigSchema,
+					pluginConfigUpdateReqSchema: CustomPluginConfigUpdateReqSchema,
+				},
+			},
+		],
 	} as unknown as IPlugin<IPluginsComponents, IPluginsSchemas>,
 ]);
 

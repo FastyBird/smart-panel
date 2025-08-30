@@ -1,11 +1,11 @@
 import 'package:fastybird_smart_panel/core/utils/enum.dart';
 
 enum TileType {
-  clock('clock'),
-  weatherDay('weather-day'),
-  weatherForecast('weather-forecast'),
+  clock('tiles-time'),
+  weatherDay('tiles-weather-day'),
+  weatherForecast('tiles-weather-forecast'),
   scene('scene'),
-  devicePreview('device-preview');
+  devicePreview('tiles-device-preview');
 
   final String value;
 
@@ -22,7 +22,7 @@ enum TileType {
 }
 
 enum DataSourceType {
-  deviceChannel('device-channel');
+  deviceChannel('data-sources-device-channel');
 
   final String value;
 
@@ -39,9 +39,9 @@ enum DataSourceType {
 }
 
 enum PageType {
-  tiles('tiles'),
-  cards('cards'),
-  deviceDetail('device-detail');
+  tiles('pages-tiles'),
+  cards('pages-cards'),
+  deviceDetail('pages-device-detail');
 
   final String value;
 

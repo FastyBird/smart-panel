@@ -54,9 +54,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			channelSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					channelSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},
@@ -75,7 +80,7 @@ describe('useChannelAddForm', () => {
 	const deviceId = uuid().toString();
 
 	beforeEach(() => {
-		form = useChannelAddForm({ id: channelId.toString(), type: 'test-plugin', deviceId: deviceId.toString() });
+		form = useChannelAddForm({ id: channelId.toString(), type: 'test-type', deviceId: deviceId.toString() });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -84,7 +89,7 @@ describe('useChannelAddForm', () => {
 
 	it('initializes the form with provided id and deviceId', () => {
 		expect(form.model.id).toBe(channelId.toString());
-		expect(form.model.type).toBe('test-plugin');
+		expect(form.model.type).toBe('test-type');
 		expect(form.model.device).toBe(deviceId.toString());
 		expect(form.formResult.value).toBe(FormResult.NONE);
 		expect(form.formChanged.value).toBe(false);
@@ -110,7 +115,7 @@ describe('useChannelAddForm', () => {
 			deviceId: deviceId.toString(),
 			draft: false,
 			data: {
-				type: 'test-plugin',
+				type: 'test-type',
 				id: channelId.toString(),
 				device: deviceId.toString(),
 				category: DevicesModuleChannelCategory.generic,

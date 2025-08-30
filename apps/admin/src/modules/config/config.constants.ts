@@ -2,6 +2,8 @@ export const CONFIG_MODULE_PREFIX = 'config-module';
 
 export const CONFIG_MODULE_NAME = 'config-module';
 
+export const CONFIG_MODULE_PLUGIN_TYPE = 'config';
+
 export const CONFIG_MODULE_EVENT_PREFIX = 'ConfigModule.';
 
 export enum EventType {
@@ -14,6 +16,7 @@ export const RouteNames = {
 	CONFIG_DISPLAY: 'config_module-config_display',
 	CONFIG_LANGUAGE: 'config_module-config_language',
 	CONFIG_WEATHER: 'config_module-config_weather',
+	CONFIG_PLUGINS: 'config_module-config_plugins',
 };
 
 export enum FormResult {

@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { cloneDeep, isEqual } from 'lodash';
 
-import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPluginElement, injectStoresManager, useFlashMessage } from '../../../common';
+import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
 import { TileAddFormSchema } from '../schemas/tiles.schemas';
@@ -17,7 +18,7 @@ import { useTilesPlugin } from './useTilesPlugin';
 
 interface IUseTileAddFormProps {
 	id: ITile['id'];
-	type: IPlugin['type'];
+	type: IPluginElement['type'];
 	parent: string;
 	parentId: string;
 	onlyDraft?: boolean;
@@ -32,7 +33,7 @@ export const useTileAddForm = <TForm extends ITileAddForm = ITileAddForm>({
 }: IUseTileAddFormProps): IUseTileAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useTilesPlugin({ type });
+	const { element } = useTilesPlugin({ type });
 
 	const tilesStore = storesManager.getStore(tilesStoreKey);
 
@@ -45,6 +46,7 @@ export const useTileAddForm = <TForm extends ITileAddForm = ITileAddForm>({
 	let timer: number;
 
 	const model = reactive<TForm>({
+		...getSchemaDefaults(element.value?.schemas?.tileAddFormSchema || TileAddFormSchema),
 		id,
 		type,
 		row: 1,
@@ -67,7 +69,7 @@ export const useTileAddForm = <TForm extends ITileAddForm = ITileAddForm>({
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.tileAddFormSchema || TileAddFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.tileAddFormSchema || TileAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/properties/home_ass
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/third_party_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/angle.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/brightness.dart';
@@ -69,10 +70,10 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 Map<String, ChannelPropertyModel Function(Map<String, dynamic>)>
     deviceModelMappers = {
-  'third-party': (data) {
+  DeviceType.devicesThirdParty.value: (data) {
     return ThirdPartyChannelPropertyModel.fromJson(data);
   },
-  'home-assistant': (data) {
+  DeviceType.devicesHomeAssistant.value: (data) {
     return HomeAssistantChannelPropertyModel.fromJson(data);
   },
 };

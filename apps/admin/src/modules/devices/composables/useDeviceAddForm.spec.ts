@@ -43,9 +43,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			deviceSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					deviceSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},
@@ -63,7 +68,7 @@ describe('useDeviceAddForm', () => {
 	const deviceId = uuid().toString();
 
 	beforeEach(() => {
-		form = useDeviceAddForm({ id: deviceId.toString(), type: 'test-plugin' });
+		form = useDeviceAddForm({ id: deviceId.toString(), type: 'test-type' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -72,7 +77,7 @@ describe('useDeviceAddForm', () => {
 
 	it('should initialize with default values', () => {
 		expect(form.model.id).toBe(deviceId.toString());
-		expect(form.model.type).toBe('test-plugin');
+		expect(form.model.type).toBe('test-type');
 		expect(form.model.name).toBe('');
 		expect(form.model.category).toBe(DevicesModuleDeviceCategory.generic);
 	});
@@ -97,7 +102,7 @@ describe('useDeviceAddForm', () => {
 			id: deviceId.toString(),
 			draft: false,
 			data: {
-				type: 'test-plugin',
+				type: 'test-type',
 				id: deviceId.toString(),
 				category: DevicesModuleDeviceCategory.generic,
 				name: 'New Device',

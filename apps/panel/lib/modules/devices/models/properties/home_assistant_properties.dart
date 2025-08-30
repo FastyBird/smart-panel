@@ -30,7 +30,7 @@ class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
   })  : _haEntityId = haEntityId,
         _haAttribute = haAttribute,
         super(
-          type: 'home-assistant',
+          type: 'devices-home-assistant-plugin',
         );
 
   String? get haEntityId => _haEntityId;

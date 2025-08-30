@@ -2,7 +2,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
-import type { IPlugin } from '../../../common';
+import type { IPlugin, IPluginElement } from '../../../common';
 import type { FormResultType } from '../dashboard.constants';
 import type {
 	IDataSourcePluginsComponents,
@@ -22,18 +22,18 @@ import type { ITile } from '../store/tiles.store.types';
 
 export interface IPagesFilter {
 	search: string | undefined;
-	types: string[];
+	types: IPluginElement['type'][];
 	displays: string[];
 }
 
 export interface ITilesFilter {
 	search: string | undefined;
-	types: string[];
+	types: IPluginElement['type'][];
 }
 
 export interface IDataSourcesFilter {
 	search: string | undefined;
-	types: string[];
+	types: IPluginElement['type'][];
 }
 
 export interface IUsePage {
@@ -93,12 +93,15 @@ export interface IUsePageEditForm<TForm extends IPageEditForm = IPageEditForm> {
 
 export interface IUsePagesPlugin {
 	plugin: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>;
+	element: ComputedRef<IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined>;
 }
 
 export interface IUsePagesPlugins {
 	plugins: ComputedRef<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes>[]>;
-	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	getByName: (type: IPlugin['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined;
+	getByType: (type: IPluginElement['type']) => IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined;
+	getElement: (type: IPluginElement['type']) => IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined;
 }
 
 export interface IUseTile {
@@ -154,12 +157,15 @@ export interface IUseTileEditForm<TForm extends ITileEditForm = ITileEditForm> {
 
 export interface IUseTilesPlugin {
 	plugin: ComputedRef<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined>;
+	element: ComputedRef<IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined>;
 }
 
 export interface IUseTilesPlugins {
 	plugins: ComputedRef<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>[]>;
-	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	getByName: (type: IPlugin['type']) => IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
+	getByType: (type: IPluginElement['type']) => IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
+	getElement: (type: IPluginElement['type']) => IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined;
 }
 
 export interface IUseDataSource {
@@ -215,10 +221,13 @@ export interface IUseDataSourceEditForm<TForm extends IDataSourceEditForm = IDat
 
 export interface IUseDataSourcesPlugin {
 	plugin: ComputedRef<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>;
+	element: ComputedRef<IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>;
 }
 
 export interface IUseDataSourcesPlugins {
 	plugins: ComputedRef<IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas>[]>;
-	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	getByName: (type: IPlugin['type']) => IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
+	getByType: (type: IPluginElement['type']) => IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
+	getElement: (type: IPluginElement['type']) => IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined;
 }

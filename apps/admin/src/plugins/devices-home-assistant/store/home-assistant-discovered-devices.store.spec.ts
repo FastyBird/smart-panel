@@ -4,7 +4,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { IPlugin } from '../../../common';
 import { DEVICES_MODULE_NAME } from '../../../modules/devices';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException } from '../devices-home-assistant.exceptions';
 
 import { useHomeAssistantDiscoveredDevices } from './home-assistant-discovered-devices.store';
@@ -34,7 +34,7 @@ const mockBackendClient = {
 
 const mockGetPlugins = vi.fn().mockReturnValue([
 	{
-		type: DEVICES_HOME_ASSISTANT_PLUGIN_TYPE,
+		type: DEVICES_HOME_ASSISTANT_TYPE,
 		modules: [DEVICES_MODULE_NAME],
 	} as IPlugin,
 ]);

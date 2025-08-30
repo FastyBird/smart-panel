@@ -9,6 +9,7 @@ import { PagesTypeMapperService } from '../../modules/dashboard/services/pages-t
 import { CreateTilesPageDto } from './dto/create-page.dto';
 import { UpdateTilesPageDto } from './dto/update-page.dto';
 import { TilesPageEntity } from './entities/pages-tiles.entity';
+import { PAGES_TILES_TYPE } from './pages-tiles.constants';
 import { TilesPageNestedBuilderService } from './services/page-create-nested-builder.service';
 import { PageRelationsLoaderService } from './services/page-relations-loader.service';
 
@@ -27,7 +28,7 @@ export class PagesTilesPlugin {
 
 	onModuleInit() {
 		this.mapper.registerMapping<TilesPageEntity, CreateTilesPageDto, UpdateTilesPageDto>({
-			type: 'tiles',
+			type: PAGES_TILES_TYPE,
 			class: TilesPageEntity,
 			createDto: CreateTilesPageDto,
 			updateDto: UpdateTilesPageDto,

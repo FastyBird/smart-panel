@@ -11,7 +11,7 @@ import { CardsController } from './controllers/cards.controller';
 import { CreateCardsPageDto } from './dto/create-page.dto';
 import { UpdateCardsPageDto } from './dto/update-page.dto';
 import { CardEntity, CardsPageEntity } from './entities/pages-cards.entity';
-import { PAGES_CARDS_PLUGIN_NAME, PAGES_CARDS_TYPE } from './pages-cards.constants';
+import { PAGES_CARDS_TYPE } from './pages-cards.constants';
 import { CardsService } from './services/cards.service';
 import { CardsPageNestedBuilderService } from './services/page-create-nested-builder.service';
 import { PluginResetService } from './services/plugin-reset.service';
@@ -42,7 +42,7 @@ export class PagesCardsPlugin {
 		this.pageCreateBuilderRegistryService.register(this.cardsPageNestedBuilderService);
 
 		this.factoryResetRegistry.register(
-			PAGES_CARDS_PLUGIN_NAME,
+			PAGES_CARDS_TYPE,
 			async (): Promise<{ success: boolean; reason?: string }> => {
 				return this.pluginReset.reset();
 			},

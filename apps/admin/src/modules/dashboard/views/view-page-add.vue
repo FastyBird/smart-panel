@@ -50,8 +50,8 @@
 
 			<template v-if="selectedType">
 				<component
-					:is="plugin?.components?.pageAddForm"
-					v-if="typeof plugin?.components?.pageAddForm !== 'undefined'"
+					:is="element?.components?.pageAddForm"
+					v-if="typeof element?.components?.pageAddForm !== 'undefined'"
 					:id="newPageId"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
@@ -142,7 +142,16 @@ import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import { PageAddForm } from '../components/components';
 import SelectPagePlugin from '../components/pages/select-page-plugin.vue';
 import { usePagesPlugins } from '../composables/usePagesPlugins';
@@ -188,9 +197,13 @@ const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPa
 	return plugins.value.find((plugin) => plugin.type === selectedType.value);
 });
 
+const element = computed<IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === selectedType.value);
+});
+
 const formSchema = computed<typeof PageAddFormSchema>((): typeof PageAddFormSchema => {
-	if (plugin.value && plugin.value.schemas?.pageAddFormSchema) {
-		return plugin.value.schemas?.pageAddFormSchema;
+	if (element.value && element.value.schemas?.pageAddFormSchema) {
+		return element.value.schemas?.pageAddFormSchema;
 	}
 
 	return PageAddFormSchema;

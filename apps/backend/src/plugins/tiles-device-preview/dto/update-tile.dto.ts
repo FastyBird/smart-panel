@@ -4,11 +4,12 @@ import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf } from 'class-vali
 import { UpdateTileDto } from '../../../modules/dashboard/dto/update-tile.dto';
 import { ValidateDeviceExists } from '../../../modules/devices/validators/device-exists-constraint.validator';
 import type { components } from '../../../openapi';
+import { TILES_DEVICE_PREVIEW_TYPE } from '../tiles-device-preview.constants';
 
 type UpdateDevicePreviewTile = components['schemas']['TilesDevicePreviewPluginUpdateDevicePreviewTile'];
 
 export class UpdateDevicePreviewTileDto extends UpdateTileDto implements UpdateDevicePreviewTile {
-	readonly type: 'device-preview';
+	readonly type: typeof TILES_DEVICE_PREVIEW_TYPE;
 
 	@Expose()
 	@IsOptional()

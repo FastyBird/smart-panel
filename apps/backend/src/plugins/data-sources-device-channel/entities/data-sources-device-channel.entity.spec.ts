@@ -16,6 +16,7 @@ import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
+import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 
 import { DeviceChannelDataSourceEntity } from './data-sources-device-channel.entity';
 
@@ -45,7 +46,7 @@ describe('Plugin entity and OpenAPI Model Synchronization', () => {
 	test('DeviceChannelDataSourceEntity matches DashboardDeviceChannelDataSource', () => {
 		const openApiModel: DeviceChannelDataSource & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
-			type: 'device-channel',
+			type: DATA_SOURCES_DEVICE_TYPE,
 			parent: {
 				type: 'tile',
 				id: uuid().toString(),

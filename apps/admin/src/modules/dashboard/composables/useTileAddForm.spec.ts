@@ -47,9 +47,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			tileAddFormSchema: TestTileAddFormSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					tileAddFormSchema: TestTileAddFormSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
 	},
@@ -57,7 +62,7 @@ const mockPluginList = [
 
 vi.mock('./useTilesPlugins', () => ({
 	useTilesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
@@ -67,7 +72,7 @@ describe('useTileAddForm', () => {
 	const tileId = uuid().toString();
 
 	beforeEach(() => {
-		form = useTileAddForm<ITestTileAddForm>({ id: tileId, type: 'test-plugin', parent: 'page', parentId: 'page-id' });
+		form = useTileAddForm<ITestTileAddForm>({ id: tileId, type: 'test-type', parent: 'page', parentId: 'page-id' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -76,7 +81,7 @@ describe('useTileAddForm', () => {
 
 	it('should initialize with default values', () => {
 		expect(form.model.id).toBe(tileId);
-		expect(form.model.type).toBe('test-plugin');
+		expect(form.model.type).toBe('test-type');
 	});
 
 	it('should mark form as changed when model updates', async () => {
@@ -102,7 +107,7 @@ describe('useTileAddForm', () => {
 			},
 			data: {
 				id: tileId,
-				type: 'test-plugin',
+				type: 'test-type',
 				row: 1,
 				col: 1,
 				rowSpan: 1,

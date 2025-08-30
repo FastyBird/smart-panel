@@ -1,8 +1,8 @@
-export const PAGES_CARDS_PLUGIN_PREFIX = 'pages-cards-plugin';
+export const PAGES_CARDS_PLUGIN_PREFIX = 'pages-cards';
 
-export const PAGES_CARDS_PLUGIN_NAME = 'pages-cards-plugin';
+export const PAGES_CARDS_PLUGIN_NAME = 'pages-cards';
 
-export const PAGES_CARDS_TYPE = 'cards';
+export const PAGES_CARDS_TYPE = 'pages-cards';
 
 export enum EventType {
 	CARD_CREATED = 'PagesCardsPlugin.Card.Created',

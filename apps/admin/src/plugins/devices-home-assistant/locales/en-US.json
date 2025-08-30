@@ -108,6 +108,22 @@
           "required": "Please select Home Assistant entity attribute"
         }
       }
+    },
+    "config": {
+      "apiKey": {
+        "title": "API key",
+        "placeholder": "Enter your Home Assistant long-lived access token",
+        "validation": {
+          "required": "Please fill in API key"
+        }
+      },
+      "hostname": {
+        "title": "Hostname",
+        "placeholder": "Enter the Home Assistant hostname (e.g., homeassistant.local:8123)",
+        "validation": {
+          "required": "Please fill in hostname"
+        }
+      }
     }
   },
   "misc": {

@@ -52,8 +52,8 @@
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
-				:is="plugin?.components?.tileEditForm"
-				v-if="typeof plugin?.components?.tileEditForm !== 'undefined'"
+				:is="element?.components?.tileEditForm"
+				v-if="typeof element?.components?.tileEditForm !== 'undefined'"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
@@ -139,7 +139,16 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import {
 	DashboardApiException,
 	DashboardException,
@@ -196,12 +205,12 @@ const plugin = computed<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | u
 	return plugins.value.find((plugin) => plugin.type === tile.value?.type);
 });
 
-const formSchema = computed<typeof TileEditFormSchema>((): typeof TileEditFormSchema => {
-	if (plugin.value && plugin.value.schemas?.tileEditFormSchema) {
-		return plugin.value.schemas?.tileEditFormSchema;
-	}
+const element = computed<IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === tile.value?.type);
+});
 
-	return TileEditFormSchema;
+const formSchema = computed<typeof TileEditFormSchema>((): typeof TileEditFormSchema => {
+	return element.value?.schemas?.tileEditFormSchema ?? TileEditFormSchema;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

@@ -7,7 +7,7 @@ import { type IPlugin, type PluginInjectionKey, injectPluginsManager, injectSock
 import { DASHBOARD_MODULE_NAME, type IPagePluginsComponents, type IPagePluginsSchemas } from '../../modules/dashboard';
 
 import enUS from './locales/en-US.json';
-import { EventType, PAGES_CARDS_PLUGIN_EVENT_PREFIX } from './pages-cards.contants';
+import { EventType, PAGES_CARDS_PLUGIN_EVENT_PREFIX, PAGES_CARDS_PLUGIN_NAME, PAGES_CARDS_TYPE } from './pages-cards.contants';
 import { registerCardsStore } from './store/cards.store';
 import { cardsStoreKey } from './store/keys';
 import { CardsPageCreateReqSchema, CardsPageSchema, CardsPageUpdateReqSchema } from './store/pages.store.schemas';
@@ -33,7 +33,7 @@ export default {
 		storesManager.addStore(cardsStoreKey, cardsStore);
 
 		pluginsManager.addPlugin(pagesCardsPluginKey, {
-			type: 'cards',
+			type: PAGES_CARDS_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.pages-cards',
 			name: 'Cards Page',
 			description: 'Organize tiles into separate cards for better structure. Useful for grouping related controls and data on a single page.',
@@ -42,11 +42,16 @@ export default {
 				devDocumentation: 'http://www.fastybird.com',
 				bugsTracking: 'http://www.fastybird.com',
 			},
-			schemas: {
-				pageSchema: CardsPageSchema,
-				pageCreateReqSchema: CardsPageCreateReqSchema,
-				pageUpdateReqSchema: CardsPageUpdateReqSchema,
-			},
+			elements: [
+				{
+					type: PAGES_CARDS_TYPE,
+					schemas: {
+						pageSchema: CardsPageSchema,
+						pageCreateReqSchema: CardsPageCreateReqSchema,
+						pageUpdateReqSchema: CardsPageUpdateReqSchema,
+					},
+				},
+			],
 			modules: [DASHBOARD_MODULE_NAME],
 			isCore: true,
 		});

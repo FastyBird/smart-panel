@@ -27,7 +27,7 @@ import { ElIcon, ElLink, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import type { IPlugin } from '../../../../common';
+import type { IPluginElement } from '../../../../common';
 import { useDevicesPlugin } from '../../composables/composables';
 
 import type { IDevicesTableColumnPluginProps } from './devices-table-column-plugin.types';
@@ -39,7 +39,7 @@ defineOptions({
 const props = defineProps<IDevicesTableColumnPluginProps>();
 
 const emit = defineEmits<{
-	(e: 'filter-by', value: IPlugin['type'], add: boolean): void;
+	(e: 'filter-by', value: IPluginElement['type'], add: boolean): void;
 }>();
 
 const { plugin } = useDevicesPlugin({ type: props.device.type });

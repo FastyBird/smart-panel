@@ -18,9 +18,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			channelPropertySchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					channelPropertySchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},
@@ -28,18 +33,28 @@ const mockPluginList = [
 
 vi.mock('./useChannelsPropertiesPlugins', () => ({
 	useChannelsPropertiesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
 describe('useChannelsPropertiesPlugin', () => {
 	it('returns plugin by type', () => {
-		const { plugin } = useChannelsPropertiesPlugin({ type: 'test-plugin' });
+		const { plugin } = useChannelsPropertiesPlugin({ type: 'test-type' });
 		expect(plugin.value?.name).toBe('Test Plugin');
 	});
 
-	it('returns undefined for unknown type', () => {
-		const { plugin } = useChannelsPropertiesPlugin({ type: 'unknown-plugin' });
+	it('returns undefined plugin for unknown type', () => {
+		const { plugin } = useChannelsPropertiesPlugin({ type: 'unknown-type' });
 		expect(plugin.value).toBeUndefined();
+	});
+
+	it('returns element by type', () => {
+		const { element } = useChannelsPropertiesPlugin({ type: 'test-type' });
+		expect(element.value?.type).toBe('test-type');
+	});
+
+	it('returns undefined element for unknown type', () => {
+		const { element } = useChannelsPropertiesPlugin({ type: 'unknown-type' });
+		expect(element.value).toBeUndefined();
 	});
 });

@@ -17,7 +17,7 @@ import {
 
 import { TilesPageAddForm, TilesPageEditForm } from './components/components';
 import enUS from './locales/en-US.json';
-import { RouteNames } from './pages-tiles.constants';
+import { PAGES_TILES_PLUGIN_NAME, PAGES_TILES_TYPE, RouteNames } from './pages-tiles.constants';
 import { PluginRoutes } from './router';
 import { TilesPageAddFormSchema, TilesPageEditFormSchema } from './schemas/pages.schemas';
 import { TilesPageCreateReqSchema, TilesPageSchema, TilesPageUpdateReqSchema } from './store/pages.store.schemas';
@@ -45,7 +45,7 @@ export default {
 		}
 
 		pluginsManager.addPlugin(pagesTilesPluginKey, {
-			type: 'tiles',
+			type: PAGES_TILES_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.pages-tiles',
 			name: 'Tiles Page',
 			description: 'A flexible page layout displaying multiple tiles in a grid. Ideal for visualizing device data and controls in a compact format.',
@@ -54,17 +54,22 @@ export default {
 				devDocumentation: 'http://www.fastybird.com',
 				bugsTracking: 'http://www.fastybird.com',
 			},
-			components: {
-				pageAddForm: TilesPageAddForm,
-				pageEditForm: TilesPageEditForm,
-			},
-			schemas: {
-				pageSchema: TilesPageSchema,
-				pageAddFormSchema: TilesPageAddFormSchema,
-				pageEditFormSchema: TilesPageEditFormSchema,
-				pageCreateReqSchema: TilesPageCreateReqSchema,
-				pageUpdateReqSchema: TilesPageUpdateReqSchema,
-			},
+			elements: [
+				{
+					type: PAGES_TILES_TYPE,
+					components: {
+						pageAddForm: TilesPageAddForm,
+						pageEditForm: TilesPageEditForm,
+					},
+					schemas: {
+						pageSchema: TilesPageSchema,
+						pageAddFormSchema: TilesPageAddFormSchema,
+						pageEditFormSchema: TilesPageEditFormSchema,
+						pageCreateReqSchema: TilesPageCreateReqSchema,
+						pageUpdateReqSchema: TilesPageUpdateReqSchema,
+					},
+				},
+			],
 			routes: {
 				configure: (id: IPage['id']): string | RouteLocationResolvedGeneric => {
 					return options.router.resolve({

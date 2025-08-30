@@ -19,8 +19,8 @@
 	</el-form-item>
 
 	<el-alert
-		v-if="plugin"
-		:description="plugin.description"
+		v-if="element"
+		:description="element.description ?? plugin?.description"
 		:closable="false"
 		show-icon
 		type="info"
@@ -33,7 +33,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElFormItem, ElOption, ElSelect } from 'element-plus';
 
-import type { IPlugin } from '../../../../common';
+import type { IPlugin, IPluginElement } from '../../../../common';
 import { usePagesPlugins } from '../../composables/usePagesPlugins';
 import type { IPagePluginRoutes, IPagePluginsComponents, IPagePluginsSchemas } from '../../dashboard.types';
 
@@ -57,6 +57,10 @@ const selectedType = ref<IPlugin['type'] | undefined>(props.modelValue);
 
 const plugin = computed<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes> | undefined>(() => {
 	return plugins.value.find((plugin) => plugin.type === selectedType.value);
+});
+
+const element = computed<IPluginElement<IPagePluginsComponents, IPagePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === selectedType.value);
 });
 
 watch(

@@ -28,7 +28,7 @@ export const useDataSourceEditForm = <TForm extends IDataSourceEditForm = IDataS
 }: IUseDataSourceEditFormProps): IUseDataSourceEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useDataSourcesPlugin({ type: dataSource.type });
+	const { element } = useDataSourcesPlugin({ type: dataSource.type });
 
 	const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
@@ -66,7 +66,7 @@ export const useDataSourceEditForm = <TForm extends IDataSourceEditForm = IDataS
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.dataSourceEditFormSchema || DataSourceEditFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.dataSourceEditFormSchema || DataSourceEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

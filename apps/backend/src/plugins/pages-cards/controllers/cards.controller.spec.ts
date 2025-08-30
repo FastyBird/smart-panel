@@ -14,6 +14,7 @@ import { PagesService } from '../../../modules/dashboard/services/pages.service'
 import { CreateSingleCardDto } from '../dto/create-card.dto';
 import { UpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
+import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 import { CardsService } from '../services/cards.service';
 
 import { CardsController } from './cards.controller';
@@ -25,7 +26,7 @@ describe('CardsController', () => {
 
 	const mockCardsPage: CardsPageEntity = {
 		id: uuid().toString(),
-		type: 'cards',
+		type: PAGES_CARDS_TYPE,
 		title: 'Cards detail',
 		order: 0,
 		showTopBar: false,

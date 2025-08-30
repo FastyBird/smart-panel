@@ -26,7 +26,7 @@ type ITestTileEditForm = z.infer<typeof TestTileEditFormSchema>;
 
 const mockTile: ITestTileSchema = {
 	id: uuid().toString(),
-	type: 'test-plugin',
+	type: 'test-type',
 	row: 1,
 	col: 1,
 	rowSpan: 1,
@@ -74,10 +74,15 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			tileSchema: TestTileSchema,
-			tileEditFormSchema: TestTileEditFormSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					tileSchema: TestTileSchema,
+					tileEditFormSchema: TestTileEditFormSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
 	},
@@ -85,7 +90,7 @@ const mockPluginList = [
 
 vi.mock('./useTilesPlugins', () => ({
 	useTilesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
@@ -138,7 +143,7 @@ describe('useTileEditForm', () => {
 			id: mockTile.id,
 			data: {
 				id: mockTile.id,
-				type: 'test-plugin',
+				type: 'test-type',
 				row: 1,
 				col: 1,
 				rowSpan: 1,

@@ -79,6 +79,21 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					menu: true,
 				},
 			},
+			{
+				path: 'plugins',
+				name: RouteNames.CONFIG_PLUGINS,
+				component: () => import('../views/view-config-plugins.vue'),
+				props: true,
+				meta: {
+					guards: {
+						authenticated: true,
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+					},
+					title: 'Plugins',
+					icon: 'mdi:toy-brick',
+					menu: true,
+				},
+			},
 		],
 	},
 ];

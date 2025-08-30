@@ -53,7 +53,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 	(): DataSourcesStoreSetup => {
 		const backend = useBackend();
 
-		const { getByType: getPluginByType } = useDataSourcesPlugins();
+		const { getElement: getPluginElement } = useDataSourcesPlugins();
 
 		const semaphore = ref<IDataSourcesStateSemaphore>(defaultSemaphore);
 
@@ -91,17 +91,17 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 		const pendingFetchPromises: Record<string, Promise<IDataSource[]>> = {};
 
 		const onEvent = (payload: IDataSourcesOnEventActionPayload): IDataSource => {
-			const plugin = getPluginByType(payload.type);
+			const element = getPluginElement(payload.type);
 
 			return set({
 				id: payload.id,
 				parent: payload.parent,
-				data: transformDataSourceResponse(payload.data as unknown as IDataSourceRes, plugin?.schemas?.dataSourceSchema || DataSourceSchema),
+				data: transformDataSourceResponse(payload.data as unknown as IDataSourceRes, element?.schemas?.dataSourceSchema || DataSourceSchema),
 			});
 		};
 
 		const set = (payload: IDataSourcesSetActionPayload): IDataSource => {
-			const plugin = getPluginByType(payload.data.type);
+			const element = getPluginElement(payload.data.type);
 
 			const toInsert = {
 				id: payload.id,
@@ -110,7 +110,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			};
 
 			if (payload.id && data.value && payload.id in data.value) {
-				const parsed = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({ ...data.value[payload.id], ...toInsert });
+				const parsed = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({ ...data.value[payload.id], ...toInsert });
 
 				if (!parsed.success) {
 					console.error('Schema validation failed with:', parsed.error);
@@ -121,7 +121,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				return (data.value[parsed.data.id] = parsed.data);
 			}
 
-			const parsed = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(toInsert);
+			const parsed = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(toInsert);
 
 			if (!parsed.success) {
 				console.error('Schema validation failed with:', parsed.error);
@@ -183,9 +183,9 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
 				if (typeof responseData !== 'undefined') {
-					const plugin = getPluginByType(responseData.data.type);
+					const element = getPluginElement(responseData.data.type);
 
-					const transformed = transformDataSourceResponse(responseData.data, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
+					const transformed = transformDataSourceResponse(responseData.data, element?.schemas?.dataSourceSchema || DataSourceSchema);
 
 					data.value[transformed.id] = transformed;
 
@@ -242,9 +242,9 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 
 					const dataSources = Object.fromEntries(
 						responseData.data.map((dataSource) => {
-							const plugin = getPluginByType(dataSource.type);
+							const element = getPluginElement(dataSource.type);
 
-							const transformed = transformDataSourceResponse(dataSource, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
+							const transformed = transformDataSourceResponse(dataSource, element?.schemas?.dataSourceSchema || DataSourceSchema);
 
 							return [transformed.id, transformed];
 						})
@@ -282,9 +282,9 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				throw new DashboardValidationException('Failed to add data source.');
 			}
 
-			const plugin = getPluginByType(payload.data.type);
+			const element = getPluginElement(payload.data.type);
 
-			const parsedNewItem = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({
+			const parsedNewItem = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({
 				...payload.data,
 				id: payload.id,
 				type: payload.data.type,
@@ -316,7 +316,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					body: {
 						data: transformDataSourceCreateRequest<IDataSourceCreateReq>(
 							parsedNewItem.data,
-							plugin?.schemas?.dataSourceCreateReqSchema || DataSourceCreateReqSchema
+							element?.schemas?.dataSourceCreateReqSchema || DataSourceCreateReqSchema
 						),
 					},
 				});
@@ -324,7 +324,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
 				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const transformed = transformDataSourceResponse(responseData.data, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
+					const transformed = transformDataSourceResponse(responseData.data, element?.schemas?.dataSourceSchema || DataSourceSchema);
 
 					data.value[transformed.id] = transformed;
 
@@ -361,9 +361,9 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				throw new DashboardValidationException('Failed to edit data source.');
 			}
 
-			const plugin = getPluginByType(payload.data.type);
+			const element = getPluginElement(payload.data.type);
 
-			const parsedEditedItem = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({
+			const parsedEditedItem = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({
 				...data.value[payload.id],
 				...omitBy(payload.data, isUndefined),
 			});
@@ -394,7 +394,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 					body: {
 						data: transformDataSourceUpdateRequest<IDataSourceUpdateReq>(
 							parsedEditedItem.data,
-							plugin?.schemas?.dataSourceUpdateReqSchema || DataSourceUpdateReqSchema
+							element?.schemas?.dataSourceUpdateReqSchema || DataSourceUpdateReqSchema
 						),
 					},
 				});
@@ -402,7 +402,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 				if (typeof responseData !== 'undefined') {
-					const transformed = transformDataSourceResponse(responseData.data, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
+					const transformed = transformDataSourceResponse(responseData.data, element?.schemas?.dataSourceSchema || DataSourceSchema);
 
 					data.value[transformed.id] = transformed;
 
@@ -431,9 +431,9 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				throw new DashboardException('Failed to get data source data to save.');
 			}
 
-			const plugin = getPluginByType(data.value[payload.id].type);
+			const element = getPluginElement(data.value[payload.id].type);
 
-			const parsedSaveItem = (plugin?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(data.value[payload.id]);
+			const parsedSaveItem = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(data.value[payload.id]);
 
 			if (!parsedSaveItem.success) {
 				console.error('Schema validation failed with:', parsedSaveItem.error);
@@ -451,7 +451,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				body: {
 					data: transformDataSourceCreateRequest<IDataSourceCreateReq>(
 						parsedSaveItem.data,
-						plugin?.schemas?.dataSourceCreateReqSchema || DataSourceCreateReqSchema
+						element?.schemas?.dataSourceCreateReqSchema || DataSourceCreateReqSchema
 					),
 				},
 			});
@@ -459,7 +459,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const transformed = transformDataSourceResponse(responseData.data, plugin?.schemas?.dataSourceSchema || DataSourceSchema);
+				const transformed = transformDataSourceResponse(responseData.data, element?.schemas?.dataSourceSchema || DataSourceSchema);
 
 				data.value[transformed.id] = transformed;
 

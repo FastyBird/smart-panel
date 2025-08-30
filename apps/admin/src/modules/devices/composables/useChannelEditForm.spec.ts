@@ -17,7 +17,7 @@ const deviceId = uuid().toString();
 
 const mockChannel: IChannel = {
 	id: channelId.toString(),
-	type: 'test-plugin',
+	type: 'test-type',
 	device: deviceId.toString(),
 	name: 'Channel Name',
 	description: 'Some desc',
@@ -74,9 +74,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			channelSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					channelSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},

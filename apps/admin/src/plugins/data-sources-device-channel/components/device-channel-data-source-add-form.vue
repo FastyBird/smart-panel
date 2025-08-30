@@ -101,6 +101,7 @@ import { orderBy } from 'natural-orderby';
 import { IconPicker } from '../../../common';
 import { DashboardException, FormResult, type FormResultType, type IDataSourceAddFormProps, useDataSourceAddForm } from '../../../modules/dashboard';
 import { type IChannel, type IChannelProperty, type IDevice, useChannels, useChannelsProperties, useDevices } from '../../../modules/devices';
+import { DATA_SOURCES_DEVICE_TYPE } from '../data-sources-device-channel.constants';
 import type { IDeviceChannelDataSourceAddForm } from '../schemas/data-sources.types';
 
 defineOptions({
@@ -124,7 +125,7 @@ const { t } = useI18n();
 
 const { model, formEl, formChanged, submit, formResult } = useDataSourceAddForm<IDeviceChannelDataSourceAddForm>({
 	id: props.id,
-	type: 'device-channel',
+	type: DATA_SOURCES_DEVICE_TYPE,
 	parent: props.parent,
 	parentId: props.parentId,
 });

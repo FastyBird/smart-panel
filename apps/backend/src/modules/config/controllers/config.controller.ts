@@ -1,12 +1,17 @@
+import { validate } from 'class-validator';
+
 import { BadRequestException, Body, Controller, Get, Logger, Param, Patch } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
+import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
+import { DevicesException } from '../../devices/devices.exceptions';
 import { SectionType } from '../config.constants';
 import {
-	ReqUpdatePluginDto,
 	ReqUpdateSectionDto,
 	UpdateAudioConfigDto,
 	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
+	UpdatePluginConfigDto,
 	UpdateWeatherCityIdConfigDto,
 	UpdateWeatherCityNameConfigDto,
 	UpdateWeatherLatLonConfigDto,
@@ -25,12 +30,16 @@ import {
 	WeatherZipCodeConfigModel,
 } from '../models/config.model';
 import { ConfigService } from '../services/config.service';
+import { PluginTypeMapping, PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
 @Controller('config')
 export class ConfigController {
 	private readonly logger = new Logger(ConfigController.name);
 
-	constructor(private readonly service: ConfigService) {}
+	constructor(
+		private readonly service: ConfigService,
+		private readonly pluginsMapperService: PluginsTypeMapperService,
+	) {}
 
 	@Get()
 	getAllConfig(): AppConfigModel {
@@ -168,10 +177,52 @@ export class ConfigController {
 	}
 
 	@Patch('plugin/:plugin')
-	updatePluginConfig(@Param('plugin') plugin: string, @Body() pluginConfig: ReqUpdatePluginDto): PluginConfigModel {
+	async updatePluginConfig(
+		@Param('plugin') plugin: string,
+		@Body() pluginConfig: { data: object },
+	): Promise<PluginConfigModel> {
 		this.logger.debug(`[UPDATE] Incoming update request for plugin=${plugin}`);
 
-		this.service.setPluginConfig(plugin, pluginConfig.data);
+		let mapping: PluginTypeMapping<PluginConfigModel, UpdatePluginConfigDto>;
+
+		try {
+			mapping = this.pluginsMapperService.getMapping<PluginConfigModel, UpdatePluginConfigDto>(plugin);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`[ERROR] Unsupported plugin type for update: ${plugin} `, {
+				message: err.message,
+				stack: err.stack,
+			});
+
+			if (error instanceof DevicesException) {
+				throw new BadRequestException([
+					JSON.stringify({ field: 'type', reason: `Unsupported plugin type: ${plugin}` }),
+				]);
+			}
+
+			throw error;
+		}
+
+		const dtoInstance = toInstance(mapping.configDto, pluginConfig.data, {
+			excludeExtraneousValues: false,
+		});
+
+		const errors = await validate(dtoInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+			stopAtFirstError: false,
+		});
+
+		if (errors.length > 0) {
+			this.logger.error(
+				`[VALIDATION FAILED] Validation failed for plugin modification error=${JSON.stringify(errors)} plugin=${plugin} `,
+			);
+
+			throw ValidationExceptionFactory.createException(errors);
+		}
+
+		this.service.setPluginConfig(plugin, dtoInstance);
 
 		const config = this.service.getPluginConfig(plugin);
 

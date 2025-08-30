@@ -13,7 +13,7 @@ import { usePageEditForm } from './usePageEditForm';
 
 const mockPage: IPage = {
 	id: uuid().toString(),
-	type: 'test-plugin',
+	type: 'test-type',
 	title: 'Test Page',
 	order: 99,
 	showTopBar: true,
@@ -60,9 +60,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			pageSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					pageSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
 	},
@@ -70,7 +75,7 @@ const mockPluginList = [
 
 vi.mock('./usePagesPlugins', () => ({
 	usePagesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
@@ -125,7 +130,7 @@ describe('usePageEditForm', () => {
 			id: mockPage.id,
 			data: {
 				id: mockPage.id,
-				type: 'test-plugin',
+				type: 'test-type',
 				title: mockPage.title,
 				order: mockPage.order,
 				showTopBar: mockPage.showTopBar,

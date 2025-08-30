@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.da
 import 'package:fastybird_smart_panel/modules/devices/models/channels/home_assistant_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/third_party_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_particulate.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/alarm.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
@@ -50,10 +51,10 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 Map<String, ChannelModel Function(Map<String, dynamic>)> channelModelMappers = {
-  'third-party': (data) {
+  DeviceType.devicesThirdParty.value: (data) {
     return ThirdPartyChannelModel.fromJson(data);
   },
-  'home-assistant': (data) {
+  DeviceType.devicesHomeAssistant.value: (data) {
     return HomeAssistantChannelModel.fromJson(data);
   },
 };

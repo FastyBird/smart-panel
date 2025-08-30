@@ -3,6 +3,7 @@ import { IsArray, IsInt, IsOptional, ValidateNested } from 'class-validator';
 import { ChildEntity, Column } from 'typeorm';
 
 import { PageEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
+import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 @ChildEntity()
 export class TilesPageEntity extends PageEntity {
@@ -31,6 +32,6 @@ export class TilesPageEntity extends PageEntity {
 
 	@Expose()
 	get type(): string {
-		return 'tiles';
+		return PAGES_TILES_TYPE;
 	}
 }

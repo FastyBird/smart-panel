@@ -1273,10 +1273,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "6clvc8ih516ee"
-        }
+        ]
       }
     },
     "/devices-module/devices": {
@@ -1306,7 +1303,7 @@
                       "data": [
                         {
                           "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
-                          "type": "third-party",
+                          "type": "devices-third-party",
                           "category": "generic",
                           "name": "Thermostat",
                           "description": "Living room thermostat",
@@ -1322,7 +1319,7 @@
                           "channels": [
                             {
                               "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                              "type": "third-party",
+                              "type": "devices-third-party",
                               "category": "generic",
                               "name": "Temperature Sensor",
                               "description": "Living room temperature sensor",
@@ -1339,7 +1336,7 @@
                               "properties": [
                                 {
                                   "id": "208f4790-21b0-4927-8835-7302d883a141",
-                                  "type": "third-party",
+                                  "type": "devices-third-party",
                                   "category": "generic",
                                   "name": "Thermostat mode",
                                   "permissions": [
@@ -1414,7 +1411,7 @@
                   "value": {
                     "data": {
                       "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "category": "generic",
                       "name": "Thermostat",
                       "description": "Living room thermostat",
@@ -1427,7 +1424,7 @@
                       "channels": [
                         {
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                          "type": "third-party",
+                          "type": "devices-third-party",
                           "category": "generic",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
@@ -1440,7 +1437,7 @@
                           "properties": [
                             {
                               "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
-                              "type": "third-party",
+                              "type": "devices-third-party",
                               "category": "generic",
                               "name": "Thermostat mode",
                               "permissions": [
@@ -1486,7 +1483,7 @@
                       "method": "GET",
                       "data": {
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
@@ -1502,7 +1499,7 @@
                         "channels": [
                           {
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
@@ -1519,7 +1516,7 @@
                             "properties": [
                               {
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
-                                "type": "third-party",
+                                "type": "devices-third-party",
                                 "category": "generic",
                                 "name": "Thermostat mode",
                                 "permissions": [
@@ -1615,7 +1612,7 @@
                       "method": "GET",
                       "data": {
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
@@ -1631,7 +1628,7 @@
                         "channels": [
                           {
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
@@ -1648,7 +1645,7 @@
                             "properties": [
                               {
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
-                                "type": "third-party",
+                                "type": "devices-third-party",
                                 "category": "generic",
                                 "name": "Thermostat mode",
                                 "permissions": [
@@ -1729,7 +1726,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "name": "Thermostat",
                       "description": "Living room thermostat",
                       "service_address": "http://192.168.1.100/webhook"
@@ -1758,7 +1755,7 @@
                       "method": "GET",
                       "data": {
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
@@ -1774,7 +1771,7 @@
                         "channels": [
                           {
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
@@ -1791,7 +1788,7 @@
                             "properties": [
                               {
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
-                                "type": "third-party",
+                                "type": "devices-third-party",
                                 "category": "generic",
                                 "name": "Thermostat mode",
                                 "permissions": [
@@ -2188,7 +2185,7 @@
                       "data": [
                         {
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                          "type": "third-party",
+                          "type": "devices-third-party",
                           "category": "generic",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
@@ -2205,7 +2202,7 @@
                           "properties": [
                             {
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
-                              "type": "third-party",
+                              "type": "devices-third-party",
                               "category": "generic",
                               "name": "Thermostat mode",
                               "permissions": [
@@ -2283,7 +2280,7 @@
                   "value": {
                     "data": {
                       "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "category": "generic",
                       "name": "Temperature Sensor",
                       "description": "Living room temperature sensor",
@@ -2296,7 +2293,7 @@
                       "properties": [
                         {
                           "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
-                          "type": "third-party",
+                          "type": "devices-third-party",
                           "category": "generic",
                           "name": "Thermostat mode",
                           "permissions": [
@@ -2338,7 +2335,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -2355,7 +2352,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -2452,7 +2449,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -2469,7 +2466,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -2548,7 +2545,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "name": "Temperature Sensor",
                       "description": "Living room temperature sensor"
                     }
@@ -2576,7 +2573,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -2593,7 +2590,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -3003,7 +3000,7 @@
                       "data": [
                         {
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
-                          "type": "third-party",
+                          "type": "devices-third-party",
                           "category": "generic",
                           "name": "Thermostat mode",
                           "permissions": [
@@ -3080,7 +3077,7 @@
                   "value": {
                     "data": {
                       "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "category": "generic",
                       "name": "Thermostat mode",
                       "permissions": [
@@ -3120,7 +3117,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -3216,7 +3213,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -3294,7 +3291,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "name": "Thermostat mode",
                       "unit": "°C",
                       "format": [
@@ -3329,7 +3326,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -3447,7 +3444,7 @@
                       "data": [
                         {
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                          "type": "third-party",
+                          "type": "devices-third-party",
                           "category": "generic",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
@@ -3464,7 +3461,7 @@
                           "properties": [
                             {
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
-                              "type": "third-party",
+                              "type": "devices-third-party",
                               "category": "generic",
                               "name": "Thermostat mode",
                               "permissions": [
@@ -3534,7 +3531,7 @@
                   "value": {
                     "data": {
                       "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "category": "generic",
                       "name": "Temperature Sensor",
                       "description": "Living room temperature sensor",
@@ -3547,7 +3544,7 @@
                       "properties": [
                         {
                           "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
-                          "type": "third-party",
+                          "type": "devices-third-party",
                           "category": "generic",
                           "name": "Thermostat mode",
                           "permissions": [
@@ -3590,7 +3587,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -3607,7 +3604,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -3698,7 +3695,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -3715,7 +3712,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -3791,7 +3788,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "name": "Temperature Sensor",
                       "description": "Living room temperature sensor"
                     }
@@ -3819,7 +3816,7 @@
                       "method": "GET",
                       "data": {
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
@@ -3827,7 +3824,7 @@
                         "controls": [
                           {
                             "id": "4b76637f-a8a6-45ba-965b-4819f4b57df2",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "name": "reset",
                             "channel": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                             "created_at": "2024-12-11T12:00:00Z",
@@ -3837,7 +3834,7 @@
                         "properties": [
                           {
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
-                            "type": "third-party",
+                            "type": "devices-third-party",
                             "category": "generic",
                             "name": "Thermostat mode",
                             "permissions": [
@@ -4229,7 +4226,7 @@
                       "data": [
                         {
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
-                          "type": "third-party",
+                          "type": "devices-third-party",
                           "category": "generic",
                           "name": "Thermostat mode",
                           "permissions": [
@@ -4303,7 +4300,7 @@
                   "value": {
                     "data": {
                       "id": "9431cc2d-d447-44c1-b2d0-4398624e4921",
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "category": "generic",
                       "name": "Thermostat mode",
                       "permissions": [
@@ -4343,7 +4340,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -4436,7 +4433,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -4511,7 +4508,7 @@
                 "Example 1": {
                   "value": {
                     "data": {
-                      "type": "third-party",
+                      "type": "devices-third-party",
                       "name": "Thermostat mode",
                       "unit": "°C",
                       "format": [
@@ -4546,7 +4543,7 @@
                       "method": "GET",
                       "data": {
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
-                        "type": "third-party",
+                        "type": "devices-third-party",
                         "category": "generic",
                         "name": "Thermostat mode",
                         "permissions": [
@@ -6706,10 +6703,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "6vk1i3us2yszs"
-        }
+        ]
       }
     },
     "/weather-module/geolocation/coordinates-to-city": {
@@ -6873,7 +6867,7 @@
         }
       }
     },
-    "/plugins/devices-home-assistant-plugin/discovered-devices": {
+    "/plugins/devices-home-assistant/discovered-devices": {
       "get": {
         "summary": "Retrieve a list of all available Home Assistant Devices",
         "description": "Retrieves a list of devices discovered from the connected Home Assistant instance. Each device includes metadata, associated entities, and their current states.",
@@ -6909,10 +6903,13 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "6wyvibn060bct"
+        }
       }
     },
-    "/plugins/devices-home-assistant-plugin/discovered-devices/{id}": {
+    "/plugins/devices-home-assistant/discovered-devices/{id}": {
       "get": {
         "parameters": [
           {
@@ -6960,10 +6957,13 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "4iv9nxok1544z"
+        }
       }
     },
-    "/plugins/devices-home-assistant-plugin/states": {
+    "/plugins/devices-home-assistant/states": {
       "get": {
         "summary": "Retrieve a list of all available Home Assistant States",
         "description": "Fetches the current state information for all known entities from the connected Home Assistant instance. Each state includes metadata such as attributes and timestamps.",
@@ -6999,10 +6999,13 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "kzt9xom3lb9lf"
+        }
       }
     },
-    "/plugins/devices-home-assistant-plugin/states/{entityId}": {
+    "/plugins/devices-home-assistant/states/{entityId}": {
       "get": {
         "parameters": [
           {
@@ -7050,10 +7053,13 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "nmvb02luc3f9d"
+        }
       }
     },
-    "/plugins/pages-cards-plugin/cards": {
+    "/plugins/pages-cards/cards": {
       "get": {
         "summary": "Retrieve a list of all available page cards",
         "tags": [
@@ -7102,7 +7108,10 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "cuzmwav54k1b2"
+        }
       },
       "post": {
         "summary": "Create a new card for a page",
@@ -7158,10 +7167,13 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "sehaye81c4jkr"
+        }
       }
     },
-    "/plugins/pages-cards-plugin/cards/{id}": {
+    "/plugins/pages-cards/cards/{id}": {
       "get": {
         "summary": "Retrieve details of a specific card for a page",
         "tags": [
@@ -7202,7 +7214,10 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "8aduzkn40vbnl"
+        }
       },
       "patch": {
         "summary": "Update an existing card for a page",
@@ -7265,7 +7280,10 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "fking687jd6n4"
+        }
       },
       "delete": {
         "summary": "Delete a specific card for a page",
@@ -7300,7 +7318,10 @@
           {
             "x-display-secret": []
           }
-        ]
+        ],
+        "x-stoplight": {
+          "id": "gqiatui66casi"
+        }
       }
     }
   },
@@ -8549,9 +8570,6 @@
       },
       "UsersModuleUpdateDisplayInstance": {
         "title": "Update Display",
-        "x-stoplight": {
-          "id": "79645dc1fb028"
-        },
         "description": "Schema for modifying an existing display.",
         "type": "object",
         "properties": {
@@ -9036,9 +9054,6 @@
       },
       "UsersModuleResDisplayInstanceByUid": {
         "title": "Display by UID Response",
-        "x-stoplight": {
-          "id": "a56a0566be91c"
-        },
         "description": "Response schema containing a single display by UID.",
         "type": "object",
         "required": [
@@ -10446,7 +10461,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of device.",
-            "example": "third-party",
+            "example": "devices-third-party",
             "readOnly": true
           },
           "category": {
@@ -10574,7 +10589,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel.",
-            "example": "third-party",
+            "example": "devices-third-party",
             "readOnly": true
           },
           "category": {
@@ -10712,7 +10727,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel property.",
-            "example": "third-party",
+            "example": "devices-third-party",
             "readOnly": true
           },
           "category": {
@@ -10862,7 +10877,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of device.",
-            "example": "third-party"
+            "example": "devices-third-party"
           },
           "category": {
             "$ref": "#/components/schemas/DevicesModuleDeviceCategory",
@@ -10935,7 +10950,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel.",
-            "example": "third-party"
+            "example": "devices-third-party"
           },
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelCategory",
@@ -11032,7 +11047,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel property.",
-            "example": "third-party"
+            "example": "devices-third-party"
           },
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelPropertyCategory",
@@ -11141,7 +11156,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of device.",
-            "example": "third-party"
+            "example": "devices-third-party"
           },
           "name": {
             "type": "string",
@@ -11167,7 +11182,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel.",
-            "example": "third-party"
+            "example": "devices-third-party"
           },
           "name": {
             "type": "string",
@@ -11193,7 +11208,7 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of channel property.",
-            "example": "third-party"
+            "example": "devices-third-party"
           },
           "name": {
             "type": "string",
@@ -12373,9 +12388,9 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "cards": "#/components/schemas/PagesCardsPluginCardsPage",
-            "tiles": "#/components/schemas/PagesTilesPluginTilesPage",
-            "device-detail": "#/components/schemas/PagesDeviceDetailPluginDeviceDetailPage"
+            "pages-cards": "#/components/schemas/PagesCardsPluginCardsPage",
+            "pages-tiles": "#/components/schemas/PagesTilesPluginTilesPage",
+            "pages-device-detail": "#/components/schemas/PagesDeviceDetailPluginDeviceDetailPage"
           }
         }
       },
@@ -12496,10 +12511,10 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "device-preview": "#/components/schemas/TilesDevicePreviewPluginDevicePreviewTile",
-            "clock": "#/components/schemas/TilesTimePluginTimeTile",
-            "weather-day": "#/components/schemas/TilesWeatherPluginDayWeatherTile",
-            "weather-forecast": "#/components/schemas/TilesWeatherPluginForecastWeatherTile"
+            "tiles-device-preview": "#/components/schemas/TilesDevicePreviewPluginDevicePreviewTile",
+            "tiles-time": "#/components/schemas/TilesTimePluginTimeTile",
+            "tiles-weather-day": "#/components/schemas/TilesWeatherPluginDayWeatherTile",
+            "tiles-weather-forecast": "#/components/schemas/TilesWeatherPluginForecastWeatherTile"
           }
         }
       },
@@ -12567,7 +12582,7 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "device-channel": "#/components/schemas/DataSourcesDeviceChannelPluginDeviceChannelDataSource"
+            "data-sources-device-channel": "#/components/schemas/DataSourcesDeviceChannelPluginDeviceChannelDataSource"
           }
         }
       },
@@ -12636,9 +12651,9 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "cards": "#/components/schemas/PagesCardsPluginCreateCardsPage",
-            "tiles": "#/components/schemas/PagesTilesPluginCreateTilesPage",
-            "device-detail": "#/components/schemas/PagesDeviceDetailPluginCreateDeviceDetailPage"
+            "pages-cards": "#/components/schemas/PagesCardsPluginCreateCardsPage",
+            "pages-tiles": "#/components/schemas/PagesTilesPluginCreateTilesPage",
+            "pages-device-detail": "#/components/schemas/PagesDeviceDetailPluginCreateDeviceDetailPage"
           }
         }
       },
@@ -12713,10 +12728,10 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "device-preview": "#/components/schemas/TilesDevicePreviewPluginCreateDevicePreviewTile",
-            "clock": "#/components/schemas/TilesTimePluginCreateTimeTile",
-            "weather-day": "#/components/schemas/TilesWeatherPluginCreateDayWeatherTile",
-            "weather-forecast": "#/components/schemas/TilesWeatherPluginCreateForecastWeatherTile"
+            "tiles-device-preview": "#/components/schemas/TilesDevicePreviewPluginCreateDevicePreviewTile",
+            "tiles-time": "#/components/schemas/TilesTimePluginCreateTimeTile",
+            "tiles-weather-day": "#/components/schemas/TilesWeatherPluginCreateDayWeatherTile",
+            "tiles-weather-forecast": "#/components/schemas/TilesWeatherPluginCreateForecastWeatherTile"
           }
         }
       },
@@ -12743,7 +12758,7 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "device-channel": "#/components/schemas/DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource"
+            "data-sources-device-channel": "#/components/schemas/DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource"
           }
         }
       },
@@ -12795,9 +12810,9 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "cards": "#/components/schemas/PagesCardsPluginUpdateCardsPage",
-            "tiles": "#/components/schemas/PagesTilesPluginUpdateTilesPage",
-            "device-detail": "#/components/schemas/PagesDeviceDetailPluginUpdateDeviceDetailPage"
+            "pages-cards": "#/components/schemas/PagesCardsPluginUpdateCardsPage",
+            "pages-tiles": "#/components/schemas/PagesTilesPluginUpdateTilesPage",
+            "pages-device-detail": "#/components/schemas/PagesDeviceDetailPluginUpdateDeviceDetailPage"
           }
         }
       },
@@ -12855,10 +12870,10 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "device-preview": "#/components/schemas/TilesDevicePreviewPluginUpdateDevicePreviewTile",
-            "clock": "#/components/schemas/TilesTimePluginUpdateTimeTile",
-            "weather-day": "#/components/schemas/TilesWeatherPluginUpdateDayWeatherTile",
-            "weather-forecast": "#/components/schemas/TilesWeatherPluginUpdateForecastWeatherTile"
+            "tiles-device-preview": "#/components/schemas/TilesDevicePreviewPluginUpdateDevicePreviewTile",
+            "tiles-time": "#/components/schemas/TilesTimePluginUpdateTimeTile",
+            "tiles-weather-day": "#/components/schemas/TilesWeatherPluginUpdateDayWeatherTile",
+            "tiles-weather-forecast": "#/components/schemas/TilesWeatherPluginUpdateForecastWeatherTile"
           }
         }
       },
@@ -12873,13 +12888,13 @@
           "type": {
             "type": "string",
             "description": "Specifies the type of data source.",
-            "example": "device-channel"
+            "example": "data-sources-device-channel"
           }
         },
         "discriminator": {
           "propertyName": "type",
           "mapping": {
-            "device-channel": "#/components/schemas/DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource"
+            "data-sources-device-channel": "#/components/schemas/DataSourcesDeviceChannelPluginUpdateDeviceChannelDataSource"
           }
         }
       },
@@ -14066,9 +14081,6 @@
       },
       "SystemModuleCreateDisplayProfile": {
         "title": "Create Display",
-        "x-stoplight": {
-          "id": "66f22da96ee66"
-        },
         "description": "Schema for creating a new display.",
         "type": "object",
         "required": [
@@ -14146,9 +14158,6 @@
       },
       "SystemModuleUpdateDisplayProfile": {
         "title": "Update Display",
-        "x-stoplight": {
-          "id": "cea77c43f685b"
-        },
         "description": "Schema for modifying an existing display.",
         "type": "object",
         "properties": {
@@ -14387,9 +14396,6 @@
       },
       "SystemModuleReqCreateDisplayProfile": {
         "title": "Create Display Request",
-        "x-stoplight": {
-          "id": "9dc5fad5ef4cb"
-        },
         "description": "Request schema for creating new display.",
         "type": "object",
         "required": [
@@ -14417,9 +14423,6 @@
       },
       "SystemModuleReqUpdateDisplayProfile": {
         "title": "Update Display Request",
-        "x-stoplight": {
-          "id": "bf607c4151749"
-        },
         "description": "Request schema for updating an existing display.",
         "type": "object",
         "required": [
@@ -14622,9 +14625,6 @@
       },
       "SystemModuleResDisplayProfileByUid": {
         "title": "Display by UID Response",
-        "x-stoplight": {
-          "id": "2a2a7e64d5fc6"
-        },
         "description": "Response containing the registered display's information including resolution, size, pixel ratio, and default layout settings.",
         "type": "object",
         "required": [
@@ -15251,9 +15251,6 @@
       },
       "WeatherModuleCityGeolocation": {
         "title": "City name geolocation",
-        "x-stoplight": {
-          "id": "81cc9fb62da76"
-        },
         "description": "Represents geographical location details, including city name, coordinates, and country information.",
         "type": "object",
         "required": [
@@ -15321,9 +15318,6 @@
       },
       "WeatherModuleZipGeolocation": {
         "title": "ZIP code geolocation",
-        "x-stoplight": {
-          "id": "81cc9fb62da76"
-        },
         "description": "Represents geographical location details, including city name, coordinates, and country information.",
         "type": "object",
         "required": [
@@ -16541,6 +16535,84 @@
           }
         }
       },
+      "DevicesHomeAssistantPluginConfig": {
+        "x-internal": true,
+        "title": "Home Assistant Plugin Configuration",
+        "description": "Configuration for the Home Assistant devices plugin.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModulePlugin"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "api_key",
+              "hostname"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Configuration section type discriminator. Must always be `devices-home-assistant-plugin`.",
+                "default": "devices-home-assistant",
+                "example": "devices-home-assistant"
+              },
+              "api_key": {
+                "type": "string",
+                "nullable": true,
+                "description": "Long-lived access token for Home Assistant.",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              },
+              "hostname": {
+                "type": "string",
+                "description": "Hostname or host:port of the Home Assistant instance.",
+                "example": "homeassistant.local"
+              }
+            }
+          }
+        ]
+      },
+      "DevicesHomeAssistantPluginUpdateConfig": {
+        "x-internal": true,
+        "title": "Update Home Assistant Plugin Configuration",
+        "description": "Request schema for updating the Home Assistant devices plugin configuration.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleUpdatePlugin"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Configuration section type discriminator. Must always be `devices-home-assistant-plugin`.",
+                "default": "devices-home-assistant",
+                "example": "devices-home-assistant"
+              },
+              "api_key": {
+                "type": "string",
+                "nullable": true,
+                "description": "Long-lived access token for Home Assistant, used to authenticate API requests.",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              },
+              "hostname": {
+                "type": "string",
+                "description": "The hostname or host:port of the Home Assistant instance.",
+                "example": "homeassistant.local:8123"
+              }
+            }
+          }
+        ]
+      },
       "DevicesHomeAssistantPluginResDiscoveredDevice": {
         "title": "Home Assistant Device Response",
         "description": "Response schema containing a single Home Assistant devices.",
@@ -16578,7 +16650,7 @@
           "path": {
             "type": "string",
             "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/plugins/devices-home-assistant-plugin/discovered-devices/2fcdc656a7ae51e33482c8314b1d32b9",
+            "example": "/api/v1/plugins/devices-home-assistant/discovered-devices/2fcdc656a7ae51e33482c8314b1d32b9",
             "readOnly": true
           },
           "method": {
@@ -16640,7 +16712,7 @@
           "path": {
             "type": "string",
             "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/plugins/devices-home-assistant-plugin/discovered-devices",
+            "example": "/api/v1/plugins/devices-home-assistant/discovered-devices",
             "readOnly": true
           },
           "method": {
@@ -16705,7 +16777,7 @@
           "path": {
             "type": "string",
             "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/plugins/devices-home-assistant-plugin/states/sensor.hall_heater_floot_temperature",
+            "example": "/api/v1/plugins/devices-home-assistant/states/sensor.hall_heater_floot_temperature",
             "readOnly": true
           },
           "method": {
@@ -16767,7 +16839,7 @@
           "path": {
             "type": "string",
             "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/plugins/devices-home-assistant-plugin/states",
+            "example": "/api/v1/plugins/devices-home-assistant/states",
             "readOnly": true
           },
           "method": {

@@ -3,11 +3,12 @@ import { IsInt, IsNotEmpty, IsOptional, Min } from 'class-validator';
 
 import { UpdatePageDto } from '../../../modules/dashboard/dto/update-page.dto';
 import type { components } from '../../../openapi';
+import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 type UpdateTilesPage = components['schemas']['PagesTilesPluginUpdateTilesPage'];
 
 export class UpdateTilesPageDto extends UpdatePageDto implements UpdateTilesPage {
-	readonly type: 'tiles';
+	readonly type: typeof PAGES_TILES_TYPE;
 
 	@Expose()
 	@IsOptional()

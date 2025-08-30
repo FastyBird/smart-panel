@@ -22,7 +22,7 @@ import { TilesTypeMapperService } from '../../../modules/dashboard/services/tile
 import { CreateSingleCardDto } from '../dto/create-card.dto';
 import { UpdateCardDto } from '../dto/update-card.dto';
 import { CardEntity, CardsPageEntity } from '../entities/pages-cards.entity';
-import { EventType } from '../pages-cards.constants';
+import { EventType, PAGES_CARDS_TYPE } from '../pages-cards.constants';
 import { PagesCardsValidationException } from '../pages-cards.exceptions';
 
 import { CardsService } from './cards.service';
@@ -38,7 +38,7 @@ describe('CardsService', () => {
 
 	const mockCardsPage: CardsPageEntity = {
 		id: uuid().toString(),
-		type: 'cards',
+		type: PAGES_CARDS_TYPE,
 		title: 'Cards detail',
 		order: 0,
 		showTopBar: false,

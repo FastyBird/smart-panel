@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { cloneDeep, isEqual } from 'lodash';
 
-import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPluginElement, injectStoresManager, useFlashMessage } from '../../../common';
+import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
 import { DevicesModuleChannelCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
@@ -21,7 +22,7 @@ import { useDevices } from './useDevices';
 
 interface IUseChannelAddFormProps {
 	id: IChannel['id'];
-	type: IPlugin['type'];
+	type: IPluginElement['type'];
 	deviceId?: IDevice['id'];
 }
 
@@ -32,7 +33,7 @@ export const useChannelAddForm = <TForm extends IChannelAddForm = IChannelAddFor
 }: IUseChannelAddFormProps): IUseChannelAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useChannelsPlugin({ type });
+	const { element } = useChannelsPlugin({ type });
 
 	const channelsStore = storesManager.getStore(channelsStoreKey);
 
@@ -93,6 +94,7 @@ export const useChannelAddForm = <TForm extends IChannelAddForm = IChannelAddFor
 	});
 
 	const model = reactive<TForm>({
+		...getSchemaDefaults(element.value?.schemas?.channelAddFormSchema || ChannelAddFormSchema),
 		id,
 		type,
 		device: deviceId,
@@ -124,7 +126,7 @@ export const useChannelAddForm = <TForm extends IChannelAddForm = IChannelAddFor
 			throw new DevicesValidationException('Missing data type definition');
 		}
 
-		const parsedModel = (plugin.value?.schemas?.channelAddFormSchema || ChannelAddFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.channelAddFormSchema || ChannelAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

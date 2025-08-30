@@ -16,6 +16,7 @@ import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
+import { TILES_WEATHER_DAY_TYPE, TILES_WEATHER_FORECAST_TYPE } from '../tiles-weather.constants';
 
 import { DayWeatherTileEntity, ForecastWeatherTileEntity } from './tiles-weather.entity';
 
@@ -46,7 +47,7 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 	test('DayWeatherTileEntity matches DashboardDayWeatherTile', () => {
 		const openApiModel: DayWeatherTile & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
-			type: 'weather-day',
+			type: TILES_WEATHER_DAY_TYPE,
 			parent: {
 				type: 'page',
 				id: uuid().toString(),
@@ -78,7 +79,7 @@ describe('Weather tiles plugin entity and OpenAPI Model Synchronization', () => 
 	test('ForecastWeatherTileEntity matches DashboardForecastWeatherTile', () => {
 		const openApiModel: ForecastWeatherTile & { parent_type: string; parent_id: string } = {
 			id: uuid().toString(),
-			type: 'weather-forecast',
+			type: TILES_WEATHER_FORECAST_TYPE,
 			parent: {
 				type: 'page',
 				id: uuid().toString(),

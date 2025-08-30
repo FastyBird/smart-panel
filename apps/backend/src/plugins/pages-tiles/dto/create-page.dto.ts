@@ -5,11 +5,12 @@ import { CreatePageDto } from '../../../modules/dashboard/dto/create-page.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { ValidateTileType } from '../../../modules/dashboard/validators/tile-type-constraint.validator';
 import type { components } from '../../../openapi';
+import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 type CreateTilesPage = components['schemas']['PagesTilesPluginCreateTilesPage'];
 
 export class CreateTilesPageDto extends CreatePageDto implements CreateTilesPage {
-	readonly type: 'tiles';
+	readonly type: typeof PAGES_TILES_TYPE;
 
 	@Expose()
 	@IsOptional()

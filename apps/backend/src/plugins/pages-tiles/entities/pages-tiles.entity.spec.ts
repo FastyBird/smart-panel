@@ -16,6 +16,7 @@ import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
+import { PAGES_TILES_TYPE } from '../pages-tiles.constants';
 
 import { TilesPageEntity } from './pages-tiles.entity';
 
@@ -45,7 +46,7 @@ describe('Tiles pages plugin entity and OpenAPI Model Synchronization', () => {
 	test('TilesPageEntity matches DashboardTilesPage', () => {
 		const openApiModel: TilesPage = {
 			id: uuid().toString(),
-			type: 'tiles',
+			type: PAGES_TILES_TYPE,
 			title: 'Cards Dashboard',
 			icon: 'cards-icon',
 			order: 1,

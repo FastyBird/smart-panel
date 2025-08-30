@@ -7,6 +7,7 @@ import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-t
 import { CreateTimeTileDto } from './dto/create-tile.dto';
 import { UpdateTimeTileDto } from './dto/update-tile.dto';
 import { TimeTileEntity } from './entities/tiles-time.entity';
+import { TILES_TIME_TYPE } from './tiles-time.constants';
 
 @Module({
 	imports: [TypeOrmModule.forFeature([TimeTileEntity]), DashboardModule],
@@ -16,7 +17,7 @@ export class TilesTimePlugin {
 
 	onModuleInit() {
 		this.mapper.registerMapping<TimeTileEntity, CreateTimeTileDto, UpdateTimeTileDto>({
-			type: 'clock',
+			type: TILES_TIME_TYPE,
 			class: TimeTileEntity,
 			createDto: CreateTimeTileDto,
 			updateDto: UpdateTimeTileDto,

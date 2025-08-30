@@ -50,8 +50,8 @@
 
 			<template v-if="selectedType">
 				<component
-					:is="plugin?.components?.tileAddForm"
-					v-if="typeof plugin?.components?.tileAddForm !== 'undefined'"
+					:is="element?.components?.tileAddForm"
+					v-if="typeof element?.components?.tileAddForm !== 'undefined'"
 					:id="newTileId"
 					v-model:remote-form-submit="remoteFormSubmit"
 					v-model:remote-form-result="remoteFormResult"
@@ -152,7 +152,16 @@ import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import {
 	RouteNames as DashboardRouteNames,
 	FormResult,
@@ -204,12 +213,12 @@ const plugin = computed<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | u
 	return plugins.value.find((plugin) => plugin.type === selectedType.value);
 });
 
-const formSchema = computed<typeof TileAddFormSchema>((): typeof TileAddFormSchema => {
-	if (plugin.value && plugin.value.schemas?.tileAddFormSchema) {
-		return plugin.value.schemas?.tileAddFormSchema;
-	}
+const element = computed<IPluginElement<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === selectedType.value);
+});
 
-	return TileAddFormSchema;
+const formSchema = computed<typeof TileAddFormSchema>((): typeof TileAddFormSchema => {
+	return element.value?.schemas?.tileAddFormSchema ?? TileAddFormSchema;
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

@@ -5,6 +5,7 @@ import { ChildEntity, ManyToOne, RelationId } from 'typeorm';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 
 @ChildEntity()
 export class DeviceDetailPageEntity extends PageEntity {
@@ -27,6 +28,6 @@ export class DeviceDetailPageEntity extends PageEntity {
 
 	@Expose()
 	get type(): string {
-		return 'device-detail';
+		return PAGES_DEVICE_DETAIL_TYPE;
 	}
 }

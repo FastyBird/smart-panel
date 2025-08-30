@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { cloneDeep, isEqual } from 'lodash';
 
-import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPluginElement, injectStoresManager, useFlashMessage } from '../../../common';
+import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
 import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
@@ -18,13 +19,13 @@ import { useDevicesPlugin } from './useDevicesPlugin';
 
 interface IUseDeviceAddFormProps {
 	id: IDevice['id'];
-	type: IPlugin['type'];
+	type: IPluginElement['type'];
 }
 
 export const useDeviceAddForm = <TForm extends IDeviceAddForm = IDeviceAddForm>({ id, type }: IUseDeviceAddFormProps): IUseDeviceAddForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useDevicesPlugin({ type });
+	const { element } = useDevicesPlugin({ type });
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 
@@ -42,6 +43,7 @@ export const useDeviceAddForm = <TForm extends IDeviceAddForm = IDeviceAddForm>(
 	}));
 
 	const model = reactive<TForm>({
+		...getSchemaDefaults(element.value?.schemas?.deviceAddFormSchema || DeviceAddFormSchema),
 		id,
 		type,
 		category: DevicesModuleDeviceCategory.generic,
@@ -62,7 +64,7 @@ export const useDeviceAddForm = <TForm extends IDeviceAddForm = IDeviceAddForm>(
 
 		if (!valid) throw new DevicesValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.deviceAddFormSchema || DeviceAddFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.deviceAddFormSchema || DeviceAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

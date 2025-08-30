@@ -55,8 +55,8 @@
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
-				:is="plugin?.components?.channelEditForm"
-				v-if="typeof plugin?.components?.channelEditForm !== 'undefined'"
+				:is="element?.components?.channelEditForm"
+				v-if="typeof element?.components?.channelEditForm !== 'undefined'"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
@@ -134,7 +134,16 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import { ChannelEditForm } from '../components/components';
 import { useChannel, useChannelIcon, useChannelsPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
@@ -193,6 +202,10 @@ const isChannelDetailRoute = computed<boolean>(
 
 const plugin = computed<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
 	return plugins.value.find((plugin) => plugin.type === channel.value?.type);
+});
+
+const element = computed<IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === channel.value?.type);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

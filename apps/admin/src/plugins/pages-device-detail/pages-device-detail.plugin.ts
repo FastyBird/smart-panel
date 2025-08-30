@@ -8,6 +8,7 @@ import { DASHBOARD_MODULE_NAME, type IPagePluginsComponents, type IPagePluginsSc
 
 import { DeviceDetailPageAddForm, DeviceDetailPageEditForm } from './components/components';
 import enUS from './locales/en-US.json';
+import { PAGES_DEVICE_DETAIL_PLUGIN_NAME, PAGES_DEVICE_DETAIL_TYPE } from './pages-device-detail.constants';
 import { DeviceDetailPageAddFormSchema, DeviceDetailPageEditFormSchema } from './schemas/pages.schemas';
 import { DeviceDetailPageCreateReqSchema, DeviceDetailPageSchema, DeviceDetailPageUpdateReqSchema } from './store/pages.store.schemas';
 
@@ -26,7 +27,7 @@ export default {
 		}
 
 		pluginsManager.addPlugin(pagesDeviceDetailPluginKey, {
-			type: 'device-detail',
+			type: PAGES_DEVICE_DETAIL_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.pages-device-detail',
 			name: 'Device Detail Page',
 			description: 'A dedicated page focused on a single device. Perfect for viewing and controlling all properties of a specific device in detail.',
@@ -35,17 +36,22 @@ export default {
 				devDocumentation: 'http://www.fastybird.com',
 				bugsTracking: 'http://www.fastybird.com',
 			},
-			components: {
-				pageAddForm: DeviceDetailPageAddForm,
-				pageEditForm: DeviceDetailPageEditForm,
-			},
-			schemas: {
-				pageSchema: DeviceDetailPageSchema,
-				pageAddFormSchema: DeviceDetailPageAddFormSchema,
-				pageEditFormSchema: DeviceDetailPageEditFormSchema,
-				pageCreateReqSchema: DeviceDetailPageCreateReqSchema,
-				pageUpdateReqSchema: DeviceDetailPageUpdateReqSchema,
-			},
+			elements: [
+				{
+					type: PAGES_DEVICE_DETAIL_TYPE,
+					components: {
+						pageAddForm: DeviceDetailPageAddForm,
+						pageEditForm: DeviceDetailPageEditForm,
+					},
+					schemas: {
+						pageSchema: DeviceDetailPageSchema,
+						pageAddFormSchema: DeviceDetailPageAddFormSchema,
+						pageEditFormSchema: DeviceDetailPageEditFormSchema,
+						pageCreateReqSchema: DeviceDetailPageCreateReqSchema,
+						pageUpdateReqSchema: DeviceDetailPageUpdateReqSchema,
+					},
+				},
+			],
 			modules: [DASHBOARD_MODULE_NAME],
 			isCore: true,
 		});

@@ -9,7 +9,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import { ServiceRequestDto } from '../dto/home-assistant-service-request.dto';
 import {
 	HomeAssistantChannelPropertyEntity,
@@ -155,9 +155,7 @@ export class HomeAssistantDevicePlatform extends HttpDevicePlatform implements I
 
 	private get config(): HomeAssistantConfigModel {
 		if (!this.pluginConfig) {
-			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(
-				DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
-			);
+			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_TYPE);
 		}
 
 		return this.pluginConfig;

@@ -19,7 +19,7 @@ class ThirdPartyDeviceModel extends DeviceModel {
     required String serviceAddress,
   })  : _serviceAddress = serviceAddress,
         super(
-          type: 'third-party',
+          type: 'devices-third-party-plugin',
         );
 
   String get serviceAddress => _serviceAddress;

@@ -16,7 +16,7 @@ const deviceId = uuid().toString();
 
 const mockDevice: IDevice = {
 	id: deviceId.toString(),
-	type: 'mock-type',
+	type: 'test-type',
 	category: DevicesModuleDeviceCategory.generic,
 	name: 'Test Device',
 	description: 'Test Desc',
@@ -63,9 +63,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			deviceSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					deviceSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},

@@ -55,8 +55,8 @@
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
-				:is="plugin?.components?.deviceEditForm"
-				v-if="typeof plugin?.components?.deviceEditForm !== 'undefined'"
+				:is="element?.components?.deviceEditForm"
+				v-if="typeof element?.components?.deviceEditForm !== 'undefined'"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
@@ -134,7 +134,16 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import { DeviceEditForm } from '../components/components';
 import { useDevice, useDeviceIcon, useDevicesPlugins } from '../composables/composables';
 import { FormResult, type FormResultType, RouteNames } from '../devices.constants';
@@ -186,6 +195,10 @@ const isDetailRoute = computed<boolean>(
 
 const plugin = computed<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
 	return plugins.value.find((plugin) => plugin.type === device.value?.type);
+});
+
+const element = computed<IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === device.value?.type);
 });
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(

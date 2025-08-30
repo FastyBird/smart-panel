@@ -27,7 +27,7 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 }: IUseDeviceEditFormProps): IUseDeviceEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = useDevicesPlugin({ type: device.type });
+	const { element } = useDevicesPlugin({ type: device.type });
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 
@@ -70,7 +70,7 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 
 		if (!valid) throw new DevicesValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.deviceEditFormSchema || DeviceEditFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.deviceEditFormSchema || DeviceEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

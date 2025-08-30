@@ -2,8 +2,8 @@ import { computed } from 'vue';
 
 import { orderBy } from 'natural-orderby';
 
-import { type IPlugin, injectPluginsManager } from '../../../common';
-import { CONFIG_MODULE_NAME } from '../config.constants';
+import { type IPlugin, type IPluginElement, injectPluginsManager } from '../../../common';
+import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE } from '../config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
 
 import type { IUsePlugins } from './types';
@@ -24,13 +24,18 @@ export const usePlugins = (): IUsePlugins => {
 		}));
 	});
 
-	const getByType = (type: IPlugin['type']): IPlugin<IPluginsComponents, IPluginsSchemas> | undefined => {
+	const getByName = (type: IPlugin['type']): IPlugin<IPluginsComponents, IPluginsSchemas> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
+	};
+
+	const getElement = (type: IPlugin['type']): IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined => {
+		return plugins.value.find((plugin) => plugin.type === type)?.elements?.find((element) => element.type === CONFIG_MODULE_PLUGIN_TYPE);
 	};
 
 	return {
 		plugins,
 		options,
-		getByType,
+		getByName,
+		getElement,
 	};
 };

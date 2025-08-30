@@ -23,7 +23,7 @@ interface IUsePageEditFormProps {
 export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ page, messages }: IUsePageEditFormProps): IUsePageEditForm<TForm> => {
 	const storesManager = injectStoresManager();
 
-	const { plugin } = usePagesPlugin({ type: page.type });
+	const { element } = usePagesPlugin({ type: page.type });
 
 	const pagesStore = storesManager.getStore(pagesStoreKey);
 
@@ -61,7 +61,7 @@ export const usePageEditForm = <TForm extends IPageEditForm = IPageEditForm>({ p
 
 		if (!valid) throw new DashboardValidationException('Form not valid');
 
-		const parsedModel = (plugin.value?.schemas?.pageEditFormSchema || PageEditFormSchema).safeParse(model);
+		const parsedModel = (element.value?.schemas?.pageEditFormSchema || PageEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
 			console.error('Schema validation failed with:', parsedModel.error);

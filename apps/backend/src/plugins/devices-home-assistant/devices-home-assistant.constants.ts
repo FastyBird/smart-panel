@@ -1,8 +1,8 @@
-export const DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX = 'devices-home-assistant-plugin';
+export const DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX = 'devices-home-assistant';
 
-export const DEVICES_HOME_ASSISTANT_PLUGIN_NAME = 'devices-home-assistant-plugin';
+export const DEVICES_HOME_ASSISTANT_PLUGIN_NAME = 'devices-home-assistant';
 
-export const DEVICES_HOME_ASSISTANT_TYPE = 'home-assistant';
+export const DEVICES_HOME_ASSISTANT_TYPE = 'devices-home-assistant';
 
 export enum HomeAssistantDomain {
 	ALARM_CONTROL_PANEL = 'alarm_control_panel',

@@ -2,7 +2,7 @@ import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
 
-import type { IPlugin } from '../../../common';
+import type { IPlugin, IPluginElement } from '../../../common';
 import {
 	ConfigModuleLanguageLanguage,
 	ConfigModuleLanguageTime_format,
@@ -146,10 +146,12 @@ export interface IUseConfigPluginEditForm<TForm extends IConfigPluginEditForm = 
 
 export interface IUsePlugin {
 	plugin: ComputedRef<IPlugin<IPluginsComponents, IPluginsSchemas> | undefined>;
+	element: ComputedRef<IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined>;
 }
 
 export interface IUsePlugins {
 	plugins: ComputedRef<IPlugin<IPluginsComponents, IPluginsSchemas>[]>;
 	options: ComputedRef<{ value: IPlugin['type']; label: IPlugin['name'] }[]>;
-	getByType: (type: IPlugin['type']) => IPlugin<IPluginsComponents, IPluginsSchemas> | undefined;
+	getByName: (type: IPlugin['type']) => IPlugin<IPluginsComponents, IPluginsSchemas> | undefined;
+	getElement: (type: IPlugin['type']) => IPluginElement<IPluginsComponents, IPluginsSchemas> | undefined;
 }

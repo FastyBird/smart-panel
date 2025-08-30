@@ -1,3 +1,7 @@
+export const PAGES_TILES_PLUGIN_NAME = 'pages-tiles';
+
+export const PAGES_TILES_TYPE = 'pages-tiles';
+
 export const RouteNames = {
 	PAGE: 'pages_tiles_plugin-settings',
 	PAGE_ADD_TILE: 'pages_tiles_plugin-settings_add_tile',

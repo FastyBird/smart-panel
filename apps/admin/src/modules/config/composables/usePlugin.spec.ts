@@ -15,6 +15,11 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
+		elements: [
+			{
+				type: 'test-plugin',
+			},
+		],
 		isCore: false,
 		modules: [CONFIG_MODULE_NAME],
 	},
@@ -22,18 +27,18 @@ const mockPluginList = [
 
 vi.mock('./usePlugins', () => ({
 	usePlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByName: (name: string) => mockPluginList.find((p) => p.type === name),
 	}),
 }));
 
 describe('usePlugin', () => {
-	it('returns plugin by type', () => {
-		const { plugin } = usePlugin({ type: 'test-plugin' });
+	it('returns plugin by name', () => {
+		const { plugin } = usePlugin({ name: 'test-plugin' });
 		expect(plugin.value?.name).toBe('Test Plugin');
 	});
 
-	it('returns undefined for unknown type', () => {
-		const { plugin } = usePlugin({ type: 'unknown-plugin' });
+	it('returns undefined for unknown name', () => {
+		const { plugin } = usePlugin({ name: 'unknown-plugin' });
 		expect(plugin.value).toBeUndefined();
 	});
 });

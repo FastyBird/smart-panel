@@ -18,9 +18,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			channelSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					channelSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DEVICES_MODULE_NAME],
 	},
@@ -34,6 +39,11 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
+		elements: [
+			{
+				type: 'another-type',
+			},
+		],
 		isCore: false,
 		modules: ['other-module'],
 	},
@@ -56,15 +66,27 @@ describe('useChannelsPlugins', () => {
 		const { options } = useChannelsPlugins();
 		expect(options.value).toEqual([
 			{
-				value: 'test-plugin',
+				value: 'test-type',
 				label: 'Test Plugin',
 			},
 		]);
 	});
 
+	it('getByName returns correct plugin', () => {
+		const { getByName } = useChannelsPlugins();
+		const plugin = getByName('test-plugin');
+		expect(plugin?.name).toBe('Test Plugin');
+	});
+
+	it('getByName returns undefined for unknown plugin', () => {
+		const { getByName } = useChannelsPlugins();
+		const plugin = getByName('nonexistent');
+		expect(plugin).toBeUndefined();
+	});
+
 	it('getByType returns correct plugin', () => {
 		const { getByType } = useChannelsPlugins();
-		const plugin = getByType('test-plugin');
+		const plugin = getByType('test-type');
 		expect(plugin?.name).toBe('Test Plugin');
 	});
 

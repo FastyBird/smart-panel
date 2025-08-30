@@ -15,7 +15,7 @@ import {
 } from '../../modules/devices';
 
 import { ThirdPartyDeviceAddForm, ThirdPartyDeviceEditForm } from './components/components';
-import { DEVICES_THIRD_PARTY_PLUGIN_TYPE } from './devices-third-party.constants';
+import { DEVICES_THIRD_PARTY_PLUGIN_NAME, DEVICES_THIRD_PARTY_TYPE } from './devices-third-party.constants';
 import enUS from './locales/en-US.json';
 import { ThirdPartyDeviceAddFormSchema, ThirdPartyDeviceEditFormSchema } from './schemas/devices.schemas';
 import { ThirdPartyChannelPropertySchema } from './store/channels.properties.store.schemas';
@@ -41,7 +41,7 @@ export default {
 		}
 
 		pluginsManager.addPlugin(devicesThirdPartyPluginKey, {
-			type: DEVICES_THIRD_PARTY_PLUGIN_TYPE,
+			type: DEVICES_THIRD_PARTY_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.devices-third-party',
 			name: 'Third Party Devices',
 			description: 'Control and monitor third-party devices seamlessly from the FastyBird Smart Panel',
@@ -50,19 +50,24 @@ export default {
 				devDocumentation: 'http://www.fastybird.com',
 				bugsTracking: 'http://www.fastybird.com',
 			},
-			components: {
-				deviceAddForm: ThirdPartyDeviceAddForm,
-				deviceEditForm: ThirdPartyDeviceEditForm,
-			},
-			schemas: {
-				deviceSchema: ThirdPartyDeviceSchema,
-				deviceAddFormSchema: ThirdPartyDeviceAddFormSchema,
-				deviceEditFormSchema: ThirdPartyDeviceEditFormSchema,
-				deviceCreateReqSchema: ThirdPartyDeviceCreateReqSchema,
-				deviceUpdateReqSchema: ThirdPartyDeviceUpdateReqSchema,
-				channelSchema: ThirdPartyChannelSchema,
-				channelPropertySchema: ThirdPartyChannelPropertySchema,
-			},
+			elements: [
+				{
+					type: DEVICES_THIRD_PARTY_TYPE,
+					components: {
+						deviceAddForm: ThirdPartyDeviceAddForm,
+						deviceEditForm: ThirdPartyDeviceEditForm,
+					},
+					schemas: {
+						deviceSchema: ThirdPartyDeviceSchema,
+						deviceAddFormSchema: ThirdPartyDeviceAddFormSchema,
+						deviceEditFormSchema: ThirdPartyDeviceEditFormSchema,
+						deviceCreateReqSchema: ThirdPartyDeviceCreateReqSchema,
+						deviceUpdateReqSchema: ThirdPartyDeviceUpdateReqSchema,
+						channelSchema: ThirdPartyChannelSchema,
+						channelPropertySchema: ThirdPartyChannelPropertySchema,
+					},
+				},
+			],
 			modules: [DEVICES_MODULE_NAME],
 			isCore: true,
 		});

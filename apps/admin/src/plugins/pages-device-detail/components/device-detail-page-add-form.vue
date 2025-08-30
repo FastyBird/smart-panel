@@ -99,6 +99,7 @@ import { IconPicker } from '../../../common';
 import { DashboardException, FormResult, type FormResultType, type IPageAddFormProps, usePageAddForm } from '../../../modules/dashboard';
 import { type IDevice, useDevices } from '../../../modules/devices';
 import { DisplayProfileSelect } from '../../../modules/system';
+import { PAGES_DEVICE_DETAIL_TYPE } from '../pages-device-detail.constants';
 import type { IDeviceDetailPageAddForm } from '../schemas/pages.types';
 
 defineOptions({
@@ -120,7 +121,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { model, formEl, formChanged, submit, formResult } = usePageAddForm<IDeviceDetailPageAddForm>({ id: props.id, type: 'device-detail' });
+const { model, formEl, formChanged, submit, formResult } = usePageAddForm<IDeviceDetailPageAddForm>({
+	id: props.id,
+	type: PAGES_DEVICE_DETAIL_TYPE,
+});
 
 const { devices, fetchDevices, areLoading: loadingDevices } = useDevices();
 

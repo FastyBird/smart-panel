@@ -47,9 +47,14 @@ const mockPluginList = [
 			devDocumentation: '',
 			bugsTracking: '',
 		},
-		schemas: {
-			dataSourceAddFormSchema: TestDataSourceAddFormSchema,
-		},
+		elements: [
+			{
+				type: 'test-type',
+				schemas: {
+					dataSourceAddFormSchema: TestDataSourceAddFormSchema,
+				},
+			},
+		],
 		isCore: false,
 		modules: [DASHBOARD_MODULE_NAME],
 	},
@@ -57,7 +62,7 @@ const mockPluginList = [
 
 vi.mock('./useDataSourcesPlugins', () => ({
 	useDataSourcesPlugins: () => ({
-		getByType: (type: string) => mockPluginList.find((p) => p.type === type),
+		getByType: (type: string) => mockPluginList.find((p) => p.elements.find((el) => el.type === type)),
 	}),
 }));
 
@@ -67,7 +72,7 @@ describe('useDataSourceAddForm', () => {
 	const dataSourceId = uuid().toString();
 
 	beforeEach(() => {
-		form = useDataSourceAddForm<ITestDataSourceAddForm>({ id: dataSourceId, type: 'test-plugin', parent: 'page', parentId: 'page-id' });
+		form = useDataSourceAddForm<ITestDataSourceAddForm>({ id: dataSourceId, type: 'test-type', parent: 'page', parentId: 'page-id' });
 		form.formEl.value = {
 			clearValidate: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
@@ -76,7 +81,7 @@ describe('useDataSourceAddForm', () => {
 
 	it('should initialize with default values', () => {
 		expect(form.model.id).toBe(dataSourceId);
-		expect(form.model.type).toBe('test-plugin');
+		expect(form.model.type).toBe('test-type');
 	});
 
 	it('should mark form as changed when model updates', async () => {
@@ -102,7 +107,7 @@ describe('useDataSourceAddForm', () => {
 			},
 			data: {
 				id: dataSourceId,
-				type: 'test-plugin',
+				type: 'test-type',
 				value: 'Some value',
 			},
 		});

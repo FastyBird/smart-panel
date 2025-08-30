@@ -19,7 +19,7 @@ class HomeAssistantDeviceModel extends DeviceModel {
     required String haDeviceId,
   })  : _haDeviceId = haDeviceId,
         super(
-          type: 'home-assistant',
+          type: 'devices-home-assistant-plugin',
         );
 
   String get haDeviceId => _haDeviceId;

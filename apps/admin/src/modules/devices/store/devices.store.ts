@@ -59,9 +59,9 @@ const defaultSemaphore: IDevicesStateSemaphore = {
 export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetup>('devices_module-devices', (): DevicesStoreSetup => {
 	const backend = useBackend();
 
-	const { getByType: getPluginByType } = useDevicesPlugins();
-	const { getByType: getChannelsPluginByType } = useChannelsPlugins();
-	const { getByType: getChannelsPropertiesPluginByType } = useChannelsPropertiesPlugins();
+	const { getElement: getPluginElement } = useDevicesPlugins();
+	const { getElement: getChannelsPluginElement } = useChannelsPlugins();
+	const { getElement: getChannelsPropertiesPluginElement } = useChannelsPropertiesPlugins();
 
 	const storesManager = injectStoresManager();
 
@@ -86,19 +86,19 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 	const pendingFetchPromises: Record<string, Promise<IDevice[]>> = {};
 
 	const onEvent = (payload: IDevicesOnEventActionPayload): IDevice => {
-		const plugin = getPluginByType(payload.type);
+		const element = getPluginElement(payload.type);
 
 		return set({
 			id: payload.id,
-			data: transformDeviceResponse(payload.data as unknown as IDeviceRes, plugin?.schemas?.deviceSchema || DeviceSchema),
+			data: transformDeviceResponse(payload.data as unknown as IDeviceRes, element?.schemas?.deviceSchema || DeviceSchema),
 		});
 	};
 
 	const set = (payload: IDevicesSetActionPayload): IDevice => {
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
 		if (payload.id && data.value && payload.id in data.value) {
-			const parsed = (plugin?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...data.value[payload.id], ...payload.data });
+			const parsed = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsed.success) {
 				console.error('Schema validation failed with:', parsed.error);
@@ -109,7 +109,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			return (data.value[parsed.data.id] = parsed.data);
 		}
 
-		const parsed = (plugin?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...payload.data, id: payload.id });
+		const parsed = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsed.success) {
 			console.error('Schema validation failed with:', parsed.error);
@@ -157,9 +157,9 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const plugin = getPluginByType(responseData.data.type);
+				const element = getPluginElement(responseData.data.type);
 
-				const transformed = transformDeviceResponse(responseData.data, plugin?.schemas?.deviceSchema || DeviceSchema);
+				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -206,9 +206,9 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			if (typeof responseData !== 'undefined') {
 				data.value = Object.fromEntries(
 					responseData.data.map((device) => {
-						const plugin = getPluginByType(device.type);
+						const element = getPluginElement(device.type);
 
-						const transformed = transformDeviceResponse(device, plugin?.schemas?.deviceSchema || DeviceSchema);
+						const transformed = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
 
 						insertDeviceControlsRelations(transformed, device.controls);
 						insertChannelsRelations(transformed, device.channels);
@@ -249,9 +249,9 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			throw new DevicesValidationException('Failed to add device.');
 		}
 
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
-		const parsedNewItem = (plugin?.schemas?.deviceSchema || DeviceSchema).safeParse({
+		const parsedNewItem = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({
 			...payload.data,
 			id: parsedPayload.data.id,
 			draft: parsedPayload.data.draft,
@@ -279,16 +279,16 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				response,
 			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices`, {
 				body: {
-					data: transformDeviceCreateRequest<IDeviceCreateReq>(parsedNewItem.data, plugin?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema),
+					data: transformDeviceCreateRequest<IDeviceCreateReq>(parsedNewItem.data, element?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema),
 				},
 			});
 
 			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 
 			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const plugin = getPluginByType(responseData.data.type);
+				const element = getPluginElement(responseData.data.type);
 
-				const transformed = transformDeviceResponse(responseData.data, plugin?.schemas?.deviceSchema || DeviceSchema);
+				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -328,9 +328,9 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			throw new DevicesValidationException('Failed to edit device.');
 		}
 
-		const plugin = getPluginByType(payload.data.type);
+		const element = getPluginElement(payload.data.type);
 
-		const parsedEditedItem = (plugin?.schemas?.deviceSchema || DeviceSchema).safeParse({
+		const parsedEditedItem = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({
 			...data.value[payload.id],
 			...omitBy(payload.data, isUndefined),
 		});
@@ -363,7 +363,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 				body: {
 					data: transformDeviceUpdateRequest<IDeviceUpdateReq>(
 						parsedEditedItem.data,
-						plugin?.schemas?.deviceUpdateReqSchema || DeviceUpdateReqSchema
+						element?.schemas?.deviceUpdateReqSchema || DeviceUpdateReqSchema
 					),
 				},
 			});
@@ -371,9 +371,9 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 			if (typeof responseData !== 'undefined') {
-				const plugin = getPluginByType(responseData.data.type);
+				const element = getPluginElement(responseData.data.type);
 
-				const transformed = transformDeviceResponse(responseData.data, plugin?.schemas?.deviceSchema || DeviceSchema);
+				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
 				data.value[transformed.id] = transformed;
 
@@ -402,9 +402,9 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			throw new DevicesException('Failed to get device data to save.');
 		}
 
-		const plugin = getPluginByType(data.value[payload.id].type);
+		const element = getPluginElement(data.value[payload.id].type);
 
-		const parsedSaveItem = (plugin?.schemas?.deviceSchema || DeviceSchema).safeParse(data.value[payload.id]);
+		const parsedSaveItem = (element?.schemas?.deviceSchema || DeviceSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
 			console.error('Schema validation failed with:', parsedSaveItem.error);
@@ -420,16 +420,16 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			response,
 		} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices`, {
 			body: {
-				data: transformDeviceCreateRequest<IDeviceCreateReq>(parsedSaveItem.data, plugin?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema),
+				data: transformDeviceCreateRequest<IDeviceCreateReq>(parsedSaveItem.data, element?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema),
 			},
 		});
 
 		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 
 		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const plugin = getPluginByType(responseData.data.type);
+			const element = getPluginElement(responseData.data.type);
 
-			const transformed = transformDeviceResponse(responseData.data, plugin?.schemas?.deviceSchema || DeviceSchema);
+			const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
 			data.value[transformed.id] = transformed;
 
@@ -531,11 +531,11 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
 		channels.forEach((channel) => {
-			const plugin = getChannelsPluginByType(channel.type);
+			const element = getChannelsPluginElement(channel.type);
 
 			channelsStore.set({
 				id: channel.id,
-				data: transformChannelResponse(channel, plugin?.schemas?.channelSchema || ChannelSchema),
+				data: transformChannelResponse(channel, element?.schemas?.channelSchema || ChannelSchema),
 			});
 
 			channel.controls.forEach((control) => {
@@ -548,11 +548,11 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			channelsControlsStore.firstLoad.push(channel.id);
 
 			channel.properties.forEach((property) => {
-				const plugin = getChannelsPropertiesPluginByType(property.type);
+				const element = getChannelsPropertiesPluginElement(property.type);
 
 				channelsPropertiesStore.set({
 					id: property.id,
-					data: transformChannelPropertyResponse(property, plugin?.schemas?.channelPropertySchema || ChannelPropertySchema),
+					data: transformChannelPropertyResponse(property, element?.schemas?.channelPropertySchema || ChannelPropertySchema),
 				});
 			});
 

@@ -13,6 +13,7 @@ import { ChildEntity, Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { DataSourceEntity, PageEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
+import { PAGES_CARDS_TYPE } from '../pages-cards.constants';
 
 @ChildEntity()
 export class CardsPageEntity extends PageEntity {
@@ -25,7 +26,7 @@ export class CardsPageEntity extends PageEntity {
 
 	@Expose()
 	get type(): string {
-		return 'cards';
+		return PAGES_CARDS_TYPE;
 	}
 }
 

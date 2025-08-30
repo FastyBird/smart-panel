@@ -52,8 +52,8 @@
 			class="grow-1 p-2 md:px-4"
 		>
 			<component
-				:is="plugin?.components?.dataSourceEditForm"
-				v-if="typeof plugin?.components?.dataSourceEditForm !== 'undefined'"
+				:is="element?.components?.dataSourceEditForm"
+				v-if="typeof element?.components?.dataSourceEditForm !== 'undefined'"
 				v-model:remote-form-submit="remoteFormSubmit"
 				v-model:remote-form-result="remoteFormResult"
 				v-model:remote-form-reset="remoteFormReset"
@@ -133,7 +133,16 @@ import { ElButton, ElIcon, ElMessageBox, ElScrollbar, vLoading } from 'element-p
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, type IPlugin, useBreakpoints, useUuid } from '../../../common';
+import {
+	AppBarButton,
+	AppBarButtonAlign,
+	AppBarHeading,
+	AppBreadcrumbs,
+	type IPlugin,
+	type IPluginElement,
+	useBreakpoints,
+	useUuid,
+} from '../../../common';
 import DataSourceEditForm from '../components/data-sources/data-source-edit-form.vue';
 import { useDataSource } from '../composables/useDataSource';
 import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
@@ -183,9 +192,13 @@ const plugin = computed<IPlugin<IDataSourcePluginsComponents, IDataSourcePlugins
 	return plugins.value.find((plugin) => plugin.type === dataSource.value?.type);
 });
 
+const element = computed<IPluginElement<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined>(() => {
+	return plugin.value?.elements.find((element) => element.type === dataSource.value?.type);
+});
+
 const formSchema = computed<typeof DataSourceEditFormSchema>((): typeof DataSourceEditFormSchema => {
-	if (plugin.value && plugin.value.schemas?.dataSourceEditFormSchema) {
-		return plugin.value.schemas?.dataSourceEditFormSchema;
+	if (element.value && element.value.schemas?.dataSourceEditFormSchema) {
+		return element.value.schemas?.dataSourceEditFormSchema;
 	}
 
 	return DataSourceEditFormSchema;
