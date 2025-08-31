@@ -1,3 +1,5 @@
+import { ref } from 'vue';
+
 import { createPinia, setActivePinia } from 'pinia';
 
 import { v4 as uuid } from 'uuid';
@@ -62,6 +64,13 @@ vi.mock('../../../common', async () => {
 		})),
 	};
 });
+
+vi.mock('../../../modules/config', () => ({
+	useConfigPlugins: () => ({
+		enabled: () => true,
+		loaded: ref(true),
+	}),
+}));
 
 describe('Cards Store', () => {
 	let store: ReturnType<typeof useCards>;

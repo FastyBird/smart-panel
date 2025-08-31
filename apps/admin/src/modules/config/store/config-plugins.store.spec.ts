@@ -26,11 +26,13 @@ const CustomPluginConfigUpdateReqSchema = ConfigPluginUpdateReqSchema.and(
 
 const mockPluginRes = {
 	type: 'custom-plugin',
+	enabled: true,
 	mockValue: 'default value',
 };
 
 const mockPlugin = {
 	type: 'custom-plugin',
+	enabled: true,
 	mockValue: 'default value',
 };
 

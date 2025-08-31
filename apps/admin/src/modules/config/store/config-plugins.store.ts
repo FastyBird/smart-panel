@@ -27,7 +27,10 @@ import type {
 import { transformConfigPluginResponse, transformConfigPluginUpdateRequest } from './config-plugins.transformers';
 
 const defaultSemaphore: IConfigPluginsStateSemaphore = {
-	getting: [],
+	fetching: {
+		items: false,
+		item: [],
+	},
 	updating: [],
 };
 
@@ -40,13 +43,25 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 		const semaphore = ref<IConfigPluginsStateSemaphore>(defaultSemaphore);
 
+		const firstLoad = ref<boolean>(false);
+
 		const data = ref<{ [key: IConfigPlugin['type']]: IConfigPlugin }>({});
 
-		const getting = (plugin: IConfigPlugin['type']): boolean => semaphore.value.getting.includes(plugin);
+		const firstLoadFinished = (): boolean => firstLoad.value;
+
+		const getting = (type: IConfigPlugin['type']): boolean => semaphore.value.fetching.item.includes(type);
+
+		const fetching = (): boolean => semaphore.value.fetching.items;
+
+		const findAll = (): IConfigPlugin[] => Object.values(data.value);
+
+		const findByType = (type: IConfigPlugin['type']): IConfigPlugin | null => (type in data.value ? data.value[type] : null);
+
+		const pendingGetPromises: Record<string, Promise<IConfigPlugin>> = {};
+
+		const pendingFetchPromises: Record<string, Promise<IConfigPlugin[]>> = {};
 
 		const updating = (plugin: IConfigPlugin['type']): boolean => semaphore.value.updating.includes(plugin);
-
-		const pendingGetPromises: Record<IConfigPlugin['type'], Promise<IConfigPlugin>> = {};
 
 		const onEvent = (payload: IConfigPluginsOnEventActionPayload): IConfigPlugin => {
 			const element = getPluginElement(payload.type);
@@ -90,13 +105,17 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			}
 
 			const getPromise = (async (): Promise<IConfigPlugin> => {
-				if (semaphore.value.getting.includes(payload.type)) {
+				if (semaphore.value.fetching.item.includes(payload.type)) {
 					throw new ConfigApiException('Already getting plugin config.');
 				}
 
-				semaphore.value.getting.push(payload.type);
+				semaphore.value.fetching.item.push(payload.type);
 
-				const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}`, {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}`, {
 					params: {
 						path: {
 							plugin: payload.type,
@@ -104,9 +123,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 					},
 				});
 
-				const { data: responseData, error, response } = apiResponse;
-
-				semaphore.value.getting = semaphore.value.getting.filter((item) => item !== payload.type);
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.type);
 
 				if (typeof responseData !== 'undefined') {
 					const element = getPluginElement(responseData.data.type);
@@ -133,6 +150,58 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				return await getPromise;
 			} finally {
 				delete pendingGetPromises[payload.type];
+			}
+		};
+
+		const fetch = async (): Promise<IConfigPlugin[]> => {
+			if ('all' in pendingFetchPromises) {
+				return pendingFetchPromises['all'];
+			}
+
+			const fetchPromise = (async (): Promise<IConfigPlugin[]> => {
+				if (semaphore.value.fetching.items) {
+					throw new ConfigApiException('Already fetching plugins config.');
+				}
+
+				semaphore.value.fetching.items = true;
+
+				const { data: responseData, error, response } = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config`);
+
+				semaphore.value.fetching.items = false;
+
+				if (typeof responseData !== 'undefined') {
+					data.value = Object.fromEntries(
+						responseData.data.plugins.map((plugin) => {
+							const element = getPluginElement(plugin.type);
+
+							const transformed = transformConfigPluginResponse(plugin, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
+
+							data.value[transformed.type] = transformed;
+
+							return [transformed.type, transformed];
+						})
+					);
+
+					firstLoad.value = true;
+
+					return Object.values(data.value);
+				}
+
+				let errorReason: string | null = 'Failed to fetch plugins config.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-config-module-config']>(error, errorReason);
+				}
+
+				throw new ConfigApiException(errorReason, response.status);
+			})();
+
+			pendingFetchPromises['all'] = fetchPromise;
+
+			try {
+				return await fetchPromise;
+			} finally {
+				delete pendingFetchPromises['all'];
 			}
 		};
 
@@ -212,12 +281,18 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 		return {
 			semaphore,
+			firstLoad,
 			data,
+			firstLoadFinished,
 			getting,
+			fetching,
+			findAll,
+			findByType,
 			updating,
 			onEvent,
 			set,
 			get,
+			fetch,
 			edit,
 		};
 	}

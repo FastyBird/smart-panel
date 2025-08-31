@@ -1,6 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { type components } from '../../../openapi';
+import { ItemIdSchema } from '../../devices';
 
 type ApiConfigPlugin = components['schemas']['ConfigModulePlugin'];
 type ApiConfigUpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
@@ -10,10 +11,14 @@ type ApiConfigUpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
 
 export const ConfigPluginSchema = z.object({
 	type: z.string(),
+	enabled: z.boolean().default(false),
 });
 
 export const ConfigPluginsStateSemaphoreSchema = z.object({
-	getting: z.array(z.string()),
+	fetching: z.object({
+		items: z.boolean().default(false),
+		item: z.array(ItemIdSchema),
+	}),
 	updating: z.array(z.string()),
 });
 
@@ -46,8 +51,10 @@ export const ConfigPluginsEditActionPayloadSchema = z.object({
 
 export const ConfigPluginUpdateReqSchema: ZodType<ApiConfigUpdatePlugin> = z.object({
 	type: z.string(),
+	enabled: z.boolean().optional(),
 });
 
 export const ConfigPluginResSchema: ZodType<ApiConfigPlugin> = z.object({
 	type: z.string(),
+	enabled: z.boolean(),
 });

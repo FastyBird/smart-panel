@@ -311,6 +311,11 @@ export class UpdatePluginConfigDto implements UpdatePlugin {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
 	type: string;
+
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled must be a boolean value."}]' })
+	enabled?: boolean;
 }
 
 export class ReqUpdatePluginDto implements ReqUpdatePlugin {

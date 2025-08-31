@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { orderBy } from 'natural-orderby';
 
 import { type IPlugin, type IPluginElement, injectPluginsManager } from '../../../common';
+import { useConfigPlugins } from '../../config';
 import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import type { ITilePluginsComponents, ITilePluginsSchemas } from '../dashboard.types';
 
@@ -10,6 +11,8 @@ import type { IUseTilesPlugins } from './types';
 
 export const useTilesPlugins = (): IUseTilesPlugins => {
 	const pluginsManager = injectPluginsManager();
+
+	const { enabled, fetchConfigPlugins, loaded } = useConfigPlugins();
 
 	const pluginComponents: (keyof ITilePluginsComponents)[] = ['tileAddForm', 'tileEditForm'];
 
@@ -46,18 +49,21 @@ export const useTilesPlugins = (): IUseTilesPlugins => {
 		});
 	});
 
-	const options = computed<{ value: IPluginElement['type']; label: string }[]>((): { value: IPluginElement['type']; label: string }[] => {
-		const flat: { value: IPluginElement['type']; label: string }[] = plugins.value.flatMap((plugin) => {
-			return (plugin.elements ?? [])
-				.filter((el) => el.modules === undefined || el.modules.includes(DASHBOARD_MODULE_NAME))
-				.map((el) => ({
-					value: el.type,
-					label: el.name?.trim() ? el.name : plugin.name,
-				}));
-		});
+	const options = computed<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>(
+		(): { value: IPluginElement['type']; label: string; disabled: boolean }[] => {
+			const flat: { value: IPluginElement['type']; label: string; disabled: boolean }[] = plugins.value.flatMap((plugin) => {
+				return (plugin.elements ?? [])
+					.filter((el) => el.modules === undefined || el.modules.includes(DASHBOARD_MODULE_NAME))
+					.map((el) => ({
+						value: el.type,
+						label: el.name?.trim() ? el.name : plugin.name,
+						disabled: !enabled(plugin.type),
+					}));
+			});
 
-		return orderBy(flat, [(o) => o.label], ['asc']);
-	});
+			return orderBy(flat, [(o) => o.label], ['asc']);
+		}
+	);
 
 	const getByName = (type: IPlugin['type']): IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
@@ -82,6 +88,12 @@ export const useTilesPlugins = (): IUseTilesPlugins => {
 
 		return undefined;
 	};
+
+	if (!loaded.value) {
+		fetchConfigPlugins().catch((): void => {
+			// Something went wrong
+		});
+	}
 
 	return {
 		plugins,

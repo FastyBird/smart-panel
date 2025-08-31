@@ -3,9 +3,22 @@
 		ref="formEl"
 		:model="model"
 		:rules="rules"
-		label-position="top"
+		:label-position="props.layout === Layout.PHONE ? 'top' : 'right'"
+		:label-width="180"
 		status-icon
 	>
+		<el-form-item
+			:label="t('devicesHomeAssistantPlugin.fields.config.enabled.title')"
+			prop="enabled"
+		>
+			<el-switch
+				v-model="model.enabled"
+				name="enabled"
+				:active-text="t('devicesHomeAssistantPlugin.fields.config.enabled.values.enabled').toLowerCase()"
+				:inactive-text="t('devicesHomeAssistantPlugin.fields.config.enabled.values.disabled').toLowerCase()"
+			/>
+		</el-form-item>
+
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.config.apiKey.title')"
 			:prop="['apiKey']"
@@ -38,9 +51,9 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, type FormRules } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, useConfigPluginEditForm } from '../../../modules/config';
+import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IHomeAssistantConfigEditForm } from '../schemas/config.types';
 
 import type { IHomeAssistantConfigFormProps } from './home-assistant-config-form.types';
@@ -53,6 +66,7 @@ const props = withDefaults(defineProps<IHomeAssistantConfigFormProps>(), {
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
+	layout: Layout.DEFAULT,
 });
 
 const emit = defineEmits<{

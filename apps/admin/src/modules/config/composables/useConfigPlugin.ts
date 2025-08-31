@@ -20,7 +20,7 @@ export const useConfigPlugin = ({ type }: IUseConfigPluginProps): IUseConfigPlug
 	const { data, semaphore } = storeToRefs(configPluginStore);
 
 	const configPlugin = computed<IConfigPlugin | null>((): IConfigPlugin | null => {
-		return type in data.value ? data.value[type] : null;
+		return configPluginStore.findByType(type);
 	});
 
 	const fetchConfigPlugin = async (): Promise<void> => {
@@ -32,7 +32,7 @@ export const useConfigPlugin = ({ type }: IUseConfigPluginProps): IUseConfigPlug
 			return false;
 		}
 
-		return semaphore.value.getting.includes(type);
+		return semaphore.value.fetching.item.includes(type);
 	});
 
 	return {

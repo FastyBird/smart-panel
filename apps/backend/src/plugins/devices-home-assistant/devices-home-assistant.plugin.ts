@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
+import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
@@ -70,6 +71,7 @@ export class DevicesHomeAssistantPlugin {
 
 	constructor(
 		private readonly configService: NestConfigService,
+		private readonly appConfigService: ConfigService,
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly devicesMapper: DevicesTypeMapperService,
 		private readonly channelsMapper: ChannelsTypeMapperService,
@@ -89,8 +91,6 @@ export class DevicesHomeAssistantPlugin {
 	) {}
 
 	onModuleInit() {
-		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
-
 		this.configMapper.registerMapping<HomeAssistantConfigModel, HomeAssistantUpdatePluginConfigDto>({
 			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 			class: HomeAssistantConfigModel,
@@ -140,8 +140,12 @@ export class DevicesHomeAssistantPlugin {
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantLightEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSwitchEntityMapper);
+	}
 
-		if (!isCli) {
+	onApplicationBootstrap() {
+		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
+
+		if (!isCli && this.appConfigService.getPluginConfig(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled) {
 			this.homeAssistantWsService.connect();
 			this.homeAssistantWsService.registerEventsHandler(
 				this.stateChangedEventService.event,

@@ -39,16 +39,22 @@ export type IConfigPluginsEditActionPayload = z.infer<typeof ConfigPluginsEditAc
 export interface IConfigPluginsStoreState {
 	data: Ref<{ [key: string]: IConfigPlugin }>;
 	semaphore: Ref<IConfigPluginsStateSemaphore>;
+	firstLoad: Ref<boolean>;
 }
 
 export interface IConfigPluginsStoreActions {
 	// Getters
+	firstLoadFinished: () => boolean;
+	findByType: (id: IConfigPlugin['type']) => IConfigPlugin | null;
+	findAll: () => IConfigPlugin[];
 	getting: (plugin: IConfigPlugin['type']) => boolean;
+	fetching: () => boolean;
 	updating: (plugin: IConfigPlugin['type']) => boolean;
 	// Actions
 	onEvent: (payload: IConfigPluginsOnEventActionPayload) => IConfigPlugin;
 	set: (payload: IConfigPluginsSetActionPayload) => IConfigPlugin;
 	get: (payload: IConfigPluginsGetActionPayload) => Promise<IConfigPlugin>;
+	fetch: () => Promise<IConfigPlugin[]>;
 	edit: (payload: IConfigPluginsEditActionPayload) => Promise<IConfigPlugin>;
 }
 

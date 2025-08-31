@@ -1,3 +1,5 @@
+import { ref } from 'vue';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEVICES_MODULE_NAME } from '../devices.constants';
@@ -55,7 +57,14 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
-describe('usePlugins', () => {
+vi.mock('../../config', () => ({
+	useConfigPlugins: () => ({
+		enabled: () => true,
+		loaded: ref(true),
+	}),
+}));
+
+describe('useDevicesPlugins', () => {
 	it('returns only plugins related to devices module', () => {
 		const { plugins } = useDevicesPlugins();
 		expect(plugins.value.length).toBe(1);
@@ -68,6 +77,7 @@ describe('usePlugins', () => {
 			{
 				value: 'test-type',
 				label: 'Test Plugin',
+				disabled: false,
 			},
 		]);
 	});

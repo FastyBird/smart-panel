@@ -11,6 +11,7 @@ import { useConfigPlugin } from './useConfigPlugin';
 
 const mockPlugin: IConfigPlugin = {
 	type: 'custom-plugin',
+	enabled: true,
 };
 
 vi.mock('../../../common', async () => {
@@ -24,9 +25,11 @@ vi.mock('../../../common', async () => {
 
 describe('useConfigPlugin', () => {
 	let get: Mock;
+	let findByType: Mock;
 
 	let mockStore: {
 		get: Mock;
+		findByType: Mock;
 		$id: string;
 		data: Ref;
 		semaphore: Ref;
@@ -36,13 +39,15 @@ describe('useConfigPlugin', () => {
 		setActivePinia(createPinia());
 
 		get = vi.fn();
+		findByType = vi.fn().mockReturnValue(mockPlugin);
 
 		mockStore = {
 			get,
+			findByType,
 			$id: 'configPlugin',
 			data: ref({}),
 			semaphore: ref({
-				getting: [],
+				fetching: { items: false, item: [] },
 			}),
 		};
 
@@ -60,7 +65,7 @@ describe('useConfigPlugin', () => {
 	});
 
 	it('returns isLoading true if data is null and getting is true', () => {
-		mockStore.semaphore.value.getting.push(mockPlugin.type);
+		mockStore.semaphore.value.fetching.item.push(mockPlugin.type);
 
 		const { isLoading } = useConfigPlugin({ type: 'custom-plugin' });
 

@@ -1,29 +1,50 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ConfigModule } from '../../modules/config/config.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DashboardModule } from '../../modules/dashboard/dashboard.module';
 import { TilesTypeMapperService } from '../../modules/dashboard/services/tiles-type-mapper.service';
 
 import { CreateDayWeatherTileDto, CreateForecastWeatherTileDto } from './dto/create-tile.dto';
+import { WeatherUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateDayWeatherTileDto, UpdateForecastWeatherTileDto } from './dto/update-tile.dto';
 import { DayWeatherTileEntity, ForecastWeatherTileEntity } from './entities/tiles-weather.entity';
-import { TILES_WEATHER_DAY_TYPE, TILES_WEATHER_FORECAST_TYPE } from './tiles-weather.constants';
+import { WeatherConfigModel } from './models/config.model';
+import {
+	TILES_WEATHER_DAY_TYPE,
+	TILES_WEATHER_FORECAST_TYPE,
+	TILES_WEATHER_PLUGIN_NAME,
+} from './tiles-weather.constants';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([DayWeatherTileEntity, ForecastWeatherTileEntity]), DashboardModule],
+	imports: [TypeOrmModule.forFeature([DayWeatherTileEntity, ForecastWeatherTileEntity]), DashboardModule, ConfigModule],
 })
 export class TilesWeatherPlugin {
-	constructor(private readonly mapper: TilesTypeMapperService) {}
+	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
+		private readonly tilesMapper: TilesTypeMapperService,
+	) {}
 
 	onModuleInit() {
-		this.mapper.registerMapping<DayWeatherTileEntity, CreateDayWeatherTileDto, UpdateDayWeatherTileDto>({
+		this.configMapper.registerMapping<WeatherConfigModel, WeatherUpdatePluginConfigDto>({
+			type: TILES_WEATHER_PLUGIN_NAME,
+			class: WeatherConfigModel,
+			configDto: WeatherUpdatePluginConfigDto,
+		});
+
+		this.tilesMapper.registerMapping<DayWeatherTileEntity, CreateDayWeatherTileDto, UpdateDayWeatherTileDto>({
 			type: TILES_WEATHER_DAY_TYPE,
 			class: DayWeatherTileEntity,
 			createDto: CreateDayWeatherTileDto,
 			updateDto: UpdateDayWeatherTileDto,
 		});
 
-		this.mapper.registerMapping<ForecastWeatherTileEntity, CreateForecastWeatherTileDto, UpdateForecastWeatherTileDto>({
+		this.tilesMapper.registerMapping<
+			ForecastWeatherTileEntity,
+			CreateForecastWeatherTileDto,
+			UpdateForecastWeatherTileDto
+		>({
 			type: TILES_WEATHER_FORECAST_TYPE,
 			class: ForecastWeatherTileEntity,
 			createDto: CreateForecastWeatherTileDto,

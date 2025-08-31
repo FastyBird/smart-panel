@@ -1,3 +1,5 @@
+import { ref } from 'vue';
+
 import { createPinia, setActivePinia } from 'pinia';
 
 import { v4 as uuid } from 'uuid';
@@ -57,6 +59,13 @@ vi.mock('../../../common', async () => {
 		})),
 	};
 });
+
+vi.mock('../../config', () => ({
+	useConfigPlugins: () => ({
+		enabled: () => true,
+		loaded: ref(true),
+	}),
+}));
 
 describe('Tiles Store', () => {
 	let store: ReturnType<typeof useTiles>;

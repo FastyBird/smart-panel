@@ -1,3 +1,5 @@
+import { ref } from 'vue';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
@@ -55,6 +57,13 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
+vi.mock('../../config', () => ({
+	useConfigPlugins: () => ({
+		enabled: () => true,
+		loaded: ref(true),
+	}),
+}));
+
 describe('usePlugins', () => {
 	it('returns only plugins related to devices module', () => {
 		const { plugins } = useTilesPlugins();
@@ -68,6 +77,7 @@ describe('usePlugins', () => {
 			{
 				value: 'test-type',
 				label: 'Test Plugin',
+				disabled: false,
 			},
 		]);
 	});

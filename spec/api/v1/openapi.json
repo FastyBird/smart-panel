@@ -5650,7 +5650,8 @@
                       "path": "/api/v1/config-module/plugin/custom-plugin",
                       "method": "GET",
                       "data": {
-                        "type": "custom-plugin"
+                        "type": "custom-plugin",
+                        "enabled": true
                       },
                       "metadata": {
                         "request_duration_ms": 57,
@@ -5737,7 +5738,8 @@
                       "path": "/api/v1/config-module/plugin/custom-plugin",
                       "method": "PATCH",
                       "data": {
-                        "type": "custom-plugin"
+                        "type": "custom-plugin",
+                        "enabled": true
                       },
                       "metadata": {
                         "request_duration_ms": 57,
@@ -9559,18 +9561,26 @@
         "description": "Schema for plugin configuration.",
         "type": "object",
         "required": [
-          "type"
+          "type",
+          "enabled"
         ],
         "properties": {
           "type": {
             "type": "string",
             "description": "Configuration plugin type",
             "default": "custom-plugin"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enables or disables the plugin.",
+            "example": true
           }
         },
         "examples": [
           {
-            "type": "custom-plugin"
+            "type": "custom-plugin",
+            "enabled": true
           }
         ]
       },
@@ -10074,11 +10084,18 @@
           "type": {
             "type": "string",
             "description": "Configuration plugin type"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enables or disables the plugin.",
+            "example": true
           }
         },
         "examples": [
           {
-            "type": "custom-plugin"
+            "type": "custom-plugin",
+            "enabled": false
           }
         ]
       },
