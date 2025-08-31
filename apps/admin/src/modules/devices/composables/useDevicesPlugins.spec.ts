@@ -59,7 +59,7 @@ vi.mock('../../../common', () => ({
 
 vi.mock('../../config', () => ({
 	useConfigPlugins: () => ({
-		enabled: (type: string) => true,
+		enabled: () => true,
 		loaded: ref(true),
 	}),
 }));
