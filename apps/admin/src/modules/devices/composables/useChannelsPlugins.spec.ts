@@ -1,3 +1,5 @@
+import { ref } from 'vue';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEVICES_MODULE_NAME } from '../devices.constants';
@@ -55,6 +57,13 @@ vi.mock('../../../common', () => ({
 	}),
 }));
 
+vi.mock('../../config', () => ({
+	useConfigPlugins: () => ({
+		enabled: (type: string) => true,
+		loaded: ref(true),
+	}),
+}));
+
 describe('useChannelsPlugins', () => {
 	it('returns only plugins related to channels module', () => {
 		const { plugins } = useChannelsPlugins();
@@ -68,6 +77,7 @@ describe('useChannelsPlugins', () => {
 			{
 				value: 'test-type',
 				label: 'Test Plugin',
+				disabled: false,
 			},
 		]);
 	});
