@@ -135,6 +135,14 @@ export interface IUseConfigPlugin {
 	fetchConfigPlugin: () => Promise<void>;
 }
 
+export interface IUseConfigPlugins {
+	configPlugins: ComputedRef<IConfigPlugin[]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	enabled: (type: IConfigPlugin['type']) => boolean;
+	fetchConfigPlugins: () => Promise<void>;
+}
+
 export interface IUseConfigPluginEditForm<TForm extends IConfigPluginEditForm = IConfigPluginEditForm> {
 	model: Reactive<TForm>;
 	formEl: Ref<FormInstance | undefined>;

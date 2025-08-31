@@ -7,7 +7,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
 	DevicesHomeAssistantNotFoundException,
@@ -67,6 +67,12 @@ export class HomeAssistantWsService {
 	}
 
 	connect() {
+		if (this.configService.getPluginConfig(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled === false) {
+			this.logger.debug('[HOME ASSISTANT][WS] Home Assistant plugin is disabled.');
+
+			return;
+		}
+
 		if (this.apiKey === null) {
 			this.logger.warn('[HOME ASSISTANT][WS] Missing API key for Home Assistant WS service');
 

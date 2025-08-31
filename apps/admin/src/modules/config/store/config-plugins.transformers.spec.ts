@@ -19,11 +19,13 @@ const CustomPluginConfigUpdateReqSchema = ConfigPluginUpdateReqSchema.and(
 
 const validConfigPluginResponse: IConfigPluginRes = {
 	type: 'custom-plugin',
+	enabled: true,
 	mock_value: 'Default value',
 } as IConfigPluginRes;
 
 const validConfigPluginUpdatePayload: IConfigPluginsEditActionPayload['data'] = {
 	type: 'custom-plugin',
+	enabled: true,
 	mockValue: 'Default value',
 } as IConfigPluginsEditActionPayload['data'];
 
@@ -34,6 +36,7 @@ describe('Config Plugin Transformers', (): void => {
 
 			expect(result).toEqual({
 				type: 'custom-plugin',
+				enabled: true,
 				mockValue: 'Default value',
 			});
 		});
@@ -51,6 +54,7 @@ describe('Config Plugin Transformers', (): void => {
 
 			expect(result).toEqual({
 				type: 'custom-plugin',
+				enabled: true,
 				mock_value: 'Default value',
 			});
 		});

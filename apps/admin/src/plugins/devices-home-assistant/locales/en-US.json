@@ -110,6 +110,13 @@
       }
     },
     "config": {
+      "enabled": {
+        "title": "Enabled",
+        "values": {
+          "enabled": "Allow to communicate with Home Assistant",
+          "disabled": "Disallow to communicate with Home Assistant"
+        }
+      },
       "apiKey": {
         "title": "API key",
         "placeholder": "Enter your Home Assistant long-lived access token",

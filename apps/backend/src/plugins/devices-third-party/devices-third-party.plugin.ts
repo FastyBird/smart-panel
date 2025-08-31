@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ConfigModule } from '../../modules/config/config.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
@@ -8,27 +10,30 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
 import { ThirdPartyDemoController } from './controllers/third-party-demo.controller';
-import { DEVICES_THIRD_PARTY_TYPE } from './devices-third-party.constants';
+import { DEVICES_THIRD_PARTY_PLUGIN_NAME, DEVICES_THIRD_PARTY_TYPE } from './devices-third-party.constants';
 import { CreateThirdPartyChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateThirdPartyChannelDto } from './dto/create-channel.dto';
 import { CreateThirdPartyDeviceDto } from './dto/create-device.dto';
 import { UpdateThirdPartyChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateThirdPartyChannelDto } from './dto/update-channel.dto';
+import { ThirdPartyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateThirdPartyDeviceDto } from './dto/update-device.dto';
 import {
 	ThirdPartyChannelEntity,
 	ThirdPartyChannelPropertyEntity,
 	ThirdPartyDeviceEntity,
 } from './entities/devices-third-party.entity';
+import { ThirdPartyConfigModel } from './models/config.model';
 import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platform';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule],
+	imports: [TypeOrmModule.forFeature([ThirdPartyDeviceEntity]), DevicesModule, ConfigModule],
 	providers: [ThirdPartyDevicePlatform],
 	controllers: [ThirdPartyDemoController],
 })
 export class DevicesThirdPartyPlugin {
 	constructor(
+		private readonly configMapper: PluginsTypeMapperService,
 		private readonly devicesMapper: DevicesTypeMapperService,
 		private readonly channelsMapper: ChannelsTypeMapperService,
 		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
@@ -37,6 +42,12 @@ export class DevicesThirdPartyPlugin {
 	) {}
 
 	onModuleInit() {
+		this.configMapper.registerMapping<ThirdPartyConfigModel, ThirdPartyUpdatePluginConfigDto>({
+			type: DEVICES_THIRD_PARTY_PLUGIN_NAME,
+			class: ThirdPartyConfigModel,
+			configDto: ThirdPartyUpdatePluginConfigDto,
+		});
+
 		this.devicesMapper.registerMapping<ThirdPartyDeviceEntity, CreateThirdPartyDeviceDto, UpdateThirdPartyDeviceDto>({
 			type: DEVICES_THIRD_PARTY_TYPE,
 			class: ThirdPartyDeviceEntity,

@@ -188,6 +188,10 @@ export abstract class PluginConfigModel {
 	@Expose({ groups: ['api'] })
 	@IsString()
 	type: string;
+
+	@Expose()
+	@IsBoolean()
+	enabled: boolean = false;
 }
 
 export class AppConfigModel {

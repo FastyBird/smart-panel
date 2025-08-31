@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { orderBy } from 'natural-orderby';
 
 import { type IPlugin, type IPluginElement, injectPluginsManager } from '../../../common';
+import { useConfigPlugins } from '../../config';
 import { DASHBOARD_MODULE_NAME } from '../dashboard.constants';
 import type { IDataSourcePluginsComponents, IDataSourcePluginsSchemas } from '../dashboard.types';
 
@@ -10,6 +11,8 @@ import type { IUseDataSourcesPlugins } from './types';
 
 export const useDataSourcesPlugins = (): IUseDataSourcesPlugins => {
 	const pluginsManager = injectPluginsManager();
+
+	const { enabled, fetchConfigPlugins, loaded } = useConfigPlugins();
 
 	const pluginComponents: (keyof IDataSourcePluginsComponents)[] = ['dataSourceAddForm', 'dataSourceEditForm'];
 
@@ -46,18 +49,21 @@ export const useDataSourcesPlugins = (): IUseDataSourcesPlugins => {
 		});
 	});
 
-	const options = computed<{ value: IPluginElement['type']; label: string }[]>((): { value: IPluginElement['type']; label: string }[] => {
-		const flat: { value: IPluginElement['type']; label: string }[] = plugins.value.flatMap((plugin) => {
-			return (plugin.elements ?? [])
-				.filter((el) => el.modules === undefined || el.modules.includes(DASHBOARD_MODULE_NAME))
-				.map((el) => ({
-					value: el.type,
-					label: el.name?.trim() ? el.name : plugin.name,
-				}));
-		});
+	const options = computed<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>(
+		(): { value: IPluginElement['type']; label: string; disabled: boolean }[] => {
+			const flat: { value: IPluginElement['type']; label: string; disabled: boolean }[] = plugins.value.flatMap((plugin) => {
+				return (plugin.elements ?? [])
+					.filter((el) => el.modules === undefined || el.modules.includes(DASHBOARD_MODULE_NAME))
+					.map((el) => ({
+						value: el.type,
+						label: el.name?.trim() ? el.name : plugin.name,
+						disabled: !enabled(plugin.type),
+					}));
+			});
 
-		return orderBy(flat, [(o) => o.label], ['asc']);
-	});
+			return orderBy(flat, [(o) => o.label], ['asc']);
+		}
+	);
 
 	const getByName = (type: IPlugin['type']): IPlugin<IDataSourcePluginsComponents, IDataSourcePluginsSchemas> | undefined => {
 		return plugins.value.find((plugin) => plugin.type === type);
@@ -82,6 +88,12 @@ export const useDataSourcesPlugins = (): IUseDataSourcesPlugins => {
 
 		return undefined;
 	};
+
+	if (!loaded.value) {
+		fetchConfigPlugins().catch((): void => {
+			// Something went wrong
+		});
+	}
 
 	return {
 		plugins,

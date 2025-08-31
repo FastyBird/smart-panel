@@ -121,7 +121,7 @@ export interface IUseChannelsPlugin {
 
 export interface IUseChannelsPlugins {
 	plugins: ComputedRef<IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas>[]>;
-	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
 	getByName: (type: IPlugin['type']) => IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<IChannelPluginsComponents, IChannelPluginsSchemas> | undefined;
@@ -205,7 +205,7 @@ export interface IUseChannelsPropertiesPlugin {
 
 export interface IUseChannelsPropertiesPlugins {
 	plugins: ComputedRef<IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas>[]>;
-	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
 	getByName: (type: IPlugin['type']) => IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<IChannelPropertyPluginsComponents, IChannelPropertyPluginsSchemas> | undefined;
@@ -285,7 +285,7 @@ export interface IUseDevicesPlugin {
 
 export interface IUseDevicesPlugins {
 	plugins: ComputedRef<IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas>[]>;
-	options: ComputedRef<{ value: IPluginElement['type']; label: string }[]>;
+	options: ComputedRef<{ value: IPluginElement['type']; label: string; disabled: boolean }[]>;
 	getByName: (type: IPlugin['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
 	getByType: (type: IPluginElement['type']) => IPlugin<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;
 	getElement: (type: IPluginElement['type']) => IPluginElement<IDevicePluginsComponents, IDevicePluginsSchemas> | undefined;

@@ -70,6 +70,12 @@ describe('ConfigService', () => {
 			microphone: false,
 			microphone_volume: 30,
 		},
+		plugins: {
+			mock: {
+				enabled: true,
+				mockValue: 'default value',
+			},
+		},
 	};
 
 	const mockConfig: Partial<AppConfigModel> = {
@@ -105,6 +111,7 @@ describe('ConfigService', () => {
 		plugins: [
 			{
 				type: 'mock',
+				enabled: true,
 				mockValue: 'default value',
 			} as PluginConfigModel,
 		],
@@ -342,11 +349,11 @@ describe('ConfigService', () => {
 				type: 'mock',
 				mock_value: 'Updated value',
 			};
-			const mergedConfig = { ...mockConfig.plugins[0], ...{ mockValue: 'Updated value' } };
+			const mergedConfig = { ...mockConfig.plugins[0], ...{ enabled: true, mockValue: 'Updated value' } };
 
 			const updatedRawConfig = {
 				...mockRawConfig,
-				...{ plugins: { mock: { mock_value: 'Updated value' } } },
+				...{ plugins: { mock: { enabled: true, mock_value: 'Updated value' } } },
 			};
 
 			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
