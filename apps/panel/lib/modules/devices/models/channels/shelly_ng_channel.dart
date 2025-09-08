@@ -3,8 +3,8 @@ import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.da
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 
-class ThirdPartyChannelModel extends ChannelModel {
-  ThirdPartyChannelModel({
+class ShellyNgChannelModel extends ChannelModel {
+  ShellyNgChannelModel({
     required super.id,
     super.category = ChannelCategory.generic,
     super.name,
@@ -15,10 +15,10 @@ class ThirdPartyChannelModel extends ChannelModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: DeviceType.devicesThirdParty.value,
+          type: DeviceType.devicesShellyNg.value,
         );
 
-  factory ThirdPartyChannelModel.fromJson(Map<String, dynamic> json) {
+  factory ShellyNgChannelModel.fromJson(Map<String, dynamic> json) {
     ChannelCategory? category = ChannelCategory.fromValue(
       json['category'],
     );
@@ -49,7 +49,7 @@ class ThirdPartyChannelModel extends ChannelModel {
       }
     }
 
-    return ThirdPartyChannelModel(
+    return ShellyNgChannelModel(
       id: json['id'],
       category: category ?? ChannelCategory.generic,
       name: json['name'],

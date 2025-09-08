@@ -157,6 +157,33 @@ enum ButtonEventValue {
   static bool contains(String value) => utils.contains(value);
 }
 
+enum ConnectionStatusValue {
+  connected('connected'),
+  disconnected('disconnected'),
+  init('init'),
+  ready('ready'),
+  running('running'),
+  sleeping('sleeping'),
+  stopped('stopped'),
+  lost('lost'),
+  alert('alert'),
+  unknown('unknown');
+
+  final String value;
+
+  const ConnectionStatusValue(this.value);
+
+  static final utils = StringEnumUtils(
+    ConnectionStatusValue.values,
+    (ConnectionStatusValue payload) => payload.value,
+  );
+
+  static ConnectionStatusValue? fromValue(String value) =>
+      utils.fromValue(value);
+
+  static bool contains(String value) => utils.contains(value);
+}
+
 enum FanDirectionValue {
   clockwise('clockwise'),
   counterClockwise('counter_clockwise');
@@ -525,21 +552,21 @@ enum WindowCoveringStatusValue {
   static bool contains(String value) => utils.contains(value);
 }
 
-enum WindowCoveringPositionValue {
+enum WindowCoveringCommandValue {
   open('open'),
   close('close'),
   stop('stop');
 
   final String value;
 
-  const WindowCoveringPositionValue(this.value);
+  const WindowCoveringCommandValue(this.value);
 
   static final utils = StringEnumUtils(
-    WindowCoveringPositionValue.values,
-    (WindowCoveringPositionValue payload) => payload.value,
+    WindowCoveringCommandValue.values,
+    (WindowCoveringCommandValue payload) => payload.value,
   );
 
-  static WindowCoveringPositionValue? fromValue(String value) =>
+  static WindowCoveringCommandValue? fromValue(String value) =>
       utils.fromValue(value);
 
   static bool contains(String value) => utils.contains(value);

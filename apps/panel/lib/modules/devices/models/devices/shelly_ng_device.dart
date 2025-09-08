@@ -4,10 +4,12 @@ import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-class HomeAssistantDeviceModel extends DeviceModel {
-  final String _haDeviceId;
+class ShellyNgDeviceModel extends DeviceModel {
+  final String? _password;
 
-  HomeAssistantDeviceModel({
+  final String? _hostname;
+
+  ShellyNgDeviceModel({
     required super.id,
     super.category = DeviceCategory.generic,
     required super.name,
@@ -17,15 +19,19 @@ class HomeAssistantDeviceModel extends DeviceModel {
     super.channels = const [],
     super.createdAt,
     super.updatedAt,
-    required String haDeviceId,
-  })  : _haDeviceId = haDeviceId,
+    required String? password,
+    required String? hostname,
+  })  : _password = password,
+        _hostname = hostname,
         super(
-          type: DeviceType.devicesHomeAssistant.value,
+          type: DeviceType.devicesShellyNg.value,
         );
 
-  String get haDeviceId => _haDeviceId;
+  String? get password => _password;
 
-  factory HomeAssistantDeviceModel.fromJson(Map<String, dynamic> json) {
+  String? get hostname => _hostname;
+
+  factory ShellyNgDeviceModel.fromJson(Map<String, dynamic> json) {
     DeviceCategory? category = DeviceCategory.fromValue(
       json['category'],
     );
@@ -56,7 +62,7 @@ class HomeAssistantDeviceModel extends DeviceModel {
       }
     }
 
-    return HomeAssistantDeviceModel(
+    return ShellyNgDeviceModel(
       id: json['id'],
       category: category ?? DeviceCategory.generic,
       name: json['name'],
@@ -72,7 +78,8 @@ class HomeAssistantDeviceModel extends DeviceModel {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
-      haDeviceId: json['ha_device_id'],
+      password: json['password'],
+      hostname: json['hostname'],
     );
   }
 }

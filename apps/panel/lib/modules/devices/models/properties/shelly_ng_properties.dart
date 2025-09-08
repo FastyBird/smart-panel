@@ -6,8 +6,8 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
-class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
-  ThirdPartyChannelPropertyModel({
+class ShellyNgChannelPropertyModel extends ChannelPropertyModel {
+  ShellyNgChannelPropertyModel({
     required super.id,
     required super.channel,
     super.category = ChannelPropertyCategory.generic,
@@ -23,11 +23,11 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: DeviceType.devicesThirdParty.value,
+          type: DeviceType.devicesShellyNg.value,
         );
 
-  factory ThirdPartyChannelPropertyModel.fromJson(Map<String, dynamic> json) {
-    return ThirdPartyChannelPropertyModel(
+  factory ShellyNgChannelPropertyModel.fromJson(Map<String, dynamic> json) {
+    return ShellyNgChannelPropertyModel(
       channel: json['channel'],
       id: json['id'],
       category: ChannelPropertyCategory.fromValue(json['category']) ??
@@ -59,7 +59,7 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
   }
 
   @override
-  ThirdPartyChannelPropertyModel copyWith({
+  ShellyNgChannelPropertyModel copyWith({
     ValueType? value,
     bool? clearValue,
   }) {
@@ -69,7 +69,7 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
       setValue = null;
     }
 
-    return ThirdPartyChannelPropertyModel(
+    return ShellyNgChannelPropertyModel(
       channel: channel,
       id: id,
       category: category,
