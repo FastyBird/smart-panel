@@ -29,6 +29,19 @@ export class UpdateDeviceChannelPropertyDto implements UpdateChannelProperty {
 
 	@Expose()
 	@IsOptional()
+	@IsNotEmpty({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel property unique identifier."}]',
+	})
+	@IsString({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel property unique identifier."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	identifier?: string | null;
+
+	@Expose()
+	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	@ValidateIf((_, value) => value !== null)

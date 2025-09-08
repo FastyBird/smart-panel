@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
@@ -14,6 +14,19 @@ export class UpdateDeviceDto implements UpdateDeviceBase {
 		message: '[{"field":"type","reason":"Type must be a valid string representing a supported device type."}]',
 	})
 	type: string;
+
+	@Expose()
+	@IsOptional()
+	@IsNotEmpty({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing device unique identifier."}]',
+	})
+	@IsString({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing device unique identifier."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	identifier?: string | null;
 
 	@Expose()
 	@IsOptional()

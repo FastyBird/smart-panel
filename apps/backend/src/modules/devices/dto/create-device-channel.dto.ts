@@ -36,6 +36,19 @@ export class CreateDeviceChannelDto implements CreateDeviceChannel {
 	category: ChannelCategory;
 
 	@Expose()
+	@IsOptional()
+	@IsNotEmpty({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel unique identifier."}]',
+	})
+	@IsString({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel unique identifier."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	identifier?: string;
+
+	@Expose()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;

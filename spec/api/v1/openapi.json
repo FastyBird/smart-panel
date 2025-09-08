@@ -1305,8 +1305,10 @@
                           "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": "device.identification",
                           "name": "Thermostat",
                           "description": "Living room thermostat",
+                          "enabled": true,
                           "controls": [
                             {
                               "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1321,6 +1323,7 @@
                               "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                               "type": "devices-third-party",
                               "category": "generic",
+                              "identifier": "channel.identification",
                               "name": "Temperature Sensor",
                               "description": "Living room temperature sensor",
                               "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -1338,6 +1341,7 @@
                                   "id": "208f4790-21b0-4927-8835-7302d883a141",
                                   "type": "devices-third-party",
                                   "category": "generic",
+                                  "identifier": null,
                                   "name": "Thermostat mode",
                                   "permissions": [
                                     "ro"
@@ -1485,8 +1489,10 @@
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "device.identification",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
+                        "enabled": true,
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1501,6 +1507,7 @@
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": "channel.identification",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
                             "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -1518,6 +1525,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "type": "devices-third-party",
                                 "category": "generic",
+                                "identifier": null,
                                 "name": "Thermostat mode",
                                 "permissions": [
                                   "ro"
@@ -1614,8 +1622,10 @@
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "device.identification",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
+                        "enabled": true,
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1630,6 +1640,7 @@
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": "channel.identification",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
                             "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -1647,6 +1658,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "type": "devices-third-party",
                                 "category": "generic",
+                                "identifier": null,
                                 "name": "Thermostat mode",
                                 "permissions": [
                                   "ro"
@@ -1757,8 +1769,10 @@
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "device.identification",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
+                        "enabled": true,
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1773,6 +1787,7 @@
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": "channel.identification",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
                             "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -1790,6 +1805,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "type": "devices-third-party",
                                 "category": "generic",
+                                "identifier": null,
                                 "name": "Thermostat mode",
                                 "permissions": [
                                   "ro"
@@ -2187,6 +2203,7 @@
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": "channel.identification",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
                           "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -2204,6 +2221,7 @@
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
                               "type": "devices-third-party",
                               "category": "generic",
+                              "identifier": null,
                               "name": "Thermostat mode",
                               "permissions": [
                                 "ro"
@@ -2337,6 +2355,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -2354,6 +2373,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -2451,6 +2471,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -2468,6 +2489,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -2575,6 +2597,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -2592,6 +2615,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -3002,6 +3026,7 @@
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": null,
                           "name": "Thermostat mode",
                           "permissions": [
                             "ro"
@@ -3119,6 +3144,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -3215,6 +3241,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -3328,6 +3355,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -3446,6 +3474,7 @@
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": "channel.identification",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
                           "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -3463,6 +3492,7 @@
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
                               "type": "devices-third-party",
                               "category": "generic",
+                              "identifier": null,
                               "name": "Thermostat mode",
                               "permissions": [
                                 "ro"
@@ -3589,6 +3619,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -3606,6 +3637,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -3697,6 +3729,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -3714,6 +3747,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -3818,6 +3852,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -3836,6 +3871,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -4228,6 +4264,7 @@
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": null,
                           "name": "Thermostat mode",
                           "permissions": [
                             "ro"
@@ -4342,6 +4379,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -4435,6 +4473,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -4545,6 +4584,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -6905,10 +6945,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "6wyvibn060bct"
-        }
+        ]
       }
     },
     "/plugins/devices-home-assistant/discovered-devices/{id}": {
@@ -6959,10 +6996,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "4iv9nxok1544z"
-        }
+        ]
       }
     },
     "/plugins/devices-home-assistant/states": {
@@ -7001,10 +7035,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "kzt9xom3lb9lf"
-        }
+        ]
       }
     },
     "/plugins/devices-home-assistant/states/{entityId}": {
@@ -7055,10 +7086,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "nmvb02luc3f9d"
-        }
+        ]
       }
     },
     "/plugins/pages-cards/cards": {
@@ -7110,10 +7138,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "cuzmwav54k1b2"
-        }
+        ]
       },
       "post": {
         "summary": "Create a new card for a page",
@@ -7169,10 +7194,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "sehaye81c4jkr"
-        }
+        ]
       }
     },
     "/plugins/pages-cards/cards/{id}": {
@@ -7216,10 +7238,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "8aduzkn40vbnl"
-        }
+        ]
       },
       "patch": {
         "summary": "Update an existing card for a page",
@@ -7282,10 +7301,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "fking687jd6n4"
-        }
+        ]
       },
       "delete": {
         "summary": "Delete a specific card for a page",
@@ -7320,10 +7336,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "gqiatui66casi"
-        }
+        ]
       }
     }
   },
@@ -10460,8 +10473,10 @@
           "id",
           "type",
           "category",
+          "identifier",
           "name",
           "description",
+          "enabled",
           "controls",
           "channels",
           "created_at",
@@ -10486,6 +10501,13 @@
             "description": "Type of the device, defining its purpose or category (e.g., thermostat, lighting).",
             "readOnly": true
           },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Device system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "device.identification"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the device.",
@@ -10497,6 +10519,12 @@
             "description": "Optional detailed description of the device.",
             "default": null,
             "example": "Living room thermostat"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Determines whether the device is enabled or disabled.",
+            "default": true,
+            "example": true
           },
           "controls": {
             "type": "array",
@@ -10587,6 +10615,7 @@
           "id",
           "type",
           "category",
+          "identifier",
           "name",
           "description",
           "device",
@@ -10612,6 +10641,13 @@
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelCategory",
             "description": "Type of the channel, indicating its functional category (e.g., temperature, light)."
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Channel system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "channel.identification"
           },
           "name": {
             "type": "string",
@@ -10721,6 +10757,7 @@
           "id",
           "type",
           "category",
+          "identifier",
           "name",
           "permissions",
           "data_type",
@@ -10751,6 +10788,13 @@
             "$ref": "#/components/schemas/DevicesModuleChannelPropertyCategory",
             "description": "Defines the category of the property, representing its functionality or characteristic.",
             "readOnly": true
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "property.identification"
           },
           "name": {
             "type": "string",
@@ -10900,6 +10944,13 @@
             "$ref": "#/components/schemas/DevicesModuleDeviceCategory",
             "description": "Type of the device, defining its purpose or category (e.g., thermostat, lighting)."
           },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Device system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "device.identification"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the device.",
@@ -10910,6 +10961,12 @@
             "nullable": true,
             "description": "Optional detailed description of the device.",
             "example": "Living room thermostat"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Determines whether the device is enabled or disabled.",
+            "default": true,
+            "example": true
           },
           "controls": {
             "type": "array",
@@ -10972,6 +11029,13 @@
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelCategory",
             "description": "Type of the channel, indicating its functional category (e.g., temperature, light)."
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Channel system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "channel.identification"
           },
           "name": {
             "type": "string",
@@ -11069,6 +11133,13 @@
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelPropertyCategory",
             "description": "Defines the category of the property, representing its functionality or characteristic."
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "property.identification"
           },
           "name": {
             "type": "string",
@@ -11175,6 +11246,13 @@
             "description": "Specifies the type of device.",
             "example": "devices-third-party"
           },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Device system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "device.identification"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the device.",
@@ -11201,6 +11279,13 @@
             "description": "Specifies the type of channel.",
             "example": "devices-third-party"
           },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Channel system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "channel.identification"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the channel.",
@@ -11211,6 +11296,12 @@
             "nullable": true,
             "description": "Optional description of the channel’s purpose or functionality.",
             "example": "Living room temperature sensor"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Determines whether the device is enabled or disabled.",
+            "default": true,
+            "example": true
           }
         }
       },
@@ -11226,6 +11317,13 @@
             "type": "string",
             "description": "Specifies the type of channel property.",
             "example": "devices-third-party"
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "property.identification"
           },
           "name": {
             "type": "string",
@@ -12256,6 +12354,7 @@
           "color_red",
           "color_temperature",
           "color_white",
+          "command",
           "connection_type",
           "consumption",
           "current",
@@ -16425,7 +16524,7 @@
       },
       "DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty": {
         "x-internal": true,
-        "title": "Update Home Assistant Device Chanel",
+        "title": "Update Home Assistant Chanel Property",
         "description": "Schema for updating a Home Assistant channel property.",
         "allOf": [
           {
@@ -16884,6 +16983,310 @@
           }
         }
       },
+      "DevicesShellyNgPluginShellyNgDevice": {
+        "x-internal": true,
+        "title": "Shelly Next-Generation (NG) Device",
+        "description": "Represents a Shelly NG device managed by Smart Panel. Used to communicate with a local network Shelly via RPC/WebSocket.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "password",
+              "hostname"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              },
+              "password": {
+                "type": "string",
+                "nullable": true,
+                "description": "Device password for local RPC access (if configured on the Shelly).",
+                "example": "supersecretdevicepassword",
+                "default": ""
+              },
+              "hostname": {
+                "nullable": true,
+                "description": "Device network address. Either IPv4 or local hostname (e.g., mDNS). May be set by discovery.",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "ipv4",
+                    "example": "192.168.10.9"
+                  },
+                  {
+                    "type": "string",
+                    "format": "hostname",
+                    "example": "shellyplus1pm-123456.local"
+                  }
+                ],
+                "default": null
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginCreateShellyNgDevice": {
+        "x-internal": true,
+        "title": "Create Shelly NG Device",
+        "description": "Payload for creating a Shelly NG device. If hostname is omitted, the device can be discovered via mDNS.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              },
+              "password": {
+                "type": "string",
+                "nullable": true,
+                "description": "Device password for local RPC access.",
+                "example": "supersecretdevicepassword"
+              },
+              "hostname": {
+                "nullable": true,
+                "description": "Device network address (IPv4 or hostname).",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "ipv4",
+                    "example": "192.168.10.9"
+                  },
+                  {
+                    "type": "string",
+                    "format": "hostname",
+                    "example": "shellyplus1pm-123456.local"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginUpdateShellyNgDevice": {
+        "x-internal": true,
+        "title": "Update Shelly NG Device",
+        "description": "Payload for updating a Shelly NG device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              },
+              "password": {
+                "type": "string",
+                "nullable": true,
+                "description": "Device password for local RPC access.",
+                "example": "supersecretdevicepassword"
+              },
+              "hostname": {
+                "nullable": true,
+                "description": "Device network address (IPv4 or hostname).",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "ipv4",
+                    "example": "192.168.10.9"
+                  },
+                  {
+                    "type": "string",
+                    "format": "hostname",
+                    "example": "shellyplus1pm-123456.local"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginShellyNgChannel": {
+        "x-internal": true,
+        "title": "Shelly NG Device Channel",
+        "description": "A Shelly NG channels used to communicate with Shelly NG instance.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginCreateShellyNgChannel": {
+        "x-internal": true,
+        "title": "Create Shelly NG Device Channel",
+        "description": "The schema for creating a Shelly NG channel.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginUpdateShellyNgChannel": {
+        "x-internal": true,
+        "title": "Update Shelly NG Device Chanel",
+        "description": "Schema for updating a Shelly NG channel.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginShellyNgChannelProperty": {
+        "x-internal": true,
+        "title": "Shelly NG Channel Property",
+        "description": "A Shelly NG properties used to communicate with Shelly NG instance.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginCreateShellyNgChannelProperty": {
+        "x-internal": true,
+        "title": "Create Shelly NG Channel Property",
+        "description": "The schema for creating a Shelly NG channel property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginUpdateShellyNgChannelProperty": {
+        "x-internal": true,
+        "title": "Update Shelly NG Chanel Property",
+        "description": "Schema for updating a Shelly NG channel property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["devices-shelly-ng"],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
       "PagesTilesPluginTilesPage": {
         "x-internal": true,
         "title": "Tiles Page",
@@ -16907,49 +17310,6 @@
                 "items": {
                   "$ref": "#/components/schemas/DashboardModuleTile"
                 }
-              },
-              "tile_size": {
-                "type": "number",
-                "nullable": true,
-                "description": "Size of one square layout tile in pixels, used for grid rendering. If not set, default layout will be used.",
-                "default": null,
-                "example": 120
-              },
-              "rows": {
-                "type": "number",
-                "nullable": true,
-                "description": "Number of grid rows used to layout tiles on the page. If not set, default layout will be used.",
-                "default": null,
-                "example": 10
-              },
-              "cols": {
-                "type": "number",
-                "nullable": true,
-                "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
-                "default": null,
-                "example": 4
-              }
-            }
-          }
-        ]
-      },
-      "PagesTilesPluginCreateTilesPage": {
-        "x-internal": true,
-        "title": "Create Tiles Page",
-        "description": "The schema for creating a tiles dashboard page.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardModuleCreatePage"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "tiles": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/DashboardModuleCreateTile"
-                },
-                "description": "A list of tiles associated with the tiles page."
               },
               "tile_size": {
                 "type": "number",
@@ -17003,6 +17363,49 @@
                 "type": "number",
                 "nullable": true,
                 "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
+                "example": 4
+              }
+            }
+          }
+        ]
+      },
+      "PagesTilesPluginCreateTilesPage": {
+        "x-internal": true,
+        "title": "Create Tiles Page",
+        "description": "The schema for creating a tiles dashboard page.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardModuleCreatePage"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tiles": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DashboardModuleCreateTile"
+                },
+                "description": "A list of tiles associated with the tiles page."
+              },
+              "tile_size": {
+                "type": "number",
+                "nullable": true,
+                "description": "Size of one square layout tile in pixels, used for grid rendering. If not set, default layout will be used.",
+                "default": null,
+                "example": 120
+              },
+              "rows": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid rows used to layout tiles on the page. If not set, default layout will be used.",
+                "default": null,
+                "example": 10
+              },
+              "cols": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
+                "default": null,
                 "example": 4
               }
             }

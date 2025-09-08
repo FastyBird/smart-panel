@@ -1,0 +1,155 @@
+import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 'shellies-ds9';
+
+import { Injectable, Logger } from '@nestjs/common';
+
+import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { DelegatesManagerService } from '../delegates/delegates-manager.service';
+import { ShellyDeviceDelegate } from '../delegates/shelly-device.delegate';
+import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
+import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
+
+import { DatabaseDiscovererService } from './database-discoverer.service';
+
+@Injectable()
+export class ShellyNgService {
+	private readonly logger = new Logger(ShellyNgService.name);
+
+	private shellies?: Shellies;
+
+	constructor(
+		private readonly databaseDiscovererService: DatabaseDiscovererService,
+		private readonly delegatesRegistryService: DelegatesManagerService,
+		private readonly devicesService: DevicesService,
+	) {}
+
+	async start(): Promise<void> {
+		if (typeof this.shellies !== 'undefined') {
+			throw new DevicesShellyNgException('Shellies instance is already started');
+		}
+
+		const deviceOptions = new Map<DeviceId, Partial<DeviceOptions>>();
+
+		for (const d of await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE)) {
+			deviceOptions.set(d.identifier, {
+				exclude: !d.enabled,
+				password: d.password ?? undefined,
+			});
+		}
+
+		this.shellies = new Shellies({
+			websocket: {
+				requestTimeout: 10,
+				pingInterval: 60,
+				reconnectInterval: [
+					5,
+					10,
+					30,
+					60,
+					5 * 60, // 5 minutes
+					10 * 60, // 10 minutes
+				],
+				clientId: 'fb-smart-panel-shelly-ng-' + Math.round(Math.random() * 1000000),
+			},
+			autoLoadStatus: true,
+			autoLoadConfig: true,
+			deviceOptions,
+		});
+
+		this.shellies
+			.on('add', this.handleAddedDevice)
+			.on('remove', this.handleRemovedDevice)
+			.on('exclude', this.handleExcludedDevice)
+			.on('unknown', this.handleUnknownDevice)
+			.on('error', this.handleError);
+
+		this.shellies.registerDiscoverer(this.databaseDiscovererService);
+
+		await this.databaseDiscovererService.run();
+
+		const discoverer = new MdnsDeviceDiscoverer();
+
+		this.shellies.registerDiscoverer(discoverer);
+
+		discoverer.on('error', (error: Error): void => {
+			this.logger.error('[SHELLY NG][SHELLY SERVICE] An error occurred in the mDNS device discovery service', {
+				message: error.message,
+				stack: error.stack,
+			});
+		});
+
+		try {
+			await discoverer.start();
+
+			this.logger.log('[SHELLY NG][SHELLY SERVICE] mDNS device discovery started');
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('[SHELLY NG][SHELLY SERVICE] Failed to start the mDNS device discovery service', {
+				message: err.message,
+				stack: err.stack,
+			});
+		}
+	}
+
+	stop(): void {
+		// Nothing to do right now
+	}
+
+	/**
+	 * Handles 'add' events from the shellies-ng library
+	 */
+	protected handleAddedDevice = (device: Device): void => {
+		this.delegatesRegistryService
+			.insert(device)
+			.then((delegate: ShellyDeviceDelegate): void => {
+				this.logger.debug(`[SHELLY NG][SHELLY SERVICE] Device=${delegate.id} was added to delegates registry`);
+			})
+			.catch((err: Error): void => {
+				this.logger.error(
+					`[SHELLY NG][SHELLY SERVICE] Failed to create Shelly device delegate for device=${device.id}`,
+					{
+						message: err.message,
+						stack: err.stack,
+					},
+				);
+			});
+	};
+
+	/**
+	 * Handles 'remove' events from the shellies-ng library
+	 */
+	protected handleRemovedDevice = (device: Device): void => {
+		this.delegatesRegistryService.remove(device.id);
+
+		this.logger.debug(`[SHELLY NG][SHELLY SERVICE] Device=${device.id} was removed from delegates registry`);
+	};
+
+	/**
+	 * Handles 'exclude' events from the shellies-ng library
+	 */
+	protected handleExcludedDevice = (deviceId: DeviceId): void => {
+		this.delegatesRegistryService.remove(deviceId);
+
+		this.logger.debug(
+			`[SHELLY NG][SHELLY SERVICE] Device=${deviceId} was set as excluded and removed from delegates registry`,
+		);
+	};
+
+	/**
+	 * Handles 'unknown' events from the shellies-ng library
+	 */
+	protected handleUnknownDevice = (deviceId: DeviceId, model: string): void => {
+		this.logger.log(`[SHELLY NG][SHELLY SERVICE] Discovered device=${deviceId} with unknown model=${model}`);
+	};
+
+	/**
+	 * Handles 'error' events from the shellies-ng library
+	 */
+	protected handleError = (deviceId: DeviceId, error: Error): void => {
+		this.logger.error(`[SHELLY NG][SHELLY SERVICE] An error occurred for device=${deviceId}`, {
+			message: error.message,
+			stack: error.stack,
+		});
+	};
+}

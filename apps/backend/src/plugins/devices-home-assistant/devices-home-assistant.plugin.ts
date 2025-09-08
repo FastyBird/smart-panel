@@ -44,7 +44,16 @@ import { StateChangedEventService } from './services/state-changed.event.service
 import { DevicesServiceSubscriber } from './subscribers/devices-service.subscriber';
 
 @Module({
-	imports: [NestConfigModule, TypeOrmModule.forFeature([HomeAssistantDeviceEntity]), DevicesModule, ConfigModule],
+	imports: [
+		NestConfigModule,
+		TypeOrmModule.forFeature([
+			HomeAssistantDeviceEntity,
+			HomeAssistantChannelEntity,
+			HomeAssistantChannelPropertyEntity,
+		]),
+		DevicesModule,
+		ConfigModule,
+	],
 	providers: [
 		HomeAssistantHttpService,
 		HomeAssistantWsService,
