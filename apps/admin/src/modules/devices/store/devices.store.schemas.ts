@@ -19,8 +19,10 @@ export const DeviceSchema = z.object({
 	draft: z.boolean().default(false),
 	type: z.string().trim().nonempty(),
 	category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
+	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
+	enabled: z.boolean().default(true),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -55,6 +57,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 		.object({
 			type: z.string().trim().nonempty(),
 			category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
+			identifier: z.string().trim().nonempty().nullable(),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -62,6 +65,7 @@ export const DevicesSetActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			enabled: z.boolean(),
 		})
 		.passthrough(),
 });
@@ -81,6 +85,7 @@ export const DevicesAddActionPayloadSchema = z.object({
 		.object({
 			type: z.string().trim().nonempty(),
 			category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
+			identifier: z.string().trim().nonempty().nullable().optional(),
 			name: z.string().trim().nonempty(),
 			description: z
 				.string()
@@ -88,6 +93,7 @@ export const DevicesAddActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			enabled: z.boolean().optional(),
 		})
 		.passthrough(),
 });
@@ -97,6 +103,7 @@ export const DevicesEditActionPayloadSchema = z.object({
 	data: z
 		.object({
 			type: z.string().trim().nonempty(),
+			identifier: z.string().trim().nonempty().nullable().optional(),
 			name: z.string().trim().optional(),
 			description: z
 				.string()
@@ -104,6 +111,7 @@ export const DevicesEditActionPayloadSchema = z.object({
 				.transform((val) => (val === '' ? null : val))
 				.nullable()
 				.optional(),
+			enabled: z.boolean().optional(),
 		})
 		.passthrough(),
 });
@@ -123,6 +131,7 @@ export const DeviceCreateReqSchema: ZodType<ApiCreateDevice> = z.object({
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
 	category: z.nativeEnum(DevicesModuleDeviceCategory),
+	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty(),
 	description: z
 		.string()
@@ -130,12 +139,14 @@ export const DeviceCreateReqSchema: ZodType<ApiCreateDevice> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	enabled: z.boolean().optional(),
 	controls: z.array(DeviceControlCreateReqSchema).optional(),
 	channels: z.array(ChannelCreateReqSchema).optional(),
 });
 
 export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 	type: z.string().trim().nonempty(),
+	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty().optional(),
 	description: z
 		.string()
@@ -143,14 +154,17 @@ export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 		.transform((val) => (val === '' ? null : val))
 		.nullable()
 		.optional(),
+	enabled: z.boolean().optional(),
 });
 
 export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	id: z.string().uuid(),
 	type: z.string(),
 	category: z.nativeEnum(DevicesModuleDeviceCategory),
+	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
+	enabled: z.boolean(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 	controls: z.array(DeviceControlResSchema),

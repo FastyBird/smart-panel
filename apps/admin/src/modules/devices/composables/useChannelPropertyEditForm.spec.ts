@@ -21,6 +21,7 @@ const mockProperty: IChannelProperty = {
 	channel: channelId.toString(),
 	name: 'My Property',
 	category: DevicesModuleChannelPropertyCategory.brightness,
+	identifier: null,
 	dataType: DevicesModuleChannelPropertyData_type.float,
 	permissions: [],
 	unit: '',
