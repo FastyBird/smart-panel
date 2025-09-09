@@ -20,6 +20,17 @@
 		</el-form-item>
 
 		<el-form-item
+			:label="t('devicesModule.fields.devices.identifier.title')"
+			:prop="['identifier']"
+		>
+			<el-input
+				v-model="model.identifier"
+				:placeholder="t('devicesModule.fields.devices.identifier.placeholder')"
+				name="identifier"
+			/>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('devicesModule.fields.devices.name.title')"
 			:prop="['name']"
 		>
@@ -72,6 +83,16 @@
 				name="description"
 			/>
 		</el-form-item>
+
+		<el-form-item
+			:label="t('devicesModule.fields.devices.enabled.title')"
+			:prop="['enabled']"
+		>
+			<el-switch
+				v-model="model.enabled"
+				name="enabled"
+			/>
+		</el-form-item>
 	</el-form>
 </template>
 
@@ -79,7 +100,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
 import type { IPluginElement } from '../../../../common';
 import { useDeviceAddForm } from '../../composables/composables';

@@ -107,6 +107,7 @@ describe('useDeviceAddForm', () => {
 				category: DevicesModuleDeviceCategory.generic,
 				name: 'New Device',
 				description: null,
+				enabled: true,
 			},
 		});
 		expect(form.formResult.value).toBe(FormResult.OK);

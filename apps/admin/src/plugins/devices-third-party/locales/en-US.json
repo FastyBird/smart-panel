@@ -2,8 +2,12 @@
   "fields": {
     "devices": {
       "id": {
-        "title": "System identifier",
+        "title": "Internal identifier",
         "placeholder": "Device id"
+      },
+      "identifier": {
+        "title": "System identifier",
+        "placeholder": "Device system identifier"
       },
       "category": {
         "title": "Category",
@@ -23,6 +27,10 @@
       "description": {
         "title": "Description",
         "placeholder": "Device description"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "placeholder": "Enable or disable device"
       },
       "serviceAddress": {
         "title": "Service address",

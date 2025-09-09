@@ -46,6 +46,7 @@ export interface IDevicesFilter {
 	state: 'all' | 'offline' | 'online';
 	states: ConnectionState[];
 	categories: DevicesModuleDeviceCategory[];
+	enabled: 'all' | 'enabled' | 'disabled';
 }
 
 export interface IUseChannel {
@@ -235,7 +236,7 @@ export interface IUseDevicesDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'name' | 'description' | 'type' | 'category'>;
+	sortBy: Ref<'name' | 'description' | 'type' | 'state' | 'category'>;
 	sortDir: Ref<'ascending' | 'descending' | null>;
 	resetFilter: () => void;
 }

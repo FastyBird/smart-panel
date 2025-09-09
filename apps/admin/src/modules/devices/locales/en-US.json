@@ -280,8 +280,12 @@
         "placeholder": "Select state"
       },
       "id": {
-        "title": "System identifier",
+        "title": "Internal identifier",
         "placeholder": "Device id"
+      },
+      "identifier": {
+        "title": "System identifier",
+        "placeholder": "Device system identifier"
       },
       "category": {
         "title": "Category",
@@ -301,6 +305,10 @@
       "description": {
         "title": "Description",
         "placeholder": "Device description"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "placeholder": "Enable or disable device"
       }
     },
     "channels": {
@@ -320,7 +328,7 @@
         }
       },
       "id": {
-        "title": "System identifier",
+        "title": "Internal identifier",
         "placeholder": "Channel id"
       },
       "category": {
@@ -356,7 +364,7 @@
         }
       },
       "id": {
-        "title": "System identifier",
+        "title": "Internal identifier",
         "placeholder": "Channel property id"
       },
       "category": {
@@ -437,6 +445,13 @@
         },
         "category": {
           "title": "Category"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "values": {
+            "enabled": "Enabled",
+            "disabled": "Disabled"
+          }
         }
       }
     },
@@ -486,7 +501,16 @@
         "title": "Filter by device type"
       },
       "states": {
-        "title": "Filter by device state"
+        "title": "Filter by connection state"
+      },
+      "enabled": {
+        "title": "Filter by device state",
+        "placeholder": "Select device state",
+        "values": {
+          "enabled": "Enabled",
+          "disabled": "Disabled",
+          "all": "All"
+        }
       },
       "category": {
         "title": "Filter by device category",
