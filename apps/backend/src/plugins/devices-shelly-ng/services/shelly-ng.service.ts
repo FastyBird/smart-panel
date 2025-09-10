@@ -103,6 +103,10 @@ export class ShellyNgService {
 	}
 
 	stop(): void {
+		if (!this.shellies) {
+			return;
+		}
+
 		this.shellies
 			.off('add', this.handleAddedDevice)
 			.off('remove', this.handleRemovedDevice)
