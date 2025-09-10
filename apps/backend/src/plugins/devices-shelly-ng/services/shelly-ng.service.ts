@@ -1,11 +1,15 @@
 import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 'shellies-ds9';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 
+import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
+import { ConfigService } from '../../../modules/config/services/config.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../../devices-home-assistant/devices-home-assistant.constants';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { ShellyDeviceDelegate } from '../delegates/shelly-device.delegate';
-import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
@@ -18,6 +22,7 @@ export class ShellyNgService {
 	private shellies?: Shellies;
 
 	constructor(
+		private readonly configService: ConfigService,
 		private readonly databaseDiscovererService: DatabaseDiscovererService,
 		private readonly delegatesRegistryService: DelegatesManagerService,
 		private readonly devicesService: DevicesService,
@@ -26,6 +31,12 @@ export class ShellyNgService {
 	async start(): Promise<void> {
 		if (typeof this.shellies !== 'undefined') {
 			throw new DevicesShellyNgException('Shellies instance is already started');
+		}
+
+		if (this.configService.getPluginConfig(DEVICES_SHELLY_NG_PLUGIN_NAME).enabled === false) {
+			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Home Assistant plugin is disabled.');
+
+			return;
 		}
 
 		const deviceOptions = new Map<DeviceId, Partial<DeviceOptions>>();
@@ -93,7 +104,20 @@ export class ShellyNgService {
 	}
 
 	stop(): void {
-		// Nothing to do right now
+		this.shellies
+			.off('add', this.handleAddedDevice)
+			.off('remove', this.handleRemovedDevice)
+			.off('exclude', this.handleExcludedDevice)
+			.off('unknown', this.handleUnknownDevice)
+			.off('error', this.handleError);
+
+		this.shellies = undefined;
+	}
+
+	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
+	handleConfigurationUpdatedEvent() {
+		this.stop();
+		this.start();
 	}
 
 	/**
