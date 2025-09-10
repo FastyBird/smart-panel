@@ -1,4 +1,4 @@
-import { Logger, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -11,7 +11,6 @@ import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant/devices-home-assistant.constants';
 
 import { DelegatesManagerService } from './delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from './devices-shelly-ng.constants';
@@ -42,8 +41,6 @@ import { ShellyNgService } from './services/shelly-ng.service';
 	providers: [DatabaseDiscovererService, DelegatesManagerService, ShellyNgService, ShellyNgDevicePlatform],
 })
 export class DevicesShellyNgPlugin {
-	private readonly logger = new Logger(DevicesShellyNgPlugin.name);
-
 	constructor(
 		private readonly configService: NestConfigService,
 		private readonly appConfigService: ConfigService,

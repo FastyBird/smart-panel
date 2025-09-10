@@ -6,7 +6,6 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../../devices-home-assistant/devices-home-assistant.constants';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { ShellyDeviceDelegate } from '../delegates/shelly-device.delegate';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
