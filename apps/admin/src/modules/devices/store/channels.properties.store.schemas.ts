@@ -23,6 +23,7 @@ export const ChannelPropertySchema = z.object({
 	type: z.string().trim().nonempty(),
 	channel: ItemIdSchema,
 	category: z.nativeEnum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
+	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
@@ -64,6 +65,7 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 	data: z.object({
 		type: z.string().trim().nonempty(),
 		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
+		identifier: z.string().trim().nonempty().nullable(),
 		name: z.string().trim().nullable(),
 		permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 		dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
@@ -96,6 +98,7 @@ export const ChannelsPropertiesAddActionPayloadSchema = z.object({
 	data: z.object({
 		type: z.string().trim().nonempty(),
 		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).default(DevicesModuleChannelPropertyCategory.generic),
+		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().nullable(),
 		permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 		dataType: z.nativeEnum(DevicesModuleChannelPropertyData_type),
@@ -116,6 +119,7 @@ export const ChannelsPropertiesEditActionPayloadSchema = z.object({
 	data: z.object({
 		type: z.string().trim().nonempty(),
 		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).optional(),
+		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().nullable().optional(),
 		unit: z.string().nullable().optional(),
 		format: z
@@ -148,6 +152,7 @@ export const ChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> =
 	id: z.string().uuid().optional(),
 	type: z.string().trim().nonempty(),
 	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
+	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	data_type: z.nativeEnum(DevicesModuleChannelPropertyData_type),
@@ -160,6 +165,7 @@ export const ChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> =
 
 export const ChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> = z.object({
 	type: z.string().trim().nonempty(),
+	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nullable().optional(),
 	unit: z.string().nullable().optional(),
 	format: z
@@ -176,6 +182,7 @@ export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
 	type: z.string().trim().nonempty(),
 	channel: z.string().uuid(),
 	category: z.nativeEnum(DevicesModuleChannelPropertyCategory),
+	identifier: z.string().trim().nonempty().nullable(),
 	name: z.string().trim().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	data_type: z.nativeEnum(DevicesModuleChannelPropertyData_type),

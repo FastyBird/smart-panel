@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/link_qual
 import 'package:fastybird_smart_panel/modules/devices/views/properties/manufacturer.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/model.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/serial_number.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
 
 class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
   DeviceInformationChannelView({
@@ -38,6 +39,9 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
 
   ConnectionTypeChannelPropertyView? get connectionTypeProp =>
       properties.whereType<ConnectionTypeChannelPropertyView>().firstOrNull;
+
+  StatusChannelPropertyView? get statusProp =>
+      properties.whereType<StatusChannelPropertyView>().firstOrNull;
 
   @override
   FaultChannelPropertyView? get faultProp =>
@@ -128,6 +132,21 @@ class DeviceInformationChannelView extends ChannelView with ChannelFaultMixin {
 
     if (value is StringValueType && ConnectionTypeValue.contains(value.value)) {
       return ConnectionTypeValue.fromValue(value.value);
+    }
+
+    return null;
+  }
+
+  bool get hasStatusProp => statusProp != null;
+
+  ConnectionStatusValue? get status {
+    final StatusChannelPropertyView? prop = statusProp;
+
+    final ValueType? value = prop?.value;
+
+    if (value is StringValueType &&
+        ConnectionStatusValue.contains(value.value)) {
+      return ConnectionStatusValue.fromValue(value.value);
     }
 
     return null;

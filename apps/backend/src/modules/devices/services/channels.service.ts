@@ -120,6 +120,62 @@ export class ChannelsService {
 		return channel;
 	}
 
+	async findOneBy<TChannel extends ChannelEntity>(
+		column: 'id' | 'category' | 'identifier' | 'name',
+		value: string | number | boolean,
+		deviceId?: string,
+		type?: string,
+	): Promise<TChannel | null> {
+		const mapping = type ? this.channelsMapperService.getMapping<TChannel, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		let channel: TChannel | null;
+
+		if (deviceId) {
+			this.logger.debug(`[LOOKUP] Fetching channel with ${column}=${value} for deviceId=${deviceId}`);
+
+			channel = (await repository
+				.createQueryBuilder('channel')
+				.innerJoinAndSelect('channel.device', 'device')
+				.leftJoinAndSelect('channel.controls', 'controls')
+				.leftJoinAndSelect('controls.channel', 'controlChannel')
+				.leftJoinAndSelect('channel.properties', 'properties')
+				.leftJoinAndSelect('properties.channel', 'propertyChannel')
+				.where(`channel.${column} = :filterBy`, { filterBy: value })
+				.andWhere('device.id = :deviceId', { deviceId })
+				.getOne()) as TChannel | null;
+
+			if (!channel) {
+				this.logger.warn(`[LOOKUP] Channel with ${column}=${value} for deviceId=${deviceId} not found`);
+
+				return null;
+			}
+
+			this.logger.debug(`[LOOKUP] Successfully fetched channel with ${column}=${value} for deviceId=${deviceId}`);
+		} else {
+			channel = (await repository
+				.createQueryBuilder('channel')
+				.innerJoinAndSelect('channel.device', 'device')
+				.leftJoinAndSelect('channel.controls', 'controls')
+				.leftJoinAndSelect('controls.channel', 'controlChannel')
+				.leftJoinAndSelect('channel.properties', 'properties')
+				.leftJoinAndSelect('properties.channel', 'propertyChannel')
+				.where(`channel.${column} = :filterBy`, { filterBy: value })
+				.getOne()) as TChannel | null;
+
+			if (!channel) {
+				this.logger.warn(`[LOOKUP] Channel with ${column}=${value} not found`);
+
+				return null;
+			}
+
+			this.logger.debug(`[LOOKUP] Successfully fetched channel with ${column}=${value}`);
+		}
+
+		return channel;
+	}
+
 	async create<TChannel extends ChannelEntity, TCreateDTO extends CreateChannelDto>(
 		createDto: TCreateDTO,
 	): Promise<TChannel> {

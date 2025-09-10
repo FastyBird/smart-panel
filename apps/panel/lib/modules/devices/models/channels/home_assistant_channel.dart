@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 
 class HomeAssistantChannelModel extends ChannelModel {
   HomeAssistantChannelModel({
@@ -14,7 +15,7 @@ class HomeAssistantChannelModel extends ChannelModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: 'devices-home-assistant-plugin',
+          type: DeviceType.devicesHomeAssistant.value,
         );
 
   factory HomeAssistantChannelModel.fromJson(Map<String, dynamic> json) {

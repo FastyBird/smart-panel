@@ -32,6 +32,7 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant/devices-home-assistant.plugin';
+import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng/devices-shelly-ng.plugin';
 import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
@@ -136,6 +137,7 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 		WebsocketModule,
 		DevicesThirdPartyPlugin,
 		DevicesHomeAssistantPlugin,
+		DevicesShellyNgPlugin,
 		PagesCardsPlugin,
 		PagesDeviceDetailPlugin,
 		PagesTilesPlugin,

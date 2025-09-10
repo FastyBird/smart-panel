@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
@@ -18,6 +18,19 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 
 	@Expose()
 	@IsOptional()
+	@IsNotEmpty({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel unique identifier."}]',
+	})
+	@IsString({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing channel unique identifier."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	identifier?: string | null;
+
+	@Expose()
+	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
 	name?: string;
@@ -28,6 +41,11 @@ export class UpdateDeviceChannelDto implements UpdateChannel {
 	@IsString({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	description?: string | null;
+
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
+	enabled?: boolean;
 }
 
 export class ReqUpdateDeviceChannelDto implements ReqUpdateDeviceChannel {

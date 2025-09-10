@@ -20,6 +20,17 @@
 		</el-form-item>
 
 		<el-form-item
+			:label="t('devicesThirdPartyPlugin.fields.devices.identifier.title')"
+			:prop="['identifier']"
+		>
+			<el-input
+				v-model="model.identifier"
+				:placeholder="t('devicesThirdPartyPlugin.fields.devices.identifier.placeholder')"
+				name="identifier"
+			/>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.name.title')"
 			:prop="['name']"
 		>
@@ -73,6 +84,16 @@
 			/>
 		</el-form-item>
 
+		<el-form-item
+			:label="t('devicesThirdPartyPlugin.fields.devices.enabled.title')"
+			:prop="['enabled']"
+		>
+			<el-switch
+				v-model="model.enabled"
+				name="enabled"
+			/>
+		</el-form-item>
+
 		<el-divider />
 
 		<el-form-item
@@ -92,7 +113,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useDeviceAddForm } from '../../../modules/devices';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';

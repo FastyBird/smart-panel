@@ -149,6 +149,8 @@
 		<el-table-column
 			:label="t('devicesModule.table.devices.columns.state.title')"
 			prop="state"
+			sortable="custom"
+			:sort-orders="['ascending', 'descending']"
 			:width="150"
 		>
 			<template #default="scope">
@@ -186,6 +188,42 @@
 					</el-icon>
 
 					{{ t(`devicesModule.categories.devices.${scope.row.category}`) }}
+				</el-link>
+			</template>
+		</el-table-column>
+
+		<el-table-column
+			:label="t('devicesModule.table.devices.columns.enabled.title')"
+			prop="enabled"
+			sortable="custom"
+			:sort-orders="['ascending', 'descending']"
+			:width="180"
+		>
+			<template #default="scope">
+				<el-link
+					:type="innerFilters.enabled === (scope.row.enabled ? 'enabled' : 'disabled') ? 'danger' : undefined"
+					underline="never"
+					class="font-400!"
+					@click.stop="
+						onFilterBy('enabled', scope.row.enabled ? 'enabled' : 'disabled', innerFilters.enabled !== (scope.row.enabled ? 'enabled' : 'disabled'))
+					"
+				>
+					<el-icon class="el-icon--left">
+						<icon
+							v-if="innerFilters.categories.includes(scope.row.category)"
+							icon="mdi:filter-minus"
+						/>
+						<icon
+							v-else
+							icon="mdi:filter-plus"
+						/>
+					</el-icon>
+
+					{{
+						scope.row.enabled
+							? t('devicesModule.table.devices.columns.enabled.values.enabled')
+							: t('devicesModule.table.devices.columns.enabled.values.disabled')
+					}}
 				</el-link>
 			</template>
 		</el-table-column>
@@ -268,7 +306,7 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 	(e: 'selected-changes', selected: IDevice[]): void;
 	(e: 'update:filters', filters: IDevicesFilter): void;
-	(e: 'update:sort-by', by: 'name' | 'description' | 'type' | 'category'): void;
+	(e: 'update:sort-by', by: 'name' | 'description' | 'type' | 'state' | 'category'): void;
 	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
 }>();
 
@@ -280,7 +318,13 @@ const noResults = computed<boolean>((): boolean => props.totalRows === 0);
 
 const innerFilters = useVModel(props, 'filters', emit);
 
-const onSortData = ({ prop, order }: { prop: 'name' | 'description' | 'type' | 'category'; order: 'ascending' | 'descending' | null }): void => {
+const onSortData = ({
+	prop,
+	order,
+}: {
+	prop: 'name' | 'description' | 'type' | 'state' | 'category';
+	order: 'ascending' | 'descending' | null;
+}): void => {
 	emit('update:sort-by', prop);
 	emit('update:sort-dir', order);
 };
@@ -324,6 +368,12 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		}
 
 		innerFilters.value.states = Array.from(new Set(filteredStates));
+	} else if (column === 'enabled') {
+		if (add === true) {
+			innerFilters.value.enabled = data as 'enabled' | 'disabled';
+		} else {
+			innerFilters.value.enabled = 'all';
+		}
 	}
 };
 </script>

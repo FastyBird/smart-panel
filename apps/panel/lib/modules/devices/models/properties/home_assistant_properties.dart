@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
 class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
@@ -30,7 +31,7 @@ class HomeAssistantChannelPropertyModel extends ChannelPropertyModel {
   })  : _haEntityId = haEntityId,
         _haAttribute = haAttribute,
         super(
-          type: 'devices-home-assistant-plugin',
+          type: DeviceType.devicesHomeAssistant.value,
         );
 
   String? get haEntityId => _haEntityId;

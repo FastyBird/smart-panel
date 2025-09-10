@@ -2,6 +2,7 @@ import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayNotEmpty,
 	IsArray,
+	IsBoolean,
 	IsEnum,
 	IsInstance,
 	IsNumber,
@@ -31,6 +32,12 @@ export class DeviceEntity extends BaseEntity {
 	category: DeviceCategory;
 
 	@Expose()
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true })
+	identifier: string | null;
+
+	@Expose()
 	@IsString()
 	@Column()
 	name: string;
@@ -40,6 +47,11 @@ export class DeviceEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true })
 	description: string | null;
+
+	@Expose()
+	@IsBoolean()
+	@Column({ nullable: false, default: true })
+	enabled: boolean = true;
 
 	@Expose()
 	@IsArray()
@@ -92,6 +104,12 @@ export class ChannelEntity extends BaseEntity {
 		default: ChannelCategory.GENERIC,
 	})
 	category: ChannelCategory;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true })
+	identifier: string | null;
 
 	@Expose()
 	@IsString()
@@ -164,6 +182,12 @@ export class ChannelPropertyEntity extends BaseEntity {
 		default: PropertyCategory.GENERIC,
 	})
 	category: PropertyCategory;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true })
+	identifier: string | null;
 
 	@Expose()
 	@IsOptional()

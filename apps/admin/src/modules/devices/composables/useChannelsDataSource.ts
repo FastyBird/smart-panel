@@ -58,8 +58,10 @@ export const useChannelsDataSource = (props: IUseChannelsDataSourceProps = {}): 
 					(channel) =>
 						!channel.draft &&
 						(!filters.value.search ||
+							channel.id.toLowerCase().includes(filters.value.search.toLowerCase()) ||
 							channel.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
-							channel.description?.toLowerCase().includes(filters.value.search.toLowerCase()))
+							channel.description?.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+							channel.identifier?.toLowerCase().includes(filters.value.search.toLowerCase()))
 				),
 			[(channel: IChannel) => channel[sortBy.value as keyof IChannel] ?? ''],
 			[sortDir.value === 'ascending' ? 'asc' : 'desc']

@@ -59,16 +59,13 @@ class WindowCoveringDeviceView extends DeviceView
 
   WindowCoveringTypeValue get windowCoveringType => windowCoveringChannel.type;
 
-  WindowCoveringPositionValue? get windowCoveringCurrentAction =>
-      windowCoveringChannel.currentAction;
+  bool get hasWindowCoveringPercentage => windowCoveringChannel.hasPosition;
 
-  bool get hasWindowCoveringPercentage => windowCoveringChannel.hasPercentage;
+  int get isWindowCoveringPercentage => windowCoveringChannel.position;
 
-  int get isWindowCoveringPercentage => windowCoveringChannel.percentage;
+  int get windowCoveringMinPercentage => windowCoveringChannel.minPosition;
 
-  int get windowCoveringMinPercentage => windowCoveringChannel.minPercentage;
-
-  int get windowCoveringMaxPercentage => windowCoveringChannel.maxPercentage;
+  int get windowCoveringMaxPercentage => windowCoveringChannel.maxPosition;
 
   bool get hasWindowCoveringTilt => windowCoveringChannel.hasTilt;
 

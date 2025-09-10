@@ -109,6 +109,7 @@ enum ChannelPropertyCategory {
   colorRed('color_red'),
   colorTemperature('color_temperature'),
   colorWhite('color_white'),
+  command('command'),
   connectionType('connection_type'),
   consumption('consumption'),
   current('current'),

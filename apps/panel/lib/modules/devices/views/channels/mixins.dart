@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/obstructi
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/peak_level.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/percentage.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/position.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tampered.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/temperature.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart';
@@ -327,6 +328,50 @@ mixin ChannelPercentageMixin {
 
   int get maxPercentage {
     final FormatType? format = percentageProp?.format;
+
+    if (format is NumberListFormatType && format.value.length == 2) {
+      return (format.value[1] as num).toInt();
+    }
+
+    return 100;
+  }
+}
+
+mixin ChannelPositionMixin {
+  PositionChannelPropertyView? get positionProp;
+
+  bool get hasPosition => positionProp != null;
+
+  int get position {
+    final PositionChannelPropertyView? prop = positionProp;
+
+    final ValueType? value = prop?.value;
+
+    if (value is NumberValueType) {
+      return value.value.toInt();
+    }
+
+    final ValueType? defaultValue = prop?.defaultValue;
+
+    if (defaultValue is NumberValueType) {
+      return defaultValue.value.toInt();
+    }
+
+    return 0;
+  }
+
+  int get minPosition {
+    final FormatType? format = positionProp?.format;
+
+    if (format is NumberListFormatType && format.value.length == 2) {
+      return (format.value[0] as num).toInt();
+    }
+
+    return 0;
+  }
+
+  int get maxPosition {
+    final FormatType? format = positionProp?.format;
 
     if (format is NumberListFormatType && format.value.length == 2) {
       return (format.value[1] as num).toInt();

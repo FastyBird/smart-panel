@@ -75,7 +75,7 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: IDevicesFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;
-	(e: 'update:sort-by', dir: 'name' | 'description' | 'type' | 'category'): void;
+	(e: 'update:sort-by', dir: 'name' | 'description' | 'type' | 'state' | 'category'): void;
 	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
 }>();
 
@@ -83,7 +83,7 @@ const { isMDDevice } = useBreakpoints();
 
 const innerFilters = useVModel(props, 'filters', emit);
 
-const sortBy = ref<'name' | 'description' | 'type' | 'category'>(props.sortBy);
+const sortBy = ref<'name' | 'description' | 'type' | 'state' | 'category'>(props.sortBy);
 
 const sortDir = ref<'ascending' | 'descending' | null>(props.sortDir);
 
@@ -116,8 +116,8 @@ const onPaginatePage = (page: number): void => {
 };
 
 watch(
-	(): 'name' | 'description' | 'type' | 'category' => sortBy.value,
-	(val: 'name' | 'description' | 'type' | 'category'): void => {
+	(): 'name' | 'description' | 'type' | 'state' | 'category' => sortBy.value,
+	(val: 'name' | 'description' | 'type' | 'state' | 'category'): void => {
 		emit('update:sort-by', val);
 	}
 );
@@ -137,8 +137,8 @@ watch(
 );
 
 watch(
-	(): 'name' | 'description' | 'type' | 'category' => props.sortBy,
-	(val: 'name' | 'description' | 'type' | 'category'): void => {
+	(): 'name' | 'description' | 'type' | 'state' | 'category' => props.sortBy,
+	(val: 'name' | 'description' | 'type' | 'state' | 'category'): void => {
 		sortBy.value = val;
 	}
 );

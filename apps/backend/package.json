@@ -101,6 +101,7 @@
     "openweathermap-ts": "^1.2.10",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "shellies-ds9": "^1.1.9",
     "socket.io": "^4.8.1",
     "sqlite3": "^5.1.7",
     "systeminformation": "^5.27.1",

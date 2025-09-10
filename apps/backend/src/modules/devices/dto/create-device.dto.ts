@@ -1,5 +1,15 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
+import {
+	IsArray,
+	IsBoolean,
+	IsEnum,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	IsUUID,
+	ValidateIf,
+	ValidateNested,
+} from 'class-validator';
 
 import type { components } from '../../../openapi';
 import { DeviceCategory } from '../devices.constants';
@@ -35,6 +45,19 @@ export class CreateDeviceDto implements CreateDeviceBase {
 	category: DeviceCategory;
 
 	@Expose()
+	@IsOptional()
+	@IsNotEmpty({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing device unique identifier."}]',
+	})
+	@IsString({
+		message:
+			'[{"field":"identifier","reason":"Identifier must be a valid string representing device unique identifier."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	identifier?: string;
+
+	@Expose()
 	@IsNotEmpty({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"name","reason":"Name must be a non-empty string."}]' })
 	name: string;
@@ -45,6 +68,11 @@ export class CreateDeviceDto implements CreateDeviceBase {
 	@IsString({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
 	@ValidateIf((_, value) => value !== null)
 	description?: string | null;
+
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
+	enabled?: boolean;
 
 	@Expose()
 	@IsOptional()

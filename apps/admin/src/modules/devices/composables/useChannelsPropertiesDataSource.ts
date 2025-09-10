@@ -57,7 +57,12 @@ export const useChannelsPropertiesDataSource = ({ channelId }: IUseChannelsPrope
 				.findAll()
 				.filter((property) => !channelId || property.channel === channelId)
 				.filter(
-					(property) => !property.draft && (!filters.value.search || property.name?.toLowerCase().includes(filters.value.search.toLowerCase()))
+					(property) =>
+						!property.draft &&
+						(!filters.value.search ||
+							property.id?.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+							property.name?.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+							property.identifier?.toLowerCase().includes(filters.value.search.toLowerCase()))
 				),
 			[(property: IChannelProperty) => property[sortBy.value as keyof IChannelProperty] ?? ''],
 			[sortDir.value === 'ascending' ? 'asc' : 'desc']

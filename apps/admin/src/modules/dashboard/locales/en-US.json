@@ -200,7 +200,7 @@
         "placeholder": "Select page plugin"
       },
       "id": {
-        "title": "System identifier",
+        "title": "Internal identifier",
         "placeholder": "Page id"
       },
       "title": {
@@ -232,7 +232,7 @@
         "placeholder": "Select tile plugin"
       },
       "id": {
-        "title": "System identifier",
+        "title": "Internal identifier",
         "placeholder": "Tile id"
       },
       "row": {
@@ -271,7 +271,7 @@
         "placeholder": "Select data source plugin"
       },
       "id": {
-        "title": "System identifier",
+        "title": "Internal identifier",
         "placeholder": "Data source id"
       }
     }

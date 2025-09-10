@@ -64,6 +64,34 @@
 				</el-collapse-item>
 
 				<el-collapse-item
+					name="states"
+					:class="[ns.e('filter-item')]"
+				>
+					<template #title>
+						<el-text class="!px-2">
+							{{ t('devicesModule.filters.devices.enabled.title') }}
+						</el-text>
+					</template>
+
+					<div class="px-2">
+						<el-radio-group v-model="innerFilters.enabled">
+							<el-radio-button
+								:label="t('devicesModule.filters.devices.enabled.values.enabled')"
+								value="enabled"
+							/>
+							<el-radio-button
+								:label="t('devicesModule.filters.devices.enabled.values.disabled')"
+								value="disabled"
+							/>
+							<el-radio-button
+								:label="t('devicesModule.filters.devices.enabled.values.all')"
+								value="all"
+							/>
+						</el-radio-group>
+					</div>
+				</el-collapse-item>
+
+				<el-collapse-item
 					name="categories"
 					:class="[ns.e('filter-item')]"
 				>
@@ -122,6 +150,8 @@ import {
 	ElCollapse,
 	ElCollapseItem,
 	ElOption,
+	ElRadioButton,
+	ElRadioGroup,
 	ElScrollbar,
 	ElSelect,
 	ElText,

@@ -4,9 +4,9 @@ import 'package:fastybird_smart_panel/modules/devices/types/payloads.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/command.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/obstruction.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/percentage.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/position.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/tilt.dart';
@@ -15,7 +15,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart
 class WindowCoveringChannelView extends ChannelView
     with
         ChannelObstructionMixin,
-        ChannelPercentageMixin,
+        ChannelPositionMixin,
         ChannelTiltMixin,
         ChannelFaultMixin {
   WindowCoveringChannelView({
@@ -30,15 +30,15 @@ class WindowCoveringChannelView extends ChannelView
   StatusChannelPropertyView get statusProp =>
       properties.whereType<StatusChannelPropertyView>().first;
 
+  @override
   PositionChannelPropertyView get positionProp =>
       properties.whereType<PositionChannelPropertyView>().first;
 
   TypeChannelPropertyView get typeProp =>
       properties.whereType<TypeChannelPropertyView>().first;
 
-  @override
-  PercentageChannelPropertyView? get percentageProp =>
-      properties.whereType<PercentageChannelPropertyView>().firstOrNull;
+  CommandChannelPropertyView? get commandProp =>
+      properties.whereType<CommandChannelPropertyView>().firstOrNull;
 
   @override
   TiltChannelPropertyView? get tiltProp =>
@@ -103,16 +103,5 @@ class WindowCoveringChannelView extends ChannelView
     throw Exception(
       'Channel is missing required value for property: ${typeProp.category.value}',
     );
-  }
-
-  WindowCoveringPositionValue? get currentAction {
-    final ValueType? value = positionProp.value;
-
-    if (value is StringValueType &&
-        WindowCoveringPositionValue.contains(value.value)) {
-      return WindowCoveringPositionValue.fromValue(value.value);
-    }
-
-    return null;
   }
 }
