@@ -8,7 +8,7 @@
 	>
 		<el-form-item
 			:label="t('dashboardModule.fields.tiles.id.title')"
-			:prop="['id']"
+			prop="id"
 		>
 			<el-input
 				v-model="model.id"
@@ -21,7 +21,7 @@
 
 		<el-form-item
 			:label="t('pagesDeviceDetailPlugin.fields.device.title')"
-			:prop="['device']"
+			prop="device"
 		>
 			<el-select
 				v-model="model.device"
@@ -43,7 +43,7 @@
 			<el-col :span="12">
 				<el-form-item
 					:label="t('dashboardModule.fields.tiles.row.title')"
-					:prop="['row']"
+					prop="row"
 				>
 					<el-input-number
 						v-model="model.row"
@@ -55,7 +55,7 @@
 			<el-col :span="12">
 				<el-form-item
 					:label="t('dashboardModule.fields.tiles.col.title')"
-					:prop="['col']"
+					prop="col"
 				>
 					<el-input-number
 						v-model="model.col"
@@ -70,7 +70,7 @@
 			<el-col :span="12">
 				<el-form-item
 					:label="t('dashboardModule.fields.tiles.rowSpan.title')"
-					:prop="['rowSpan']"
+					prop="rowSpan"
 				>
 					<el-input-number
 						v-model="model.rowSpan"
@@ -82,7 +82,7 @@
 			<el-col :span="12">
 				<el-form-item
 					:label="t('dashboardModule.fields.tiles.colSpan.title')"
-					:prop="['colSpan']"
+					prop="colSpan"
 				>
 					<el-input-number
 						v-model="model.colSpan"

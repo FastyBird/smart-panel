@@ -5,7 +5,7 @@ import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { DEVICES_THIRD_PARTY_PLUGIN_NAME } from '../devices-third-party.constants';
 
 export class ThirdPartyConfigModel extends PluginConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsString()
 	type: string = DEVICES_THIRD_PARTY_PLUGIN_NAME;
 

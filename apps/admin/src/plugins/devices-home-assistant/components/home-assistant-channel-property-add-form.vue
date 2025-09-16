@@ -12,7 +12,7 @@
 		>
 			<el-form-item
 				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.channel.title')"
-				:prop="['channel']"
+				prop="channel"
 			>
 				<el-select
 					v-model="model.channel"
@@ -46,7 +46,7 @@
 
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.id.title')"
-			:prop="['id']"
+			prop="id"
 		>
 			<el-input
 				v-model="model.id"
@@ -59,7 +59,7 @@
 
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.name.title')"
-			:prop="['name']"
+			prop="name"
 		>
 			<el-input
 				v-model="model.name"
@@ -71,7 +71,7 @@
 
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.category.title')"
-			:prop="['category']"
+			prop="category"
 		>
 			<el-select
 				v-model="model.category"
@@ -169,7 +169,7 @@
 
 			<el-form-item
 				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haEntityId.title')"
-				:prop="['haEntityId']"
+				prop="haEntityId"
 			>
 				<select-discovered-device-entity
 					v-model="model.haEntityId"
@@ -184,7 +184,7 @@
 			<el-form-item
 				:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.haEntityId}-haAttribute`"
 				:label="t('devicesHomeAssistantPlugin.fields.channelsProperties.haAttribute.title')"
-				:prop="['haAttribute']"
+				prop="haAttribute"
 			>
 				<select-entity-attribute
 					v-model="model.haAttribute"
@@ -213,7 +213,7 @@
 		<el-form-item
 			v-if="model.enterValue"
 			:label="t('devicesModule.fields.channelsProperties.value.title')"
-			:prop="['value']"
+			prop="value"
 			class="mt-2"
 		>
 			<el-input

@@ -58,7 +58,7 @@
 	<el-tabs
 		v-if="isMDDevice"
 		v-model="activeTab"
-		class="lt-sm:mx-1 sm:mx-2"
+		class="lt-sm:mx-1 sm:mx-2 overflow-hidden grow-1"
 		@tab-click="onTabClick"
 	>
 		<el-tab-pane
@@ -144,6 +144,7 @@
 		<el-tab-pane
 			:label="t('configModule.tabs.configPlugins')"
 			:name="'plugins'"
+			class="h-full"
 		>
 			<template #label>
 				<span class="flex flex-row items-center gap-2">

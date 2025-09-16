@@ -11,6 +11,7 @@ import { ShellyDeviceDelegate } from '../delegates/shelly-device.delegate';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
+import { ShellyNgConfigModel } from '../models/config.model';
 
 import { DatabaseDiscovererService } from './database-discoverer.service';
 
@@ -19,6 +20,8 @@ export class ShellyNgService {
 	private readonly logger = new Logger(ShellyNgService.name);
 
 	private shellies?: Shellies;
+
+	private pluginConfig: ShellyNgConfigModel | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -49,16 +52,9 @@ export class ShellyNgService {
 
 		this.shellies = new Shellies({
 			websocket: {
-				requestTimeout: 10,
-				pingInterval: 60,
-				reconnectInterval: [
-					5,
-					10,
-					30,
-					60,
-					5 * 60, // 5 minutes
-					10 * 60, // 10 minutes
-				],
+				requestTimeout: this.pluginConfig.websockets.requestTimeout,
+				pingInterval: this.pluginConfig.websockets.pingInterval,
+				reconnectInterval: this.pluginConfig.websockets.reconnectInterval,
 				clientId: 'fb-smart-panel-shelly-ng-' + Math.round(Math.random() * 1000000),
 			},
 			autoLoadStatus: true,
@@ -77,28 +73,32 @@ export class ShellyNgService {
 
 		await this.databaseDiscovererService.run();
 
-		const discoverer = new MdnsDeviceDiscoverer();
-
-		this.shellies.registerDiscoverer(discoverer);
-
-		discoverer.on('error', (error: Error): void => {
-			this.logger.error('[SHELLY NG][SHELLY SERVICE] An error occurred in the mDNS device discovery service', {
-				message: error.message,
-				stack: error.stack,
+		if (this.pluginConfig.mdns.enabled) {
+			const discoverer = new MdnsDeviceDiscoverer({
+				interface: this.pluginConfig.mdns.interface ?? undefined,
 			});
-		});
 
-		try {
-			await discoverer.start();
+			this.shellies.registerDiscoverer(discoverer);
 
-			this.logger.log('[SHELLY NG][SHELLY SERVICE] mDNS device discovery started');
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error('[SHELLY NG][SHELLY SERVICE] Failed to start the mDNS device discovery service', {
-				message: err.message,
-				stack: err.stack,
+			discoverer.on('error', (error: Error): void => {
+				this.logger.error('[SHELLY NG][SHELLY SERVICE] An error occurred in the mDNS device discovery service', {
+					message: error.message,
+					stack: error.stack,
+				});
 			});
+
+			try {
+				await discoverer.start();
+
+				this.logger.log('[SHELLY NG][SHELLY SERVICE] mDNS device discovery started');
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error('[SHELLY NG][SHELLY SERVICE] Failed to start the mDNS device discovery service', {
+					message: err.message,
+					stack: err.stack,
+				});
+			}
 		}
 	}
 
@@ -118,9 +118,17 @@ export class ShellyNgService {
 	}
 
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	handleConfigurationUpdatedEvent() {
+	async handleConfigurationUpdatedEvent() {
 		this.stop();
-		this.start();
+		await this.start();
+	}
+
+	private get config(): ShellyNgConfigModel {
+		if (!this.pluginConfig) {
+			this.pluginConfig = this.configService.getPluginConfig<ShellyNgConfigModel>(DEVICES_SHELLY_NG_PLUGIN_NAME);
+		}
+
+		return this.pluginConfig;
 	}
 
 	/**

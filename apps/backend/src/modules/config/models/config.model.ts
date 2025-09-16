@@ -10,12 +10,12 @@ import {
 } from '../config.constants';
 
 export abstract class BaseConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	type?: SectionType;
 }
 
 export class AudioConfigModel extends BaseConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsOptional()
 	type = SectionType.AUDIO;
 
@@ -41,7 +41,7 @@ export class AudioConfigModel extends BaseConfigModel {
 }
 
 export class DisplayConfigModel extends BaseConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsOptional()
 	type = SectionType.DISPLAY;
 
@@ -67,7 +67,7 @@ export class DisplayConfigModel extends BaseConfigModel {
 }
 
 export class LanguageConfigModel extends BaseConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsOptional()
 	type = SectionType.LANGUAGE;
 
@@ -85,7 +85,7 @@ export class LanguageConfigModel extends BaseConfigModel {
 }
 
 export abstract class WeatherConfigModel extends BaseConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsOptional()
 	type = SectionType.WEATHER;
 
@@ -185,7 +185,7 @@ export class WeatherZipCodeConfigModel extends WeatherConfigModel {
 }
 
 export abstract class PluginConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsString()
 	type: string;
 

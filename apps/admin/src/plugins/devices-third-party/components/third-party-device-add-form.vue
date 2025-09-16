@@ -8,7 +8,7 @@
 	>
 		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.id.title')"
-			:prop="['id']"
+			prop="id"
 		>
 			<el-input
 				v-model="model.id"
@@ -21,7 +21,7 @@
 
 		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.identifier.title')"
-			:prop="['identifier']"
+			prop="identifier"
 		>
 			<el-input
 				v-model="model.identifier"
@@ -32,7 +32,7 @@
 
 		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.name.title')"
-			:prop="['name']"
+			prop="name"
 		>
 			<el-input
 				v-model="model.name"
@@ -43,7 +43,7 @@
 
 		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.category.title')"
-			:prop="['category']"
+			prop="category"
 		>
 			<el-select
 				v-model="model.category"
@@ -73,7 +73,7 @@
 
 		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.description.title')"
-			:prop="['description']"
+			prop="description"
 		>
 			<el-input
 				v-model="model.description"
@@ -86,7 +86,7 @@
 
 		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.enabled.title')"
-			:prop="['enabled']"
+			prop="enabled"
 		>
 			<el-switch
 				v-model="model.enabled"
@@ -98,7 +98,7 @@
 
 		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.serviceAddress.title')"
-			:prop="['serviceAddress']"
+			prop="serviceAddress"
 		>
 			<el-input
 				v-model="model.serviceAddress"

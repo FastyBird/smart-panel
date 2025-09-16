@@ -8,7 +8,7 @@
 	>
 		<el-form-item
 			:label="t('dashboardModule.fields.pages.id.title')"
-			:prop="['id']"
+			prop="id"
 		>
 			<el-input
 				v-model="model.id"
@@ -21,7 +21,7 @@
 
 		<el-form-item
 			:label="t('dashboardModule.fields.pages.title.title')"
-			:prop="['title']"
+			prop="title"
 		>
 			<el-input
 				v-model="model.title"
@@ -33,7 +33,7 @@
 
 		<el-form-item
 			:label="t('pagesDeviceDetailPlugin.fields.device.title')"
-			:prop="['device']"
+			prop="device"
 		>
 			<el-select
 				v-model="model.device"
@@ -53,7 +53,7 @@
 
 		<el-form-item
 			:label="t('dashboardModule.fields.pages.icon.title')"
-			:prop="['icon']"
+			prop="icon"
 		>
 			<icon-picker
 				v-model="model.icon"
@@ -63,7 +63,7 @@
 
 		<el-form-item
 			:label="t('dashboardModule.fields.pages.order.title')"
-			:prop="['order']"
+			prop="order"
 		>
 			<el-input-number
 				v-model="model.order"
@@ -74,7 +74,7 @@
 
 		<el-form-item
 			:label="t('dashboardModule.fields.pages.showTopBar.title')"
-			:prop="['showTopBar']"
+			prop="showTopBar"
 		>
 			<el-switch
 				v-model="model.showTopBar"

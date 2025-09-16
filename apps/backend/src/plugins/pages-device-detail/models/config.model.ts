@@ -5,7 +5,7 @@ import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { PAGES_DEVICE_DETAIL_PLUGIN_NAME } from '../pages-device-detail.constants';
 
 export class DeviceDetailConfigModel extends PluginConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsString()
 	type: string = PAGES_DEVICE_DETAIL_PLUGIN_NAME;
 

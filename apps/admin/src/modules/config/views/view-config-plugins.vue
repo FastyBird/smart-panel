@@ -1,27 +1,32 @@
 <template>
-	<el-card v-if="isMDDevice">
-		<el-collapse
-			v-model="activeNames"
-			:expand-icon-position="'left'"
-		>
-			<template
-				v-for="plugin in plugins"
-				:key="plugin.type"
+	<el-scrollbar
+		v-if="isMDDevice"
+		class="grow-1 flex flex-col"
+	>
+		<el-card class="mb-2">
+			<el-collapse
+				v-model="activeNames"
+				:expand-icon-position="'left'"
 			>
-				<el-collapse-item
-					:title="plugin.name"
-					:name="plugin.type"
+				<template
+					v-for="plugin in plugins"
+					:key="plugin.type"
 				>
-					<config-plugin
-						v-model:remote-form-submit="remoteFormSubmit[plugin.type]"
-						v-model:remote-form-result="remoteFormResult[plugin.type]"
-						v-model:remote-form-reset="remoteFormReset"
-						:type="plugin.type"
-					/>
-				</el-collapse-item>
-			</template>
-		</el-collapse>
-	</el-card>
+					<el-collapse-item
+						:title="plugin.name"
+						:name="plugin.type"
+					>
+						<config-plugin
+							v-model:remote-form-submit="remoteFormSubmit[plugin.type]"
+							v-model:remote-form-result="remoteFormResult[plugin.type]"
+							v-model:remote-form-reset="remoteFormReset"
+							:type="plugin.type"
+						/>
+					</el-collapse-item>
+				</template>
+			</el-collapse>
+		</el-card>
+	</el-scrollbar>
 
 	<template v-else>
 		<el-collapse
@@ -54,7 +59,7 @@ import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 
-import { ElCard, ElCollapse, ElCollapseItem } from 'element-plus';
+import { ElCard, ElCollapse, ElCollapseItem, ElScrollbar } from 'element-plus';
 
 import { type IPlugin, useBreakpoints } from '../../../common';
 import { ConfigPlugin } from '../components/components';
@@ -95,28 +100,6 @@ const remoteFormReset = ref<boolean>(props.remoteFormReset);
 
 const activeNames = ref(plugins.value.map((plugin) => plugin.type));
 
-const aggregateSubmit = (rec: Record<IPlugin['type'], boolean>): boolean => {
-	return Object.values(rec).some(Boolean);
-};
-
-const aggregateResult = (rec: Record<IPlugin['type'], FormResultType>): FormResultType => {
-	const vals = Object.values(rec);
-
-	if (vals.some((v) => v === FormResult.ERROR)) {
-		return FormResult.ERROR;
-	}
-
-	if (vals.some((v) => v === FormResult.WORKING)) {
-		return FormResult.WORKING;
-	}
-
-	if (vals.length && vals.every((v) => v === FormResult.OK)) {
-		return FormResult.OK;
-	}
-
-	return FormResult.NONE;
-};
-
 const waitForPluginToFinish = (type: IPlugin['type']): Promise<void> => {
 	return new Promise((resolve) => {
 		const stop = watch(
@@ -139,7 +122,9 @@ watch(
 	async (val: boolean): Promise<void> => {
 		if (val) {
 			for (const { type } of plugins.value) {
-				remoteFormSubmit.value[type] = true;
+				setTimeout(() => {
+					remoteFormSubmit.value[type] = true;
+				}, 500);
 
 				await waitForPluginToFinish(type);
 
@@ -175,22 +160,6 @@ watch(
 	async (val: boolean): Promise<void> => {
 		emit('update:remoteFormReset', val);
 	}
-);
-
-watch(
-	() => remoteFormSubmit.value,
-	(rec) => {
-		emit('update:remoteFormSubmit', aggregateSubmit(rec));
-	},
-	{ deep: true }
-);
-
-watch(
-	() => remoteFormResult.value,
-	(rec) => {
-		emit('update:remoteFormResult', aggregateResult(rec));
-	},
-	{ deep: true }
 );
 
 watch(

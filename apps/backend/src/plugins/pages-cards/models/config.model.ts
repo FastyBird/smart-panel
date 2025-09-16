@@ -5,7 +5,7 @@ import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { PAGES_CARDS_PLUGIN_NAME } from '../pages-cards.constants';
 
 export class CardsConfigModel extends PluginConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsString()
 	type: string = PAGES_CARDS_PLUGIN_NAME;
 

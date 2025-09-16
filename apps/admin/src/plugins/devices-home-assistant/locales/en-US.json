@@ -119,11 +119,7 @@
     },
     "config": {
       "enabled": {
-        "title": "Enabled",
-        "values": {
-          "enabled": "Allow to communicate with Home Assistant",
-          "disabled": "Disallow to communicate with Home Assistant"
-        }
+        "title": "Enabled"
       },
       "apiKey": {
         "title": "API key",
@@ -139,6 +135,12 @@
           "required": "Please fill in hostname"
         }
       }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Changes saved! The Home Assistant plugin config has been updated.",
+      "notEdited": "Something went wrong. Home Assistant plugin config update was not successful."
     }
   },
   "misc": {

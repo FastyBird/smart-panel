@@ -154,7 +154,10 @@ export class DevicesHomeAssistantPlugin {
 	onApplicationBootstrap() {
 		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
 
-		if (!isCli && this.appConfigService.getPluginConfig(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled) {
+		if (
+			!isCli &&
+			this.appConfigService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled
+		) {
 			this.homeAssistantWsService.connect();
 			this.homeAssistantWsService.registerEventsHandler(
 				this.stateChangedEventService.event,

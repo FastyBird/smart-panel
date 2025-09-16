@@ -5,7 +5,7 @@ import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { TILES_WEATHER_PLUGIN_NAME } from '../tiles-weather.constants';
 
 export class WeatherConfigModel extends PluginConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsString()
 	type: string = TILES_WEATHER_PLUGIN_NAME;
 

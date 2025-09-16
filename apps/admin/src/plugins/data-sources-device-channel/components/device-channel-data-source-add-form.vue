@@ -8,7 +8,7 @@
 	>
 		<el-form-item
 			:label="t('dashboardModule.fields.dataSources.id.title')"
-			:prop="['id']"
+			prop="id"
 		>
 			<el-input
 				v-model="model.id"
@@ -21,7 +21,7 @@
 
 		<el-form-item
 			:label="t('dataSourcesDeviceChannelPlugin.fields.device.title')"
-			:prop="['device']"
+			prop="device"
 		>
 			<el-select
 				v-model="model.device"
@@ -41,7 +41,7 @@
 
 		<el-form-item
 			:label="t('dataSourcesDeviceChannelPlugin.fields.channel.title')"
-			:prop="['channel']"
+			prop="channel"
 		>
 			<el-select
 				v-model="model.channel"
@@ -61,7 +61,7 @@
 
 		<el-form-item
 			:label="t('dataSourcesDeviceChannelPlugin.fields.property.title')"
-			:prop="['property']"
+			prop="property"
 		>
 			<el-select
 				v-model="model.property"
@@ -81,7 +81,7 @@
 
 		<el-form-item
 			:label="t('dataSourcesDeviceChannelPlugin.fields.icon.title')"
-			:prop="['icon']"
+			prop="icon"
 		>
 			<icon-picker
 				v-model="model.icon"

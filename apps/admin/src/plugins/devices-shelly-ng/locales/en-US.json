@@ -1,0 +1,150 @@
+{
+  "headings": {
+    "aboutMdns": "MDNS settings",
+    "aboutWebsockets": "Websockets settings"
+  },
+  "fields": {
+    "devices": {
+      "id": {
+        "title": "Internal identifier",
+        "placeholder": "Device id"
+      },
+      "identifier": {
+        "title": "System identifier",
+        "placeholder": "Device system identifier"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Device category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select device category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Device name",
+        "validation": {
+          "required": "Please fill in device name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Device description"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "placeholder": "Enable or disable device"
+      },
+      "password": {
+        "title": "Admin password",
+        "placeholder": "Provide device password if device is protected"
+      },
+      "hostname": {
+        "title": "Device hostname",
+        "placeholder": "Device network name or IP address"
+      }
+    },
+    "channels": {
+      "plugin": {
+        "title": "Channel plugin",
+        "placeholder": "Select channel plugin"
+      },
+      "device": {
+        "title": "Device",
+        "placeholder": "Channel device",
+        "description": "About device",
+        "validation": {
+          "required": "Please select channel device"
+        }
+      },
+      "id": {
+        "title": "Internal identifier",
+        "placeholder": "Channel id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select channel category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel name",
+        "validation": {
+          "required": "Please fill in channel name"
+        }
+      },
+      "description": {
+        "title": "Description",
+        "placeholder": "Channel description"
+      }
+    },
+    "channelsProperties": {
+      "channel": {
+        "title": "Channel",
+        "placeholder": "Channel property channel",
+        "description": "About channel",
+        "validation": {
+          "required": "Please select channel property channel"
+        }
+      },
+      "id": {
+        "title": "Internal identifier",
+        "placeholder": "Channel property id"
+      },
+      "category": {
+        "title": "Category",
+        "placeholder": "Channel property category",
+        "description": "About category",
+        "validation": {
+          "required": "Please select channel property category"
+        }
+      },
+      "name": {
+        "title": "Name",
+        "placeholder": "Channel property name"
+      }
+    },
+    "config": {
+      "enabled": {
+        "title": "Enabled"
+      },
+      "mdns": {
+        "enabled": {
+          "title": "Discovery enabled"
+        },
+        "interface": {
+          "title": "Interface",
+          "placeholder": "The network interface to use. If none is specified, all available interfaces will be used."
+        }
+      },
+      "websockets": {
+        "requestTimeout": {
+          "title": "Request timeout",
+          "placeholder": "The time, in seconds, to wait for a response before a request is aborted."
+        },
+        "pingInterval": {
+          "title": "Ping interval",
+          "placeholder": "The interval, in seconds, at which ping requests should be made to verify that the connection is open. Set to 0 to disable."
+        },
+        "reconnectInterval": {
+          "title": "Reconnect interval",
+          "placeholder": "The interval, in seconds, at which a connection attempt should be made after a socket has been closed."
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Changes saved! The Shelly Next Generation plugin config has been updated.",
+      "notEdited": "Something went wrong. Shelly Next Generation plugin config update was not successful."
+    }
+  },
+  "texts": {
+    "aboutMdns": "Configure how the plugin discovers Shelly devices on your local network using Multicast DNS (mDNS). This enables automatic detection without needing to manually enter IP addresses.",
+    "aboutWebsockets": "Manage WebSocket connection parameters for Shelly devices. These settings control communication stability, request handling, and reconnection behavior."
+  }
+}

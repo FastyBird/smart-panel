@@ -16672,7 +16672,7 @@
                 "enum": [
                   "devices-home-assistant"
                 ],
-                "description": "Configuration section type discriminator. Must always be `devices-home-assistant-plugin`.",
+                "description": "Configuration section type discriminator. Must always be `devices-home-assistant`.",
                 "default": "devices-home-assistant",
                 "example": "devices-home-assistant"
               },
@@ -16710,7 +16710,7 @@
                 "enum": [
                   "devices-home-assistant"
                 ],
-                "description": "Configuration section type discriminator. Must always be `devices-home-assistant-plugin`.",
+                "description": "Configuration section type discriminator. Must always be `devices-home-assistant`.",
                 "default": "devices-home-assistant",
                 "example": "devices-home-assistant"
               },
@@ -17001,7 +17001,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
@@ -17051,7 +17053,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
@@ -17099,7 +17103,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
@@ -17147,7 +17153,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
@@ -17173,7 +17181,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
@@ -17199,7 +17209,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
@@ -17225,7 +17237,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
@@ -17251,7 +17265,9 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
@@ -17277,11 +17293,200 @@
             "properties": {
               "type": {
                 "type": "string",
-                "enum": ["devices-shelly-ng"],
+                "enum": [
+                  "devices-shelly-ng"
+                ],
                 "description": "Shelly NG plugin type.",
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
                 "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginConfig": {
+        "x-internal": true,
+        "title": "Shelly NG Plugin Configuration",
+        "description": "Configuration for the Shelly NG devices plugin.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModulePlugin"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "mdns",
+              "websockets"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Configuration section type discriminator. Must always be `devices-shelly-ng`.",
+                "default": "devices-shelly-ng",
+                "example": "devices-shelly-ng"
+              },
+              "mdns": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "enabled",
+                  "interface"
+                ],
+                "description": "Multicast DNS (mDNS) discovery settings.",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable mDNS discovery for Shelly NG devices.",
+                    "default": true
+                  },
+                  "interface": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "description": "Network interface to bind for mDNS (e.g., `eth0`, `en0`). If `null`, the system default is used.",
+                    "default": null,
+                    "example": "eth0"
+                  }
+                }
+              },
+              "websockets": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_timeout",
+                  "ping_interval",
+                  "reconnect_interval"
+                ],
+                "description": "WebSocket (RPC) session parameters. All times are seconds.",
+                "properties": {
+                  "request_timeout": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 1,
+                    "description": "Timeout for individual RPC requests (seconds).",
+                    "default": 10,
+                    "example": 10
+                  },
+                  "ping_interval": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0,
+                    "description": "Interval for keep-alive pings (seconds).",
+                    "default": 60,
+                    "example": 60
+                  },
+                  "reconnect_interval": {
+                    "description": "Backoff for reconnection attempts. Either a single interval (seconds) or an array of increasing intervals (seconds).",
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "format": "int32",
+                      "minimum": 1
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "example": [5, 10, 30, 60, 300, 600],
+                    "default": [5, 10, 30, 60, 300, 600]
+                  }
+                },
+                "examples": [
+                  {
+                    "summary": "Default backoff sequence",
+                    "value": {
+                      "request_timeout": 10,
+                      "ping_interval": 60,
+                      "reconnect_interval": [5, 10, 30, 60, 300, 600]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginUpdateConfig": {
+        "x-internal": true,
+        "title": "Update Shelly NG Plugin Configuration",
+        "description": "Request schema for updating the Shelly NG devices plugin configuration.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleUpdatePlugin"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Configuration section type discriminator. Must always be `devices-shelly-ng`.",
+                "default": "devices-shelly-ng",
+                "example": "devices-shelly-ng"
+              },
+              "mdns": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Multicast DNS (mDNS) discovery settings.",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable mDNS discovery for Shelly NG devices.",
+                    "default": true
+                  },
+                  "interface": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "description": "Network interface to bind for mDNS (e.g., `eth0`, `en0`). If `null`, the system default is used.",
+                    "default": null,
+                    "example": "eth0"
+                  }
+                }
+              },
+              "websockets": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "WebSocket (RPC) session parameters. All times are seconds.",
+                "properties": {
+                  "request_timeout": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 1,
+                    "description": "Timeout for individual RPC requests (seconds).",
+                    "default": 10,
+                    "example": 10
+                  },
+                  "ping_interval": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0,
+                    "description": "Interval for keep-alive pings (seconds).",
+                    "default": 60,
+                    "example": 60
+                  },
+                  "reconnect_interval": {
+                    "description": "Backoff for reconnection attempts. Either a single interval (seconds) or an array of increasing intervals (seconds).",
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "format": "int32",
+                      "minimum": 1
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "example": [5, 10, 30, 60, 300, 600],
+                    "default": [5, 10, 30, 60, 300, 600]
+                  }
+                }
               }
             }
           }

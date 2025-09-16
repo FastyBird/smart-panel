@@ -11,7 +11,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
 	DevicesHomeAssistantNotFoundException,
@@ -302,7 +302,9 @@ export class HomeAssistantHttpService {
 
 	private get config(): HomeAssistantConfigModel {
 		if (!this.pluginConfig) {
-			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_TYPE);
+			this.pluginConfig = this.configService.getPluginConfig<HomeAssistantConfigModel>(
+				DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+			);
 		}
 
 		return this.pluginConfig;
