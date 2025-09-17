@@ -623,8 +623,10 @@ export class DelegatesManagerService {
 		category: ChannelCategory,
 		name: string,
 	): Promise<ShellyNgChannelEntity> {
-		if (column === 'category' && (typeof identifierOrCategory === 'string' || identifierOrCategory !== category)) {
-			throw new DevicesShellyNgException('Provided channel category is mismatched with searched');
+		if (column === 'category' && (typeof identifierOrCategory !== 'string' || identifierOrCategory !== category)) {
+			throw new DevicesShellyNgException(
+				`Provided channel category is mismatched with searched: ${category} vs ${identifierOrCategory}`,
+			);
 		}
 
 		let channel = await this.channelsService.findOneBy(column, identifierOrCategory, device.id, DEVICES_SHELLY_NG_TYPE);
@@ -663,8 +665,10 @@ export class DelegatesManagerService {
 			unit?: string | null;
 		},
 	): Promise<ShellyNgChannelPropertyEntity> {
-		if (column === 'category' && (typeof identifierOrCategory === 'string' || identifierOrCategory !== category)) {
-			throw new DevicesShellyNgException('Provided channel property category is mismatched with searched');
+		if (column === 'category' && (typeof identifierOrCategory !== 'string' || identifierOrCategory !== category)) {
+			throw new DevicesShellyNgException(
+				'Provided channel property category is mismatched with searched: ${category} vs ${identifierOrCategory}',
+			);
 		}
 
 		let prop = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(

@@ -52,9 +52,9 @@ export class ShellyNgService {
 
 		this.shellies = new Shellies({
 			websocket: {
-				requestTimeout: this.pluginConfig.websockets.requestTimeout,
-				pingInterval: this.pluginConfig.websockets.pingInterval,
-				reconnectInterval: this.pluginConfig.websockets.reconnectInterval,
+				requestTimeout: this.config.websockets.requestTimeout,
+				pingInterval: this.config.websockets.pingInterval,
+				reconnectInterval: this.config.websockets.reconnectInterval,
 				clientId: 'fb-smart-panel-shelly-ng-' + Math.round(Math.random() * 1000000),
 			},
 			autoLoadStatus: true,
@@ -73,9 +73,9 @@ export class ShellyNgService {
 
 		await this.databaseDiscovererService.run();
 
-		if (this.pluginConfig.mdns.enabled) {
+		if (this.config.mdns.enabled) {
 			const discoverer = new MdnsDeviceDiscoverer({
-				interface: this.pluginConfig.mdns.interface ?? undefined,
+				interface: this.config.mdns.interface ?? undefined,
 			});
 
 			this.shellies.registerDiscoverer(discoverer);
@@ -141,6 +141,7 @@ export class ShellyNgService {
 				this.logger.debug(`[SHELLY NG][SHELLY SERVICE] Device=${delegate.id} was added to delegates registry`);
 			})
 			.catch((err: Error): void => {
+				console.log(device.model);
 				this.logger.error(
 					`[SHELLY NG][SHELLY SERVICE] Failed to create Shelly device delegate for device=${device.id}`,
 					{
