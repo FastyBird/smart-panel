@@ -115,6 +115,8 @@ export class ShellyNgService {
 			.off('error', this.handleError);
 
 		this.shellies = undefined;
+
+		this.delegatesRegistryService.detach();
 	}
 
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)

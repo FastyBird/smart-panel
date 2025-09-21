@@ -775,8 +775,11 @@ export class DelegatesManagerService {
 
 		this.delegateValueHandlers.set(delegate.id, valueHandler);
 
-		const connectionHandler = (state: boolean): void => {
-			this.handleChange(connectionState, state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED)
+		const connectionHandler = (state: boolean | null): void => {
+			this.handleChange(
+				connectionState,
+				state === null ? ConnectionState.UNKNOWN : state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
+			)
 				.then((): void => {
 					if (state) {
 						this.logger.debug(
@@ -805,6 +808,8 @@ export class DelegatesManagerService {
 
 		this.delegateConnectionHandlers.set(delegate.id, connectionHandler);
 
+		connectionHandler(true);
+
 		this.logger.log(`[SHELLY NG][DELEGATES MANAGER] Attached Shelly device=${delegate.id}`);
 
 		return delegate;
@@ -826,6 +831,8 @@ export class DelegatesManagerService {
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
 
 		if (connectionHandler) {
+			connectionHandler(null);
+
 			delegate.off('connected', connectionHandler);
 		}
 
