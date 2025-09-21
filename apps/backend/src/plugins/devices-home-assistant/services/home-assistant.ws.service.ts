@@ -61,7 +61,7 @@ export class HomeAssistantWsService {
 			throw new DevicesHomeAssistantException('An event handler is already registered for this event type.');
 		}
 
-		this.logger.log(`[HOME ASSISTANT][WS] Registered handler for event: ${event}`);
+		this.logger.log(`[HOME ASSISTANT][WS SERVICE] Registered handler for event: ${event}`);
 
 		this.eventsHandlers.set(event, handler);
 	}
@@ -70,25 +70,25 @@ export class HomeAssistantWsService {
 		if (
 			this.configService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled === false
 		) {
-			this.logger.debug('[HOME ASSISTANT][WS] Home Assistant plugin is disabled.');
+			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Home Assistant plugin is disabled.');
 
 			return;
 		}
 
 		if (this.apiKey === null) {
-			this.logger.warn('[HOME ASSISTANT][WS] Missing API key for Home Assistant WS service');
+			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Missing API key for Home Assistant WS service');
 
 			return;
 		}
 
-		this.logger.debug('[HOME ASSISTANT][WS] Connecting to Home Assistant WebSocket API...');
+		this.logger.debug('[HOME ASSISTANT][WS SERVICE] Connecting to Home Assistant WebSocket API...');
 
 		const url = new URL('/api/websocket', this.baseUrl);
 
 		this.ws = new WebSocket(url);
 
 		this.ws.on('open', () => {
-			this.logger.log('[HOME ASSISTANT][WS] WebSocket connection to Home Assistant instance opened');
+			this.logger.log('[HOME ASSISTANT][WS SERVICE] WebSocket connection to Home Assistant instance opened');
 
 			this.retryCount = 0;
 		});
@@ -100,13 +100,13 @@ export class HomeAssistantWsService {
 		});
 
 		this.ws.on('close', () => {
-			this.logger.warn('[HOME ASSISTANT][WS] WebSocket connection closed. Reconnecting in 5s...');
+			this.logger.warn('[HOME ASSISTANT][WS SERVICE] WebSocket connection closed. Reconnecting in 5s...');
 
 			this.scheduleReconnect();
 		});
 
 		this.ws.on('error', (err) => {
-			this.logger.error('[HOME ASSISTANT][WS] WebSocket connection error', err);
+			this.logger.error('[HOME ASSISTANT][WS SERVICE] WebSocket connection error', err);
 		});
 	}
 
@@ -121,13 +121,13 @@ export class HomeAssistantWsService {
 
 	async getDevicesRegistry(): Promise<HomeAssistantDeviceRegistryResponseResultModel[]> {
 		if (!this.isConnected()) {
-			this.logger.warn('[HOME ASSISTANT][WS] Tried to get devices registry while socket is not open.');
+			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Tried to get devices registry while socket is not open.');
 
 			throw new DevicesHomeAssistantValidationException('Home Assistant socket connection is not open.');
 		}
 
 		try {
-			this.logger.debug('[HOME ASSISTANT][WS] Fetching devices registry from Home Assistant');
+			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Fetching devices registry from Home Assistant');
 
 			const response = await this.send({
 				type: 'config/device_registry/list',
@@ -143,7 +143,7 @@ export class HomeAssistantWsService {
 
 			if (errors.length) {
 				this.logger.error(
-					`[VALIDATION] Home Assistant devices registry response validation failed error=${JSON.stringify(errors)}`,
+					`[HOME ASSISTANT][WS SERVICE] Home Assistant devices registry response validation failed error=${JSON.stringify(errors)}`,
 				);
 			} else {
 				return devicesRegistry.result;
@@ -151,7 +151,7 @@ export class HomeAssistantWsService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][WS] Failed to fetch Home Assistant devices registry', {
+			this.logger.error('[HOME ASSISTANT][WS SERVICE] Failed to fetch Home Assistant devices registry', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -168,13 +168,13 @@ export class HomeAssistantWsService {
 
 	async getEntitiesRegistry(): Promise<HomeAssistantEntityRegistryResponseResultModel[]> {
 		if (!this.isConnected()) {
-			this.logger.warn('[HOME ASSISTANT][WS] Tried to get entities registry while socket is not open.');
+			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Tried to get entities registry while socket is not open.');
 
 			throw new DevicesHomeAssistantValidationException('Home Assistant socket connection is not open.');
 		}
 
 		try {
-			this.logger.debug('[HOME ASSISTANT][WS] Fetching entities registry from Home Assistant');
+			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Fetching entities registry from Home Assistant');
 
 			const response = await this.send({
 				type: 'config/entity_registry/list',
@@ -190,7 +190,7 @@ export class HomeAssistantWsService {
 
 			if (errors.length) {
 				this.logger.error(
-					`[VALIDATION] Home Assistant entities registry response validation failed error=${JSON.stringify(errors)}`,
+					`[HOME ASSISTANT][WS SERVICE] Home Assistant entities registry response validation failed error=${JSON.stringify(errors)}`,
 				);
 			} else {
 				return entitiesRegistry.result;
@@ -198,7 +198,7 @@ export class HomeAssistantWsService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[HOME ASSISTANT][WS] Failed to fetch Home Assistant entities registry', {
+			this.logger.error('[HOME ASSISTANT][WS SERVICE] Failed to fetch Home Assistant entities registry', {
 				message: err.message,
 				stack: err.stack,
 			});
@@ -215,7 +215,7 @@ export class HomeAssistantWsService {
 
 	send(data: Record<string, any>): Promise<string> {
 		if (!this.isConnected()) {
-			this.logger.warn('[HOME ASSISTANT][WS] Tried to send message while socket is not open.');
+			this.logger.warn('[HOME ASSISTANT][WS SERVICE] Tried to send message while socket is not open.');
 
 			return Promise.reject(new DevicesHomeAssistantException('Home Assistant socket connection is not open.'));
 		}
@@ -268,7 +268,7 @@ export class HomeAssistantWsService {
 	private scheduleReconnect() {
 		const delay = Math.min(30000, 5000 * ++this.retryCount);
 
-		this.logger.warn(`[HOME ASSISTANT][WS] Reconnecting in ${delay / 1000}s...`);
+		this.logger.warn(`[HOME ASSISTANT][WS SERVICE] Reconnecting in ${delay / 1000}s...`);
 
 		if (!this.reconnectTimeout) {
 			this.reconnectTimeout = setTimeout(() => {
@@ -294,7 +294,7 @@ export class HomeAssistantWsService {
 		}
 
 		if (msg.type === 'auth_required') {
-			this.logger.debug('[HOME ASSISTANT][WS] Authenticating with Home Assistant instance...');
+			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Authenticating with Home Assistant instance...');
 
 			this.ws?.send(
 				JSON.stringify({
@@ -303,12 +303,12 @@ export class HomeAssistantWsService {
 				}),
 			);
 		} else if (msg.type === 'auth_ok') {
-			this.logger.debug('[HOME ASSISTANT][WS] Authenticated with Home Assistant instance.');
+			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Authenticated with Home Assistant instance.');
 
 			this.subscribeToStates();
 		} else if (msg.type === 'auth_invalid') {
 			this.logger.error(
-				`[HOME ASSISTANT][WS] Authentication failed: ${'message' in msg && typeof msg.message === 'string' ? msg.message : 'unknown'}`,
+				`[HOME ASSISTANT][WS SERVICE] Authentication failed: ${'message' in msg && typeof msg.message === 'string' ? msg.message : 'unknown'}`,
 			);
 
 			this.disconnect();
@@ -331,7 +331,7 @@ export class HomeAssistantWsService {
 	}
 
 	private subscribeToStates() {
-		this.logger.debug('[HOME ASSISTANT][WS] Subscribing to events.');
+		this.logger.debug('[HOME ASSISTANT][WS SERVICE] Subscribing to events.');
 
 		this.ws?.send(
 			JSON.stringify({

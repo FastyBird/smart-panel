@@ -82,7 +82,7 @@ export class SensorEntityMapperService extends EntityMapper {
 								break;
 							default:
 								this.logger.warn(
-									`[SENSOR ENTITY MAPPER] Unsupported atmospheric pressure unit: ${unit} for value=${rawValue}`,
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported atmospheric pressure unit: ${unit} for value=${rawValue}`,
 								);
 								break;
 						}
@@ -195,7 +195,9 @@ export class SensorEntityMapperService extends EntityMapper {
 								mapped.set(sensorProp.id, rawValue / 1_000);
 								break;
 							default:
-								this.logger.warn(`[SENSOR ENTITY MAPPER] Unsupported current unit: ${unit} for value=${rawValue}`);
+								this.logger.warn(
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported current unit: ${unit} for value=${rawValue}`,
+								);
 								break;
 						}
 					}
@@ -257,7 +259,9 @@ export class SensorEntityMapperService extends EntityMapper {
 								mapped.set(sensorProp.id, rawValue * 0.0254);
 								break;
 							default:
-								this.logger.warn(`[SENSOR ENTITY MAPPER] Unsupported distance unit: ${unit} for value=${rawValue}`);
+								this.logger.warn(
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported distance unit: ${unit} for value=${rawValue}`,
+								);
 								break;
 						}
 					}
@@ -318,7 +322,9 @@ export class SensorEntityMapperService extends EntityMapper {
 								mapped.set(sensorProp.id, rawValue * 1_000_000);
 								break;
 							default:
-								this.logger.warn(`[SENSOR ENTITY MAPPER] Unsupported energy unit: ${unit} for value=${rawValue}`);
+								this.logger.warn(
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported energy unit: ${unit} for value=${rawValue}`,
+								);
 								break;
 						}
 					}
@@ -368,7 +374,9 @@ export class SensorEntityMapperService extends EntityMapper {
 								mapped.set(sensorProp.id, rawValue * 1_000_000_000);
 								break;
 							default:
-								this.logger.warn(`[SENSOR ENTITY MAPPER] Unsupported frequency unit: ${unit} for value=${rawValue}`);
+								this.logger.warn(
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported frequency unit: ${unit} for value=${rawValue}`,
+								);
 								break;
 						}
 					}
@@ -564,7 +572,9 @@ export class SensorEntityMapperService extends EntityMapper {
 								mapped.set(sensorProp.id, rawValue * 1_000_000_000_000);
 								break;
 							default:
-								this.logger.warn(`[SENSOR ENTITY MAPPER] Unsupported power unit: ${unit} for value=${rawValue}`);
+								this.logger.warn(
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported power unit: ${unit} for value=${rawValue}`,
+								);
 								break;
 						}
 					}
@@ -627,7 +637,9 @@ export class SensorEntityMapperService extends EntityMapper {
 								mapped.set(sensorProp.id, rawValue * 6.89476);
 								break;
 							default:
-								this.logger.warn(`[SENSOR ENTITY MAPPER] Unsupported pressure unit: ${unit} for value=${rawValue}`);
+								this.logger.warn(
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported pressure unit: ${unit} for value=${rawValue}`,
+								);
 								break;
 						}
 					}
@@ -729,7 +741,9 @@ export class SensorEntityMapperService extends EntityMapper {
 								mapped.set(sensorProp.id, rawValue - 273.15);
 								break;
 							default:
-								this.logger.warn(`[SENSOR ENTITY MAPPER] Unsupported temperature unit: ${unit} for value=${rawValue}`);
+								this.logger.warn(
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported temperature unit: ${unit} for value=${rawValue}`,
+								);
 								break;
 						}
 					}
@@ -806,7 +820,9 @@ export class SensorEntityMapperService extends EntityMapper {
 								mapped.set(sensorProp.id, rawValue * 1_000_000);
 								break;
 							default:
-								this.logger.warn(`[SENSOR ENTITY MAPPER] Unsupported voltage unit: ${unit} for value=${rawValue}`);
+								this.logger.warn(
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported voltage unit: ${unit} for value=${rawValue}`,
+								);
 								break;
 						}
 					}
@@ -865,7 +881,7 @@ export class SensorEntityMapperService extends EntityMapper {
 								break;
 							default:
 								this.logger.warn(
-									`[SENSOR ENTITY MAPPER] Unsupported volume flow rate unit: ${unit} for value=${rawValue}`,
+									`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Unsupported volume flow rate unit: ${unit} for value=${rawValue}`,
 								);
 								break;
 						}
@@ -897,7 +913,7 @@ export class SensorEntityMapperService extends EntityMapper {
 		const parsed = parseFloat(raw);
 
 		if (isNaN(parsed)) {
-			this.logger.warn(`[SENSOR ENTITY MAPPER] Invalid ${context} value: ${raw}`);
+			this.logger.warn(`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Invalid ${context} value: ${raw}`);
 
 			return false;
 		}
@@ -908,7 +924,7 @@ export class SensorEntityMapperService extends EntityMapper {
 	private parseUnit(state: HomeAssistantStateDto, context: string): string | null {
 		if (typeof state.attributes.unit_of_measurement !== 'string') {
 			this.logger.warn(
-				`[SENSOR ENTITY MAPPER] Invalid ${context} unit: ${state.attributes.unit_of_measurement as string}`,
+				`[HOME ASSISTANT][SENSOR ENTITY MAPPER] Invalid ${context} unit: ${state.attributes.unit_of_measurement as string}`,
 			);
 
 			return null;

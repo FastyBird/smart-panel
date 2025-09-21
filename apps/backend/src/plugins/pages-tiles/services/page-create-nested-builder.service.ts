@@ -71,7 +71,7 @@ export class TilesPageNestedBuilderService implements IPageNestedCreateBuilder {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`[PAGES TILES][NESTED BUILDER SERVICE] ${JSON.stringify(errors)}`);
 
 			throw new PagesTilesValidationException('Provided card data are invalid.');
 		}

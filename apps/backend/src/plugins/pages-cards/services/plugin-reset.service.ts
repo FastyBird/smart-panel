@@ -19,13 +19,13 @@ export class PluginResetService {
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			this.logger.debug(`[RESET] Resetting all plugin data`);
+			this.logger.debug(`[PAGES CARDS][RESET SERVICE] Resetting all plugin data`);
 
 			await this.cardsRepository.deleteAll();
 
 			this.eventEmitter.emit(EventType.CARD_RESET, null);
 
-			this.logger.log('[RESET] Plugin data were successfully reset');
+			this.logger.log('[PAGES CARDS][RESET SERVICE] Plugin data were successfully reset');
 
 			this.eventEmitter.emit(EventType.PLUGIN_RESET, null);
 
@@ -33,7 +33,10 @@ export class PluginResetService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.error('[RESET] Failed to reset plugin data', { message: err.message, stack: err.stack });
+			this.logger.error('[PAGES CARDS][RESET SERVICE] Failed to reset plugin data', {
+				message: err.message,
+				stack: err.stack,
+			});
 
 			return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
 		}

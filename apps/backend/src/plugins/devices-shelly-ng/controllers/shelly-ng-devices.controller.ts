@@ -177,7 +177,7 @@ export class ShellyNgDevicesController {
 				updateDto.data,
 			);
 
-			this.logger.debug(`[UPDATE] Successfully updated device id=${updatedDevice.id}`);
+			this.logger.debug(`[SHELLY NG][DEVICES CONTROLLER] Successfully updated device id=${updatedDevice.id}`);
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Device could not be updated. Please try again later');

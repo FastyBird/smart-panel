@@ -64,7 +64,9 @@ export class UniversalEntityMapperService extends EntityMapper {
 			}
 		}
 
-		this.logger.debug('[UNIVERSAL ENTITY MAPPER] Received entity state was mapped to system properties');
+		this.logger.debug(
+			'[HOME ASSISTANT][UNIVERSAL ENTITY MAPPER] Received entity state was mapped to system properties',
+		);
 
 		return Promise.resolve(mapped);
 	}

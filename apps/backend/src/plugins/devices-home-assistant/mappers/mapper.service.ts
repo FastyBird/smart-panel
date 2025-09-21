@@ -96,7 +96,7 @@ export class MapperService {
 			const mapper = this.mappers.get(domain);
 
 			if (!mapper) {
-				this.logger.warn(`[HOME ASSISTANT MAPPER] No mapper found for domain=${domain}`);
+				this.logger.warn(`[HOME ASSISTANT][MAPPER SERVICE] No mapper found for domain=${domain}`);
 
 				continue;
 			}

@@ -125,7 +125,7 @@ export class ClimateEntityMapperService extends EntityMapper {
 			);
 
 			if (heaterStateProp) {
-				this.logger.debug(`[CLIMATE ENTITY MAPPER] HVAC action → heater state: ${heating}`);
+				this.logger.debug(`[HOME ASSISTANT][CLIMATE ENTITY MAPPER] HVAC action → heater state: ${heating}`);
 
 				mapped.set(heaterStateProp.id, heating);
 			}
@@ -138,7 +138,7 @@ export class ClimateEntityMapperService extends EntityMapper {
 			);
 
 			if (coolerStateProp) {
-				this.logger.debug(`[CLIMATE ENTITY MAPPER] HVAC action → cooler state: ${cooling}`);
+				this.logger.debug(`[HOME ASSISTANT][CLIMATE ENTITY MAPPER] HVAC action → cooler state: ${cooling}`);
 
 				mapped.set(coolerStateProp.id, cooling);
 			}
@@ -214,7 +214,9 @@ export class ClimateEntityMapperService extends EntityMapper {
 			mapped.set(coolerOnProp.id, coolerOnState);
 		}
 
-		this.logger.debug('[CLIMATE ENTITY MAPPER] Received climate entity state was mapped to system properties');
+		this.logger.debug(
+			'[HOME ASSISTANT][CLIMATE ENTITY MAPPER] Received climate entity state was mapped to system properties',
+		);
 
 		return mapped;
 	}
@@ -240,7 +242,7 @@ export class ClimateEntityMapperService extends EntityMapper {
 			attributes.set(ClimateEntityAttribute.TEMPERATURE, values.get(heaterTargetTemperatureProp.id));
 
 			this.logger.debug(
-				`[CLIMATE ENTITY MAPPER] Setting target HEATER temperature to ${values.get(heaterTargetTemperatureProp.id)}`,
+				`[HOME ASSISTANT][CLIMATE ENTITY MAPPER] Setting target HEATER temperature to ${values.get(heaterTargetTemperatureProp.id)}`,
 			);
 
 			return { state: values.get(heaterTargetTemperatureProp.id).toString(), service: 'set_temperature', attributes };
@@ -257,7 +259,7 @@ export class ClimateEntityMapperService extends EntityMapper {
 			attributes.set(ClimateEntityAttribute.TEMPERATURE, values.get(coolerTargetTemperatureProp.id));
 
 			this.logger.debug(
-				`[CLIMATE ENTITY MAPPER] Setting target COOLER temperature to ${values.get(coolerTargetTemperatureProp.id)}`,
+				`[HOME ASSISTANT][CLIMATE ENTITY MAPPER] Setting target COOLER temperature to ${values.get(coolerTargetTemperatureProp.id)}`,
 			);
 
 			return { state: values.get(coolerTargetTemperatureProp.id).toString(), service: 'set_temperature', attributes };
@@ -274,7 +276,7 @@ export class ClimateEntityMapperService extends EntityMapper {
 			attributes.set(ClimateEntityAttribute.TARGET_TEMP_LOW, values.get(heaterTargetTemperatureLowProp.id));
 
 			this.logger.debug(
-				`[CLIMATE ENTITY MAPPER] Setting target HEATER low temperature to ${values.get(heaterTargetTemperatureLowProp.id)}`,
+				`[HOME ASSISTANT][CLIMATE ENTITY MAPPER] Setting target HEATER low temperature to ${values.get(heaterTargetTemperatureLowProp.id)}`,
 			);
 
 			return {
@@ -295,7 +297,7 @@ export class ClimateEntityMapperService extends EntityMapper {
 			attributes.set(ClimateEntityAttribute.TARGET_TEMP_HIGH, values.get(coolerTargetTemperatureHighProp.id));
 
 			this.logger.debug(
-				`[CLIMATE ENTITY MAPPER] Setting target COOLER high temperature to ${values.get(coolerTargetTemperatureHighProp.id)}`,
+				`[HOME ASSISTANT][CLIMATE ENTITY MAPPER] Setting target COOLER high temperature to ${values.get(coolerTargetTemperatureHighProp.id)}`,
 			);
 
 			return {
@@ -355,7 +357,9 @@ export class ClimateEntityMapperService extends EntityMapper {
 			};
 		}
 
-		this.logger.warn('[CLIMATE ENTITY MAPPER] Could not map any property to Home Assistant climate entity state');
+		this.logger.warn(
+			'[HOME ASSISTANT][CLIMATE ENTITY MAPPER] Could not map any property to Home Assistant climate entity state',
+		);
 
 		return null;
 	}
