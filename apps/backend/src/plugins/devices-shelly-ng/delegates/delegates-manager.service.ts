@@ -7,27 +7,21 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
 	ConnectionState,
-	DataTypeType,
 	DeviceCategory,
-	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
-import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
-import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
-import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
-import { CreateShellyNgChannelPropertyDto } from '../dto/create-channel-property.dto';
-import { CreateShellyNgChannelDto } from '../dto/create-channel.dto';
-import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
+import { ComponentType, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DevicesShellyNgException, DevicesShellyNgNotFoundException } from '../devices-shelly-ng.exceptions';
 import { UpdateShellyNgChannelPropertyDto } from '../dto/update-channel-property.dto';
-import { UpdateShellyNgDeviceDto } from '../dto/update-device.dto';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
+import { DeviceManagerService } from '../services/device-manager.service';
+import { clampNumber, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
 
@@ -58,7 +52,7 @@ export class DelegatesManagerService {
 	private readonly propertiesMap: Map<string, Set<string>> = new Map();
 
 	constructor(
-		private readonly devicesService: DevicesService,
+		private readonly deviceManagerService: DeviceManagerService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 	) {}
@@ -76,112 +70,88 @@ export class DelegatesManagerService {
 
 		this.delegates.set(shelly.id, delegate);
 
-		let device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-			'identifier',
-			shelly.id,
+		const hostname = shelly.wifi?.sta_ip ?? shelly.ethernet?.ip ?? null;
+
+		if (hostname === null) {
+			throw new DevicesShellyNgException('Missing device hostname or IP address');
+		}
+
+		const device = await this.deviceManagerService.createOrUpdate(
+			hostname,
+			undefined,
+			this.determineCategory(delegate),
+			shelly.system.config.device.name ?? shelly.modelName,
+		);
+
+		const deviceInformation = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+			'category',
+			ChannelCategory.DEVICE_INFORMATION,
+			device.id,
 			DEVICES_SHELLY_NG_TYPE,
 		);
 
-		const hostname = shelly.wifi?.sta_ip ?? shelly.ethernet?.ip ?? null;
-
-		if (device === null) {
-			device = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
-				type: DEVICES_SHELLY_NG_TYPE,
-				category: this.determineCategory(delegate),
-				identifier: shelly.id,
-				hostname,
-				name: shelly.system.config.device.name ?? shelly.modelName,
-			});
-		} else if (device.hostname !== hostname) {
-			device = await this.devicesService.update<ShellyNgDeviceEntity, UpdateShellyNgDeviceDto>(device.id, {
-				type: DEVICES_SHELLY_NG_TYPE,
-				hostname,
-			});
+		if (deviceInformation === null) {
+			throw new DevicesShellyNgNotFoundException('Failed to load device information channel');
 		}
 
-		const deviceInformation = await this.ensureChannel(
-			device,
-			'category',
-			ChannelCategory.DEVICE_INFORMATION,
-			ChannelCategory.DEVICE_INFORMATION,
-			'Device information',
-		);
-
-		await this.ensureProperty(
-			deviceInformation,
-			PropertyCategory.MANUFACTURER,
-			'category',
-			PropertyCategory.MANUFACTURER,
-			'Shelly',
-		);
-		await this.ensureProperty(
-			deviceInformation,
-			PropertyCategory.MODEL,
-			'category',
-			PropertyCategory.MODEL,
-			shelly.modelName,
-		);
-		await this.ensureProperty(
-			deviceInformation,
-			PropertyCategory.SERIAL_NUMBER,
-			'category',
-			PropertyCategory.SERIAL_NUMBER,
-			shelly.id,
-		);
-		await this.ensureProperty(
-			deviceInformation,
-			PropertyCategory.FIRMWARE_REVISION,
-			'category',
-			PropertyCategory.FIRMWARE_REVISION,
-			shelly.firmware.version,
-		);
-		const connectionState = await this.ensureProperty(
-			deviceInformation,
-			PropertyCategory.STATUS,
+		const connectionState = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 			'category',
 			PropertyCategory.STATUS,
-			ConnectionState.UNKNOWN,
-			{
-				format: [ConnectionState.CONNECTED, ConnectionState.DISCONNECTED, ConnectionState.UNKNOWN],
-			},
+			deviceInformation.id,
 		);
 
-		if ('wifi' in shelly) {
-			const comp = shelly.wifi as WiFi;
+		const linkQuality = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+			'category',
+			PropertyCategory.LINK_QUALITY,
+			deviceInformation.id,
+		);
 
-			const linkQuality = await this.ensureProperty(
-				deviceInformation,
-				PropertyCategory.LINK_QUALITY,
-				'category',
-				PropertyCategory.LINK_QUALITY,
-				this.rssiToQuality(comp.rssi),
-			);
+		if (linkQuality !== null) {
+			if (ComponentType.WIFI in shelly) {
+				const comp = shelly.wifi as WiFi;
 
-			this.changeHandlers.set(`${delegate.id}|${comp.key}|rssi`, (val: CharacteristicValue): void => {
-				this.handleChange(linkQuality, this.clampNumber(this.rssiToQuality(Number(val)), 0, 100)).catch(
-					(err: Error): void => {
+				await this.setDefaultPropertyValue(device.id, linkQuality, clampNumber(rssiToQuality(comp.rssi), 0, 100));
+			}
+
+			this.changeHandlers.set(
+				`${delegate.id}|${deviceInformation.identifier}|rssi`,
+				(val: CharacteristicValue): void => {
+					this.handleChange(linkQuality, clampNumber(rssiToQuality(Number(val)), 0, 100)).catch((err: Error): void => {
 						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=rssi and property=${linkQuality.id}`,
+							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${deviceInformation.identifier} attribute=rssi and property=${linkQuality.id}`,
 							{
 								message: err.message,
 								stack: err.stack,
 							},
 						);
-					},
-				);
-			});
+					});
+				},
+			);
 		}
 
 		for (const comp of delegate.switches.values()) {
-			const switcher = await this.ensureChannel(
-				device,
+			const switcher = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
-				`switch:${comp.key}`,
-				ChannelCategory.SWITCHER,
-				comp.name,
+				`switch:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
 			);
 
-			const switcherOn = await this.ensureProperty(switcher, PropertyCategory.ON, 'identifier', 'output', comp.output);
+			if (switcher === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load switcher channel');
+			}
+
+			const switcherOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'output',
+				switcher.id,
+			);
+
+			if (switcherOn === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load switcher on channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, switcherOn, comp.output);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(switcherOn, !!val).catch((err: Error): void => {
@@ -209,24 +179,31 @@ export class DelegatesManagerService {
 			);
 
 			if (typeof comp.aenergy !== 'undefined') {
-				const electricalEnergy = await this.ensureChannel(
-					device,
+				const electricalEnergy = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 					'identifier',
-					`energy:${comp.key}`,
-					ChannelCategory.ELECTRICAL_ENERGY,
-					comp.name,
+					`energy:${comp.id}`,
+					device.id,
+					DEVICES_SHELLY_NG_TYPE,
 				);
 
-				const consumption = await this.ensureProperty(
-					electricalEnergy,
-					PropertyCategory.CONSUMPTION,
+				if (electricalEnergy === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load energy channel');
+				}
+
+				const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 					'identifier',
 					'aenergy',
-					this.toEnergy(comp.aenergy),
+					electricalEnergy.id,
 				);
 
+				if (consumption === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load energy consumption channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
+
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-					this.handleChange(consumption, this.toEnergy(val), false).catch((err: Error): void => {
+					this.handleChange(consumption, toEnergy(val), false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=aenergy and property=${consumption.id}`,
 							{
@@ -239,21 +216,28 @@ export class DelegatesManagerService {
 			}
 
 			if (typeof comp.apower !== 'undefined') {
-				const electricalPower = await this.ensureChannel(
-					device,
+				const electricalPower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 					'identifier',
-					`power:${comp.key}`,
-					ChannelCategory.ELECTRICAL_POWER,
-					comp.name,
+					`power:${comp.id}`,
+					device.id,
+					DEVICES_SHELLY_NG_TYPE,
 				);
 
-				const power = await this.ensureProperty(
-					electricalPower,
-					PropertyCategory.POWER,
+				if (electricalPower === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel');
+				}
+
+				const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 					'identifier',
 					'apower',
-					comp.apower,
+					electricalPower.id,
 				);
+
+				if (power === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, power, comp.apower);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
 					this.handleChange(power, Number(val), false).catch((err: Error): void => {
@@ -268,13 +252,17 @@ export class DelegatesManagerService {
 				});
 
 				if (typeof comp.voltage !== 'undefined') {
-					const voltage = await this.ensureProperty(
-						electricalPower,
-						PropertyCategory.VOLTAGE,
+					const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 						'identifier',
 						'voltage',
-						comp.voltage,
+						electricalPower.id,
 					);
+
+					if (voltage === null) {
+						throw new DevicesShellyNgNotFoundException('Failed to load electrical power voltage channel property');
+					}
+
+					await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
 
 					this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
 						this.handleChange(voltage, Number(val), false).catch((err: Error): void => {
@@ -290,13 +278,17 @@ export class DelegatesManagerService {
 				}
 
 				if (typeof comp.current !== 'undefined') {
-					const current = await this.ensureProperty(
-						electricalPower,
-						PropertyCategory.CURRENT,
+					const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 						'identifier',
 						'current',
-						comp.current,
+						electricalPower.id,
 					);
+
+					if (current === null) {
+						throw new DevicesShellyNgNotFoundException('Failed to load electrical power current channel property');
+					}
+
+					await this.setDefaultPropertyValue(device.id, current, comp.current);
 
 					this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
 						this.handleChange(current, Number(val), false).catch((err: Error): void => {
@@ -314,15 +306,28 @@ export class DelegatesManagerService {
 		}
 
 		for (const comp of delegate.lights.values()) {
-			const light = await this.ensureChannel(
-				device,
+			const light = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
-				`light:${comp.key}`,
-				ChannelCategory.LIGHT,
-				comp.name,
+				`light:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
 			);
 
-			const lightOn = await this.ensureProperty(light, PropertyCategory.ON, 'identifier', 'output', comp.output);
+			if (light === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load light channel');
+			}
+
+			const lightOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'output',
+				light.id,
+			);
+
+			if (lightOn === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load light on channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, lightOn, comp.output);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
 				this.handleChange(lightOn, !!val).catch((err: Error): void => {
@@ -347,16 +352,20 @@ export class DelegatesManagerService {
 			});
 
 			if (typeof comp.brightness !== 'undefined') {
-				const brightness = await this.ensureProperty(
-					light,
-					PropertyCategory.BRIGHTNESS,
+				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 					'identifier',
 					'brightness',
-					comp.brightness,
+					light.id,
 				);
 
+				if (brightness === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load light brightness channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
+
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
-					this.handleChange(brightness, this.clampNumber(Number(val), 0, 100)).catch((err: Error): void => {
+					this.handleChange(brightness, clampNumber(Number(val), 0, 100)).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=brightness and property=${brightness.id}`,
 							{
@@ -374,7 +383,7 @@ export class DelegatesManagerService {
 							return false;
 						}
 
-						await comp.set(comp.output, this.clampNumber(val, 0, 100));
+						await comp.set(comp.output, clampNumber(val, 0, 100));
 
 						return true;
 					},
@@ -383,15 +392,28 @@ export class DelegatesManagerService {
 		}
 
 		for (const comp of delegate.covers.values()) {
-			const cover = await this.ensureChannel(
-				device,
+			const cover = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
-				`cover:${comp.key}`,
-				ChannelCategory.WINDOW_COVERING,
-				comp.name,
+				`cover:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
 			);
 
-			const coverState = await this.ensureProperty(cover, PropertyCategory.STATUS, 'identifier', 'state', comp.state);
+			if (cover === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load cover channel');
+			}
+
+			const coverState = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'state',
+				cover.id,
+			);
+
+			if (coverState === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load cover state channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, coverState, comp.state);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|state`, (val: CharacteristicValue): void => {
 				if (typeof val !== 'string') {
@@ -411,13 +433,17 @@ export class DelegatesManagerService {
 				});
 			});
 
-			const coverPosition = await this.ensureProperty(
-				cover,
-				PropertyCategory.POSITION,
+			const coverPosition = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 				'identifier',
 				'current_pos',
-				comp.current_pos,
+				cover.id,
 			);
+
+			if (coverPosition === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load cover position channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, coverState, clampNumber(comp.current_pos, 0, 100));
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|current_pos`, (val: CharacteristicValue): void => {
 				this.handleChange(coverPosition, Number(val)).catch((err: Error): void => {
@@ -438,19 +464,23 @@ export class DelegatesManagerService {
 						return false;
 					}
 
-					await comp.goToPosition(this.clampNumber(val, 0, 100));
+					await comp.goToPosition(clampNumber(val, 0, 100));
 
 					return true;
 				},
 			);
 
-			const coverCommand = await this.ensureProperty(
-				cover,
-				PropertyCategory.COMMAND,
+			const coverCommand = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 				'category',
 				PropertyCategory.COMMAND,
-				'stop',
+				cover.id,
 			);
+
+			if (coverCommand === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load cover command channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, coverState, 'stop');
 
 			this.setHandlers.set(
 				`${delegate.id}|${coverCommand.id}`,
@@ -466,6 +496,257 @@ export class DelegatesManagerService {
 					return true;
 				},
 			);
+		}
+
+		for (const comp of delegate.hums.values()) {
+			const humidity = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`humidity:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (humidity === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load humidity channel');
+			}
+
+			const relativeHumidity = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'rh',
+				humidity.id,
+			);
+
+			if (relativeHumidity === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load humidity channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, relativeHumidity, clampNumber(comp.rh, 0, 100));
+
+			this.changeHandlers.set(`${delegate.id}|${comp.key}|rh`, (val: CharacteristicValue): void => {
+				if (typeof val !== 'number') {
+					return;
+				}
+
+				this.handleChange(relativeHumidity, clampNumber(val, 0, 100)).catch((err: Error): void => {
+					this.logger.error(
+						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=rh and property=${relativeHumidity.id}`,
+						{
+							message: err.message,
+							stack: err.stack,
+						},
+					);
+				});
+			});
+		}
+
+		for (const comp of delegate.temps.values()) {
+			const temperature = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`temperature:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (temperature === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load temperature channel');
+			}
+
+			const relativeTemperature = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'tC',
+				temperature.id,
+			);
+
+			if (relativeTemperature === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load temperature channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, relativeTemperature, comp.tC);
+
+			this.changeHandlers.set(`${delegate.id}|${comp.key}|tC`, (val: CharacteristicValue): void => {
+				if (typeof val !== 'number') {
+					return;
+				}
+
+				this.handleChange(relativeTemperature, val).catch((err: Error): void => {
+					this.logger.error(
+						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=tC and property=${relativeTemperature.id}`,
+						{
+							message: err.message,
+							stack: err.stack,
+						},
+					);
+				});
+			});
+		}
+
+		for (const comp of delegate.devPwr.values()) {
+			const devicePower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`devicePower:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (devicePower === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load device power channel');
+			}
+
+			if (comp.battery) {
+				const battery = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'battery',
+					devicePower.id,
+				);
+
+				if (battery === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load device power battery channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, battery, clampNumber(comp.battery.percent, 0, 100));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|tC`, (val: CharacteristicValue): void => {
+					if (typeof val !== 'number') {
+						return;
+					}
+
+					this.handleChange(battery, clampNumber(val, 0, 100)).catch((err: Error): void => {
+						this.logger.error(
+							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=battery.percent and property=${battery.id}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+					});
+				});
+			}
+		}
+
+		for (const comp of delegate.powerMeter.values()) {
+			const electricalPower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`power:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (electricalPower === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel');
+			}
+
+			const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'apower',
+				electricalPower.id,
+			);
+
+			if (power === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, power, comp.apower);
+
+			this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
+				this.handleChange(power, Number(val), false).catch((err: Error): void => {
+					this.logger.error(
+						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=apower and property=${power.id}`,
+						{
+							message: err.message,
+							stack: err.stack,
+						},
+					);
+				});
+			});
+
+			if (typeof comp.voltage !== 'undefined') {
+				const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'voltage',
+					electricalPower.id,
+				);
+
+				if (voltage === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load electrical power voltage channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
+					this.handleChange(voltage, Number(val), false).catch((err: Error): void => {
+						this.logger.error(
+							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=voltage and property=${voltage.id}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+					});
+				});
+			}
+
+			if (typeof comp.current !== 'undefined') {
+				const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'current',
+					electricalPower.id,
+				);
+
+				if (current === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load electrical power current channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, current, comp.current);
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
+					this.handleChange(current, Number(val), false).catch((err: Error): void => {
+						this.logger.error(
+							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current and property=${current.id}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+					});
+				});
+			}
+
+			if (typeof comp.aenergy !== 'undefined') {
+				const electricalEnergy = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+					'identifier',
+					`energy:${comp.id}`,
+					device.id,
+					DEVICES_SHELLY_NG_TYPE,
+				);
+
+				if (electricalEnergy === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load energy channel');
+				}
+
+				const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'aenergy',
+					electricalEnergy.id,
+				);
+
+				if (consumption === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load energy consumption channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
+					this.handleChange(consumption, toEnergy(val), false).catch((err: Error): void => {
+						this.logger.error(
+							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=aenergy and property=${consumption.id}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+					});
+				});
+			}
 		}
 
 		const valueHandler = (compKey: string, attr: string, val: CharacteristicValue): void => {
@@ -616,109 +897,12 @@ export class DelegatesManagerService {
 		}
 	}
 
-	private async ensureChannel(
-		device: ShellyNgDeviceEntity,
-		column: 'identifier' | 'category',
-		identifierOrCategory: string | ChannelCategory,
-		category: ChannelCategory,
-		name: string,
-	): Promise<ShellyNgChannelEntity> {
-		if (column === 'category' && (typeof identifierOrCategory !== 'string' || identifierOrCategory !== category)) {
-			throw new DevicesShellyNgException(
-				`Provided channel category is mismatched with searched: ${category} vs ${identifierOrCategory}`,
-			);
-		}
-
-		let channel = await this.channelsService.findOneBy(column, identifierOrCategory, device.id, DEVICES_SHELLY_NG_TYPE);
-
-		if (channel === null) {
-			const channelSpec = channelsSchema[category] as ChannelDefinition | undefined;
-
-			if (!channelSpec || typeof channelSpec !== 'object') {
-				this.logger.warn(`[SHELLY NG][DELEGATES MANAGER] Missing or invalid schema for channel category=${category}`);
-
-				throw new DevicesShellyNgException('Failed to load specification for channel category');
-			}
-
-			channel = await this.channelsService.create<ShellyNgChannelEntity, CreateShellyNgChannelDto>({
-				type: DEVICES_SHELLY_NG_TYPE,
-				category,
-				identifier: column === 'identifier' ? identifierOrCategory : null,
-				name,
-				device: device.id,
-			});
-		}
-
-		return channel;
-	}
-
-	private async ensureProperty(
-		channel: ShellyNgChannelEntity,
-		category: PropertyCategory,
-		column: 'identifier' | 'category',
-		identifierOrCategory: string | PropertyCategory,
-		value: string | number | boolean,
-		options?: {
-			data_type?: DataTypeType;
-			format?: string[] | number[];
-			permissions?: PermissionType[];
-			unit?: string | null;
-		},
-	): Promise<ShellyNgChannelPropertyEntity> {
-		if (column === 'category' && (typeof identifierOrCategory !== 'string' || identifierOrCategory !== category)) {
-			throw new DevicesShellyNgException(
-				'Provided channel property category is mismatched with searched: ${category} vs ${identifierOrCategory}',
-			);
-		}
-
-		let prop = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-			column,
-			identifierOrCategory,
-			channel.id,
-		);
-
-		if (prop === null) {
-			const channelSpec = channelsSchema[channel.category] as ChannelDefinition | undefined;
-
-			if (!channelSpec || typeof channelSpec !== 'object') {
-				this.logger.warn(
-					`[SHELLY NG][DELEGATES MANAGER] Missing or invalid schema for channel category=${channel.category}`,
-				);
-
-				throw new DevicesShellyNgException('Failed to load specification for channel category');
-			}
-
-			const propertySpec = channelSpec['properties'][category] as
-				| { permissions: string[]; data_type: string; unit: string | null; format: string[] | number[] | null }
-				| undefined;
-
-			if (!propertySpec || typeof propertySpec !== 'object') {
-				this.logger.warn(`[SHELLY NG][DELEGATES MANAGER] Missing or invalid schema for property category=${category}`);
-
-				throw new DevicesShellyNgException('Failed to load specification for channel property category');
-			}
-
-			prop = await this.channelsPropertiesService.create<
-				ShellyNgChannelPropertyEntity,
-				CreateShellyNgChannelPropertyDto
-			>(channel.id, {
-				...{
-					permissions: propertySpec.permissions,
-					data_type: propertySpec.data_type,
-					unit: propertySpec.unit,
-					format: propertySpec.format,
-				},
-				type: DEVICES_SHELLY_NG_TYPE,
-				category,
-				identifier: column === 'identifier' ? identifierOrCategory : null,
-				value,
-				...options,
-			} as CreateShellyNgChannelPropertyDto);
-		}
-
-		await this.writeValueToProperty(prop, value);
-
-		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
+	private async setDefaultPropertyValue(
+		deviceId: string,
+		property: ShellyNgChannelPropertyEntity,
+		value: string | number | boolean | null,
+	): Promise<void> {
+		await this.writeValueToProperty(property, value);
 
 		let set = this.propertiesMap.get(deviceId);
 
@@ -726,9 +910,7 @@ export class DelegatesManagerService {
 			this.propertiesMap.set(deviceId, (set = new Set()));
 		}
 
-		set.add(prop.id);
-
-		return prop;
+		set.add(property.id);
 	}
 
 	private determineCategory(delegate: ShellyDeviceDelegate): DeviceCategory {
@@ -736,13 +918,18 @@ export class DelegatesManagerService {
 			return DeviceCategory.WINDOW_COVERING;
 		} else if (delegate.lights.size > 0) {
 			return DeviceCategory.LIGHTING;
+		} else if (delegate.switches.size > 0) {
+			return DeviceCategory.SWITCHER;
+		} else if (
+			delegate.inputs.size > 0 ||
+			delegate.temps.size > 0 ||
+			delegate.hums.size > 0 ||
+			delegate.powerMeter.size > 0
+		) {
+			return DeviceCategory.SENSOR;
 		}
 
-		return DeviceCategory.SWITCHER;
-	}
-
-	private clampNumber(number: number, min: number, max: number): number {
-		return Math.max(min, Math.min(max, Number(number)));
+		return DeviceCategory.GENERIC;
 	}
 
 	private scheduleWrite(property: ShellyNgChannelPropertyEntity, value: string | number | boolean): void {
@@ -761,42 +948,6 @@ export class DelegatesManagerService {
 		}, 250);
 
 		this.pendingWrites.set(property.id, t);
-	}
-
-	private toEnergy(v: unknown): number {
-		if (typeof v === 'number') {
-			return v;
-		}
-
-		if (typeof v === 'object' && v !== null) {
-			const rec = v as Record<string, unknown>;
-
-			const t = rec.total;
-
-			if (typeof t === 'number') {
-				return t;
-			}
-
-			if (typeof t === 'string') {
-				const n = Number(t);
-
-				return Number.isFinite(n) ? n : 0;
-			}
-		}
-
-		return 0;
-	}
-
-	private rssiToQuality(rssi: number): number {
-		if (rssi <= -100) {
-			return 0;
-		}
-
-		if (rssi >= -50) {
-			return 100;
-		}
-
-		return Math.round(2 * (rssi + 100));
 	}
 
 	private async writeValueToProperty(

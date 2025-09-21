@@ -903,7 +903,7 @@
     "channels": {
       "flow": {
         "category": "flow",
-        "required": true,
+        "required": false,
         "multiple": false,
         "description": {
           "en": "Monitors the rate of fluid or air flow, typically measured in cubic meters per hour (m³/h)."
@@ -1163,6 +1163,22 @@
         "multiple": false,
         "description": {
           "en": "Monitors the concentration of VOCs in the air to track pollution or air quality."
+        }
+      },
+      "electrical_energy": {
+        "category": "electrical_energy",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh)."
+        }
+      },
+      "electrical_power": {
+        "category": "electrical_power",
+        "required": false,
+        "multiple": false,
+        "description": {
+          "en": "Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics."
         }
       }
     }

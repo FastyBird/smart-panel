@@ -141,7 +141,6 @@ export class ShellyNgService {
 				this.logger.debug(`[SHELLY NG][SHELLY SERVICE] Device=${delegate.id} was added to delegates registry`);
 			})
 			.catch((err: Error): void => {
-				console.log(device.model);
 				this.logger.error(
 					`[SHELLY NG][SHELLY SERVICE] Failed to create Shelly device delegate for device=${device.id}`,
 					{

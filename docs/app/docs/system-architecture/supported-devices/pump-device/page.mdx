@@ -17,7 +17,6 @@ These channels are mandatory for the functionality of the pump device:
 
 | **Channel**          | **Description**                                                                | **Multiple** | **Details**                                                                            |
 |----------------------|--------------------------------------------------------------------------------|--------------|----------------------------------------------------------------------------------------|
-| `flow`               | Monitors the rate of fluid flow through the pump.                              | No           | [See details](/docs/system-architecture/supported-channels/flow-channel)               |
 | `switcher`           | Controls the on/off state of the pump.                                         | No           | [See details](/docs/system-architecture/supported-channels/switcher-channel)           |
 | `device_information` | Provides metadata about the device, such as manufacturer, model, and firmware. | No           | [See details](/docs/system-architecture/supported-channels/device-information-channel) |
 
@@ -27,12 +26,13 @@ These channels are mandatory for the functionality of the pump device:
 
 These channels are optional and provide additional features:
 
-| **Channel**         | **Description**                                  | **Multiple** | **Details**                                                                           |
-|---------------------|--------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
-| `electrical_energy` | Tracks total energy consumption over time.       | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
-| `electrical_power`  | Provides real-time power usage information.      | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
-| `leak`              | Detects leaks in the pump or connected systems.  | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)              |
-| `pressure`          | Monitors the pressure of the fluid being pumped. | No           | [See details](/docs/system-architecture/supported-channels/pressure-channel)          |
+| **Channel**         | **Description**                                   | **Multiple** | **Details**                                                                           |
+|---------------------|---------------------------------------------------|--------------|---------------------------------------------------------------------------------------|
+| `flow`              | Monitors the rate of fluid flow through the pump. | No           | [See details](/docs/system-architecture/supported-channels/flow-channel)              |
+| `electrical_energy` | Tracks total energy consumption over time.        | No           | [See details](/docs/system-architecture/supported-channels/electrical-energy-channel) |
+| `electrical_power`  | Provides real-time power usage information.       | No           | [See details](/docs/system-architecture/supported-channels/electrical-power-channel)  |
+| `leak`              | Detects leaks in the pump or connected systems.   | No           | [See details](/docs/system-architecture/supported-channels/leak-channel)              |
+| `pressure`          | Monitors the pressure of the fluid being pumped.  | No           | [See details](/docs/system-architecture/supported-channels/pressure-channel)          |
 
 ---
 

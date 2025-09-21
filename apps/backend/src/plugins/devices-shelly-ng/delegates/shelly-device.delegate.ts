@@ -15,7 +15,7 @@ import {
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { DESCRIPTORS } from '../devices-shelly-ng.constants';
+import { ComponentType, DESCRIPTORS, DeviceProfile } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 
 type SupportedComponent = Switch | Light | Cover | Input | DevicePower | Humidity | Temperature | Pm1;
@@ -80,29 +80,29 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 								continue;
 							}
 
-							if (componentSpec.type === 'switch') {
-								if (this.shelly instanceof MultiProfileDevice && this.shelly.profile === 'cover') {
+							if (componentSpec.type === ComponentType.SWITCH) {
+								if (this.shelly instanceof MultiProfileDevice && this.shelly.profile === String(DeviceProfile.COVER)) {
 									continue;
 								}
 
 								this.switches.set(id, component as unknown as Switch);
-							} else if (componentSpec.type === 'light') {
+							} else if (componentSpec.type === ComponentType.LIGHT) {
 								this.lights.set(id, component as unknown as Light);
-							} else if (componentSpec.type === 'cover') {
-								if (this.shelly instanceof MultiProfileDevice && this.shelly.profile !== 'cover') {
+							} else if (componentSpec.type === ComponentType.COVER) {
+								if (this.shelly instanceof MultiProfileDevice && this.shelly.profile !== String(DeviceProfile.COVER)) {
 									continue;
 								}
 
 								this.covers.set(id, component as unknown as Cover);
-							} else if (componentSpec.type === 'pm') {
+							} else if (componentSpec.type === ComponentType.PM) {
 								this.powerMeter.set(id, component as unknown as Pm1);
-							} else if (componentSpec.type === 'input') {
+							} else if (componentSpec.type === ComponentType.INPUT) {
 								this.inputs.set(id, component as unknown as Input);
-							} else if (componentSpec.type === 'devicePower') {
+							} else if (componentSpec.type === ComponentType.DEVICE_POWER) {
 								this.devPwr.set(id, component as unknown as DevicePower);
-							} else if (componentSpec.type === 'humidity') {
+							} else if (componentSpec.type === ComponentType.HUMIDITY) {
 								this.hums.set(id, component as unknown as Humidity);
-							} else if (componentSpec.type === 'temperature') {
+							} else if (componentSpec.type === ComponentType.TEMPERATURE) {
 								this.temps.set(id, component as unknown as Temperature);
 							}
 

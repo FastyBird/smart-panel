@@ -29,7 +29,9 @@ import {
 import { ShellyNgConfigModel } from './models/config.model';
 import { ShellyNgDevicePlatform } from './platforms/shelly-ng.device.platform';
 import { DatabaseDiscovererService } from './services/database-discoverer.service';
+import { DeviceManagerService } from './services/device-manager.service';
 import { ShellyNgService } from './services/shelly-ng.service';
+import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
 
 @Module({
 	imports: [
@@ -38,7 +40,14 @@ import { ShellyNgService } from './services/shelly-ng.service';
 		DevicesModule,
 		ConfigModule,
 	],
-	providers: [DatabaseDiscovererService, DelegatesManagerService, ShellyNgService, ShellyNgDevicePlatform],
+	providers: [
+		ShellyRpcClientService,
+		DatabaseDiscovererService,
+		DelegatesManagerService,
+		DeviceManagerService,
+		ShellyNgService,
+		ShellyNgDevicePlatform,
+	],
 })
 export class DevicesShellyNgPlugin {
 	constructor(
