@@ -182,7 +182,7 @@ export class HomeAssistantHttpService {
 
 	@Cron(CronExpression.EVERY_5_MINUTES)
 	async loadStates() {
-		if (this.apiKey === null) {
+		if (this.apiKey === null && this.enabled) {
 			return;
 		}
 
@@ -308,6 +308,10 @@ export class HomeAssistantHttpService {
 		}
 
 		return this.pluginConfig;
+	}
+
+	private get enabled(): boolean {
+		return this.config.enabled;
 	}
 
 	private get apiKey(): string {
