@@ -47,6 +47,25 @@ export interface EthernetStatus {
 	ip: string | null;
 }
 
+export interface SwitchConfig {
+	id: number;
+	name: string | null;
+	in_mode: 'momentary' | 'follow' | 'flip' | 'detached' | 'cycle' | 'activate';
+	in_locked: boolean;
+	initial_state: 'off' | 'on' | 'restore_last' | 'match_input';
+	auto_on: boolean;
+	auto_on_delay: number;
+	auto_off: boolean;
+	auto_off_delay: number;
+	autorecover_voltage_errors?: boolean;
+	input_id: number;
+	power_limit?: number;
+	voltage_limit?: number;
+	undervoltage_limit?: number;
+	current_limit?: number;
+	reverse?: boolean;
+}
+
 export interface SwitchStatus {
 	id: number;
 	source: string;
@@ -62,6 +81,39 @@ export interface SwitchStatus {
 	ret_aenergy?: { total: number; by_minute: number[]; minute_ts: number };
 	temperature?: { tC: number | null; tF: number | null };
 	errors: string[];
+}
+
+export interface CoverConfig {
+	id: number;
+	name: string | null;
+	in_mode: 'single' | 'dual' | 'detached';
+	in_locked: boolean;
+	initial_state: 'open' | 'closed' | 'stopped';
+	power_limit: number;
+	voltage_limit: number;
+	undervoltage_limit: number;
+	current_limit: number;
+	motor: { idle_power_thr: number; idle_confirm_period: number };
+	maxtime_open: number;
+	maxtime_close: number;
+	swap_inputs: boolean;
+	invert_directions: boolean;
+	maintenance_mode: boolean;
+	obstruction_detection: { enable: boolean; action: 'stop' | 'reverse'; power_thr: number; holdoff: number };
+	safety_switch: {
+		enable: boolean;
+		direction: 'open' | 'close' | 'both';
+		action: 'stop' | 'reverse' | 'pause';
+		allowed_move: string | null;
+	};
+	slat: {
+		enable: boolean;
+		open_time: number;
+		close_time: number;
+		step: number;
+		retain_pos: boolean;
+		precise_ctl: boolean;
+	};
 }
 
 export interface CoverStatus {
@@ -85,6 +137,28 @@ export interface CoverStatus {
 	errors: string[];
 }
 
+export interface LightConfig {
+	id: number;
+	name: string | null;
+	in_mode: 'follow' | 'flip' | 'activate' | 'detached' | 'dim' | 'dual_dim';
+	op_mode: number;
+	initial_state: 'off' | 'on' | 'restore_last';
+	auto_on: boolean;
+	auto_on_delay: number;
+	auto_off: boolean;
+	auto_off_delay: number;
+	transition_duration?: number;
+	min_brightness_on_toggle: number;
+	night_mode: { enable: boolean; brightness: number; active_between: string[] };
+	button_fade_rate: number;
+	button_presets: { button_doublepush: { brightness: number } | null };
+	range_map: number[] | null;
+	power_limit?: number;
+	voltage_limit?: number;
+	undervoltage_limit?: number;
+	current_limit?: number;
+}
+
 export interface LightStatus {
 	id: number;
 	source: string;
@@ -101,6 +175,23 @@ export interface LightStatus {
 	calibration: { progess: number };
 	errors: string[];
 	flags: string[];
+}
+
+export interface InputConfig {
+	id: number;
+	name: string | null;
+	type: 'switch' | 'button' | 'analog' | 'count';
+	enable: boolean;
+	invert?: boolean;
+	factory_reset?: boolean;
+	report_thr?: number;
+	range_map?: number[] | null;
+	xpercent?: { expr: string | null; unit: string | null };
+	count_rep_thr?: number;
+	freq_window?: number;
+	freq_rep_thr?: number;
+	xcounts?: { expr: string | null; unit: string | null };
+	xfreq?: { expr: string | null; unit: string | null };
 }
 
 export interface InputStatus {
@@ -121,10 +212,24 @@ export interface DevicePowerStatus {
 	errors: string[];
 }
 
+export interface HumidityConfig {
+	id: number;
+	name: string | null;
+	report_thr: number;
+	offset: number;
+}
+
 export interface HumidityStatus {
 	id: number;
 	rh: number | null;
 	errors: string[];
+}
+
+export interface TemperatureConfig {
+	id: number;
+	name: string | null;
+	report_thr_C: number;
+	offset_C: number;
 }
 
 export interface TemperatureStatus {
@@ -132,6 +237,12 @@ export interface TemperatureStatus {
 	tC: number | null;
 	tF: number | null;
 	errors: string[];
+}
+
+export interface Pm1Config {
+	id: number;
+	name: string | null;
+	reverse: boolean;
 }
 
 export interface Pm1Status {
@@ -201,12 +312,28 @@ export class ShellyRpcClientService {
 		return this.call<EthernetStatus>(host, 'Ethernet.GetStatus', undefined, options);
 	}
 
+	getSwitchConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<SwitchConfig> {
+		return this.call<SwitchConfig>(host, 'Switch.GetConfig', { id }, options);
+	}
+
 	getSwitchStatus(
 		host: string,
 		id: number,
 		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
 	): Promise<SwitchStatus> {
 		return this.call<SwitchStatus>(host, 'Switch.GetStatus', { id }, options);
+	}
+
+	getCoverConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<CoverConfig> {
+		return this.call<CoverConfig>(host, 'Cover.GetConfig', { id }, options);
 	}
 
 	getCoverStatus(
@@ -217,12 +344,28 @@ export class ShellyRpcClientService {
 		return this.call<CoverStatus>(host, 'Cover.GetStatus', { id }, options);
 	}
 
+	getLightConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<LightConfig> {
+		return this.call<LightConfig>(host, 'Light.GetConfig', { id }, options);
+	}
+
 	getLightStatus(
 		host: string,
 		id: number,
 		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
 	): Promise<LightStatus> {
 		return this.call<LightStatus>(host, 'Light.GetStatus', { id }, options);
+	}
+
+	getInputConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<InputConfig> {
+		return this.call<InputConfig>(host, 'Input.GetConfig', { id }, options);
 	}
 
 	getInputStatus(
@@ -241,12 +384,28 @@ export class ShellyRpcClientService {
 		return this.call<DevicePowerStatus>(host, 'DevicePower.GetStatus', { id }, options);
 	}
 
+	getHumidityConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<HumidityConfig> {
+		return this.call<HumidityConfig>(host, 'Humidity.GetConfig', { id }, options);
+	}
+
 	getHumidityStatus(
 		host: string,
 		id: number,
 		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
 	): Promise<HumidityStatus> {
-		return this.call<HumidityStatus>(host, 'Humidity.GetConfig', { id }, options);
+		return this.call<HumidityStatus>(host, 'Humidity.GetStatus', { id }, options);
+	}
+
+	getTemperatureConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<TemperatureConfig> {
+		return this.call<TemperatureConfig>(host, 'Temperature.GetConfig', { id }, options);
 	}
 
 	getTemperatureStatus(
@@ -254,7 +413,15 @@ export class ShellyRpcClientService {
 		id: number,
 		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
 	): Promise<TemperatureStatus> {
-		return this.call<TemperatureStatus>(host, 'Temperature.GetConfig', { id }, options);
+		return this.call<TemperatureStatus>(host, 'Temperature.GetStatus', { id }, options);
+	}
+
+	getPm1Config(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<Pm1Config> {
+		return this.call<Pm1Config>(host, 'PM1.GetConfig', { id }, options);
 	}
 
 	getPm1Status(

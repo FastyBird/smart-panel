@@ -113,6 +113,7 @@ export class DeviceManagerService {
 		password: string | undefined,
 		category: DeviceCategory,
 		name: string,
+		enabled: boolean = true,
 	): Promise<ShellyNgDeviceEntity> {
 		const deviceInfo = await this.getDeviceInfo(hostname, password);
 
@@ -136,7 +137,9 @@ export class DeviceManagerService {
 				category: category,
 				identifier: deviceInfo.id,
 				hostname,
+				password,
 				name,
+				enabled,
 			});
 
 			this.logger.debug(`[SHELLY NG][DEVICE MANAGER] Created new device=${device.id} in category=${category}`);
@@ -144,10 +147,15 @@ export class DeviceManagerService {
 			device = await this.devicesService.update<ShellyNgDeviceEntity, UpdateShellyNgDeviceDto>(device.id, {
 				type: DEVICES_SHELLY_NG_TYPE,
 				hostname,
+				password,
+				name,
+				enabled,
 			});
 
 			this.logger.debug(`[SHELLY NG][DEVICE MANAGER] Updated existing device=${device.id}`);
 		}
+
+		const channelsIds: string[] = [];
 
 		const deviceInformation = await this.ensureChannel(
 			device,
@@ -156,6 +164,7 @@ export class DeviceManagerService {
 			ChannelCategory.DEVICE_INFORMATION,
 			'Device information',
 		);
+		channelsIds.push(deviceInformation.id);
 
 		await this.ensureProperty(
 			deviceInformation,
@@ -221,7 +230,24 @@ export class DeviceManagerService {
 				(!deviceInfo.profile || deviceInfo.profile === String(DeviceProfile.SWITCH))
 			) {
 				for (const key of ids) {
+					let switchConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getSwitchConfig>>;
 					let switchStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getSwitchStatus>>;
+
+					try {
+						switchConfig = await this.shellyRpcClientService.getSwitchConfig(hostname, key, { password });
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`[SHELLY NG][DEVICE MANAGER] Failed to load switch config for device=${device.id} and switch=${key}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+
+						return;
+					}
 
 					try {
 						switchStatus = await this.shellyRpcClientService.getSwitchStatus(hostname, key, { password });
@@ -252,65 +278,103 @@ export class DeviceManagerService {
 							'identifier',
 							`switch:${key}`,
 							ChannelCategory.SWITCHER,
-							`Switch: ${key}`,
+							switchConfig.name ?? `Switch: ${key}`,
 						);
+						channelsIds.push(switcher.id);
 
 						await this.ensureProperty(switcher, PropertyCategory.ON, 'identifier', 'output', switchStatus.output);
 
-						electricalEnergyChannelName = `Switch consumption: ${key}`;
-						electricalPowerChannelName = `Switch power: ${key}`;
+						electricalEnergyChannelName = switchConfig.name
+							? `Consumption: ${switchConfig.name}`
+							: `Switch consumption: ${key}`;
+						electricalPowerChannelName = switchConfig.name ? `Power: ${switchConfig.name}` : `Switch power: ${key}`;
 					} else if (device.category === DeviceCategory.FAN) {
 						const fan = await this.ensureChannel(
 							device,
 							'identifier',
 							`switch:${key}`,
 							ChannelCategory.FAN,
-							`Fan: ${key}`,
+							switchConfig.name ?? `Fan: ${key}`,
 						);
+						channelsIds.push(fan.id);
 
 						await this.ensureProperty(fan, PropertyCategory.ON, 'identifier', 'output', switchStatus.output);
 
-						electricalEnergyChannelName = `Fan consumption: ${key}`;
-						electricalPowerChannelName = `Fan power: ${key}`;
+						electricalEnergyChannelName = switchConfig.name
+							? `Consumption: ${switchConfig.name}`
+							: `Fan consumption: ${key}`;
+						electricalPowerChannelName = switchConfig.name ? `Power: ${switchConfig.name}` : `Fan power: ${key}`;
 					} else if (device.category === DeviceCategory.SPRINKLER || device.category === DeviceCategory.VALVE) {
 						const valve = await this.ensureChannel(
 							device,
 							'identifier',
 							`switch:${key}`,
 							ChannelCategory.VALVE,
-							`Valve: ${key}`,
+							switchConfig.name ?? `Valve: ${key}`,
 						);
+						channelsIds.push(valve.id);
 
 						await this.ensureProperty(valve, PropertyCategory.ON, 'identifier', 'output', switchStatus.output);
 						await this.ensureProperty(valve, PropertyCategory.TYPE, 'identifier', 'output', 'generic', {
 							format: ['generic', 'irrigation', 'shower_head', 'water_faucet'],
 						});
 
-						electricalEnergyChannelName = `Valve consumption: ${key}`;
-						electricalPowerChannelName = `Valve power: ${key}`;
+						electricalEnergyChannelName = switchConfig.name
+							? `Consumption: ${switchConfig.name}`
+							: `Valve consumption: ${key}`;
+						electricalPowerChannelName = switchConfig.name ? `Power: ${switchConfig.name}` : `Valve power: ${key}`;
 					} else if (device.category === DeviceCategory.LIGHTING) {
 						const light = await this.ensureChannel(
 							device,
 							'identifier',
 							`switch:${key}`,
 							ChannelCategory.LIGHT,
-							`Light: ${key}`,
+							switchConfig.name ?? `Light: ${key}`,
 						);
+						channelsIds.push(light.id);
 
 						await this.ensureProperty(light, PropertyCategory.ON, 'identifier', 'output', switchStatus.output);
 
-						electricalEnergyChannelName = `Light consumption: ${key}`;
-						electricalPowerChannelName = `Light power: ${key}`;
+						electricalEnergyChannelName = switchConfig.name
+							? `Consumption: ${switchConfig.name}`
+							: `Light consumption: ${key}`;
+						electricalPowerChannelName = switchConfig.name ? `Power: ${switchConfig.name}` : `Light power: ${key}`;
 					} else {
 						continue;
 					}
 
-					await this.ensureElectricalEnergy(device, key, switchStatus, electricalEnergyChannelName);
-					await this.ensureElectricalPower(device, key, switchStatus, electricalPowerChannelName);
+					const eeResult = await this.ensureElectricalEnergy(device, key, switchStatus, electricalEnergyChannelName);
+
+					if (eeResult) {
+						channelsIds.push(eeResult.channel.id);
+					}
+
+					const epResult = await this.ensureElectricalPower(device, key, switchStatus, electricalPowerChannelName);
+
+					if (epResult) {
+						channelsIds.push(epResult.channel.id);
+					}
 				}
 			} else if (type === String(ComponentType.COVER) && deviceInfo.profile === String(DeviceProfile.COVER)) {
 				for (const key of ids) {
+					let coverConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getCoverConfig>>;
 					let coverStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getCoverStatus>>;
+
+					try {
+						coverConfig = await this.shellyRpcClientService.getCoverConfig(hostname, key, { password });
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`[SHELLY NG][DEVICE MANAGER] Failed to load cover config for device=${device.id} and cover=${key}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+
+						return;
+					}
 
 					try {
 						coverStatus = await this.shellyRpcClientService.getCoverStatus(hostname, key, { password });
@@ -333,8 +397,9 @@ export class DeviceManagerService {
 						'identifier',
 						`cover:${key}`,
 						ChannelCategory.WINDOW_COVERING,
-						`Cover: ${key}`,
+						coverConfig.name ?? `Cover: ${key}`,
 					);
+					channelsIds.push(cover.id);
 
 					await this.ensureProperty(cover, PropertyCategory.STATUS, 'identifier', 'state', coverStatus.state);
 
@@ -348,12 +413,48 @@ export class DeviceManagerService {
 
 					await this.ensureProperty(cover, PropertyCategory.COMMAND, 'category', PropertyCategory.COMMAND, 'stop');
 
-					await this.ensureElectricalEnergy(device, key, coverStatus, `Cover consumption: ${key}`);
-					await this.ensureElectricalPower(device, key, coverStatus, `Cover power: ${key}`);
+					const eeResult = await this.ensureElectricalEnergy(
+						device,
+						key,
+						coverStatus,
+						coverConfig.name ? `Consumption: ${coverConfig.name}` : `Cover consumption: ${key}`,
+					);
+
+					if (eeResult) {
+						channelsIds.push(eeResult.channel.id);
+					}
+
+					const epResult = await this.ensureElectricalPower(
+						device,
+						key,
+						coverStatus,
+						coverConfig.name ? `Power: ${coverConfig.name}` : `Cover power: ${key}`,
+					);
+
+					if (epResult) {
+						channelsIds.push(epResult.channel.id);
+					}
 				}
 			} else if (type === String(ComponentType.LIGHT)) {
 				for (const key of ids) {
+					let lightConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getLightConfig>>;
 					let lightStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getLightStatus>>;
+
+					try {
+						lightConfig = await this.shellyRpcClientService.getLightConfig(hostname, key, { password });
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`[SHELLY NG][DEVICE MANAGER] Failed to load light config for device=${device.id} and light=${key}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+
+						return;
+					}
 
 					try {
 						lightStatus = await this.shellyRpcClientService.getLightStatus(hostname, key, { password });
@@ -376,8 +477,9 @@ export class DeviceManagerService {
 						'identifier',
 						`light:${key}`,
 						ChannelCategory.LIGHT,
-						`Light: ${key}`,
+						lightConfig.name ?? `Light: ${key}`,
 					);
+					channelsIds.push(light.id);
 
 					await this.ensureProperty(light, PropertyCategory.ON, 'identifier', 'output', lightStatus.output);
 
@@ -391,12 +493,48 @@ export class DeviceManagerService {
 						);
 					}
 
-					await this.ensureElectricalEnergy(device, key, lightStatus, `Light consumption: ${key}`);
-					await this.ensureElectricalPower(device, key, lightStatus, `Light power: ${key}`);
+					const eeResult = await this.ensureElectricalEnergy(
+						device,
+						key,
+						lightStatus,
+						lightConfig.name ? `Consumption: ${lightConfig.name}` : `Light consumption: ${key}`,
+					);
+
+					if (eeResult) {
+						channelsIds.push(eeResult.channel.id);
+					}
+
+					const epResult = await this.ensureElectricalPower(
+						device,
+						key,
+						lightStatus,
+						lightConfig.name ? `Power: ${lightConfig.name}` : `Light power: ${key}`,
+					);
+
+					if (epResult) {
+						channelsIds.push(epResult.channel.id);
+					}
 				}
 			} else if (type === String(ComponentType.INPUT)) {
 				for (const key of ids) {
+					let inputConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getInputConfig>>;
 					let inputStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getInputStatus>>;
+
+					try {
+						inputConfig = await this.shellyRpcClientService.getInputConfig(hostname, key, { password });
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`[SHELLY NG][DEVICE MANAGER] Failed to load input status for device=${device.id} and input=${key}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+
+						return;
+					}
 
 					try {
 						inputStatus = await this.shellyRpcClientService.getInputStatus(hostname, key, { password });
@@ -415,7 +553,11 @@ export class DeviceManagerService {
 					}
 
 					// TODO: To be implemented in the future
-					this.logger.debug(`[SHELLY NG][DEVICE MANAGER] Received device input status for input=${key}`, inputStatus);
+					this.logger.debug(
+						`[SHELLY NG][DEVICE MANAGER] Received device input status for input=${key}`,
+						inputConfig,
+						inputStatus,
+					);
 				}
 			} else if (type === String(ComponentType.DEVICE_POWER)) {
 				for (const key of ids) {
@@ -443,8 +585,9 @@ export class DeviceManagerService {
 							'identifier',
 							`devicePower:${key}`,
 							ChannelCategory.BATTERY,
-							`Device Power: ${key}`,
+							`Device power: ${key}`,
 						);
+						channelsIds.push(battery.id);
 
 						await this.ensureProperty(
 							battery,
@@ -457,7 +600,24 @@ export class DeviceManagerService {
 				}
 			} else if (type === String(ComponentType.HUMIDITY)) {
 				for (const key of ids) {
+					let humidityConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getHumidityConfig>>;
 					let humidityStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getHumidityStatus>>;
+
+					try {
+						humidityConfig = await this.shellyRpcClientService.getHumidityConfig(hostname, key, { password });
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`[SHELLY NG][DEVICE MANAGER] Failed to load humidity config for device=${device.id} and humidity=${key}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+
+						return;
+					}
 
 					try {
 						humidityStatus = await this.shellyRpcClientService.getHumidityStatus(hostname, key, { password });
@@ -480,14 +640,32 @@ export class DeviceManagerService {
 						'identifier',
 						`humidity:${key}`,
 						ChannelCategory.HUMIDITY,
-						`Humidity: ${key}`,
+						humidityConfig.name ?? `Humidity: ${key}`,
 					);
+					channelsIds.push(humidity.id);
 
 					await this.ensureProperty(humidity, PropertyCategory.HUMIDITY, 'identifier', 'rh', humidityStatus.rh);
 				}
 			} else if (type === String(ComponentType.TEMPERATURE)) {
 				for (const key of ids) {
+					let temperatureConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getTemperatureConfig>>;
 					let temperatureStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getTemperatureStatus>>;
+
+					try {
+						temperatureConfig = await this.shellyRpcClientService.getTemperatureConfig(hostname, key, { password });
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`[SHELLY NG][DEVICE MANAGER] Failed to load temperature config for device=${device.id} and temperature=${key}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+
+						return;
+					}
 
 					try {
 						temperatureStatus = await this.shellyRpcClientService.getTemperatureStatus(hostname, key, { password });
@@ -510,8 +688,9 @@ export class DeviceManagerService {
 						'identifier',
 						`temperature:${key}`,
 						ChannelCategory.TEMPERATURE,
-						`Temperature: ${key}`,
+						temperatureConfig.name ?? `Temperature: ${key}`,
 					);
+					channelsIds.push(temperature.id);
 
 					await this.ensureProperty(
 						temperature,
@@ -523,7 +702,24 @@ export class DeviceManagerService {
 				}
 			} else if (type === String(ComponentType.PM)) {
 				for (const key of ids) {
+					let pm1Config: Awaited<ReturnType<typeof this.shellyRpcClientService.getPm1Config>>;
 					let pm1Status: Awaited<ReturnType<typeof this.shellyRpcClientService.getPm1Status>>;
+
+					try {
+						pm1Config = await this.shellyRpcClientService.getPm1Config(hostname, key, { password });
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`[SHELLY NG][DEVICE MANAGER] Failed to load PM1 config for device=${device.id} and pm1=${key}`,
+							{
+								message: err.message,
+								stack: err.stack,
+							},
+						);
+
+						return;
+					}
 
 					try {
 						pm1Status = await this.shellyRpcClientService.getPm1Status(hostname, key, { password });
@@ -541,9 +737,30 @@ export class DeviceManagerService {
 						return;
 					}
 
-					await this.ensureElectricalEnergy(device, key, pm1Status);
-					await this.ensureElectricalPower(device, key, pm1Status);
+					const eeResult = await this.ensureElectricalEnergy(device, key, pm1Status, pm1Config.name ?? undefined);
+
+					if (eeResult) {
+						channelsIds.push(eeResult.channel.id);
+					}
+
+					const epResult = await this.ensureElectricalPower(device, key, pm1Status, pm1Config.name ?? undefined);
+
+					if (epResult) {
+						channelsIds.push(epResult.channel.id);
+					}
 				}
+			}
+		}
+
+		const allChannels = await this.channelsService.findAll(device.id, DEVICES_SHELLY_NG_TYPE);
+
+		for (const channel of allChannels) {
+			if (!channelsIds.includes(channel.id)) {
+				await this.channelsService.remove(channel.id);
+
+				this.logger.debug(
+					`[SHELLY NG][DEVICE MANAGER] Remove channel=${channel.id} because this channel is not specified for current device`,
+				);
 			}
 		}
 
@@ -662,7 +879,7 @@ export class DeviceManagerService {
 		key: number,
 		status: { aenergy?: { total: number; by_minute: number[]; minute_ts: number } },
 		name?: string,
-	): Promise<void> {
+	): Promise<{ channel: ShellyNgChannelEntity; properties: ShellyNgChannelPropertyEntity[] } | null> {
 		if (typeof status.aenergy !== 'undefined') {
 			const electricalEnergy = await this.ensureChannel(
 				device,
@@ -672,14 +889,21 @@ export class DeviceManagerService {
 				name ?? `Consumption: ${key}`,
 			);
 
-			await this.ensureProperty(
+			const consumption = await this.ensureProperty(
 				electricalEnergy,
 				PropertyCategory.CONSUMPTION,
 				'identifier',
 				'aenergy',
 				toEnergy(status.aenergy),
 			);
+
+			return {
+				channel: electricalEnergy,
+				properties: [consumption],
+			};
 		}
+
+		return null;
 	}
 
 	private async ensureElectricalPower(
@@ -687,7 +911,7 @@ export class DeviceManagerService {
 		key: number,
 		status: { apower?: number; voltage?: number; current?: number },
 		name?: string,
-	): Promise<void> {
+	): Promise<{ channel: ShellyNgChannelEntity; properties: ShellyNgChannelPropertyEntity[] } | null> {
 		if (typeof status.apower !== 'undefined') {
 			const electricalPower = await this.ensureChannel(
 				device,
@@ -697,16 +921,35 @@ export class DeviceManagerService {
 				name ?? `Power: ${key}`,
 			);
 
-			await this.ensureProperty(electricalPower, PropertyCategory.POWER, 'identifier', 'apower', status.apower);
+			const power = await this.ensureProperty(
+				electricalPower,
+				PropertyCategory.POWER,
+				'identifier',
+				'apower',
+				status.apower,
+			);
+
+			const properties = [power];
 
 			if (typeof status.voltage !== 'undefined') {
-				await this.ensureProperty(electricalPower, PropertyCategory.VOLTAGE, 'identifier', 'voltage', status.voltage);
+				properties.push(
+					await this.ensureProperty(electricalPower, PropertyCategory.VOLTAGE, 'identifier', 'voltage', status.voltage),
+				);
 			}
 
 			if (typeof status.current !== 'undefined') {
-				await this.ensureProperty(electricalPower, PropertyCategory.CURRENT, 'identifier', 'current', status.current);
+				properties.push(
+					await this.ensureProperty(electricalPower, PropertyCategory.CURRENT, 'identifier', 'current', status.current),
+				);
 			}
+
+			return {
+				channel: electricalPower,
+				properties,
+			};
 		}
+
+		return null;
 	}
 
 	private getSpecification(model: string): DeviceDescriptor | null {

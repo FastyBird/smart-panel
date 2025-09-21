@@ -19,10 +19,13 @@ import { DEVICES_MODULE_PREFIX } from '../../../modules/devices/devices.constant
 import { DevicesException } from '../../../modules/devices/devices.exceptions';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DESCRIPTORS } from '../devices-shelly-ng.constants';
+import { DESCRIPTORS, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import ShellyNgCreateDeviceDto from '../dto/shelly-ng-create-device.dto';
 import { ShellyNgGetInfoDto } from '../dto/shelly-ng-get-info.dto';
 import { ShellyNgUpdateDeviceDto } from '../dto/shelly-ng-update-device.dto';
+import { UpdateShellyNgDeviceDto } from '../dto/update-device.dto';
+import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
 import { DeviceManagerService } from '../services/device-manager.service';
 
@@ -158,7 +161,7 @@ export class ShellyNgDevicesController {
 	): Promise<DeviceEntity> {
 		this.logger.debug(`[SHELLY NG][DEVICES CONTROLLER] Incoming update request for device id=${id}`);
 
-		const device = await this.devicesService.findOne(id);
+		const device = await this.devicesService.findOne<ShellyNgDeviceEntity>(id, DEVICES_SHELLY_NG_TYPE);
 
 		if (!device) {
 			this.logger.error(`[SHELLY NG][DEVICES CONTROLLER] Device with id=${id} not found`);
@@ -166,12 +169,15 @@ export class ShellyNgDevicesController {
 			throw new NotFoundException('Requested device does not exist');
 		}
 
+		let updatedDevice: ShellyNgDeviceEntity;
+
 		try {
-			const updatedDevice = await this.devicesService.update(device.id, updateDto.data);
+			updatedDevice = await this.devicesService.update<ShellyNgDeviceEntity, UpdateShellyNgDeviceDto>(
+				device.id,
+				updateDto.data,
+			);
 
 			this.logger.debug(`[UPDATE] Successfully updated device id=${updatedDevice.id}`);
-
-			return updatedDevice;
 		} catch (error) {
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Device could not be updated. Please try again later');
@@ -179,5 +185,23 @@ export class ShellyNgDevicesController {
 
 			throw error;
 		}
+
+		try {
+			await this.deviceManagerService.createOrUpdate(
+				updatedDevice.hostname,
+				updatedDevice.password,
+				updateDto.data.category,
+				updateDto.data.name,
+				updateDto.data.enabled,
+			);
+		} catch (error) {
+			if (error instanceof DevicesShellyNgException) {
+				throw new UnprocessableEntityException('Device could not be updated. Please try again later');
+			}
+
+			throw error;
+		}
+
+		return updatedDevice;
 	}
 }

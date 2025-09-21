@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 import type { components } from '../../../openapi';
 
@@ -39,4 +39,9 @@ export class UpdateDeviceDto implements UpdateDeviceBase {
 	@IsNotEmpty({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
 	@IsString({ message: '[{"field":"description","reason":"Description must be a valid string."}]' })
 	description?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"enabled","reason":"Enabled attribute must be a valid true or false."}]' })
+	enabled?: boolean;
 }
