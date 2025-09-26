@@ -10,6 +10,7 @@
 		<el-form-item
 			:label="t('devicesShellyNgPlugin.fields.config.enabled.title')"
 			prop="enabled"
+			label-position="left"
 		>
 			<el-switch
 				v-model="model.enabled"

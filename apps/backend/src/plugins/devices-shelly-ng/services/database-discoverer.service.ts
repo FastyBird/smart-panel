@@ -1,6 +1,6 @@
 import { DeviceDiscoverer, DeviceIdentifiers } from 'shellies-ds9';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
@@ -8,6 +8,8 @@ import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
 @Injectable()
 export class DatabaseDiscovererService extends DeviceDiscoverer {
+	private readonly logger = new Logger(DatabaseDiscovererService.name);
+
 	private readonly emitInterval = 20; // The interval, in milliseconds, to wait between each emitted device.
 
 	constructor(private readonly devicesService: DevicesService) {
@@ -16,6 +18,14 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 
 	async run() {
 		for (const d of await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE)) {
+			if (d.identifier === null) {
+				this.logger.error(
+					`Failed to prepare device to be managed by Shelly manager. Missing identifier for device=${d.id}`,
+				);
+
+				return;
+			}
+
 			await this.emitDevice({
 				deviceId: d.identifier,
 				hostname: d.hostname,

@@ -4,6 +4,7 @@ import DevicesShellyNgPlugin from './devices-shelly-ng.plugin';
 export { DevicesShellyNgPlugin };
 
 export * from './components/components';
+export * from './composables/composables';
 export * from './store/stores';
 export * from './schemas/schemas';
 

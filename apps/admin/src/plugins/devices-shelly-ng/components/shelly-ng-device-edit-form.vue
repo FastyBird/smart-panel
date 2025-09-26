@@ -20,17 +20,6 @@
 		</el-form-item>
 
 		<el-form-item
-			:label="t('devicesShellyNgPlugin.fields.devices.identifier.title')"
-			prop="identifier"
-		>
-			<el-input
-				v-model="model.identifier"
-				:placeholder="t('devicesShellyNgPlugin.fields.devices.identifier.placeholder')"
-				name="identifier"
-			/>
-		</el-form-item>
-
-		<el-form-item
 			:label="t('devicesShellyNgPlugin.fields.devices.name.title')"
 			prop="name"
 		>
@@ -50,8 +39,6 @@
 				:placeholder="t('devicesShellyNgPlugin.fields.devices.category.placeholder')"
 				name="category"
 				filterable
-				readonly
-				disabled
 			>
 				<el-option
 					v-for="item in categoriesOptions"
@@ -89,6 +76,7 @@
 		<el-form-item
 			:label="t('devicesShellyNgPlugin.fields.devices.enabled.title')"
 			prop="enabled"
+			label-position="left"
 		>
 			<el-switch
 				v-model="model.enabled"
@@ -98,7 +86,27 @@
 
 		<el-divider />
 
-		// TODO: pass/hostname
+		<el-form-item
+			:label="t('devicesShellyNgPlugin.fields.devices.hostname.title')"
+			prop="hostname"
+		>
+			<el-input
+				v-model="model.hostname"
+				:placeholder="t('devicesShellyNgPlugin.fields.devices.hostname.placeholder')"
+				name="hostname"
+			/>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('devicesShellyNgPlugin.fields.devices.password.title')"
+			prop="password"
+		>
+			<el-input
+				v-model="model.password"
+				:placeholder="t('devicesShellyNgPlugin.fields.devices.password.placeholder')"
+				name="password"
+			/>
+		</el-form-item>
 	</el-form>
 </template>
 
@@ -108,7 +116,8 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, useDeviceEditForm } from '../../../modules/devices';
+import { FormResult, type FormResultType } from '../../../modules/devices';
+import { useDeviceEditForm } from '../composables/useDeviceEditForm';
 import type { IShellyNgDeviceEditForm } from '../schemas/devices.types';
 import type { IShellyNgDevice } from '../store/devices.store.types';
 
@@ -133,12 +142,28 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceEditForm<IShellyNgDeviceEditForm>({
+const { categoriesOptions, model, formEl, formChanged, submit, formResult } = useDeviceEditForm({
 	device: props.device as IShellyNgDevice,
 });
 
+const pre = (window.history.state?.prefills ?? null) as { hostname?: string; password?: string } | null;
+
+if (pre) {
+	model.hostname = pre.hostname ?? model.hostname;
+	model.password = pre.password ?? model.password;
+
+	// Clear immediately so it doesn't linger on further nav
+	// (replacing state with a copy without prefills)
+	const s = { ...window.history.state };
+
+	delete s.prefills;
+
+	history.replaceState(s, '');
+}
+
 const rules = reactive<FormRules<IShellyNgDeviceEditForm>>({
 	name: [{ required: true, message: t('devicesShellyNgPlugin.fields.devices.name.validation.required'), trigger: 'change' }],
+	category: [{ required: true, message: t('devicesShellyNgPlugin.fields.devices.category.validation.required'), trigger: 'change' }],
 });
 
 watch(

@@ -53,7 +53,7 @@ export class ChannelsControlsService {
 			.getOne();
 
 		if (!control) {
-			this.logger.warn(`[LOOKUP] Control with id=${id} for channelId=${channelId} not found`);
+			this.logger.debug(`[LOOKUP] Control with id=${id} for channelId=${channelId} not found`);
 
 			return null;
 		}
@@ -76,7 +76,7 @@ export class ChannelsControlsService {
 			.getOne();
 
 		if (!control) {
-			this.logger.warn(`[LOOKUP] Control with name=${name} for channelId=${channelId} not found`);
+			this.logger.debug(`[LOOKUP] Control with name=${name} for channelId=${channelId} not found`);
 
 			return null;
 		}

@@ -12,8 +12,10 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ComponentType, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException, DevicesShellyNgNotFoundException } from '../devices-shelly-ng.exceptions';
+import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
 import { UpdateShellyNgChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
 	ShellyNgChannelEntity,
@@ -52,7 +54,7 @@ export class DelegatesManagerService {
 	private readonly propertiesMap: Map<string, Set<string>> = new Map();
 
 	constructor(
-		private readonly deviceManagerService: DeviceManagerService,
+		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 	) {}
@@ -76,12 +78,21 @@ export class DelegatesManagerService {
 			throw new DevicesShellyNgException('Missing device hostname or IP address');
 		}
 
-		const device = await this.deviceManagerService.createOrUpdate(
-			hostname,
-			undefined,
-			this.determineCategory(delegate),
-			shelly.system.config.device.name ?? shelly.modelName,
+		let device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
+			'identifier',
+			shelly.id,
+			DEVICES_SHELLY_NG_TYPE,
 		);
+
+		if (device === null) {
+			device = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
+				type: DEVICES_SHELLY_NG_TYPE,
+				category: this.determineCategory(delegate),
+				identifier: shelly.id,
+				hostname,
+				name: shelly.system.config.device.name ?? shelly.modelName,
+			});
+		}
 
 		const deviceInformation = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 			'category',

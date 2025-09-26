@@ -2,6 +2,7 @@ import { Expose, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
+	IsEnum,
 	IsNotEmpty,
 	IsNumber,
 	IsOptional,
@@ -11,6 +12,7 @@ import {
 } from 'class-validator';
 
 import type { components } from '../../../openapi';
+import { PropertyCategory } from '../devices.constants';
 
 type ReqUpdateDeviceChannelProperty = components['schemas']['DevicesModuleReqUpdateChannelProperty'];
 type UpdateChannelProperty = components['schemas']['DevicesModuleUpdateChannelProperty'];

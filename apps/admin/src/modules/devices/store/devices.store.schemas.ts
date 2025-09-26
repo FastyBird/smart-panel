@@ -19,7 +19,7 @@ export const DeviceSchema = z.object({
 	draft: z.boolean().default(false),
 	type: z.string().trim().nonempty(),
 	category: z.nativeEnum(DevicesModuleDeviceCategory).default(DevicesModuleDeviceCategory.generic),
-	identifier: z.string().trim().nonempty().nullable(),
+	identifier: z.string().trim().nonempty().nullable().default(null),
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	enabled: z.boolean().default(true),
@@ -146,6 +146,7 @@ export const DeviceCreateReqSchema: ZodType<ApiCreateDevice> = z.object({
 
 export const DeviceUpdateReqSchema: ZodType<ApiUpdateDevice> = z.object({
 	type: z.string().trim().nonempty(),
+	category: z.nativeEnum(DevicesModuleDeviceCategory).optional(),
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nonempty().optional(),
 	description: z

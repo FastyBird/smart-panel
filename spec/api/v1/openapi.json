@@ -7089,6 +7089,94 @@
         ]
       }
     },
+    "/plugins/devices-shelly-ng/devices/supported": {
+      "get": {
+        "summary": "Retrieve list of supported Shelly Next-Generation (NG) devices",
+        "description": "Fetch the current list of Shelly NG device groups and their model mappings supported by this SmartPanel build.",
+        "operationId": "get-devices-shelly-ng-plugin-supported",
+        "tags": [
+          "Devices Shelly NG plugin"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved the supported device catalog.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesShellyNgPluginResSupportedDevices"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/plugins/devices-shelly-ng/devices/info": {
+      "post": {
+        "summary": "Retrieve live info from a Shelly NG device",
+        "description": "Queries a Shelly Next-Generation device over the local network (RPC) to fetch identification, firmware, and supported component summary.",
+        "operationId": "create-devices-shelly-ng-plugin-device-info",
+        "tags": [
+          "Devices Shelly NG plugin"
+        ],
+        "requestBody": {
+          "description": "Target device parameters.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesShellyNgPluginReqCreateDeviceInfo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved device information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesShellyNgPluginResDeviceInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
     "/plugins/pages-cards/cards": {
       "get": {
         "summary": "Retrieve a list of all available page cards",
@@ -17017,7 +17105,6 @@
                 "default": ""
               },
               "hostname": {
-                "nullable": true,
                 "description": "Device network address. Either IPv4 or local hostname (e.g., mDNS). May be set by discovery.",
                 "oneOf": [
                   {
@@ -17030,8 +17117,7 @@
                     "format": "hostname",
                     "example": "shellyplus1pm-123456.local"
                   }
-                ],
-                "default": null
+                ]
               }
             }
           }
@@ -17068,7 +17154,6 @@
                 "example": "supersecretdevicepassword"
               },
               "hostname": {
-                "nullable": true,
                 "description": "Device network address (IPv4 or hostname).",
                 "oneOf": [
                   {
@@ -17118,7 +17203,6 @@
                 "example": "supersecretdevicepassword"
               },
               "hostname": {
-                "nullable": true,
                 "description": "Device network address (IPv4 or hostname).",
                 "oneOf": [
                   {
@@ -17216,6 +17300,10 @@
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
                 "readOnly": true
+              },
+              "category": {
+                "$ref": "#/components/schemas/DevicesModuleChannelCategory",
+                "description": "Type of the channel, indicating its functional category (e.g., temperature, light)."
               }
             }
           }
@@ -17300,6 +17388,10 @@
                 "example": "devices-shelly-ng",
                 "default": "devices-shelly-ng",
                 "readOnly": true
+              },
+              "category": {
+                "$ref": "#/components/schemas/DevicesModuleChannelPropertyCategory",
+                "description": "Defines the category of the property, representing its functionality or characteristic."
               }
             }
           }
@@ -17390,8 +17482,22 @@
                     },
                     "minItems": 1,
                     "uniqueItems": true,
-                    "example": [5, 10, 30, 60, 300, 600],
-                    "default": [5, 10, 30, 60, 300, 600]
+                    "example": [
+                      5,
+                      10,
+                      30,
+                      60,
+                      300,
+                      600
+                    ],
+                    "default": [
+                      5,
+                      10,
+                      30,
+                      60,
+                      300,
+                      600
+                    ]
                   }
                 },
                 "examples": [
@@ -17400,7 +17506,14 @@
                     "value": {
                       "request_timeout": 10,
                       "ping_interval": 60,
-                      "reconnect_interval": [5, 10, 30, 60, 300, 600]
+                      "reconnect_interval": [
+                        5,
+                        10,
+                        30,
+                        60,
+                        300,
+                        600
+                      ]
                     }
                   }
                 ]
@@ -17483,14 +17596,439 @@
                     },
                     "minItems": 1,
                     "uniqueItems": true,
-                    "example": [5, 10, 30, 60, 300, 600],
-                    "default": [5, 10, 30, 60, 300, 600]
+                    "example": [
+                      5,
+                      10,
+                      30,
+                      60,
+                      300,
+                      600
+                    ],
+                    "default": [
+                      5,
+                      10,
+                      30,
+                      60,
+                      300,
+                      600
+                    ]
                   }
                 }
               }
             }
           }
         ]
+      },
+      "DevicesShellyNgPluginDeviceInfo": {
+        "x-internal": true,
+        "title": "Shelly Next-Generation (NG) Device Information",
+        "description": "Load the Shelly Next-Generation (NG) info from connected device.",
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "mac",
+          "model",
+          "firmware",
+          "app",
+          "authentication",
+          "discoverable",
+          "components"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id of the device.",
+            "example": "shelly0110dimg3-8cbfeaa58474",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Friendly name configured on the device, if any.",
+            "example": "Wall lamp switch",
+            "readOnly": true
+          },
+          "mac": {
+            "type": "string",
+            "description": "Mac address of the device.",
+            "example": "8CBFEAA58474",
+            "readOnly": true
+          },
+          "model": {
+            "type": "string",
+            "description": "Hardware model code.",
+            "example": "S3DM-0010WW",
+            "readOnly": true
+          },
+          "firmware": {
+            "type": "string",
+            "description": "Installed firmware version.",
+            "example": "1.7.0",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:[-+].*)?$",
+            "readOnly": true
+          },
+          "app": {
+            "type": "string",
+            "description": "Application name reported by the device.",
+            "example": "Dimmer0110VPMG3",
+            "readOnly": true
+          },
+          "profile": {
+            "type": "string",
+            "description": "Active device profile (only for multi-profile devices).",
+            "example": "switch",
+            "readOnly": true
+          },
+          "authentication": {
+            "type": "object",
+            "description": "Authentication status for local RPC access.",
+            "additionalProperties": false,
+            "required": [
+              "domain",
+              "enabled"
+            ],
+            "properties": {
+              "domain": {
+                "type": "string",
+                "nullable": true,
+                "description": "Authentication domain (realm) if configured; otherwise null.",
+                "default": null,
+                "readOnly": true
+              },
+              "enabled": {
+                "type": "boolean",
+                "description": "Whether authentication is required for local RPC.",
+                "default": false,
+                "readOnly": true
+              }
+            }
+          },
+          "discoverable": {
+            "type": "boolean",
+            "description": "Whether the device advertises itself on the local network (e.g., mDNS).",
+            "default": true,
+            "readOnly": true
+          },
+          "components": {
+            "type": "array",
+            "description": "Summarized component capabilities.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "ids"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Component type key (e.g., 'switch', 'light', 'cover', 'input', 'wifi', 'ethernet').",
+                  "example": "switch"
+                },
+                "ids": {
+                  "type": "array",
+                  "description": "List of numeric component IDs discovered for this type. May be empty for singleton components (e.g., 'wifi').",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "uniqueItems": true,
+                  "minItems": 0,
+                  "example": [
+                    0,
+                    1
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "DevicesShellyNgPluginCreateDeviceInfo": {
+        "x-internal": true,
+        "title": "Create Shelly Next-Generation (NG) Device info",
+        "description": "Payload to query a Shelly Next-Generation (NG) device for identification and capability details.",
+        "type": "object",
+        "required": [
+          "hostname"
+        ],
+        "properties": {
+          "hostname": {
+            "description": "Device network address (IPv4 or hostname).",
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "ipv4",
+                "example": "192.168.10.9"
+              },
+              {
+                "type": "string",
+                "format": "hostname",
+                "example": "shellyplus1pm-123456.local"
+              }
+            ]
+          },
+          "password": {
+            "type": "string",
+            "nullable": true,
+            "description": "Device password for local RPC access.",
+            "example": "supersecretdevicepassword"
+          }
+        }
+      },
+      "DevicesShellyNgPluginSupportedDevice": {
+        "x-internal": true,
+        "title": "Supported Shelly Next-Generation (NG) Device",
+        "description": "Static capability descriptor for a Shelly Next-Generation (NG) product group and its concrete model identifiers.",
+        "type": "object",
+        "required": [
+          "group",
+          "name",
+          "models",
+          "categories",
+          "components",
+          "system"
+        ],
+        "properties": {
+          "group": {
+            "type": "string",
+            "description": "Stable group key (matches internal descriptor ID).",
+            "example": "SHELLYPLUS1"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable product/family name.",
+            "example": "Shelly Plus 1"
+          },
+          "models": {
+            "type": "array",
+            "description": "List of device model identifiers that map to this group.",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true,
+            "minItems": 1,
+            "example": [
+              "SNSW-001X16EU",
+              "SNSW-001P16EU"
+            ]
+          },
+          "categories": {
+            "type": "array",
+            "description": "Device supported categories this group fits into.",
+            "items": {
+              "$ref": "#/components/schemas/DevicesModuleDeviceCategory"
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "components": {
+            "type": "array",
+            "description": "Actor/sensor components exposed by the device.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "ids"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Component type key.",
+                  "enum": [
+                    "switch",
+                    "light",
+                    "cover",
+                    "input",
+                    "devicePower",
+                    "humidity",
+                    "temperature",
+                    "pm"
+                  ],
+                  "example": "switch"
+                },
+                "ids": {
+                  "type": "array",
+                  "description": "Numeric component indices available for this type.",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1,
+                  "example": [
+                    0,
+                    1
+                  ]
+                }
+              }
+            }
+          },
+          "system": {
+            "type": "array",
+            "description": "Singleton system components.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "System component type key.",
+                  "enum": [
+                    "wifi",
+                    "ethernet",
+                    "ble"
+                  ],
+                  "example": "wifi"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DevicesShellyNgPluginReqCreateDeviceInfo": {
+        "title": "Create Shelly Next-Generation (NG) Device Info Request",
+        "description": "Request schema for creating Shelly Next-Generation (NG) device info.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DevicesShellyNgPluginCreateDeviceInfo"
+          }
+        }
+      },
+      "DevicesShellyNgPluginResDeviceInfo": {
+        "title": "Shelly Next-Generation (NG) Device Info Response",
+        "description": "Response schema containing a single Shelly Next-Generation (NG) device info.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/plugins/devices-shelly-ng/devices/info",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/DevicesShellyNgPluginDeviceInfo"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        }
+      },
+      "DevicesShellyNgPluginResSupportedDevices": {
+        "title": "Shelly Next-Generation (NG) Supported Devices Response",
+        "description": "Response schema containing a list of supported Shelly Next-Generation (NG) devices.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/plugins/devices-shelly-ng/devices/supported",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DevicesShellyNgPluginSupportedDevice"
+            },
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        }
       },
       "PagesTilesPluginTilesPage": {
         "x-internal": true,

@@ -100,7 +100,7 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.warn(`[LOOKUP] Property with id=${id} for channelId=${channelId} not found`);
+				this.logger.debug(`[LOOKUP] Property with id=${id} for channelId=${channelId} not found`);
 
 				return null;
 			}
@@ -115,7 +115,7 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.warn(`[LOOKUP] Property with id=${id} not found`);
+				this.logger.debug(`[LOOKUP] Property with id=${id} not found`);
 
 				return null;
 			}
@@ -150,7 +150,7 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.warn(`[LOOKUP] Property with ${column}=${value} for channelId=${channelId} not found`);
+				this.logger.debug(`[LOOKUP] Property with ${column}=${value} for channelId=${channelId} not found`);
 
 				return null;
 			}
@@ -165,7 +165,7 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.warn(`[LOOKUP] Property with ${column}=${value} not found`);
+				this.logger.debug(`[LOOKUP] Property with ${column}=${value} not found`);
 
 				return null;
 			}

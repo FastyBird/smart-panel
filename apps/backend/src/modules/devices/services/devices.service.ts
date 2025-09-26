@@ -78,7 +78,7 @@ export class DevicesService {
 			.getOne()) as TDevice | null;
 
 		if (!device) {
-			this.logger.warn(`[LOOKUP] Device with id=${id} not found`);
+			this.logger.debug(`[LOOKUP] Device with id=${id} not found`);
 
 			return null;
 		}
@@ -113,7 +113,7 @@ export class DevicesService {
 			.getOne()) as TDevice | null;
 
 		if (!device) {
-			this.logger.warn(`[LOOKUP] Device with ${column}=${value} not found`);
+			this.logger.debug(`[LOOKUP] Device with ${column}=${value} not found`);
 
 			return null;
 		}

@@ -1,17 +1,21 @@
 {
   "headings": {
     "aboutMdns": "MDNS settings",
-    "aboutWebsockets": "Websockets settings"
+    "aboutWebsockets": "Websockets settings",
+    "device": {
+      "deviceConnection": "Device connection",
+      "information": "Device information",
+      "supported": "Congrats! Device is supported",
+      "notSupported": "We are sorry, you device is not supported",
+      "model": "Model",
+      "firmware": "Firmware"
+    }
   },
   "fields": {
     "devices": {
       "id": {
         "title": "Internal identifier",
         "placeholder": "Device id"
-      },
-      "identifier": {
-        "title": "System identifier",
-        "placeholder": "Device system identifier"
       },
       "category": {
         "title": "Category",
@@ -42,7 +46,10 @@
       },
       "hostname": {
         "title": "Device hostname",
-        "placeholder": "Device network name or IP address"
+        "placeholder": "Device network name or IP address",
+        "validation": {
+          "required": "Please fill in device hostname or IP address"
+        }
       }
     },
     "channels": {
@@ -141,10 +148,24 @@
     "config": {
       "edited": "Changes saved! The Shelly Next Generation plugin config has been updated.",
       "notEdited": "Something went wrong. Shelly Next Generation plugin config update was not successful."
+    },
+    "devices": {
+      "exists": "Device with provided hostname and password is already registered in system.",
+      "created": "New Shelly Next-Generation device added successfully.",
+      "notCreated": "Something went wrong. Unable to create the Shelly Next-Generation device.",
+      "notChecked": "Something went wrong. Device information could not be loaded. Check the device hostname or password.",
+      "edited": "Changes saved! The Shelly Next-Generation device: {device} has been updated.",
+      "notEdited": "Something went wrong. Shelly Next-Generation device update was not successful.",
+      "failedLoadSupportedDevices": "Something went wrong. Plugin supported devices could not be loaded."
     }
   },
   "texts": {
     "aboutMdns": "Configure how the plugin discovers Shelly devices on your local network using Multicast DNS (mDNS). This enables automatic detection without needing to manually enter IP addresses.",
     "aboutWebsockets": "Manage WebSocket connection parameters for Shelly devices. These settings control communication stability, request handling, and reconnection behavior."
+  },
+  "buttons": {
+    "next": {
+      "title": "Next"
+    }
   }
 }

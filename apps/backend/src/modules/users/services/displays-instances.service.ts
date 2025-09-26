@@ -51,7 +51,7 @@ export class DisplaysInstancesService {
 				.getOne();
 
 			if (!display) {
-				this.logger.warn(`[LOOKUP] Display instance with id=${id} for userId=${userId} not found`);
+				this.logger.debug(`[LOOKUP] Display instance with id=${id} for userId=${userId} not found`);
 
 				return null;
 			}
@@ -65,7 +65,7 @@ export class DisplaysInstancesService {
 				.getOne();
 
 			if (!display) {
-				this.logger.warn(`[LOOKUP] Display instance with id=${id} not found`);
+				this.logger.debug(`[LOOKUP] Display instance with id=${id} not found`);
 
 				return null;
 			}
@@ -171,7 +171,7 @@ export class DisplaysInstancesService {
 			.getOne();
 
 		if (!display) {
-			this.logger.warn(`[LOOKUP] Display instance with ${field}=${value} not found`);
+			this.logger.debug(`[LOOKUP] Display instance with ${field}=${value} not found`);
 
 			return null;
 		}

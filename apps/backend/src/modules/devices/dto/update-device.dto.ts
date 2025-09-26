@@ -1,7 +1,8 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 import type { components } from '../../../openapi';
+import { DeviceCategory } from '../devices.constants';
 
 type UpdateDeviceBase = components['schemas']['DevicesModuleUpdateDevice'];
 
@@ -14,6 +15,16 @@ export class UpdateDeviceDto implements UpdateDeviceBase {
 		message: '[{"field":"type","reason":"Type must be a valid string representing a supported device type."}]',
 	})
 	type: string;
+
+	@Expose()
+	@IsOptional()
+	@IsNotEmpty({
+		message: '[{"field":"category","reason":"Category must be a valid device category."}]',
+	})
+	@IsEnum(DeviceCategory, {
+		message: '[{"field":"category","reason":"Category must be a valid device category."}]',
+	})
+	category?: DeviceCategory;
 
 	@Expose()
 	@IsOptional()

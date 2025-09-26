@@ -12,6 +12,7 @@ import { ChannelsTypeMapperService } from '../../modules/devices/services/channe
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 
+import { ShellyNgDevicesController } from './controllers/shelly-ng-devices.controller';
 import { DelegatesManagerService } from './delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from './devices-shelly-ng.constants';
 import { CreateShellyNgChannelPropertyDto } from './dto/create-channel-property.dto';
@@ -32,6 +33,7 @@ import { DatabaseDiscovererService } from './services/database-discoverer.servic
 import { DeviceManagerService } from './services/device-manager.service';
 import { ShellyNgService } from './services/shelly-ng.service';
 import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
+import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
 @Module({
 	imports: [
@@ -47,7 +49,9 @@ import { ShellyRpcClientService } from './services/shelly-rpc-client.service';
 		DeviceManagerService,
 		ShellyNgService,
 		ShellyNgDevicePlatform,
+		DeviceEntitySubscriber,
 	],
+	controllers: [ShellyNgDevicesController],
 })
 export class DevicesShellyNgPlugin {
 	constructor(

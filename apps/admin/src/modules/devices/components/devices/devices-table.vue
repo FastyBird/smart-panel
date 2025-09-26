@@ -151,7 +151,7 @@
 			prop="state"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="150"
+			:width="130"
 		>
 			<template #default="scope">
 				<devices-table-column-state
@@ -197,7 +197,7 @@
 			prop="enabled"
 			sortable="custom"
 			:sort-orders="['ascending', 'descending']"
-			:width="180"
+			:width="120"
 		>
 			<template #default="scope">
 				<el-link

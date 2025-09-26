@@ -65,7 +65,7 @@ export class PagesService {
 			.getOne()) as TPage | null;
 
 		if (!page) {
-			this.logger.warn(`[LOOKUP] Page with id=${id} not found`);
+			this.logger.debug(`[LOOKUP] Page with id=${id} not found`);
 
 			return null;
 		}

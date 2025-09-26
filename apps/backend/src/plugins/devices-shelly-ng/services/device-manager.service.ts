@@ -22,8 +22,8 @@ import {
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { CreateShellyNgChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateShellyNgChannelDto } from '../dto/create-channel.dto';
-import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
-import { UpdateShellyNgDeviceDto } from '../dto/update-device.dto';
+import { UpdateShellyNgChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { UpdateShellyNgChannelDto } from '../dto/update-channel.dto';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -108,51 +108,21 @@ export class DeviceManagerService {
 		};
 	}
 
-	async createOrUpdate(
-		hostname: string,
-		password: string | undefined,
-		category: DeviceCategory,
-		name: string,
-		enabled: boolean = true,
-	): Promise<ShellyNgDeviceEntity> {
-		const deviceInfo = await this.getDeviceInfo(hostname, password);
+	async createOrUpdate(id: string): Promise<ShellyNgDeviceEntity> {
+		let device = await this.devicesService.findOne<ShellyNgDeviceEntity>(id, DEVICES_SHELLY_NG_TYPE);
+
+		if (device === null) {
+			throw new DevicesShellyNgException('Device not found.');
+		}
+
+		const deviceInfo = await this.getDeviceInfo(device.hostname, device.password);
 
 		const deviceSpec = this.getSpecification(deviceInfo.model);
 
 		if (deviceSpec === null) {
 			throw new DevicesShellyNgException(
-				`Provided device is not supported hostname=${hostname} model=${deviceInfo.model}`,
+				`Provided device is not supported hostname=${device.hostname} model=${deviceInfo.model}`,
 			);
-		}
-
-		let device = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
-			'identifier',
-			deviceInfo.id,
-			DEVICES_SHELLY_NG_TYPE,
-		);
-
-		if (device === null) {
-			device = await this.devicesService.create<ShellyNgDeviceEntity, CreateShellyNgDeviceDto>({
-				type: DEVICES_SHELLY_NG_TYPE,
-				category: category,
-				identifier: deviceInfo.id,
-				hostname,
-				password,
-				name,
-				enabled,
-			});
-
-			this.logger.debug(`[SHELLY NG][DEVICE MANAGER] Created new device=${device.id} in category=${category}`);
-		} else if (device.hostname !== hostname) {
-			device = await this.devicesService.update<ShellyNgDeviceEntity, UpdateShellyNgDeviceDto>(device.id, {
-				type: DEVICES_SHELLY_NG_TYPE,
-				hostname,
-				password,
-				name,
-				enabled,
-			});
-
-			this.logger.debug(`[SHELLY NG][DEVICE MANAGER] Updated existing device=${device.id}`);
 		}
 
 		const channelsIds: string[] = [];
@@ -178,7 +148,7 @@ export class DeviceManagerService {
 			PropertyCategory.MODEL,
 			'category',
 			PropertyCategory.MODEL,
-			deviceSpec.name,
+			deviceInfo.model,
 		);
 		await this.ensureProperty(
 			deviceInformation,
@@ -206,7 +176,7 @@ export class DeviceManagerService {
 		);
 
 		try {
-			const wifiInfo = await this.shellyRpcClientService.getWifiStatus(hostname, { password });
+			const wifiInfo = await this.shellyRpcClientService.getWifiStatus(device.hostname, { password: device.password });
 
 			await this.ensureProperty(
 				deviceInformation,
@@ -234,7 +204,9 @@ export class DeviceManagerService {
 					let switchStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getSwitchStatus>>;
 
 					try {
-						switchConfig = await this.shellyRpcClientService.getSwitchConfig(hostname, key, { password });
+						switchConfig = await this.shellyRpcClientService.getSwitchConfig(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -250,7 +222,9 @@ export class DeviceManagerService {
 					}
 
 					try {
-						switchStatus = await this.shellyRpcClientService.getSwitchStatus(hostname, key, { password });
+						switchStatus = await this.shellyRpcClientService.getSwitchStatus(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -361,7 +335,9 @@ export class DeviceManagerService {
 					let coverStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getCoverStatus>>;
 
 					try {
-						coverConfig = await this.shellyRpcClientService.getCoverConfig(hostname, key, { password });
+						coverConfig = await this.shellyRpcClientService.getCoverConfig(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -377,7 +353,9 @@ export class DeviceManagerService {
 					}
 
 					try {
-						coverStatus = await this.shellyRpcClientService.getCoverStatus(hostname, key, { password });
+						coverStatus = await this.shellyRpcClientService.getCoverStatus(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -441,7 +419,9 @@ export class DeviceManagerService {
 					let lightStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getLightStatus>>;
 
 					try {
-						lightConfig = await this.shellyRpcClientService.getLightConfig(hostname, key, { password });
+						lightConfig = await this.shellyRpcClientService.getLightConfig(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -457,7 +437,9 @@ export class DeviceManagerService {
 					}
 
 					try {
-						lightStatus = await this.shellyRpcClientService.getLightStatus(hostname, key, { password });
+						lightStatus = await this.shellyRpcClientService.getLightStatus(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -521,7 +503,9 @@ export class DeviceManagerService {
 					let inputStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getInputStatus>>;
 
 					try {
-						inputConfig = await this.shellyRpcClientService.getInputConfig(hostname, key, { password });
+						inputConfig = await this.shellyRpcClientService.getInputConfig(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -537,7 +521,9 @@ export class DeviceManagerService {
 					}
 
 					try {
-						inputStatus = await this.shellyRpcClientService.getInputStatus(hostname, key, { password });
+						inputStatus = await this.shellyRpcClientService.getInputStatus(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -564,7 +550,9 @@ export class DeviceManagerService {
 					let devicePowerStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getDevicePowerStatus>>;
 
 					try {
-						devicePowerStatus = await this.shellyRpcClientService.getDevicePowerStatus(hostname, key, { password });
+						devicePowerStatus = await this.shellyRpcClientService.getDevicePowerStatus(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -604,7 +592,9 @@ export class DeviceManagerService {
 					let humidityStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getHumidityStatus>>;
 
 					try {
-						humidityConfig = await this.shellyRpcClientService.getHumidityConfig(hostname, key, { password });
+						humidityConfig = await this.shellyRpcClientService.getHumidityConfig(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -620,7 +610,9 @@ export class DeviceManagerService {
 					}
 
 					try {
-						humidityStatus = await this.shellyRpcClientService.getHumidityStatus(hostname, key, { password });
+						humidityStatus = await this.shellyRpcClientService.getHumidityStatus(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -652,7 +644,9 @@ export class DeviceManagerService {
 					let temperatureStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getTemperatureStatus>>;
 
 					try {
-						temperatureConfig = await this.shellyRpcClientService.getTemperatureConfig(hostname, key, { password });
+						temperatureConfig = await this.shellyRpcClientService.getTemperatureConfig(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -668,7 +662,9 @@ export class DeviceManagerService {
 					}
 
 					try {
-						temperatureStatus = await this.shellyRpcClientService.getTemperatureStatus(hostname, key, { password });
+						temperatureStatus = await this.shellyRpcClientService.getTemperatureStatus(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -706,7 +702,9 @@ export class DeviceManagerService {
 					let pm1Status: Awaited<ReturnType<typeof this.shellyRpcClientService.getPm1Status>>;
 
 					try {
-						pm1Config = await this.shellyRpcClientService.getPm1Config(hostname, key, { password });
+						pm1Config = await this.shellyRpcClientService.getPm1Config(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -722,7 +720,9 @@ export class DeviceManagerService {
 					}
 
 					try {
-						pm1Status = await this.shellyRpcClientService.getPm1Status(hostname, key, { password });
+						pm1Status = await this.shellyRpcClientService.getPm1Status(device.hostname, key, {
+							password: device.password,
+						});
 					} catch (error) {
 						const err = error as Error;
 
@@ -800,6 +800,12 @@ export class DeviceManagerService {
 				name,
 				device: device.id,
 			});
+		} else {
+			channel = await this.channelsService.update<ShellyNgChannelEntity, UpdateShellyNgChannelDto>(channel.id, {
+				type: DEVICES_SHELLY_NG_TYPE,
+				category,
+				identifier: column === 'identifier' ? identifierOrCategory : channel.identifier,
+			});
 		}
 
 		return channel;
@@ -844,7 +850,12 @@ export class DeviceManagerService {
 			}
 
 			const propertySpec = channelSpec['properties'][category] as
-				| { permissions: string[]; data_type: string; unit: string | null; format: string[] | number[] | null }
+				| {
+						permissions: PermissionType[];
+						data_type: DataTypeType;
+						unit: string | null;
+						format: string[] | number[] | null;
+				  }
 				| undefined;
 
 			if (!propertySpec || typeof propertySpec !== 'object') {
@@ -868,7 +879,18 @@ export class DeviceManagerService {
 				identifier: column === 'identifier' ? identifierOrCategory : null,
 				value,
 				...options,
-			} as CreateShellyNgChannelPropertyDto);
+			});
+		} else {
+			prop = await this.channelsPropertiesService.update<
+				ShellyNgChannelPropertyEntity,
+				UpdateShellyNgChannelPropertyDto
+			>(prop.id, {
+				type: DEVICES_SHELLY_NG_TYPE,
+				category,
+				identifier: column === 'identifier' ? identifierOrCategory : null,
+				value,
+				...options,
+			});
 		}
 
 		return prop;

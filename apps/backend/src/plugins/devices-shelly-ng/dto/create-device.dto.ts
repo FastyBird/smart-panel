@@ -14,13 +14,13 @@ export class CreateShellyNgDeviceDto extends CreateDeviceDto implements CreateSh
 
 	@Expose()
 	@IsOptional()
-	@IsString({ message: '[{"field":"password","reason":"Password attribute must be a valid string."}]' })
-	password?: string | null = null;
-
-	@Expose()
-	@IsOptional()
 	@IsString({
 		message: '[{"field":"hostname","reason":"Hostname attribute must be a valid IP address or network hostname."}]',
 	})
-	hostname?: string | null = null;
+	hostname: string | null = null;
+
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"password","reason":"Password attribute must be a valid string."}]' })
+	password?: string | null = null;
 }

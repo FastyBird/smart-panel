@@ -91,7 +91,7 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.warn(`[LOOKUP] Channel with id=${id} for deviceId=${deviceId} not found`);
+				this.logger.debug(`[LOOKUP] Channel with id=${id} for deviceId=${deviceId} not found`);
 
 				return null;
 			}
@@ -109,7 +109,7 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.warn(`[LOOKUP] Channel with id=${id} not found`);
+				this.logger.debug(`[LOOKUP] Channel with id=${id} not found`);
 
 				return null;
 			}
@@ -147,7 +147,7 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.warn(`[LOOKUP] Channel with ${column}=${value} for deviceId=${deviceId} not found`);
+				this.logger.debug(`[LOOKUP] Channel with ${column}=${value} for deviceId=${deviceId} not found`);
 
 				return null;
 			}
@@ -165,7 +165,7 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.warn(`[LOOKUP] Channel with ${column}=${value} not found`);
+				this.logger.debug(`[LOOKUP] Channel with ${column}=${value} not found`);
 
 				return null;
 			}

@@ -94,7 +94,7 @@ export class TilesService {
 				.getOne();
 
 			if (!tile) {
-				this.logger.warn(
+				this.logger.debug(
 					`[LOOKUP] Tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
 				);
 
@@ -112,7 +112,7 @@ export class TilesService {
 			});
 
 			if (!tile) {
-				this.logger.warn(`[LOOKUP] Tile with id=${id} not found`);
+				this.logger.debug(`[LOOKUP] Tile with id=${id} not found`);
 
 				return null;
 			}

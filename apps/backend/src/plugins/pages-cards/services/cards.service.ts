@@ -76,7 +76,7 @@ export class CardsService {
 				.getOne();
 
 			if (!card) {
-				this.logger.warn(`[PAGES CARDS][CARDS SERVICE] Card with id=${id} for pageId=${pageId} not found`);
+				this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Card with id=${id} for pageId=${pageId} not found`);
 
 				return null;
 			}
@@ -92,7 +92,7 @@ export class CardsService {
 				.getOne();
 
 			if (!card) {
-				this.logger.warn(`[PAGES CARDS][CARDS SERVICE] Card with id=${id} not found`);
+				this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Card with id=${id} not found`);
 
 				return null;
 			}

@@ -1,8 +1,10 @@
+import type { IPluginElement } from '../../../../common';
 import type { FormResultType } from '../../devices.constants';
 import type { IDevice } from '../../store/devices.store.types';
 
 export interface IDeviceAddFormProps {
 	id: IDevice['id'];
+	type: IPluginElement['type'];
 	remoteFormSubmit?: boolean;
 	remoteFormResult?: FormResultType;
 	remoteFormReset?: boolean;

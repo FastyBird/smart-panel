@@ -9,10 +9,6 @@ export class ShellyNgSupportedDeviceComponentModel {
 	type: string;
 
 	@Expose()
-	@IsString()
-	cls: string;
-
-	@Expose()
 	@IsArray()
 	@IsInt({ each: true })
 	ids: number[];
@@ -22,10 +18,6 @@ export class ShellyNgSupportedDeviceSystemComponentModel {
 	@Expose()
 	@IsString()
 	type: string;
-
-	@Expose()
-	@IsString()
-	cls: string;
 }
 
 export class ShellyNgSupportedDeviceModel {
@@ -71,10 +63,27 @@ export class ShellyNgDeviceInfoComponentModel {
 	ids: number[];
 }
 
+export class ShellyNgDeviceInfoAuthenticationModel {
+	@Expose()
+	@IsString()
+	@IsOptional()
+	domain: string | null;
+
+	@Expose()
+	@IsBoolean()
+	@IsOptional()
+	enabled: boolean = false;
+}
+
 export class ShellyNgDeviceInfoModel {
 	@Expose()
 	@IsString()
 	id: string;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	name: string | null = null;
 
 	@Expose()
 	@IsString()
@@ -86,11 +95,7 @@ export class ShellyNgDeviceInfoModel {
 
 	@Expose()
 	@IsString()
-	fw_id: string;
-
-	@Expose()
-	@IsString()
-	ver: string;
+	firmware: string;
 
 	@Expose()
 	@IsString()
@@ -102,17 +107,14 @@ export class ShellyNgDeviceInfoModel {
 	profile?: string;
 
 	@Expose()
-	@IsBoolean()
-	auth_en: boolean;
+	@ValidateNested({ each: true })
+	@Type(() => ShellyNgDeviceInfoAuthenticationModel)
+	authentication: ShellyNgDeviceInfoAuthenticationModel;
 
 	@Expose()
-	@IsString()
 	@IsOptional()
-	auth_domain: string | null;
-
-	@Expose()
 	@IsBoolean()
-	discoverable: boolean;
+	discoverable: boolean = true;
 
 	@Expose()
 	@IsArray()

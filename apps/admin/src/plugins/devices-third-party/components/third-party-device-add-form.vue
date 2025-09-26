@@ -87,6 +87,7 @@
 		<el-form-item
 			:label="t('devicesThirdPartyPlugin.fields.devices.enabled.title')"
 			prop="enabled"
+			label-position="left"
 		>
 			<el-switch
 				v-model="model.enabled"

@@ -1,7 +1,8 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import type { components } from '../../../openapi';
+import { ChannelCategory } from '../devices.constants';
 
 type ReqUpdateDeviceChannel = components['schemas']['DevicesModuleReqUpdateChannel'];
 type UpdateChannel = components['schemas']['DevicesModuleUpdateChannel'];

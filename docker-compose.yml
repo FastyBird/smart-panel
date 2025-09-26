@@ -43,9 +43,26 @@ services:
       - fastybird
     restart: unless-stopped
 
+  # UI FOR TIME SERIES DATABASE
+  chronograf:
+    image: chronograf:1.10
+    container_name: fastybird-chronograf
+    depends_on:
+      - influxdb
+    command:
+      - "--influxdb-url=http://influxdb:8086"
+    ports:
+      - "${FB_INFLUXDB_UI_PORT:-8888}:8888"
+    volumes:
+      - chronograf-dev-data:/var/lib/chronograf
+    networks:
+      - fastybird
+    restart: unless-stopped
+
 networks:
   fastybird:
     driver: bridge
 
 volumes:
   influxdb-dev-data:
+  chronograf-dev-data:

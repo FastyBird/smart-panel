@@ -1,31 +1,12 @@
 import { validate } from 'class-validator';
+import { FetchError } from 'node-fetch';
 
-import {
-	Body,
-	Controller,
-	Get,
-	Header,
-	Logger,
-	NotFoundException,
-	Param,
-	ParseUUIDPipe,
-	Patch,
-	Post,
-	UnprocessableEntityException,
-} from '@nestjs/common';
+import { Body, Controller, Get, Logger, NotFoundException, Post, UnprocessableEntityException } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DEVICES_MODULE_PREFIX } from '../../../modules/devices/devices.constants';
-import { DevicesException } from '../../../modules/devices/devices.exceptions';
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DESCRIPTORS, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DESCRIPTORS } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
-import ShellyNgCreateDeviceDto from '../dto/shelly-ng-create-device.dto';
 import { ShellyNgGetInfoDto } from '../dto/shelly-ng-get-info.dto';
-import { ShellyNgUpdateDeviceDto } from '../dto/shelly-ng-update-device.dto';
-import { UpdateShellyNgDeviceDto } from '../dto/update-device.dto';
-import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 import { ShellyNgDeviceInfoModel, ShellyNgSupportedDeviceModel } from '../models/shelly-ng.model';
 import { DeviceManagerService } from '../services/device-manager.service';
 
@@ -33,10 +14,7 @@ import { DeviceManagerService } from '../services/device-manager.service';
 export class ShellyNgDevicesController {
 	private readonly logger = new Logger(ShellyNgDevicesController.name);
 
-	constructor(
-		private readonly deviceManagerService: DeviceManagerService,
-		private readonly devicesService: DevicesService,
-	) {}
+	constructor(private readonly deviceManagerService: DeviceManagerService) {}
 
 	@Post('info')
 	async getInfo(@Body() createDto: { data: ShellyNgGetInfoDto }): Promise<ShellyNgDeviceInfoModel> {
@@ -45,15 +23,20 @@ export class ShellyNgDevicesController {
 		try {
 			deviceInfo = await this.deviceManagerService.getDeviceInfo(createDto.data.hostname, createDto.data.password);
 		} catch (error) {
-			if (error instanceof DevicesException) {
+			if (error instanceof DevicesShellyNgException || error instanceof FetchError) {
 				throw new NotFoundException('Device info could not be fetched. Please try again later');
 			}
 
 			throw error;
 		}
 
-		const shellyDeviceInfo = toInstance(ShellyNgDeviceInfoModel, deviceInfo, {
-			excludeExtraneousValues: false,
+		const shellyDeviceInfo = toInstance(ShellyNgDeviceInfoModel, {
+			...deviceInfo,
+			firmware: deviceInfo.ver,
+			authentication: {
+				domain: deviceInfo.auth_domain,
+				enabled: deviceInfo.auth_en,
+			},
 		});
 
 		const errors = await validate(shellyDeviceInfo, {
@@ -78,16 +61,10 @@ export class ShellyNgDevicesController {
 		const devices: ShellyNgSupportedDeviceModel[] = [];
 
 		for (const [group, spec] of Object.entries(DESCRIPTORS)) {
-			const deviceSpec = toInstance(
-				ShellyNgSupportedDeviceModel,
-				{
-					...spec,
-					group,
-				},
-				{
-					excludeExtraneousValues: false,
-				},
-			);
+			const deviceSpec = toInstance(ShellyNgSupportedDeviceModel, {
+				...spec,
+				group,
+			});
 
 			const errors = await validate(deviceSpec, {
 				whitelist: true,
@@ -105,103 +82,5 @@ export class ShellyNgDevicesController {
 		}
 
 		return devices;
-	}
-
-	@Post()
-	@Header('Location', `:baseUrl/${DEVICES_MODULE_PREFIX}/devices/:id`)
-	async create(@Body() createDto: { data: ShellyNgCreateDeviceDto }): Promise<DeviceEntity> {
-		this.logger.debug('[SHELLY NG][DEVICES CONTROLLER] Incoming request to create a Shelly NG device');
-
-		if (!(createDto.data.group in DESCRIPTORS)) {
-			throw new UnprocessableEntityException('Provided device group is not valid');
-		}
-
-		const deviceSpec = DESCRIPTORS[createDto.data.group];
-
-		let deviceInfo: Awaited<ReturnType<typeof this.deviceManagerService.getDeviceInfo>>;
-
-		try {
-			deviceInfo = await this.deviceManagerService.getDeviceInfo(createDto.data.hostname, createDto.data.password);
-		} catch (error) {
-			if (error instanceof DevicesException) {
-				throw new NotFoundException('Device info could not be fetched. Please try again later');
-			}
-
-			throw error;
-		}
-
-		if (!deviceSpec.models.includes(deviceInfo.model.toUpperCase())) {
-			throw new UnprocessableEntityException('Provided device type is not same as fetched from device');
-		}
-
-		try {
-			const device = await this.deviceManagerService.createOrUpdate(
-				createDto.data.hostname,
-				createDto.data.password,
-				createDto.data.category,
-				createDto.data.name,
-			);
-
-			this.logger.debug(`[SHELLY NG][DEVICES CONTROLLER] Successfully created device id=${device.id}`);
-
-			return device;
-		} catch (error) {
-			if (error instanceof DevicesException) {
-				throw new UnprocessableEntityException('Device could not be created. Please try again later');
-			}
-
-			throw error;
-		}
-	}
-
-	@Patch(':id')
-	async update(
-		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() updateDto: { data: ShellyNgUpdateDeviceDto },
-	): Promise<DeviceEntity> {
-		this.logger.debug(`[SHELLY NG][DEVICES CONTROLLER] Incoming update request for device id=${id}`);
-
-		const device = await this.devicesService.findOne<ShellyNgDeviceEntity>(id, DEVICES_SHELLY_NG_TYPE);
-
-		if (!device) {
-			this.logger.error(`[SHELLY NG][DEVICES CONTROLLER] Device with id=${id} not found`);
-
-			throw new NotFoundException('Requested device does not exist');
-		}
-
-		let updatedDevice: ShellyNgDeviceEntity;
-
-		try {
-			updatedDevice = await this.devicesService.update<ShellyNgDeviceEntity, UpdateShellyNgDeviceDto>(
-				device.id,
-				updateDto.data,
-			);
-
-			this.logger.debug(`[SHELLY NG][DEVICES CONTROLLER] Successfully updated device id=${updatedDevice.id}`);
-		} catch (error) {
-			if (error instanceof DevicesException) {
-				throw new UnprocessableEntityException('Device could not be updated. Please try again later');
-			}
-
-			throw error;
-		}
-
-		try {
-			await this.deviceManagerService.createOrUpdate(
-				updatedDevice.hostname,
-				updatedDevice.password,
-				updateDto.data.category,
-				updateDto.data.name,
-				updateDto.data.enabled,
-			);
-		} catch (error) {
-			if (error instanceof DevicesShellyNgException) {
-				throw new UnprocessableEntityException('Device could not be updated. Please try again later');
-			}
-
-			throw error;
-		}
-
-		return updatedDevice;
 	}
 }

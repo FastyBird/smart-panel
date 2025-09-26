@@ -7,9 +7,9 @@ import type { Socket } from 'socket.io-client';
 import type { paths } from '../../openapi';
 import type { Events } from '../services/event-bus';
 
-export interface IUseBackend {
+export interface IUseBackend<Paths extends object = paths> {
 	pendingRequests: Ref<number>;
-	client: Client<paths>;
+	client: Client<Paths>;
 }
 
 export interface IUseBreakpoints {
