@@ -1,6 +1,5 @@
 import { DataSource, EntitySubscriberInterface, UpdateEvent } from 'typeorm';
 import { InsertEvent } from 'typeorm/subscriber/event/InsertEvent';
-import { RemoveEvent } from 'typeorm/subscriber/event/RemoveEvent';
 
 import { Injectable, Logger } from '@nestjs/common';
 

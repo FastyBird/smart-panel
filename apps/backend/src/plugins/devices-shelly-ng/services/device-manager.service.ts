@@ -109,7 +109,7 @@ export class DeviceManagerService {
 	}
 
 	async createOrUpdate(id: string): Promise<ShellyNgDeviceEntity> {
-		let device = await this.devicesService.findOne<ShellyNgDeviceEntity>(id, DEVICES_SHELLY_NG_TYPE);
+		const device = await this.devicesService.findOne<ShellyNgDeviceEntity>(id, DEVICES_SHELLY_NG_TYPE);
 
 		if (device === null) {
 			throw new DevicesShellyNgException('Device not found.');

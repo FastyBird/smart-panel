@@ -22,7 +22,6 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
-import { DeviceManagerService } from '../services/device-manager.service';
 import { clampNumber, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
