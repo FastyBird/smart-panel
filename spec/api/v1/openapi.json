@@ -6836,7 +6836,7 @@
     "/third-party/webhook": {
       "put": {
         "tags": [
-          "Devices third-party plugin"
+          "Devices Third-Party plugin"
         ],
         "servers": [
           {
@@ -6915,7 +6915,7 @@
         "description": "Retrieves a list of devices discovered from the connected Home Assistant instance. Each device includes metadata, associated entities, and their current states.",
         "operationId": "get-devices-home-assistant-plugin-devices",
         "tags": [
-          "Devices home assistant plugin"
+          "Devices Home-Assistant plugin"
         ],
         "responses": {
           "200": {
@@ -6966,7 +6966,7 @@
         "description": "Fetches details of a specific Home Assistant device by its Home Assistant ID. The response includes associated entities and their current states.",
         "operationId": "get-devices-home-assistant-plugin-device",
         "tags": [
-          "Devices home assistant plugin"
+          "Devices Home-Assistant plugin"
         ],
         "responses": {
           "200": {
@@ -7005,7 +7005,7 @@
         "description": "Fetches the current state information for all known entities from the connected Home Assistant instance. Each state includes metadata such as attributes and timestamps.",
         "operationId": "get-devices-home-assistant-plugin-states",
         "tags": [
-          "Devices home assistant plugin"
+          "Devices Home-Assistant plugin"
         ],
         "responses": {
           "200": {
@@ -7056,7 +7056,7 @@
         "description": "Fetches the current state and attributes for a single entity by its Home Assistant entity ID. This includes state value and timestamp details.",
         "operationId": "get-devices-home-assistant-plugin-state",
         "tags": [
-          "Devices home assistant plugin"
+          "Devices Home-Assistant plugin"
         ],
         "responses": {
           "200": {
@@ -19512,11 +19512,15 @@
       "description": "A collection of endpoints that provide device-related functionalities, acting as a central module for handling device interactions."
     },
     {
-      "name": "Devices home assistant plugin",
+      "name": "Devices Home-Assistant plugin",
       "description": "Endpoints for interacting with Home Assistant devices and their states. This plugin allows discovery, inspection, and potential adoption of Home Assistant devices into the Smart Panel ecosystem."
     },
     {
-      "name": "Devices third-party plugin",
+      "name": "Devices Shelly NG plugin",
+      "description": "Endpoints for interacting with Shelly Next-Generation (NG) devices and their states. This plugin allows discovery, inspection, and potential adoption of Shelly Next-Generation devices into the Smart Panel ecosystem."
+    },
+    {
+      "name": "Devices Third-Party plugin",
       "description": "Endpoints for interacting with Third-party devices and their states."
     },
     {

@@ -4,7 +4,7 @@ services:
     container_name: fastybird-backend-server
     build:
       context: .
-      dockerfile: .docker/dev/node/Dockerfile
+      dockerfile: .docker/dev/backend/Dockerfile
     depends_on:
       - influxdb
     environment:
@@ -22,6 +22,28 @@ services:
       - ./:/app:delegated
     ports:
       - "${BACKEND_PORT:-3000}:3000"
+    networks:
+      - fastybird
+    restart: unless-stopped
+
+  # ADMIN CLIENT
+  admin:
+    container_name: fastybird-admin-client
+    build:
+      context: .
+      dockerfile: .docker/dev/admin/Dockerfile
+    depends_on:
+      - server
+    environment:
+      # Container specific environment variables
+      TZ: ${FB_APP_TZ:-UTC}
+      # Application specific environment variables
+      NODE_ENV: development
+      FB_CONFIG_PATH: ${FB_CONFIG_PATH:-/app/var/data}
+    volumes:
+      - ./:/app:delegated
+    ports:
+      - "${ADMIN_PORT:-3003}:3003"
     networks:
       - fastybird
     restart: unless-stopped
