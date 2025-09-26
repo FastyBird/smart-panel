@@ -12,6 +12,43 @@ interface ShellyRpcEnvelope<T = unknown> {
 	error?: { code: number; message: string };
 }
 
+export interface SystemConfig {
+	device: {
+		name: string | null | undefined;
+		eco_mode: boolean;
+		mac: string;
+		fw_id: string;
+		profile?: string;
+		discoverable: boolean;
+		addon_type?: string | null;
+		sys_btn_toggle?: boolean;
+	};
+	location: {
+		tz: string | null;
+		lat: number | null;
+		lon: number | null;
+	};
+	debug: {
+		mqtt: {
+			enabled: boolean;
+		};
+		websocket: {
+			enabled: boolean;
+		};
+		udp: {
+			addr: string | null;
+		};
+	};
+	rpc_udp: {
+		dst_addr: string;
+		listen_port: number | null;
+	};
+	sntp: {
+		server: string;
+	};
+	cfg_rev: number;
+}
+
 export interface DeviceInfo {
 	id: string;
 	mac: string;
@@ -267,6 +304,13 @@ export interface DeviceComponentsResponse {
 
 @Injectable()
 export class ShellyRpcClientService {
+	getSystemConfig(
+		host: string,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<SystemConfig> {
+		return this.call<SystemConfig>(host, 'Sys.GetConfig', undefined, options);
+	}
+
 	getDeviceInfo(
 		host: string,
 		options?: { password?: string | null; https?: boolean; timeoutSec?: number },

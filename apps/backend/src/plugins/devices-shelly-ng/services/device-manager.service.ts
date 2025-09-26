@@ -49,6 +49,7 @@ export class DeviceManagerService {
 		password: string | undefined,
 	): Promise<{
 		id: string;
+		name: string | null | undefined;
 		mac: string;
 		model: string;
 		fw_id: string;
@@ -68,6 +69,7 @@ export class DeviceManagerService {
 	}> {
 		const deviceInfo = await this.shellyRpcClientService.getDeviceInfo(hostname, { password });
 		const deviceProvidedComponents = await this.shellyRpcClientService.getComponents(hostname, { password });
+		const systemConfig = await this.shellyRpcClientService.getSystemConfig(hostname, { password });
 
 		const groups: Record<
 			string,
@@ -104,6 +106,7 @@ export class DeviceManagerService {
 
 		return {
 			...deviceInfo,
+			name: systemConfig.device.name,
 			components,
 		};
 	}
