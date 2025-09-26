@@ -119,10 +119,14 @@ export class ShellyNgService {
 		this.delegatesRegistryService.detach();
 	}
 
-	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
-	async handleConfigurationUpdatedEvent() {
+	async restart(): Promise<void> {
 		this.stop();
 		await this.start();
+	}
+
+	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
+	async handleConfigurationUpdatedEvent() {
+		await this.restart();
 	}
 
 	private get config(): ShellyNgConfigModel {

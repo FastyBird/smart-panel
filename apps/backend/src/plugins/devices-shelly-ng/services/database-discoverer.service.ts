@@ -18,6 +18,10 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 
 	async run() {
 		for (const d of await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE)) {
+			if (d.enabled === false) {
+				return;
+			}
+
 			if (d.identifier === null) {
 				this.logger.error(
 					`Failed to prepare device to be managed by Shelly manager. Missing identifier for device=${d.id}`,

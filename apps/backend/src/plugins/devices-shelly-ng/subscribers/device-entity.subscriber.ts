@@ -4,8 +4,8 @@ import { InsertEvent } from 'typeorm/subscriber/event/InsertEvent';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
-import { DatabaseDiscovererService } from '../services/database-discoverer.service';
 import { DeviceManagerService } from '../services/device-manager.service';
+import { ShellyNgService } from '../services/shelly-ng.service';
 
 @Injectable()
 export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyNgDeviceEntity> {
@@ -14,7 +14,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly deviceManagerService: DeviceManagerService,
-		private readonly databaseDiscovererService: DatabaseDiscovererService,
+		private readonly shellyNgService: ShellyNgService,
 	) {
 		this.dataSource.subscribers.push(this);
 	}
@@ -31,10 +31,10 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 				`[SHELLY NG][DEVICE ENTITY SUBSCRIBER] Shelly device=${event.entity.id} was successfully created`,
 			);
 
-			this.databaseDiscovererService.run().catch((error) => {
+			this.shellyNgService.restart().catch((error) => {
 				const err = error as Error;
 
-				this.logger.error('[SHELLY NG][DEVICE ENTITY SUBSCRIBER] Failed restart database discovered', {
+				this.logger.error('[SHELLY NG][DEVICE ENTITY SUBSCRIBER] Failed restart Shelly communication service', {
 					message: err.message,
 					stack: err.stack,
 				});
@@ -60,10 +60,10 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 				`[SHELLY NG][DEVICE ENTITY SUBSCRIBER] Shelly device=${event.databaseEntity.id} was successfully updated`,
 			);
 
-			this.databaseDiscovererService.run().catch((error) => {
+			this.shellyNgService.restart().catch((error) => {
 				const err = error as Error;
 
-				this.logger.error('[SHELLY NG][DEVICE ENTITY SUBSCRIBER] Failed restart database discovered', {
+				this.logger.error('[SHELLY NG][DEVICE ENTITY SUBSCRIBER] Failed restart Shelly communication service', {
 					message: err.message,
 					stack: err.stack,
 				});
@@ -82,10 +82,10 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	}
 
 	afterRemove(): void {
-		this.databaseDiscovererService.run().catch((error) => {
+		this.shellyNgService.restart().catch((error) => {
 			const err = error as Error;
 
-			this.logger.error('[SHELLY NG][DEVICE ENTITY SUBSCRIBER] Failed restart database discovered', {
+			this.logger.error('[SHELLY NG][DEVICE ENTITY SUBSCRIBER] Failed restart Shelly communication service', {
 				message: err.message,
 				stack: err.stack,
 			});
