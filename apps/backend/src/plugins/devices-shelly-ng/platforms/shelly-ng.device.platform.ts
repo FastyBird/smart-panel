@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
-import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
+import { ShellyNgChannelPropertyEntity, ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
 
 export type IShellyNgDevicePropertyData = IDevicePropertyData & {
 	device: ShellyNgDeviceEntity;
@@ -36,7 +35,7 @@ export class ShellyNgDevicePlatform extends HttpDevicePlatform implements IDevic
 			return false;
 		}
 
-		const result = new Map<ChannelPropertyEntity['id'], boolean>();
+		const result = new Map<ShellyNgChannelPropertyEntity['id'], boolean>();
 
 		for (const { property, value } of updates) {
 			try {

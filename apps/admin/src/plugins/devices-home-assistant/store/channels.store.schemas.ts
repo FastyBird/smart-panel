@@ -1,8 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ChannelCreateReqSchema, ChannelResSchema, ChannelSchema, ChannelUpdateReqSchema } from '../../../modules/devices';
-import { type components } from '../../../openapi';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DevicesHomeAssistantPluginHomeAssistantDeviceType, type components } from '../../../openapi';
 
 type ApiCreateChannel = components['schemas']['DevicesHomeAssistantPluginCreateHomeAssistantChannel'];
 type ApiUpdateChannel = components['schemas']['DevicesHomeAssistantPluginUpdateHomeAssistantChannel'];
@@ -15,18 +14,18 @@ export const HomeAssistantChannelSchema = ChannelSchema;
 
 export const HomeAssistantChannelCreateReqSchema: ZodType<ApiCreateChannel> = ChannelCreateReqSchema.and(
 	z.object({
-		type: z.string().trim().nonempty().default(DEVICES_HOME_ASSISTANT_TYPE),
+		type: z.nativeEnum(DevicesHomeAssistantPluginHomeAssistantDeviceType),
 	})
 );
 
 export const HomeAssistantChannelUpdateReqSchema: ZodType<ApiUpdateChannel> = ChannelUpdateReqSchema.and(
 	z.object({
-		type: z.string().trim().nonempty().default(DEVICES_HOME_ASSISTANT_TYPE),
+		type: z.nativeEnum(DevicesHomeAssistantPluginHomeAssistantDeviceType),
 	})
 );
 
 export const HomeAssistantChannelResSchema: ZodType<ApiChannel> = ChannelResSchema.and(
 	z.object({
-		type: z.string().trim().nonempty().default(DEVICES_HOME_ASSISTANT_TYPE),
+		type: z.nativeEnum(DevicesHomeAssistantPluginHomeAssistantDeviceType),
 	})
 );

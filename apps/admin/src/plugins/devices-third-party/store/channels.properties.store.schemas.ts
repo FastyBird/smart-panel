@@ -6,8 +6,7 @@ import {
 	ChannelPropertySchema,
 	ChannelPropertyUpdateReqSchema,
 } from '../../../modules/devices';
-import { type components } from '../../../openapi';
-import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
+import { DevicesThirdPartyPluginThirdPartyDeviceType, type components } from '../../../openapi';
 
 type ApiCreateChannelProperty = components['schemas']['DevicesThirdPartyPluginCreateThirdPartyChannelProperty'];
 type ApiUpdateChannelProperty = components['schemas']['DevicesThirdPartyPluginUpdateThirdPartyChannelProperty'];
@@ -20,18 +19,18 @@ export const ThirdPartyChannelPropertySchema = ChannelPropertySchema;
 
 export const ThirdPartyChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> = ChannelPropertyCreateReqSchema.and(
 	z.object({
-		type: z.string().trim().nonempty().default(DEVICES_THIRD_PARTY_TYPE),
+		type: z.nativeEnum(DevicesThirdPartyPluginThirdPartyDeviceType),
 	})
 );
 
 export const ThirdPartyChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> = ChannelPropertyUpdateReqSchema.and(
 	z.object({
-		type: z.string().trim().nonempty().default(DEVICES_THIRD_PARTY_TYPE),
+		type: z.nativeEnum(DevicesThirdPartyPluginThirdPartyDeviceType),
 	})
 );
 
 export const ThirdPartyChannelPropertyResSchema: ZodType<ApiChannelProperty> = ChannelPropertyResSchema.and(
 	z.object({
-		type: z.string().trim().nonempty().default(DEVICES_THIRD_PARTY_TYPE),
+		type: z.nativeEnum(DevicesThirdPartyPluginThirdPartyDeviceType),
 	})
 );

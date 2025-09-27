@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
 import type { components } from '../../../openapi';
+import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
 import { ThirdPartyDeviceEntity } from './devices-third-party.entity';
 
@@ -33,7 +34,7 @@ describe('Devices Third-Party plugin entity and OpenAPI Model Synchronization', 
 	test('ThirdPartyDeviceEntity matches ThirdPartyDevicesDevice', () => {
 		const openApiModel: ThirdPartyPluginThirdPartyDevice = {
 			id: uuid().toString(),
-			type: 'device',
+			type: DEVICES_THIRD_PARTY_TYPE,
 			category: DeviceCategory.GENERIC,
 			identifier: null,
 			name: 'Thermostat',

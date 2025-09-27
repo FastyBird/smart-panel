@@ -16194,9 +16194,20 @@
           {
             "type": "object",
             "required": [
+              "type",
               "service_address"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              },
               "service_address": {
                 "type": "string",
                 "description": "A url address of the third-party device endpoint.",
@@ -16218,9 +16229,20 @@
           {
             "type": "object",
             "required": [
+              "type",
               "service_address"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              },
               "service_address": {
                 "type": "string",
                 "description": "A url address of the third-party device endpoint.",
@@ -16241,7 +16263,20 @@
           },
           {
             "type": "object",
+            "required": [
+              "type"
+            ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              },
               "service_address": {
                 "type": "string",
                 "description": "A url address of the third-party device endpoint.",
@@ -16259,6 +16294,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16269,6 +16322,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16279,6 +16350,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16289,6 +16378,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16299,6 +16406,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16309,6 +16434,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16473,9 +16616,20 @@
           {
             "type": "object",
             "required": [
+              "type",
               "ha_device_id"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_device_id": {
                 "type": "string",
                 "description": "A HA device instance identifier.",
@@ -16496,9 +16650,20 @@
           {
             "type": "object",
             "required": [
+              "type",
               "ha_device_id"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_device_id": {
                 "type": "string",
                 "description": "A HA device instance identifier.",
@@ -16515,6 +16680,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16525,6 +16708,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16535,6 +16736,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16545,6 +16764,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16559,10 +16796,21 @@
           {
             "type": "object",
             "required": [
+              "type",
               "ha_entity_id",
               "ha_attribute"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_entity_id": {
                 "type": "string",
                 "nullable": true,
@@ -16590,10 +16838,21 @@
           {
             "type": "object",
             "required": [
+              "type",
               "ha_entity_id",
               "ha_attribute"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_entity_id": {
                 "type": "string",
                 "nullable": true,
@@ -16620,7 +16879,20 @@
           },
           {
             "type": "object",
+            "required": [
+              "type"
+            ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_entity_id": {
                 "type": "string",
                 "nullable": true,

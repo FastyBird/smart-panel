@@ -10,22 +10,17 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import type { components } from '../../../openapi';
-import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
+import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
-import {
-	HomeAssistantChannelEntity,
-	HomeAssistantChannelPropertyEntity,
-	HomeAssistantDeviceEntity,
-} from './devices-home-assistant.entity';
+import { ShellyNgChannelEntity, ShellyNgChannelPropertyEntity, ShellyNgDeviceEntity } from './devices-shelly-ng.entity';
 
-type HomeAssistantPluginHomeAssistantDevice = components['schemas']['DevicesHomeAssistantPluginHomeAssistantDevice'];
-type HomeAssistantPluginHomeAssistantChannel = components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannel'];
-type HomeAssistantPluginHomeAssistantChannelProperty =
-	components['schemas']['DevicesHomeAssistantPluginHomeAssistantChannelProperty'];
+type ShellyNgPluginShellyNgDevice = components['schemas']['DevicesShellyNgPluginShellyNgDevice'];
+type ShellyNgPluginShellyNgChannel = components['schemas']['DevicesShellyNgPluginShellyNgChannel'];
+type ShellyNgPluginShellyNgChannelProperty = components['schemas']['DevicesShellyNgPluginShellyNgChannelProperty'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
-describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization', () => {
+describe('Devices Shelly NG plugin entity and OpenAPI Model Synchronization', () => {
 	const validateEntityAgainstModel = <T extends object, U extends object>(entity: T, model: U) => {
 		// Convert model keys from snake_case to camelCase
 		const modelKeys = Object.keys(model).map((attribute) => attribute.replaceAll(caseRegex, (g) => g[1].toUpperCase()));
@@ -44,10 +39,10 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 		});
 	};
 
-	test('HomeAssistantDeviceEntity matches HomeAssistantDevicesDevice', () => {
-		const openApiModel: HomeAssistantPluginHomeAssistantDevice = {
+	test('ShellyNgDeviceEntity matches ShellyNgDevicesDevice', () => {
+		const openApiModel: ShellyNgPluginShellyNgDevice = {
 			id: uuid().toString(),
-			type: DEVICES_HOME_ASSISTANT_TYPE,
+			type: DEVICES_SHELLY_NG_TYPE,
 			category: DeviceCategory.GENERIC,
 			identifier: null,
 			name: 'Thermostat',
@@ -57,10 +52,11 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			channels: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
-			ha_device_id: 'light.hall_cabinet_lights_lights',
+			hostname: '192.168.0.1',
+			password: '12345',
 		};
 
-		const entityInstance = toInstance(HomeAssistantDeviceEntity, openApiModel);
+		const entityInstance = toInstance(ShellyNgDeviceEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -72,9 +68,9 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 	});
 
 	test('ChannelEntity matches DevicesChannel', () => {
-		const openApiModel: HomeAssistantPluginHomeAssistantChannel = {
+		const openApiModel: ShellyNgPluginShellyNgChannel = {
 			id: uuid().toString(),
-			type: DEVICES_HOME_ASSISTANT_TYPE,
+			type: DEVICES_SHELLY_NG_TYPE,
 			category: ChannelCategory.GENERIC,
 			identifier: null,
 			name: 'Temperature Sensor',
@@ -86,7 +82,7 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			updated_at: new Date().toISOString(),
 		};
 
-		const entityInstance = toInstance(HomeAssistantChannelEntity, openApiModel);
+		const entityInstance = toInstance(ShellyNgChannelEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
@@ -98,9 +94,9 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 	});
 
 	test('ChannelPropertyEntity matches DevicesChannelProperty', () => {
-		const openApiModel: HomeAssistantPluginHomeAssistantChannelProperty = {
+		const openApiModel: ShellyNgPluginShellyNgChannelProperty = {
 			id: uuid().toString(),
-			type: DEVICES_HOME_ASSISTANT_TYPE,
+			type: DEVICES_SHELLY_NG_TYPE,
 			category: PropertyCategory.GENERIC,
 			identifier: null,
 			name: 'Thermostat Mode',
@@ -114,11 +110,9 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			channel: uuid().toString(),
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
-			ha_entity_id: 'light.hall_cabinet_lights_lights',
-			ha_attribute: 'brightness',
 		};
 
-		const entityInstance = toInstance(HomeAssistantChannelPropertyEntity, openApiModel);
+		const entityInstance = toInstance(ShellyNgChannelPropertyEntity, openApiModel);
 
 		validateEntityAgainstModel(entityInstance, openApiModel);
 
