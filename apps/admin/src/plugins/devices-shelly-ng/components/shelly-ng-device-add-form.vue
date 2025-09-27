@@ -63,7 +63,7 @@
 				:closable="false"
 				show-icon
 			>
-				<dl class="grid grid-cols-[auto_1fr] gap-x-4 mt-2 mb-0">
+				<dl class="grid grid-cols-[auto_1fr] gap-x-4 my-0">
 					<dt>{{ t('devicesShellyNgPlugin.headings.device.model') }}:</dt>
 					<dd class="m-0 inline-block font-bold">
 						{{ deviceGroup !== null ? deviceGroup.name : 'unknown' }}
@@ -332,6 +332,8 @@ watch(
 		if (val === null) {
 			return;
 		}
+
+		model.name = val.name || model.name;
 
 		const device = devices.value.find((d) => d.identifier === val.id && d.type === DEVICES_SHELLY_NG_TYPE);
 
