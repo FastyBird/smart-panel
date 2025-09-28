@@ -34,5 +34,5 @@ export interface IUseDeviceEditForm {
 export interface IUseSupportedDevices {
 	supportedDevices: Ref<IShellyNgSupportedDevice[]>;
 	loaded: Ref<boolean>;
-	fetchDevices: () => Promise<void>;
+	fetchDevices: (force?: boolean) => Promise<void>;
 }

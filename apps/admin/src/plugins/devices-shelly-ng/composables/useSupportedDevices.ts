@@ -20,7 +20,7 @@ export const useSupportedDevices = (): IUseSupportedDevices => {
 
 	const loaded = ref<boolean>(false);
 
-	const fetchDevices = async (force: boolean = false): Promise<void> => {
+	const fetchDevices = async (force?: boolean): Promise<void> => {
 		if (loaded.value && !force) {
 			return;
 		}
