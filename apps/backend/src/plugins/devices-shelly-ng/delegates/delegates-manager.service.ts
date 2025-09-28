@@ -182,9 +182,9 @@ export class DelegatesManagerService {
 						return false;
 					}
 
-					const result = await comp.set(val);
+					await comp.set(val);
 
-					return result.was_on !== val;
+					return true;
 				},
 			);
 
@@ -953,6 +953,8 @@ export class DelegatesManagerService {
 		clearTimeout(this.pendingWrites.get(property.id));
 
 		const t = setTimeout((): void => {
+			clearTimeout(this.pendingWrites.get(property.id));
+
 			this.writeValueToProperty(property, value).catch((err: Error) => {
 				this.logger.error(
 					`[SHELLY NG][DELEGATES MANAGER] Failed to process scheduled write of value=${value} to property=${property.id}`,
