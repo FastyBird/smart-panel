@@ -221,7 +221,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					try {
@@ -239,7 +239,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					let electricalEnergyChannelName: string | undefined = undefined;
@@ -352,7 +352,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					try {
@@ -370,7 +370,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					const cover = await this.ensureChannel(
@@ -436,7 +436,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					try {
@@ -454,7 +454,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					const light = await this.ensureChannel(
@@ -520,7 +520,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					try {
@@ -538,7 +538,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					// TODO: To be implemented in the future
@@ -567,7 +567,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					if (typeof devicePowerStatus.battery !== 'undefined') {
@@ -609,7 +609,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					try {
@@ -627,7 +627,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					const humidity = await this.ensureChannel(
@@ -661,7 +661,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					try {
@@ -679,7 +679,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					const temperature = await this.ensureChannel(
@@ -719,7 +719,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					try {
@@ -737,7 +737,7 @@ export class DeviceManagerService {
 							},
 						);
 
-						return;
+						continue;
 					}
 
 					const eeResult = await this.ensureElectricalEnergy(device, key, pm1Status, pm1Config.name ?? undefined);
