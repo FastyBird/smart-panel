@@ -126,7 +126,11 @@ export class DelegatesManagerService {
 			this.changeHandlers.set(
 				`${delegate.id}|${deviceInformation.identifier}|rssi`,
 				(val: CharacteristicValue): void => {
-					this.handleChange(linkQuality, clampNumber(rssiToQuality(Number(val)), 0, 100)).catch((err: Error): void => {
+					if (typeof val !== 'number') {
+						return;
+					}
+
+					this.handleChange(linkQuality, clampNumber(rssiToQuality(val), 0, 100)).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${deviceInformation.identifier} attribute=rssi and property=${linkQuality.id}`,
 							{
@@ -164,6 +168,10 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, switcherOn, comp.output);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
+				if (typeof val !== 'boolean') {
+					return;
+				}
+
 				this.handleChange(switcherOn, !!val).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${switcherOn.id}`,
@@ -213,6 +221,10 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
+					if (typeof val !== 'number') {
+						return;
+					}
+
 					this.handleChange(consumption, toEnergy(val), false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=aenergy and property=${consumption.id}`,
@@ -250,7 +262,11 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, power, comp.apower);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-					this.handleChange(power, Number(val), false).catch((err: Error): void => {
+					if (typeof val !== 'number') {
+						return;
+					}
+
+					this.handleChange(power, val, false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=apower and property=${power.id}`,
 							{
@@ -275,7 +291,11 @@ export class DelegatesManagerService {
 					await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
 
 					this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-						this.handleChange(voltage, Number(val), false).catch((err: Error): void => {
+						if (typeof val !== 'number') {
+							return;
+						}
+
+						this.handleChange(voltage, val, false).catch((err: Error): void => {
 							this.logger.error(
 								`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=voltage and property=${voltage.id}`,
 								{
@@ -301,7 +321,11 @@ export class DelegatesManagerService {
 					await this.setDefaultPropertyValue(device.id, current, comp.current);
 
 					this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-						this.handleChange(current, Number(val), false).catch((err: Error): void => {
+						if (typeof val !== 'number') {
+							return;
+						}
+
+						this.handleChange(current, val, false).catch((err: Error): void => {
 							this.logger.error(
 								`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current and property=${current.id}`,
 								{
@@ -340,6 +364,10 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, lightOn, comp.output);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
+				if (typeof val !== 'boolean') {
+					return;
+				}
+
 				this.handleChange(lightOn, !!val).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${lightOn.id}`,
@@ -375,7 +403,11 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
-					this.handleChange(brightness, clampNumber(Number(val), 0, 100)).catch((err: Error): void => {
+					if (typeof val !== 'number') {
+						return;
+					}
+
+					this.handleChange(brightness, clampNumber(val, 0, 100)).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=brightness and property=${brightness.id}`,
 							{
@@ -456,7 +488,11 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, coverPosition, clampNumber(comp.current_pos, 0, 100));
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|current_pos`, (val: CharacteristicValue): void => {
-				this.handleChange(coverPosition, Number(val)).catch((err: Error): void => {
+				if (typeof val !== 'number') {
+					return;
+				}
+
+				this.handleChange(coverPosition, val).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current_pos and property=${coverPosition.id}`,
 						{
@@ -490,7 +526,7 @@ export class DelegatesManagerService {
 				throw new DevicesShellyNgNotFoundException('Failed to load cover command channel property');
 			}
 
-			await this.setDefaultPropertyValue(device.id, coverState, 'stop');
+			await this.setDefaultPropertyValue(device.id, coverCommand, 'stop');
 
 			this.setHandlers.set(
 				`${delegate.id}|${coverCommand.id}`,
@@ -658,7 +694,11 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, power, comp.apower);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-				this.handleChange(power, Number(val), false).catch((err: Error): void => {
+				if (typeof val !== 'number') {
+					return;
+				}
+
+				this.handleChange(power, val, false).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=apower and property=${power.id}`,
 						{
@@ -683,7 +723,11 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-					this.handleChange(voltage, Number(val), false).catch((err: Error): void => {
+					if (typeof val !== 'number') {
+						return;
+					}
+
+					this.handleChange(voltage, val, false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=voltage and property=${voltage.id}`,
 							{
@@ -709,7 +753,11 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, current, comp.current);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-					this.handleChange(current, Number(val), false).catch((err: Error): void => {
+					if (typeof val !== 'number') {
+						return;
+					}
+
+					this.handleChange(current, val, false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current and property=${current.id}`,
 							{
@@ -746,6 +794,10 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
+					if (typeof val !== 'number') {
+						return;
+					}
+
 					this.handleChange(consumption, toEnergy(val), false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=aenergy and property=${consumption.id}`,
