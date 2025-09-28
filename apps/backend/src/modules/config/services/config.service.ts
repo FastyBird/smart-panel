@@ -109,6 +109,8 @@ export class ConfigService {
 			(acc, plugin) => {
 				acc[plugin.type] = instanceToPlain(plugin);
 
+				delete acc[plugin.type]['type'];
+
 				return acc;
 			},
 			{} as Record<string, any>,
