@@ -1042,6 +1042,10 @@ export class DelegatesManagerService {
 		this.changeHandlers.clear();
 		this.setHandlers.clear();
 		this.propertiesMap.clear();
+
+		for (const pendingWrite of this.pendingWrites.entries()) {
+			clearTimeout(pendingWrite);
+		}
 	}
 
 	destroy(): void {
