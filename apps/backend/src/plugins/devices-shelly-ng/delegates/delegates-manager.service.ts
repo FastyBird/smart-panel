@@ -453,7 +453,7 @@ export class DelegatesManagerService {
 				throw new DevicesShellyNgNotFoundException('Failed to load cover position channel property');
 			}
 
-			await this.setDefaultPropertyValue(device.id, coverState, clampNumber(comp.current_pos, 0, 100));
+			await this.setDefaultPropertyValue(device.id, coverPosition, clampNumber(comp.current_pos, 0, 100));
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|current_pos`, (val: CharacteristicValue): void => {
 				this.handleChange(coverPosition, Number(val)).catch((err: Error): void => {
@@ -615,7 +615,7 @@ export class DelegatesManagerService {
 
 				await this.setDefaultPropertyValue(device.id, battery, clampNumber(comp.battery.percent, 0, 100));
 
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|tC`, (val: CharacteristicValue): void => {
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|battery.percent`, (val: CharacteristicValue): void => {
 					if (typeof val !== 'number') {
 						return;
 					}
