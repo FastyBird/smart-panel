@@ -18,6 +18,7 @@ import {
   mdiRaspberryPi,
 } from "@mdi/js";
 import { Button } from "./_components/button";
+import { ShellyLogoSmall } from "./_components/shelly_logo_small";
 
 export default function LandingPage() {
   return (
@@ -329,7 +330,7 @@ export default function LandingPage() {
             Assistant support.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-4xl mx-auto">
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="bg-white/10 p-6 rounded-xl">
                 <Icon path={mdiLanConnect} size={2} className="text-primary" />
@@ -355,6 +356,18 @@ export default function LandingPage() {
                 Sync with your existing Home Assistant instance and mirror
                 device states, entities, and automations directly into the panel
                 UI.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="bg-white/10 p-6 rounded-xl">
+                <ShellyLogoSmall className="text-primary fill-current w-12 h-12" />
+              </div>
+              <h3 className="text-xl font-semibold">Shelly Next-Generation</h3>
+              <p className="text-white/80">
+                Native support for Shelly Plus & Pro devices. Real-time control,
+                energy monitoring, and discovery — all without cloud
+                dependencies.
               </p>
             </div>
           </div>
