@@ -939,7 +939,7 @@ export class DelegatesManagerService {
 
 			this.writeValueToProperty(property, value).catch((err: Error) => {
 				this.logger.error(
-					`[SHELLY NG][DELEGATES MANAGER] Failed to process scheduled write of value=${value} to property=${property.id}`,
+					`[SHELLY NG][DELEGATES MANAGER] Failed to process scheduled write of value=${safeToString(value)} to property=${property.id}`,
 					{ message: err.message, stack: err.stack },
 				);
 			});
