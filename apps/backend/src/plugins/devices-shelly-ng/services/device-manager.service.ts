@@ -37,6 +37,8 @@ import { ShellyRpcClientService } from './shelly-rpc-client.service';
 export class DeviceManagerService {
 	private readonly logger = new Logger(DeviceManagerService.name);
 
+	private readonly strictSchema: boolean = true;
+
 	constructor(
 		private readonly shellyRpcClientService: ShellyRpcClientService,
 		private readonly devicesService: DevicesService,
@@ -794,6 +796,10 @@ export class DeviceManagerService {
 				this.logger.warn(
 					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for channel category=${category}. Falling back to minimal channel`,
 				);
+
+				if (this.strictSchema) {
+					throw new DevicesShellyNgException('Failed to load specification for channel category');
+				}
 			}
 
 			channel = await this.channelsService.create<ShellyNgChannelEntity, CreateShellyNgChannelDto>({
@@ -848,6 +854,10 @@ export class DeviceManagerService {
 				this.logger.warn(
 					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for channel category=${channel.category}. Falling back to minimal channel`,
 				);
+
+				if (this.strictSchema) {
+					throw new DevicesShellyNgException('Failed to load specification for channel category');
+				}
 			}
 
 			const propertySpec =
@@ -866,6 +876,10 @@ export class DeviceManagerService {
 				this.logger.warn(
 					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for property category=${category}. Falling back to minimal property.`,
 				);
+
+				if (this.strictSchema) {
+					throw new DevicesShellyNgException('Failed to load specification for channel property category');
+				}
 			}
 
 			const inferredType =
