@@ -15,9 +15,9 @@ import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
 import {
 	ComponentType,
 	DESCRIPTORS,
-	DEVICES_SHELLY_NG_TYPE,
 	DeviceDescriptor,
 	DeviceProfile,
+	DEVICES_SHELLY_NG_TYPE,
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { CreateShellyNgChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -791,9 +791,9 @@ export class DeviceManagerService {
 			const channelSpec = channelsSchema[category] as ChannelDefinition | undefined;
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
-				this.logger.warn(`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for channel category=${category}`);
-
-				throw new DevicesShellyNgException('Failed to load specification for channel category');
+				this.logger.warn(
+					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for channel category=${category}. Falling back to minimal channel`,
+				);
 			}
 
 			channel = await this.channelsService.create<ShellyNgChannelEntity, CreateShellyNgChannelDto>({
@@ -846,36 +846,44 @@ export class DeviceManagerService {
 
 			if (!channelSpec || typeof channelSpec !== 'object') {
 				this.logger.warn(
-					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for channel category=${channel.category}`,
+					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for channel category=${channel.category}. Falling back to minimal channel`,
 				);
-
-				throw new DevicesShellyNgException('Failed to load specification for channel category');
 			}
 
-			const propertySpec = channelSpec['properties'][category] as
+			const propertySpec = typeof channelSpec === 'object' ? (channelSpec['properties'][category] as
 				| {
 						permissions: PermissionType[];
 						data_type: DataTypeType;
 						unit: string | null;
 						format: string[] | number[] | null;
 				  }
-				| undefined;
+				| undefined) | undefined;
 
 			if (!propertySpec || typeof propertySpec !== 'object') {
-				this.logger.warn(`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for property category=${category}`);
-
-				throw new DevicesShellyNgException('Failed to load specification for channel property category');
+				this.logger.warn(`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for property category=${category}. Falling back to minimal property.`);
 			}
+
+			const inferredType =
+				typeof value === 'number' ? 'number' :
+					typeof value === 'boolean' ? 'boolean' :
+						typeof value === 'string' ? 'string' : 'mixed';
+
+			const inferredDataType: DataTypeType = propertySpec?.data_type ?? (
+				inferredType === 'number' ? DataTypeType.FLOAT :
+					inferredType === 'boolean' ? DataTypeType.BOOL :
+						inferredType === 'string' ? DataTypeType.STRING : DataTypeType.UNKNOWN);
+
+			const permissions: PermissionType[] = propertySpec?.permissions ?? [PermissionType.READ_WRITE];
 
 			prop = await this.channelsPropertiesService.create<
 				ShellyNgChannelPropertyEntity,
 				CreateShellyNgChannelPropertyDto
 			>(channel.id, {
 				...{
-					permissions: propertySpec.permissions,
-					data_type: propertySpec.data_type,
-					unit: propertySpec.unit,
-					format: propertySpec.format,
+					permissions,
+					data_type: inferredDataType,
+					unit: propertySpec?.unit,
+					format: propertySpec?.format,
 				},
 				type: DEVICES_SHELLY_NG_TYPE,
 				category,

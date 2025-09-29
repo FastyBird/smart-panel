@@ -22,7 +22,14 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
-import { clampNumber, coerceBooleanSafe, coerceNumberSafe, rssiToQuality, toEnergy } from '../utils/transform.utils';
+import {
+	CoerceNumberOpts,
+	clampNumber,
+	coerceBooleanSafe,
+	coerceNumberSafe,
+	rssiToQuality,
+	toEnergy,
+} from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
 
@@ -129,6 +136,10 @@ export class DelegatesManagerService {
 					const n = coerceNumberSafe(val);
 
 					if (n === null || Number.isNaN(n)) {
+						this.logger.warn(
+							`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for link quality -> ${String(val)} (property=${linkQuality.id})`,
+						);
+
 						return;
 					}
 
@@ -219,21 +230,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-					const n = coerceNumberSafe(val);
-
-					if (n === null || Number.isNaN(n)) {
-						return;
-					}
-
-					this.handleChange(consumption, toEnergy(n), false).catch((err: Error): void => {
-						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=aenergy and property=${consumption.id}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-					});
+					this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
+						this.handleChange(consumption, toEnergy(n), false),
+					);
 				});
 			}
 
@@ -262,21 +261,7 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, power, comp.apower);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-					const n = coerceNumberSafe(val);
-
-					if (n === null || Number.isNaN(n)) {
-						return;
-					}
-
-					this.handleChange(power, n, false).catch((err: Error): void => {
-						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=apower and property=${power.id}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-					});
+					this.handleNumericChange(comp.key, 'apower', power.id, val, (n) => this.handleChange(power, n, false));
 				});
 
 				if (typeof comp.voltage !== 'undefined') {
@@ -293,21 +278,7 @@ export class DelegatesManagerService {
 					await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
 
 					this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							return;
-						}
-
-						this.handleChange(voltage, n, false).catch((err: Error): void => {
-							this.logger.error(
-								`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=voltage and property=${voltage.id}`,
-								{
-									message: err.message,
-									stack: err.stack,
-								},
-							);
-						});
+						this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) => this.handleChange(voltage, n, false));
 					});
 				}
 
@@ -325,21 +296,7 @@ export class DelegatesManagerService {
 					await this.setDefaultPropertyValue(device.id, current, comp.current);
 
 					this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							return;
-						}
-
-						this.handleChange(current, n, false).catch((err: Error): void => {
-							this.logger.error(
-								`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current and property=${current.id}`,
-								{
-									message: err.message,
-									stack: err.stack,
-								},
-							);
-						});
+						this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
 					});
 				}
 			}
@@ -405,21 +362,14 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
-					const n = coerceNumberSafe(val);
-
-					if (n === null || Number.isNaN(n)) {
-						return;
-					}
-
-					this.handleChange(brightness, clampNumber(n, 0, 100)).catch((err: Error): void => {
-						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=brightness and property=${brightness.id}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-					});
+					this.handleNumericChange(
+						comp.key,
+						'brightness',
+						brightness.id,
+						val,
+						(n) => this.handleChange(brightness, n, false),
+						{ clamp: { min: 0, max: 100 } },
+					);
 				});
 
 				this.setHandlers.set(
@@ -428,6 +378,10 @@ export class DelegatesManagerService {
 						const n = coerceNumberSafe(val);
 
 						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${compKey}.${attr} -> ${String(val)} (property=${propertyId})`,
+							);
+
 							return;
 						}
 
@@ -494,21 +448,14 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, coverPosition, clampNumber(comp.current_pos, 0, 100));
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|current_pos`, (val: CharacteristicValue): void => {
-				const n = coerceNumberSafe(val);
-
-				if (n === null || Number.isNaN(n)) {
-					return;
-				}
-
-				this.handleChange(coverPosition, n).catch((err: Error): void => {
-					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current_pos and property=${coverPosition.id}`,
-						{
-							message: err.message,
-							stack: err.stack,
-						},
-					);
-				});
+				this.handleNumericChange(
+					comp.key,
+					'current_pos',
+					coverPosition.id,
+					val,
+					(n) => this.handleChange(coverPosition, n, false),
+					{ clamp: { min: 0, max: 100 } },
+				);
 			});
 
 			this.setHandlers.set(
@@ -517,6 +464,10 @@ export class DelegatesManagerService {
 					const n = coerceNumberSafe(val);
 
 					if (n === null || Number.isNaN(n)) {
+						this.logger.warn(
+							`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${compKey}.${attr} -> ${String(val)} (property=${propertyId})`,
+						);
+
 						return;
 					}
 
@@ -579,21 +530,14 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, relativeHumidity, clampNumber(comp.rh, 0, 100));
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|rh`, (val: CharacteristicValue): void => {
-				const n = coerceNumberSafe(val);
-
-				if (n === null || Number.isNaN(n)) {
-					return;
-				}
-
-				this.handleChange(relativeHumidity, clampNumber(n, 0, 100)).catch((err: Error): void => {
-					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=rh and property=${relativeHumidity.id}`,
-						{
-							message: err.message,
-							stack: err.stack,
-						},
-					);
-				});
+				this.handleNumericChange(
+					comp.key,
+					'rh',
+					relativeHumidity.id,
+					val,
+					(n) => this.handleChange(relativeHumidity, n, false),
+					{ clamp: { min: 0, max: 100 } },
+				);
 			});
 		}
 
@@ -622,21 +566,9 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, relativeTemperature, comp.tC);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|tC`, (val: CharacteristicValue): void => {
-				const n = coerceNumberSafe(val);
-
-				if (n === null || Number.isNaN(n)) {
-					return;
-				}
-
-				this.handleChange(relativeTemperature, n).catch((err: Error): void => {
-					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=tC and property=${relativeTemperature.id}`,
-						{
-							message: err.message,
-							stack: err.stack,
-						},
-					);
-				});
+				this.handleNumericChange(comp.key, 'tC', relativeTemperature.id, val, (n) =>
+					this.handleChange(relativeTemperature, n, false),
+				);
 			});
 		}
 
@@ -666,21 +598,14 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, battery, clampNumber(comp.battery.percent, 0, 100));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|battery.percent`, (val: CharacteristicValue): void => {
-					const n = coerceNumberSafe(val);
-
-					if (n === null || Number.isNaN(n)) {
-						return;
-					}
-
-					this.handleChange(battery, clampNumber(n, 0, 100)).catch((err: Error): void => {
-						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=battery.percent and property=${battery.id}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-					});
+					this.handleNumericChange(
+						comp.key,
+						'battery.percent',
+						battery.id,
+						val,
+						(n) => this.handleChange(battery, n, false),
+						{ clamp: { min: 0, max: 100 } },
+					);
 				});
 			}
 		}
@@ -710,21 +635,7 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, power, comp.apower);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-				const n = coerceNumberSafe(val);
-
-				if (n === null || Number.isNaN(n)) {
-					return;
-				}
-
-				this.handleChange(power, n, false).catch((err: Error): void => {
-					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=apower and property=${power.id}`,
-						{
-							message: err.message,
-							stack: err.stack,
-						},
-					);
-				});
+				this.handleNumericChange(comp.key, 'apower', power.id, val, (n) => this.handleChange(power, n, false));
 			});
 
 			if (typeof comp.voltage !== 'undefined') {
@@ -741,21 +652,7 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-					const n = coerceNumberSafe(val);
-
-					if (n === null || Number.isNaN(n)) {
-						return;
-					}
-
-					this.handleChange(voltage, n, false).catch((err: Error): void => {
-						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=voltage and property=${voltage.id}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-					});
+					this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) => this.handleChange(voltage, n, false));
 				});
 			}
 
@@ -773,21 +670,7 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, current, comp.current);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-					const n = coerceNumberSafe(val);
-
-					if (n === null || Number.isNaN(n)) {
-						return;
-					}
-
-					this.handleChange(current, n, false).catch((err: Error): void => {
-						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current and property=${current.id}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-					});
+					this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
 				});
 			}
 
@@ -816,21 +699,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-					const n = coerceNumberSafe(val);
-
-					if (n === null || Number.isNaN(n)) {
-						return;
-					}
-
-					this.handleChange(consumption, toEnergy(n), false).catch((err: Error): void => {
-						this.logger.error(
-							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=aenergy and property=${consumption.id}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-					});
+					this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
+						this.handleChange(consumption, toEnergy(n), false),
+					);
 				});
 			}
 		}
@@ -1025,19 +896,52 @@ export class DelegatesManagerService {
 		return DeviceCategory.GENERIC;
 	}
 
-	private scheduleWrite(property: ShellyNgChannelPropertyEntity, value: string | number | boolean): void {
-		clearTimeout(this.pendingWrites.get(property.id));
+	private handleNumericChange(
+		compKey: string,
+		attr: string,
+		propertyId: string,
+		val: unknown,
+		write: (n: number) => Promise<void>,
+		opts?: CoerceNumberOpts,
+	): void {
+		const n = coerceNumberSafe(val, opts);
 
-		const t = setTimeout((): void => {
-			clearTimeout(this.pendingWrites.get(property.id));
+		if (n === null || Number.isNaN(n)) {
+			this.logger.warn(
+				`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${compKey}.${attr} -> ${String(val)} (property=${propertyId})`,
+			);
+
+			return;
+		}
+
+		void write(n).catch((err: Error) => {
+			this.logger.error(
+				`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${compKey} attribute=${attr} property=${propertyId}`,
+				{ message: err.message, stack: err.stack },
+			);
+		});
+	}
+
+	private scheduleWrite(property: ShellyNgChannelPropertyEntity, value: string | number | boolean): void {
+		const existing = this.pendingWrites.get(property.id);
+
+		if (existing) {
+			clearTimeout(existing);
+		}
+
+		const t = setTimeout(() => {
+			const current = this.pendingWrites.get(property.id);
+
+			if (current) {
+				clearTimeout(current);
+
+				this.pendingWrites.delete(property.id);
+			}
 
 			this.writeValueToProperty(property, value).catch((err: Error) => {
 				this.logger.error(
 					`[SHELLY NG][DELEGATES MANAGER] Failed to process scheduled write of value=${value} to property=${property.id}`,
-					{
-						message: err.message,
-						stack: err.stack,
-					},
+					{ message: err.message, stack: err.stack },
 				);
 			});
 		}, 250);

@@ -1,4 +1,4 @@
-type CoerceNumberOpts = {
+export type CoerceNumberOpts = {
 	clamp?: { min: number; max: number };
 	allowNull?: boolean;
 	round?: boolean;
