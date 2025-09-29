@@ -35,8 +35,8 @@ export class ShellyNgService {
 			throw new DevicesShellyNgException('Shellies instance is already started');
 		}
 
-		if (this.configService.getPluginConfig(DEVICES_SHELLY_NG_PLUGIN_NAME).enabled === false) {
-			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Home Assistant plugin is disabled.');
+		if (this.config.enabled !== true) {
+			this.logger.debug('[SHELLY NG][SHELLY SERVICE] Shelly Next-Generation plugin is disabled.');
 
 			return;
 		}

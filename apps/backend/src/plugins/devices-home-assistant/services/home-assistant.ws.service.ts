@@ -67,9 +67,7 @@ export class HomeAssistantWsService {
 	}
 
 	connect() {
-		if (
-			this.configService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled === false
-		) {
+		if (this.config.enabled !== true) {
 			this.logger.debug('[HOME ASSISTANT][WS SERVICE] Home Assistant plugin is disabled.');
 
 			return;

@@ -22,7 +22,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
-import { clampNumber, rssiToQuality, toEnergy } from '../utils/transform.utils';
+import { clampNumber, coerceBooleanSafe, coerceNumberSafe, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
 
@@ -126,7 +126,9 @@ export class DelegatesManagerService {
 			this.changeHandlers.set(
 				`${delegate.id}|${deviceInformation.identifier}|rssi`,
 				(val: CharacteristicValue): void => {
-					if (typeof val !== 'number') {
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
 						return;
 					}
 
@@ -168,11 +170,7 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, switcherOn, comp.output);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
-				if (typeof val !== 'boolean') {
-					return;
-				}
-
-				this.handleChange(switcherOn, !!val).catch((err: Error): void => {
+				this.handleChange(switcherOn, coerceBooleanSafe(val)).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${switcherOn.id}`,
 						{
@@ -221,7 +219,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-					if (typeof val !== 'number') {
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
 						return;
 					}
 
@@ -262,7 +262,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, power, comp.apower);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-					if (typeof val !== 'number') {
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
 						return;
 					}
 
@@ -291,7 +293,9 @@ export class DelegatesManagerService {
 					await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
 
 					this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-						if (typeof val !== 'number') {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
 							return;
 						}
 
@@ -321,7 +325,9 @@ export class DelegatesManagerService {
 					await this.setDefaultPropertyValue(device.id, current, comp.current);
 
 					this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-						if (typeof val !== 'number') {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
 							return;
 						}
 
@@ -364,11 +370,7 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, lightOn, comp.output);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
-				if (typeof val !== 'boolean') {
-					return;
-				}
-
-				this.handleChange(lightOn, !!val).catch((err: Error): void => {
+				this.handleChange(lightOn, coerceBooleanSafe(val)).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${lightOn.id}`,
 						{
@@ -403,7 +405,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
-					if (typeof val !== 'number') {
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
 						return;
 					}
 
@@ -421,8 +425,10 @@ export class DelegatesManagerService {
 				this.setHandlers.set(
 					`${delegate.id}|${brightness.id}`,
 					async (val: string | number | boolean): Promise<boolean> => {
-						if (typeof val !== 'number') {
-							return false;
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							return;
 						}
 
 						await comp.set(comp.output, clampNumber(val, 0, 100));
@@ -488,7 +494,9 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, coverPosition, clampNumber(comp.current_pos, 0, 100));
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|current_pos`, (val: CharacteristicValue): void => {
-				if (typeof val !== 'number') {
+				const n = coerceNumberSafe(val);
+
+				if (n === null || Number.isNaN(n)) {
 					return;
 				}
 
@@ -506,8 +514,10 @@ export class DelegatesManagerService {
 			this.setHandlers.set(
 				`${delegate.id}|${coverPosition.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
-					if (typeof val !== 'number') {
-						return false;
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
+						return;
 					}
 
 					await comp.goToPosition(clampNumber(val, 0, 100));
@@ -569,7 +579,9 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, relativeHumidity, clampNumber(comp.rh, 0, 100));
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|rh`, (val: CharacteristicValue): void => {
-				if (typeof val !== 'number') {
+				const n = coerceNumberSafe(val);
+
+				if (n === null || Number.isNaN(n)) {
 					return;
 				}
 
@@ -610,7 +622,9 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, relativeTemperature, comp.tC);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|tC`, (val: CharacteristicValue): void => {
-				if (typeof val !== 'number') {
+				const n = coerceNumberSafe(val);
+
+				if (n === null || Number.isNaN(n)) {
 					return;
 				}
 
@@ -652,7 +666,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, battery, clampNumber(comp.battery.percent, 0, 100));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|battery.percent`, (val: CharacteristicValue): void => {
-					if (typeof val !== 'number') {
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
 						return;
 					}
 
@@ -694,7 +710,9 @@ export class DelegatesManagerService {
 			await this.setDefaultPropertyValue(device.id, power, comp.apower);
 
 			this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-				if (typeof val !== 'number') {
+				const n = coerceNumberSafe(val);
+
+				if (n === null || Number.isNaN(n)) {
 					return;
 				}
 
@@ -723,7 +741,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-					if (typeof val !== 'number') {
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
 						return;
 					}
 
@@ -753,7 +773,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, current, comp.current);
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-					if (typeof val !== 'number') {
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
 						return;
 					}
 
@@ -794,7 +816,9 @@ export class DelegatesManagerService {
 				await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
 
 				this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-					if (typeof val !== 'number') {
+					const n = coerceNumberSafe(val);
+
+					if (n === null || Number.isNaN(n)) {
 						return;
 					}
 
@@ -1043,7 +1067,7 @@ export class DelegatesManagerService {
 		this.setHandlers.clear();
 		this.propertiesMap.clear();
 
-		for (const pendingWrite of this.pendingWrites.entries()) {
+		for (const pendingWrite of this.pendingWrites.values()) {
 			clearTimeout(pendingWrite);
 		}
 	}

@@ -156,7 +156,8 @@ export class DevicesHomeAssistantPlugin {
 
 		if (
 			!isCli &&
-			this.appConfigService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled
+			this.appConfigService.getPluginConfig<HomeAssistantConfigModel>(DEVICES_HOME_ASSISTANT_PLUGIN_NAME).enabled ===
+				true
 		) {
 			this.homeAssistantWsService.connect();
 			this.homeAssistantWsService.registerEventsHandler(
