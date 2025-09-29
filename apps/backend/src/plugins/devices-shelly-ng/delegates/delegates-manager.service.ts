@@ -3,7 +3,13 @@ import { CharacteristicValue, Device, Ethernet, WiFi } from 'shellies-ds9';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { toInstance } from '../../../common/utils/transform.utils';
+import {
+	clampNumber,
+	coerceBooleanSafe,
+	coerceNumberSafe,
+	safeToString,
+	toInstance,
+} from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -22,14 +28,7 @@ import {
 	ShellyNgChannelPropertyEntity,
 	ShellyNgDeviceEntity,
 } from '../entities/devices-shelly-ng.entity';
-import {
-	CoerceNumberOpts,
-	clampNumber,
-	coerceBooleanSafe,
-	coerceNumberSafe,
-	rssiToQuality,
-	toEnergy,
-} from '../utils/transform.utils';
+import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate } from './shelly-device.delegate';
 
@@ -136,22 +135,8 @@ export class DelegatesManagerService {
 					const n = coerceNumberSafe(val);
 
 					if (n === null || Number.isNaN(n)) {
-						let safeVal: string;
-
-						if (val === null || val === undefined) {
-							safeVal = String(val as string | number | boolean);
-						} else if (typeof val === 'object') {
-							try {
-								safeVal = JSON.stringify(val);
-							} catch {
-								safeVal = '[unserializable object]';
-							}
-						} else {
-							safeVal = String(val as string | number | boolean);
-						}
-
 						this.logger.warn(
-							`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for link quality -> ${safeVal} (property=${linkQuality.id})`,
+							`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for link quality -> ${safeToString(val)} (property=${linkQuality.id})`,
 						);
 
 						return;
@@ -393,7 +378,7 @@ export class DelegatesManagerService {
 
 						if (n === null || Number.isNaN(n)) {
 							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${compKey}.${attr} -> ${String(val)} (property=${propertyId})`,
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
 							);
 
 							return;
@@ -479,7 +464,7 @@ export class DelegatesManagerService {
 
 					if (n === null || Number.isNaN(n)) {
 						this.logger.warn(
-							`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${compKey}.${attr} -> ${String(val)} (property=${propertyId})`,
+							`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.current_pos -> ${String(val)} (property=${coverPosition.id})`,
 						);
 
 						return;
@@ -921,22 +906,8 @@ export class DelegatesManagerService {
 		const n = coerceNumberSafe(val, opts);
 
 		if (n === null || Number.isNaN(n)) {
-			let safeVal: string;
-
-			if (val === null || val === undefined) {
-				safeVal = String(val as string | number | boolean);
-			} else if (typeof val === 'object') {
-				try {
-					safeVal = JSON.stringify(val);
-				} catch {
-					safeVal = '[unserializable object]';
-				}
-			} else {
-				safeVal = String(val as string | number | boolean);
-			}
-
 			this.logger.warn(
-				`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${compKey}.${attr} -> ${safeVal} (property=${propertyId})`,
+				`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${compKey}.${attr} -> ${safeToString(val)} (property=${propertyId})`,
 			);
 
 			return;
