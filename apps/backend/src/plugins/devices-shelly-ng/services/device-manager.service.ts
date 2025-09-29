@@ -836,7 +836,7 @@ export class DeviceManagerService {
 		if (column === 'category') {
 			if ((identifierOrCategory as PropertyCategory) !== category) {
 				throw new DevicesShellyNgException(
-					'Provided channel property category is mismatched with searched: ${category} vs ${identifierOrCategory}',
+					`Provided channel property category is mismatched with searched: ${category} vs ${identifierOrCategory}`,
 				);
 			}
 		}
