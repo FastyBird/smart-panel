@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { pLimit, retry, withTimeout } from '../../../common/utils/http.utils';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -38,6 +39,10 @@ export class DeviceManagerService {
 	private readonly logger = new Logger(DeviceManagerService.name);
 
 	private readonly strictSchema: boolean = true;
+
+	private timeoutSec: number = 5;
+
+	private rpcConcurrency: number = 1;
 
 	constructor(
 		private readonly shellyRpcClientService: ShellyRpcClientService,
@@ -199,355 +204,299 @@ export class DeviceManagerService {
 			return acc;
 		}, {});
 
+		const limit = pLimit(this.rpcConcurrency);
+
+		const host = device.hostname;
+		const password = device.password;
+
 		for (const [type, ids] of Object.entries(deviceComponents)) {
 			if (
 				type === String(ComponentType.SWITCH) &&
 				(!deviceInfo.profile || deviceInfo.profile === String(DeviceProfile.SWITCH))
 			) {
-				for (const key of ids) {
-					let switchConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getSwitchConfig>>;
-					let switchStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getSwitchStatus>>;
-
-					try {
-						switchConfig = await this.shellyRpcClientService.getSwitchConfig(device.hostname, key, {
-							password: device.password,
-						});
-					} catch (error) {
-						const err = error as Error;
-
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load switch config for device=${device.id} and switch=${key}`,
-							{
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [switchConfig, switchStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getSwitchConfig(host, key, { password }),
+										this.shellyRpcClientService.getSwitchStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`Switch.GetConfig+Switch.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for switch=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
-							},
-						);
+							});
 
-						continue;
-					}
-
-					try {
-						switchStatus = await this.shellyRpcClientService.getSwitchStatus(device.hostname, key, {
-							password: device.password,
-						});
-					} catch (error) {
-						const err = error as Error;
-
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load switch status for device=${device.id} and switch=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-
-						continue;
-					}
-
-					let electricalEnergyChannelName: string | undefined = undefined;
-					let electricalPowerChannelName: string | undefined = undefined;
-
-					if (
-						device.category === DeviceCategory.OUTLET ||
-						device.category === DeviceCategory.SWITCHER ||
-						device.category === DeviceCategory.PUMP
-					) {
-						const switcher = await this.ensureChannel(
-							device,
-							'identifier',
-							`switch:${key}`,
-							ChannelCategory.SWITCHER,
-							switchConfig.name ?? `Switch: ${key}`,
-						);
-						channelsIds.push(switcher.id);
-
-						await this.ensureProperty(switcher, PropertyCategory.ON, 'identifier', 'output', switchStatus.output);
-
-						electricalEnergyChannelName = switchConfig.name
-							? `Consumption: ${switchConfig.name}`
-							: `Switch consumption: ${key}`;
-						electricalPowerChannelName = switchConfig.name ? `Power: ${switchConfig.name}` : `Switch power: ${key}`;
-					} else if (device.category === DeviceCategory.FAN) {
-						const fan = await this.ensureChannel(
-							device,
-							'identifier',
-							`switch:${key}`,
-							ChannelCategory.FAN,
-							switchConfig.name ?? `Fan: ${key}`,
-						);
-						channelsIds.push(fan.id);
-
-						await this.ensureProperty(fan, PropertyCategory.ON, 'identifier', 'output', switchStatus.output);
-
-						electricalEnergyChannelName = switchConfig.name
-							? `Consumption: ${switchConfig.name}`
-							: `Fan consumption: ${key}`;
-						electricalPowerChannelName = switchConfig.name ? `Power: ${switchConfig.name}` : `Fan power: ${key}`;
-					} else if (device.category === DeviceCategory.SPRINKLER || device.category === DeviceCategory.VALVE) {
-						const valve = await this.ensureChannel(
-							device,
-							'identifier',
-							`switch:${key}`,
-							ChannelCategory.VALVE,
-							switchConfig.name ?? `Valve: ${key}`,
-						);
-						channelsIds.push(valve.id);
-
-						await this.ensureProperty(valve, PropertyCategory.ON, 'identifier', 'output', switchStatus.output);
-						await this.ensureProperty(valve, PropertyCategory.TYPE, 'identifier', 'output', 'generic', {
-							format: ['generic', 'irrigation', 'shower_head', 'water_faucet'],
+							throw err;
 						});
 
-						electricalEnergyChannelName = switchConfig.name
+						let cat: ChannelCategory | null = null;
+						let chanName: string;
+
+						if (
+							device.category === DeviceCategory.OUTLET ||
+							device.category === DeviceCategory.SWITCHER ||
+							device.category === DeviceCategory.PUMP
+						) {
+							cat = ChannelCategory.SWITCHER;
+							chanName = switchConfig.name ?? `Switch: ${key}`;
+						} else if (device.category === DeviceCategory.FAN) {
+							cat = ChannelCategory.FAN;
+							chanName = switchConfig.name ?? `Fan: ${key}`;
+						} else if (device.category === DeviceCategory.SPRINKLER || device.category === DeviceCategory.VALVE) {
+							cat = ChannelCategory.VALVE;
+							chanName = switchConfig.name ?? `Valve: ${key}`;
+						} else if (device.category === DeviceCategory.LIGHTING) {
+							cat = ChannelCategory.LIGHT;
+							chanName = switchConfig.name ?? `Light: ${key}`;
+						} else {
+							return;
+						}
+
+						const chan = await this.ensureChannel(device, 'identifier', `switch:${key}`, cat, chanName);
+
+						channelsIds.push(chan.id);
+
+						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', !!switchStatus.output);
+
+						if (cat === ChannelCategory.VALVE) {
+							await this.ensureProperty(chan, PropertyCategory.TYPE, 'identifier', 'output', 'generic', {
+								format: ['generic', 'irrigation', 'shower_head', 'water_faucet'],
+							});
+						}
+
+						const energyName = switchConfig.name
 							? `Consumption: ${switchConfig.name}`
-							: `Valve consumption: ${key}`;
-						electricalPowerChannelName = switchConfig.name ? `Power: ${switchConfig.name}` : `Valve power: ${key}`;
-					} else if (device.category === DeviceCategory.LIGHTING) {
-						const light = await this.ensureChannel(
-							device,
-							'identifier',
-							`switch:${key}`,
-							ChannelCategory.LIGHT,
-							switchConfig.name ?? `Light: ${key}`,
-						);
-						channelsIds.push(light.id);
+							: `${cat === ChannelCategory.LIGHT ? 'Light' : cat === ChannelCategory.FAN ? 'Fan' : cat === ChannelCategory.VALVE ? 'Valve' : 'Switch'} consumption: ${key}`;
 
-						await this.ensureProperty(light, PropertyCategory.ON, 'identifier', 'output', switchStatus.output);
+						const powerName = switchConfig.name
+							? `Power: ${switchConfig.name}`
+							: `${cat === ChannelCategory.LIGHT ? 'Light' : cat === ChannelCategory.FAN ? 'Fan' : cat === ChannelCategory.VALVE ? 'Valve' : 'Switch'} power: ${key}`;
 
-						electricalEnergyChannelName = switchConfig.name
-							? `Consumption: ${switchConfig.name}`
-							: `Light consumption: ${key}`;
-						electricalPowerChannelName = switchConfig.name ? `Power: ${switchConfig.name}` : `Light power: ${key}`;
-					} else {
-						continue;
-					}
+						const ee = await this.ensureElectricalEnergy(device, key, switchStatus, energyName);
 
-					const eeResult = await this.ensureElectricalEnergy(device, key, switchStatus, electricalEnergyChannelName);
+						if (ee) {
+							channelsIds.push(ee.channel.id);
+						}
 
-					if (eeResult) {
-						channelsIds.push(eeResult.channel.id);
-					}
+						const ep = await this.ensureElectricalPower(device, key, switchStatus, powerName);
 
-					const epResult = await this.ensureElectricalPower(device, key, switchStatus, electricalPowerChannelName);
+						if (ep) {
+							channelsIds.push(ep.channel.id);
+						}
+					}),
+				);
 
-					if (epResult) {
-						channelsIds.push(epResult.channel.id);
-					}
+				const settled = await Promise.allSettled(tasks);
+
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} switch component(s) failed for device=${device.id}`,
+					);
 				}
 			} else if (type === String(ComponentType.COVER) && deviceInfo.profile === String(DeviceProfile.COVER)) {
-				for (const key of ids) {
-					let coverConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getCoverConfig>>;
-					let coverStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getCoverStatus>>;
-
-					try {
-						coverConfig = await this.shellyRpcClientService.getCoverConfig(device.hostname, key, {
-							password: device.password,
-						});
-					} catch (error) {
-						const err = error as Error;
-
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load cover config for device=${device.id} and cover=${key}`,
-							{
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [coverConfig, coverStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getCoverConfig(host, key, { password }),
+										this.shellyRpcClientService.getCoverStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`Cover.GetConfig+Cover.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for cover=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
-							},
-						);
+							});
 
-						continue;
-					}
-
-					try {
-						coverStatus = await this.shellyRpcClientService.getCoverStatus(device.hostname, key, {
-							password: device.password,
+							throw err;
 						});
-					} catch (error) {
-						const err = error as Error;
 
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load cover status for device=${device.id} and cover=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
+						const chan = await this.ensureChannel(
+							device,
+							'identifier',
+							`cover:${key}`,
+							ChannelCategory.WINDOW_COVERING,
+							coverConfig.name ?? `Cover: ${key}`,
 						);
 
-						continue;
-					}
+						channelsIds.push(chan.id);
 
-					const cover = await this.ensureChannel(
-						device,
-						'identifier',
-						`cover:${key}`,
-						ChannelCategory.WINDOW_COVERING,
-						coverConfig.name ?? `Cover: ${key}`,
+						await this.ensureProperty(chan, PropertyCategory.STATUS, 'identifier', 'state', coverStatus.state);
+
+						await this.ensureProperty(
+							chan,
+							PropertyCategory.POSITION,
+							'identifier',
+							'current_pos',
+							coverStatus.current_pos,
+						);
+
+						await this.ensureProperty(chan, PropertyCategory.COMMAND, 'category', PropertyCategory.COMMAND, 'stop');
+
+						const ee = await this.ensureElectricalEnergy(
+							device,
+							key,
+							coverStatus,
+							coverConfig.name ? `Consumption: ${coverConfig.name}` : `Cover consumption: ${key}`,
+						);
+
+						if (ee) {
+							channelsIds.push(ee.channel.id);
+						}
+
+						const ep = await this.ensureElectricalPower(
+							device,
+							key,
+							coverStatus,
+							coverConfig.name ? `Power: ${coverConfig.name}` : `Cover power: ${key}`,
+						);
+
+						if (ep) {
+							channelsIds.push(ep.channel.id);
+						}
+					}),
+				);
+
+				const settled = await Promise.allSettled(tasks);
+
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} cover component(s) failed for device=${device.id}`,
 					);
-					channelsIds.push(cover.id);
-
-					await this.ensureProperty(cover, PropertyCategory.STATUS, 'identifier', 'state', coverStatus.state);
-
-					await this.ensureProperty(
-						cover,
-						PropertyCategory.POSITION,
-						'identifier',
-						'current_pos',
-						coverStatus.current_pos,
-					);
-
-					await this.ensureProperty(cover, PropertyCategory.COMMAND, 'category', PropertyCategory.COMMAND, 'stop');
-
-					const eeResult = await this.ensureElectricalEnergy(
-						device,
-						key,
-						coverStatus,
-						coverConfig.name ? `Consumption: ${coverConfig.name}` : `Cover consumption: ${key}`,
-					);
-
-					if (eeResult) {
-						channelsIds.push(eeResult.channel.id);
-					}
-
-					const epResult = await this.ensureElectricalPower(
-						device,
-						key,
-						coverStatus,
-						coverConfig.name ? `Power: ${coverConfig.name}` : `Cover power: ${key}`,
-					);
-
-					if (epResult) {
-						channelsIds.push(epResult.channel.id);
-					}
 				}
 			} else if (type === String(ComponentType.LIGHT)) {
-				for (const key of ids) {
-					let lightConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getLightConfig>>;
-					let lightStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getLightStatus>>;
-
-					try {
-						lightConfig = await this.shellyRpcClientService.getLightConfig(device.hostname, key, {
-							password: device.password,
-						});
-					} catch (error) {
-						const err = error as Error;
-
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load light config for device=${device.id} and light=${key}`,
-							{
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [lightConfig, lightStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getLightConfig(host, key, { password }),
+										this.shellyRpcClientService.getLightStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`Light.GetConfig+Light.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for light=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
-							},
-						);
+							});
 
-						continue;
-					}
-
-					try {
-						lightStatus = await this.shellyRpcClientService.getLightStatus(device.hostname, key, {
-							password: device.password,
+							throw err;
 						});
-					} catch (error) {
-						const err = error as Error;
 
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load light status for device=${device.id} and light=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
-
-						continue;
-					}
-
-					const light = await this.ensureChannel(
-						device,
-						'identifier',
-						`light:${key}`,
-						ChannelCategory.LIGHT,
-						lightConfig.name ?? `Light: ${key}`,
-					);
-					channelsIds.push(light.id);
-
-					await this.ensureProperty(light, PropertyCategory.ON, 'identifier', 'output', lightStatus.output);
-
-					if (typeof lightStatus.brightness !== 'undefined') {
-						await this.ensureProperty(
-							light,
-							PropertyCategory.BRIGHTNESS,
+						const chan = await this.ensureChannel(
+							device,
 							'identifier',
-							'brightness',
-							lightStatus.brightness,
+							`light:${key}`,
+							ChannelCategory.LIGHT,
+							lightConfig.name ?? `Light: ${key}`,
 						);
-					}
 
-					const eeResult = await this.ensureElectricalEnergy(
-						device,
-						key,
-						lightStatus,
-						lightConfig.name ? `Consumption: ${lightConfig.name}` : `Light consumption: ${key}`,
+						channelsIds.push(chan.id);
+
+						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', lightStatus.output);
+
+						if (typeof lightStatus.brightness !== 'undefined') {
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.BRIGHTNESS,
+								'identifier',
+								'brightness',
+								lightStatus.brightness,
+							);
+						}
+
+						const ee = await this.ensureElectricalEnergy(
+							device,
+							key,
+							lightStatus,
+							lightConfig.name ? `Consumption: ${lightConfig.name}` : `Light consumption: ${key}`,
+						);
+
+						if (ee) {
+							channelsIds.push(ee.channel.id);
+						}
+
+						const ep = await this.ensureElectricalPower(
+							device,
+							key,
+							lightStatus,
+							lightConfig.name ? `Power: ${lightConfig.name}` : `Light power: ${key}`,
+						);
+
+						if (ep) {
+							channelsIds.push(ep.channel.id);
+						}
+					}),
+				);
+
+				const settled = await Promise.allSettled(tasks);
+
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} light component(s) failed for device=${device.id}`,
 					);
-
-					if (eeResult) {
-						channelsIds.push(eeResult.channel.id);
-					}
-
-					const epResult = await this.ensureElectricalPower(
-						device,
-						key,
-						lightStatus,
-						lightConfig.name ? `Power: ${lightConfig.name}` : `Light power: ${key}`,
-					);
-
-					if (epResult) {
-						channelsIds.push(epResult.channel.id);
-					}
 				}
 			} else if (type === String(ComponentType.INPUT)) {
-				for (const key of ids) {
-					let inputConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getInputConfig>>;
-					let inputStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getInputStatus>>;
-
-					try {
-						inputConfig = await this.shellyRpcClientService.getInputConfig(device.hostname, key, {
-							password: device.password,
-						});
-					} catch (error) {
-						const err = error as Error;
-
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load input status for device=${device.id} and input=${key}`,
-							{
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [inputConfig, inputStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getInputConfig(host, key, { password }),
+										this.shellyRpcClientService.getInputStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`Input.GetConfig+Input.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for input=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
-							},
-						);
+							});
 
-						continue;
-					}
-
-					try {
-						inputStatus = await this.shellyRpcClientService.getInputStatus(device.hostname, key, {
-							password: device.password,
+							throw err;
 						});
-					} catch (error) {
-						const err = error as Error;
 
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load input status for device=${device.id} and input=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
+						// TODO: To be implemented in the future
+						this.logger.debug(
+							`[SHELLY NG][DEVICE MANAGER] Received device input status for input=${key}`,
+							inputConfig,
+							inputStatus,
 						);
+					}),
+				);
 
-						continue;
-					}
+				const settled = await Promise.allSettled(tasks);
 
-					// TODO: To be implemented in the future
-					this.logger.debug(
-						`[SHELLY NG][DEVICE MANAGER] Received device input status for input=${key}`,
-						inputConfig,
-						inputStatus,
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} input component(s) failed for device=${device.id}`,
 					);
 				}
 			} else if (type === String(ComponentType.DEVICE_POWER)) {
@@ -592,167 +541,145 @@ export class DeviceManagerService {
 					}
 				}
 			} else if (type === String(ComponentType.HUMIDITY)) {
-				for (const key of ids) {
-					let humidityConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getHumidityConfig>>;
-					let humidityStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getHumidityStatus>>;
-
-					try {
-						humidityConfig = await this.shellyRpcClientService.getHumidityConfig(device.hostname, key, {
-							password: device.password,
-						});
-					} catch (error) {
-						const err = error as Error;
-
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load humidity config for device=${device.id} and humidity=${key}`,
-							{
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [humidityConfig, humidityStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getHumidityConfig(host, key, { password }),
+										this.shellyRpcClientService.getHumidityStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`Humidity.GetConfig+Humidity.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for humidity=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
-							},
-						);
+							});
 
-						continue;
-					}
-
-					try {
-						humidityStatus = await this.shellyRpcClientService.getHumidityStatus(device.hostname, key, {
-							password: device.password,
+							throw err;
 						});
-					} catch (error) {
-						const err = error as Error;
 
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load humidity status for device=${device.id} and humidity=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
+						const chan = await this.ensureChannel(
+							device,
+							'identifier',
+							`humidity:${key}`,
+							ChannelCategory.HUMIDITY,
+							humidityConfig.name ?? `Humidity: ${key}`,
 						);
 
-						continue;
-					}
+						channelsIds.push(chan.id);
 
-					const humidity = await this.ensureChannel(
-						device,
-						'identifier',
-						`humidity:${key}`,
-						ChannelCategory.HUMIDITY,
-						humidityConfig.name ?? `Humidity: ${key}`,
+						await this.ensureProperty(chan, PropertyCategory.HUMIDITY, 'identifier', 'rh', humidityStatus.rh);
+					}),
+				);
+
+				const settled = await Promise.allSettled(tasks);
+
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} humidity component(s) failed for device=${device.id}`,
 					);
-					channelsIds.push(humidity.id);
-
-					await this.ensureProperty(humidity, PropertyCategory.HUMIDITY, 'identifier', 'rh', humidityStatus.rh);
 				}
 			} else if (type === String(ComponentType.TEMPERATURE)) {
-				for (const key of ids) {
-					let temperatureConfig: Awaited<ReturnType<typeof this.shellyRpcClientService.getTemperatureConfig>>;
-					let temperatureStatus: Awaited<ReturnType<typeof this.shellyRpcClientService.getTemperatureStatus>>;
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [temperatureConfig, temperatureStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getTemperatureConfig(host, key, { password }),
+										this.shellyRpcClientService.getTemperatureStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`Temperature.GetConfig+Temperature.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(
+								`[SHELLY NG][DEVICE MANAGER] Failed load for temperature=${key} on device=${device.id}`,
+								{
+									message: err.message,
+									stack: err.stack,
+								},
+							);
 
-					try {
-						temperatureConfig = await this.shellyRpcClientService.getTemperatureConfig(device.hostname, key, {
-							password: device.password,
+							throw err;
 						});
-					} catch (error) {
-						const err = error as Error;
 
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load temperature config for device=${device.id} and temperature=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
+						const chan = await this.ensureChannel(
+							device,
+							'identifier',
+							`temperature:${key}`,
+							ChannelCategory.TEMPERATURE,
+							temperatureConfig.name ?? `Temperature: ${key}`,
 						);
 
-						continue;
-					}
+						channelsIds.push(chan.id);
 
-					try {
-						temperatureStatus = await this.shellyRpcClientService.getTemperatureStatus(device.hostname, key, {
-							password: device.password,
-						});
-					} catch (error) {
-						const err = error as Error;
+						await this.ensureProperty(chan, PropertyCategory.TEMPERATURE, 'identifier', 'tC', temperatureStatus.tC);
+					}),
+				);
 
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load temperature status for device=${device.id} and temperature=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
+				const settled = await Promise.allSettled(tasks);
 
-						continue;
-					}
+				const failed = settled.filter((r) => r.status === 'rejected').length;
 
-					const temperature = await this.ensureChannel(
-						device,
-						'identifier',
-						`temperature:${key}`,
-						ChannelCategory.TEMPERATURE,
-						temperatureConfig.name ?? `Temperature: ${key}`,
-					);
-					channelsIds.push(temperature.id);
-
-					await this.ensureProperty(
-						temperature,
-						PropertyCategory.TEMPERATURE,
-						'identifier',
-						'tC',
-						temperatureStatus.tC,
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} temperature component(s) failed for device=${device.id}`,
 					);
 				}
 			} else if (type === String(ComponentType.PM)) {
-				for (const key of ids) {
-					let pm1Config: Awaited<ReturnType<typeof this.shellyRpcClientService.getPm1Config>>;
-					let pm1Status: Awaited<ReturnType<typeof this.shellyRpcClientService.getPm1Status>>;
-
-					try {
-						pm1Config = await this.shellyRpcClientService.getPm1Config(device.hostname, key, {
-							password: device.password,
-						});
-					} catch (error) {
-						const err = error as Error;
-
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load PM1 config for device=${device.id} and pm1=${key}`,
-							{
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [pm1Config, pm1Status] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getPm1Config(host, key, { password }),
+										this.shellyRpcClientService.getPm1Status(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`Pm1.GetConfig+Pm1.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for pm1=${key} on device=${device.id}`, {
 								message: err.message,
 								stack: err.stack,
-							},
-						);
+							});
 
-						continue;
-					}
-
-					try {
-						pm1Status = await this.shellyRpcClientService.getPm1Status(device.hostname, key, {
-							password: device.password,
+							throw err;
 						});
-					} catch (error) {
-						const err = error as Error;
 
-						this.logger.error(
-							`[SHELLY NG][DEVICE MANAGER] Failed to load PM1 status for device=${device.id} and pm1=${key}`,
-							{
-								message: err.message,
-								stack: err.stack,
-							},
-						);
+						const eeResult = await this.ensureElectricalEnergy(device, key, pm1Status, pm1Config.name ?? undefined);
 
-						continue;
-					}
+						if (eeResult) {
+							channelsIds.push(eeResult.channel.id);
+						}
 
-					const eeResult = await this.ensureElectricalEnergy(device, key, pm1Status, pm1Config.name ?? undefined);
+						const epResult = await this.ensureElectricalPower(device, key, pm1Status, pm1Config.name ?? undefined);
 
-					if (eeResult) {
-						channelsIds.push(eeResult.channel.id);
-					}
+						if (epResult) {
+							channelsIds.push(epResult.channel.id);
+						}
+					}),
+				);
 
-					const epResult = await this.ensureElectricalPower(device, key, pm1Status, pm1Config.name ?? undefined);
+				const settled = await Promise.allSettled(tasks);
 
-					if (epResult) {
-						channelsIds.push(epResult.channel.id);
-					}
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} pm1 component(s) failed for device=${device.id}`,
+					);
 				}
 			}
 		}
