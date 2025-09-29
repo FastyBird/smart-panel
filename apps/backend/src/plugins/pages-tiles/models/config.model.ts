@@ -5,7 +5,7 @@ import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { PAGES_TILES_PLUGIN_NAME } from '../pages-tiles.constants';
 
 export class TilesConfigModel extends PluginConfigModel {
-	@Expose({ groups: ['api'] })
+	@Expose()
 	@IsString()
 	type: string = PAGES_TILES_PLUGIN_NAME;
 

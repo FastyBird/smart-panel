@@ -78,12 +78,47 @@ export class DevicesService {
 			.getOne()) as TDevice | null;
 
 		if (!device) {
-			this.logger.warn(`[LOOKUP] Page with id=${id} not found`);
+			this.logger.debug(`[LOOKUP] Device with id=${id} not found`);
 
 			return null;
 		}
 
 		this.logger.debug(`[LOOKUP] Successfully fetched device with id=${id}`);
+
+		return device;
+	}
+
+	async findOneBy<TDevice extends DeviceEntity>(
+		column: 'id' | 'category' | 'identifier' | 'name',
+		value: string | number | boolean,
+		type?: string,
+	): Promise<TDevice | null> {
+		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		this.logger.debug(`[LOOKUP] Fetching device with ${column}=${value}`);
+
+		const device = (await repository
+			.createQueryBuilder('device')
+			.leftJoinAndSelect('device.controls', 'controls')
+			.leftJoinAndSelect('controls.device', 'controlDevice')
+			.leftJoinAndSelect('device.channels', 'channels')
+			.leftJoinAndSelect('channels.device', 'channelDevice')
+			.leftJoinAndSelect('channels.controls', 'channelControls')
+			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
+			.leftJoinAndSelect('channels.properties', 'channelProperties')
+			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
+			.where(`device.${column} = :filterBy`, { filterBy: value })
+			.getOne()) as TDevice | null;
+
+		if (!device) {
+			this.logger.debug(`[LOOKUP] Device with ${column}=${value} not found`);
+
+			return null;
+		}
+
+		this.logger.debug(`[LOOKUP] Successfully fetched device with ${column}=${value}`);
 
 		return device;
 	}
@@ -164,7 +199,7 @@ export class DevicesService {
 
 	async update<TDevice extends DeviceEntity, TUpdateDTO extends UpdateDeviceDto>(
 		id: string,
-		updateDto: UpdateDeviceDto,
+		updateDto: TUpdateDTO,
 	): Promise<TDevice> {
 		this.logger.debug(`[UPDATE] Updating device with id=${id}`);
 

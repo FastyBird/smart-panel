@@ -5,9 +5,9 @@ import type { MediaType } from 'openapi-typescript-helpers';
 
 import type { paths } from '../../openapi';
 
-export const backendKey: InjectionKey<Client<paths, MediaType> | undefined> = Symbol('FB-App-Backend');
+export const backendKey: InjectionKey<Client<object, MediaType> | undefined> = Symbol('FB-App-Backend');
 
-export const injectBackendClient = (app?: App): Client<paths> => {
+export const injectBackendClient = <Paths extends object = paths>(app?: App): Client<Paths> => {
 	if (app && app._context && app._context.provides && app._context.provides[backendKey]) {
 		return app._context.provides[backendKey];
 	}
@@ -16,13 +16,13 @@ export const injectBackendClient = (app?: App): Client<paths> => {
 		const backend = _inject(backendKey, undefined);
 
 		if (backend) {
-			return backend;
+			return backend as Client<Paths, MediaType>;
 		}
 	}
 
 	throw new Error('A backend client has not been provided.');
 };
 
-export const provideBackendClient = (app: App, backend: Client<paths>): void => {
-	app.provide(backendKey, backend);
+export const provideBackendClient = <Paths extends object = paths>(app: App, backend: Client<Paths, MediaType>): void => {
+	app.provide(backendKey, backend as Client<Paths, MediaType>);
 };

@@ -92,7 +92,7 @@ export class CardsPageNestedBuilderService implements IPageNestedCreateBuilder {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`[PAGES CARDS][NESTED BUILDER SERVICE] ${JSON.stringify(errors)}`);
 
 			throw new PagesCardsValidationException('Provided card data are invalid.');
 		}

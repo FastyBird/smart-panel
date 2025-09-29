@@ -50,6 +50,7 @@ describe('ChannelsControlsService', () => {
 		id: uuid().toString(),
 		type: 'mock',
 		category: ChannelCategory.GENERIC,
+		identifier: null,
 		name: 'Test Channel',
 		description: 'Test description',
 		createdAt: new Date(),

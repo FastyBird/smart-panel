@@ -5,5 +5,10 @@
     :deep(.el-collapse-item__header) {
       width: auto;
     }
+
+    :deep(.el-radio-button__inner) {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
   }
 }

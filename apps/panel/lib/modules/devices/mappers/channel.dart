@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/home_assistant_channel.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/channels/shelly_ng_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/third_party_channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
@@ -56,6 +57,9 @@ Map<String, ChannelModel Function(Map<String, dynamic>)> channelModelMappers = {
   },
   DeviceType.devicesHomeAssistant.value: (data) {
     return HomeAssistantChannelModel.fromJson(data);
+  },
+  DeviceType.devicesShellyNg.value: (data) {
+    return ShellyNgChannelModel.fromJson(data);
   },
 };
 

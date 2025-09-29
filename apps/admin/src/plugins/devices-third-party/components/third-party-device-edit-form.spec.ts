@@ -65,7 +65,7 @@ describe('ThirdPartyDeviceEditForm', () => {
 	it('renders form fields', () => {
 		expect(wrapper.find('input[name="id"]').exists()).toBe(true);
 		expect(wrapper.find('input[name="name"]').exists()).toBe(true);
-		expect(wrapper.find('textarea[name="description"]').exists()).toBe(true);
+		expect(wrapper.find('textarea').exists()).toBe(true);
 		expect(wrapper.find('input[name="serviceAddress"]').exists()).toBe(true);
 	});
 

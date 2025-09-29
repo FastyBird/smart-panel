@@ -100,7 +100,7 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.warn(`[LOOKUP] Property with id=${id} for channelId=${channelId} not found`);
+				this.logger.debug(`[LOOKUP] Property with id=${id} for channelId=${channelId} not found`);
 
 				return null;
 			}
@@ -115,12 +115,62 @@ export class ChannelsPropertiesService {
 				.getOne()) as TProperty | null;
 
 			if (!property) {
-				this.logger.warn(`[LOOKUP] Property with id=${id} not found`);
+				this.logger.debug(`[LOOKUP] Property with id=${id} not found`);
 
 				return null;
 			}
 
 			this.logger.debug(`[LOOKUP] Successfully fetched property with id=${id}`);
+		}
+
+		return property;
+	}
+
+	async findOneBy<TProperty extends ChannelPropertyEntity>(
+		column: 'id' | 'category' | 'identifier' | 'name',
+		value: string | number | boolean,
+		channelId?: string,
+		type?: string,
+	): Promise<TProperty | null> {
+		const mapping = type ? this.propertiesMapperService.getMapping<TProperty, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		let property: TProperty | null;
+
+		if (channelId) {
+			this.logger.debug(`[LOOKUP] Fetching property with ${column}=${value} for channelId=${channelId}`);
+
+			property = (await repository
+				.createQueryBuilder('property')
+				.innerJoinAndSelect('property.channel', 'channel')
+				.innerJoinAndSelect('channel.device', 'device')
+				.where(`property.${column} = :filterBy`, { filterBy: value })
+				.andWhere('channel.id = :channelId', { channelId })
+				.getOne()) as TProperty | null;
+
+			if (!property) {
+				this.logger.debug(`[LOOKUP] Property with ${column}=${value} for channelId=${channelId} not found`);
+
+				return null;
+			}
+
+			this.logger.debug(`[LOOKUP] Successfully fetched property with ${column}=${value} for channelId=${channelId}`);
+		} else {
+			property = (await repository
+				.createQueryBuilder('property')
+				.innerJoinAndSelect('property.channel', 'channel')
+				.innerJoinAndSelect('channel.device', 'device')
+				.where(`property.${column} = :filterBy`, { filterBy: value })
+				.getOne()) as TProperty | null;
+
+			if (!property) {
+				this.logger.debug(`[LOOKUP] Property with ${column}=${value} not found`);
+
+				return null;
+			}
+
+			this.logger.debug(`[LOOKUP] Successfully fetched property with ${column}=${value}`);
 		}
 
 		return property;

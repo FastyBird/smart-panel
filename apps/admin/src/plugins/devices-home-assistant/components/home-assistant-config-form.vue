@@ -10,18 +10,17 @@
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.config.enabled.title')"
 			prop="enabled"
+			label-position="left"
 		>
 			<el-switch
 				v-model="model.enabled"
 				name="enabled"
-				:active-text="t('devicesHomeAssistantPlugin.fields.config.enabled.values.enabled').toLowerCase()"
-				:inactive-text="t('devicesHomeAssistantPlugin.fields.config.enabled.values.disabled').toLowerCase()"
 			/>
 		</el-form-item>
 
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.config.apiKey.title')"
-			:prop="['apiKey']"
+			prop="apiKey"
 		>
 			<el-input
 				v-model="model.apiKey"
@@ -29,19 +28,17 @@
 				name="apiKey"
 				:rows="4"
 				type="textarea"
-				size="large"
 			/>
 		</el-form-item>
 
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.config.hostname.title')"
-			:prop="['hostname']"
+			prop="hostname"
 		>
 			<el-input
 				v-model="model.hostname"
 				:placeholder="t('devicesHomeAssistantPlugin.fields.config.hostname.placeholder')"
 				name="hostname"
-				size="large"
 			/>
 		</el-form-item>
 	</el-form>
@@ -80,6 +77,10 @@ const { t } = useI18n();
 
 const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IHomeAssistantConfigEditForm>({
 	config: props.config,
+	messages: {
+		success: t('devicesHomeAssistantPlugin.messages.config.edited'),
+		error: t('devicesHomeAssistantPlugin.messages.config.notEdited'),
+	},
 });
 
 const rules = reactive<FormRules<IHomeAssistantConfigEditForm>>({

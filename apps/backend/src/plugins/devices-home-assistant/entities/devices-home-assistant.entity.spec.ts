@@ -10,6 +10,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import type { components } from '../../../openapi';
+import { DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 
 import {
 	HomeAssistantChannelEntity,
@@ -46,10 +47,12 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 	test('HomeAssistantDeviceEntity matches HomeAssistantDevicesDevice', () => {
 		const openApiModel: HomeAssistantPluginHomeAssistantDevice = {
 			id: uuid().toString(),
-			type: 'device',
+			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: DeviceCategory.GENERIC,
+			identifier: null,
 			name: 'Thermostat',
 			description: 'Living room thermostat',
+			enabled: true,
 			controls: [],
 			channels: [],
 			created_at: new Date().toISOString(),
@@ -71,8 +74,9 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 	test('ChannelEntity matches DevicesChannel', () => {
 		const openApiModel: HomeAssistantPluginHomeAssistantChannel = {
 			id: uuid().toString(),
-			type: 'channel',
+			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: ChannelCategory.GENERIC,
+			identifier: null,
 			name: 'Temperature Sensor',
 			description: 'Living room temperature sensor',
 			device: uuid().toString(),
@@ -96,8 +100,9 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 	test('ChannelPropertyEntity matches DevicesChannelProperty', () => {
 		const openApiModel: HomeAssistantPluginHomeAssistantChannelProperty = {
 			id: uuid().toString(),
-			type: 'property',
+			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: PropertyCategory.GENERIC,
+			identifier: null,
 			name: 'Thermostat Mode',
 			permissions: [PermissionType.READ_ONLY],
 			data_type: DataTypeType.STRING,

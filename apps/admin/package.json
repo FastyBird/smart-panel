@@ -70,7 +70,7 @@
     "@vueuse/core": "^12.8",
     "async-validator": "^4.2",
     "date-fns": "^4.1",
-    "element-plus": "^2.9",
+    "element-plus": "^2.11",
     "gridstack": "^12.0",
     "i18n-iso-countries": "^7.14.0",
     "jwt-decode": "^4.0",

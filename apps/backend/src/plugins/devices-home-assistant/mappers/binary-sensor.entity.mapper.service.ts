@@ -279,7 +279,7 @@ export class BinarySensorEntityMapperService extends EntityMapper {
 			}
 		}
 
-		this.logger.warn(`[BINARY SENSOR ENTITY MAPPER] Invalid ${context} value: ${raw}`);
+		this.logger.warn(`[HOME ASSISTANT][BINARY SENSOR ENTITY MAPPER] Invalid ${context} value: ${raw}`);
 
 		return null;
 	}

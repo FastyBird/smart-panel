@@ -27,7 +27,7 @@ async function bootstrap() {
 
 	const logLevels =
 		(process.env.FB_LOG_LEVEL?.split(',') as LogLevel[]) ??
-		(isProduction ? ['log', 'warn', 'error', 'fatal'] : ['verbose', 'debug', 'log', 'warn', 'error', 'fatal']);
+		(isProduction ? ['log', 'warn', 'error', 'fatal'] : [/*'verbose', 'debug', */ 'log', 'warn', 'error', 'fatal']);
 
 	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
 		logger: logLevels.filter((level): level is LogLevel => validLogLevels.includes(level)),

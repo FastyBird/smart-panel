@@ -161,7 +161,7 @@ export class UsersService {
 		const user = await this.repository.findOne({ where: { [field]: value } });
 
 		if (!user) {
-			this.logger.warn(`[LOOKUP] User with ${field}=${value} not found`);
+			this.logger.debug(`[LOOKUP] User with ${field}=${value} not found`);
 
 			return null;
 		}

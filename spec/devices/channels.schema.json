@@ -91,6 +91,7 @@
                     "color_red",
                     "color_temperature",
                     "color_white",
+                    "command",
                     "connection_type",
                     "consumption",
                     "current",

@@ -3150,21 +3150,6 @@
   "window_covering": {
     "category": "window_covering",
     "properties": {
-      "obstruction": {
-        "category": "obstruction",
-        "required": true,
-        "description": {
-          "en": ""
-        },
-        "permissions": [
-          "ro"
-        ],
-        "data_type": "bool",
-        "unit": null,
-        "format": null,
-        "invalid": null,
-        "step": null
-      },
       "status": {
         "category": "status",
         "required": true,
@@ -3195,15 +3180,14 @@
         "permissions": [
           "rw"
         ],
-        "data_type": "enum",
-        "unit": null,
+        "data_type": "uchar",
+        "unit": "%",
         "format": [
-          "open",
-          "close",
-          "stop"
+          0,
+          100
         ],
         "invalid": null,
-        "step": null
+        "step": 1
       },
       "type": {
         "category": "type",
@@ -3225,23 +3209,39 @@
         "invalid": null,
         "step": null
       },
-      "percentage": {
-        "category": "percentage",
+      "command": {
+        "category": "command",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "wo"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "open",
+          "close",
+          "stop"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "obstruction": {
+        "category": "obstruction",
         "required": false,
         "description": {
           "en": ""
         },
         "permissions": [
-          "rw"
+          "ro"
         ],
-        "data_type": "uchar",
-        "unit": "%",
-        "format": [
-          0,
-          100
-        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
         "invalid": null,
-        "step": 1
+        "step": null
       },
       "tilt": {
         "category": "tilt",

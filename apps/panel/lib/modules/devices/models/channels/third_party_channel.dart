@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/channels/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 
 class ThirdPartyChannelModel extends ChannelModel {
   ThirdPartyChannelModel({
@@ -14,7 +15,7 @@ class ThirdPartyChannelModel extends ChannelModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: 'devices-third-party-plugin',
+          type: DeviceType.devicesThirdParty.value,
         );
 
   factory ThirdPartyChannelModel.fromJson(Map<String, dynamic> json) {

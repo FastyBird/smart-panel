@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/data_types.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
 class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
@@ -22,7 +23,7 @@ class ThirdPartyChannelPropertyModel extends ChannelPropertyModel {
     super.createdAt,
     super.updatedAt,
   }) : super(
-          type: 'devices-third-party-plugin',
+          type: DeviceType.devicesThirdParty.value,
         );
 
   factory ThirdPartyChannelPropertyModel.fromJson(Map<String, dynamic> json) {

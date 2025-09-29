@@ -86,7 +86,7 @@ export class PropertyValueService {
 			const result = await this.influxDbService.query<{ stringValue?: string; numberValue?: number }>(query);
 
 			if (!result.length) {
-				this.logger.warn(`[PROPERTY] No stored value found for id=${property.id}`);
+				this.logger.debug(`[PROPERTY] No stored value found for id=${property.id}`);
 
 				return null;
 			}

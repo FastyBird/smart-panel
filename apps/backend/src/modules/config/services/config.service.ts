@@ -107,7 +107,13 @@ export class ConfigService {
 		// Transform plugins
 		plainAppConfig.plugins = appConfig.plugins.reduce(
 			(acc, plugin) => {
-				acc[plugin.type] = instanceToPlain(plugin);
+				const pluginConfig = instanceToPlain(plugin);
+
+				if ('type' in pluginConfig) {
+					delete pluginConfig['type'];
+				}
+
+				acc[plugin.type] = pluginConfig;
 
 				return acc;
 			},

@@ -20,7 +20,7 @@ export class ThirdPartyDemoController {
 	@Put('webhook')
 	@HttpCode(204)
 	async controlDevice(@Body() body: PropertiesUpdateRequestDto): Promise<ThirdPartyDemoControlModel> {
-		this.logger.debug('[EXECUTE] Execute demo property update');
+		this.logger.debug('[THIRD-PARTY][DEMO CONTROLLER] Execute demo property update');
 
 		const response = {
 			properties: [],
@@ -37,7 +37,9 @@ export class ThirdPartyDemoController {
 			const property = await this.channelsPropertiesService.findOne(update.property);
 
 			if (property === null) {
-				this.logger.warn(`[EXECUTE] Property to update was not found in system ${update.property}`);
+				this.logger.warn(
+					`[THIRD-PARTY][DEMO CONTROLLER] Property to update was not found in system ${update.property}`,
+				);
 
 				continue;
 			}
@@ -48,7 +50,9 @@ export class ThirdPartyDemoController {
 
 			this.queue[property.id] = setTimeout(() => {
 				void (async () => {
-					this.logger.debug(`[EXECUTE] Updating property ${property.id} with value ${update.value}`);
+					this.logger.debug(
+						`[THIRD-PARTY][DEMO CONTROLLER] Updating property ${property.id} with value ${update.value}`,
+					);
 
 					await this.channelsPropertiesService.update(property.id, {
 						type: property.type,

@@ -53,7 +53,7 @@ export class DevicesControlsService {
 			.getOne();
 
 		if (!control) {
-			this.logger.warn(`[LOOKUP] Control with id=${id} for deviceId=${deviceId} not found`);
+			this.logger.debug(`[LOOKUP] Control with id=${id} for deviceId=${deviceId} not found`);
 
 			return null;
 		}
@@ -76,7 +76,7 @@ export class DevicesControlsService {
 			.getOne();
 
 		if (!control) {
-			this.logger.warn(`[LOOKUP] Control with name=${name} for deviceId=${deviceId} not found`);
+			this.logger.debug(`[LOOKUP] Control with name=${name} for deviceId=${deviceId} not found`);
 
 			return null;
 		}

@@ -126,6 +126,7 @@ export enum PropertyCategory {
 	COLOR_RED = 'color_red',
 	COLOR_TEMPERATURE = 'color_temperature',
 	COLOR_WHITE = 'color_white',
+	COMMAND = 'command',
 	CONNECTION_TYPE = 'connection_type',
 	CONSUMPTION = 'consumption',
 	CURRENT = 'current',

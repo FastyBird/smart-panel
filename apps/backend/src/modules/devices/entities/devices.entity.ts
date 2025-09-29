@@ -2,6 +2,7 @@ import { Expose, Transform, Type } from 'class-transformer';
 import {
 	ArrayNotEmpty,
 	IsArray,
+	IsBoolean,
 	IsEnum,
 	IsInstance,
 	IsNumber,
@@ -12,13 +13,14 @@ import {
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
-import { Column, Entity, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
+import { Column, Entity, Index, ManyToOne, OneToMany, TableInheritance, Unique } from 'typeorm';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
 import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
 
 @Entity('devices_module_devices')
+@Unique('UQ_devices_identifier_type', ['identifier', 'type'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class DeviceEntity extends BaseEntity {
 	@Expose()
@@ -31,6 +33,13 @@ export class DeviceEntity extends BaseEntity {
 	category: DeviceCategory;
 
 	@Expose()
+	@IsOptional()
+	@IsString()
+	@Index()
+	@Column({ nullable: true })
+	identifier: string | null;
+
+	@Expose()
 	@IsString()
 	@Column()
 	name: string;
@@ -40,6 +49,12 @@ export class DeviceEntity extends BaseEntity {
 	@IsString()
 	@Column({ nullable: true })
 	description: string | null;
+
+	@Expose()
+	@IsBoolean()
+	@Index()
+	@Column({ nullable: false, default: true })
+	enabled: boolean = true;
 
 	@Expose()
 	@IsArray()
@@ -82,6 +97,7 @@ export class DeviceControlEntity extends BaseEntity {
 }
 
 @Entity('devices_module_channels')
+@Unique('UQ_channels_identifier_type', ['identifier', 'device'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class ChannelEntity extends BaseEntity {
 	@Expose()
@@ -92,6 +108,13 @@ export class ChannelEntity extends BaseEntity {
 		default: ChannelCategory.GENERIC,
 	})
 	category: ChannelCategory;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	@Index()
+	@Column({ nullable: true })
+	identifier: string | null;
 
 	@Expose()
 	@IsString()
@@ -154,6 +177,7 @@ export class ChannelControlEntity extends BaseEntity {
 }
 
 @Entity('devices_module_channels_properties')
+@Unique('UQ_channels_properties_identifier_type', ['identifier', 'channel'])
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export class ChannelPropertyEntity extends BaseEntity {
 	@Expose()
@@ -164,6 +188,13 @@ export class ChannelPropertyEntity extends BaseEntity {
 		default: PropertyCategory.GENERIC,
 	})
 	category: PropertyCategory;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	@Index()
+	@Column({ nullable: true })
+	identifier: string | null;
 
 	@Expose()
 	@IsOptional()

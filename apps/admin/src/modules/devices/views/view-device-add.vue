@@ -104,28 +104,32 @@
 					{{ t('devicesModule.buttons.close.title') }}
 				</el-button>
 
-				<el-button
-					:loading="remoteFormResult === FormResult.WORKING"
-					:disabled="remoteFormResult !== FormResult.NONE"
-					type="primary"
-					class="order-2"
-					@click="onSubmit"
+				<div
+					:id="SUBMIT_FORM_SM"
+					class="order-2 inline-block [&>*:first-child:not(:only-child)]:hidden"
 				>
-					<template
-						v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
-						#icon
+					<el-button
+						:loading="remoteFormResult === FormResult.WORKING"
+						:disabled="remoteFormResult !== FormResult.NONE"
+						type="primary"
+						@click="onSubmit"
 					>
-						<icon
-							v-if="remoteFormResult === FormResult.OK"
-							icon="mdi:check-circle"
-						/>
-						<icon
-							v-else-if="remoteFormResult === FormResult.ERROR"
-							icon="mdi:cross-circle"
-						/>
-					</template>
-					{{ t('devicesModule.buttons.save.title') }}
-				</el-button>
+						<template
+							v-if="remoteFormResult === FormResult.OK || remoteFormResult === FormResult.ERROR"
+							#icon
+						>
+							<icon
+								v-if="remoteFormResult === FormResult.OK"
+								icon="mdi:check-circle"
+							/>
+							<icon
+								v-else-if="remoteFormResult === FormResult.ERROR"
+								icon="mdi:cross-circle"
+							/>
+						</template>
+						{{ t('devicesModule.buttons.save.title') }}
+					</el-button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -148,6 +152,7 @@ import {
 	AppBreadcrumbs,
 	type IPlugin,
 	type IPluginElement,
+	SUBMIT_FORM_SM,
 	useBreakpoints,
 	useUuid,
 } from '../../../common';

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
+import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
+
 import ThirdPartyDeviceAddForm from './third-party-device-add-form.vue';
 
 const mockSubmit = vi.fn().mockResolvedValue(undefined);
@@ -48,6 +50,7 @@ describe('ThirdPartyDeviceAddForm.vue', () => {
 		wrapper = mount(ThirdPartyDeviceAddForm, {
 			props: {
 				id: 'abc123',
+				type: DEVICES_THIRD_PARTY_TYPE,
 			},
 		});
 	});
@@ -55,7 +58,7 @@ describe('ThirdPartyDeviceAddForm.vue', () => {
 	it('renders form fields', () => {
 		expect(wrapper.find('input[name="id"]').exists()).toBe(true);
 		expect(wrapper.find('input[name="name"]').exists()).toBe(true);
-		expect(wrapper.find('textarea[name="description"]').exists()).toBe(true);
+		expect(wrapper.find('textarea').exists()).toBe(true);
 		expect(wrapper.find('input[name="serviceAddress"]').exists()).toBe(true);
 	});
 

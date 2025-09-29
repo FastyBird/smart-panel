@@ -47,12 +47,13 @@ This channel provides metadata about the device, including manufacturer details,
 
 ## Optional Properties
 
-| **Property**        | **Data Type** | **Range**                     | **Unit** | **Permissions** |
-|---------------------|---------------|-------------------------------|----------|-----------------|
-| `hardware_revision` | `String`      | -                             | -        | RO (Read-Only)  |
-| `link_quality`      | `Uchar`       | `0–100`                       | %        | RO (Read-Only)  |
-| `connection_type`   | `Enum`        | `wired/wifi/zigbee/bluetooth` | -        | RO (Read-Only)  |
-| `fault`             | `Uchar`       | `0–255`                       | -        | RO (Read-Only)  |
+| **Property**        | **Data Type** | **Range**                                                                       | **Unit** | **Permissions** |
+|---------------------|---------------|---------------------------------------------------------------------------------|----------|-----------------|
+| `hardware_revision` | `String`      | -                                                                               | -        | RO (Read-Only)  |
+| `link_quality`      | `Uchar`       | `0–100`                                                                         | %        | RO (Read-Only)  |
+| `connection_type`   | `Enum`        | `wired/wifi/zigbee/bluetooth`                                                   | -        | RO (Read-Only)  |
+| `status`            | `Enum`        | `connected/disconnected/init/ready/running/sleeping/stopped/lost/alert/unknown` | -        | RO (Read-Only)  |
+| `fault`             | `Uchar`       | `0–255`                                                                         | -        | RO (Read-Only)  |
 
 ---
 

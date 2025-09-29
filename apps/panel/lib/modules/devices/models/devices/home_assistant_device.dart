@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/categories.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/ui.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class HomeAssistantDeviceModel extends DeviceModel {
@@ -19,7 +20,7 @@ class HomeAssistantDeviceModel extends DeviceModel {
     required String haDeviceId,
   })  : _haDeviceId = haDeviceId,
         super(
-          type: 'devices-home-assistant-plugin',
+          type: DeviceType.devicesHomeAssistant.value,
         );
 
   String get haDeviceId => _haDeviceId;

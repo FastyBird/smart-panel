@@ -34,24 +34,24 @@ export class CardsController {
 
 	@Get()
 	async findAll(@Query('page') page?: string): Promise<CardEntity[]> {
-		this.logger.debug(`[LOOKUP ALL] Fetching all page cards`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Fetching all page cards`);
 
 		const filterPage = page ? await this.getPageOrThrow(page) : undefined;
 
 		const cards = await this.cardsService.findAll(filterPage?.id);
 
-		this.logger.debug(`[LOOKUP ALL] Retrieved ${cards.length} page cards for pageId=${page}`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Retrieved ${cards.length} page cards for pageId=${page}`);
 
 		return cards;
 	}
 
 	@Get(':id')
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<CardEntity> {
-		this.logger.debug(`[LOOKUP] Fetching page card id=${id}`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Fetching page card id=${id}`);
 
 		const card = await this.getOneOrThrow(id);
 
-		this.logger.debug(`[LOOKUP] Found page card id=${card.id}`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Found page card id=${card.id}`);
 
 		return card;
 	}
@@ -59,12 +59,12 @@ export class CardsController {
 	@Post()
 	@Header('Location', `:baseUrl/${PAGES_CARDS_PLUGIN_PREFIX}/cards/:id`)
 	async create(@Body() createDto: ReqCreateCardDto): Promise<CardEntity> {
-		this.logger.debug(`[CREATE] Incoming request to create a new page card`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to create a new page card`);
 
 		try {
 			const card = await this.cardsService.create(createDto.data);
 
-			this.logger.debug(`[CREATE] Successfully created page card id=${card.id}`);
+			this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully created page card id=${card.id}`);
 
 			return card;
 		} catch (error) {
@@ -81,14 +81,14 @@ export class CardsController {
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateCardDto,
 	): Promise<CardEntity> {
-		this.logger.debug(`[UPDATE] Incoming update request for page card id=${id}`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming update request for page card id=${id}`);
 
 		const card = await this.getOneOrThrow(id);
 
 		try {
 			const updatedCard = await this.cardsService.update(card.id, updateDto.data);
 
-			this.logger.debug(`[UPDATE] Successfully updated page card id=${updatedCard.id}`);
+			this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully updated page card id=${updatedCard.id}`);
 
 			return updatedCard;
 		} catch (error) {
@@ -102,22 +102,22 @@ export class CardsController {
 
 	@Delete(':id')
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
-		this.logger.debug(`[DELETE] Incoming request to delete page card id=${id}`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to delete page card id=${id}`);
 
 		const card = await this.getOneOrThrow(id);
 
 		await this.cardsService.remove(card.id);
 
-		this.logger.debug(`[DELETE] Successfully deleted page card id=${id}`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Successfully deleted page card id=${id}`);
 	}
 
 	private async getOneOrThrow(id: string): Promise<CardEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of page card id=${id}`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Checking existence of page card id=${id}`);
 
 		const card = await this.cardsService.findOne(id);
 
 		if (!card) {
-			this.logger.error(`[ERROR] Page card with id=${id} not found`);
+			this.logger.error(`[PAGES CARDS][CARDS CONTROLLER] Page card with id=${id} not found`);
 
 			throw new NotFoundException('Requested page card does not exist');
 		}
@@ -126,12 +126,12 @@ export class CardsController {
 	}
 
 	private async getPageOrThrow(pageId: string): Promise<PageEntity> {
-		this.logger.debug(`[LOOKUP] Checking existence of page id=${pageId}`);
+		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Checking existence of page id=${pageId}`);
 
 		const page = await this.pagesService.findOne(pageId);
 
 		if (!page) {
-			this.logger.error(`[ERROR] Page with id=${pageId} not found`);
+			this.logger.error(`[PAGES CARDS][CARDS CONTROLLER] Page with id=${pageId} not found`);
 
 			throw new NotFoundException('Requested page does not exist');
 		}

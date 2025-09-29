@@ -15,22 +15,27 @@ export class HomeAssistantDiscoveredDevicesController {
 
 	@Get()
 	async findAll(): Promise<HomeAssistantDiscoveredDeviceModel[]> {
-		this.logger.debug('[LOOKUP ALL] Fetching all Home Assistant discovered devices');
+		this.logger.debug('[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Fetching all Home Assistant discovered devices');
 
 		try {
 			const devices = await this.homeAssistantHttpService.getDiscoveredDevices();
 
-			this.logger.debug(`[LOOKUP ALL] Retrieved ${devices.length} discovered devices`);
+			this.logger.debug(
+				`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Retrieved ${devices.length} discovered devices`,
+			);
 
 			return devices;
 		} catch (error) {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error('[ERROR] Devices Home Assistant plugin is not properly configured', {
-					message: err.message,
-					stack: err.stack,
-				});
+				this.logger.error(
+					'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Devices Home Assistant plugin is not properly configured',
+					{
+						message: err.message,
+						stack: err.stack,
+					},
+				);
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
@@ -39,10 +44,13 @@ export class HomeAssistantDiscoveredDevicesController {
 				);
 			}
 
-			this.logger.error('[ERROR] Loading Home Assistant discovered devices failed', {
-				message: err.message,
-				stack: err.stack,
-			});
+			this.logger.error(
+				'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Loading Home Assistant discovered devices failed',
+				{
+					message: err.message,
+					stack: err.stack,
+				},
+			);
 
 			throw error;
 		}
@@ -50,22 +58,29 @@ export class HomeAssistantDiscoveredDevicesController {
 
 	@Get(':id')
 	async findOne(@Param('id') id: string): Promise<HomeAssistantDiscoveredDeviceModel> {
-		this.logger.debug(`[LOOKUP] Fetching Home Assistant discovered device id=${id}`);
+		this.logger.debug(
+			`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Fetching Home Assistant discovered device id=${id}`,
+		);
 
 		try {
 			const device = await this.homeAssistantHttpService.getDiscoveredDevice(id);
 
-			this.logger.debug(`[LOOKUP] Found Home Assistant discovered device id=${device.id}`);
+			this.logger.debug(
+				`[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Found Home Assistant discovered device id=${device.id}`,
+			);
 
 			return device;
 		} catch (error) {
 			const err = error as Error;
 
 			if (error instanceof DevicesHomeAssistantValidationException) {
-				this.logger.error('[ERROR] Devices Home Assistant plugin is not properly configured', {
-					message: err.message,
-					stack: err.stack,
-				});
+				this.logger.error(
+					'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Devices Home Assistant plugin is not properly configured',
+					{
+						message: err.message,
+						stack: err.stack,
+					},
+				);
 
 				throw new UnprocessableEntityException('Devices Home Assistant plugin is not properly configured');
 			} else if (error instanceof DevicesHomeAssistantNotFoundException) {
@@ -74,10 +89,13 @@ export class HomeAssistantDiscoveredDevicesController {
 				);
 			}
 
-			this.logger.error('[ERROR] Loading Home Assistant discovered device failed', {
-				message: err.message,
-				stack: err.stack,
-			});
+			this.logger.error(
+				'[HOME ASSISTANT][DISCOVERED DEVICES CONTROLLER] Loading Home Assistant discovered device failed',
+				{
+					message: err.message,
+					stack: err.stack,
+				},
+			);
 
 			throw error;
 		}

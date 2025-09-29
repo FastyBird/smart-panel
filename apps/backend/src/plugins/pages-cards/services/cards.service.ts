@@ -36,7 +36,7 @@ export class CardsService {
 
 	async findAll(pageId?: string): Promise<CardEntity[]> {
 		if (pageId) {
-			this.logger.debug(`[LOOKUP ALL] Fetching all cards for pageId=${pageId}`);
+			this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Fetching all cards for pageId=${pageId}`);
 
 			const page = await this.pagesService.getOneOrThrow<CardsPageEntity>(pageId);
 
@@ -46,16 +46,16 @@ export class CardsService {
 				.where('page.id = :pageId', { pageId: page.id })
 				.getMany();
 
-			this.logger.debug(`[LOOKUP ALL] Found ${cards.length} cards for pageId=${pageId}`);
+			this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Found ${cards.length} cards for pageId=${pageId}`);
 
 			return cards;
 		}
 
-		this.logger.debug('[LOOKUP ALL] Fetching all cards');
+		this.logger.debug('[PAGES CARDS][CARDS SERVICE] Fetching all cards');
 
 		const cards = await this.repository.find();
 
-		this.logger.debug(`[LOOKUP ALL] Found ${cards.length} cards`);
+		this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Found ${cards.length} cards`);
 
 		return cards;
 	}
@@ -64,7 +64,7 @@ export class CardsService {
 		let card: CardEntity | null;
 
 		if (pageId) {
-			this.logger.debug(`[LOOKUP] Fetching card with id=${id} for pageId=${pageId}`);
+			this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Fetching card with id=${id} for pageId=${pageId}`);
 
 			const page = await this.pagesService.getOneOrThrow<CardsPageEntity>(pageId);
 
@@ -76,14 +76,14 @@ export class CardsService {
 				.getOne();
 
 			if (!card) {
-				this.logger.warn(`[LOOKUP] Card with id=${id} for pageId=${pageId} not found`);
+				this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Card with id=${id} for pageId=${pageId} not found`);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched card with id=${id} for pageId=${pageId}`);
+			this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Successfully fetched card with id=${id} for pageId=${pageId}`);
 		} else {
-			this.logger.debug(`[LOOKUP] Fetching card with id=${id}`);
+			this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Fetching card with id=${id}`);
 
 			card = await this.repository
 				.createQueryBuilder('card')
@@ -92,19 +92,19 @@ export class CardsService {
 				.getOne();
 
 			if (!card) {
-				this.logger.warn(`[LOOKUP] Card with id=${id} not found`);
+				this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Card with id=${id} not found`);
 
 				return null;
 			}
 
-			this.logger.debug(`[LOOKUP] Successfully fetched card with id=${id}`);
+			this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Successfully fetched card with id=${id}`);
 		}
 
 		return card;
 	}
 
 	async create(createDto: CreateSingleCardDto): Promise<CardEntity> {
-		this.logger.debug(`[CREATE] Creating new card`);
+		this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Creating new card`);
 
 		const page = await this.pagesService.getOneOrThrow<CardsPageEntity>(createDto.page);
 
@@ -155,7 +155,7 @@ export class CardsService {
 		const savedCard = await this.getOneOrThrow(created.id, page.id);
 
 		this.logger.debug(
-			`[CREATE] Successfully created card with id=${savedCard.id} for pageId=${typeof savedCard.page === 'string' ? savedCard.page : savedCard.page.id}`,
+			`[PAGES CARDS][CARDS SERVICE] Successfully created card with id=${savedCard.id} for pageId=${typeof savedCard.page === 'string' ? savedCard.page : savedCard.page.id}`,
 		);
 
 		this.eventEmitter.emit(EventType.CARD_CREATED, savedCard);
@@ -164,7 +164,7 @@ export class CardsService {
 	}
 
 	async update(id: string, updateDto: UpdateCardDto): Promise<CardEntity> {
-		this.logger.debug(`[UPDATE] Updating data source with id=${id}`);
+		this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Updating data source with id=${id}`);
 
 		const card = await this.getOneOrThrow(id);
 
@@ -176,7 +176,7 @@ export class CardsService {
 
 		const updatedCard = await this.getOneOrThrow(card.id);
 
-		this.logger.debug(`[UPDATE] Successfully updated card with id=${updatedCard.id}`);
+		this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Successfully updated card with id=${updatedCard.id}`);
 
 		this.eventEmitter.emit(EventType.CARD_UPDATED, updatedCard);
 
@@ -184,14 +184,14 @@ export class CardsService {
 	}
 
 	async remove(id: string, pageId?: string): Promise<void> {
-		this.logger.debug(`[DELETE] Removing card with id=${id} for pageId=${pageId}`);
+		this.logger.debug(`[PAGES CARDS][CARDS SERVICE] Removing card with id=${id} for pageId=${pageId}`);
 
 		const page = await this.pagesService.getOneOrThrow<CardsPageEntity>(pageId);
 		const card = await this.getOneOrThrow(id, page.id);
 
 		await this.repository.remove(card);
 
-		this.logger.log(`[DELETE] Successfully removed card with id=${id} for pageId=${pageId}`);
+		this.logger.log(`[PAGES CARDS][CARDS SERVICE] Successfully removed card with id=${id} for pageId=${pageId}`);
 
 		this.eventEmitter.emit(EventType.CARD_DELETED, card);
 	}
@@ -200,7 +200,7 @@ export class CardsService {
 		const card = await this.findOne(id, pageId);
 
 		if (!card) {
-			this.logger.error(`[ERROR] Card with id=${id} for pageId=${pageId} not found`);
+			this.logger.error(`[PAGES CARDS][CARDS SERVICE] Card with id=${id} for pageId=${pageId} not found`);
 
 			throw new PagesCardsNotFoundException('Requested page card does not exist');
 		}
@@ -220,7 +220,7 @@ export class CardsService {
 		});
 
 		if (errors.length > 0) {
-			this.logger.error(`[VALIDATION FAILED] ${JSON.stringify(errors)}`);
+			this.logger.error(`[PAGES CARDS][CARDS SERVICE] ${JSON.stringify(errors)}`);
 
 			throw new PagesCardsValidationException('Provided card data are invalid.');
 		}

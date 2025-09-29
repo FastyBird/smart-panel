@@ -89,7 +89,7 @@ export class DataSourceService {
 				.getOne();
 
 			if (!dataSource) {
-				this.logger.warn(
+				this.logger.debug(
 					`[LOOKUP] Data source with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId} not found`,
 				);
 
@@ -107,7 +107,7 @@ export class DataSourceService {
 			});
 
 			if (!dataSource) {
-				this.logger.warn(`[LOOKUP] Data source with id=${id} not found`);
+				this.logger.debug(`[LOOKUP] Data source with id=${id} not found`);
 
 				return null;
 			}

@@ -8,7 +8,7 @@
 	>
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.devices.id.title')"
-			:prop="['id']"
+			prop="id"
 		>
 			<el-input
 				v-model="model.id"
@@ -20,8 +20,19 @@
 		</el-form-item>
 
 		<el-form-item
+			:label="t('devicesHomeAssistantPlugin.fields.devices.identifier.title')"
+			prop="identifier"
+		>
+			<el-input
+				v-model="model.identifier"
+				:placeholder="t('devicesHomeAssistantPlugin.fields.devices.identifier.placeholder')"
+				name="identifier"
+			/>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.devices.name.title')"
-			:prop="['name']"
+			prop="name"
 		>
 			<el-input
 				v-model="model.name"
@@ -32,7 +43,7 @@
 
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.devices.category.title')"
-			:prop="['category']"
+			prop="category"
 		>
 			<el-select
 				v-model="model.category"
@@ -64,7 +75,7 @@
 
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.devices.description.title')"
-			:prop="['description']"
+			prop="description"
 		>
 			<el-input
 				v-model="model.description"
@@ -75,11 +86,22 @@
 			/>
 		</el-form-item>
 
+		<el-form-item
+			:label="t('devicesHomeAssistantPlugin.fields.devices.enabled.title')"
+			prop="enabled"
+			label-position="left"
+		>
+			<el-switch
+				v-model="model.enabled"
+				name="enabled"
+			/>
+		</el-form-item>
+
 		<el-divider />
 
 		<el-form-item
 			:label="t('devicesHomeAssistantPlugin.fields.devices.haDeviceId.title')"
-			:prop="['haDeviceId']"
+			prop="haDeviceId"
 		>
 			<el-select
 				v-model="model.haDeviceId"
@@ -104,7 +126,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, useDeviceEditForm } from '../../../modules/devices';
 import { useDiscoveredDevicesOptions } from '../composables/useDiscoveredDevicesOptions';

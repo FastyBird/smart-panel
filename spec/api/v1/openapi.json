@@ -1305,8 +1305,10 @@
                           "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": "device.identification",
                           "name": "Thermostat",
                           "description": "Living room thermostat",
+                          "enabled": true,
                           "controls": [
                             {
                               "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1321,6 +1323,7 @@
                               "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                               "type": "devices-third-party",
                               "category": "generic",
+                              "identifier": "channel.identification",
                               "name": "Temperature Sensor",
                               "description": "Living room temperature sensor",
                               "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -1338,6 +1341,7 @@
                                   "id": "208f4790-21b0-4927-8835-7302d883a141",
                                   "type": "devices-third-party",
                                   "category": "generic",
+                                  "identifier": null,
                                   "name": "Thermostat mode",
                                   "permissions": [
                                     "ro"
@@ -1485,8 +1489,10 @@
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "device.identification",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
+                        "enabled": true,
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1501,6 +1507,7 @@
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": "channel.identification",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
                             "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -1518,6 +1525,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "type": "devices-third-party",
                                 "category": "generic",
+                                "identifier": null,
                                 "name": "Thermostat mode",
                                 "permissions": [
                                   "ro"
@@ -1614,8 +1622,10 @@
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "device.identification",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
+                        "enabled": true,
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1630,6 +1640,7 @@
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": "channel.identification",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
                             "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -1647,6 +1658,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "type": "devices-third-party",
                                 "category": "generic",
+                                "identifier": null,
                                 "name": "Thermostat mode",
                                 "permissions": [
                                   "ro"
@@ -1757,8 +1769,10 @@
                         "id": "332dda32-b7de-4557-956a-b6ed6c6799a4",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "device.identification",
                         "name": "Thermostat",
                         "description": "Living room thermostat",
+                        "enabled": true,
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1773,6 +1787,7 @@
                             "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": "channel.identification",
                             "name": "Temperature Sensor",
                             "description": "Living room temperature sensor",
                             "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -1790,6 +1805,7 @@
                                 "id": "208f4790-21b0-4927-8835-7302d883a141",
                                 "type": "devices-third-party",
                                 "category": "generic",
+                                "identifier": null,
                                 "name": "Thermostat mode",
                                 "permissions": [
                                   "ro"
@@ -2187,6 +2203,7 @@
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": "channel.identification",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
                           "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -2204,6 +2221,7 @@
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
                               "type": "devices-third-party",
                               "category": "generic",
+                              "identifier": null,
                               "name": "Thermostat mode",
                               "permissions": [
                                 "ro"
@@ -2337,6 +2355,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -2354,6 +2373,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -2451,6 +2471,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -2468,6 +2489,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -2575,6 +2597,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -2592,6 +2615,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -3002,6 +3026,7 @@
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": null,
                           "name": "Thermostat mode",
                           "permissions": [
                             "ro"
@@ -3119,6 +3144,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -3215,6 +3241,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -3328,6 +3355,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -3446,6 +3474,7 @@
                           "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": "channel.identification",
                           "name": "Temperature Sensor",
                           "description": "Living room temperature sensor",
                           "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -3463,6 +3492,7 @@
                               "id": "208f4790-21b0-4927-8835-7302d883a141",
                               "type": "devices-third-party",
                               "category": "generic",
+                              "identifier": null,
                               "name": "Thermostat mode",
                               "permissions": [
                                 "ro"
@@ -3589,6 +3619,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -3606,6 +3637,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -3697,6 +3729,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -3714,6 +3747,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -3818,6 +3852,7 @@
                         "id": "568e43e9-c9da-4a4e-ac7c-9904b42730c6",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": "channel.identification",
                         "name": "Temperature Sensor",
                         "description": "Living room temperature sensor",
                         "device": "332dda32-b7de-4557-956a-b6ed6c6799a4",
@@ -3836,6 +3871,7 @@
                             "id": "208f4790-21b0-4927-8835-7302d883a141",
                             "type": "devices-third-party",
                             "category": "generic",
+                            "identifier": null,
                             "name": "Thermostat mode",
                             "permissions": [
                               "ro"
@@ -4228,6 +4264,7 @@
                           "id": "208f4790-21b0-4927-8835-7302d883a141",
                           "type": "devices-third-party",
                           "category": "generic",
+                          "identifier": null,
                           "name": "Thermostat mode",
                           "permissions": [
                             "ro"
@@ -4342,6 +4379,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -4435,6 +4473,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -4545,6 +4584,7 @@
                         "id": "208f4790-21b0-4927-8835-7302d883a141",
                         "type": "devices-third-party",
                         "category": "generic",
+                        "identifier": null,
                         "name": "Thermostat mode",
                         "permissions": [
                           "ro"
@@ -6796,7 +6836,7 @@
     "/third-party/webhook": {
       "put": {
         "tags": [
-          "Devices third-party plugin"
+          "Devices Third-Party plugin"
         ],
         "servers": [
           {
@@ -6875,7 +6915,7 @@
         "description": "Retrieves a list of devices discovered from the connected Home Assistant instance. Each device includes metadata, associated entities, and their current states.",
         "operationId": "get-devices-home-assistant-plugin-devices",
         "tags": [
-          "Devices home assistant plugin"
+          "Devices Home-Assistant plugin"
         ],
         "responses": {
           "200": {
@@ -6905,10 +6945,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "6wyvibn060bct"
-        }
+        ]
       }
     },
     "/plugins/devices-home-assistant/discovered-devices/{id}": {
@@ -6929,7 +6966,7 @@
         "description": "Fetches details of a specific Home Assistant device by its Home Assistant ID. The response includes associated entities and their current states.",
         "operationId": "get-devices-home-assistant-plugin-device",
         "tags": [
-          "Devices home assistant plugin"
+          "Devices Home-Assistant plugin"
         ],
         "responses": {
           "200": {
@@ -6959,10 +6996,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "4iv9nxok1544z"
-        }
+        ]
       }
     },
     "/plugins/devices-home-assistant/states": {
@@ -6971,7 +7005,7 @@
         "description": "Fetches the current state information for all known entities from the connected Home Assistant instance. Each state includes metadata such as attributes and timestamps.",
         "operationId": "get-devices-home-assistant-plugin-states",
         "tags": [
-          "Devices home assistant plugin"
+          "Devices Home-Assistant plugin"
         ],
         "responses": {
           "200": {
@@ -7001,10 +7035,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "kzt9xom3lb9lf"
-        }
+        ]
       }
     },
     "/plugins/devices-home-assistant/states/{entityId}": {
@@ -7025,7 +7056,7 @@
         "description": "Fetches the current state and attributes for a single entity by its Home Assistant entity ID. This includes state value and timestamp details.",
         "operationId": "get-devices-home-assistant-plugin-state",
         "tags": [
-          "Devices home assistant plugin"
+          "Devices Home-Assistant plugin"
         ],
         "responses": {
           "200": {
@@ -7055,10 +7086,95 @@
           {
             "x-display-secret": []
           }
+        ]
+      }
+    },
+    "/plugins/devices-shelly-ng/devices/supported": {
+      "get": {
+        "summary": "Retrieve list of supported Shelly Next-Generation (NG) devices",
+        "description": "Fetch the current list of Shelly NG device groups and their model mappings supported by this SmartPanel build.",
+        "operationId": "get-devices-shelly-ng-plugin-supported",
+        "tags": [
+          "Devices Shelly NG plugin"
         ],
-        "x-stoplight": {
-          "id": "nmvb02luc3f9d"
-        }
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved the supported device catalog.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesShellyNgPluginResSupportedDevices"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/plugins/devices-shelly-ng/devices/info": {
+      "post": {
+        "summary": "Retrieve live info from a Shelly NG device",
+        "description": "Queries a Shelly Next-Generation device over the local network (RPC) to fetch identification, firmware, and supported component summary.",
+        "operationId": "create-devices-shelly-ng-plugin-device-info",
+        "tags": [
+          "Devices Shelly NG plugin"
+        ],
+        "requestBody": {
+          "description": "Target device parameters.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevicesShellyNgPluginReqCreateDeviceInfo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved device information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesShellyNgPluginResDeviceInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
       }
     },
     "/plugins/pages-cards/cards": {
@@ -7110,10 +7226,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "cuzmwav54k1b2"
-        }
+        ]
       },
       "post": {
         "summary": "Create a new card for a page",
@@ -7169,10 +7282,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "sehaye81c4jkr"
-        }
+        ]
       }
     },
     "/plugins/pages-cards/cards/{id}": {
@@ -7216,10 +7326,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "8aduzkn40vbnl"
-        }
+        ]
       },
       "patch": {
         "summary": "Update an existing card for a page",
@@ -7282,10 +7389,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "fking687jd6n4"
-        }
+        ]
       },
       "delete": {
         "summary": "Delete a specific card for a page",
@@ -7320,10 +7424,7 @@
           {
             "x-display-secret": []
           }
-        ],
-        "x-stoplight": {
-          "id": "gqiatui66casi"
-        }
+        ]
       }
     }
   },
@@ -10460,8 +10561,10 @@
           "id",
           "type",
           "category",
+          "identifier",
           "name",
           "description",
+          "enabled",
           "controls",
           "channels",
           "created_at",
@@ -10486,6 +10589,13 @@
             "description": "Type of the device, defining its purpose or category (e.g., thermostat, lighting).",
             "readOnly": true
           },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Device system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "device.identification"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the device.",
@@ -10497,6 +10607,12 @@
             "description": "Optional detailed description of the device.",
             "default": null,
             "example": "Living room thermostat"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Determines whether the device is enabled or disabled.",
+            "default": true,
+            "example": true
           },
           "controls": {
             "type": "array",
@@ -10587,6 +10703,7 @@
           "id",
           "type",
           "category",
+          "identifier",
           "name",
           "description",
           "device",
@@ -10612,6 +10729,13 @@
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelCategory",
             "description": "Type of the channel, indicating its functional category (e.g., temperature, light)."
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Channel system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "channel.identification"
           },
           "name": {
             "type": "string",
@@ -10721,6 +10845,7 @@
           "id",
           "type",
           "category",
+          "identifier",
           "name",
           "permissions",
           "data_type",
@@ -10751,6 +10876,13 @@
             "$ref": "#/components/schemas/DevicesModuleChannelPropertyCategory",
             "description": "Defines the category of the property, representing its functionality or characteristic.",
             "readOnly": true
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "property.identification"
           },
           "name": {
             "type": "string",
@@ -10900,6 +11032,13 @@
             "$ref": "#/components/schemas/DevicesModuleDeviceCategory",
             "description": "Type of the device, defining its purpose or category (e.g., thermostat, lighting)."
           },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Device system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "device.identification"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the device.",
@@ -10910,6 +11049,12 @@
             "nullable": true,
             "description": "Optional detailed description of the device.",
             "example": "Living room thermostat"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Determines whether the device is enabled or disabled.",
+            "default": true,
+            "example": true
           },
           "controls": {
             "type": "array",
@@ -10972,6 +11117,13 @@
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelCategory",
             "description": "Type of the channel, indicating its functional category (e.g., temperature, light)."
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Channel system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "channel.identification"
           },
           "name": {
             "type": "string",
@@ -11069,6 +11221,13 @@
           "category": {
             "$ref": "#/components/schemas/DevicesModuleChannelPropertyCategory",
             "description": "Defines the category of the property, representing its functionality or characteristic."
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "property.identification"
           },
           "name": {
             "type": "string",
@@ -11175,6 +11334,13 @@
             "description": "Specifies the type of device.",
             "example": "devices-third-party"
           },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Device system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "device.identification"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the device.",
@@ -11201,6 +11367,13 @@
             "description": "Specifies the type of channel.",
             "example": "devices-third-party"
           },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Channel system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "channel.identification"
+          },
           "name": {
             "type": "string",
             "description": "Human-readable name of the channel.",
@@ -11211,6 +11384,12 @@
             "nullable": true,
             "description": "Optional description of the channel’s purpose or functionality.",
             "example": "Living room temperature sensor"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Determines whether the device is enabled or disabled.",
+            "default": true,
+            "example": true
           }
         }
       },
@@ -11226,6 +11405,13 @@
             "type": "string",
             "description": "Specifies the type of channel property.",
             "example": "devices-third-party"
+          },
+          "identifier": {
+            "type": "string",
+            "nullable": true,
+            "description": "Property system identifier, used for mapping in plugins.",
+            "default": null,
+            "example": "property.identification"
           },
           "name": {
             "type": "string",
@@ -12256,6 +12442,7 @@
           "color_red",
           "color_temperature",
           "color_white",
+          "command",
           "connection_type",
           "consumption",
           "current",
@@ -16007,9 +16194,20 @@
           {
             "type": "object",
             "required": [
+              "type",
               "service_address"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              },
               "service_address": {
                 "type": "string",
                 "description": "A url address of the third-party device endpoint.",
@@ -16031,9 +16229,20 @@
           {
             "type": "object",
             "required": [
+              "type",
               "service_address"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              },
               "service_address": {
                 "type": "string",
                 "description": "A url address of the third-party device endpoint.",
@@ -16054,7 +16263,20 @@
           },
           {
             "type": "object",
+            "required": [
+              "type"
+            ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              },
               "service_address": {
                 "type": "string",
                 "description": "A url address of the third-party device endpoint.",
@@ -16072,6 +16294,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16082,6 +16322,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16092,6 +16350,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16102,6 +16378,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16112,6 +16406,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16122,6 +16434,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-third-party"
+                ],
+                "description": "Third-party devices plugin type.",
+                "example": "devices-third-party",
+                "default": "devices-third-party",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16286,9 +16616,20 @@
           {
             "type": "object",
             "required": [
+              "type",
               "ha_device_id"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_device_id": {
                 "type": "string",
                 "description": "A HA device instance identifier.",
@@ -16309,9 +16650,20 @@
           {
             "type": "object",
             "required": [
+              "type",
               "ha_device_id"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_device_id": {
                 "type": "string",
                 "description": "A HA device instance identifier.",
@@ -16328,6 +16680,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16338,6 +16708,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16348,6 +16736,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleCreateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16358,6 +16764,24 @@
         "allOf": [
           {
             "$ref": "#/components/schemas/DevicesModuleUpdateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              }
+            }
           }
         ]
       },
@@ -16372,10 +16796,21 @@
           {
             "type": "object",
             "required": [
+              "type",
               "ha_entity_id",
               "ha_attribute"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_entity_id": {
                 "type": "string",
                 "nullable": true,
@@ -16403,10 +16838,21 @@
           {
             "type": "object",
             "required": [
+              "type",
               "ha_entity_id",
               "ha_attribute"
             ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_entity_id": {
                 "type": "string",
                 "nullable": true,
@@ -16425,7 +16871,7 @@
       },
       "DevicesHomeAssistantPluginUpdateHomeAssistantChannelProperty": {
         "x-internal": true,
-        "title": "Update Home Assistant Device Chanel",
+        "title": "Update Home Assistant Chanel Property",
         "description": "Schema for updating a Home Assistant channel property.",
         "allOf": [
           {
@@ -16433,7 +16879,20 @@
           },
           {
             "type": "object",
+            "required": [
+              "type"
+            ],
             "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-home-assistant"
+                ],
+                "description": "Home Assistant plugin type.",
+                "example": "devices-home-assistant",
+                "default": "devices-home-assistant",
+                "readOnly": true
+              },
               "ha_entity_id": {
                 "type": "string",
                 "nullable": true,
@@ -16573,7 +17032,7 @@
                 "enum": [
                   "devices-home-assistant"
                 ],
-                "description": "Configuration section type discriminator. Must always be `devices-home-assistant-plugin`.",
+                "description": "Configuration section type discriminator. Must always be `devices-home-assistant`.",
                 "default": "devices-home-assistant",
                 "example": "devices-home-assistant"
               },
@@ -16611,7 +17070,7 @@
                 "enum": [
                   "devices-home-assistant"
                 ],
-                "description": "Configuration section type discriminator. Must always be `devices-home-assistant-plugin`.",
+                "description": "Configuration section type discriminator. Must always be `devices-home-assistant`.",
                 "default": "devices-home-assistant",
                 "example": "devices-home-assistant"
               },
@@ -16884,6 +17343,965 @@
           }
         }
       },
+      "DevicesShellyNgPluginShellyNgDevice": {
+        "x-internal": true,
+        "title": "Shelly Next-Generation (NG) Device",
+        "description": "Represents a Shelly NG device managed by Smart Panel. Used to communicate with a local network Shelly via RPC/WebSocket.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "password",
+              "hostname"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              },
+              "password": {
+                "type": "string",
+                "nullable": true,
+                "description": "Device password for local RPC access (if configured on the Shelly).",
+                "example": "supersecretdevicepassword",
+                "default": ""
+              },
+              "hostname": {
+                "description": "Device network address. Either IPv4 or local hostname (e.g., mDNS). May be set by discovery.",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "ipv4",
+                    "example": "192.168.10.9"
+                  },
+                  {
+                    "type": "string",
+                    "format": "hostname",
+                    "example": "shellyplus1pm-123456.local"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginCreateShellyNgDevice": {
+        "x-internal": true,
+        "title": "Create Shelly NG Device",
+        "description": "Payload for creating a Shelly NG device. If hostname is omitted, the device can be discovered via mDNS.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              },
+              "password": {
+                "type": "string",
+                "nullable": true,
+                "description": "Device password for local RPC access.",
+                "example": "supersecretdevicepassword"
+              },
+              "hostname": {
+                "description": "Device network address (IPv4 or hostname).",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "ipv4",
+                    "example": "192.168.10.9"
+                  },
+                  {
+                    "type": "string",
+                    "format": "hostname",
+                    "example": "shellyplus1pm-123456.local"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginUpdateShellyNgDevice": {
+        "x-internal": true,
+        "title": "Update Shelly NG Device",
+        "description": "Payload for updating a Shelly NG device.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateDevice"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              },
+              "password": {
+                "type": "string",
+                "nullable": true,
+                "description": "Device password for local RPC access.",
+                "example": "supersecretdevicepassword"
+              },
+              "hostname": {
+                "description": "Device network address (IPv4 or hostname).",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "format": "ipv4",
+                    "example": "192.168.10.9"
+                  },
+                  {
+                    "type": "string",
+                    "format": "hostname",
+                    "example": "shellyplus1pm-123456.local"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginShellyNgChannel": {
+        "x-internal": true,
+        "title": "Shelly NG Device Channel",
+        "description": "A Shelly NG channels used to communicate with Shelly NG instance.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginCreateShellyNgChannel": {
+        "x-internal": true,
+        "title": "Create Shelly NG Device Channel",
+        "description": "The schema for creating a Shelly NG channel.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginUpdateShellyNgChannel": {
+        "x-internal": true,
+        "title": "Update Shelly NG Device Chanel",
+        "description": "Schema for updating a Shelly NG channel.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateChannel"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              },
+              "category": {
+                "$ref": "#/components/schemas/DevicesModuleChannelCategory",
+                "description": "Type of the channel, indicating its functional category (e.g., temperature, light)."
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginShellyNgChannelProperty": {
+        "x-internal": true,
+        "title": "Shelly NG Channel Property",
+        "description": "A Shelly NG properties used to communicate with Shelly NG instance.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginCreateShellyNgChannelProperty": {
+        "x-internal": true,
+        "title": "Create Shelly NG Channel Property",
+        "description": "The schema for creating a Shelly NG channel property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleCreateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginUpdateShellyNgChannelProperty": {
+        "x-internal": true,
+        "title": "Update Shelly NG Chanel Property",
+        "description": "Schema for updating a Shelly NG channel property.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DevicesModuleUpdateChannelProperty"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Shelly NG plugin type.",
+                "example": "devices-shelly-ng",
+                "default": "devices-shelly-ng",
+                "readOnly": true
+              },
+              "category": {
+                "$ref": "#/components/schemas/DevicesModuleChannelPropertyCategory",
+                "description": "Defines the category of the property, representing its functionality or characteristic."
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginConfig": {
+        "x-internal": true,
+        "title": "Shelly NG Plugin Configuration",
+        "description": "Configuration for the Shelly NG devices plugin.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModulePlugin"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "mdns",
+              "websockets"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Configuration section type discriminator. Must always be `devices-shelly-ng`.",
+                "default": "devices-shelly-ng",
+                "example": "devices-shelly-ng"
+              },
+              "mdns": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "enabled",
+                  "interface"
+                ],
+                "description": "Multicast DNS (mDNS) discovery settings.",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable mDNS discovery for Shelly NG devices.",
+                    "default": true
+                  },
+                  "interface": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "description": "Network interface to bind for mDNS (e.g., `eth0`, `en0`). If `null`, the system default is used.",
+                    "default": null,
+                    "example": "eth0"
+                  }
+                }
+              },
+              "websockets": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_timeout",
+                  "ping_interval",
+                  "reconnect_interval"
+                ],
+                "description": "WebSocket (RPC) session parameters. All times are seconds.",
+                "properties": {
+                  "request_timeout": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 1,
+                    "description": "Timeout for individual RPC requests (seconds).",
+                    "default": 10,
+                    "example": 10
+                  },
+                  "ping_interval": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0,
+                    "description": "Interval for keep-alive pings (seconds).",
+                    "default": 60,
+                    "example": 60
+                  },
+                  "reconnect_interval": {
+                    "description": "Backoff for reconnection attempts. Either a single interval (seconds) or an array of increasing intervals (seconds).",
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "format": "int32",
+                      "minimum": 1
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "example": [
+                      5,
+                      10,
+                      30,
+                      60,
+                      300,
+                      600
+                    ],
+                    "default": [
+                      5,
+                      10,
+                      30,
+                      60,
+                      300,
+                      600
+                    ]
+                  }
+                },
+                "examples": [
+                  {
+                    "summary": "Default backoff sequence",
+                    "value": {
+                      "request_timeout": 10,
+                      "ping_interval": 60,
+                      "reconnect_interval": [
+                        5,
+                        10,
+                        30,
+                        60,
+                        300,
+                        600
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginUpdateConfig": {
+        "x-internal": true,
+        "title": "Update Shelly NG Plugin Configuration",
+        "description": "Request schema for updating the Shelly NG devices plugin configuration.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleUpdatePlugin"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "devices-shelly-ng"
+                ],
+                "description": "Configuration section type discriminator. Must always be `devices-shelly-ng`.",
+                "default": "devices-shelly-ng",
+                "example": "devices-shelly-ng"
+              },
+              "mdns": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Multicast DNS (mDNS) discovery settings.",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable mDNS discovery for Shelly NG devices.",
+                    "default": true
+                  },
+                  "interface": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "description": "Network interface to bind for mDNS (e.g., `eth0`, `en0`). If `null`, the system default is used.",
+                    "default": null,
+                    "example": "eth0"
+                  }
+                }
+              },
+              "websockets": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "WebSocket (RPC) session parameters. All times are seconds.",
+                "properties": {
+                  "request_timeout": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 1,
+                    "description": "Timeout for individual RPC requests (seconds).",
+                    "default": 10,
+                    "example": 10
+                  },
+                  "ping_interval": {
+                    "type": "integer",
+                    "format": "int32",
+                    "minimum": 0,
+                    "description": "Interval for keep-alive pings (seconds).",
+                    "default": 60,
+                    "example": 60
+                  },
+                  "reconnect_interval": {
+                    "description": "Backoff for reconnection attempts. Either a single interval (seconds) or an array of increasing intervals (seconds).",
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "format": "int32",
+                      "minimum": 1
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "example": [
+                      5,
+                      10,
+                      30,
+                      60,
+                      300,
+                      600
+                    ],
+                    "default": [
+                      5,
+                      10,
+                      30,
+                      60,
+                      300,
+                      600
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DevicesShellyNgPluginDeviceInfo": {
+        "x-internal": true,
+        "title": "Shelly Next-Generation (NG) Device Information",
+        "description": "Load the Shelly Next-Generation (NG) info from connected device.",
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "mac",
+          "model",
+          "firmware",
+          "app",
+          "authentication",
+          "discoverable",
+          "components"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id of the device.",
+            "example": "shelly0110dimg3-8cbfeaa58474",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Friendly name configured on the device, if any.",
+            "example": "Wall lamp switch",
+            "readOnly": true
+          },
+          "mac": {
+            "type": "string",
+            "description": "Mac address of the device.",
+            "example": "8CBFEAA58474",
+            "readOnly": true
+          },
+          "model": {
+            "type": "string",
+            "description": "Hardware model code.",
+            "example": "S3DM-0010WW",
+            "readOnly": true
+          },
+          "firmware": {
+            "type": "string",
+            "description": "Installed firmware version.",
+            "example": "1.7.0",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:[-+].*)?$",
+            "readOnly": true
+          },
+          "app": {
+            "type": "string",
+            "description": "Application name reported by the device.",
+            "example": "Dimmer0110VPMG3",
+            "readOnly": true
+          },
+          "profile": {
+            "type": "string",
+            "description": "Active device profile (only for multi-profile devices).",
+            "example": "switch",
+            "readOnly": true
+          },
+          "authentication": {
+            "type": "object",
+            "description": "Authentication status for local RPC access.",
+            "additionalProperties": false,
+            "required": [
+              "domain",
+              "enabled"
+            ],
+            "properties": {
+              "domain": {
+                "type": "string",
+                "nullable": true,
+                "description": "Authentication domain (realm) if configured; otherwise null.",
+                "default": null,
+                "readOnly": true
+              },
+              "enabled": {
+                "type": "boolean",
+                "description": "Whether authentication is required for local RPC.",
+                "default": false,
+                "readOnly": true
+              }
+            }
+          },
+          "discoverable": {
+            "type": "boolean",
+            "description": "Whether the device advertises itself on the local network (e.g., mDNS).",
+            "default": true,
+            "readOnly": true
+          },
+          "components": {
+            "type": "array",
+            "description": "Summarized component capabilities.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "ids"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Component type key (e.g., 'switch', 'light', 'cover', 'input', 'wifi', 'ethernet').",
+                  "example": "switch"
+                },
+                "ids": {
+                  "type": "array",
+                  "description": "List of numeric component IDs discovered for this type. May be empty for singleton components (e.g., 'wifi').",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "uniqueItems": true,
+                  "minItems": 0,
+                  "example": [
+                    0,
+                    1
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "DevicesShellyNgPluginCreateDeviceInfo": {
+        "x-internal": true,
+        "title": "Create Shelly Next-Generation (NG) Device info",
+        "description": "Payload to query a Shelly Next-Generation (NG) device for identification and capability details.",
+        "type": "object",
+        "required": [
+          "hostname"
+        ],
+        "properties": {
+          "hostname": {
+            "description": "Device network address (IPv4 or hostname).",
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "ipv4",
+                "example": "192.168.10.9"
+              },
+              {
+                "type": "string",
+                "format": "hostname",
+                "example": "shellyplus1pm-123456.local"
+              }
+            ]
+          },
+          "password": {
+            "type": "string",
+            "nullable": true,
+            "description": "Device password for local RPC access.",
+            "example": "supersecretdevicepassword"
+          }
+        }
+      },
+      "DevicesShellyNgPluginSupportedDevice": {
+        "x-internal": true,
+        "title": "Supported Shelly Next-Generation (NG) Device",
+        "description": "Static capability descriptor for a Shelly Next-Generation (NG) product group and its concrete model identifiers.",
+        "type": "object",
+        "required": [
+          "group",
+          "name",
+          "models",
+          "categories",
+          "components",
+          "system"
+        ],
+        "properties": {
+          "group": {
+            "type": "string",
+            "description": "Stable group key (matches internal descriptor ID).",
+            "example": "SHELLYPLUS1"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable product/family name.",
+            "example": "Shelly Plus 1"
+          },
+          "models": {
+            "type": "array",
+            "description": "List of device model identifiers that map to this group.",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true,
+            "minItems": 1,
+            "example": [
+              "SNSW-001X16EU",
+              "SNSW-001P16EU"
+            ]
+          },
+          "categories": {
+            "type": "array",
+            "description": "Device supported categories this group fits into.",
+            "items": {
+              "$ref": "#/components/schemas/DevicesModuleDeviceCategory"
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          },
+          "components": {
+            "type": "array",
+            "description": "Actor/sensor components exposed by the device.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "ids"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Component type key.",
+                  "enum": [
+                    "switch",
+                    "light",
+                    "cover",
+                    "input",
+                    "devicePower",
+                    "humidity",
+                    "temperature",
+                    "pm"
+                  ],
+                  "example": "switch"
+                },
+                "ids": {
+                  "type": "array",
+                  "description": "Numeric component indices available for this type.",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "uniqueItems": true,
+                  "minItems": 1,
+                  "example": [
+                    0,
+                    1
+                  ]
+                }
+              }
+            }
+          },
+          "system": {
+            "type": "array",
+            "description": "Singleton system components.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "System component type key.",
+                  "enum": [
+                    "wifi",
+                    "ethernet",
+                    "ble"
+                  ],
+                  "example": "wifi"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DevicesShellyNgPluginReqCreateDeviceInfo": {
+        "title": "Create Shelly Next-Generation (NG) Device Info Request",
+        "description": "Request schema for creating Shelly Next-Generation (NG) device info.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DevicesShellyNgPluginCreateDeviceInfo"
+          }
+        }
+      },
+      "DevicesShellyNgPluginResDeviceInfo": {
+        "title": "Shelly Next-Generation (NG) Device Info Response",
+        "description": "Response schema containing a single Shelly Next-Generation (NG) device info.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/plugins/devices-shelly-ng/devices/info",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/DevicesShellyNgPluginDeviceInfo"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        }
+      },
+      "DevicesShellyNgPluginResSupportedDevices": {
+        "title": "Shelly Next-Generation (NG) Supported Devices Response",
+        "description": "Response schema containing a list of supported Shelly Next-Generation (NG) devices.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/plugins/devices-shelly-ng/devices/supported",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DevicesShellyNgPluginSupportedDevice"
+            },
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        }
+      },
       "PagesTilesPluginTilesPage": {
         "x-internal": true,
         "title": "Tiles Page",
@@ -16907,49 +18325,6 @@
                 "items": {
                   "$ref": "#/components/schemas/DashboardModuleTile"
                 }
-              },
-              "tile_size": {
-                "type": "number",
-                "nullable": true,
-                "description": "Size of one square layout tile in pixels, used for grid rendering. If not set, default layout will be used.",
-                "default": null,
-                "example": 120
-              },
-              "rows": {
-                "type": "number",
-                "nullable": true,
-                "description": "Number of grid rows used to layout tiles on the page. If not set, default layout will be used.",
-                "default": null,
-                "example": 10
-              },
-              "cols": {
-                "type": "number",
-                "nullable": true,
-                "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
-                "default": null,
-                "example": 4
-              }
-            }
-          }
-        ]
-      },
-      "PagesTilesPluginCreateTilesPage": {
-        "x-internal": true,
-        "title": "Create Tiles Page",
-        "description": "The schema for creating a tiles dashboard page.",
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/DashboardModuleCreatePage"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "tiles": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/DashboardModuleCreateTile"
-                },
-                "description": "A list of tiles associated with the tiles page."
               },
               "tile_size": {
                 "type": "number",
@@ -17003,6 +18378,49 @@
                 "type": "number",
                 "nullable": true,
                 "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
+                "example": 4
+              }
+            }
+          }
+        ]
+      },
+      "PagesTilesPluginCreateTilesPage": {
+        "x-internal": true,
+        "title": "Create Tiles Page",
+        "description": "The schema for creating a tiles dashboard page.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DashboardModuleCreatePage"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "tiles": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DashboardModuleCreateTile"
+                },
+                "description": "A list of tiles associated with the tiles page."
+              },
+              "tile_size": {
+                "type": "number",
+                "nullable": true,
+                "description": "Size of one square layout tile in pixels, used for grid rendering. If not set, default layout will be used.",
+                "default": null,
+                "example": 120
+              },
+              "rows": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid rows used to layout tiles on the page. If not set, default layout will be used.",
+                "default": null,
+                "example": 10
+              },
+              "cols": {
+                "type": "number",
+                "nullable": true,
+                "description": "Number of grid columns used to layout tiles on the page. If not set, default layout will be used.",
+                "default": null,
                 "example": 4
               }
             }
@@ -18366,11 +19784,15 @@
       "description": "A collection of endpoints that provide device-related functionalities, acting as a central module for handling device interactions."
     },
     {
-      "name": "Devices home assistant plugin",
+      "name": "Devices Home-Assistant plugin",
       "description": "Endpoints for interacting with Home Assistant devices and their states. This plugin allows discovery, inspection, and potential adoption of Home Assistant devices into the Smart Panel ecosystem."
     },
     {
-      "name": "Devices third-party plugin",
+      "name": "Devices Shelly NG plugin",
+      "description": "Endpoints for interacting with Shelly Next-Generation (NG) devices and their states. This plugin allows discovery, inspection, and potential adoption of Shelly Next-Generation devices into the Smart Panel ecosystem."
+    },
+    {
+      "name": "Devices Third-Party plugin",
       "description": "Endpoints for interacting with Third-party devices and their states."
     },
     {

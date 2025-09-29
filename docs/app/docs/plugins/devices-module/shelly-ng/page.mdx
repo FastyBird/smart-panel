@@ -1,0 +1,138 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Shelly Next-Generation (NG) Plugin
+
+The **Shelly Next-Generation plugin** integrates your Smart Panel directly with Shelly Next-Generation (NG) devices, providing real-time monitoring and control without needing any external bridge.
+
+## What It Does
+
+This plugin allows the Devices module to automatically discover and manage Shelly Next-Generation devices available on your network. Once connected, you can:
+
+- Read live status data (power, energy, temperature, humidity, etc.)
+- Control devices like switches, outlets, lights, and covers
+- Display and manage Shelly device channels directly from the dashboard
+- Keep device information synchronized with the Smart Panel
+
+## Current Limitations
+
+<Callout type="warning">
+	**Cloud connectivity is not supported.**
+	Devices must be accessible on the local network.
+</Callout>
+
+Automatic configuration of complex profiles (multi-switch or multi-cover modes) is limited.
+Future releases will expand support for auto-mapping and deeper profile handling.
+
+---
+
+## Configuration
+
+You can configure the Shelly Next-Generation plugin in two ways:
+
+### 1. Directly in the Admin App
+
+- Navigate to **Configuration → Plugins → Shelly Next-Generation** in the admin interface.
+- Enable or disable the plugin.
+- Adjust **mDNS** and **WebSockets** options.
+- Changes are applied immediately after save.
+
+### 2. Manually via config.yaml
+
+For advanced users or headless setups, you can edit the configuration file directly.
+
+<Steps>
+	#### Open the config file
+
+	Locate your configuration file at:
+
+	```
+	/opt/smart-panel/var/data/config.yaml
+	```
+
+	#### Add the Shelly Next-Generation section
+
+	Insert the plugin configuration block:
+
+	```yaml
+	plugins:
+		devices-shelly-ng:
+			enabled: true
+			mdns:
+				enabled: false
+				interface: null
+			websockets:
+				request_timeout: 10
+				ping_interval: 60
+				reconnect_interval:
+					- 5
+					- 10
+					- 30
+					- 60
+					- 300
+					- 600
+	```
+
+	| Key                             | Description                                                                 |
+	|---------------------------------|-----------------------------------------------------------------------------|
+	| `enabled`                       | Enable or disable the plugin.                                               |
+	| `type`                          | Plugin type identifier (`devices-shelly-ng`).                               |
+	| `mdns.enabled`                  | Enable mDNS discovery (true/false).                                         |
+	| `mdns.interface`                | Network interface for mDNS (or null for auto).                              |
+	| `websockets.request_timeout`    | Timeout (seconds) for WebSocket requests.                                   |
+	| `websockets.ping_interval`      | Interval (seconds) for WebSocket keep-alive pings.                          |
+	| `websockets.reconnect_interval` | Sequence of reconnect intervals (in seconds) used after connection loss.    |
+
+</Steps>
+
+<Callout type={'info'}>
+	You must restart the backend for configuration changes to take effect.
+</Callout>
+
+---
+
+## How It Works
+
+Once configured:
+
+- The plugin discovers devices from the local database and via mDNS (if enabled).
+- Each Shelly Next-Generation device is represented as a **Smart Panel device** with channels and properties.
+- Channel types (e.g., switch, light, cover, sensor) are created automatically based on the device specification.
+- Property values (e.g., on/off, brightness, energy consumption) are kept in sync in real time.
+- Commands from the panel (like toggling a switch) are sent directly to the Shelly device using its RPC API.
+
+## Features
+
+- ✅ Automatic device discovery via mDNS and database
+- ✅ Real-time updates through the Shelly Next-Generation RPC/WebSocket API
+- ✅ Automatic channel and property mapping
+- ✅ Support for multiple device categories (switches, outlets, covers, lights, sensors, etc.)
+- ✅ Bidirectional control and monitoring
+
+## Supported Devices
+
+The plugin supports the **Shelly NG series (Gen 2+)** devices as defined in the [node-shellies-ds9 library](https://github.com/cubi1337/node-shellies-ds9).
+
+Currently tested and supported models include:
+
+- **Shelly Plus 1 / Plus 1 UL / Plus 1PM / Plus 1PM UL / Plus 1 Mini / Plus 1 Mini PM**
+- **Shelly Plus 2PM / Plus 2PM UL**
+- **Shelly Plus S**
+- **Shelly Plus i4 / Plus i4 DC**
+- **Shelly Plus Plug S / Plus Plug US**
+- **Shelly Plus RGBW PM**
+- **Shelly Plus H&T**
+- **Shelly Pro 1 / Pro 1PM / Pro 2 / Pro 2PM / Pro 3 / Pro 4PM**
+- **Shelly Pro Dual Cover PM**
+- **Shelly Pro EM / Pro 3EM**
+- **Shelly Pro Dimmer 1PM**
+- **Shelly Pro Plug UK / Pro Plug IT**
+- **Shelly Pro Fan / Pro Valve / Pro Pump (depending on firmware profile)**
+- **Shelly NG Battery Devices (Plus Smoke, Plus CO, Plus Flood, etc.)**
+
+<Callout type={'info'}>
+	This list is based on the upstream [shellies-ds9](https://github.com/cubi1337/node-shellies-ds9) library and will expand as more devices are implemented.
+</Callout>
+
+---
+
+The Shelly Next-Generation plugin provides **native first-class support for Shelly Next-Generation devices** in the Smart Panel ecosystem — making your panel a powerful frontend for direct device control and monitoring.

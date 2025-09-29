@@ -91,7 +91,7 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.warn(`[LOOKUP] Channel with id=${id} for deviceId=${deviceId} not found`);
+				this.logger.debug(`[LOOKUP] Channel with id=${id} for deviceId=${deviceId} not found`);
 
 				return null;
 			}
@@ -109,12 +109,68 @@ export class ChannelsService {
 				.getOne()) as TChannel | null;
 
 			if (!channel) {
-				this.logger.warn(`[LOOKUP] Channel with id=${id} not found`);
+				this.logger.debug(`[LOOKUP] Channel with id=${id} not found`);
 
 				return null;
 			}
 
 			this.logger.debug(`[LOOKUP] Successfully fetched channel with id=${id}`);
+		}
+
+		return channel;
+	}
+
+	async findOneBy<TChannel extends ChannelEntity>(
+		column: 'id' | 'category' | 'identifier' | 'name',
+		value: string | number | boolean,
+		deviceId?: string,
+		type?: string,
+	): Promise<TChannel | null> {
+		const mapping = type ? this.channelsMapperService.getMapping<TChannel, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		let channel: TChannel | null;
+
+		if (deviceId) {
+			this.logger.debug(`[LOOKUP] Fetching channel with ${column}=${value} for deviceId=${deviceId}`);
+
+			channel = (await repository
+				.createQueryBuilder('channel')
+				.innerJoinAndSelect('channel.device', 'device')
+				.leftJoinAndSelect('channel.controls', 'controls')
+				.leftJoinAndSelect('controls.channel', 'controlChannel')
+				.leftJoinAndSelect('channel.properties', 'properties')
+				.leftJoinAndSelect('properties.channel', 'propertyChannel')
+				.where(`channel.${column} = :filterBy`, { filterBy: value })
+				.andWhere('device.id = :deviceId', { deviceId })
+				.getOne()) as TChannel | null;
+
+			if (!channel) {
+				this.logger.debug(`[LOOKUP] Channel with ${column}=${value} for deviceId=${deviceId} not found`);
+
+				return null;
+			}
+
+			this.logger.debug(`[LOOKUP] Successfully fetched channel with ${column}=${value} for deviceId=${deviceId}`);
+		} else {
+			channel = (await repository
+				.createQueryBuilder('channel')
+				.innerJoinAndSelect('channel.device', 'device')
+				.leftJoinAndSelect('channel.controls', 'controls')
+				.leftJoinAndSelect('controls.channel', 'controlChannel')
+				.leftJoinAndSelect('channel.properties', 'properties')
+				.leftJoinAndSelect('properties.channel', 'propertyChannel')
+				.where(`channel.${column} = :filterBy`, { filterBy: value })
+				.getOne()) as TChannel | null;
+
+			if (!channel) {
+				this.logger.debug(`[LOOKUP] Channel with ${column}=${value} not found`);
+
+				return null;
+			}
+
+			this.logger.debug(`[LOOKUP] Successfully fetched channel with ${column}=${value}`);
 		}
 
 		return channel;
