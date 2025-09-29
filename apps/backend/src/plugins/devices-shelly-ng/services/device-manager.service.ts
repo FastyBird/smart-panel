@@ -15,9 +15,9 @@ import { ChannelDefinition, channelsSchema } from '../../../spec/channels';
 import {
 	ComponentType,
 	DESCRIPTORS,
+	DEVICES_SHELLY_NG_TYPE,
 	DeviceDescriptor,
 	DeviceProfile,
-	DEVICES_SHELLY_NG_TYPE,
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 import { CreateShellyNgChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -850,28 +850,42 @@ export class DeviceManagerService {
 				);
 			}
 
-			const propertySpec = typeof channelSpec === 'object' ? (channelSpec['properties'][category] as
-				| {
-						permissions: PermissionType[];
-						data_type: DataTypeType;
-						unit: string | null;
-						format: string[] | number[] | null;
-				  }
-				| undefined) | undefined;
+			const propertySpec =
+				typeof channelSpec === 'object'
+					? (channelSpec['properties'][category] as
+							| {
+									permissions: PermissionType[];
+									data_type: DataTypeType;
+									unit: string | null;
+									format: string[] | number[] | null;
+							  }
+							| undefined)
+					: undefined;
 
 			if (!propertySpec || typeof propertySpec !== 'object') {
-				this.logger.warn(`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for property category=${category}. Falling back to minimal property.`);
+				this.logger.warn(
+					`[SHELLY NG][DEVICE MANAGER] Missing or invalid schema for property category=${category}. Falling back to minimal property.`,
+				);
 			}
 
 			const inferredType =
-				typeof value === 'number' ? 'number' :
-					typeof value === 'boolean' ? 'boolean' :
-						typeof value === 'string' ? 'string' : 'mixed';
+				typeof value === 'number'
+					? 'number'
+					: typeof value === 'boolean'
+						? 'boolean'
+						: typeof value === 'string'
+							? 'string'
+							: 'mixed';
 
-			const inferredDataType: DataTypeType = propertySpec?.data_type ?? (
-				inferredType === 'number' ? DataTypeType.FLOAT :
-					inferredType === 'boolean' ? DataTypeType.BOOL :
-						inferredType === 'string' ? DataTypeType.STRING : DataTypeType.UNKNOWN);
+			const inferredDataType: DataTypeType =
+				propertySpec?.data_type ??
+				(inferredType === 'number'
+					? DataTypeType.FLOAT
+					: inferredType === 'boolean'
+						? DataTypeType.BOOL
+						: inferredType === 'string'
+							? DataTypeType.STRING
+							: DataTypeType.UNKNOWN);
 
 			const permissions: PermissionType[] = propertySpec?.permissions ?? [PermissionType.READ_WRITE];
 
