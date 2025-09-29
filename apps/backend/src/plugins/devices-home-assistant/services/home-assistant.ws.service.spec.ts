@@ -18,6 +18,7 @@ describe('HomeAssistantWsService', () => {
 	beforeEach(async () => {
 		mockConfigService = {
 			getPluginConfig: jest.fn().mockReturnValue({
+				enabled: true,
 				apiKey: 'mock-token',
 				hostname: 'localhost:8123',
 			} as HomeAssistantConfigModel),

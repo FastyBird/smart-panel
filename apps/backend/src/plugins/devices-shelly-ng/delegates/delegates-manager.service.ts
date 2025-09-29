@@ -132,7 +132,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					this.handleChange(linkQuality, clampNumber(rssiToQuality(val), 0, 100)).catch((err: Error): void => {
+					this.handleChange(linkQuality, clampNumber(rssiToQuality(n), 0, 100)).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${deviceInformation.identifier} attribute=rssi and property=${linkQuality.id}`,
 							{
@@ -225,7 +225,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					this.handleChange(consumption, toEnergy(val), false).catch((err: Error): void => {
+					this.handleChange(consumption, toEnergy(n), false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=aenergy and property=${consumption.id}`,
 							{
@@ -268,7 +268,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					this.handleChange(power, val, false).catch((err: Error): void => {
+					this.handleChange(power, n, false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=apower and property=${power.id}`,
 							{
@@ -299,7 +299,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						this.handleChange(voltage, val, false).catch((err: Error): void => {
+						this.handleChange(voltage, n, false).catch((err: Error): void => {
 							this.logger.error(
 								`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=voltage and property=${voltage.id}`,
 								{
@@ -331,7 +331,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						this.handleChange(current, val, false).catch((err: Error): void => {
+						this.handleChange(current, n, false).catch((err: Error): void => {
 							this.logger.error(
 								`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current and property=${current.id}`,
 								{
@@ -411,7 +411,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					this.handleChange(brightness, clampNumber(val, 0, 100)).catch((err: Error): void => {
+					this.handleChange(brightness, clampNumber(n, 0, 100)).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=brightness and property=${brightness.id}`,
 							{
@@ -431,7 +431,7 @@ export class DelegatesManagerService {
 							return;
 						}
 
-						await comp.set(comp.output, clampNumber(val, 0, 100));
+						await comp.set(comp.output, clampNumber(n, 0, 100));
 
 						return true;
 					},
@@ -500,7 +500,7 @@ export class DelegatesManagerService {
 					return;
 				}
 
-				this.handleChange(coverPosition, val).catch((err: Error): void => {
+				this.handleChange(coverPosition, n).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current_pos and property=${coverPosition.id}`,
 						{
@@ -520,7 +520,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					await comp.goToPosition(clampNumber(val, 0, 100));
+					await comp.goToPosition(clampNumber(n, 0, 100));
 
 					return true;
 				},
@@ -585,7 +585,7 @@ export class DelegatesManagerService {
 					return;
 				}
 
-				this.handleChange(relativeHumidity, clampNumber(val, 0, 100)).catch((err: Error): void => {
+				this.handleChange(relativeHumidity, clampNumber(n, 0, 100)).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=rh and property=${relativeHumidity.id}`,
 						{
@@ -628,7 +628,7 @@ export class DelegatesManagerService {
 					return;
 				}
 
-				this.handleChange(relativeTemperature, val).catch((err: Error): void => {
+				this.handleChange(relativeTemperature, n).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=tC and property=${relativeTemperature.id}`,
 						{
@@ -672,7 +672,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					this.handleChange(battery, clampNumber(val, 0, 100)).catch((err: Error): void => {
+					this.handleChange(battery, clampNumber(n, 0, 100)).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=battery.percent and property=${battery.id}`,
 							{
@@ -716,7 +716,7 @@ export class DelegatesManagerService {
 					return;
 				}
 
-				this.handleChange(power, val, false).catch((err: Error): void => {
+				this.handleChange(power, n, false).catch((err: Error): void => {
 					this.logger.error(
 						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=apower and property=${power.id}`,
 						{
@@ -747,7 +747,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					this.handleChange(voltage, val, false).catch((err: Error): void => {
+					this.handleChange(voltage, n, false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=voltage and property=${voltage.id}`,
 							{
@@ -779,7 +779,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					this.handleChange(current, val, false).catch((err: Error): void => {
+					this.handleChange(current, n, false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=current and property=${current.id}`,
 							{
@@ -822,7 +822,7 @@ export class DelegatesManagerService {
 						return;
 					}
 
-					this.handleChange(consumption, toEnergy(val), false).catch((err: Error): void => {
+					this.handleChange(consumption, toEnergy(n), false).catch((err: Error): void => {
 						this.logger.error(
 							`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=aenergy and property=${consumption.id}`,
 							{
