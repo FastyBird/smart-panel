@@ -116,16 +116,14 @@ export default {
 			}
 		});
 
-		app.mixin({
-			mounted() {
-				if (!ran && configPluginsStore.firstLoad === false) {
-					ran = true;
+		options.router.isReady().then(() => {
+			if (!ran && configPluginsStore.firstLoad === false) {
+				ran = true;
 
-					configPluginsStore.fetch().catch((): void => {
-						// Something went wrong
-					});
-				}
-			},
+				configPluginsStore.fetch().catch((): void => {
+					// Something went wrong
+				});
+			}
 		});
 	},
 };
