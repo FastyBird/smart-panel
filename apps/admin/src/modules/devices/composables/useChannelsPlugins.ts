@@ -12,7 +12,7 @@ import type { IUseChannelsPlugins } from './types';
 export const useChannelsPlugins = (): IUseChannelsPlugins => {
 	const pluginsManager = injectPluginsManager();
 
-	const { enabled, fetchConfigPlugins, loaded } = useConfigPlugins();
+	const { enabled } = useConfigPlugins();
 
 	const pluginComponents: (keyof IChannelPluginsComponents)[] = ['channelAddForm', 'channelEditForm'];
 
@@ -88,12 +88,6 @@ export const useChannelsPlugins = (): IUseChannelsPlugins => {
 
 		return undefined;
 	};
-
-	if (!loaded.value) {
-		fetchConfigPlugins().catch((): void => {
-			// Something went wrong
-		});
-	}
 
 	return {
 		plugins,

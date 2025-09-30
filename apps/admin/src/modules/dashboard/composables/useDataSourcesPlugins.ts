@@ -12,7 +12,7 @@ import type { IUseDataSourcesPlugins } from './types';
 export const useDataSourcesPlugins = (): IUseDataSourcesPlugins => {
 	const pluginsManager = injectPluginsManager();
 
-	const { enabled, fetchConfigPlugins, loaded } = useConfigPlugins();
+	const { enabled } = useConfigPlugins();
 
 	const pluginComponents: (keyof IDataSourcePluginsComponents)[] = ['dataSourceAddForm', 'dataSourceEditForm'];
 
@@ -88,12 +88,6 @@ export const useDataSourcesPlugins = (): IUseDataSourcesPlugins => {
 
 		return undefined;
 	};
-
-	if (!loaded.value) {
-		fetchConfigPlugins().catch((): void => {
-			// Something went wrong
-		});
-	}
 
 	return {
 		plugins,

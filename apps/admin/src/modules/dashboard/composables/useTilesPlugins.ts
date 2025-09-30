@@ -12,7 +12,7 @@ import type { IUseTilesPlugins } from './types';
 export const useTilesPlugins = (): IUseTilesPlugins => {
 	const pluginsManager = injectPluginsManager();
 
-	const { enabled, fetchConfigPlugins, loaded } = useConfigPlugins();
+	const { enabled } = useConfigPlugins();
 
 	const pluginComponents: (keyof ITilePluginsComponents)[] = ['tileAddForm', 'tileEditForm'];
 
@@ -88,12 +88,6 @@ export const useTilesPlugins = (): IUseTilesPlugins => {
 
 		return undefined;
 	};
-
-	if (!loaded.value) {
-		fetchConfigPlugins().catch((): void => {
-			// Something went wrong
-		});
-	}
 
 	return {
 		plugins,
