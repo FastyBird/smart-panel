@@ -49,7 +49,7 @@ export default {
 
 				const headers = request.headers instanceof Headers ? request.headers : new Headers(request.headers as Record<string, string>);
 
-				if (headers.get('X-Retried') === '1') {
+				if (headers.get('X-Retried') !== null) {
 					return;
 				}
 
