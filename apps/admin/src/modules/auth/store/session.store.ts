@@ -80,7 +80,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			const parsedSession = TokenPairSchema.safeParse({
 				accessToken: accessTokenCookie,
 				refreshToken: refreshTokenCookie,
-				expiration: decodedAccessToken.exp ? decodedAccessToken.exp : null,
+				expiration: decodedAccessToken.exp ? decodedAccessToken.exp * 1000 : null,
 				type: AccessTokenType.BEARER,
 			});
 
