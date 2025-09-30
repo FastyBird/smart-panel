@@ -19,7 +19,11 @@ export const useConfigPlugins = (): IUseConfigPlugins => {
 		return configPluginStore.findAll();
 	});
 
-	const fetchConfigPlugins = async (): Promise<void> => {
+	const fetchConfigPlugins = async (force: boolean = false): Promise<void> => {
+		if (loaded.value && !force) {
+			return;
+		}
+
 		await configPluginStore.fetch();
 	};
 

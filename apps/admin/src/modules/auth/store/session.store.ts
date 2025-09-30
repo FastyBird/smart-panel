@@ -56,8 +56,13 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		return expiration === null || expiration.getTime() < new Date().getTime();
 	};
 
+	let pendingGetPromise: Promise<IUser> | undefined;
+	let pendingRefreshPromise: Promise<boolean> | undefined;
+
 	const initialize = async (): Promise<boolean> => {
-		if (tokenPair.value !== null) return false;
+		if (tokenPair.value !== null) {
+			return false;
+		}
 
 		const accessTokenCookie = readCookie(ACCESS_TOKEN_COOKIE_NAME);
 		const refreshTokenCookie = readCookie(REFRESH_TOKEN_COOKIE_NAME);
@@ -76,7 +81,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			const parsedSession = TokenPairSchema.safeParse({
 				accessToken: accessTokenCookie,
 				refreshToken: refreshTokenCookie,
-				expiration: decodedAccessToken.exp ? decodedAccessToken.exp : null,
+				expiration: decodedAccessToken.exp ? decodedAccessToken.exp * 1000 : null,
 				type: AccessTokenType.BEARER,
 			});
 
@@ -127,29 +132,43 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 	};
 
 	const get = async (): Promise<IUser> => {
-		if (semaphore.value.fetching) {
-			throw new AuthException('Already fetching profile.');
+		if (typeof pendingGetPromise !== 'undefined') {
+			return pendingGetPromise;
 		}
 
-		semaphore.value.fetching = true;
+		const getPromise = (async (): Promise<IUser> => {
+			if (semaphore.value.fetching) {
+				throw new AuthException('Already fetching profile.');
+			}
 
-		const { data: responseData, error } = await backend.client.GET(`/${AUTH_MODULE_PREFIX}/auth/profile`);
+			semaphore.value.fetching = true;
 
-		semaphore.value.fetching = false;
+			const { data: responseData, error } = await backend.client.GET(`/${AUTH_MODULE_PREFIX}/auth/profile`);
 
-		if (typeof responseData !== 'undefined') {
-			profile.value = transformUserResponse(responseData.data);
+			semaphore.value.fetching = false;
 
-			return profile.value;
+			if (typeof responseData !== 'undefined') {
+				profile.value = transformUserResponse(responseData.data);
+
+				return profile.value;
+			}
+
+			let errorReason: string | null = 'Failed to get profile.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['get-auth-module-profile']>(error, errorReason);
+			}
+
+			throw new AuthException(errorReason);
+		})();
+
+		pendingGetPromise = getPromise;
+
+		try {
+			return await getPromise;
+		} finally {
+			pendingGetPromise = undefined;
 		}
-
-		let errorReason: string | null = 'Failed to get profile.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['get-auth-module-profile']>(error, errorReason);
-		}
-
-		throw new AuthException(errorReason);
 	};
 
 	const create = async (payload: ISessionCreateActionPayload): Promise<IUser> => {
@@ -202,45 +221,59 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 	};
 
 	const refresh = async (): Promise<boolean> => {
-		if (semaphore.value.updating) {
-			return false;
+		if (typeof pendingRefreshPromise !== 'undefined') {
+			return pendingRefreshPromise;
 		}
 
-		deleteCookie(ACCESS_TOKEN_COOKIE_NAME);
+		const refreshPromise = (async (): Promise<boolean> => {
+			if (semaphore.value.updating) {
+				return false;
+			}
 
-		const refreshToken = readCookie(REFRESH_TOKEN_COOKIE_NAME);
+			deleteCookie(ACCESS_TOKEN_COOKIE_NAME);
 
-		if (refreshToken === null) {
+			const refreshToken = readCookie(REFRESH_TOKEN_COOKIE_NAME);
+
+			if (refreshToken === null) {
+				deleteCookie(REFRESH_TOKEN_COOKIE_NAME);
+
+				return false;
+			}
+
+			semaphore.value.updating = true;
+
+			const { data: responseData } = await backend.client.POST(`/${AUTH_MODULE_PREFIX}/auth/refresh`, {
+				body: {
+					data: {
+						token: refreshToken,
+					},
+				},
+			});
+
+			semaphore.value.updating = false;
+
+			if (typeof responseData !== 'undefined') {
+				tokenPair.value = transformTokenPairResponse(responseData.data);
+
+				writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
+
+				writeCookie(REFRESH_TOKEN_COOKIE_NAME, responseData.data.refresh_token);
+
+				return true;
+			}
+
 			deleteCookie(REFRESH_TOKEN_COOKIE_NAME);
 
 			return false;
+		})();
+
+		pendingRefreshPromise = refreshPromise;
+
+		try {
+			return await refreshPromise;
+		} finally {
+			pendingRefreshPromise = undefined;
 		}
-
-		semaphore.value.updating = true;
-
-		const { data: responseData } = await backend.client.POST(`/${AUTH_MODULE_PREFIX}/auth/refresh`, {
-			body: {
-				data: {
-					token: refreshToken,
-				},
-			},
-		});
-
-		semaphore.value.updating = false;
-
-		if (typeof responseData !== 'undefined') {
-			tokenPair.value = transformTokenPairResponse(responseData.data);
-
-			writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
-
-			writeCookie(REFRESH_TOKEN_COOKIE_NAME, responseData.data.refresh_token);
-
-			return true;
-		}
-
-		deleteCookie(REFRESH_TOKEN_COOKIE_NAME);
-
-		return false;
 	};
 
 	const readCookie = (name: string): string | null => {
@@ -261,7 +294,22 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		cookies.remove(name);
 	};
 
-	return { semaphore, tokenPair, profile, accessToken, refreshToken, isSignedIn, isExpired, initialize, clear, get, create, edit, register, refresh };
+	return {
+		semaphore,
+		tokenPair,
+		profile,
+		accessToken,
+		refreshToken,
+		isSignedIn,
+		isExpired,
+		initialize,
+		clear,
+		get,
+		create,
+		edit,
+		register,
+		refresh,
+	};
 });
 
 export const registerSessionStore = (pinia: Pinia): SessionStore => {

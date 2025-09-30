@@ -12,7 +12,7 @@ import type { IUsePagesPlugins } from './types';
 export const usePagesPlugins = (): IUsePagesPlugins => {
 	const pluginsManager = injectPluginsManager();
 
-	const { enabled, fetchConfigPlugins, loaded } = useConfigPlugins();
+	const { enabled } = useConfigPlugins();
 
 	const pluginComponents: (keyof IPagePluginsComponents)[] = ['pageDetail', 'pageAddForm', 'pageEditForm'];
 
@@ -92,12 +92,6 @@ export const usePagesPlugins = (): IUsePagesPlugins => {
 
 		return undefined;
 	};
-
-	if (!loaded.value) {
-		fetchConfigPlugins().catch((): void => {
-			// Something went wrong
-		});
-	}
 
 	return {
 		plugins,

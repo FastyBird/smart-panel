@@ -22,6 +22,8 @@ export default {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
 
+		let ran = false;
+
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
 			const mergedMessages = defaultsDeep(currentMessages, { configModule: translations });
@@ -111,6 +113,16 @@ export default {
 
 				default:
 					console.warn('Unhandled config module event:', data.event);
+			}
+		});
+
+		options.router.isReady().then(() => {
+			if (!ran && configPluginsStore.firstLoad === false) {
+				ran = true;
+
+				configPluginsStore.fetch().catch((): void => {
+					// Something went wrong
+				});
 			}
 		});
 	},

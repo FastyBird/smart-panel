@@ -140,7 +140,7 @@ export interface IUseConfigPlugins {
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
 	enabled: (type: IConfigPlugin['type']) => boolean;
-	fetchConfigPlugins: () => Promise<void>;
+	fetchConfigPlugins: (force?: boolean) => Promise<void>;
 }
 
 export interface IUseConfigPluginEditForm<TForm extends IConfigPluginEditForm = IConfigPluginEditForm> {

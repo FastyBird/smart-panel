@@ -109,10 +109,10 @@ const moduleOptions: IModuleOptions = {
 
 app.use(SystemModule, moduleOptions);
 app.use(ConfigModule, moduleOptions);
+app.use(AuthModule, moduleOptions);
 app.use(DashboardModule, moduleOptions);
 app.use(DevicesModule, moduleOptions);
 app.use(UsersModule, moduleOptions);
-app.use(AuthModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {

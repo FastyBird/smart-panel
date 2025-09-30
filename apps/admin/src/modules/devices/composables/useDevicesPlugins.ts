@@ -12,7 +12,7 @@ import type { IUseDevicesPlugins } from './types';
 export const useDevicesPlugins = (): IUseDevicesPlugins => {
 	const pluginsManager = injectPluginsManager();
 
-	const { enabled, fetchConfigPlugins, loaded } = useConfigPlugins();
+	const { enabled } = useConfigPlugins();
 
 	const pluginComponents: (keyof IDevicePluginsComponents)[] = ['deviceAddForm', 'deviceEditForm'];
 
@@ -88,12 +88,6 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 
 		return undefined;
 	};
-
-	if (!loaded.value) {
-		fetchConfigPlugins().catch((): void => {
-			// Something went wrong
-		});
-	}
 
 	return {
 		plugins,
