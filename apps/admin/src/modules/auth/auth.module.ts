@@ -63,7 +63,7 @@ export default {
 					return;
 				}
 
-				const retryHeaders = headers;
+				const retryHeaders = new Headers(headers);
 
 				retryHeaders.set('X-Retried', '1');
 				retryHeaders.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
