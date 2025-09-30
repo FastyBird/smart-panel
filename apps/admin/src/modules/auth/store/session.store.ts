@@ -56,9 +56,8 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		return expiration === null || expiration.getTime() < new Date().getTime();
 	};
 
-	let pendingGetPromise: Promise<IUser> | undefined = undefined;
-
-	let pendingRefreshPromise: Promise<boolean> | undefined = undefined;
+	let pendingGetPromise: Promise<IUser> | undefined;
+	let pendingRefreshPromise: Promise<boolean> | undefined;
 
 	const initialize = async (): Promise<boolean> => {
 		if (tokenPair.value !== null) {
@@ -168,7 +167,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		try {
 			return await getPromise;
 		} finally {
-			pendingRefreshPromise = undefined;
+			pendingGetPromise = undefined;
 		}
 	};
 

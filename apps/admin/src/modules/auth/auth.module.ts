@@ -52,6 +52,7 @@ export default {
 				const headers = request.headers instanceof Headers ? request.headers : new Headers(request.headers as Record<string, string>);
 
 				if (headers.get('X-Retried') !== null) {
+					// Request retry failed
 					return;
 				}
 
@@ -60,10 +61,13 @@ export default {
 						sessionStore.clear();
 					}
 				} else if ((headers.get('Authorization') || '').startsWith('Bearer')) {
+					// If the request contains Authorization header and the response is 401, then
+					// the token is not valid or not allowed to access the endpoint
 					return;
 				}
 
 				if (sessionStore.tokenPair === null) {
+					// Tokens are missing so no need to retry the request
 					return;
 				}
 

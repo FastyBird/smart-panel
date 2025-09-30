@@ -20,7 +20,7 @@ export const useConfigPlugins = (): IUseConfigPlugins => {
 	});
 
 	const fetchConfigPlugins = async (force: boolean = false): Promise<void> => {
-		if (loaded.value || !force) {
+		if (loaded.value && !force) {
 			return;
 		}
 
