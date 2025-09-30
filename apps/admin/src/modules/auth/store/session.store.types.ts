@@ -41,6 +41,7 @@ export type ISessionRegisterActionPayload = z.infer<typeof SessionRegisterAction
 export interface ISessionStoreState {
 	profile: Ref<IUser | null>;
 	tokenPair: Ref<ITokenPair | null>;
+	initialized: Ref<boolean>;
 	semaphore: Ref<ISessionStateSemaphore>;
 }
 

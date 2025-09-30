@@ -40,6 +40,8 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 	const tokenPair = ref<ITokenPair | null>(null);
 	const profile = ref<IUser | null>(null);
 
+	const initialized = ref<boolean>(false);
+
 	const accessToken = (): string | null => tokenPair.value?.accessToken ?? null;
 
 	const refreshToken = (): string | null => tokenPair.value?.refreshToken ?? null;
@@ -66,6 +68,8 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			// Refresh token is missing, user is considered as logged out
 			clear();
 
+			initialized.value = true;
+
 			return false;
 		}
 
@@ -87,6 +91,8 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 				clear();
 
+				initialized.value = true;
+
 				return false;
 			}
 		} else {
@@ -105,6 +111,8 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		try {
 			// Get user profile info
 			await get();
+
+			initialized.value = true;
 
 			return true;
 		} catch (error: unknown) {
@@ -261,7 +269,23 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 		cookies.remove(name);
 	};
 
-	return { semaphore, tokenPair, profile, accessToken, refreshToken, isSignedIn, isExpired, initialize, clear, get, create, edit, register, refresh };
+	return {
+		semaphore,
+		tokenPair,
+		profile,
+		initialized,
+		accessToken,
+		refreshToken,
+		isSignedIn,
+		isExpired,
+		initialize,
+		clear,
+		get,
+		create,
+		edit,
+		register,
+		refresh,
+	};
 });
 
 export const registerSessionStore = (pinia: Pinia): SessionStore => {

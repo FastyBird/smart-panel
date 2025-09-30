@@ -30,6 +30,50 @@ export default {
 
 		const sessionStore = registerSessionStore(options.store);
 
+		backendClient.use({
+			async onRequest({ request }) {
+				if (sessionStore.tokenPair !== null && sessionStore.isExpired() && sessionStore.initialized) {
+					await sessionStore.refresh();
+				}
+
+				if (sessionStore.tokenPair !== null) {
+					request.headers.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
+				}
+
+				return request;
+			},
+			async onResponse({ request, response }) {
+				if (response.status !== 401) {
+					return;
+				}
+
+				const headers = request.headers instanceof Headers ? request.headers : new Headers(request.headers as Record<string, string>);
+
+				if (headers.get('X-Retried') === '1') {
+					return;
+				}
+
+				if (sessionStore.tokenPair && sessionStore.isExpired() && sessionStore.initialized) {
+					await sessionStore.refresh();
+				} else if ((headers.get('Authorization') || '').startsWith('Bearer')) {
+					return;
+				}
+
+				if (sessionStore.tokenPair === null) {
+					return;
+				}
+
+				const retryHeaders = headers;
+
+				retryHeaders.set('X-Retried', '1');
+				retryHeaders.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
+
+				const retryReq = new Request(request, { headers: retryHeaders });
+
+				return fetch(retryReq);
+			},
+		});
+
 		app.provide(sessionStoreKey, sessionStore);
 		storesManager.addStore(sessionStoreKey, sessionStore);
 
@@ -85,22 +129,6 @@ export default {
 			});
 		}
 
-		backendClient.use({
-			async onRequest({ request }) {
-				const sessionStore = storesManager.getStore(sessionStoreKey);
-
-				if (sessionStore.tokenPair !== null && sessionStore.isExpired()) {
-					await sessionStore.refresh();
-				}
-
-				if (sessionStore.tokenPair !== null) {
-					request.headers.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
-				}
-
-				return request;
-			},
-		});
-
 		provideAccountManager(app, {
 			isSignedIn: computed<boolean>((): boolean => {
 				return sessionStore.isSignedIn();
@@ -139,7 +167,7 @@ export default {
 			},
 			signOut: async (): Promise<boolean> => {
 				try {
-					await sessionStore.clear();
+					sessionStore.clear();
 
 					return true;
 				} catch {
