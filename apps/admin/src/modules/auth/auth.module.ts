@@ -32,8 +32,10 @@ export default {
 
 		backendClient.use({
 			async onRequest({ request }) {
-				if (sessionStore.tokenPair !== null && sessionStore.isExpired() && sessionStore.initialized) {
-					await sessionStore.refresh();
+				if (sessionStore.tokenPair !== null && sessionStore.isExpired()) {
+					if (!(await sessionStore.refresh())) {
+						sessionStore.clear();
+					}
 				}
 
 				if (sessionStore.tokenPair !== null) {
@@ -53,8 +55,10 @@ export default {
 					return;
 				}
 
-				if (sessionStore.tokenPair && sessionStore.isExpired() && sessionStore.initialized) {
-					await sessionStore.refresh();
+				if (sessionStore.tokenPair && sessionStore.isExpired()) {
+					if (!(await sessionStore.refresh())) {
+						sessionStore.clear();
+					}
 				} else if ((headers.get('Authorization') || '').startsWith('Bearer')) {
 					return;
 				}
