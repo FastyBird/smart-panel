@@ -19,12 +19,17 @@ const backendClient = {
 	DELETE: vi.fn(),
 };
 
-vi.mock('../../../common', () => ({
-	useBackend: vi.fn(() => ({
-		client: backendClient,
-	})),
-	getErrorReason: vi.fn(),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		useBackend: vi.fn(() => ({
+			client: backendClient,
+		})),
+		getErrorReason: vi.fn(),
+	};
+});
 
 describe('Displays Profiles Store', (): void => {
 	let displaysStore: ReturnType<typeof useDisplaysProfiles>;

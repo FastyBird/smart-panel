@@ -7,9 +7,14 @@ import type { DisplaysProfilesStore, IDisplayProfile, IDisplaysProfilesStateSema
 
 import { useDisplayProfile } from './useDisplayProfile';
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: vi.fn(),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: vi.fn(),
+	};
+});
 
 describe('useDisplayProfile', (): void => {
 	let displaysStoreMock: DisplaysProfilesStore;

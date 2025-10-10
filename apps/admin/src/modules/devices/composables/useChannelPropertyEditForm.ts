@@ -2,9 +2,9 @@ import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
 import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
@@ -141,7 +141,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 		enterValue: false,
 	} as unknown as TForm);
 
-	let initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -253,7 +253,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 
 		formChanged.value = false;
 
-		initialModel = cloneDeep<Reactive<TForm>>(toRaw(model));
+		initialModel = deepClone<Reactive<TForm>>(toRaw(model));
 
 		return 'saved';
 	};

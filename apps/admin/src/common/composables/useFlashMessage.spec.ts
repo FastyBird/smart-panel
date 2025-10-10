@@ -3,13 +3,18 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { useFlashMessage } from './useFlashMessage';
 
-vi.mock('element-plus', () => ({
-	ElNotification: {
-		success: vi.fn(),
-		info: vi.fn(),
-		error: vi.fn(),
-	},
-}));
+vi.mock('element-plus', async () => {
+	const actual = await vi.importActual('element-plus');
+
+	return {
+		...actual,
+		ElNotification: {
+			success: vi.fn(),
+			info: vi.fn(),
+			error: vi.fn(),
+		},
+	};
+});
 
 describe('useFlashMessage', () => {
 	it('calls success notification with the correct message', () => {

@@ -2,10 +2,10 @@ import { computed, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager } from '../../../common';
+import { deepClone, injectStoresManager } from '../../../common';
 import type { IPage } from '../../../modules/dashboard';
 import type { ICard } from '../store/cards.store.types';
 import { cardsStoreKey } from '../store/keys';
@@ -32,7 +32,7 @@ export const useCardsDataSource = ({ pageId }: IUseCardsDataSourceProps): IUseCa
 
 	const paginatePage = ref<number>(1);
 
-	const filters = ref<ICardsFilter>(cloneDeep<ICardsFilter>(defaultCardsFilter));
+	const filters = ref<ICardsFilter>(deepClone<ICardsFilter>(defaultCardsFilter));
 
 	const filtersActive = computed<boolean>((): boolean => {
 		return filters.value.search !== defaultCardsFilter.search || !isEqual(filters.value.pages, defaultCardsFilter.pages);
@@ -89,7 +89,7 @@ export const useCardsDataSource = ({ pageId }: IUseCardsDataSourceProps): IUseCa
 	);
 
 	const resetFilter = (): void => {
-		filters.value = cloneDeep<ICardsFilter>(defaultCardsFilter);
+		filters.value = deepClone<ICardsFilter>(defaultCardsFilter);
 	};
 
 	watch(

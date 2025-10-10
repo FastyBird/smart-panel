@@ -9,7 +9,7 @@ export interface IListDataSourcesProps {
 	filtersActive: boolean;
 	paginateSize: number;
 	paginatePage: number;
-	sortBy: 'title' | 'type' | 'order';
-	sortDir: 'ascending' | 'descending' | null;
+	sortBy: 'type' | undefined;
+	sortDir: 'asc' | 'desc' | null;
 	loading: boolean;
 }

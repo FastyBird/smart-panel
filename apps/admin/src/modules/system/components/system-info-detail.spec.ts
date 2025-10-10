@@ -23,9 +23,14 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-vi.mock('../../../common', () => ({
-	formatNumber: (value: number) => value.toString(),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		formatNumber: (value: number) => value.toString(),
+	};
+});
 
 const mockSystemInfo: ISystemInfo = {
 	cpuLoad: 12.34,

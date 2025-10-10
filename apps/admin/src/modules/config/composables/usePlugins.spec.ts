@@ -43,11 +43,16 @@ const mockPluginList = [
 	},
 ];
 
-vi.mock('../../../common', () => ({
-	injectPluginsManager: () => ({
-		getPlugins: () => mockPluginList,
-	}),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectPluginsManager: () => ({
+			getPlugins: () => mockPluginList,
+		}),
+	};
+});
 
 describe('usePlugins', () => {
 	it('returns only plugins related to devices module', () => {

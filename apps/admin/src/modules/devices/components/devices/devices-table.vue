@@ -3,7 +3,11 @@
 		v-loading="props.loading"
 		:element-loading-text="t('devicesModule.texts.devices.loadingDevices')"
 		:data="props.items"
-		:default-sort="{ prop: props.sortBy, order: props.sortDir || 'ascending' }"
+		:default-sort="
+			typeof props.sortBy !== 'undefined' && props.sortDir !== null
+				? { prop: props.sortBy, order: props.sortDir === 'desc' ? 'descending' : 'ascending' }
+				: undefined
+		"
 		table-layout="fixed"
 		row-key="id"
 		class="flex-grow"
@@ -284,7 +288,7 @@ import { useVModel } from '@vueuse/core';
 
 import { type IPluginElement, IconWithChild, useBreakpoints } from '../../../../common';
 import type { DevicesModuleDeviceCategory } from '../../../../openapi';
-import type { IDevicesFilter } from '../../composables/composables';
+import type { IDevicesFilter } from '../../composables/types';
 import type { ConnectionState } from '../../devices.constants';
 import type { IDevice } from '../../store/devices.store.types';
 
@@ -306,8 +310,8 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 	(e: 'selected-changes', selected: IDevice[]): void;
 	(e: 'update:filters', filters: IDevicesFilter): void;
-	(e: 'update:sort-by', by: 'name' | 'description' | 'type' | 'state' | 'category'): void;
-	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
+	(e: 'update:sort-by', by: 'name' | 'description' | 'type' | 'state' | 'category' | undefined): void;
+	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
 const { t } = useI18n();
@@ -326,7 +330,7 @@ const onSortData = ({
 	order: 'ascending' | 'descending' | null;
 }): void => {
 	emit('update:sort-by', prop);
-	emit('update:sort-dir', order);
+	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
 };
 
 const onSelectionChange = (selected: IDevice[]): void => {

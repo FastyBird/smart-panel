@@ -7,9 +7,14 @@ import type { IUser, IUsersStateSemaphore, UsersStore } from '../store/users.sto
 
 import { useUser } from './useUser';
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: vi.fn(),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: vi.fn(),
+	};
+});
 
 describe('useUser', (): void => {
 	let usersStoreMock: UsersStore;

@@ -19,11 +19,16 @@ vi.mock('vue-i18n', () => ({
 
 const isMDDevice = computed(() => true);
 
-vi.mock('../../../common', () => ({
-	useBreakpoints: vi.fn(() => ({
-		isMDDevice: isMDDevice,
-	})),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		useBreakpoints: vi.fn(() => ({
+			isMDDevice: isMDDevice,
+		})),
+	};
+});
 
 describe('LayoutMaintenance', (): void => {
 	let wrapper: VueWrapper;

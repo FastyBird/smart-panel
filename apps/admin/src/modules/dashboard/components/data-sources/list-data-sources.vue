@@ -75,17 +75,17 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: IDataSourcesFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', dataSource: number): void;
-	(e: 'update:sort-by', dir: 'title' | 'type' | 'order'): void;
-	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
+	(e: 'update:sort-by', dir: 'type' | undefined): void;
+	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
 const { isMDDevice } = useBreakpoints();
 
 const innerFilters = useVModel(props, 'filters', emit);
 
-const sortBy = ref<'title' | 'type' | 'order'>(props.sortBy);
+const sortBy = ref<'type' | undefined>(props.sortBy);
 
-const sortDir = ref<'ascending' | 'descending' | null>(props.sortDir);
+const sortDir = ref<'asc' | 'desc' | null>(props.sortDir);
 
 const paginatePage = ref<number>(props.paginatePage);
 
@@ -116,29 +116,43 @@ const onPaginateDataSource = (page: number): void => {
 };
 
 watch(
-	(): 'title' | 'type' | 'order' => sortBy.value,
-	(val: 'title' | 'type' | 'order'): void => {
+	(): 'type' | undefined => sortBy.value,
+	(val: 'type' | undefined): void => {
 		emit('update:sort-by', val);
 	}
 );
 
 watch(
-	(): 'ascending' | 'descending' | null => sortDir.value,
-	(val: 'ascending' | 'descending' | null): void => {
+	(): 'asc' | 'desc' | null => sortDir.value,
+	(val: 'asc' | 'desc' | null): void => {
 		emit('update:sort-dir', val);
 	}
 );
 
 watch(
-	(): 'ascending' | 'descending' | null => props.sortDir,
-	(val: 'ascending' | 'descending' | null): void => {
+	(): number => props.paginatePage,
+	(val: number): void => {
+		paginatePage.value = val;
+	}
+);
+
+watch(
+	(): number => props.paginateSize,
+	(val: number): void => {
+		paginateSize.value = val;
+	}
+);
+
+watch(
+	(): 'asc' | 'desc' | null => props.sortDir,
+	(val: 'asc' | 'desc' | null): void => {
 		sortDir.value = val;
 	}
 );
 
 watch(
-	(): 'title' | 'type' | 'order' => props.sortBy,
-	(val: 'title' | 'type' | 'order'): void => {
+	(): 'type' | undefined => props.sortBy,
+	(val: 'type' | undefined): void => {
 		sortBy.value = val;
 	}
 );

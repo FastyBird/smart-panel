@@ -27,6 +27,7 @@ import {
 	provideStoresManager,
 	router,
 } from './common';
+import CommonModule from './common/common.module';
 import i18n from './locales';
 import { AuthModule } from './modules/auth';
 import { ConfigModule } from './modules/config';
@@ -99,6 +100,9 @@ router.addRoute(RouteNames.ROOT, {
 		menu: true,
 	},
 });
+
+// Common module
+app.use(CommonModule, { store: pinia });
 
 // Modules
 const moduleOptions: IModuleOptions = {

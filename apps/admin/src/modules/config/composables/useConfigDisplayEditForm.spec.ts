@@ -29,18 +29,23 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: () => ({
-		getStore: () => ({
-			edit: mockEdit,
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: () => ({
+			getStore: () => ({
+				edit: mockEdit,
+			}),
 		}),
-	}),
-	useFlashMessage: () => ({
-		success: mockSuccess,
-		error: mockError,
-		info: mockInfo,
-	}),
-}));
+		useFlashMessage: () => ({
+			success: mockSuccess,
+			error: mockError,
+			info: mockInfo,
+		}),
+	};
+});
 
 describe('useConfigDisplayEditForm', () => {
 	beforeEach(() => {

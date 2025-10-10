@@ -2,10 +2,10 @@ import { type Reactive, computed, onMounted, reactive, ref, toRaw, watch } from 
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
 import {
 	DevicesApiException,
 	DevicesValidationException,
@@ -81,7 +81,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 
 	const model = reactive<IShellyNgDeviceEditForm>(device as unknown as IShellyNgDeviceEditForm);
 
-	let initialModel: Reactive<IShellyNgDeviceEditForm> = cloneDeep<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));
+	let initialModel: Reactive<IShellyNgDeviceEditForm> = deepClone<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -163,7 +163,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 
 		formChanged.value = false;
 
-		initialModel = cloneDeep<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));
+		initialModel = deepClone<Reactive<IShellyNgDeviceEditForm>>(toRaw(model));
 
 		return 'saved';
 	};

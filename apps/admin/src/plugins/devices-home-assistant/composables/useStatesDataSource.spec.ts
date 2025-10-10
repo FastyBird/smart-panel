@@ -11,6 +11,7 @@ import { defaultStatesFilter, useStatesDataSource } from './useStatesDataSource'
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
+
 	return {
 		...actual,
 		injectStoresManager: vi.fn(),

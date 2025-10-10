@@ -63,3 +63,6 @@ export enum ConnectionState {
 }
 
 export type StateColor = 'info' | 'warning' | 'success' | 'primary' | 'danger' | undefined;
+
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_PAGE_SIZE = 10;

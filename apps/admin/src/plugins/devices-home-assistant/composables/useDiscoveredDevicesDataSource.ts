@@ -2,10 +2,9 @@ import { computed, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { cloneDeep } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager } from '../../../common';
+import { deepClone, injectStoresManager } from '../../../common';
 import type { IHomeAssistantDiscoveredDevice } from '../store/home-assistant-discovered-devices.store.types';
 import { discoveredDevicesStoreKey } from '../store/keys';
 
@@ -27,7 +26,7 @@ export const useDiscoveredDevicesDataSource = (): IUseDiscoveredDevicesDataSourc
 
 	const paginatePage = ref<number>(1);
 
-	const filters = ref<IDiscoveredDevicesFilter>(cloneDeep<IDiscoveredDevicesFilter>(defaultDiscoveredDevicesFilter));
+	const filters = ref<IDiscoveredDevicesFilter>(deepClone<IDiscoveredDevicesFilter>(defaultDiscoveredDevicesFilter));
 
 	const filtersActive = computed<boolean>((): boolean => {
 		return filters.value.search !== defaultDiscoveredDevicesFilter.search || filters.value.adopted !== defaultDiscoveredDevicesFilter.adopted;
@@ -83,7 +82,7 @@ export const useDiscoveredDevicesDataSource = (): IUseDiscoveredDevicesDataSourc
 	const totalRows = computed<number>(() => devicesStore.findAll().length);
 
 	const resetFilter = (): void => {
-		filters.value = cloneDeep<IDiscoveredDevicesFilter>(defaultDiscoveredDevicesFilter);
+		filters.value = deepClone<IDiscoveredDevicesFilter>(defaultDiscoveredDevicesFilter);
 	};
 
 	watch(

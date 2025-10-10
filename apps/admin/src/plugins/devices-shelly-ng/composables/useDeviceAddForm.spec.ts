@@ -22,20 +22,25 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: () => ({
-		getStore: () => ({
-			add: mockAdd,
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: () => ({
+			getStore: () => ({
+				add: mockAdd,
+			}),
 		}),
-	}),
-	useFlashMessage: () => ({
-		success: vi.fn(),
-		error: vi.fn(),
-	}),
-	useBackend: () => ({
-		client: backendClient,
-	}),
-}));
+		useFlashMessage: () => ({
+			success: vi.fn(),
+			error: vi.fn(),
+		}),
+		useBackend: () => ({
+			client: backendClient,
+		}),
+	};
+});
 
 describe('useDeviceAddForm', () => {
 	let form: ReturnType<typeof useDeviceAddForm>;

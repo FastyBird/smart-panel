@@ -9,7 +9,7 @@ export interface IListChannelsProps {
 	filtersActive: boolean;
 	paginateSize: number;
 	paginatePage: number;
-	sortBy: 'name' | 'description' | 'category';
-	sortDir: 'ascending' | 'descending' | null;
+	sortBy: 'name' | 'description' | 'category' | undefined;
+	sortDir: 'asc' | 'desc' | null;
 	loading: boolean;
 }

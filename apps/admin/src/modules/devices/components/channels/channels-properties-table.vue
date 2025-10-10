@@ -3,7 +3,11 @@
 		v-loading="props.loading"
 		:element-loading-text="t('devicesModule.texts.channelsProperties.loadingProperties')"
 		:data="props.items"
-		:default-sort="{ prop: props.sortBy, order: props.sortDir || 'ascending' }"
+		:default-sort="
+			typeof props.sortBy !== 'undefined' && props.sortDir !== null
+				? { prop: props.sortBy, order: props.sortDir === 'desc' ? 'descending' : 'ascending' }
+				: undefined
+		"
 		table-layout="fixed"
 		row-key="id"
 		class="flex-grow"
@@ -192,7 +196,7 @@
 		<el-table-column
 			:label="t('devicesModule.table.channelsProperties.columns.permissions.title')"
 			prop="permissions"
-			:min-width="120"
+			:min-width="180"
 		>
 			<template #default="scope">
 				<el-space
@@ -335,8 +339,8 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 	(e: 'selected-changes', selected: IChannel[]): void;
 	(e: 'update:filters', filters: IChannelsPropertiesFilter): void;
-	(e: 'update:sort-by', by: 'name' | 'category'): void;
-	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
+	(e: 'update:sort-by', by: 'name' | 'category' | undefined): void;
+	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
 const { t } = useI18n();
@@ -351,7 +355,7 @@ const spacer = h(ElDivider, { direction: 'vertical' });
 
 const onSortData = ({ prop, order }: { prop: 'name' | 'category'; order: 'ascending' | 'descending' | null }): void => {
 	emit('update:sort-by', prop);
-	emit('update:sort-dir', order);
+	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
 };
 
 const onSelectionChange = (selected: IChannel[]): void => {

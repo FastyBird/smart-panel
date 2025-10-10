@@ -1,6 +1,7 @@
 import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
+import { z } from 'zod';
 
 import type { IPlugin, IPluginElement } from '../../../common';
 import type { FormResultType } from '../dashboard.constants';
@@ -20,21 +21,13 @@ import type { IDataSource } from '../store/data-sources.store.types';
 import type { IPage } from '../store/pages.store.types';
 import type { ITile } from '../store/tiles.store.types';
 
-export interface IPagesFilter {
-	search: string | undefined;
-	types: IPluginElement['type'][];
-	displays: string[];
-}
+import { DataSourcesFilterSchema, type PagesFilterSchema, TilesFilterSchema } from './schemas';
 
-export interface ITilesFilter {
-	search: string | undefined;
-	types: IPluginElement['type'][];
-}
+export type IPagesFilter = z.infer<typeof PagesFilterSchema>;
 
-export interface IDataSourcesFilter {
-	search: string | undefined;
-	types: IPluginElement['type'][];
-}
+export type ITilesFilter = z.infer<typeof TilesFilterSchema>;
+
+export type IDataSourcesFilter = z.infer<typeof DataSourcesFilterSchema>;
 
 export interface IUsePage {
 	page: ComputedRef<IPage | null>;
@@ -60,8 +53,8 @@ export interface IUsePagesDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'title' | 'order' | 'type'>;
-	sortDir: Ref<'ascending' | 'descending' | null>;
+	sortBy: Ref<'title' | 'order' | 'type' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }
 
@@ -128,8 +121,8 @@ export interface IUseTilesDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'row' | 'col' | 'rowSpan' | 'colSpan' | 'hidden' | 'type'>;
-	sortDir: Ref<'ascending' | 'descending' | null>;
+	sortBy: Ref<'row' | 'col' | 'rowSpan' | 'colSpan' | 'hidden' | 'type' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }
 
@@ -192,8 +185,8 @@ export interface IUseDataSourcesDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'type'>;
-	sortDir: Ref<'ascending' | 'descending' | null>;
+	sortBy: Ref<'type' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }
 

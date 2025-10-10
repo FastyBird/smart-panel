@@ -39,3 +39,6 @@ export const RouteNames = {
 	TILE_ADD_DATA_SOURCE: 'dashboard_module-tile_add_data_source',
 	TILE_EDIT_DATA_SOURCE: 'dashboard_module-tile_edit_data_source',
 };
+
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_PAGE_SIZE = 10;

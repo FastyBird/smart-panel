@@ -2,9 +2,9 @@ import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 
-import { type IPluginElement, injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPluginElement, deepClone, injectStoresManager, useFlashMessage } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
@@ -47,7 +47,7 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 
 	const model = reactive<TForm>(config as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	const initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 

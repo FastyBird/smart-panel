@@ -2,9 +2,9 @@ import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 
-import { type IPlugin, injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPlugin, deepClone, injectStoresManager, useFlashMessage } from '../../../common';
 import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
@@ -51,7 +51,7 @@ export const useDataSourceAddForm = <TForm extends IDataSourceAddForm = IDataSou
 		type,
 	} as TForm);
 
-	const initialModel: Reactive<TForm> = cloneDeep<Reactive<TForm>>(toRaw(model));
+	const initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 

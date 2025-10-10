@@ -38,20 +38,25 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: () => ({
-		getStore: () => ({
-			edit: mockEdit,
-			save: mockSave,
-			findForDevice: () => [],
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: () => ({
+			getStore: () => ({
+				edit: mockEdit,
+				save: mockSave,
+				findForDevice: () => [],
+			}),
 		}),
-	}),
-	useFlashMessage: () => ({
-		success: mockSuccess,
-		error: mockError,
-		info: mockInfo,
-	}),
-}));
+		useFlashMessage: () => ({
+			success: mockSuccess,
+			error: mockError,
+			info: mockInfo,
+		}),
+	};
+});
 
 vi.mock('./useDevices', () => ({
 	useDevices: () => ({

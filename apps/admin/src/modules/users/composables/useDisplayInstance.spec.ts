@@ -7,9 +7,14 @@ import type { DisplaysInstancesStore, IDisplayInstance, IDisplaysInstancesStateS
 
 import { useDisplayInstance } from './useDisplayInstance';
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: vi.fn(),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: vi.fn(),
+	};
+});
 
 describe('useDisplayInstance', (): void => {
 	let displaysStoreMock: DisplaysInstancesStore;

@@ -2,10 +2,10 @@ import { computed, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager } from '../../../common';
+import { deepClone, injectStoresManager } from '../../../common';
 import { usersStoreKey } from '../store/keys';
 import type { IUser } from '../store/users.store.types';
 
@@ -27,7 +27,7 @@ export const useUsersDataSource = (): IUseUsersDataSource => {
 
 	const paginatePage = ref<number>(1);
 
-	const filters = ref<IUsersFilter>(cloneDeep<IUsersFilter>(defaultUsersFilter));
+	const filters = ref<IUsersFilter>(deepClone<IUsersFilter>(defaultUsersFilter));
 
 	const filtersActive = computed<boolean>((): boolean => {
 		return filters.value.search !== defaultUsersFilter.search || !isEqual(filters.value.roles, defaultUsersFilter.roles);
@@ -82,7 +82,7 @@ export const useUsersDataSource = (): IUseUsersDataSource => {
 	const totalRows = computed<number>(() => usersStore.findAll().filter((user) => !user.draft).length);
 
 	const resetFilter = (): void => {
-		filters.value = cloneDeep<IUsersFilter>(defaultUsersFilter);
+		filters.value = deepClone<IUsersFilter>(defaultUsersFilter);
 	};
 
 	watch(
