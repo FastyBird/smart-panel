@@ -144,7 +144,7 @@ export const usePagesDataSource = (): IUsePagesDataSource => {
 	watch(
 		(): 'asc' | 'desc' | null => sortDir.value,
 		(val: 'asc' | 'desc' | null): void => {
-			if (typeof sortBy.value === 'undefined') {
+			if (typeof sortBy.value === 'undefined' || val === null) {
 				sort.value = [];
 			} else {
 				sort.value = [

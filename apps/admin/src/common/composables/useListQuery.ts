@@ -266,7 +266,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 
 	const storedSort = isStoredValid && stored?.sort ? sanitizeSort(deepClone(stored.sort)) : undefined;
 	const querySort = sanitizeSort(fromQuerySort ? deepClone(fromQuerySort) : undefined);
-	const initialSort: ISortEntry[] = querySort.length ? querySort : typeof storedSort !== 'undefined' ? storedSort : deepClone(sortDefaults);
+	const initialSort: ISortEntry[] = querySort.length > 0 ? querySort : storedSort && storedSort.length > 0 ? storedSort : deepClone(sortDefaults);
 
 	// State
 	const filtersRef = ref<FF>(initialFilters) as Ref<FF>;
@@ -373,13 +373,6 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 						}
 
 						next[k] = qv!;
-					}
-
-					// prune unknowns
-					for (const existing of Object.keys(next)) {
-						if (!allKeys.has(existing)) {
-							delete next[existing];
-						}
 					}
 
 					replaceQuery(next);

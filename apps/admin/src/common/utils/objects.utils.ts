@@ -42,5 +42,31 @@ export const deepClone = <T>(value: T): T => {
 		return structuredClone(toRaw(value));
 	}
 
-	return JSON.parse(JSON.stringify(toRaw(value)));
+	if (value === null || typeof value !== 'object') {
+		return value;
+	}
+
+	if (value instanceof Date) {
+		return new Date(value.getTime()) as any;
+	}
+
+	if (value instanceof Array) {
+		const newArr: any[] = [];
+
+		for (let i = 0; i < value.length; i++) {
+			newArr[i] = deepClone(value[i]);
+		}
+
+		return newArr as any;
+	}
+
+	const newObj: { [key: string]: any } = {};
+
+	for (const key in value) {
+		if (Object.prototype.hasOwnProperty.call(value, key)) {
+			newObj[key] = deepClone((value as any)[key]);
+		}
+	}
+
+	return newObj as any;
 };

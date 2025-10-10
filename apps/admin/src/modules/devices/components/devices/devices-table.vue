@@ -4,7 +4,9 @@
 		:element-loading-text="t('devicesModule.texts.devices.loadingDevices')"
 		:data="props.items"
 		:default-sort="
-			typeof props.sortBy !== 'undefined' ? { prop: props.sortBy, order: props.sortDir === 'desc' ? 'descending' : 'ascending' } : undefined
+			typeof props.sortBy !== 'undefined' && props.sortDir !== null
+				? { prop: props.sortBy, order: props.sortDir === 'desc' ? 'descending' : 'ascending' }
+				: undefined
 		"
 		table-layout="fixed"
 		row-key="id"
