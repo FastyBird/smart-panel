@@ -2,9 +2,9 @@ import { type Reactive, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 
-import { injectStoresManager, useFlashMessage } from '../../../common';
+import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
 import { DisplayProfileEditFormSchema } from '../schemas/displays-profiles.schemas';
 import type { IDisplayProfileEditForm } from '../schemas/displays-profiles.types';
 import type { IDisplayProfile } from '../store/displays-profiles.store.types';
@@ -34,7 +34,7 @@ export const useDisplayProfileEditForm = ({ display, messages }: IUseDisplayProf
 
 	const model = reactive<IDisplayProfileEditForm>(display as unknown as IDisplayProfileEditForm);
 
-	let initialModel: Reactive<IDisplayProfileEditForm> = cloneDeep<Reactive<IDisplayProfileEditForm>>(toRaw(model));
+	let initialModel: Reactive<IDisplayProfileEditForm> = deepClone<Reactive<IDisplayProfileEditForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -89,7 +89,7 @@ export const useDisplayProfileEditForm = ({ display, messages }: IUseDisplayProf
 
 		formChanged.value = false;
 
-		initialModel = cloneDeep<Reactive<IDisplayProfileEditForm>>(toRaw(model));
+		initialModel = deepClone<Reactive<IDisplayProfileEditForm>>(toRaw(model));
 
 		return 'saved';
 	};

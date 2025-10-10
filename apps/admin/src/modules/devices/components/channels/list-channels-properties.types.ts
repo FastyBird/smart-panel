@@ -1,4 +1,4 @@
-import type { IChannelsPropertiesFilter } from '../../composables/composables';
+import type { IChannelsPropertiesFilter } from '../../composables/types';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 
 export interface IListChannelsPropertiesProps {
@@ -9,7 +9,7 @@ export interface IListChannelsPropertiesProps {
 	filtersActive: boolean;
 	paginateSize: number;
 	paginatePage: number;
-	sortBy: 'name' | 'category';
-	sortDir: 'ascending' | 'descending' | null;
+	sortBy: 'name' | 'category' | undefined;
+	sortDir: 'asc' | 'desc' | null;
 	loading: boolean;
 }

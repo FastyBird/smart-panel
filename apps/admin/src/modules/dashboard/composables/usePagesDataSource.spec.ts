@@ -1,21 +1,33 @@
-import { type Ref, nextTick, ref } from 'vue';
+import { type Ref, ref } from 'vue';
 
 import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { injectStoresManager } from '../../../common';
+import { deepClone, injectStoresManager, useListQuery } from '../../../common';
 import type { IPage } from '../store/pages.store.types';
 
 import { defaultPagesFilter, usePagesDataSource } from './usePagesDataSource';
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
+
 	return {
 		...actual,
 		injectStoresManager: vi.fn(),
+		useListQuery: vi.fn(),
 	};
 });
+
+const DefaultFilter = {
+	search: undefined,
+	types: [],
+	displays: [],
+};
+
+const DefaultPagination = { page: 1, size: 1 };
+
+const DefaultSort = [{ by: 'order', dir: 'asc' }];
 
 describe('usePagesDataSource', () => {
 	let mockStore: {
@@ -60,8 +72,22 @@ describe('usePagesDataSource', () => {
 			firstLoad: ref(true),
 		};
 
+		const mockFilter = ref(deepClone(DefaultFilter));
+		const mockPagination = ref(deepClone(DefaultPagination));
+		const mockSort = ref(deepClone(DefaultSort));
+
 		(injectStoresManager as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
 			getStore: () => mockStore,
+		});
+
+		(useListQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+			filters: mockFilter,
+			sort: mockSort,
+			pagination: mockPagination,
+			reset: (): void => {
+				mockFilter.value = deepClone(DefaultFilter);
+				mockPagination.value = deepClone(DefaultPagination);
+			},
 		});
 	});
 
@@ -130,18 +156,6 @@ describe('usePagesDataSource', () => {
 		resetFilter();
 
 		expect(filters.value).toEqual(defaultPagesFilter);
-	});
-
-	it('updates pagination page on filter change', async () => {
-		const { filters, paginatePage } = usePagesDataSource();
-
-		paginatePage.value = 3;
-
-		filters.value.search = 'abc';
-
-		await nextTick();
-
-		expect(paginatePage.value).toBe(1);
 	});
 
 	it('handles areLoading correctly based on flags', () => {

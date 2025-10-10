@@ -17,11 +17,16 @@ const mockSuccess = vi.fn();
 const mockError = vi.fn();
 const mockInfo = vi.fn();
 
-vi.mock('element-plus', () => ({
-	ElMessageBox: {
-		confirm: vi.fn().mockResolvedValue(undefined),
-	},
-}));
+vi.mock('element-plus', async () => {
+	const actual = await vi.importActual('element-plus');
+
+	return {
+		...actual,
+		ElMessageBox: {
+			confirm: vi.fn().mockResolvedValue(undefined),
+		},
+	};
+});
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
@@ -29,19 +34,24 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: () => ({
-		getStore: () => ({
-			findById: mockFindById,
-			remove: mockRemove,
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: () => ({
+			getStore: () => ({
+				findById: mockFindById,
+				remove: mockRemove,
+			}),
 		}),
-	}),
-	useFlashMessage: () => ({
-		success: mockSuccess,
-		error: mockError,
-		info: mockInfo,
-	}),
-}));
+		useFlashMessage: () => ({
+			success: mockSuccess,
+			error: mockError,
+			info: mockInfo,
+		}),
+	};
+});
 
 describe('useChannelsActions', () => {
 	it('throws error if channel is not found', async () => {

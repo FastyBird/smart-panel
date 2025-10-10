@@ -2,10 +2,9 @@ import { computed, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { cloneDeep } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager } from '../../../common';
+import { deepClone, injectStoresManager } from '../../../common';
 import type { IDisplayInstance } from '../store/displays-instances.store.types';
 import { displaysInstancesStoreKey } from '../store/keys';
 
@@ -26,7 +25,7 @@ export const useDisplaysInstancesDataSource = (): IUseDisplaysInstancesDataSourc
 
 	const paginatePage = ref<number>(1);
 
-	const filters = ref<IDisplaysInstancesFilter>(cloneDeep<IDisplaysInstancesFilter>(defaultDisplaysFilter));
+	const filters = ref<IDisplaysInstancesFilter>(deepClone<IDisplaysInstancesFilter>(defaultDisplaysFilter));
 
 	const filtersActive = computed<boolean>((): boolean => {
 		return filters.value.search !== defaultDisplaysFilter.search;
@@ -84,7 +83,7 @@ export const useDisplaysInstancesDataSource = (): IUseDisplaysInstancesDataSourc
 	const totalRows = computed<number>(() => displaysStore.findAll().filter((display) => !display.draft).length);
 
 	const resetFilter = (): void => {
-		filters.value = cloneDeep<IDisplaysInstancesFilter>(defaultDisplaysFilter);
+		filters.value = deepClone<IDisplaysInstancesFilter>(defaultDisplaysFilter);
 	};
 
 	watch(

@@ -1,10 +1,10 @@
-import { type Ref, nextTick, ref } from 'vue';
+import { type Ref, ref } from 'vue';
 
 import { createPinia, setActivePinia } from 'pinia';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { injectStoresManager } from '../../../common';
+import { deepClone, injectStoresManager, useListQuery } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi';
 import type { IDevice } from '../store/devices.store.types';
 
@@ -12,11 +12,26 @@ import { defaultDevicesFilter, useDevicesDataSource } from './useDevicesDataSour
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
+
 	return {
 		...actual,
 		injectStoresManager: vi.fn(),
+		useListQuery: vi.fn(),
 	};
 });
+
+const DefaultFilter = {
+	search: undefined,
+	types: [],
+	state: 'all',
+	states: [],
+	categories: [],
+	enabled: 'all',
+};
+
+const DefaultPagination = { page: 1, size: 1 };
+
+const DefaultSort = [{ by: 'name', dir: 'asc' }];
 
 describe('useDevicesDataSource', () => {
 	let mockStore: {
@@ -64,8 +79,22 @@ describe('useDevicesDataSource', () => {
 			firstLoad: ref(true),
 		};
 
+		const mockFilter = ref(deepClone(DefaultFilter));
+		const mockPagination = ref(deepClone(DefaultPagination));
+		const mockSort = ref(deepClone(DefaultSort));
+
 		(injectStoresManager as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
 			getStore: () => mockStore,
+		});
+
+		(useListQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+			filters: mockFilter,
+			sort: mockSort,
+			pagination: mockPagination,
+			reset: (): void => {
+				mockFilter.value = deepClone(DefaultFilter);
+				mockPagination.value = deepClone(DefaultPagination);
+			},
 		});
 	});
 
@@ -136,26 +165,16 @@ describe('useDevicesDataSource', () => {
 		expect(filters.value).toEqual(defaultDevicesFilter);
 	});
 
-	it('updates pagination page on filter change', async () => {
-		const { filters, paginatePage } = useDevicesDataSource();
-
-		paginatePage.value = 3;
-
-		filters.value.search = 'abc';
-
-		await nextTick();
-
-		expect(paginatePage.value).toBe(1);
-	});
-
 	it('handles areLoading correctly based on flags', () => {
 		const { areLoading } = useDevicesDataSource();
 
 		mockStore.semaphore.value.fetching.items = true;
+
 		expect(areLoading.value).toBe(true);
 
 		mockStore.firstLoad.value = true;
 		mockStore.semaphore.value.fetching.items = false;
+
 		expect(areLoading.value).toBe(false);
 	});
 

@@ -18,12 +18,17 @@ const backendClient = {
 	POST: vi.fn(),
 };
 
-vi.mock('../../../common', () => ({
-	useBackend: vi.fn(() => ({
-		client: backendClient,
-	})),
-	getErrorReason: vi.fn(),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		useBackend: vi.fn(() => ({
+			client: backendClient,
+		})),
+		getErrorReason: vi.fn(),
+	};
+});
 
 const cookies = {
 	get: vi.fn(),

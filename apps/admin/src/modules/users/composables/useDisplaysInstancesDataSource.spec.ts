@@ -8,20 +8,25 @@ import type { DisplaysInstancesStore, IDisplaysInstancesStateSemaphore } from '.
 
 import { useDisplaysInstancesDataSource } from './useDisplaysInstancesDataSource';
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: vi.fn(() => ({
-		getStore: vi.fn(() => ({
-			findAll: vi.fn(),
-			fetch: vi.fn(),
-			semaphore: ref({
-				fetching: {
-					items: false,
-				},
-			}),
-			firstLoad: ref(false),
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: vi.fn(() => ({
+			getStore: vi.fn(() => ({
+				findAll: vi.fn(),
+				fetch: vi.fn(),
+				semaphore: ref({
+					fetching: {
+						items: false,
+					},
+				}),
+				firstLoad: ref(false),
+			})),
 		})),
-	})),
-}));
+	};
+});
 
 describe('useDisplaysInstances', (): void => {
 	let displaysStoreMock: DisplaysInstancesStore;

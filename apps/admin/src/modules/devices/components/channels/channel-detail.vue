@@ -114,6 +114,7 @@ const { t } = useI18n();
 
 const { properties, totalRows, sortBy, sortDir, filters, filtersActive, fetchProperties, areLoading, resetFilter } = useChannelsPropertiesDataSource({
 	channelId: props.channel.id,
+	key: `channel-detail-${props.channel.id}`,
 });
 const { canAddAnotherProperty } = useChannelSpecification({ id: props.channel.id });
 

@@ -15,16 +15,26 @@ const mockFlash = {
 	info: vi.fn(),
 };
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: vi.fn(),
-	useFlashMessage: vi.fn(() => mockFlash),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
 
-vi.mock('element-plus', () => ({
-	ElMessageBox: {
-		confirm: vi.fn(),
-	},
-}));
+	return {
+		...actual,
+		injectStoresManager: vi.fn(),
+		useFlashMessage: vi.fn(() => mockFlash),
+	};
+});
+
+vi.mock('element-plus', async () => {
+	const actual = await vi.importActual('element-plus');
+
+	return {
+		...actual,
+		ElMessageBox: {
+			confirm: vi.fn(),
+		},
+	};
+});
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({

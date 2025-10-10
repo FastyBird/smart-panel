@@ -6,6 +6,7 @@ import type { Socket } from 'socket.io-client';
 
 import type { paths } from '../../openapi';
 import type { Events } from '../services/event-bus';
+import type { ISortEntry } from '../store/list.query.store.types';
 
 export interface IUseBackend<Paths extends object = paths> {
 	pendingRequests: Ref<number>;
@@ -38,6 +39,13 @@ export interface IUseFlashMessage {
 	info: (message: string) => void;
 	error: (message: string) => void;
 	exception: (errorMessage: string) => void;
+}
+
+export interface IUseListQuery<F> {
+	filters: Ref<F>;
+	sort: Ref<ISortEntry[]>;
+	pagination: Ref<{ page?: number; size?: number }>;
+	reset: () => void;
 }
 
 export interface IUseSockets {

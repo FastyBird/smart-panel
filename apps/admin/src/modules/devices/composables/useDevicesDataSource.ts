@@ -2,15 +2,16 @@ import { computed, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager } from '../../../common';
+import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
-import { ConnectionState } from '../devices.constants';
+import { ConnectionState, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../store/keys';
 
+import { DevicesFilterSchema } from './schemas';
 import type { IDevicesFilter, IUseDevicesDataSource } from './types';
 
 export const defaultDevicesFilter: IDevicesFilter = {
@@ -20,6 +21,11 @@ export const defaultDevicesFilter: IDevicesFilter = {
 	states: [],
 	categories: [],
 	enabled: 'all',
+};
+
+export const defaultDevicesSort: ISortEntry = {
+	by: 'name',
+	dir: 'asc',
 };
 
 export const useDevicesDataSource = (): IUseDevicesDataSource => {
@@ -33,11 +39,29 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 
 	const { firstLoad, semaphore } = storeToRefs(devicesStore);
 
-	const paginateSize = ref<number>(10);
-
-	const paginatePage = ref<number>(1);
-
-	const filters = ref<IDevicesFilter>(cloneDeep<IDevicesFilter>(defaultDevicesFilter));
+	const {
+		filters,
+		sort,
+		pagination,
+		reset: resetFilter,
+	} = useListQuery<typeof DevicesFilterSchema>({
+		key: `${DEVICES_MODULE_NAME}:devices:list`,
+		filters: {
+			schema: DevicesFilterSchema,
+			defaults: defaultDevicesFilter,
+		},
+		sort: {
+			defaults: [defaultDevicesSort],
+		},
+		pagination: {
+			defaults: {
+				page: DEFAULT_PAGE,
+				size: DEFAULT_PAGE_SIZE,
+			},
+		},
+		syncQuery: true,
+		version: 1,
+	});
 
 	const filtersActive = computed<boolean>((): boolean => {
 		return (
@@ -50,9 +74,15 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 		);
 	});
 
-	const sortBy = ref<'name' | 'description' | 'type' | 'state' | 'category'>('name');
+	const paginateSize = ref<number>(pagination.value.size || DEFAULT_PAGE_SIZE);
 
-	const sortDir = ref<'ascending' | 'descending' | null>('ascending');
+	const paginatePage = ref<number>(pagination.value.page || DEFAULT_PAGE);
+
+	const sortBy = ref<'name' | 'description' | 'type' | 'state' | 'category' | undefined>(
+		sort.value.length > 0 ? (sort.value[0].by as 'name' | 'description' | 'type' | 'state' | 'category') : undefined
+	);
+
+	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
 
 	const states = computed<Map<IDevice['id'], ConnectionState>>((): Map<IDevice['id'], ConnectionState> => {
 		const devices = devicesStore.findAll();
@@ -104,6 +134,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 							device.description?.toLowerCase().includes(filters.value.search.toLowerCase()) ||
 							device.identifier?.toLowerCase().includes(filters.value.search.toLowerCase())) &&
 						(filters.value.types.length === 0 || filters.value.types.includes(device.type)) &&
+						(filters.value.categories.length === 0 || filters.value.categories.includes(device.category)) &&
 						(filters.value.enabled === 'all' ||
 							(filters.value.enabled === 'enabled' && device.enabled) ||
 							(filters.value.enabled === 'disabled' && !device.enabled)) &&
@@ -122,7 +153,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 								)))
 				),
 			[(device: IDevice) => (sortBy.value === 'state' ? (states.value.get(device.id) ?? '') : (device[sortBy.value as keyof IDevice] ?? ''))],
-			[sortDir.value === 'ascending' ? 'asc' : 'desc']
+			[sortDir.value === 'asc' ? 'asc' : 'desc']
 		);
 	});
 
@@ -155,16 +186,59 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 
 	const totalRows = computed<number>(() => devicesStore.findAll().filter((device) => !device.draft).length);
 
-	const resetFilter = (): void => {
-		filters.value = cloneDeep<IDevicesFilter>(defaultDevicesFilter);
-	};
-
 	watch(
-		(): IDevicesFilter => filters.value,
-		(): void => {
-			paginatePage.value = 1;
+		(): { page?: number; size?: number } => pagination.value,
+		(val: { page?: number; size?: number }): void => {
+			paginatePage.value = val.page ?? DEFAULT_PAGE;
+			paginateSize.value = val.size ?? DEFAULT_PAGE_SIZE;
 		},
 		{ deep: true }
+	);
+
+	watch(
+		(): number => paginatePage.value,
+		(val: number): void => {
+			pagination.value.page = val;
+		}
+	);
+
+	watch(
+		(): number => paginateSize.value,
+		(val: number): void => {
+			pagination.value.size = val;
+		}
+	);
+
+	watch(
+		(): 'asc' | 'desc' | null => sortDir.value,
+		(val: 'asc' | 'desc' | null): void => {
+			if (typeof sortBy.value === 'undefined') {
+				sort.value = [];
+			} else {
+				sort.value = [
+					{
+						by: sortBy.value,
+						dir: val,
+					},
+				];
+			}
+		}
+	);
+
+	watch(
+		(): 'name' | 'description' | 'type' | 'state' | 'category' | undefined => sortBy.value,
+		(val: 'name' | 'description' | 'type' | 'state' | 'category' | undefined): void => {
+			if (typeof val === 'undefined') {
+				sort.value = [];
+			} else {
+				sort.value = [
+					{
+						by: val,
+						dir: sortDir.value,
+					},
+				];
+			}
+		}
 	);
 
 	return {

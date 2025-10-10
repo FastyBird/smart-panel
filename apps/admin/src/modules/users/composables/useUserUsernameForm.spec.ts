@@ -16,15 +16,20 @@ const mockFlash = {
 	error: vi.fn(),
 };
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: vi.fn(() => ({
-		getStore: vi.fn(() => ({
-			edit: vi.fn(),
-			save: vi.fn(),
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: vi.fn(() => ({
+			getStore: vi.fn(() => ({
+				edit: vi.fn(),
+				save: vi.fn(),
+			})),
 		})),
-	})),
-	useFlashMessage: vi.fn(() => mockFlash),
-}));
+		useFlashMessage: vi.fn(() => mockFlash),
+	};
+});
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({

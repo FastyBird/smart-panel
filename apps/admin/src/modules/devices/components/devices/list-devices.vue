@@ -53,7 +53,7 @@ import { ElCard, ElPagination } from 'element-plus';
 import { useVModel } from '@vueuse/core';
 
 import { useBreakpoints } from '../../../../common';
-import type { IDevicesFilter } from '../../composables/composables';
+import type { IDevicesFilter } from '../../composables/types';
 import type { IDevice } from '../../store/devices.store.types';
 
 import DevicesFilter from './devices-filter.vue';
@@ -75,17 +75,17 @@ const emit = defineEmits<{
 	(e: 'update:filters', filters: IDevicesFilter): void;
 	(e: 'update:paginate-size', size: number): void;
 	(e: 'update:paginate-page', page: number): void;
-	(e: 'update:sort-by', dir: 'name' | 'description' | 'type' | 'state' | 'category'): void;
-	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
+	(e: 'update:sort-by', dir: 'name' | 'description' | 'type' | 'state' | 'category' | undefined): void;
+	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
 const { isMDDevice } = useBreakpoints();
 
 const innerFilters = useVModel(props, 'filters', emit);
 
-const sortBy = ref<'name' | 'description' | 'type' | 'state' | 'category'>(props.sortBy);
+const sortBy = ref<'name' | 'description' | 'type' | 'state' | 'category' | undefined>(props.sortBy);
 
-const sortDir = ref<'ascending' | 'descending' | null>(props.sortDir);
+const sortDir = ref<'asc' | 'desc' | null>(props.sortDir);
 
 const paginatePage = ref<number>(props.paginatePage);
 
@@ -116,29 +116,43 @@ const onPaginatePage = (page: number): void => {
 };
 
 watch(
-	(): 'name' | 'description' | 'type' | 'state' | 'category' => sortBy.value,
-	(val: 'name' | 'description' | 'type' | 'state' | 'category'): void => {
+	(): 'name' | 'description' | 'type' | 'state' | 'category' | undefined => sortBy.value,
+	(val: 'name' | 'description' | 'type' | 'state' | 'category' | undefined): void => {
 		emit('update:sort-by', val);
 	}
 );
 
 watch(
-	(): 'ascending' | 'descending' | null => sortDir.value,
-	(val: 'ascending' | 'descending' | null): void => {
+	(): 'asc' | 'desc' | null => sortDir.value,
+	(val: 'asc' | 'desc' | null): void => {
 		emit('update:sort-dir', val);
 	}
 );
 
 watch(
-	(): 'ascending' | 'descending' | null => props.sortDir,
-	(val: 'ascending' | 'descending' | null): void => {
+	(): number => props.paginatePage,
+	(val: number): void => {
+		paginatePage.value = val;
+	}
+);
+
+watch(
+	(): number => props.paginateSize,
+	(val: number): void => {
+		paginateSize.value = val;
+	}
+);
+
+watch(
+	(): 'asc' | 'desc' | null => props.sortDir,
+	(val: 'asc' | 'desc' | null): void => {
 		sortDir.value = val;
 	}
 );
 
 watch(
-	(): 'name' | 'description' | 'type' | 'state' | 'category' => props.sortBy,
-	(val: 'name' | 'description' | 'type' | 'state' | 'category'): void => {
+	(): 'name' | 'description' | 'type' | 'state' | 'category' | undefined => props.sortBy,
+	(val: 'name' | 'description' | 'type' | 'state' | 'category' | undefined): void => {
 		sortBy.value = val;
 	}
 );

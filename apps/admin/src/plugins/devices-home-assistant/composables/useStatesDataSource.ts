@@ -2,10 +2,9 @@ import { computed, ref, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
-import { cloneDeep } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager } from '../../../common';
+import { deepClone, injectStoresManager } from '../../../common';
 import type { IHomeAssistantState } from '../store/home-assistant-states.store.types';
 import { statesStoreKey } from '../store/keys';
 
@@ -32,7 +31,7 @@ export const useStatesDataSource = (): IUseStatesDataSource => {
 
 	const paginatePage = ref<number>(1);
 
-	const filters = ref<IStatesFilter>(cloneDeep<IStatesFilter>(defaultStatesFilter));
+	const filters = ref<IStatesFilter>(deepClone<IStatesFilter>(defaultStatesFilter));
 
 	const filtersActive = computed<boolean>((): boolean => {
 		return (
@@ -104,7 +103,7 @@ export const useStatesDataSource = (): IUseStatesDataSource => {
 	const totalRows = computed<number>(() => statesStore.findAll().length);
 
 	const resetFilter = (): void => {
-		filters.value = cloneDeep<IStatesFilter>(defaultStatesFilter);
+		filters.value = deepClone<IStatesFilter>(defaultStatesFilter);
 	};
 
 	watch(

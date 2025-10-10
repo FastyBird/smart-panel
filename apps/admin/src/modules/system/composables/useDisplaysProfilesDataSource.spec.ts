@@ -7,20 +7,25 @@ import type { DisplaysProfilesStore, IDisplaysProfilesStateSemaphore } from '../
 
 import { useDisplaysProfilesDataSource } from './useDisplaysProfilesDataSource';
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: vi.fn(() => ({
-		getStore: vi.fn(() => ({
-			findAll: vi.fn(),
-			fetch: vi.fn(),
-			semaphore: ref({
-				fetching: {
-					items: false,
-				},
-			}),
-			firstLoad: ref(false),
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: vi.fn(() => ({
+			getStore: vi.fn(() => ({
+				findAll: vi.fn(),
+				fetch: vi.fn(),
+				semaphore: ref({
+					fetching: {
+						items: false,
+					},
+				}),
+				firstLoad: ref(false),
+			})),
 		})),
-	})),
-}));
+	};
+});
 
 describe('useDisplaysProfiles', (): void => {
 	let displaysStoreMock: DisplaysProfilesStore;

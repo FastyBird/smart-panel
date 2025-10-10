@@ -2,10 +2,10 @@ import { type Reactive, computed, onMounted, reactive, ref, toRaw, watch } from 
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { getErrorReason, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
+import { deepClone, getErrorReason, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
 import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
 import { DevicesApiException, FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory, type operations } from '../../../openapi';
@@ -70,7 +70,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		enabled: true,
 	});
 
-	const initialModel: Reactive<IShellyNgDeviceAddForm> = cloneDeep<Reactive<IShellyNgDeviceAddForm>>(toRaw(model));
+	const initialModel: Reactive<IShellyNgDeviceAddForm> = deepClone<Reactive<IShellyNgDeviceAddForm>>(toRaw(model));
 
 	const stepOneFormEl = ref<FormInstance | undefined>(undefined);
 	const stepTwoFormEl = ref<FormInstance | undefined>(undefined);

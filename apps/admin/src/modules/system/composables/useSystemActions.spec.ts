@@ -27,11 +27,16 @@ const mocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock('vue-router', () => ({
-	useRouter: () => ({
-		push: mocks.routerPush,
-	}),
-}));
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
+
+	return {
+		...actual,
+		useRouter: () => ({
+			push: mocks.routerPush,
+		}),
+	};
+});
 
 vi.mock('element-plus', async () => {
 	const actual = await vi.importActual('element-plus');
@@ -62,22 +67,27 @@ const socketClient = {
 	sendCommand: vi.fn(),
 };
 
-vi.mock('../../../common', () => ({
-	useBackend: () => ({
-		client: backendClient,
-	}),
-	useFlashMessage: () => ({
-		success: vi.fn(),
-		error: vi.fn(),
-	}),
-	useSockets: () => socketClient,
-	injectAccountManager: () => ({
-		signOut: vi.fn(),
-		routes: {
-			signIn: 'signIn',
-		},
-	}),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		useBackend: () => ({
+			client: backendClient,
+		}),
+		useFlashMessage: () => ({
+			success: vi.fn(),
+			error: vi.fn(),
+		}),
+		useSockets: () => socketClient,
+		injectAccountManager: () => ({
+			signOut: vi.fn(),
+			routes: {
+				signIn: 'signIn',
+			},
+		}),
+	};
+});
 
 describe('useSystemActions', () => {
 	beforeEach(() => {

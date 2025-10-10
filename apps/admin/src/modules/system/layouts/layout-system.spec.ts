@@ -18,15 +18,20 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-vi.mock('../../../common', () => ({
-	AppBarHeading: { template: '<div data-test-id="app-bar-heading"></div>' },
-	AppBreadcrumbs: { template: '<div data-test-id="app-breadcrumbs"></div>' },
-	ViewHeader: { template: '<div data-test-id="view-header"><slot name="extra" /></div>' },
-	UserAvatar: { template: '<div data-test-id="user-avatar"></div>' },
-	useBreakpoints: vi.fn(() => ({
-		isMDDevice: computed<boolean>(() => true),
-	})),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		AppBarHeading: { template: '<div data-test-id="app-bar-heading"></div>' },
+		AppBreadcrumbs: { template: '<div data-test-id="app-breadcrumbs"></div>' },
+		ViewHeader: { template: '<div data-test-id="view-header"><slot name="extra" /></div>' },
+		UserAvatar: { template: '<div data-test-id="user-avatar"></div>' },
+		useBreakpoints: vi.fn(() => ({
+			isMDDevice: computed<boolean>(() => true),
+		})),
+	};
+});
 
 describe('LayoutSystem.vue', (): void => {
 	let wrapper: VueWrapper<LayoutSystemInstance>;

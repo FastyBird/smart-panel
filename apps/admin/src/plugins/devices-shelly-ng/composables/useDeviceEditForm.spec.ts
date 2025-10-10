@@ -43,36 +43,41 @@ vi.mock('vue-i18n', () => ({
 	}),
 }));
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: () => ({
-		getStore: (key: StoreInjectionKey) => {
-			if (key === devicesStoreKey) {
-				return {
-					edit: mockEdit,
-					save: mockSave,
-				};
-			} else if (key === channelsStoreKey) {
-				return {
-					findForDevice: vi.fn(),
-				};
-			} else if (key === channelsPropertiesStoreKey) {
-				return {
-					findForChannel: vi.fn(),
-				};
-			} else {
-				throw new Error('Unknown key');
-			}
-		},
-	}),
-	useFlashMessage: () => ({
-		success: mockSuccess,
-		error: mockError,
-		info: mockInfo,
-	}),
-	useBackend: () => ({
-		client: backendClient,
-	}),
-}));
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: () => ({
+			getStore: (key: StoreInjectionKey) => {
+				if (key === devicesStoreKey) {
+					return {
+						edit: mockEdit,
+						save: mockSave,
+					};
+				} else if (key === channelsStoreKey) {
+					return {
+						findForDevice: vi.fn(),
+					};
+				} else if (key === channelsPropertiesStoreKey) {
+					return {
+						findForChannel: vi.fn(),
+					};
+				} else {
+					throw new Error('Unknown key');
+				}
+			},
+		}),
+		useFlashMessage: () => ({
+			success: mockSuccess,
+			error: mockError,
+			info: mockInfo,
+		}),
+		useBackend: () => ({
+			client: backendClient,
+		}),
+	};
+});
 
 describe('useDeviceEditForm', () => {
 	beforeEach(() => {

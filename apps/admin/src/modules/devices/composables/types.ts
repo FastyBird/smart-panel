@@ -1,6 +1,7 @@
 import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
+import { z } from 'zod';
 
 import type { IPlugin, IPluginElement } from '../../../common';
 import {
@@ -26,28 +27,13 @@ import type { IChannelProperty } from '../store/channels.properties.store.types'
 import type { IChannel } from '../store/channels.store.types';
 import type { IDevice } from '../store/devices.store.types';
 
-export interface IChannelsFilter {
-	search: string | undefined;
-	devices: IDevice['id'][];
-	categories: DevicesModuleChannelCategory[];
-}
+import { ChannelsFilterSchema, ChannelsPropertiesFilterSchema, type DevicesFilterSchema } from './schemas';
 
-export interface IChannelsPropertiesFilter {
-	search: string | undefined;
-	channels: IChannel['id'][];
-	categories: DevicesModuleChannelPropertyCategory[];
-	permissions: DevicesModuleChannelPropertyPermissions[];
-	dataTypes: DevicesModuleChannelPropertyData_type[];
-}
+export type IChannelsFilter = z.infer<typeof ChannelsFilterSchema>;
 
-export interface IDevicesFilter {
-	search: string | undefined;
-	types: IPluginElement['type'][];
-	state: 'all' | 'offline' | 'online';
-	states: ConnectionState[];
-	categories: DevicesModuleDeviceCategory[];
-	enabled: 'all' | 'enabled' | 'disabled';
-}
+export type IChannelsPropertiesFilter = z.infer<typeof ChannelsPropertiesFilterSchema>;
+
+export type IDevicesFilter = z.infer<typeof DevicesFilterSchema>;
 
 export interface IUseChannel {
 	channel: ComputedRef<IChannel | null>;
@@ -73,8 +59,8 @@ export interface IUseChannelsDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'name' | 'description' | 'category'>;
-	sortDir: Ref<'ascending' | 'descending' | null>;
+	sortBy: Ref<'name' | 'description' | 'category' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }
 
@@ -152,8 +138,8 @@ export interface IUseChannelsPropertiesDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'name' | 'category'>;
-	sortDir: Ref<'ascending' | 'descending' | null>;
+	sortBy: Ref<'name' | 'category' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }
 
@@ -236,8 +222,8 @@ export interface IUseDevicesDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'name' | 'description' | 'type' | 'state' | 'category'>;
-	sortDir: Ref<'ascending' | 'descending' | null>;
+	sortBy: Ref<'name' | 'description' | 'type' | 'state' | 'category' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }
 

@@ -10,6 +10,7 @@ import { useChannelSpecification } from './useChannelSpecification';
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
+
 	return {
 		...actual,
 		injectStoresManager: vi.fn(),

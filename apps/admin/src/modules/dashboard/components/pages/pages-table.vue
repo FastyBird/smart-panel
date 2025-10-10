@@ -3,7 +3,9 @@
 		v-loading="props.loading"
 		:element-loading-text="t('dashboardModule.texts.pages.loadingPages')"
 		:data="props.items"
-		:default-sort="{ prop: props.sortBy, order: props.sortDir || 'ascending' }"
+		:default-sort="
+			typeof props.sortBy !== 'undefined' ? { prop: props.sortBy, order: props.sortDir === 'desc' ? 'descending' : 'ascending' } : undefined
+		"
 		table-layout="fixed"
 		row-key="id"
 		class="flex-grow"
@@ -211,8 +213,8 @@ const emit = defineEmits<{
 	(e: 'reset-filters'): void;
 	(e: 'selected-changes', selected: IPage[]): void;
 	(e: 'update:filters', filters: IPagesFilter): void;
-	(e: 'update:sort-by', by: 'title' | 'type' | 'order'): void;
-	(e: 'update:sort-dir', dir: 'ascending' | 'descending' | null): void;
+	(e: 'update:sort-by', by: 'title' | 'type' | 'order' | undefined): void;
+	(e: 'update:sort-dir', dir: 'asc' | 'desc' | null): void;
 }>();
 
 const { t } = useI18n();
@@ -225,7 +227,7 @@ const innerFilters = useVModel(props, 'filters', emit);
 
 const onSortData = ({ prop, order }: { prop: 'title' | 'type' | 'order'; order: 'ascending' | 'descending' | null }): void => {
 	emit('update:sort-by', prop);
-	emit('update:sort-dir', order);
+	emit('update:sort-dir', order === 'descending' ? 'desc' : order === 'ascending' ? 'asc' : null);
 };
 
 const onSelectionChange = (selected: IPage[]): void => {

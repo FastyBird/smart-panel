@@ -4,8 +4,8 @@ import type { IChannelProperty } from '../../store/channels.properties.store.typ
 export interface IChannelsPropertiesTableProps {
 	items: IChannelProperty[];
 	totalRows: number;
-	sortBy: 'name' | 'category';
-	sortDir: 'ascending' | 'descending' | null;
+	sortBy: 'name' | 'category' | undefined;
+	sortDir: 'asc' | 'desc' | null;
 	loading: boolean;
 	filters: IChannelsPropertiesFilter;
 	filtersActive: boolean;

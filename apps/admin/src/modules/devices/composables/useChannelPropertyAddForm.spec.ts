@@ -22,18 +22,23 @@ vi.mock('./useChannels', () => ({
 	}),
 }));
 
-vi.mock('../../../common', () => ({
-	injectStoresManager: () => ({
-		getStore: () => ({
-			findForChannel: () => [],
-			add: mockAdd,
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		injectStoresManager: () => ({
+			getStore: () => ({
+				findForChannel: () => [],
+				add: mockAdd,
+			}),
 		}),
-	}),
-	useFlashMessage: () => ({
-		success: vi.fn(),
-		error: vi.fn(),
-	}),
-}));
+		useFlashMessage: () => ({
+			success: vi.fn(),
+			error: vi.fn(),
+		}),
+	};
+});
 
 vi.mock('vue-i18n', () => ({
 	useI18n: () => ({
