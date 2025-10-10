@@ -403,10 +403,6 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 						next[SORT_Q] = qv;
 					}
 
-					for (const existing of Object.keys(next)) {
-						if (!allKeys.has(existing)) delete next[existing];
-					}
-
 					replaceQuery(next);
 				}, debounceMs);
 			},
@@ -443,10 +439,6 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined>({
 						}
 
 						next[k] = qv!;
-					}
-
-					for (const existing of Object.keys(next)) {
-						if (!allKeys.has(existing)) delete next[existing];
 					}
 
 					replaceQuery(next);
