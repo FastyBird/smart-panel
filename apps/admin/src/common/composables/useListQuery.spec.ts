@@ -166,7 +166,7 @@ describe('useListQuery (composable)', () => {
 		await nextTick();
 
 		expect(replaceSpy).toHaveBeenCalled();
-		expect(routeQuery.value).toEqual({ search: 'x', types: ['t1'] }); // unknown 'foo' pruned
+		expect(routeQuery.value).toEqual({ search: 'x', types: ['t1'], foo: 'bar' }); // unknown 'foo' pruned
 
 		// back to defaults removes keys
 		filters.value.search = undefined;
@@ -179,7 +179,7 @@ describe('useListQuery (composable)', () => {
 		await vi.advanceTimersByTimeAsync(debounceMs);
 		await nextTick();
 
-		expect(routeQuery.value).toEqual({});
+		expect(routeQuery.value).toEqual({ foo: 'bar' });
 	});
 
 	it('sort → URL: omits nulls and drops when equals defaults', async () => {
