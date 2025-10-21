@@ -9,4 +9,5 @@ export interface IUsersTableProps {
 	loading: boolean;
 	filters: IUsersFilter;
 	filtersActive: boolean;
+	tableHeight?: number;
 }

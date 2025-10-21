@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 import { UsersApiException, UsersException, UsersValidationException } from '../users.exceptions';
@@ -50,6 +50,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 	'users_module-displays-instances',
 	(): DisplaysInstancesStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const semaphore = ref<IDisplaysInstancesStateSemaphore>(defaultSemaphore);
 
@@ -79,7 +80,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 				const parsed = DisplayInstanceSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 				if (!parsed.success) {
-					console.error('Schema validation failed with:', parsed.error);
+					logger.error('Schema validation failed with:', parsed.error);
 
 					throw new UsersValidationException('Failed to insert display.');
 				}
@@ -90,7 +91,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 			const parsed = DisplayInstanceSchema.safeParse({ ...payload.data, id: payload.id });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new UsersValidationException('Failed to insert display.');
 			}
@@ -184,7 +185,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 			const parsedPayload = DisplaysInstancesAddActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new UsersValidationException('Failed to add display.');
 			}
@@ -197,7 +198,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 			});
 
 			if (!parsedNewDisplay.success) {
-				console.error('Schema validation failed with:', parsedNewDisplay.error);
+				logger.error('Schema validation failed with:', parsedNewDisplay.error);
 
 				throw new UsersValidationException('Failed to add display.');
 			}
@@ -248,7 +249,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 			const parsedPayload = DisplaysInstancesEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new UsersValidationException('Failed to edit display.');
 			}
@@ -267,7 +268,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 			});
 
 			if (!parsedEditedDisplay.success) {
-				console.error('Schema validation failed with:', parsedEditedDisplay.error);
+				logger.error('Schema validation failed with:', parsedEditedDisplay.error);
 
 				throw new UsersValidationException('Failed to edit display.');
 			}
@@ -331,7 +332,7 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 			const parsedSaveDisplay = DisplayInstanceSchema.safeParse(data.value[payload.id]);
 
 			if (!parsedSaveDisplay.success) {
-				console.error('Schema validation failed with:', parsedSaveDisplay.error);
+				logger.error('Schema validation failed with:', parsedSaveDisplay.error);
 
 				throw new UsersValidationException('Failed to save display.');
 			}

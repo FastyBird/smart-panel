@@ -10,6 +10,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import {
 	LanguageType,
+	LogLevelType,
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
@@ -72,6 +73,10 @@ describe('ConfigController', () => {
 			locationType: WeatherLocationType.CITY_NAME,
 			unit: TemperatureUnitType.CELSIUS,
 			openWeatherApiKey: 'dummy-api-key',
+		},
+		system: {
+			type: SectionType.SYSTEM,
+			logLevels: [LogLevelType.ERROR],
 		},
 		plugins: [],
 	};

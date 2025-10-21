@@ -1,10 +1,24 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ConfigModuleWeatherCityNameLocation_type, ConfigModuleWeatherType, ConfigModuleWeatherUnit } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigWeatherEditActionPayload, IConfigWeatherRes } from './config-weather.store.types';
 import { transformConfigWeatherResponse, transformConfigWeatherUpdateRequest } from './config-weather.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const validConfigWeatherResponse: IConfigWeatherRes = {
 	type: ConfigModuleWeatherType.weather,

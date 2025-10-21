@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { useChannelsPlugins } from '../composables/useChannelsPlugins';
 import { useChannelsPropertiesPlugins } from '../composables/useChannelsPropertiesPlugins';
@@ -58,6 +58,7 @@ const defaultSemaphore: IChannelsStateSemaphore = {
 
 export const useChannels = defineStore<'devices_module-channels', ChannelsStoreSetup>('devices_module-channels', (): ChannelsStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const { getElement: getPluginElement } = useChannelsPlugins();
 	const { getElement: getChannelsPropertiesPluginElement } = useChannelsPropertiesPlugins();
@@ -107,7 +108,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			const parsed = (element?.schemas?.channelSchema || ChannelSchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new DevicesValidationException('Failed to insert channel.');
 			}
@@ -118,7 +119,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const parsed = (element?.schemas?.channelSchema || ChannelSchema).safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsed.success) {
-			console.error('Schema validation failed with:', parsed.error);
+			logger.error('Schema validation failed with:', parsed.error);
 
 			throw new DevicesValidationException('Failed to insert channel.');
 		}
@@ -307,7 +308,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const parsedPayload = ChannelsAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DevicesValidationException('Failed to add channel.');
 		}
@@ -323,7 +324,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		});
 
 		if (!parsedNewItem.success) {
-			console.error('Schema validation failed with:', parsedNewItem.error);
+			logger.error('Schema validation failed with:', parsedNewItem.error);
 
 			throw new DevicesValidationException('Failed to add channel.');
 		}
@@ -393,7 +394,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const parsedPayload = ChannelsEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DevicesValidationException('Failed to edit channel.');
 		}
@@ -406,7 +407,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		});
 
 		if (!parsedEditedItem.success) {
-			console.error('Schema validation failed with:', parsedEditedItem.error);
+			logger.error('Schema validation failed with:', parsedEditedItem.error);
 
 			throw new DevicesValidationException('Failed to edit channel.');
 		}
@@ -493,7 +494,7 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		const parsedSaveItem = (element?.schemas?.channelSchema || ChannelSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
-			console.error('Schema validation failed with:', parsedSaveItem.error);
+			logger.error('Schema validation failed with:', parsedSaveItem.error);
 
 			throw new DevicesValidationException('Failed to save channel.');
 		}

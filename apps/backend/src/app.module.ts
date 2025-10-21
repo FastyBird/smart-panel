@@ -36,6 +36,7 @@ import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/dev
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng/devices-shelly-ng.plugin';
 import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
+import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-rotating-file.plugin';
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';
@@ -150,6 +151,7 @@ import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin
 		TilesTimePlugin,
 		TilesWeatherPlugin,
 		DataSourcesDeviceChannelPlugin,
+		LoggerRotatingFilePlugin,
 		ServeStaticModule.forRootAsync({
 			imports: [NestConfigModule], // Ensure ConfigModule is available
 			inject: [NestConfigService],

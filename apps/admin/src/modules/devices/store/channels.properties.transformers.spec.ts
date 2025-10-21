@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
 	DevicesModuleChannelPropertyCategory,
@@ -20,6 +20,20 @@ import {
 	transformChannelPropertyUpdateRequest,
 } from './channels.properties.transformers';
 import type { IChannel } from './channels.store.types';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const channelId = uuid();
 const channelPropertyId = uuid();

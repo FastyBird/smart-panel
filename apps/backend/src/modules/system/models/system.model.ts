@@ -1,5 +1,18 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+	IsArray,
+	IsBoolean,
+	IsEnum,
+	IsInt,
+	IsNumber,
+	IsOptional,
+	IsString,
+	IsUUID,
+	IsUrl,
+	ValidateNested,
+} from 'class-validator';
+
+import { LogEntrySource, LogEntryType } from '../system.constants';
 
 export class MemoryInfoModel {
 	@Expose()
@@ -182,4 +195,105 @@ export class ThrottleStatusModel {
 	@Expose({ name: 'soft_temp_limit' })
 	@IsBoolean()
 	softTempLimit: boolean;
+}
+
+export class LogEntryAcceptedModel {
+	@Expose()
+	@IsInt()
+	accepted: number;
+
+	@Expose()
+	@IsInt()
+	rejected: number;
+}
+
+export class LogEntryUserModel {
+	@Expose()
+	@IsOptional()
+	@IsUUID('4')
+	id?: string;
+}
+
+/**
+ * Describes contextual data about the client environment at the time of logging.
+ */
+export class LogEntryContextModel {
+	@Expose({ name: 'app_version' })
+	@IsOptional()
+	@IsString()
+	appVersion?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsUrl()
+	url?: string;
+
+	@Expose({ name: 'user_agent' })
+	@IsOptional()
+	@IsString()
+	userAgent?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	locale?: string;
+}
+
+export class LogEntryModel {
+	@Expose()
+	@IsString()
+	id: string;
+
+	@Expose()
+	@IsString()
+	ts: string;
+
+	@Expose({ name: 'ingested_at' })
+	@IsString()
+	ingestedAt: string;
+
+	@Expose()
+	@IsInt()
+	@IsOptional()
+	seq?: number;
+
+	@Expose()
+	@IsOptional()
+	@IsEnum(LogEntrySource)
+	source?: LogEntrySource;
+
+	@Expose()
+	@IsInt()
+	level: number;
+
+	@Expose()
+	@IsEnum(LogEntryType)
+	type: LogEntryType;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	tag?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	message?: string;
+
+	@Expose()
+	@IsOptional()
+	@IsArray()
+	args?: (string | number | boolean | Record<string, unknown> | (string | number | boolean | null)[] | null)[];
+
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => LogEntryUserModel)
+	user?: LogEntryUserModel;
+
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => LogEntryContextModel)
+	context?: LogEntryContextModel;
 }

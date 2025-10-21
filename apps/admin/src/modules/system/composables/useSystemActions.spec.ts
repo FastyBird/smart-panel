@@ -55,7 +55,7 @@ const systemActionsService = {
 	factoryReset: vi.fn(),
 };
 
-vi.mock('../services/system-actions-service', () => ({
+vi.mock('../services/system-actions.service', () => ({
 	injectSystemActionsService: vi.fn(() => systemActionsService),
 }));
 

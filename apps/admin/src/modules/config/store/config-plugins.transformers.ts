@@ -1,4 +1,4 @@
-import { camelToSnake, snakeToCamel } from '../../../common';
+import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { ConfigValidationException } from '../config.exceptions';
 
 import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from './config-plugins.store.schemas';
@@ -11,7 +11,7 @@ export const transformConfigPluginResponse = <T extends IConfigPlugin = IConfigP
 	const parsedResponse = schema.safeParse(snakeToCamel(response));
 
 	if (!parsedResponse.success) {
-		console.error('Schema validation failed with:', parsedResponse.error);
+		logger.error('Schema validation failed with:', parsedResponse.error);
 
 		throw new ConfigValidationException('Failed to validate received plugin config data.');
 	}
@@ -26,7 +26,7 @@ export const transformConfigPluginUpdateRequest = <T extends IConfigPluginUpdate
 	const parsedRequest = schema.safeParse(camelToSnake(config));
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new ConfigValidationException('Failed to validate update plugin config request.');
 	}

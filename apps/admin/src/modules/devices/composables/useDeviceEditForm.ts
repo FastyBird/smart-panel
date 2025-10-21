@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
+import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
@@ -34,6 +34,7 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
+	const logger = useLogger();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
@@ -73,7 +74,7 @@ export const useDeviceEditForm = <TForm extends IDeviceEditForm = IDeviceEditFor
 		const parsedModel = (element.value?.schemas?.deviceEditFormSchema || DeviceEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
-			console.error('Schema validation failed with:', parsedModel.error);
+			logger.error('Schema validation failed with:', parsedModel.error);
 
 			throw new DevicesValidationException('Failed to validate edit device model.');
 		}

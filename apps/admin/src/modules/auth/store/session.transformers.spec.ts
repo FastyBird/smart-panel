@@ -1,9 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AuthValidationException } from '../auth.exceptions';
 
 import type { IAuthTokenPairRes, ISessionLoginReq } from './session.store.types';
 import { transformLoginRequest, transformTokenPairResponse } from './session.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 describe('Session Transformers', (): void => {
 	describe('transformTokenPairResponse', (): void => {

@@ -6,7 +6,7 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VueWrapper, mount } from '@vue/test-utils';
 
 import { RouteNames } from '../../app.constants';
-import { useBreakpoints } from '../composables/useBreakpoints';
+import { useBreakpoints } from '../composables/composables';
 
 import LayoutDefault from './layout-default.vue';
 

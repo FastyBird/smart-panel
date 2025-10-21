@@ -36,16 +36,16 @@ vi.mock('../composables/useDeviceAddForm', () => ({
 			description: '',
 			identifier: 'shelly-device',
 		},
-		stepOneFormEl: {
+		stepOneFormEl: ref({
 			clearValidate: vi.fn(),
 			resetFields: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
-		},
-		stepTwoFormEl: {
+		}),
+		stepTwoFormEl: ref({
 			clearValidate: vi.fn(),
 			resetFields: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
-		},
+		}),
 		activeStep: ref('two'),
 		deviceInfo: ref({
 			id: 'shelly-id',

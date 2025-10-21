@@ -70,7 +70,7 @@ import { ElButton, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElRadioButton
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
-import type { IDevicesFilter } from '../../composables/composables';
+import type { IDevicesFilter } from '../../composables/types';
 
 import type { IDevicesFilterProps } from './devices-filter.types';
 

@@ -5,7 +5,7 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectSockets, injectStoresManager } from '../../common';
+import { injectLogger, injectSockets, injectStoresManager } from '../../common';
 
 import { DASHBOARD_MODULE_EVENT_PREFIX, EventType } from './dashboard.constants';
 import enUS from './locales/en-US.json';
@@ -19,6 +19,7 @@ export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
+		const logger = injectLogger(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -145,7 +146,7 @@ export default {
 					break;
 
 				default:
-					console.warn('Unhandled dashboard module event:', data.event);
+					logger.warn('Unhandled dashboard module event:', data.event);
 			}
 		});
 	},

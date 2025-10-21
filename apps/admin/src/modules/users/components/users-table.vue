@@ -7,6 +7,7 @@
 		table-layout="fixed"
 		row-key="id"
 		class="flex-grow"
+		:max-height="tableHeight"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
 		@row-click="onRowClick"

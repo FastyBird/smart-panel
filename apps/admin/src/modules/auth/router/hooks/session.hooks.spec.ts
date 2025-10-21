@@ -1,3 +1,4 @@
+import { type ConsolaInstance } from 'consola';
 import { jwtDecode } from 'jwt-decode';
 import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,6 +19,7 @@ vi.mock('@sentry/vue', () => ({
 
 describe('sessionHook', (): void => {
 	let mockStoresManager: IStoresManager;
+	let mockLogger: ConsolaInstance;
 
 	const mockSessionStore: SessionStore = {
 		initialize: vi.fn().mockResolvedValue(true),
@@ -38,6 +40,14 @@ describe('sessionHook', (): void => {
 			getStore: vi.fn().mockReturnValue(mockSessionStore),
 		} as unknown as IStoresManager;
 
+		mockLogger = {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+			debug: vi.fn(),
+		} as unknown as ConsolaInstance;
+
 		// Store original env value
 		isProd = import.meta.env.PROD;
 	});
@@ -50,7 +60,7 @@ describe('sessionHook', (): void => {
 	});
 
 	it('should call sessionStore.initialize()', async (): Promise<void> => {
-		await sessionHook(mockStoresManager);
+		await sessionHook(mockStoresManager, mockLogger);
 
 		expect(mockSessionStore.initialize).toHaveBeenCalled();
 	});
@@ -66,7 +76,7 @@ describe('sessionHook', (): void => {
 					: { exp: Math.floor(Date.now() / 1000) + 1000 } // Valid
 		);
 
-		expect(await sessionHook(mockStoresManager)).toBeUndefined();
+		expect(await sessionHook(mockStoresManager, mockLogger)).toBeUndefined();
 
 		expect(mockSessionStore.clear).toHaveBeenCalled();
 	});
@@ -84,7 +94,7 @@ describe('sessionHook', (): void => {
 
 		(mockSessionStore.refresh as Mock).mockResolvedValue(true);
 
-		await sessionHook(mockStoresManager);
+		await sessionHook(mockStoresManager, mockLogger);
 
 		expect(mockSessionStore.refresh).toHaveBeenCalled();
 	});
@@ -96,7 +106,7 @@ describe('sessionHook', (): void => {
 
 		vi.mocked(jwtDecode).mockImplementation(() => ({ exp: Math.floor(Date.now() / 1000) - 1000 }));
 
-		expect(await sessionHook(mockStoresManager)).toBeUndefined();
+		expect(await sessionHook(mockStoresManager, mockLogger)).toBeUndefined();
 
 		expect(mockSessionStore.clear).toHaveBeenCalled();
 	});
@@ -111,7 +121,7 @@ describe('sessionHook', (): void => {
 
 		(mockSessionStore.get as Mock).mockResolvedValue(true);
 
-		await sessionHook(mockStoresManager);
+		await sessionHook(mockStoresManager, mockLogger);
 
 		expect(mockSessionStore.get).toHaveBeenCalled();
 	});
@@ -126,7 +136,7 @@ describe('sessionHook', (): void => {
 
 		(mockSessionStore.get as Mock).mockResolvedValue(false);
 
-		expect(await sessionHook(mockStoresManager)).toBeUndefined();
+		expect(await sessionHook(mockStoresManager, mockLogger)).toBeUndefined();
 
 		expect(mockSessionStore.clear).toHaveBeenCalled();
 	});
@@ -139,7 +149,7 @@ describe('sessionHook', (): void => {
 
 		(mockSessionStore.refresh as Mock).mockResolvedValue(true);
 
-		await sessionHook(mockStoresManager);
+		await sessionHook(mockStoresManager, mockLogger);
 
 		expect(mockSessionStore.refresh).toHaveBeenCalled();
 	});
@@ -150,7 +160,7 @@ describe('sessionHook', (): void => {
 
 		vi.mocked(jwtDecode).mockImplementation(() => ({ exp: Math.floor(Date.now() / 1000) + 1000 }));
 
-		await sessionHook(mockStoresManager);
+		await sessionHook(mockStoresManager, mockLogger);
 
 		expect(mockSessionStore.clear).toHaveBeenCalled();
 	});
@@ -170,7 +180,7 @@ describe('sessionHook', (): void => {
 
 		(mockSessionStore.refresh as Mock).mockRejectedValue(new Error('Refresh failed'));
 
-		expect(await sessionHook(mockStoresManager)).toBeUndefined();
+		expect(await sessionHook(mockStoresManager, mockLogger)).toBeUndefined();
 		expect(mockSessionStore.clear).toHaveBeenCalled();
 
 		expect(Sentry.captureException).toHaveBeenCalledWith(new Error('Refresh failed'));

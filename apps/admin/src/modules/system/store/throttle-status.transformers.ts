@@ -1,4 +1,4 @@
-import { snakeToCamel } from '../../../common';
+import { logger, snakeToCamel } from '../../../common';
 import { SystemValidationException } from '../system.exceptions';
 
 import { ThrottleStatusSchema } from './throttle-status.store.schemas';
@@ -8,7 +8,7 @@ export const transformThrottleStatusResponse = (response: IThrottleStatusRes): I
 	const parsed = ThrottleStatusSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new SystemValidationException('Failed to validate received throttle status data.');
 	}

@@ -42,6 +42,8 @@ import { ElResult } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { useLogger } from '../composables/useLogger';
+
 import IconWithChild from './icon-with-child.vue';
 
 defineOptions({
@@ -50,12 +52,14 @@ defineOptions({
 
 const { t } = useI18n();
 
+const logger = useLogger();
+
 const error = ref<unknown | null>(null);
 
 onErrorCaptured((err: unknown, _vm: ComponentPublicInstance | null, info: string): boolean => {
 	error.value = err;
 
-	console.error(err, info);
+	logger.error(err as Error, info);
 
 	return false; // prevent further propagation
 });

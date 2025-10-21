@@ -295,6 +295,7 @@ defineOptions({
 });
 
 const props = defineProps<IViewDeviceProps>();
+
 const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();

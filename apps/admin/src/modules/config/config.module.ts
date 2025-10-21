@@ -5,7 +5,7 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectSockets, injectStoresManager } from '../../common';
+import { injectLogger, injectSockets, injectStoresManager } from '../../common';
 
 import { CONFIG_MODULE_EVENT_PREFIX, EventType } from './config.constants';
 import enUS from './locales/en-US.json';
@@ -15,12 +15,21 @@ import { registerConfigDisplayStore } from './store/config-display.store';
 import { registerConfigLanguageStore } from './store/config-language.store';
 import { registerConfigPluginStore } from './store/config-plugins.store';
 import { registerConfigWeatherStore } from './store/config-weather.store';
-import { configAudioStoreKey, configDisplayStoreKey, configLanguageStoreKey, configPluginsStoreKey, configWeatherStoreKey } from './store/keys';
+import {
+	configAudioStoreKey,
+	configDisplayStoreKey,
+	configLanguageStoreKey,
+	configPluginsStoreKey,
+	configSystemStoreKey,
+	configWeatherStoreKey,
+} from './store/keys';
+import { registerConfigSystemStore } from './store/stores';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
+		const logger = injectLogger(app);
 
 		let ran = false;
 
@@ -50,6 +59,11 @@ export default {
 
 		app.provide(configWeatherStoreKey, configWeatherStore);
 		storesManager.addStore(configWeatherStoreKey, configWeatherStore);
+
+		const configSystemStore = registerConfigSystemStore(options.store);
+
+		app.provide(configSystemStoreKey, configSystemStore);
+		storesManager.addStore(configSystemStoreKey, configSystemStore);
 
 		const configPluginsStore = registerConfigPluginStore(options.store);
 
@@ -99,6 +113,12 @@ export default {
 						});
 					}
 
+					if ('system' in data.payload && typeof data.payload.system === 'object' && data.payload.system !== null) {
+						configSystemStore.onEvent({
+							data: data.payload.system,
+						});
+					}
+
 					if ('plugins' in data.payload && Array.isArray(data.payload.plugins)) {
 						data.payload.plugins.forEach((plugin) => {
 							if (typeof plugin === 'object' && plugin !== null && 'type' in plugin && typeof plugin.type === 'string') {
@@ -112,7 +132,7 @@ export default {
 					break;
 
 				default:
-					console.warn('Unhandled config module event:', data.event);
+					logger.warn('Unhandled config module event:', data.event);
 			}
 		});
 

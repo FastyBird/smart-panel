@@ -1,16 +1,22 @@
 import type { ComputedRef, Reactive, Ref } from 'vue';
 
 import type { FormInstance } from 'element-plus';
+import { z } from 'zod';
 
 import type { IDisplayProfileEditForm } from '../schemas/displays-profiles.types';
 import type { IDisplayProfile } from '../store/displays-profiles.store.types';
+import type { ILogEntry } from '../store/logs-entries.store.types';
 import type { ISystemInfo } from '../store/system-info.store.types';
 import type { IThrottleStatus } from '../store/throttle-status.store.types';
 import type { FormResultType } from '../system.constants';
 
+import { SystemLogsFilterSchema } from './schemas';
+
 export interface IDisplaysProfilesFilter {
 	search: string | undefined;
 }
+
+export type ISystemLogsFilter = z.infer<typeof SystemLogsFilterSchema>;
 
 export interface IUseDisplayProfile {
 	display: ComputedRef<IDisplayProfile | null>;
@@ -71,4 +77,23 @@ export interface IUseSystemActions {
 	onRestart: () => void;
 	onPowerOff: () => void;
 	onFactoryReset: () => void;
+}
+
+export interface IUseSystemLogsDataSource {
+	systemLogs: ComputedRef<ILogEntry[]>;
+	hasMore: Ref<boolean>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchSystemLogs: () => Promise<void>;
+	loadMoreSystemLogs: () => Promise<void>;
+	filters: Ref<ISystemLogsFilter>;
+	filtersActive: ComputedRef<boolean>;
+	resetFilter: () => void;
+	live: Ref<boolean>;
+	refreshSystemLogs: () => Promise<void>;
+}
+
+export interface IUseSystemLog {
+	systemLog: ComputedRef<ILogEntry | null>;
+	isLoading: ComputedRef<boolean>;
 }

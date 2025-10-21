@@ -1,1 +1,1 @@
-export { default as LayoutSystem } from './layout-system.vue';
+export { default as LayoutMaintenance } from './layout-maintenance.vue';

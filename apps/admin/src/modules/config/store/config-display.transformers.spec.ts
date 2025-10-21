@@ -1,10 +1,24 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ConfigModuleDisplayType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigDisplayEditActionPayload, IConfigDisplayRes } from './config-display.store.types';
 import { transformConfigDisplayResponse, transformConfigDisplayUpdateRequest } from './config-display.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const validConfigDisplayResponse: IConfigDisplayRes = {
 	type: ConfigModuleDisplayType.display,

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
+import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyData_type,
@@ -43,6 +43,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
+	const logger = useLogger();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
@@ -196,7 +197,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 		const parsedModel = (element.value?.schemas?.channelPropertyEditFormSchema || ChannelPropertyEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
-			console.error('Schema validation failed with:', parsedModel.error);
+			logger.error('Schema validation failed with:', parsedModel.error);
 
 			throw new DevicesValidationException('Failed to validate edit channel property model.');
 		}

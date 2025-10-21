@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemException, SystemValidationException } from '../system.exceptions';
@@ -50,6 +50,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 	'system_module-displays-profiles',
 	(): DisplaysProfilesStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const semaphore = ref<IDisplaysProfilesStateSemaphore>(defaultSemaphore);
 
@@ -79,7 +80,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 				const parsed = DisplayProfileSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 				if (!parsed.success) {
-					console.error('Schema validation failed with:', parsed.error);
+					logger.error('Schema validation failed with:', parsed.error);
 
 					throw new SystemValidationException('Failed to insert display.');
 				}
@@ -90,7 +91,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			const parsed = DisplayProfileSchema.safeParse({ ...payload.data, id: payload.id });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new SystemValidationException('Failed to insert display.');
 			}
@@ -184,7 +185,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			const parsedPayload = DisplaysProfilesAddActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new SystemValidationException('Failed to add display.');
 			}
@@ -196,7 +197,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			});
 
 			if (!parsedNewDisplay.success) {
-				console.error('Schema validation failed with:', parsedNewDisplay.error);
+				logger.error('Schema validation failed with:', parsedNewDisplay.error);
 
 				throw new SystemValidationException('Failed to add display.');
 			}
@@ -241,7 +242,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			const parsedPayload = DisplaysProfilesEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new SystemValidationException('Failed to edit display.');
 			}
@@ -260,7 +261,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			});
 
 			if (!parsedEditedDisplay.success) {
-				console.error('Schema validation failed with:', parsedEditedDisplay.error);
+				logger.error('Schema validation failed with:', parsedEditedDisplay.error);
 
 				throw new SystemValidationException('Failed to edit display.');
 			}
@@ -318,7 +319,7 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 			const parsedSaveDisplay = DisplayProfileSchema.safeParse(data.value[payload.id]);
 
 			if (!parsedSaveDisplay.success) {
-				console.error('Schema validation failed with:', parsedSaveDisplay.error);
+				logger.error('Schema validation failed with:', parsedSaveDisplay.error);
 
 				throw new SystemValidationException('Failed to save display.');
 			}

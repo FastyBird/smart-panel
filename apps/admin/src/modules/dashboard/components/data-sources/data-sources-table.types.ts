@@ -9,4 +9,5 @@ export interface IDataSourcesTableProps {
 	loading: boolean;
 	filters: IDataSourcesFilter;
 	filtersActive: boolean;
+	tableHeight?: number;
 }

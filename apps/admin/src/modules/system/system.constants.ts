@@ -36,6 +36,8 @@ export const RouteNames = {
 	SYSTEM: 'system_module-module',
 	MAINTENANCE: 'system_module-module_maintenance',
 	SYSTEM_INFO: 'system_module-system_info',
+	SYSTEM_LOGS: 'system_module-system_logs',
+	SYSTEM_LOG_DETAIL: 'system_module-system_log_detail',
 	DISPLAY_EDIT: 'system_module-display_edit',
 	THROTTLE_STATUS: 'system_module-throttle_status',
 	POWER_OFF: 'system_module-power_off',
@@ -47,3 +49,6 @@ export enum Layout {
 }
 
 export type LayoutType = Layout.DEFAULT | Layout.PHONE;
+
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_PAGE_SIZE = 10;

@@ -20,3 +20,26 @@ export enum EventType {
 	SYSTEM_POWER_OFF_SET = 'SystemModule.System.PowerOff.Set',
 	SYSTEM_FACTORY_RESET_SET = 'SystemModule.System.FactoryReset.Set',
 }
+
+export enum LogEntryType {
+	SILENT = 'silent',
+	VERBOSE = 'verbose',
+	DEBUG = 'debug',
+	TRACE = 'trace',
+	LOG = 'log',
+	INFO = 'info',
+	SUCCESS = 'success',
+	WARN = 'warn',
+	ERROR = 'error',
+	FAIL = 'fail',
+	FATAL = 'fatal',
+}
+
+export enum LogEntrySource {
+	ADMIN = 'admin',
+	DISPLAY = 'display',
+	BACKEND = 'backend',
+	OTHER = 'other',
+}
+
+export const DEFAULT_PAGE_SIZE = 10;

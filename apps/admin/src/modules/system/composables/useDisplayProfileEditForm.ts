@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
+import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import { DisplayProfileEditFormSchema } from '../schemas/displays-profiles.schemas';
 import type { IDisplayProfileEditForm } from '../schemas/displays-profiles.types';
 import type { IDisplayProfile } from '../store/displays-profiles.store.types';
@@ -27,6 +27,7 @@ export const useDisplayProfileEditForm = ({ display, messages }: IUseDisplayProf
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
+	const logger = useLogger();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
@@ -55,7 +56,7 @@ export const useDisplayProfileEditForm = ({ display, messages }: IUseDisplayProf
 		const parsedModel = DisplayProfileEditFormSchema.safeParse(model);
 
 		if (!parsedModel.success) {
-			console.error('Schema validation failed with:', parsedModel.error);
+			logger.error('Schema validation failed with:', parsedModel.error);
 
 			throw new SystemValidationException('Failed to validate edit display profile model.');
 		}

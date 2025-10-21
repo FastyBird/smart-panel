@@ -65,6 +65,13 @@ vi.mock('../../../common', async () => {
 		useBackend: vi.fn(() => ({
 			client: backendClient,
 		})),
+		useLogger: vi.fn(() => ({
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+			debug: vi.fn(),
+		})),
 		getErrorReason: vi.fn(() => 'Some error'),
 		injectPluginsManager: vi.fn(() => ({
 			getPlugins: mockGetPlugins,

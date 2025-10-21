@@ -54,9 +54,9 @@
 		</template>
 	</view-header>
 
-	<el-scrollbar
+	<div
 		v-if="isPagesListRoute || isLGDevice"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden"
 	>
 		<list-pages
 			v-model:filters="filters"
@@ -69,14 +69,13 @@
 			:total-rows="totalRows"
 			:loading="areLoading"
 			:filters-active="filtersActive"
-			class="mb-2"
 			@detail="onPageDetail"
 			@edit="onPageEdit"
 			@remove="onPageRemove"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
 		/>
-	</el-scrollbar>
+	</div>
 
 	<router-view
 		v-else
@@ -149,7 +148,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElButton, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

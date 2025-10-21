@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import { ConfigModuleDisplayType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
@@ -32,6 +32,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 	'config-module_config_display',
 	(): ConfigDisplayStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const semaphore = ref<IConfigDisplayStateSemaphore>(defaultSemaphore);
 
@@ -55,7 +56,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 			const parsedConfigDisplay = ConfigDisplaySchema.safeParse({ ...payload.data, type: ConfigModuleDisplayType.display });
 
 			if (!parsedConfigDisplay.success) {
-				console.error('Schema validation failed with:', parsedConfigDisplay.error);
+				logger.error('Schema validation failed with:', parsedConfigDisplay.error);
 
 				throw new ConfigValidationException('Failed to insert display config.');
 			}
@@ -117,7 +118,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 			const parsedPayload = ConfigDisplayEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new ConfigValidationException('Failed to edit display config.');
 			}
@@ -132,7 +133,7 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 			});
 
 			if (!parsedEditedConfig.success) {
-				console.error('Schema validation failed with:', parsedEditedConfig.error);
+				logger.error('Schema validation failed with:', parsedEditedConfig.error);
 
 				throw new ConfigValidationException('Failed to edit display config.');
 			}

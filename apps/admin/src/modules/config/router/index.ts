@@ -80,6 +80,21 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'system',
+				name: RouteNames.CONFIG_SYSTEM,
+				component: () => import('../views/view-config-system.vue'),
+				props: true,
+				meta: {
+					guards: {
+						authenticated: true,
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+					},
+					title: 'System',
+					icon: 'mdi:cogs',
+					menu: true,
+				},
+			},
+			{
 				path: 'plugins',
 				name: RouteNames.CONFIG_PLUGINS,
 				component: () => import('../views/view-config-plugins.vue'),

@@ -190,7 +190,7 @@ import 'leaflet/dist/leaflet.css';
 import { Icon } from '@iconify/vue';
 import { LMap, LMarker, LTileLayer } from '@vue-leaflet/vue-leaflet';
 
-import { useBackend, useFlashMessage } from '../../../common';
+import { useBackend, useFlashMessage, useLogger } from '../../../common';
 import {
 	ConfigModuleWeatherCityIdLocation_type,
 	ConfigModuleWeatherCityNameLocation_type,
@@ -255,6 +255,7 @@ const flashMessage = useFlashMessage();
 const { locationTypeOptions, unitOptions, model, formEl, formChanged, submit, formResult } = useConfigWeatherEditForm({ config: props.config });
 
 const backend = useBackend();
+const logger = useLogger();
 
 const zoom = ref<number>(10);
 
@@ -343,7 +344,7 @@ const onUseMyLocation = (): void => {
 		(err) => {
 			flashMessage.error('Unable to retrieve your location.');
 
-			console.error(err);
+			logger.error(err as unknown as Error);
 		}
 	);
 };

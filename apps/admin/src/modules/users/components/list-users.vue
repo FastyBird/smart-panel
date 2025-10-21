@@ -1,21 +1,24 @@
 <template>
-	<div class="h-full w-full flex flex-col">
-		<el-card
-			shadow="never"
-			class="px-1 py-2 mt-2"
-			body-class="p-0!"
-		>
-			<users-filter
-				v-model:filters="innerFilters"
-				:filters-active="props.filtersActive"
-				@reset-filters="emit('reset-filters')"
-			/>
-		</el-card>
+	<el-card
+		shadow="never"
+		class="px-1 py-2 mt-2"
+		body-class="p-0!"
+	>
+		<users-filter
+			v-model:filters="innerFilters"
+			:filters-active="props.filtersActive"
+			@reset-filters="emit('reset-filters')"
+		/>
+	</el-card>
 
+	<div
+		ref="wrapper"
+		class="flex-grow overflow-hidden"
+	>
 		<el-card
 			shadow="never"
-			class="mt-2"
-			body-class="p-0!"
+			class="mt-2 max-h-full"
+			body-class="p-0! max-h-full overflow-hidden flex flex-col"
 		>
 			<users-table
 				v-model:filters="innerFilters"
@@ -25,11 +28,16 @@
 				:total-rows="props.totalRows"
 				:loading="props.loading"
 				:filters-active="props.filtersActive"
+				:table-height="tableHeight"
 				@edit="onEdit"
 				@remove="onRemove"
 				@reset-filters="onResetFilters"
 			/>
-			<div class="flex justify-center w-full py-4">
+
+			<div
+				ref="paginator"
+				class="flex justify-center w-full py-4"
+			>
 				<el-pagination
 					v-model:current-page="paginatePage"
 					v-model:page-size="paginateSize"
@@ -44,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { ElCard, ElPagination } from 'element-plus';
 
@@ -77,6 +85,11 @@ const emit = defineEmits<{
 
 const { isMDDevice } = useBreakpoints();
 
+let observer: ResizeObserver | null = null;
+
+const wrapper = ref<HTMLElement | null>(null);
+const paginator = ref<HTMLElement | null>(null);
+
 const innerFilters = useVModel(props, 'filters', emit);
 
 const remoteFiltersReset = ref<boolean>(false);
@@ -88,6 +101,8 @@ const sortDir = ref<'ascending' | 'descending' | null>(props.sortDir);
 const paginatePage = ref<number>(props.paginatePage);
 
 const paginateSize = ref<number>(props.paginateSize);
+
+const tableHeight = ref<number>(250);
 
 const onEdit = (id: IUser['id']): void => {
 	emit('edit', id);
@@ -110,6 +125,29 @@ const onPaginatePageSize = (size: number): void => {
 const onPaginatePage = (page: number): void => {
 	emit('update:paginate-page', page);
 };
+
+onMounted((): void => {
+	if (!wrapper.value) {
+		return;
+	}
+
+	const updateHeight = () => {
+		tableHeight.value = wrapper.value!.clientHeight - paginator.value!.clientHeight;
+	};
+
+	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+		observer = new ResizeObserver(updateHeight);
+		observer.observe(wrapper.value);
+	}
+
+	updateHeight();
+});
+
+onBeforeUnmount((): void => {
+	if (observer && wrapper.value) {
+		observer.unobserve(wrapper.value);
+	}
+});
 
 watch(
 	(): 'username' | 'firstName' | 'lastName' | 'email' | 'role' => sortBy.value,

@@ -1,0 +1,9 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+
+@include b(system-log-detail) {
+  .tag-neutral {
+    --el-tag-bg-color: var(--el-fill-color-light);
+    --el-tag-text-color: var(--el-text-color-regular);
+    --el-tag-border-color: var(--el-border-color);
+  }
+}

@@ -6,6 +6,7 @@ import type { IPlugin, IPluginElement } from '../../../common';
 import {
 	ConfigModuleLanguageLanguage,
 	ConfigModuleLanguageTime_format,
+	ConfigModuleSystemLog_levels,
 	ConfigModuleWeatherCityIdLocation_type,
 	ConfigModuleWeatherCityNameLocation_type,
 	ConfigModuleWeatherLatLonLocation_type,
@@ -19,6 +20,7 @@ import type { IConfigAudio } from '../store/config-audio.store.types';
 import type { IConfigDisplay } from '../store/config-display.store.types';
 import type { IConfigLanguage } from '../store/config-language.store.types';
 import type { IConfigPlugin } from '../store/config-plugins.store.types';
+import type { IConfigSystem } from '../store/config-system.store.types';
 import type { IConfigWeather } from '../store/config-weather.store.types';
 
 export interface IConfigAudioEditForm {
@@ -54,6 +56,10 @@ export interface IConfigWeatherEditForm {
 		| ConfigModuleWeatherZipCodeLocation_type;
 	unit: ConfigModuleWeatherUnit;
 	openWeatherApiKey: string;
+}
+
+export interface IConfigSystemEditForm {
+	logLevels: ConfigModuleSystemLog_levels[];
 }
 
 export interface IUseConfigAudio {
@@ -122,6 +128,22 @@ export interface IUseConfigWeatherEditForm {
 	}[];
 	unitOptions: { value: ConfigModuleWeatherUnit; label: string }[];
 	model: IConfigWeatherEditForm;
+	formEl: Ref<FormInstance | undefined>;
+	formChanged: Ref<boolean>;
+	submit: () => Promise<'saved'>;
+	clear: () => void;
+	formResult: Ref<FormResultType>;
+}
+
+export interface IUseConfigSystem {
+	configSystem: ComputedRef<IConfigSystem | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchConfigSystem: () => Promise<void>;
+}
+
+export interface IUseConfigSystemEditForm {
+	logLevelsOptions: { value: ConfigModuleSystemLog_levels; label: string }[];
+	model: IConfigSystemEditForm;
 	formEl: Ref<FormInstance | undefined>;
 	formChanged: Ref<boolean>;
 	submit: () => Promise<'saved'>;

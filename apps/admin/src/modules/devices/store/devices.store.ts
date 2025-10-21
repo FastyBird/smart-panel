@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { useChannelsPlugins, useChannelsPropertiesPlugins, useDevicesPlugins } from '../composables/composables';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -58,6 +58,7 @@ const defaultSemaphore: IDevicesStateSemaphore = {
 
 export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetup>('devices_module-devices', (): DevicesStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const { getElement: getPluginElement } = useDevicesPlugins();
 	const { getElement: getChannelsPluginElement } = useChannelsPlugins();
@@ -101,7 +102,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 			const parsed = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new DevicesValidationException('Failed to insert device.');
 			}
@@ -112,7 +113,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsed = (element?.schemas?.deviceSchema || DeviceSchema).safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsed.success) {
-			console.error('Schema validation failed with:', parsed.error);
+			logger.error('Schema validation failed with:', parsed.error);
 
 			throw new DevicesValidationException('Failed to insert device.');
 		}
@@ -244,7 +245,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedPayload = DevicesAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DevicesValidationException('Failed to add device.');
 		}
@@ -259,7 +260,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		});
 
 		if (!parsedNewItem.success) {
-			console.error('Schema validation failed with:', parsedNewItem.error);
+			logger.error('Schema validation failed with:', parsedNewItem.error);
 
 			throw new DevicesValidationException('Failed to add device.');
 		}
@@ -323,7 +324,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedPayload = DevicesEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DevicesValidationException('Failed to edit device.');
 		}
@@ -336,7 +337,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		});
 
 		if (!parsedEditedItem.success) {
-			console.error('Schema validation failed with:', parsedEditedItem.error);
+			logger.error('Schema validation failed with:', parsedEditedItem.error);
 
 			throw new DevicesValidationException('Failed to edit device.');
 		}
@@ -407,7 +408,7 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		const parsedSaveItem = (element?.schemas?.deviceSchema || DeviceSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
-			console.error('Schema validation failed with:', parsedSaveItem.error);
+			logger.error('Schema validation failed with:', parsedSaveItem.error);
 
 			throw new DevicesValidationException('Failed to save device.');
 		}

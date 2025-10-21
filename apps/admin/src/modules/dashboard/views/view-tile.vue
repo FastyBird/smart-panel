@@ -63,10 +63,9 @@
 		</template>
 	</view-header>
 
-	<el-scrollbar
+	<div
 		v-if="isTileRoute || isLGDevice"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
-		view-class="overflow-hidden"
+		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2 overflow-hidden"
 	>
 		<el-card
 			v-if="tile"
@@ -87,13 +86,12 @@
 			:total-rows="totalRows"
 			:loading="areLoading"
 			:filters-active="filtersActive"
-			class="mb-2"
 			@edit="onDataSourceEdit"
 			@remove="onDataSourceRemove"
 			@adjust-list="onAdjustList"
 			@reset-filters="onResetFilters"
 		/>
-	</el-scrollbar>
+	</div>
 
 	<router-view
 		v-else
@@ -172,7 +170,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
+import { ElButton, ElCard, ElDrawer, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 

@@ -1,4 +1,4 @@
-import { camelToSnake, snakeToCamel } from '../../../common';
+import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../../../modules/dashboard';
 
 import { CardCreateReqSchema, CardSchema, CardUpdateReqSchema } from './cards.store.schemas';
@@ -8,7 +8,7 @@ export const transformCardResponse = (response: ICardRes): ICard => {
 	const parsedCard = CardSchema.safeParse(snakeToCamel(response));
 
 	if (!parsedCard.success) {
-		console.error('Schema validation failed with:', parsedCard.error);
+		logger.error('Schema validation failed with:', parsedCard.error);
 
 		throw new DashboardValidationException('Failed to validate received card data.');
 	}
@@ -20,7 +20,7 @@ export const transformCardCreateRequest = (card: ICardsAddActionPayload['data'])
 	const parsedRequest = CardCreateReqSchema.safeParse(camelToSnake(card));
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new DashboardValidationException('Failed to validate create card request.');
 	}
@@ -32,7 +32,7 @@ export const transformCardUpdateRequest = (card: ICardsEditActionPayload['data']
 	const parsedRequest = CardUpdateReqSchema.safeParse(camelToSnake(card));
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new DashboardValidationException('Failed to validate update card request.');
 	}

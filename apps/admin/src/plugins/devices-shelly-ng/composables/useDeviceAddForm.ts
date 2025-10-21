@@ -1,12 +1,13 @@
-import { type Reactive, computed, onMounted, reactive, ref, toRaw, watch } from 'vue';
+import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { deepClone, getErrorReason, injectStoresManager, useBackend, useFlashMessage } from '../../../common';
-import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
+import { tryOnMounted } from '@vueuse/core';
+
+import { deepClone, getErrorReason, getSchemaDefaults, injectStoresManager, useBackend, useFlashMessage, useLogger } from '../../../common';
 import { DevicesApiException, FormResult, type FormResultType, type IDevice, devicesStoreKey } from '../../../modules/devices';
 import { DevicesModuleDeviceCategory, type operations } from '../../../openapi';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
@@ -32,6 +33,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 	const backend = useBackend();
 
 	const flashMessage = useFlashMessage();
+	const logger = useLogger();
 
 	const { supportedDevices, fetchDevices: fetchSupportedDevices } = useSupportedDevices();
 
@@ -147,7 +149,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 			const parsedModel = ShellyNgDeviceAddFormSchema.safeParse(model);
 
 			if (!parsedModel.success) {
-				console.error('Schema validation failed with:', parsedModel.error);
+				logger.error('Schema validation failed with:', parsedModel.error);
 
 				throw new DevicesShellyNgValidationException('Failed to validate create device model.');
 			}
@@ -201,7 +203,7 @@ export const useDeviceAddForm = ({ id }: IUseDeviceAddFormProps): IUseDeviceAddF
 		formResult.value = FormResult.NONE;
 	};
 
-	onMounted((): void => {
+	tryOnMounted((): void => {
 		fetchSupportedDevices().catch(() => {
 			// Could be ignored
 		});

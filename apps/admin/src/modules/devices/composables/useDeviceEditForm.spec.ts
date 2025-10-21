@@ -52,6 +52,13 @@ vi.mock('../../../common', async () => {
 			error: mockError,
 			info: mockInfo,
 		}),
+		useLogger: vi.fn(() => ({
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+			debug: vi.fn(),
+		})),
 	};
 });
 

@@ -5442,6 +5442,15 @@
                           "unit": "celsius",
                           "open_weather_api_key": "string"
                         },
+                        "system": {
+                          "type": "system",
+                          "log_levels": [
+                            "info",
+                            "warn",
+                            "error",
+                            "fatal"
+                          ]
+                        },
                         "plugins": []
                       },
                       "metadata": {
@@ -5485,7 +5494,8 @@
                 "audio",
                 "display",
                 "language",
-                "weather"
+                "weather",
+                "system"
               ],
               "example": "audio"
             },
@@ -5563,7 +5573,8 @@
                 "audio",
                 "display",
                 "language",
-                "weather"
+                "weather",
+                "system"
               ],
               "example": "audio"
             },
@@ -6297,6 +6308,162 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/system-module/logs": {
+      "get": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Retrieve recent system log entries",
+        "description": "Returns a list of the most recent log entries collected by the backend. These logs may come from Admin, Display, or Backend sources and include timestamps, levels, messages, and contextual data. Supports cursor-based pagination through the `next_cursor` field in the response.",
+        "operationId": "get-system-module-logs",
+        "parameters": [
+          {
+            "name": "after_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Return entries after this ULID (exclusive). Use the `next_cursor` value from the previous response to continue pagination."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 10
+            },
+            "description": "Maximum number of log entries to return (default 10, max 200)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of channels was successfully retrieved. The response includes metadata for each channel, including its ID, name, category, associated device, controls, and properties.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResLogEntries"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "System module"
+        ],
+        "summary": "Ingest client log events",
+        "description": "Accepts a **batch** of client-side log events produced by the Admin or Display apps. Events are sent in the `data` array and may include type, level, message, args, user, and context. The server MAY process items asynchronously and return 202 Accepted.",
+        "operationId": "create-system-module-logs",
+        "requestBody": {
+          "description": "Batch payload containing one or more log events in the `data` array.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemModuleReqCreateLogEntries"
+              },
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "data": [
+                      {
+                        "ts": "2025-10-12T09:31:11.212Z",
+                        "source": "admin",
+                        "level": 5,
+                        "type": "error",
+                        "tag": "Devices",
+                        "message": "Schema validation failed",
+                        "args": [
+                          {
+                            "fieldErrors": {
+                              "name": [
+                                "Required"
+                              ]
+                            }
+                          }
+                        ],
+                        "context": {
+                          "appVersion": "1.2.3",
+                          "url": "https://admin/panel/devices"
+                        }
+                      },
+                      {
+                        "ts": "2025-10-12T09:31:12.000Z",
+                        "source": "admin",
+                        "level": 6,
+                        "type": "fatal",
+                        "message": "Unhandled exception",
+                        "args": [
+                          {
+                            "name": "Error",
+                            "message": "Boom!",
+                            "stack": "..."
+                          },
+                          {
+                            "requestId": "req_abc123"
+                          }
+                        ],
+                        "user": {
+                          "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
+                        },
+                        "context": {
+                          "appVersion": "1.2.3",
+                          "url": "https://admin/panel"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted — the batch was received for processing. The response indicates how many items were accepted or rejected.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResLogEntryAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
           },
           "500": {
             "$ref": "#/components/responses/InternalServerError"
@@ -9474,6 +9641,74 @@
           }
         }
       },
+      "ConfigModuleSystem": {
+        "title": "System",
+        "description": "Schema for system configuration, logger on the smart panel.",
+        "type": "object",
+        "required": [
+          "type",
+          "log_levels"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "system"
+            ],
+            "description": "Configuration section type.",
+            "default": "system"
+          },
+          "log_levels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "silent",
+                "verbose",
+                "debug",
+                "trace",
+                "log",
+                "info",
+                "success",
+                "warn",
+                "error",
+                "fail",
+                "fatal"
+              ]
+            },
+            "description": "List of enabled log levels that should be processed and recorded by the system logger.",
+            "minItems": 1,
+            "uniqueItems": true,
+            "default": [
+              "info",
+              "warn",
+              "error",
+              "fatal"
+            ]
+          }
+        },
+        "examples": [
+          {
+            "type": "system",
+            "log_levels": [
+              "info",
+              "warn",
+              "error",
+              "fatal"
+            ]
+          },
+          {
+            "type": "system",
+            "log_levels": [
+              "debug",
+              "info",
+              "warn",
+              "error",
+              "fatal"
+            ]
+          }
+        ]
+      },
       "ConfigModuleWeatherLatLon": {
         "title": "Weather Configuration Latitude and Longitude",
         "description": "Schema for weather configuration using latitude and longitude coordinates.",
@@ -9694,6 +9929,7 @@
           "display",
           "language",
           "weather",
+          "system",
           "plugins"
         ],
         "properties": {
@@ -9712,6 +9948,10 @@
           "weather": {
             "$ref": "#/components/schemas/ConfigModuleWeather",
             "description": "Weather settings, including location, unit preferences, and API integration."
+          },
+          "system": {
+            "$ref": "#/components/schemas/ConfigModuleSystem",
+            "description": "Syste, settings, including logger preferences."
           },
           "plugins": {
             "type": "array",
@@ -9748,6 +9988,15 @@
               "location_type": "city_name",
               "unit": "celsius",
               "open_weather_api_key": "string"
+            },
+            "system": {
+              "type": "system",
+              "log_levels": [
+                "info",
+                "warn",
+                "error",
+                "fatal"
+              ]
             }
           }
         ]
@@ -10174,6 +10423,72 @@
           }
         ]
       },
+      "ConfigModuleUpdateSystem": {
+        "title": "System",
+        "description": "Schema for system-level configuration on the Smart Panel, including logging behavior and runtime options.",
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "system"
+            ],
+            "description": "Configuration section type"
+          },
+          "log_levels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "silent",
+                "verbose",
+                "debug",
+                "trace",
+                "log",
+                "info",
+                "success",
+                "warn",
+                "error",
+                "fail",
+                "fatal"
+              ]
+            },
+            "description": "List of enabled log levels that should be processed and recorded by the system logger.",
+            "minItems": 1,
+            "uniqueItems": true,
+            "default": [
+              "info",
+              "warn",
+              "error",
+              "fatal"
+            ]
+          }
+        },
+        "examples": [
+          {
+            "type": "system",
+            "log_levels": [
+              "info",
+              "warn",
+              "error",
+              "fatal"
+            ]
+          },
+          {
+            "type": "system",
+            "log_levels": [
+              "debug",
+              "info",
+              "warn",
+              "error",
+              "fatal"
+            ]
+          }
+        ]
+      },
       "ConfigModuleUpdatePlugin": {
         "title": "Update Plugin",
         "description": "Schema for partial update settings for plugin configuration.",
@@ -10220,6 +10535,9 @@
               },
               {
                 "$ref": "#/components/schemas/ConfigModuleUpdateWeather"
+              },
+              {
+                "$ref": "#/components/schemas/ConfigModuleUpdateSystem"
               }
             ],
             "discriminator": {
@@ -10228,7 +10546,8 @@
                 "audio": "#/components/schemas/ConfigModuleUpdateAudio",
                 "display": "#/components/schemas/ConfigModuleUpdateDisplay",
                 "language": "#/components/schemas/ConfigModuleUpdateLanguage",
-                "weather": "#/components/schemas/ConfigModuleUpdateWeather"
+                "weather": "#/components/schemas/ConfigModuleUpdateWeather",
+                "system": "#/components/schemas/ConfigModuleUpdateSystem"
               }
             }
           }
@@ -10361,6 +10680,14 @@
                 "location_type": "city_name",
                 "unit": "celsius",
                 "open_weather_api_key": "string"
+              },
+              "system": {
+                "log_levels": [
+                  "info",
+                  "warn",
+                  "error",
+                  "fatal"
+                ]
               }
             },
             "metadata": {
@@ -10435,6 +10762,9 @@
               },
               {
                 "$ref": "#/components/schemas/ConfigModuleWeather"
+              },
+              {
+                "$ref": "#/components/schemas/ConfigModuleSystem"
               }
             ],
             "discriminator": {
@@ -10443,7 +10773,8 @@
                 "audio": "#/components/schemas/ConfigModuleAudio",
                 "display": "#/components/schemas/ConfigModuleDisplay",
                 "language": "#/components/schemas/ConfigModuleLanguage",
-                "weather": "#/components/schemas/ConfigModuleWeather"
+                "weather": "#/components/schemas/ConfigModuleWeather",
+                "system": "#/components/schemas/ConfigModuleSystem"
               }
             }
           },
@@ -14096,86 +14427,6 @@
           }
         ]
       },
-      "SystemModuleResSystemHealth": {
-        "title": "System Health Response",
-        "description": "Standard response wrapper for system health status.",
-        "type": "object",
-        "required": [
-          "status",
-          "timestamp",
-          "request_id",
-          "path",
-          "method",
-          "data",
-          "metadata"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
-            "example": "success",
-            "readOnly": true
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
-            "example": "2025-01-18T12:00:00Z",
-            "readOnly": true
-          },
-          "request_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
-            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "description": "The API endpoint that was requested, including any dynamic parameters.",
-            "example": "/api/v1/system-module/system/health",
-            "readOnly": true
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PATCH",
-              "DELETE"
-            ],
-            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
-            "example": "GET",
-            "readOnly": true
-          },
-          "data": {
-            "$ref": "#/components/schemas/SystemModuleSystemHealth",
-            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/CommonResMetadata",
-            "description": "Additional metadata about the request and server performance metrics."
-          }
-        },
-        "examples": [
-          {
-            "status": "success",
-            "timestamp": "2025-01-18T12:00:00Z",
-            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-            "path": "/api/v1/system-module/system/health",
-            "method": "GET",
-            "data": {
-              "status": "ok",
-              "version": "1.0.0"
-            },
-            "metadata": {
-              "request_duration_ms": 57,
-              "server_time": "2025-01-18T12:00:00Z",
-              "cpu_usage": 25.28
-            }
-          }
-        ]
-      },
       "SystemModuleDisplayProfile": {
         "title": "System Module Display",
         "description": "Represents a physical display registered in the system, providing resolution, pixel ratio, and layout defaults for UI rendering.",
@@ -14395,6 +14646,543 @@
           }
         ]
       },
+      "SystemModuleLogEntry": {
+        "title": "System Module Log Entry",
+        "description": "A single, normalized log entry returned by the backend.",
+        "type": "object",
+        "required": [
+          "id",
+          "ts",
+          "source",
+          "level",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ULID generated by backend at ingest; globally unique and time-sortable."
+          },
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp (ISO-8601) of when the event occurred on the client or server."
+          },
+          "ingested_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp (ISO-8601) of when the backend ingested the event."
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optional monotonic sequence number within the current process or file segment."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "display",
+              "backend",
+              "other"
+            ],
+            "description": "Origin of the log event."
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6,
+            "description": "Numeric log level as mapped by the client logger. Higher values generally indicate greater severity (e.g., 0=trace, 6=fatal)."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "silent",
+              "verbose",
+              "debug",
+              "trace",
+              "log",
+              "info",
+              "success",
+              "warn",
+              "error",
+              "fail",
+              "fatal"
+            ],
+            "description": "Textual log level corresponding to the event severity. Used primarily for human readability and filtering."
+          },
+          "tag": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Optional tag or scope identifying the module or component that generated the log message (e.g., 'DevicesModule', 'SystemModule')."
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Main log message text provided by the client. Usually a short, descriptive string of what occurred or failed."
+          },
+          "args": {
+            "type": "array",
+            "maxItems": 20,
+            "description": "Optional array of structured arguments providing additional context, parameters, or error details associated with the log event. The values are JSON-safe, and the server should sanitize them before storage.",
+            "items": {
+              "description": "Arbitrary JSON value used as a supplementary argument to the log message. Can include nested objects or arrays.",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "user": {
+            "type": "object",
+            "description": "Optional reference to the user associated with the log event, such as the currently authenticated or local user on the device.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Unique identifier of the user within the Smart Panel ecosystem. Used to correlate logs to specific users or sessions.",
+                "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
+              }
+            }
+          },
+          "context": {
+            "type": "object",
+            "description": "Environment metadata captured at log time.",
+            "properties": {
+              "app_version": {
+                "type": "string",
+                "description": "App version that produced the log (e.g., '1.2.3')."
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "The URL or route within the client app where the log was generated. Helps identify the relevant page or feature."
+              },
+              "user_agent": {
+                "type": "string",
+                "description": "Browser or runtime user agent string identifying the client platform (e.g., Chromium, Flutter WebView, etc.)."
+              },
+              "locale": {
+                "type": "string",
+                "description": "Active locale or language setting on the client (e.g., 'en-US', 'cs-CZ')."
+              }
+            }
+          }
+        },
+        "example": {
+          "id": "01JE2XQZX9T4P3X6E8G4APM3H2",
+          "ts": "2025-10-12T09:31:11.212Z",
+          "ingested_at": "2025-10-12T09:31:12.000Z",
+          "seq": 128734,
+          "source": "admin",
+          "level": 5,
+          "type": "error",
+          "tag": "DevicesModule",
+          "message": "Schema validation failed",
+          "args": [
+            {
+              "fieldErrors": {
+                "name": [
+                  "Required"
+                ]
+              }
+            }
+          ],
+          "user": {
+            "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
+          },
+          "context": {
+            "app_version": "1.2.3",
+            "url": "https://admin/panel/devices"
+          }
+        }
+      },
+      "SystemModuleCreateLogEntry": {
+        "type": "object",
+        "required": [
+          "ts",
+          "source",
+          "level",
+          "type"
+        ],
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp (ISO-8601) of when the event occurred on the client or server."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "display",
+              "backend",
+              "other"
+            ],
+            "description": "Origin of the log event."
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6,
+            "description": "Numeric log level as mapped by the client logger. Higher values generally indicate greater severity (e.g., 0=trace, 6=fatal)."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "silent",
+              "verbose",
+              "debug",
+              "trace",
+              "log",
+              "info",
+              "success",
+              "warn",
+              "error",
+              "fail",
+              "fatal"
+            ],
+            "description": "Textual log level corresponding to the event severity. Used primarily for human readability and filtering."
+          },
+          "tag": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Optional tag or scope identifying the module or component that generated the log message (e.g., 'DevicesModule', 'SystemModule')."
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Main log message text provided by the client. Usually a short, descriptive string of what occurred or failed."
+          },
+          "args": {
+            "type": "array",
+            "maxItems": 20,
+            "description": "Optional array of structured arguments providing additional context, parameters, or error details associated with the log event. The values are JSON-safe, and the server should sanitize them before storage.",
+            "items": {
+              "description": "Arbitrary JSON value used as a supplementary argument to the log message. Can include nested objects or arrays.",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "user": {
+            "type": "object",
+            "description": "Optional reference to the user associated with the log event, such as the currently authenticated or local user on the device.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "Unique identifier of the user within the Smart Panel ecosystem. Used to correlate logs to specific users or sessions.",
+                "example": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
+              }
+            }
+          },
+          "context": {
+            "type": "object",
+            "description": "Environment metadata captured at log time.",
+            "properties": {
+              "app_version": {
+                "type": "string",
+                "description": "App version that produced the log (e.g., '1.2.3')."
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "The URL or route within the client app where the log was generated. Helps identify the relevant page or feature."
+              },
+              "user_agent": {
+                "type": "string",
+                "description": "Browser or runtime user agent string identifying the client platform (e.g., Chromium, Flutter WebView, etc.)."
+              },
+              "locale": {
+                "type": "string",
+                "description": "Active locale or language setting on the client (e.g., 'en-US', 'cs-CZ')."
+              }
+            }
+          }
+        },
+        "example": {
+          "ts": "2025-10-12T09:31:11.212Z",
+          "source": "admin",
+          "level": 5,
+          "type": "error",
+          "tag": "Devices",
+          "message": "Schema validation failed",
+          "args": [
+            {
+              "fieldErrors": {
+                "name": [
+                  "Required"
+                ]
+              }
+            }
+          ],
+          "user": {
+            "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864"
+          },
+          "context": {
+            "app_version": "1.2.3",
+            "url": "https://admin/panel/devices"
+          }
+        }
+      },
+      "SystemModuleLogIngestResult": {
+        "title": "System Module Log Ingest Result",
+        "description": "Represents the result of processing a batch of log events received from the Admin or Display app. Indicates how many log events were successfully accepted and how many were rejected, optionally including per-item error details.",
+        "type": "object",
+        "required": [
+          "accepted",
+          "rejected"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The number of log events successfully accepted for processing or storage."
+          },
+          "rejected": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The number of log events that were rejected due to invalid format or other validation errors."
+          },
+          "errors": {
+            "type": "array",
+            "description": "Optional list of validation or processing errors for rejected items. Each entry references the index of the rejected log event in the original request batch.",
+            "items": {
+              "type": "object",
+              "required": [
+                "index",
+                "reason"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Zero-based index of the log event within the submitted `data` array that caused an error."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "Short, human-readable reason describing why the log event was rejected."
+                },
+                "details": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "Optional object with additional error details, such as schema validation paths or expected types."
+                }
+              }
+            }
+          }
+        }
+      },
+      "SystemModuleReqCreateDisplayProfile": {
+        "title": "Create Display Request",
+        "description": "Request schema for creating new display.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleCreateDisplayProfile"
+          }
+        },
+        "examples": [
+          {
+            "data": {
+              "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
+              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
+              "screen_width": 1280,
+              "screen_height": 720,
+              "pixel_ratio": 1,
+              "unit_size": 120,
+              "rows": 6,
+              "cols": 4
+            }
+          }
+        ]
+      },
+      "SystemModuleReqUpdateDisplayProfile": {
+        "title": "Update Display Request",
+        "description": "Request schema for updating an existing display.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleUpdateDisplayProfile"
+          }
+        },
+        "examples": [
+          {
+            "data": {
+              "rows": 6,
+              "cols": 4
+            }
+          }
+        ]
+      },
+      "SystemModuleReqCreateLogEntries": {
+        "title": "Create Log Events Request",
+        "description": "Request schema for creating new log events.",
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/SystemModuleCreateLogEntry"
+            }
+          }
+        }
+      },
+      "SystemModuleResSystemHealth": {
+        "title": "System Health Response",
+        "description": "Standard response wrapper for system health status.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/system-module/system/health",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleSystemHealth",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": [
+          {
+            "status": "success",
+            "timestamp": "2025-01-18T12:00:00Z",
+            "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "path": "/api/v1/system-module/system/health",
+            "method": "GET",
+            "data": {
+              "status": "ok",
+              "version": "1.0.0"
+            },
+            "metadata": {
+              "request_duration_ms": 57,
+              "server_time": "2025-01-18T12:00:00Z",
+              "cpu_usage": 25.28
+            }
+          }
+        ]
+      },
       "SystemModuleResSystemInfo": {
         "title": "System Info Response",
         "description": "Response containing detailed system information, including CPU load, memory usage, storage, temperature, OS, network, and display details.",
@@ -14594,54 +15382,6 @@
               "request_duration_ms": 57,
               "server_time": "2025-01-18T12:00:00Z",
               "cpu_usage": 25.28
-            }
-          }
-        ]
-      },
-      "SystemModuleReqCreateDisplayProfile": {
-        "title": "Create Display Request",
-        "description": "Request schema for creating new display.",
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/SystemModuleCreateDisplayProfile"
-          }
-        },
-        "examples": [
-          {
-            "data": {
-              "id": "00f9b0cb-25b4-4049-bf5b-da8c56ba4864",
-              "uid": "fcab917a-f889-47cf-9ace-ef085774864e",
-              "screen_width": 1280,
-              "screen_height": 720,
-              "pixel_ratio": 1,
-              "unit_size": 120,
-              "rows": 6,
-              "cols": 4
-            }
-          }
-        ]
-      },
-      "SystemModuleReqUpdateDisplayProfile": {
-        "title": "Update Display Request",
-        "description": "Request schema for updating an existing display.",
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/SystemModuleUpdateDisplayProfile"
-          }
-        },
-        "examples": [
-          {
-            "data": {
-              "rows": 6,
-              "cols": 4
             }
           }
         ]
@@ -14914,6 +15654,217 @@
             }
           }
         ]
+      },
+      "SystemModuleResLogEntries": {
+        "title": "System Log Entries Response",
+        "description": "Standard envelope returned when a single log entry is requested or created. Includes request metadata and the resulting log entry.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/system-module/logs",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SystemModuleLogEntry"
+            },
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "description": "Additional metadata about the request and server performance metrics.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommonResMetadata"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "next_cursor",
+                  "has_more"
+                ],
+                "properties": {
+                  "next_cursor": {
+                    "type": "string",
+                    "description": "Opaque cursor for the next page."
+                  },
+                  "has_more": {
+                    "type": "boolean",
+                    "description": "Whether more data is available."
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "SystemModuleResLogEntryAccepted": {
+        "title": "Log events were accepted for processing Response",
+        "description": "Response containing the logs acceptation status.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/system-module/logs",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/SystemModuleLogIngestResult",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "examples": {
+          "ok": {
+            "value": {
+              "status": "success",
+              "timestamp": "2025-01-18T12:00:00Z",
+              "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+              "path": "/api/v1/system-module/logs",
+              "method": "GET",
+              "data": {
+                "accepted": 2,
+                "rejected": 0
+              },
+              "metadata": {
+                "request_duration_ms": 57,
+                "server_time": "2025-01-18T12:00:00Z",
+                "cpu_usage": 25.28
+              }
+            }
+          },
+          "partial": {
+            "value": {
+              "status": "success",
+              "timestamp": "2025-01-18T12:00:00Z",
+              "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+              "path": "/api/v1/system-module/logs",
+              "method": "GET",
+              "data": {
+                "accepted": 1,
+                "rejected": 1,
+                "errors": [
+                  {
+                    "index": 1,
+                    "reason": "Invalid enum value for type",
+                    "details": {
+                      "path": [
+                        "type"
+                      ],
+                      "expected": [
+                        "silent",
+                        "verbose",
+                        "debug",
+                        "trace",
+                        "log",
+                        "info",
+                        "success",
+                        "warn",
+                        "error",
+                        "fail",
+                        "fatal"
+                      ],
+                      "received": "panic"
+                    }
+                  }
+                ]
+              },
+              "metadata": {
+                "request_duration_ms": 57,
+                "server_time": "2025-01-18T12:00:00Z",
+                "cpu_usage": 25.28
+              }
+            }
+          }
+        }
       },
       "WeatherModuleWeather": {
         "title": "Weather Condition",
@@ -19190,6 +20141,171 @@
             "description": "Additional metadata about the request and server performance metrics."
           }
         }
+      },
+      "LoggerRotatingFilePluginConfig": {
+        "x-internal": true,
+        "title": "Rotating File Logger Plugin Configuration",
+        "description": "Configuration for the optional rotating file logger. When enabled, logs are appended to daily files and old files are removed based on retention.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModulePlugin"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "dir",
+              "retention_days",
+              "cleanup_cron",
+              "file_prefix"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "logger-rotating-file"
+                ],
+                "description": "Configuration section type discriminator. Must always be `logger-rotating-file`.",
+                "default": "logger-rotating-file",
+                "example": "logger-rotating-file"
+              },
+              "dir": {
+                "type": "string",
+                "nullable": true,
+                "minLength": 1,
+                "description": "Directory where log files will be written. If `null` or omitted, a safe default within the application directory is used.",
+                "default": null,
+                "example": "/var/log/smart-panel"
+              },
+              "retention_days": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 1,
+                "description": "Number of days to keep log files before automatic cleanup.",
+                "default": 7,
+                "example": 14
+              },
+              "cleanup_cron": {
+                "type": "string",
+                "nullable": true,
+                "minLength": 1,
+                "description": "Cron expression for the cleanup job that removes old log files. If omitted, defaults to daily at 03:15 (`15 3 * * *`).",
+                "default": "15 3 * * *",
+                "examples": ["0 0 * * *", "15 3 * * *", "0 */6 * * *"]
+              },
+              "file_prefix": {
+                "type": "string",
+                "nullable": true,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$",
+                "description": "Filename prefix for generated log files. Only letters, numbers, dot, underscore, and hyphen are allowed.",
+                "default": "smart-panel",
+                "example": "smart-panel"
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "summary": "Disabled (default)",
+            "value": {
+              "type": "logger-rotating-file",
+              "enabled": false,
+              "dir": null,
+              "retention_days": 7,
+              "cleanup_cron": "15 3 * * *",
+              "file_prefix": "smart-panel"
+            }
+          },
+          {
+            "summary": "Enabled with custom directory and retention",
+            "value": {
+              "type": "logger-rotating-file",
+              "enabled": true,
+              "dir": "/var/log/smart-panel",
+              "retention_days": 14,
+              "cleanup_cron": "0 0 * * *",
+              "file_prefix": "smart-panel"
+            }
+          }
+        ]
+      },
+      "LoggerRotatingFilePluginUpdateConfig": {
+        "x-internal": true,
+        "title": "Update Rotating File Logger Plugin Configuration",
+        "description": "Request schema for updating the rotating file logger plugin configuration.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ConfigModuleUpdatePlugin"
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "logger-rotating-file"
+                ],
+                "description": "Configuration section type discriminator. Must always be `logger-rotating-file`.",
+                "default": "logger-rotating-file",
+                "example": "logger-rotating-file"
+              },
+              "dir": {
+                "type": "string",
+                "nullable": true,
+                "minLength": 1,
+                "description": "Directory where log files will be written. Set to `null` or omit to use the default directory.",
+                "example": "/var/log/smart-panel"
+              },
+              "retention_days": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 1,
+                "description": "Number of days to keep log files before automatic cleanup."
+              },
+              "cleanup_cron": {
+                "type": "string",
+                "nullable": true,
+                "minLength": 1,
+                "description": "Cron expression for the cleanup job (e.g., `15 3 * * *`). Omit to keep current value."
+              },
+              "file_prefix": {
+                "type": "string",
+                "nullable": true,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$",
+                "description": "Filename prefix for generated log files. Only letters, numbers, dot, underscore, and hyphen are allowed."
+              }
+            }
+          }
+        ],
+        "examples": [
+          {
+            "summary": "Enable and set directory",
+            "value": {
+              "type": "logger-rotating-file",
+              "enabled": true,
+              "dir": "/var/log/smart-panel"
+            }
+          },
+          {
+            "summary": "Change cleanup schedule",
+            "value": {
+              "type": "logger-rotating-file",
+              "cleanup_cron": "0 0 * * *"
+            }
+          },
+          {
+            "summary": "Adjust retention days",
+            "value": {
+              "type": "logger-rotating-file",
+              "retention_days": 30
+            }
+          }
+        ]
       },
       "CommonResMetadata": {
         "title": "CommonResMetadata",

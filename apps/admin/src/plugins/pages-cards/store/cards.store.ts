@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import {
 	DashboardApiException,
 	DashboardException,
@@ -56,6 +56,7 @@ const defaultSemaphore: ICardsStateSemaphore = {
 
 export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>('pages_cards_plugin-cards', (): CardsStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const { getElement: getTilePluginElement } = useTilesPlugins();
 	const { getElement: getDataSourcePluginElement } = useDataSourcesPlugins();
@@ -96,7 +97,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			const parsed = CardSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new DashboardValidationException('Failed to insert card.');
 			}
@@ -107,7 +108,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const parsed = CardSchema.safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsed.success) {
-			console.error('Schema validation failed with:', parsed.error);
+			logger.error('Schema validation failed with:', parsed.error);
 
 			throw new DashboardValidationException('Failed to insert card.');
 		}
@@ -263,7 +264,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const parsedPayload = CardsAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DashboardValidationException('Failed to add card.');
 		}
@@ -277,7 +278,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		});
 
 		if (!parsedNewCard.success) {
-			console.error('Schema validation failed with:', parsedNewCard.error);
+			logger.error('Schema validation failed with:', parsedNewCard.error);
 
 			throw new DashboardValidationException('Failed to add card.');
 		}
@@ -331,7 +332,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const parsedPayload = CardsEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DashboardValidationException('Failed to edit card.');
 		}
@@ -350,7 +351,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		});
 
 		if (!parsedEditedCard.success) {
-			console.error('Schema validation failed with:', parsedEditedCard.error);
+			logger.error('Schema validation failed with:', parsedEditedCard.error);
 
 			throw new DashboardValidationException('Failed to edit card.');
 		}
@@ -410,7 +411,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		const parsedSaveCard = CardSchema.safeParse(data.value[payload.id]);
 
 		if (!parsedSaveCard.success) {
-			console.error('Schema validation failed with:', parsedSaveCard.error);
+			logger.error('Schema validation failed with:', parsedSaveCard.error);
 
 			throw new DashboardValidationException('Failed to save card.');
 		}

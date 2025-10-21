@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omit, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { useChannelsPropertiesPlugins } from '../composables/useChannelsPropertiesPlugins';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
@@ -57,6 +57,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 	'devices_module-channel_properties',
 	(): ChannelsPropertiesStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const { getElement: getPluginElement } = useChannelsPropertiesPlugins();
 
@@ -102,7 +103,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 				const parsed = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
 				if (!parsed.success) {
-					console.error('Schema validation failed with:', parsed.error);
+					logger.error('Schema validation failed with:', parsed.error);
 
 					throw new DevicesValidationException('Failed to insert channel property.');
 				}
@@ -113,7 +114,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const parsed = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse({ ...payload.data, id: payload.id });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new DevicesValidationException('Failed to insert channel property.');
 			}
@@ -267,7 +268,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const parsedPayload = ChannelsPropertiesAddActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new DevicesValidationException('Failed to add property.');
 			}
@@ -283,7 +284,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			});
 
 			if (!parsedNewItem.success) {
-				console.error('Schema validation failed with:', parsedNewItem.error);
+				logger.error('Schema validation failed with:', parsedNewItem.error);
 
 				throw new DevicesValidationException('Failed to add channel property.');
 			}
@@ -350,7 +351,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const parsedPayload = ChannelsPropertiesEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new DevicesValidationException('Failed to edit channel property.');
 			}
@@ -363,7 +364,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			});
 
 			if (!parsedEditedItem.success) {
-				console.error('Schema validation failed with:', parsedEditedItem.error);
+				logger.error('Schema validation failed with:', parsedEditedItem.error);
 
 				throw new DevicesValidationException('Failed to edit channel property.');
 			}
@@ -434,7 +435,7 @@ export const useChannelsProperties = defineStore<'devices_module-channel_propert
 			const parsedSaveItem = (element?.schemas?.channelPropertySchema || ChannelPropertySchema).safeParse(data.value[payload.id]);
 
 			if (!parsedSaveItem.success) {
-				console.error('Schema validation failed with:', parsedSaveItem.error);
+				logger.error('Schema validation failed with:', parsedSaveItem.error);
 
 				throw new DevicesValidationException('Failed to save channel property.');
 			}

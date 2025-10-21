@@ -4,8 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { type IPluginElement, deepClone, injectStoresManager, useFlashMessage } from '../../../common';
-import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
+import { type IPluginElement, deepClone, getSchemaDefaults, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import { DevicesModuleDeviceCategory } from '../../../openapi';
 import { FormResult, type FormResultType } from '../devices.constants';
 import { DevicesApiException, DevicesValidationException } from '../devices.exceptions';
@@ -32,6 +31,7 @@ export const useDeviceAddForm = <TForm extends IDeviceAddForm = IDeviceAddForm>(
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
+	const logger = useLogger();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
@@ -67,7 +67,7 @@ export const useDeviceAddForm = <TForm extends IDeviceAddForm = IDeviceAddForm>(
 		const parsedModel = (element.value?.schemas?.deviceAddFormSchema || DeviceAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
-			console.error('Schema validation failed with:', parsedModel.error);
+			logger.error('Schema validation failed with:', parsedModel.error);
 
 			throw new DevicesValidationException('Failed to validate create device model.');
 		}

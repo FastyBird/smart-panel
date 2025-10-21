@@ -1,3 +1,5 @@
+import { ref } from 'vue';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
@@ -22,11 +24,11 @@ vi.mock('../composables/useDeviceEditForm', () => ({
 			description: '',
 			haDeviceId: '',
 		},
-		formEl: {
+		formEl: ref({
 			clearValidate: vi.fn(),
 			resetFields: vi.fn(),
 			validate: vi.fn().mockResolvedValue(true),
-		},
+		}),
 		formChanged: { value: false },
 		formResult: { value: FormResult.NONE },
 		submit: vi.fn(),

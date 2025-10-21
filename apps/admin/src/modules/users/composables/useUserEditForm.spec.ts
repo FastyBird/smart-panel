@@ -28,6 +28,13 @@ vi.mock('../../../common', async () => {
 			})),
 		})),
 		useFlashMessage: vi.fn(() => mockFlash),
+		useLogger: vi.fn(() => ({
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+			debug: vi.fn(),
+		})),
 	};
 });
 

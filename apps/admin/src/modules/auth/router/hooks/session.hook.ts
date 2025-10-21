@@ -1,14 +1,15 @@
 import { type RouteLocation } from 'vue-router';
 
+import { type ConsolaInstance } from 'consola';
 import { jwtDecode } from 'jwt-decode';
 
 import * as Sentry from '@sentry/vue';
 
-import type { IStoresManager } from '../../../../common';
+import { type IStoresManager } from '../../../../common';
 import { sessionStoreKey } from '../../store/keys';
 import type { ITokenPayload } from '../../store/session.store.types';
 
-const sessionHook = async (storesManager: IStoresManager): Promise<boolean | RouteLocation | undefined> => {
+const sessionHook = async (storesManager: IStoresManager, logger: ConsolaInstance): Promise<boolean | RouteLocation | undefined> => {
 	const sessionStore = storesManager.getStore(sessionStoreKey);
 
 	await sessionStore.initialize();
@@ -24,7 +25,7 @@ const sessionHook = async (storesManager: IStoresManager): Promise<boolean | Rou
 		if (new Date().getTime() / 1000 >= new Date(decodedRefreshToken.exp * 1000).getTime() / 1000) {
 			sessionStore.clear();
 
-			console.debug('ROUTE GUARD: Refresh token is expired');
+			logger.debug('ROUTE GUARD: Refresh token is expired');
 
 			return;
 		}
@@ -39,7 +40,7 @@ const sessionHook = async (storesManager: IStoresManager): Promise<boolean | Rou
 					// Session refreshing failed
 					sessionStore.clear();
 
-					console.debug('ROUTE GUARD: Session refresh failed');
+					logger.debug('ROUTE GUARD: Session refresh failed');
 
 					return;
 				}
@@ -50,7 +51,7 @@ const sessionHook = async (storesManager: IStoresManager): Promise<boolean | Rou
 				if (import.meta.env.PROD) {
 					Sentry.captureException(error);
 				} else {
-					console.debug('ROUTE GUARD: Session refresh failed with unknown error');
+					logger.debug('ROUTE GUARD: Session refresh failed with unknown error');
 				}
 
 				return;
@@ -67,7 +68,7 @@ const sessionHook = async (storesManager: IStoresManager): Promise<boolean | Rou
 					// Fetching profile failed
 					sessionStore.clear();
 
-					console.debug('ROUTE GUARD: User fetch failed');
+					logger.debug('ROUTE GUARD: User fetch failed');
 
 					return;
 				}
@@ -78,7 +79,7 @@ const sessionHook = async (storesManager: IStoresManager): Promise<boolean | Rou
 				if (import.meta.env.PROD) {
 					Sentry.captureException(error);
 				} else {
-					console.debug('ROUTE GUARD: User fetch failed with unknown error');
+					logger.debug('ROUTE GUARD: User fetch failed with unknown error');
 				}
 			}
 		}
@@ -92,7 +93,7 @@ const sessionHook = async (storesManager: IStoresManager): Promise<boolean | Rou
 				// Session refreshing failed
 				sessionStore.clear();
 
-				console.debug('ROUTE GUARD: Session refresh failed');
+				logger.debug('ROUTE GUARD: Session refresh failed');
 
 				return;
 			}
@@ -103,7 +104,7 @@ const sessionHook = async (storesManager: IStoresManager): Promise<boolean | Rou
 			if (import.meta.env.PROD) {
 				Sentry.captureException(error);
 			} else {
-				console.debug('ROUTE GUARD: Session refresh failed with unknown error');
+				logger.debug('ROUTE GUARD: Session refresh failed with unknown error');
 			}
 		}
 

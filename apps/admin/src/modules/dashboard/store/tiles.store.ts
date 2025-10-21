@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
 import { useTilesPlugins } from '../composables/useTilesPlugins';
@@ -55,6 +55,7 @@ const defaultSemaphore: ITilesStateSemaphore = {
 
 export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('dashboard_module-tiles', (): TilesStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const { getElement: getPluginElement } = useTilesPlugins();
 	const { getElement: getDataSourcePluginElement } = useDataSourcesPlugins();
@@ -119,7 +120,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			const parsed = (element?.schemas?.tileSchema || TileSchema).safeParse({ ...data.value[payload.id], ...toInsert });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new DashboardValidationException('Failed to insert tile.');
 			}
@@ -130,7 +131,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const parsed = (element?.schemas?.tileSchema || TileSchema).safeParse(toInsert);
 
 		if (!parsed.success) {
-			console.error('Schema validation failed with:', parsed.error);
+			logger.error('Schema validation failed with:', parsed.error);
 
 			throw new DashboardValidationException('Failed to insert tile.');
 		}
@@ -287,7 +288,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const parsedPayload = TilesAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DashboardValidationException('Failed to add tile.');
 		}
@@ -304,7 +305,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		});
 
 		if (!parsedNewItem.success) {
-			console.error('Schema validation failed with:', parsedNewItem.error);
+			logger.error('Schema validation failed with:', parsedNewItem.error);
 
 			throw new DashboardValidationException('Failed to add tile.');
 		}
@@ -365,7 +366,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const parsedPayload = TilesEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DashboardValidationException('Failed to edit tile.');
 		}
@@ -378,7 +379,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		});
 
 		if (!parsedEditedItem.success) {
-			console.error('Schema validation failed with:', parsedEditedItem.error);
+			logger.error('Schema validation failed with:', parsedEditedItem.error);
 
 			throw new DashboardValidationException('Failed to edit tile.');
 		}
@@ -444,7 +445,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const parsedSaveItem = (element?.schemas?.tileSchema || TileSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
-			console.error('Schema validation failed with:', parsedSaveItem.error);
+			logger.error('Schema validation failed with:', parsedSaveItem.error);
 
 			throw new DashboardValidationException('Failed to save tile.');
 		}

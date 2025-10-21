@@ -1,3 +1,5 @@
+import { FastifyRequest } from 'fastify';
+
 export type RetryOpts = { retries?: number; baseMs?: number; factor?: number; jitter?: boolean };
 
 export const withTimeout = async <T>(p: Promise<T>, ms: number, label = 'op'): Promise<T> => {
@@ -53,3 +55,20 @@ export const pLimit = (concurrency: number) => {
 		}
 	};
 };
+
+export type ResponseMeta = {
+	next_cursor?: string;
+	has_more?: boolean;
+	[k: string]: unknown;
+};
+
+const KEY = Symbol('response_meta');
+
+export const setResponseMeta = (req: FastifyRequest | Request, meta: ResponseMeta) => {
+	const curr = KEY in req ? (req[KEY] as ResponseMeta) : undefined;
+
+	req[KEY] = { ...(curr ?? {}), ...meta };
+};
+
+export const getResponseMeta = (req: FastifyRequest | Request): ResponseMeta | undefined =>
+	KEY in req ? (req[KEY] as ResponseMeta) : undefined;

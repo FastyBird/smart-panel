@@ -1,4 +1,4 @@
-import { camelToSnake, snakeToCamel } from '../../../common';
+import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { DeviceCreateReqSchema, DeviceSchema, DeviceUpdateReqSchema } from './devices.store.schemas';
@@ -15,7 +15,7 @@ export const transformDeviceResponse = <T extends IDevice = IDevice>(response: I
 	const parsed = schema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate received device data.');
 	}
@@ -30,7 +30,7 @@ export const transformDeviceCreateRequest = <T extends IDeviceCreateReq = IDevic
 	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate create device request.');
 	}
@@ -45,7 +45,7 @@ export const transformDeviceUpdateRequest = <T extends IDeviceUpdateReq = IDevic
 	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate update device request.');
 	}

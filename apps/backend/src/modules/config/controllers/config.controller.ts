@@ -12,6 +12,7 @@ import {
 	UpdateDisplayConfigDto,
 	UpdateLanguageConfigDto,
 	UpdatePluginConfigDto,
+	UpdateSystemConfigDto,
 	UpdateWeatherCityIdConfigDto,
 	UpdateWeatherCityNameConfigDto,
 	UpdateWeatherLatLonConfigDto,
@@ -24,6 +25,7 @@ import {
 	DisplayConfigModel,
 	LanguageConfigModel,
 	PluginConfigModel,
+	SystemConfigModel,
 	WeatherCityIdConfigModel,
 	WeatherCityNameConfigModel,
 	WeatherLatLonConfigModel,
@@ -86,6 +88,12 @@ export class ConfigController {
 					WeatherCityIdConfigModel,
 					WeatherZipCodeConfigModel,
 				]);
+
+				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
+
+				return config;
+			case SectionType.SYSTEM:
+				config = this.service.getConfigSection<SystemConfigModel>(section, SystemConfigModel);
 
 				this.logger.debug(`[LOOKUP] Found configuration section=${section}`);
 
@@ -161,6 +169,19 @@ export class ConfigController {
 		]);
 
 		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.WEATHER}`);
+
+		return config;
+	}
+
+	@Patch(SectionType.SYSTEM)
+	async updateSystemConfig(@Body() systemConfig: ReqUpdateSectionDto): Promise<SystemConfigModel> {
+		this.logger.debug(`[UPDATE] Incoming update request for section=${SectionType.SYSTEM}`);
+
+		await this.service.setConfigSection(SectionType.SYSTEM, systemConfig.data, UpdateSystemConfigDto);
+
+		const config = this.service.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
+
+		this.logger.debug(`[UPDATE] Successfully updated configuration section=${SectionType.SYSTEM}`);
 
 		return config;
 	}

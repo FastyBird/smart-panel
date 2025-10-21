@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import { ConfigValidationException } from '../config.exceptions';
@@ -6,6 +6,20 @@ import { ConfigValidationException } from '../config.exceptions';
 import { ConfigPluginSchema, ConfigPluginUpdateReqSchema } from './config-plugins.store.schemas';
 import type { IConfigPluginRes, IConfigPluginsEditActionPayload } from './config-plugins.store.types';
 import { transformConfigPluginResponse, transformConfigPluginUpdateRequest } from './config-plugins.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const CustomPluginConfigSchema = ConfigPluginSchema.extend({
 	mockValue: z.string(),

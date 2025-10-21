@@ -7,6 +7,7 @@ import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor,
 import { Reflector } from '@nestjs/core';
 
 import { RequestResultState } from '../../app.constants';
+import { getResponseMeta } from '../utils/http.utils';
 
 export const SKIP_APPLICATION_INTERCEPTOR = 'skipApplicationInterceptor';
 export const SkipApplicationInterceptor = () => SetMetadata(SKIP_APPLICATION_INTERCEPTOR, true);
@@ -44,6 +45,7 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
 					method: request.method,
 					data,
 					metadata: {
+						...(getResponseMeta(request) ?? {}),
 						request_duration_ms: responseTime,
 						server_time: new Date().toISOString(),
 						cpu_usage: parseFloat(os.loadavg()[0].toFixed(2)),

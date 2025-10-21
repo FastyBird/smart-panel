@@ -34,3 +34,4 @@ node_modules/
 
 var/data/config.yaml
 var/db/database.sqlite
+logs/smart-panel-*
