@@ -2,6 +2,7 @@ import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
+import { isEqual } from 'lodash';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { ConfigModuleSystemLog_levels } from '../../../openapi';
@@ -91,13 +92,17 @@ export const useConfigSystemEditForm = ({ config, messages }: IUseSystemEditForm
 		formResult.value = FormResult.NONE;
 	};
 
-	watch(model, (val: IConfigSystemEditForm): void => {
-		if (val.logLevels !== config.logLevels) {
-			formChanged.value = true;
-		} else {
-			formChanged.value = false;
-		}
-	});
+	watch(
+		model,
+		(val: IConfigSystemEditForm): void => {
+			if (!isEqual(val.logLevels, config.logLevels)) {
+				formChanged.value = true;
+			} else {
+				formChanged.value = false;
+			}
+		},
+		{ deep: true }
+	);
 
 	return {
 		logLevelsOptions,

@@ -15802,8 +15802,8 @@
             "description": "Additional metadata about the request and server performance metrics."
           }
         },
-        "examples": {
-          "ok": {
+        "examples": [
+          {
             "value": {
               "status": "success",
               "timestamp": "2025-01-18T12:00:00Z",
@@ -15821,7 +15821,7 @@
               }
             }
           },
-          "partial": {
+          {
             "value": {
               "status": "success",
               "timestamp": "2025-01-18T12:00:00Z",
@@ -15864,7 +15864,7 @@
               }
             }
           }
-        }
+        ]
       },
       "WeatherModuleWeather": {
         "title": "Weather Condition",

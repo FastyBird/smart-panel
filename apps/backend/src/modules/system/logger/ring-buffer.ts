@@ -27,6 +27,6 @@ export class RingBuffer<T> {
 			? [...this.buf.slice(this.idx), ...this.buf.slice(0, this.idx)]
 			: [...this.buf.slice(0, this.idx)];
 
-		return data.filter(Boolean).reverse();
+		return data.filter((item): item is T => item !== undefined).reverse();
 	}
 }

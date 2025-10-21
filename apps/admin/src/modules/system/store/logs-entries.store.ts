@@ -157,9 +157,7 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 			throw new SystemValidationException('Failed to add logs entries.');
 		}
 
-		const parsedNewLogsEntries = z.array(LogEntrySchema).safeParse({
-			...parsedPayload.data.data,
-		});
+		const parsedNewLogsEntries = z.array(LogEntrySchema).safeParse(parsedPayload.data.data);
 
 		if (!parsedNewLogsEntries.success) {
 			logger.error('Schema validation failed with:', parsedNewLogsEntries.error);

@@ -302,7 +302,7 @@ export class SystemLogsReporterService {
 		}
 
 		if (Array.isArray(obj)) {
-			return obj.map(this.redact);
+			return obj.map((item) => this.redact(item));
 		}
 
 		const out: Record<string, unknown> = {};

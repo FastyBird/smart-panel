@@ -17,9 +17,10 @@ export class LogsController {
 	list(
 		@Req() req: Request,
 		@Query('after_id') afterId?: string,
-		@Query('limit') limit = DEFAULT_PAGE_SIZE,
+		@Query('limit') limit: number | string = DEFAULT_PAGE_SIZE,
 	): LogEntryModel[] {
-		const lim = Math.min(Math.max(Number(limit) || 50, 1), 200);
+		const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
+		const lim = Math.min(Math.max(isNaN(parsedLimit) ? DEFAULT_PAGE_SIZE : parsedLimit, 1), 200);
 
 		const data = this.appLogger.getLatest(afterId, lim);
 
