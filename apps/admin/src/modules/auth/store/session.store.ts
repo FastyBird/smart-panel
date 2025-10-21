@@ -5,7 +5,7 @@ import { type Pinia, defineStore } from 'pinia';
 
 import { jwtDecode } from 'jwt-decode';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { type IUser, transformUserResponse } from '../../users';
 import { ACCESS_TOKEN_COOKIE_NAME, AUTH_MODULE_PREFIX, AccessTokenType, REFRESH_TOKEN_COOKIE_NAME } from '../auth.constants';
@@ -32,6 +32,7 @@ const defaultSemaphore: ISessionStateSemaphore = {
 
 export const useSession = defineStore<'auth_module-session', SessionStoreSetup>('auth_module-session', (): SessionStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const { cookies } = useCookies();
 
@@ -88,7 +89,7 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 			if (parsedSession.success) {
 				tokenPair.value = parsedSession.data;
 			} else {
-				console.error('Schema validation failed with:', parsedSession.error);
+				logger.error('Schema validation failed with:', parsedSession.error);
 
 				clear();
 
@@ -210,13 +211,13 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 	const edit = async (payload: ISessionEditActionPayload): Promise<boolean> => {
 		// TODO: Handle edit
-		console.log(payload);
+		logger.log(JSON.stringify(payload));
 		return true;
 	};
 
 	const register = async (payload: ISessionRegisterActionPayload): Promise<boolean> => {
 		// TODO: Handle registration
-		console.log(payload);
+		logger.log(JSON.stringify(payload));
 		return true;
 	};
 

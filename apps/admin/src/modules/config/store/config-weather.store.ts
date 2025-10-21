@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import { ConfigModuleWeatherType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
@@ -32,6 +32,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 	'config-module_config_weather',
 	(): ConfigWeatherStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const semaphore = ref<IConfigWeatherStateSemaphore>(defaultSemaphore);
 
@@ -55,7 +56,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 			const parsedConfigWeather = ConfigWeatherSchema.safeParse({ ...payload.data, type: ConfigModuleWeatherType.weather });
 
 			if (!parsedConfigWeather.success) {
-				console.error('Schema validation failed with:', parsedConfigWeather.error);
+				logger.error('Schema validation failed with:', parsedConfigWeather.error);
 
 				throw new ConfigValidationException('Failed to insert weather config.');
 			}
@@ -117,7 +118,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 			const parsedPayload = ConfigWeatherEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new ConfigValidationException('Failed to edit weather config.');
 			}
@@ -132,7 +133,7 @@ export const useConfigWeather = defineStore<'config-module_config_weather', Conf
 			});
 
 			if (!parsedEditedConfig.success) {
-				console.error('Schema validation failed with:', parsedEditedConfig.error);
+				logger.error('Schema validation failed with:', parsedEditedConfig.error);
 
 				throw new ConfigValidationException('Failed to edit weather config.');
 			}

@@ -1,3 +1,4 @@
+import { logger } from '../../../common';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { DeviceControlCreateReqSchema, DeviceControlSchema } from './devices.controls.store.schemas';
@@ -13,7 +14,7 @@ export const transformDeviceControlResponse = (response: IDeviceControlRes): IDe
 	});
 
 	if (!parsedDeviceControl.success) {
-		console.error('Schema validation failed with:', parsedDeviceControl.error);
+		logger.error('Schema validation failed with:', parsedDeviceControl.error);
 
 		throw new DevicesValidationException('Failed to validate received device control data.');
 	}
@@ -31,7 +32,7 @@ export const transformDeviceControlCreateRequest = (
 	});
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new DevicesValidationException('Failed to validate create device control request.');
 	}

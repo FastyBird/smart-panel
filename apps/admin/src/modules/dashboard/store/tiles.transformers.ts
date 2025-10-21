@@ -1,4 +1,4 @@
-import { camelToSnake, snakeToCamel } from '../../../common';
+import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
 import { TileCreateReqSchema, TileSchema, TileUpdateReqSchema } from './tiles.store.schemas';
@@ -8,7 +8,7 @@ export const transformTileResponse = <T extends ITile = ITile>(response: ITileRe
 	const parsedResponse = schema.safeParse(snakeToCamel(response));
 
 	if (!parsedResponse.success) {
-		console.error('Schema validation failed with:', parsedResponse.error);
+		logger.error('Schema validation failed with:', parsedResponse.error);
 
 		throw new DashboardValidationException('Failed to validate received tile data.');
 	}
@@ -23,7 +23,7 @@ export const transformTileCreateRequest = <T extends ITileCreateReq = ITileCreat
 	const parsedRequest = schema.safeParse(camelToSnake(data));
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new DashboardValidationException('Failed to validate create tile request.');
 	}
@@ -38,7 +38,7 @@ export const transformTileUpdateRequest = <T extends ITileUpdateReq = ITileUpdat
 	const parsedRequest = schema.safeParse(camelToSnake(data));
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new DashboardValidationException('Failed to validate update tile request.');
 	}

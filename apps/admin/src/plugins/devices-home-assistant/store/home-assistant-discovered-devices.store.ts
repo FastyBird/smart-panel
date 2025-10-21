@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
@@ -35,6 +35,7 @@ export const useHomeAssistantDiscoveredDevices = defineStore<
 	HomeAssistantDiscoveredDevicesStoreSetup
 >('devices_home_assistant_plugin-discovered_devices', (): HomeAssistantDiscoveredDevicesStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const storesManager = injectStoresManager();
 
@@ -63,7 +64,7 @@ export const useHomeAssistantDiscoveredDevices = defineStore<
 			const parsedHomeAssistantDiscoveredDevice = HomeAssistantDiscoveredDeviceSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsedHomeAssistantDiscoveredDevice.success) {
-				console.error('Schema validation failed with:', parsedHomeAssistantDiscoveredDevice.error);
+				logger.error('Schema validation failed with:', parsedHomeAssistantDiscoveredDevice.error);
 
 				throw new DevicesHomeAssistantValidationException('Failed to insert HomeAssistantDiscoveredDevice.');
 			}
@@ -74,7 +75,7 @@ export const useHomeAssistantDiscoveredDevices = defineStore<
 		const parsedHomeAssistantDiscoveredDevice = HomeAssistantDiscoveredDeviceSchema.safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsedHomeAssistantDiscoveredDevice.success) {
-			console.error('Schema validation failed with:', parsedHomeAssistantDiscoveredDevice.error);
+			logger.error('Schema validation failed with:', parsedHomeAssistantDiscoveredDevice.error);
 
 			throw new DevicesHomeAssistantValidationException('Failed to insert Home Assistant device.');
 		}

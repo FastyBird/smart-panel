@@ -5,7 +5,7 @@ import { defaultsDeep, get } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IAppUser, IModuleOptions } from '../../app.types';
-import { injectBackendClient, injectRouterGuard, injectSockets, injectStoresManager, provideAccountManager } from '../../common';
+import { injectBackendClient, injectLogger, injectRouterGuard, injectSockets, injectStoresManager, provideAccountManager } from '../../common';
 import type { IUser } from '../users';
 
 import { RouteNames } from './auth.constants';
@@ -20,6 +20,7 @@ export default {
 		const routerGuard = injectRouterGuard(app);
 		const backendClient = injectBackendClient(app);
 		const sockets = injectSockets(app);
+		const logger = injectLogger(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -87,7 +88,7 @@ export default {
 
 		// Register router guards
 		options.router.beforeEach(async (): Promise<boolean | RouteLocation | undefined> => {
-			return await sessionGuard(storesManager);
+			return await sessionGuard(storesManager, logger);
 		});
 		options.router.beforeEach((): boolean | { name: string } | undefined => {
 			return profileGuard(storesManager);

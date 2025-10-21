@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import { type operations } from '../../../openapi';
 import { usePlugins } from '../composables/usePlugins';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
@@ -38,6 +38,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 	'config-module_config_plugin',
 	(): ConfigPluginsStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const { getElement: getPluginElement } = usePlugins();
 
@@ -78,7 +79,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				const parsed = (element?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse({ ...data.value[payload.data.type], ...payload.data });
 
 				if (!parsed.success) {
-					console.error('Schema validation failed with:', parsed.error);
+					logger.error('Schema validation failed with:', parsed.error);
 
 					throw new ConfigValidationException('Failed to insert plugin configuration.');
 				}
@@ -89,7 +90,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			const parsed = (element?.schemas?.pluginConfigSchema || ConfigPluginSchema).safeParse(payload.data);
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new ConfigValidationException('Failed to insert plugin config.');
 			}
@@ -217,7 +218,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			const parsedPayload = ConfigPluginsEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new ConfigValidationException('Failed to edit plugin config.');
 			}
@@ -230,7 +231,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 			});
 
 			if (!parsedEditedConfig.success) {
-				console.error('Schema validation failed with:', parsedEditedConfig.error);
+				logger.error('Schema validation failed with:', parsedEditedConfig.error);
 
 				throw new ConfigValidationException('Failed to edit tile.');
 			}

@@ -1,4 +1,60 @@
 <template>
+	<app-breadcrumbs :items="breadcrumbs" />
+
+	<app-bar-heading
+		v-if="!isMDDevice"
+		teleport
+	>
+		<template #icon>
+			<icon
+				icon="mdi:hammer"
+				class="w[20px] h[20px]"
+			/>
+		</template>
+
+		<template #title>
+			{{ t('systemModule.headings.system.system') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('systemModule.subHeadings.system') }}
+		</template>
+	</app-bar-heading>
+
+	<view-header
+		:heading="t('systemModule.headings.system.system')"
+		:sub-heading="t('systemModule.subHeadings.system')"
+		icon="mdi:hammer"
+	>
+		<template #extra>
+			<div class="flex items-center">
+				<el-button
+					plain
+					class="px-4! ml-2!"
+					@click="onAboutInfo"
+				>
+					<template #icon>
+						<icon icon="mdi:about" />
+					</template>
+
+					{{ t('systemModule.buttons.about.title') }}
+				</el-button>
+				<el-button
+					type="danger"
+					plain
+					class="px-4! ml-2!"
+					@click="onManageSystem"
+				>
+					<template #icon>
+						<icon icon="mdi:volume-control" />
+					</template>
+
+					{{ t('systemModule.buttons.manage.title') }}
+				</el-button>
+			</div>
+		</template>
+	</view-header>
+
 	<div
 		v-if="isSystemInfoRoute || isLGDevice"
 		v-loading="isLoadingSystemInfo || isLoadingThrottleStatus || areLoadingDisplays || systemInfo === null"
@@ -68,20 +124,52 @@
 			</template>
 		</div>
 	</el-drawer>
+
+	<el-dialog
+		v-model="showAboutInfo"
+		:title="t('systemModule.headings.system.about')"
+	>
+		<about-application />
+
+		<template #footer>
+			<el-button
+				link
+				@click="showAboutInfo = false"
+			>
+				{{ t('usersModule.buttons.close.title') }}
+			</el-button>
+		</template>
+	</el-dialog>
+
+	<el-dialog
+		v-model="showManageSystem"
+		:title="t('systemModule.headings.manage.manageSystem')"
+	>
+		<manage-system @close="showManageSystem = false" />
+
+		<template #footer>
+			<el-button
+				link
+				@click="showManageSystem = false"
+			>
+				{{ t('usersModule.buttons.close.title') }}
+			</el-button>
+		</template>
+	</el-dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { useRoute, useRouter } from 'vue-router';
+import { type RouteLocationRaw, useRoute, useRouter } from 'vue-router';
 
-import { ElDrawer, ElIcon, ElMessageBox, vLoading } from 'element-plus';
+import { ElButton, ElDialog, ElDrawer, ElIcon, ElMessageBox, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
-import { SystemInfoDetail } from '../components/components';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewError, ViewHeader, useBreakpoints } from '../../../common';
+import { AboutApplication, ManageSystem, SystemInfoDetail } from '../components/components';
 import { useDisplaysProfiles, useSystemInfo, useThrottleStatus } from '../composables/composables';
 import type { IDisplayProfile } from '../store/displays-profiles.store.types';
 import { RouteNames } from '../system.constants';
@@ -99,7 +187,7 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
-const { isLGDevice } = useBreakpoints();
+const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { systemInfo, fetchSystemInfo, isLoading: isLoadingSystemInfo } = useSystemInfo();
 const { throttleStatus, fetchThrottleStatus, isLoading: isLoadingThrottleStatus } = useThrottleStatus();
@@ -111,8 +199,25 @@ const showDrawer = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 
+const showAboutInfo = ref<boolean>(false);
+
+const showManageSystem = ref<boolean>(false);
+
 const isSystemInfoRoute = computed<boolean>((): boolean => {
 	return route.name === RouteNames.SYSTEM_INFO;
+});
+
+const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
+	return [
+		{
+			label: t('systemModule.breadcrumbs.system.system'),
+			route: router.resolve({ name: RouteNames.SYSTEM }),
+		},
+		{
+			label: t('systemModule.breadcrumbs.system.systemInfo'),
+			route: router.resolve({ name: RouteNames.SYSTEM_INFO }),
+		},
+	];
 });
 
 const onCloseDrawer = (done?: () => void): void => {
@@ -169,6 +274,14 @@ const onDisplayEdit = (id: IDisplayProfile['id']): void => {
 			},
 		});
 	}
+};
+
+const onAboutInfo = (): void => {
+	showAboutInfo.value = true;
+};
+
+const onManageSystem = (): void => {
+	showManageSystem.value = true;
 };
 
 onBeforeMount(async (): Promise<void> => {

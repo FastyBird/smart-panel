@@ -20,6 +20,7 @@ import {
 	SocketsPlugin,
 	StoresManager,
 	injectAccountManager,
+	logger,
 	provideBackendClient,
 	provideEventBus,
 	providePluginsManager,
@@ -27,6 +28,7 @@ import {
 	provideStoresManager,
 	router,
 } from './common';
+import { provideLogger } from './common';
 import CommonModule from './common/common.module';
 import i18n from './locales';
 import { AuthModule } from './modules/auth';
@@ -40,6 +42,7 @@ import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-ch
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party';
+import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file';
 import { PagesCardsPlugin } from './plugins/pages-cards';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail';
 import { PagesTilesPlugin } from './plugins/pages-tiles';
@@ -72,6 +75,10 @@ const backendClient = createClient<paths>({
 });
 app.config.globalProperties['backend'] = backendClient;
 provideBackendClient(app, backendClient);
+
+// Logger
+app.config.globalProperties['logger'] = logger;
+provideLogger(app, logger);
 
 // Event bus
 const eventBus: Emitter<Events> = mitt<Events>();
@@ -135,6 +142,7 @@ app.use(TilesDevicePreviewPlugin, pluginOptions);
 app.use(TilesTimePlugin);
 app.use(TilesWeatherPlugin);
 app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
+app.use(LoggerRotatingFilePlugin, pluginOptions);
 
 router.beforeEach((to) => {
 	const accountManager = injectAccountManager(app);

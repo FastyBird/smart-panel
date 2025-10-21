@@ -16,6 +16,7 @@ export const RouteNames = {
 	CONFIG_DISPLAY: 'config_module-config_display',
 	CONFIG_LANGUAGE: 'config_module-config_language',
 	CONFIG_WEATHER: 'config_module-config_weather',
+	CONFIG_SYSTEM: 'config_module-config_system',
 	CONFIG_PLUGINS: 'config_module-config_plugins',
 };
 

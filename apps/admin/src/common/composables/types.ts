@@ -1,5 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 
+import type { LogObject } from 'consola';
 import type { Emitter, Handler } from 'mitt';
 import type { Client } from 'openapi-fetch';
 import type { Socket } from 'socket.io-client';
@@ -46,6 +47,18 @@ export interface IUseListQuery<F> {
 	sort: Ref<ISortEntry[]>;
 	pagination: Ref<{ page?: number; size?: number }>;
 	reset: () => void;
+}
+
+export interface IUseLogger {
+	log(message: string, ...meta: ReadonlyArray<unknown>): void;
+	info(message: string, ...meta: ReadonlyArray<unknown>): void;
+	warn(message: string, ...meta: ReadonlyArray<unknown>): void;
+	error(error: Error, ...meta: ReadonlyArray<unknown>): void;
+	error(message: string, ...meta: ReadonlyArray<unknown>): void;
+	error(object: LogObject): void;
+	fatal(error: Error, ...meta: ReadonlyArray<unknown>): void;
+	fatal(message: string, ...meta: ReadonlyArray<unknown>): void;
+	fatal(object: LogObject): void;
 }
 
 export interface IUseSockets {

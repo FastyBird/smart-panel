@@ -11,4 +11,5 @@ export interface IChannelsPropertiesTableProps {
 	filtersActive: boolean;
 	withChannelColumn?: boolean;
 	withFilters?: boolean;
+	tableHeight?: number;
 }

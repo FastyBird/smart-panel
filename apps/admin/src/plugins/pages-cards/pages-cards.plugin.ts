@@ -3,7 +3,7 @@ import type { App } from 'vue';
 import { defaultsDeep } from 'lodash';
 
 import type { IPluginOptions } from '../../app.types';
-import { type IPlugin, type PluginInjectionKey, injectPluginsManager, injectSockets, injectStoresManager } from '../../common';
+import { type IPlugin, type PluginInjectionKey, injectLogger, injectPluginsManager, injectSockets, injectStoresManager } from '../../common';
 import { DASHBOARD_MODULE_NAME, type IPagePluginsComponents, type IPagePluginsSchemas } from '../../modules/dashboard';
 
 import enUS from './locales/en-US.json';
@@ -19,6 +19,7 @@ export default {
 		const pluginsManager = injectPluginsManager(app);
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
+		const logger = injectLogger(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -81,7 +82,7 @@ export default {
 					break;
 
 				default:
-					console.warn('Unhandled pages cards plugin event:', data.event);
+					logger.warn('Unhandled pages cards plugin event:', data.event);
 			}
 		});
 	},

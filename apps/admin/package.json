@@ -69,6 +69,8 @@
     "@vue-leaflet/vue-leaflet": "^0.10.1",
     "@vueuse/core": "^12.8",
     "async-validator": "^4.2",
+    "consola": "^3.4.2",
+    "cron-parser": "^5.4.0",
     "date-fns": "^4.1",
     "element-plus": "^2.11",
     "gridstack": "^12.0",

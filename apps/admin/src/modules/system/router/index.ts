@@ -42,7 +42,6 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 	{
 		path: 'system',
 		name: RouteNames.SYSTEM,
-		component: () => import('../layouts/layout-system.vue'),
 		meta: {
 			guards: {
 				authenticated: true,
@@ -81,6 +80,38 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 							},
 							title: 'Edit display',
 							icon: 'mdi:monitor-edit',
+							menu: false,
+						},
+					},
+				],
+			},
+			{
+				path: 'logs',
+				name: RouteNames.SYSTEM_LOGS,
+				component: () => import('../views/view-system-logs.vue'),
+				props: true,
+				meta: {
+					guards: {
+						authenticated: true,
+						roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+					},
+					title: 'System logs',
+					icon: 'mdi:console',
+					menu: false,
+				},
+				children: [
+					{
+						path: ':id',
+						name: RouteNames.SYSTEM_LOG_DETAIL,
+						component: () => import('../views/view-system-log-detail.vue'),
+						props: true,
+						meta: {
+							guards: {
+								authenticated: true,
+								roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
+							},
+							title: 'Log detail',
+							icon: 'mdi:note-text-outline',
 							menu: false,
 						},
 					},

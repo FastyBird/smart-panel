@@ -1,8 +1,21 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
+import {
+	ArrayNotEmpty,
+	IsArray,
+	IsBoolean,
+	IsEnum,
+	IsInt,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Max,
+	Min,
+	ValidateNested,
+} from 'class-validator';
 
 import {
 	LanguageType,
+	LogLevelType,
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
@@ -184,6 +197,18 @@ export class WeatherZipCodeConfigModel extends WeatherConfigModel {
 	longitude: number | null = null;
 }
 
+export class SystemConfigModel extends BaseConfigModel {
+	@Expose()
+	@IsOptional()
+	type = SectionType.SYSTEM;
+
+	@Expose({ name: 'log_levels' })
+	@IsArray()
+	@ArrayNotEmpty()
+	@IsEnum(LogLevelType, { each: true })
+	logLevels: LogLevelType[] = [LogLevelType.INFO, LogLevelType.WARN, LogLevelType.ERROR, LogLevelType.FATAL];
+}
+
 export abstract class PluginConfigModel {
 	@Expose()
 	@IsString()
@@ -229,6 +254,11 @@ export class AppConfigModel {
 		| WeatherCityNameConfigModel
 		| WeatherCityIdConfigModel
 		| WeatherZipCodeConfigModel = new WeatherCityNameConfigModel();
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => SystemConfigModel)
+	system: SystemConfigModel = new SystemConfigModel();
 
 	@Expose()
 	@ValidateNested({ each: true })

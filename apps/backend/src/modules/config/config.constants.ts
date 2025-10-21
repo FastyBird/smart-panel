@@ -1,3 +1,5 @@
+import { LogEntryType } from '../system/system.constants';
+
 export const CONFIG_MODULE_PREFIX = 'config-module';
 
 export const CONFIG_MODULE_NAME = 'config-module';
@@ -12,6 +14,7 @@ export enum SectionType {
 	DISPLAY = 'display',
 	LANGUAGE = 'language',
 	WEATHER = 'weather',
+	SYSTEM = 'system',
 }
 
 export enum TemperatureUnitType {
@@ -34,4 +37,18 @@ export enum WeatherLocationType {
 	CITY_NAME = 'city_name',
 	CITY_ID = 'city_id',
 	ZIP_CODE = 'zip_code',
+}
+
+export enum LogLevelType {
+	SILENT = LogEntryType.SILENT,
+	VERBOSE = LogEntryType.VERBOSE,
+	DEBUG = LogEntryType.DEBUG,
+	TRACE = LogEntryType.TRACE,
+	LOG = LogEntryType.LOG,
+	INFO = LogEntryType.INFO,
+	SUCCESS = LogEntryType.SUCCESS,
+	WARN = LogEntryType.WARN,
+	ERROR = LogEntryType.ERROR,
+	FAIL = LogEntryType.FAIL,
+	FATAL = LogEntryType.FATAL,
 }

@@ -1,10 +1,24 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ConfigModuleLanguageLanguage, ConfigModuleLanguageTime_format, ConfigModuleLanguageType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigLanguageEditActionPayload, IConfigLanguageRes } from './config-language.store.types';
 import { transformConfigLanguageResponse, transformConfigLanguageUpdateRequest } from './config-language.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const validConfigLanguageResponse: IConfigLanguageRes = {
 	type: ConfigModuleLanguageType.language,

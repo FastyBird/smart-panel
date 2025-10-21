@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { DevicesModuleChannelCategory } from '../../../openapi';
 import { DevicesValidationException } from '../devices.exceptions';
@@ -8,6 +8,20 @@ import { ChannelCreateReqSchema, ChannelSchema, ChannelUpdateReqSchema } from '.
 import type { IChannelRes, IChannelsAddActionPayload, IChannelsEditActionPayload } from './channels.store.types';
 import { transformChannelCreateRequest, transformChannelResponse, transformChannelUpdateRequest } from './channels.transformers';
 import type { IDevice } from './devices.store.types';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const deviceId = uuid();
 const channelId = uuid();

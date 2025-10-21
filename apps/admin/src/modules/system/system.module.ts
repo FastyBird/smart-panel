@@ -6,21 +6,24 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IModuleOptions } from '../../app.types';
-import { injectSockets, injectStoresManager } from '../../common';
+import { injectAccountManager, injectLogger, injectSockets, injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
-import { SystemActionsService, provideSystemActionsService } from './services/system-actions-service';
-import { registerDisplaysProfilesStore } from './store/displays-profiles.store';
-import { displaysStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
-import { registerSystemInfoStore } from './store/system-info.store';
-import { registerThrottleStatusStore } from './store/throttle-status.store';
+import { SystemActionsService, provideSystemActionsService } from './services/system-actions.service';
+import { SystemLogsReporterService, provideSystemLogsReporter } from './services/system-logs-reporter.service';
+import { displaysStoreKey, logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
+import { registerDisplaysProfilesStore, registerLogsEntriesStore, registerSystemInfoStore, registerThrottleStatusStore } from './store/stores';
 import { EventType, SYSTEM_MODULE_EVENT_PREFIX } from './system.constants';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
 		const storesManager = injectStoresManager(app);
 		const sockets = injectSockets(app);
+		const logger = injectLogger(app);
+		const accountManager = injectAccountManager(app);
+
+		const isTest = import.meta.env.NODE_ENV === 'test' || ('VITEST' in import.meta.env && import.meta.env.VITEST);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -48,6 +51,11 @@ export default {
 		app.provide(displaysStoreKey, displaysStore);
 		storesManager.addStore(displaysStoreKey, displaysStore);
 
+		const logsEntriesStore = registerLogsEntriesStore(options.store);
+
+		app.provide(logsEntriesStoreKey, logsEntriesStore);
+		storesManager.addStore(logsEntriesStoreKey, logsEntriesStore);
+
 		ModuleMaintenanceRoutes.forEach((route): void => {
 			options.router.addRoute(route);
 		});
@@ -62,6 +70,9 @@ export default {
 
 		const systemActions = new SystemActionsService(app, options.router, options.i18n.global as Composer);
 		provideSystemActionsService(app, systemActions);
+
+		const systemLogsReporter = new SystemLogsReporterService(logger, logsEntriesStore, options.i18n, accountManager);
+		provideSystemLogsReporter(app, systemLogsReporter);
 
 		sockets.on('event', (data: { event: string; payload: object; metadata: object }): void => {
 			if (!data?.event?.startsWith(SYSTEM_MODULE_EVENT_PREFIX)) {
@@ -116,7 +127,11 @@ export default {
 					break;
 
 				default:
-					console.warn('Unhandled system module event:', data.event);
+					logger.warn('Unhandled system module event:', data.event);
+			}
+
+			if (typeof window !== 'undefined' && isTest) {
+				systemLogsReporter.start();
 			}
 		});
 	},

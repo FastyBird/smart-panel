@@ -9,4 +9,5 @@ export interface IDevicesTableProps {
 	loading: boolean;
 	filters: IDevicesFilter;
 	filtersActive: boolean;
+	tableHeight?: number;
 }

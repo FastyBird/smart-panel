@@ -1,4 +1,4 @@
-import { camelToSnake, snakeToCamel } from '../../../common';
+import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { ChannelCreateReqSchema, ChannelSchema, ChannelUpdateReqSchema } from './channels.store.schemas';
@@ -15,7 +15,7 @@ export const transformChannelResponse = <T extends IChannel = IChannel>(response
 	const parsed = schema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate received channel data.');
 	}
@@ -30,7 +30,7 @@ export const transformChannelCreateRequest = <T extends IChannelCreateReq = ICha
 	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate create channel request.');
 	}
@@ -45,7 +45,7 @@ export const transformChannelUpdateRequest = <T extends IChannelUpdateReq = ICha
 	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate update channel request.');
 	}

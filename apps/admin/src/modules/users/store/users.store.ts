@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 import { UsersApiException, UsersException, UsersValidationException } from '../users.exceptions';
@@ -40,6 +40,7 @@ const defaultSemaphore: IUsersStateSemaphore = {
 
 export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('users_module-users', (): UsersStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const semaphore = ref<IUsersStateSemaphore>(defaultSemaphore);
 
@@ -69,7 +70,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			const parsed = UserSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new UsersValidationException('Failed to insert user.');
 			}
@@ -80,7 +81,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		const parsed = UserSchema.safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsed.success) {
-			console.error('Schema validation failed with:', parsed.error);
+			logger.error('Schema validation failed with:', parsed.error);
 
 			throw new UsersValidationException('Failed to insert user.');
 		}
@@ -174,7 +175,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		const parsedPayload = UsersAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new UsersValidationException('Failed to add user.');
 		}
@@ -187,7 +188,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		});
 
 		if (!parsedNewUser.success) {
-			console.error('Schema validation failed with:', parsedNewUser.error);
+			logger.error('Schema validation failed with:', parsedNewUser.error);
 
 			throw new UsersValidationException('Failed to add user.');
 		}
@@ -244,7 +245,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		const parsedPayload = UsersEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new UsersValidationException('Failed to edit user.');
 		}
@@ -263,7 +264,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		});
 
 		if (!parsedEditedUser.success) {
-			console.error('Schema validation failed with:', parsedEditedUser.error);
+			logger.error('Schema validation failed with:', parsedEditedUser.error);
 
 			throw new UsersValidationException('Failed to edit user.');
 		}
@@ -327,7 +328,7 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		const parsedSaveUser = UserSchema.safeParse(data.value[payload.id]);
 
 		if (!parsedSaveUser.success) {
-			console.error('Schema validation failed with:', parsedSaveUser.error);
+			logger.error('Schema validation failed with:', parsedSaveUser.error);
 
 			throw new UsersValidationException('Failed to save user.');
 		}

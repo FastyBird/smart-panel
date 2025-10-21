@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from '../devices-home-assistant.constants';
 import { DevicesHomeAssistantApiException, DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
@@ -31,6 +31,7 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 	'devices_home_assistant_plugin-states',
 	(): HomeAssistantStatesStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const semaphore = ref<IHomeAssistantStatesStateSemaphore>(defaultSemaphore);
 
@@ -57,7 +58,7 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 				const parsedHomeAssistantState = HomeAssistantStateSchema.safeParse({ ...data.value[payload.entityId], ...payload.data });
 
 				if (!parsedHomeAssistantState.success) {
-					console.error('Schema validation failed with:', parsedHomeAssistantState.error);
+					logger.error('Schema validation failed with:', parsedHomeAssistantState.error);
 
 					throw new DevicesHomeAssistantValidationException('Failed to insert HomeAssistantState.');
 				}
@@ -68,7 +69,7 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 			const parsedHomeAssistantState = HomeAssistantStateSchema.safeParse({ ...payload.data, entityId: payload.entityId });
 
 			if (!parsedHomeAssistantState.success) {
-				console.error('Schema validation failed with:', parsedHomeAssistantState.error);
+				logger.error('Schema validation failed with:', parsedHomeAssistantState.error);
 
 				throw new DevicesHomeAssistantValidationException('Failed to insert Home Assistant device.');
 			}

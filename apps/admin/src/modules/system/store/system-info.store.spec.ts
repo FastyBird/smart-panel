@@ -111,6 +111,13 @@ vi.mock('../../../common', async () => {
 		useBackend: () => ({
 			client: backendClient,
 		}),
+		useLogger: vi.fn(() => ({
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+			debug: vi.fn(),
+		})),
 		getErrorReason: () => 'Some error',
 	};
 });

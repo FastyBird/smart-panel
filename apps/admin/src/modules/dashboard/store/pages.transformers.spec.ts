@@ -1,11 +1,25 @@
 import { v4 as uuid } from 'uuid';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { DashboardValidationException } from '../dashboard.exceptions';
 
 import { PageCreateReqSchema, PageSchema, PageUpdateReqSchema } from './pages.store.schemas';
 import type { IPageRes, IPagesAddActionPayload, IPagesEditActionPayload } from './pages.store.types';
 import { transformPageCreateRequest, transformPageResponse, transformPageUpdateRequest } from './pages.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const pageId = uuid();
 const displayId = uuid();

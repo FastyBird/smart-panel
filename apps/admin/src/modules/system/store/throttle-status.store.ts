@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
@@ -28,6 +28,7 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 	'system_module-throttle_status',
 	(): ThrottleStatusStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const semaphore = ref<IThrottleStatusStateSemaphore>(defaultSemaphore);
 
@@ -51,7 +52,7 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 			const parsedThrottleStatus = ThrottleStatusSchema.safeParse(payload.data);
 
 			if (!parsedThrottleStatus.success) {
-				console.error('Schema validation failed with:', parsedThrottleStatus.error);
+				logger.error('Schema validation failed with:', parsedThrottleStatus.error);
 
 				throw new SystemValidationException('Failed to insert throttle status.');
 			}

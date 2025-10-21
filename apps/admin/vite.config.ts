@@ -8,6 +8,7 @@ import svgLoader from 'vite-svg-loader';
 
 import vueI18n from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
+import pkg from './package.json' assert { type: 'json' }
 
 // https://vite.dev/config/
 export default defineConfig((config: UserConfig): UserConfig => {
@@ -33,6 +34,10 @@ export default defineConfig((config: UserConfig): UserConfig => {
 			svgLoader(),
 			UnoCSS(),
 		],
+		define: {
+			__APP_VERSION__: JSON.stringify(pkg.version),
+			__APP_COMMIT__: JSON.stringify(process.env.GITHUB_SHA || ''),
+		},
 		css: {
 			modules: {
 				localsConvention: 'camelCaseOnly',

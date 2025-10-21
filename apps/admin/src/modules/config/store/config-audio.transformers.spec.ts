@@ -1,10 +1,24 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ConfigModuleAudioType } from '../../../openapi';
 import { ConfigValidationException } from '../config.exceptions';
 
 import type { IConfigAudioEditActionPayload, IConfigAudioRes } from './config-audio.store.types';
 import { transformConfigAudioResponse, transformConfigAudioUpdateRequest } from './config-audio.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const validConfigAudioResponse: IConfigAudioRes = {
 	type: ConfigModuleAudioType.audio,

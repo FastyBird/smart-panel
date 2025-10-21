@@ -1,11 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
 import type { IHomeAssistantStateRes } from './home-assistant-states.store.types';
 import { transformHomeAssistantStateResponse } from './home-assistant-states.transformers';
 
-const entityId = 'sensor.hall_heater_floot_temperature';
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
+
+const entityId = 'sensor.hall_heater_floor_temperature';
 
 const validHomeAssistantStateResponse: IHomeAssistantStateRes = {
 	entity_id: entityId,

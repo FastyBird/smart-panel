@@ -5,6 +5,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { components } from '../../../openapi';
 import {
 	LanguageType,
+	LogLevelType,
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
@@ -16,6 +17,7 @@ import {
 	AudioConfigModel,
 	DisplayConfigModel,
 	LanguageConfigModel,
+	SystemConfigModel,
 	WeatherCityIdConfigModel,
 	WeatherCityNameConfigModel,
 	WeatherLatLonConfigModel,
@@ -29,6 +31,7 @@ type WeatherLatLon = components['schemas']['ConfigModuleWeatherLatLon'];
 type WeatherCityName = components['schemas']['ConfigModuleWeatherCityName'];
 type WeatherCityId = components['schemas']['ConfigModuleWeatherCityId'];
 type WeatherZipCode = components['schemas']['ConfigModuleWeatherZipCode'];
+type System = components['schemas']['ConfigModuleSystem'];
 type App = components['schemas']['ConfigModuleApp'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
@@ -198,6 +201,23 @@ describe('Config module model and OpenAPI component synchronization', () => {
 		expect(errors).toHaveLength(0);
 	});
 
+	test('SystemConfigModel matches ConfigSystem', () => {
+		const openApiModel: System = {
+			type: SectionType.SYSTEM,
+			log_levels: [LogLevelType.ERROR],
+		};
+
+		const modelInstance = toInstance(SystemConfigModel, openApiModel);
+
+		validateModelAgainstComponent(modelInstance, openApiModel);
+
+		const errors = validateSync(modelInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+		expect(errors).toHaveLength(0);
+	});
+
 	test('AppConfigModel matches ConfigApp', () => {
 		const openApiModel: App & { weather: WeatherLatLon | WeatherCityName | WeatherCityId | WeatherZipCode } = {
 			audio: {
@@ -228,6 +248,10 @@ describe('Config module model and OpenAPI component synchronization', () => {
 				location_type: WeatherLocationType.CITY_NAME,
 				unit: TemperatureUnitType.CELSIUS,
 				open_weather_api_key: null,
+			},
+			system: {
+				type: SectionType.SYSTEM,
+				log_levels: [LogLevelType.ERROR],
 			},
 			plugins: [],
 		};

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { type IPluginElement, deepClone, injectStoresManager, useFlashMessage } from '../../../common';
+import { type IPluginElement, deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import { CONFIG_MODULE_PLUGIN_TYPE, FormResult, type FormResultType } from '../config.constants';
 import { ConfigApiException, ConfigValidationException } from '../config.exceptions';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
@@ -40,6 +40,7 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
+	const logger = useLogger();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
@@ -67,7 +68,7 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 		const parsedModel = (element.value?.schemas?.pluginConfigEditFormSchema || ConfigPluginEditFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
-			console.error('Schema validation failed with:', parsedModel.error);
+			logger.error('Schema validation failed with:', parsedModel.error);
 
 			throw new ConfigValidationException('Failed to validate create tile model.');
 		}

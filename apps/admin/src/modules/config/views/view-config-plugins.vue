@@ -5,8 +5,9 @@
 	>
 		<el-card class="mb-2">
 			<el-collapse
-				v-model="activeNames"
+				v-model="activeName"
 				:expand-icon-position="'left'"
+				accordion
 			>
 				<template
 					v-for="plugin in plugins"
@@ -30,8 +31,9 @@
 
 	<template v-else>
 		<el-collapse
-			v-model="activeNames"
+			v-model="activeName"
 			:expand-icon-position="'left'"
+			accordion
 		>
 			<template
 				v-for="plugin in plugins"
@@ -99,6 +101,7 @@ const remoteFormResult = ref<Record<IPlugin['type'], FormResultType>>(makeInitia
 const remoteFormReset = ref<boolean>(props.remoteFormReset);
 
 const activeNames = ref(plugins.value.map((plugin) => plugin.type));
+const activeName = ref(activeNames.value ? activeNames.value[0] : undefined);
 
 const waitForPluginToFinish = (type: IPlugin['type']): Promise<void> => {
 	return new Promise((resolve) => {

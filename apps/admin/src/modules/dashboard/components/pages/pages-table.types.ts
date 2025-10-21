@@ -9,4 +9,5 @@ export interface IPagesTableProps {
 	loading: boolean;
 	filters: IPagesFilter;
 	filtersActive: boolean;
+	tableHeight?: number;
 }

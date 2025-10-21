@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { SYSTEM_MODULE_PREFIX } from '../system.constants';
 import { SystemApiException, SystemValidationException } from '../system.exceptions';
@@ -26,6 +26,7 @@ const defaultSemaphore: ISystemInfoStateSemaphore = {
 
 export const useSystemInfo = defineStore<'system_module-system_info', SystemInfoStoreSetup>('system_module-system_info', (): SystemInfoStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const semaphore = ref<ISystemInfoStateSemaphore>(defaultSemaphore);
 
@@ -49,7 +50,7 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 		const parsedSystemInfo = SystemInfoSchema.safeParse(payload.data);
 
 		if (!parsedSystemInfo.success) {
-			console.error('Schema validation failed with:', parsedSystemInfo.error);
+			logger.error('Schema validation failed with:', parsedSystemInfo.error);
 
 			throw new SystemValidationException('Failed to insert system info.');
 		}

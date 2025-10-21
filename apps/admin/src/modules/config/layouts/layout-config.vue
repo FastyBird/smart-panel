@@ -142,6 +142,26 @@
 		</el-tab-pane>
 
 		<el-tab-pane
+			:label="t('configModule.tabs.configSystem')"
+			:name="'system'"
+		>
+			<template #label>
+				<span class="flex flex-row items-center gap-2">
+					<el-icon>
+						<icon icon="mdi:cogs" />
+					</el-icon>
+					<span>{{ t('configModule.tabs.configSystem') }}</span>
+				</span>
+			</template>
+
+			<router-view
+				v-if="route.name === RouteNames.CONFIG_SYSTEM"
+				v-model:remote-form-submit="remoteFormSubmit"
+				v-model:remote-form-result="remoteFormResult"
+			/>
+		</el-tab-pane>
+
+		<el-tab-pane
 			:label="t('configModule.tabs.configPlugins')"
 			:name="'plugins'"
 			class="h-full"
@@ -183,7 +203,7 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
 import { FormResult, RouteNames } from '../config.constants';
 
-type PageTabName = 'audio' | 'display' | 'language' | 'weather' | 'plugins';
+type PageTabName = 'audio' | 'display' | 'language' | 'weather' | 'system' | 'plugins';
 
 defineOptions({
 	name: 'LayoutConfig',
@@ -236,6 +256,13 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): {
 		});
 	}
 
+	if (route.name === RouteNames.CONFIG_SYSTEM) {
+		items.push({
+			label: t('configModule.breadcrumbs.configSystem'),
+			route: router.resolve({ name: RouteNames.CONFIG_SYSTEM }),
+		});
+	}
+
 	if (route.name === RouteNames.CONFIG_PLUGINS) {
 		items.push({
 			label: t('configModule.breadcrumbs.configPlugins'),
@@ -260,6 +287,9 @@ const onTabClick = (pane: TabsPaneContext): void => {
 		case 'weather':
 			router.push({ name: RouteNames.CONFIG_WEATHER });
 			break;
+		case 'system':
+			router.push({ name: RouteNames.CONFIG_SYSTEM });
+			break;
 		case 'plugins':
 			router.push({ name: RouteNames.CONFIG_PLUGINS });
 			break;
@@ -281,6 +311,8 @@ onMounted((): void => {
 		activeTab.value = 'language';
 	} else if (route.name === RouteNames.CONFIG_WEATHER && activeTab.value !== 'weather') {
 		activeTab.value = 'weather';
+	} else if (route.name === RouteNames.CONFIG_SYSTEM && activeTab.value !== 'system') {
+		activeTab.value = 'system';
 	} else if (route.name === RouteNames.CONFIG_PLUGINS && activeTab.value !== 'plugins') {
 		activeTab.value = 'plugins';
 	}
@@ -298,6 +330,8 @@ watch(
 				activeTab.value = 'language';
 			} else if (val === RouteNames.CONFIG_WEATHER && activeTab.value !== 'weather') {
 				activeTab.value = 'weather';
+			} else if (val === RouteNames.CONFIG_SYSTEM && activeTab.value !== 'system') {
+				activeTab.value = 'system';
 			} else if (val === RouteNames.CONFIG_PLUGINS && activeTab.value !== 'plugins') {
 				activeTab.value = 'plugins';
 			}

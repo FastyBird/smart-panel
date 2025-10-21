@@ -4,8 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 
-import { type IPlugin, deepClone, injectStoresManager, useFlashMessage } from '../../../common';
-import { getSchemaDefaults } from '../../../common/utils/schemas.utils';
+import { type IPlugin, deepClone, getSchemaDefaults, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import { FormResult, type FormResultType } from '../dashboard.constants';
 import { DashboardApiException, DashboardValidationException } from '../dashboard.exceptions';
 import { DataSourceAddFormSchema } from '../schemas/dataSources.schemas';
@@ -40,6 +39,7 @@ export const useDataSourceAddForm = <TForm extends IDataSourceAddForm = IDataSou
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
+	const logger = useLogger();
 
 	const formResult = ref<FormResultType>(FormResult.NONE);
 
@@ -67,7 +67,7 @@ export const useDataSourceAddForm = <TForm extends IDataSourceAddForm = IDataSou
 		const parsedModel = (element.value?.schemas?.dataSourceAddFormSchema || DataSourceAddFormSchema).safeParse(model);
 
 		if (!parsedModel.success) {
-			console.error('Schema validation failed with:', parsedModel.error);
+			logger.error('Schema validation failed with:', parsedModel.error);
 
 			throw new DashboardValidationException('Failed to validate create data source model.');
 		}

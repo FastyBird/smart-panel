@@ -1,11 +1,13 @@
-import { type Reactive, computed, onMounted, reactive, ref, toRaw, watch } from 'vue';
+import { type Reactive, computed, reactive, ref, toRaw, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import type { FormInstance } from 'element-plus';
 import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
-import { deepClone, injectStoresManager, useFlashMessage } from '../../../common';
+import { tryOnMounted } from '@vueuse/core';
+
+import { deepClone, injectStoresManager, useFlashMessage, useLogger } from '../../../common';
 import {
 	DevicesApiException,
 	DevicesValidationException,
@@ -39,6 +41,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 	const { t } = useI18n();
 
 	const flashMessage = useFlashMessage();
+	const logger = useLogger();
 
 	const { supportedDevices, fetchDevices: fetchSupportedDevices } = useSupportedDevices();
 
@@ -108,7 +111,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		const parsedModel = ShellyNgDeviceEditFormSchema.safeParse(model);
 
 		if (!parsedModel.success) {
-			console.error('Schema validation failed with:', parsedModel.error);
+			logger.error('Schema validation failed with:', parsedModel.error);
 
 			throw new DevicesShellyNgValidationException('Failed to validate edit device model.');
 		}
@@ -174,7 +177,7 @@ export const useDeviceEditForm = ({ device, messages }: IUseDeviceEditFormProps)
 		formResult.value = FormResult.NONE;
 	};
 
-	onMounted((): void => {
+	tryOnMounted((): void => {
 		fetchSupportedDevices().catch(() => {
 			// Could be ignored
 		});

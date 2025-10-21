@@ -1,4 +1,4 @@
-import { camelToSnake, snakeToCamel } from '../../../common';
+import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DevicesValidationException } from '../devices.exceptions';
 
 import { ChannelPropertyCreateReqSchema, ChannelPropertySchema, ChannelPropertyUpdateReqSchema } from './channels.properties.store.schemas';
@@ -18,7 +18,7 @@ export const transformChannelPropertyResponse = <T extends IChannelProperty = IC
 	const parsed = schema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate received channel property data.');
 	}
@@ -33,7 +33,7 @@ export const transformChannelPropertyCreateRequest = <T extends IChannelProperty
 	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate create channel property request.');
 	}
@@ -48,7 +48,7 @@ export const transformChannelPropertyUpdateRequest = <T extends IChannelProperty
 	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DevicesValidationException('Failed to validate update channel property request.');
 	}

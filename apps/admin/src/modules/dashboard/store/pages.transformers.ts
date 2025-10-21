@@ -1,4 +1,4 @@
-import { camelToSnake, snakeToCamel } from '../../../common';
+import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
 import { PageCreateReqSchema, PageSchema, PageUpdateReqSchema } from './pages.store.schemas';
@@ -8,7 +8,7 @@ export const transformPageResponse = <T extends IPage = IPage>(response: IPageRe
 	const parsed = schema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DashboardValidationException('Failed to validate received page data.');
 	}
@@ -23,7 +23,7 @@ export const transformPageCreateRequest = <T extends IPageCreateReq = IPageCreat
 	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DashboardValidationException('Failed to validate create page request.');
 	}
@@ -38,7 +38,7 @@ export const transformPageUpdateRequest = <T extends IPageUpdateReq = IPageUpdat
 	const parsed = schema.safeParse(camelToSnake(data));
 
 	if (!parsed.success) {
-		console.error('Schema validation failed with:', parsed.error);
+		logger.error('Schema validation failed with:', parsed.error);
 
 		throw new DashboardValidationException('Failed to validate update page request.');
 	}

@@ -2,7 +2,7 @@ import { ref } from 'vue';
 
 import { type Pinia, type Store, defineStore } from 'pinia';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesApiException, DevicesException, DevicesValidationException } from '../devices.exceptions';
@@ -41,6 +41,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 	'devices_module-devices_controls',
 	(): DevicesControlsStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const semaphore = ref<IDevicesControlsStateSemaphore>(defaultSemaphore);
 
@@ -77,7 +78,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 				const parsed = DeviceControlSchema.safeParse({ ...data.value[payload.id], ...payload.data });
 
 				if (!parsed.success) {
-					console.error('Schema validation failed with:', parsed.error);
+					logger.error('Schema validation failed with:', parsed.error);
 
 					throw new DevicesValidationException('Failed to insert device control.');
 				}
@@ -88,7 +89,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			const parsed = DeviceControlSchema.safeParse({ ...payload.data, id: payload.id });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new DevicesValidationException('Failed to insert device control.');
 			}
@@ -238,7 +239,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			const parsedPayload = DevicesControlsAddActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new DevicesValidationException('Failed to add device control.');
 			}
@@ -252,7 +253,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			});
 
 			if (!parsedNewDeviceControl.success) {
-				console.error('Schema validation failed with:', parsedNewDeviceControl.error);
+				logger.error('Schema validation failed with:', parsedNewDeviceControl.error);
 
 				throw new DevicesValidationException('Failed to add device control.');
 			}
@@ -314,7 +315,7 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			const parsedSaveDeviceControl = DeviceControlSchema.safeParse(data.value[payload.id]);
 
 			if (!parsedSaveDeviceControl.success) {
-				console.error('Schema validation failed with:', parsedSaveDeviceControl.error);
+				logger.error('Schema validation failed with:', parsedSaveDeviceControl.error);
 
 				throw new DevicesValidationException('Failed to save device control.');
 			}

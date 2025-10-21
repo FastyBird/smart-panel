@@ -5,7 +5,7 @@ import { defaultsDeep } from 'lodash';
 
 import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IAppUser, IModuleOptions } from '../../app.types';
-import { injectRouterGuard, injectSockets, injectStoresManager } from '../../common';
+import { injectLogger, injectRouterGuard, injectSockets, injectStoresManager } from '../../common';
 
 import enUS from './locales/en-US.json';
 import { ModuleRoutes } from './router';
@@ -20,6 +20,7 @@ export default {
 		const storesManager = injectStoresManager(app);
 		const routerGuard = injectRouterGuard(app);
 		const sockets = injectSockets(app);
+		const logger = injectLogger(app);
 
 		for (const [locale, translations] of Object.entries({ 'en-US': enUS })) {
 			const currentMessages = options.i18n.global.getLocaleMessage(locale);
@@ -89,7 +90,7 @@ export default {
 					break;
 
 				default:
-					console.warn('Unhandled system module event:', data.event);
+					logger.warn('Unhandled system module event:', data.event);
 			}
 		});
 	},

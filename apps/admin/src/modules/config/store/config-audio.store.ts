@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import { ConfigModuleAudioType, PathsConfigModuleConfigSectionGetParametersPathSection, type operations } from '../../../openapi';
 import { CONFIG_MODULE_PREFIX } from '../config.constants';
 import { ConfigApiException, ConfigException, ConfigValidationException } from '../config.exceptions';
@@ -32,6 +32,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 	'config_module-config_audio',
 	(): ConfigAudioStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const semaphore = ref<IConfigAudioStateSemaphore>(defaultSemaphore);
 
@@ -55,7 +56,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 			const parsedConfigAudio = ConfigAudioSchema.safeParse({ ...payload.data, type: ConfigModuleAudioType.audio });
 
 			if (!parsedConfigAudio.success) {
-				console.error('Schema validation failed with:', parsedConfigAudio.error);
+				logger.error('Schema validation failed with:', parsedConfigAudio.error);
 
 				throw new ConfigValidationException('Failed to insert audio config.');
 			}
@@ -117,7 +118,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 			const parsedPayload = ConfigAudioEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new ConfigValidationException('Failed to edit audio config.');
 			}
@@ -132,7 +133,7 @@ export const useConfigAudio = defineStore<'config_module-config_audio', ConfigAu
 			});
 
 			if (!parsedEditedConfig.success) {
-				console.error('Schema validation failed with:', parsedEditedConfig.error);
+				logger.error('Schema validation failed with:', parsedEditedConfig.error);
 
 				throw new ConfigValidationException('Failed to edit audio config.');
 			}

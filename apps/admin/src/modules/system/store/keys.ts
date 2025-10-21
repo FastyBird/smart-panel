@@ -1,6 +1,7 @@
 import type { StoreInjectionKey } from '../../../common';
 
 import type { IDisplaysProfilesStoreActions, IDisplaysProfilesStoreState } from './displays-profiles.store.types';
+import type { ILogsEntriesStoreActions, ILogsEntriesStoreState } from './logs-entries.store.types';
 import type { ISystemInfoStoreActions, ISystemInfoStoreState } from './system-info.store.types';
 import type { IThrottleStatusStoreActions, IThrottleStatusStoreState } from './throttle-status.store.types';
 
@@ -12,3 +13,6 @@ export const throttleStatusStoreKey: StoreInjectionKey<string, IThrottleStatusSt
 
 export const displaysStoreKey: StoreInjectionKey<string, IDisplaysProfilesStoreState, object, IDisplaysProfilesStoreActions> =
 	Symbol('FB-Module-System-Displays');
+
+export const logsEntriesStoreKey: StoreInjectionKey<string, ILogsEntriesStoreState, object, ILogsEntriesStoreActions> =
+	Symbol('FB-Module-System-LogsEntries');

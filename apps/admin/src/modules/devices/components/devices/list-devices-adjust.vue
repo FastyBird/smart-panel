@@ -64,7 +64,7 @@
 				</el-collapse-item>
 
 				<el-collapse-item
-					name="states"
+					name="enabled"
 					:class="[ns.e('filter-item')]"
 				>
 					<template #title>
@@ -199,7 +199,7 @@ const states: ConnectionState[] = [
 
 const categories: string[] = Object.values(DevicesModuleDeviceCategory);
 
-const activeBoxes = ref<string[]>(['types', 'states', 'categories']);
+const activeBoxes = ref<string[]>(['types', 'states', 'enabled', 'categories']);
 
 const innerFilters = useVModel(props, 'filters', emit);
 </script>

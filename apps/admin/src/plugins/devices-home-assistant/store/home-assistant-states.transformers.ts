@@ -1,4 +1,4 @@
-import { snakeToCamel } from '../../../common';
+import { logger, snakeToCamel } from '../../../common';
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
 import { HomeAssistantStateSchema } from './home-assistant-states.store.schemas';
@@ -8,7 +8,7 @@ export const transformHomeAssistantStateResponse = (response: IHomeAssistantStat
 	const parsedHomeAssistantState = HomeAssistantStateSchema.safeParse(snakeToCamel(response));
 
 	if (!parsedHomeAssistantState.success) {
-		console.error('Schema validation failed with:', parsedHomeAssistantState.error);
+		logger.error('Schema validation failed with:', parsedHomeAssistantState.error);
 
 		throw new DevicesHomeAssistantValidationException('Failed to validate received Home Assistant state data.');
 	}

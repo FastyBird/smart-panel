@@ -1,9 +1,22 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
+import {
+	ArrayNotEmpty,
+	IsArray,
+	IsBoolean,
+	IsEnum,
+	IsInt,
+	IsNumber,
+	IsOptional,
+	IsString,
+	Max,
+	Min,
+	ValidateNested,
+} from 'class-validator';
 
 import type { components } from '../../../openapi';
 import {
 	LanguageType,
+	LogLevelType,
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
@@ -19,6 +32,7 @@ type UpdateWeatherLatLon = components['schemas']['ConfigModuleUpdateWeatherLatLo
 type UpdateWeatherCityName = components['schemas']['ConfigModuleUpdateWeatherCityName'];
 type UpdateWeatherCityId = components['schemas']['ConfigModuleUpdateWeatherCityId'];
 type UpdateWeatherZipCode = components['schemas']['ConfigModuleUpdateWeatherZipCode'];
+type UpdateSystem = components['schemas']['ConfigModuleUpdateSystem'];
 type UpdatePlugin = components['schemas']['ConfigModuleUpdatePlugin'];
 
 const determineConfigDto = (obj: unknown): new () => object => {
@@ -61,6 +75,8 @@ const determineConfigDto = (obj: unknown): new () => object => {
 					}
 				}
 				throw new Error('Invalid object format for determining config weather DTO');
+			case SectionType.SYSTEM:
+				return UpdateSystemConfigDto;
 			default:
 				throw new Error(`Unknown type ${(obj.data as { type: string }).type}`);
 		}
@@ -71,7 +87,7 @@ const determineConfigDto = (obj: unknown): new () => object => {
 export class BaseConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid section string."}]' })
-	type: SectionType.AUDIO | SectionType.DISPLAY | SectionType.LANGUAGE | SectionType.WEATHER;
+	type: SectionType.AUDIO | SectionType.DISPLAY | SectionType.LANGUAGE | SectionType.WEATHER | SectionType.SYSTEM;
 }
 
 export class UpdateAudioConfigDto extends BaseConfigDto implements UpdateAudio {
@@ -293,6 +309,22 @@ export class UpdateWeatherZipCodeConfigDto extends UpdateWeatherConfigDto implem
 	longitude?: number;
 }
 
+export class UpdateSystemConfigDto extends BaseConfigDto implements UpdateSystem {
+	@Expose()
+	@IsString({ message: '[{"field":"type","reason":"Type must be a language string."}]' })
+	type: SectionType.SYSTEM;
+
+	@Expose()
+	@IsOptional()
+	@IsArray({ message: '[{"field":"log_levels","reason":"Log levels must be provided as an array."}]' })
+	@ArrayNotEmpty({ message: '[{"field":"log_levels","reason":"At least one log level must be specified."}]' })
+	@IsEnum(LogLevelType, {
+		each: true,
+		message: '[{"field":"log_levels","reason":"Each log level must be one of the predefined values."}]',
+	})
+	log_levels?: LogLevelType[];
+}
+
 export class ReqUpdateSectionDto implements ReqUpdateSection {
 	@Expose()
 	@ValidateNested()
@@ -304,7 +336,8 @@ export class ReqUpdateSectionDto implements ReqUpdateSection {
 		| UpdateWeatherLatLonConfigDto
 		| UpdateWeatherCityNameConfigDto
 		| UpdateWeatherCityIdConfigDto
-		| UpdateWeatherZipCodeConfigDto;
+		| UpdateWeatherZipCodeConfigDto
+		| UpdateSystemConfigDto;
 }
 
 export class UpdatePluginConfigDto implements UpdatePlugin {

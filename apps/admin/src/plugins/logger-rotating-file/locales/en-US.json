@@ -1,0 +1,44 @@
+{
+  "fields": {
+    "config": {
+      "enabled": {
+        "title": "Enabled"
+      },
+      "dir": {
+        "title": "Log directory",
+        "placeholder": "Absolute or relative path, e.g. /var/log/smart-panel",
+        "validation": {
+          "nonEmpty": "Log directory must not be empty."
+        }
+      },
+      "retentionDays": {
+        "title": "Retention (days)",
+        "placeholder": "How many days to keep log files (e.g. 7)",
+        "validation": {
+          "number": "Retention days must be an integer.",
+          "min": "Retention days must be at least 1."
+        }
+      },
+      "cleanupCron": {
+        "title": "Cleanup schedule (cron)",
+        "placeholder": "Cron expression, e.g. 15 3 * * * (daily at 03:15)",
+        "validation": {
+          "invalid": "Please enter a valid cron expression (e.g. 15 3 * * *)."
+        }
+      },
+      "filePrefix": {
+        "title": "File prefix",
+        "placeholder": "Filename prefix, e.g. smart-panel",
+        "validation": {
+          "pattern": "Only letters, numbers, dot, underscore, and hyphen are allowed."
+        }
+      }
+    }
+  },
+  "messages": {
+    "config": {
+      "edited": "Changes saved! The Rotating File Logger plugin config has been updated.",
+      "notEdited": "Something went wrong. Rotating File Logger plugin config update was not successful."
+    }
+  }
+}

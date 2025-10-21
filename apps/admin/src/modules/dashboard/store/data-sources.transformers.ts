@@ -1,4 +1,4 @@
-import { camelToSnake, snakeToCamel } from '../../../common';
+import { camelToSnake, logger, snakeToCamel } from '../../../common';
 import { DashboardValidationException } from '../dashboard.exceptions';
 
 import { DataSourceCreateReqSchema, DataSourceSchema, DataSourceUpdateReqSchema } from './data-sources.store.schemas';
@@ -15,7 +15,7 @@ export const transformDataSourceResponse = <T extends IDataSource = IDataSource>
 	const parsedResponse = schema.safeParse(snakeToCamel(response));
 
 	if (!parsedResponse.success) {
-		console.error('Schema validation failed with:', parsedResponse.error);
+		logger.error('Schema validation failed with:', parsedResponse.error);
 
 		throw new DashboardValidationException('Failed to validate received data source data.');
 	}
@@ -30,7 +30,7 @@ export const transformDataSourceCreateRequest = <T extends IDataSourceCreateReq 
 	const parsedRequest = schema.safeParse(camelToSnake(data));
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new DashboardValidationException('Failed to validate create data source request.');
 	}
@@ -45,7 +45,7 @@ export const transformDataSourceUpdateRequest = <T extends IDataSourceUpdateReq 
 	const parsedRequest = schema.safeParse(camelToSnake(data));
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new DashboardValidationException('Failed to validate update data source request.');
 	}

@@ -10,7 +10,7 @@
 		>
 			FastyBird! Smart Panel
 		</el-text>
-		<el-text class="block text-lg! my-2!">Version 1.0.0</el-text>
+		<el-text class="block text-lg! my-2!">Version {{ appVersion }}</el-text>
 
 		<el-divider />
 
@@ -87,6 +87,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElDivider, ElIcon, ElLink, ElText } from 'element-plus';
@@ -98,4 +99,6 @@ defineOptions({
 });
 
 const { t } = useI18n();
+
+const appVersion = ref<string>(__APP_VERSION__);
 </script>

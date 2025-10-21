@@ -15,6 +15,9 @@
     "configWeather": {
       "title": "Weather config"
     },
+    "configSystem": {
+      "title": "System config"
+    },
     "configPlugins": {
       "title": "Plugins config"
     }
@@ -25,6 +28,7 @@
     "configDisplay": "display config",
     "configLanguage": "language config",
     "configWeather": "weather config",
+    "configSystem": "system config",
     "configPlugins": "plugins config"
   },
   "headings": {
@@ -38,6 +42,7 @@
     "configDisplay": "Display config",
     "configLanguage": "Language config",
     "configWeather": "Weather config",
+    "configSystem": "System config",
     "configPlugins": "Plugins config"
   },
   "messages": {
@@ -57,6 +62,10 @@
       "edited": "Changes saved! The weather config has been updated.",
       "notEdited": "Something went wrong. Weather config update was not successful."
     },
+    "configSystem": {
+      "edited": "Changes saved! The system config has been updated.",
+      "notEdited": "Something went wrong. System config update was not successful."
+    },
     "configPlugin": {
       "edited": "Changes saved! The plugin config has been updated.",
       "notEdited": "Something went wrong. Plugin config update was not successful."
@@ -67,6 +76,7 @@
     "loadingDisplayConfig": "Loading display config...",
     "loadingLanguageConfig": "Loading language config...",
     "loadingWeatherConfig": "Loading weather config...",
+    "loadingSystemConfig": "Loading system config...",
     "loadingPluginConfig": "Loading plugin config..."
   },
   "fields": {
@@ -165,6 +175,10 @@
     "openWeatherApiKey": {
       "title": "Open weather API key",
       "placeholder": "Your Open weather service API key for accessing weather data"
+    },
+    "logLevels": {
+      "title": "Log levels",
+      "placeholder": "Select which log levels should be monitored"
     }
   },
   "buttons": {
@@ -202,5 +216,18 @@
     "600s": "10min",
     "1800s": "30min",
     "0s": "Never"
+  },
+  "logLevels": {
+    "silent": "Silent",
+    "verbose": "Verbose",
+    "debug": "Debug",
+    "trace": "Trace",
+    "log": "Log",
+    "info": "Info",
+    "success": "Success",
+    "warn": "Warn",
+    "error": "Error",
+    "fail": "Fail",
+    "fatal": "Fatal"
   }
 }

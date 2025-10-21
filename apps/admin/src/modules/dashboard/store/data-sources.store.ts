@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, useBackend } from '../../../common';
+import { getErrorReason, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
@@ -52,6 +52,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 	'dashboard_module-data_sources',
 	(): DataSourcesStoreSetup => {
 		const backend = useBackend();
+		const logger = useLogger();
 
 		const { getElement: getPluginElement } = useDataSourcesPlugins();
 
@@ -113,7 +114,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 				const parsed = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse({ ...data.value[payload.id], ...toInsert });
 
 				if (!parsed.success) {
-					console.error('Schema validation failed with:', parsed.error);
+					logger.error('Schema validation failed with:', parsed.error);
 
 					throw new DashboardValidationException('Failed to insert data source.');
 				}
@@ -124,7 +125,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			const parsed = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(toInsert);
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new DashboardValidationException('Failed to insert data source.');
 			}
@@ -277,7 +278,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			const parsedPayload = DataSourcesAddActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new DashboardValidationException('Failed to add data source.');
 			}
@@ -294,7 +295,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			});
 
 			if (!parsedNewItem.success) {
-				console.error('Schema validation failed with:', parsedNewItem.error);
+				logger.error('Schema validation failed with:', parsedNewItem.error);
 
 				throw new DashboardValidationException('Failed to add data source.');
 			}
@@ -356,7 +357,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			const parsedPayload = DataSourcesEditActionPayloadSchema.safeParse(payload);
 
 			if (!parsedPayload.success) {
-				console.error('Schema validation failed with:', parsedPayload.error);
+				logger.error('Schema validation failed with:', parsedPayload.error);
 
 				throw new DashboardValidationException('Failed to edit data source.');
 			}
@@ -369,7 +370,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			});
 
 			if (!parsedEditedItem.success) {
-				console.error('Schema validation failed with:', parsedEditedItem.error);
+				logger.error('Schema validation failed with:', parsedEditedItem.error);
 
 				throw new DashboardValidationException('Failed to edit data source.');
 			}
@@ -436,7 +437,7 @@ export const useDataSources = defineStore<'dashboard_module-data_sources', DataS
 			const parsedSaveItem = (element?.schemas?.dataSourceSchema || DataSourceSchema).safeParse(data.value[payload.id]);
 
 			if (!parsedSaveItem.success) {
-				console.error('Schema validation failed with:', parsedSaveItem.error);
+				logger.error('Schema validation failed with:', parsedSaveItem.error);
 
 				throw new DashboardValidationException('Failed to save data source.');
 			}

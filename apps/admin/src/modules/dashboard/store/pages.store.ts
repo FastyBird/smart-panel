@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend } from '../../../common';
+import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
 import type { operations } from '../../../openapi';
 import { useDataSourcesPlugins } from '../composables/useDataSourcesPlugins';
 import { usePagesPlugins } from '../composables/usePagesPlugins';
@@ -58,6 +58,7 @@ const defaultSemaphore: IPagesStateSemaphore = {
 
 export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('dashboard_module-pages', (): PagesStoreSetup => {
 	const backend = useBackend();
+	const logger = useLogger();
 
 	const { getElement: getPluginElement } = usePagesPlugins();
 	const { getElement: getTilePluginElement } = useTilesPlugins();
@@ -101,7 +102,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 			const parsed = (element?.schemas?.pageSchema || PageSchema).safeParse({ ...data.value[payload.id], ...payload.data });
 
 			if (!parsed.success) {
-				console.error('Schema validation failed with:', parsed.error);
+				logger.error('Schema validation failed with:', parsed.error);
 
 				throw new DashboardValidationException('Failed to insert page.');
 			}
@@ -112,7 +113,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const parsed = (element?.schemas?.pageSchema || PageSchema).safeParse({ ...payload.data, id: payload.id });
 
 		if (!parsed.success) {
-			console.error('Schema validation failed with:', parsed.error);
+			logger.error('Schema validation failed with:', parsed.error);
 
 			throw new DashboardValidationException('Failed to insert page.');
 		}
@@ -256,7 +257,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const parsedPayload = PagesAddActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DashboardValidationException('Failed to add page.');
 		}
@@ -271,7 +272,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		});
 
 		if (!parsedNewItem.success) {
-			console.error('Schema validation failed with:', parsedNewItem.error);
+			logger.error('Schema validation failed with:', parsedNewItem.error);
 
 			throw new DashboardValidationException('Failed to add page.');
 		}
@@ -338,7 +339,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const parsedPayload = PagesEditActionPayloadSchema.safeParse(payload);
 
 		if (!parsedPayload.success) {
-			console.error('Schema validation failed with:', parsedPayload.error);
+			logger.error('Schema validation failed with:', parsedPayload.error);
 
 			throw new DashboardValidationException('Failed to edit page.');
 		}
@@ -351,7 +352,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		});
 
 		if (!parsedEditedItem.success) {
-			console.error('Schema validation failed with:', parsedEditedItem.error);
+			logger.error('Schema validation failed with:', parsedEditedItem.error);
 
 			throw new DashboardValidationException('Failed to edit page.');
 		}
@@ -417,7 +418,7 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		const parsedSaveItem = (element?.schemas?.pageSchema || PageSchema).safeParse(data.value[payload.id]);
 
 		if (!parsedSaveItem.success) {
-			console.error('Schema validation failed with:', parsedSaveItem.error);
+			logger.error('Schema validation failed with:', parsedSaveItem.error);
 
 			throw new DashboardValidationException('Failed to save page.');
 		}

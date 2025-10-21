@@ -126,6 +126,8 @@ export class ShellyNgService {
 
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
 	async handleConfigurationUpdatedEvent() {
+		this.pluginConfig = null;
+
 		await this.restart();
 	}
 

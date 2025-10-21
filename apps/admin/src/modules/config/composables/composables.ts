@@ -6,6 +6,8 @@ export * from './useConfigLanguage';
 export * from './useConfigLanguageEditForm';
 export * from './useConfigWeather';
 export * from './useConfigWeatherEditForm';
+export * from './useConfigSystem';
+export * from './useConfigSystemEditForm';
 export * from './useConfigPlugin';
 export * from './useConfigPlugins';
 export * from './useConfigPluginEditForm';

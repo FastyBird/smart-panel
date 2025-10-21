@@ -9,4 +9,5 @@ export interface IChannelsTableProps {
 	loading: boolean;
 	filters: IChannelsFilter;
 	filtersActive: boolean;
+	tableHeight?: number;
 }

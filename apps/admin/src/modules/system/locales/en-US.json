@@ -8,6 +8,14 @@
         "title": "System info"
       }
     },
+    "systemLogs": {
+      "list": {
+        "title": "Application logs"
+      },
+      "detail": {
+        "title": "Log detail"
+      }
+    },
     "displaysProfiles": {
       "list": {
         "title": "List displays"
@@ -21,6 +29,10 @@
     "system": {
       "system": "system",
       "systemInfo": "info"
+    },
+    "systemLogs": {
+      "list": "application logs",
+      "detail": "log detail"
     },
     "displaysProfiles": {
       "edit": "edit display: {display}"
@@ -36,7 +48,13 @@
       "restart": "Restart",
       "powerOff": "Power Off",
       "factoryReset": "Factory reset",
-      "poweredOff": "Power Off Complete"
+      "poweredOff": "Power Off Complete",
+      "systemLogs": "Application logs"
+    },
+    "systemLogs": {
+      "list": "Application logs",
+      "detail": "Log info",
+      "adjustFilters": "Filter logs"
     },
     "displaysProfiles": {
       "list": "Displays",
@@ -52,6 +70,11 @@
   "subHeadings": {
     "system": "Smart panel system status information",
     "poweredOff": "The Smart Panel has been successfully powered off",
+    "systemLogs": {
+      "list": "Preview all application logs",
+      "edit": "Preview log record details",
+      "adjustFilters": "Adjust logs filters"
+    },
     "displaysProfiles": {
       "list": "Manage smart panel displays",
       "edit": "Edit smart panel display"
@@ -95,7 +118,15 @@
       "rebootInProcess": "Smart Panel is rebooting...",
       "powerOffInProcess": "Smart Panel is powering off...",
       "factoryResetInProcess": "Smart Panel is reset to factory state...",
-      "poweredOff": "You can close this window — no further action is required."
+      "poweredOff": "You can close this window — no further action is required.",
+      "systemLogs": "Preview and diagnose application logs."
+    },
+    "systemLogs": {
+      "loadingLogs": "Loading application logs...",
+      "noLogs": "No any application logs were recorded.",
+      "noFilteredLogs": "No any application logs found matching the active filter criteria",
+      "noMessage": "This log entry is without additional message",
+      "noMoreEntries": "No more log entries"
     },
     "displaysProfiles": {
       "noDisplays": "You don't have configured any display",
@@ -115,6 +146,52 @@
     }
   },
   "fields": {
+    "systemLogs": {
+      "search": {
+        "title": "Search",
+        "placeholder": "Search in application logs"
+      },
+      "timestamp": {
+        "title": "Timestamp"
+      },
+      "ingestedAt": {
+        "title": "Ingested at"
+      },
+      "source": {
+        "title": "Source"
+      },
+      "level": {
+        "title": "Level"
+      },
+      "message": {
+        "title": "Message",
+        "noMessage": "No message"
+      },
+      "tag": {
+        "title": "Tag"
+      },
+      "user": {
+        "title": "User"
+      },
+      "appVersion": {
+        "title": "App version"
+      },
+      "url": {
+        "title": "URL"
+      },
+      "userAgent": {
+        "title": "User agent"
+      },
+      "locale": {
+        "title": "Locale"
+      },
+      "args": {
+        "title": "Args"
+      },
+      "rawJson": {
+        "title": "Raw JSON"
+      }
+    },
     "displaysProfiles": {
       "display": {
         "title": "Select display",
@@ -138,6 +215,20 @@
       }
     }
   },
+  "filters": {
+    "systemLogs": {
+      "levels": {
+        "title": "Filter by log level"
+      },
+      "sources": {
+        "title": "Filter by log source"
+      },
+      "tag": {
+        "title": "Filter by tag",
+        "placeholder": "Search logs"
+      }
+    }
+  },
   "buttons": {
     "about": {
       "title": "About application"
@@ -145,11 +236,17 @@
     "manage": {
       "title": "Manage system"
     },
+    "resetFilters": {
+      "title": "Reset filters"
+    },
     "yes": {
       "title": "Yes"
     },
     "no": {
       "title": "No"
+    },
+    "reset": {
+      "title": "Reset"
     },
     "edit": {
       "title": "Edit"
@@ -165,6 +262,18 @@
     },
     "save": {
       "title": "Save"
+    },
+    "copyJson": {
+      "title": "Copy JSON"
+    },
+    "liveTail": {
+      "title": "Live tail"
+    },
+    "paused": {
+      "title": "Paused"
+    },
+    "loadMore": {
+      "title": "Load more"
     }
   },
   "systemInfo": {
@@ -193,5 +302,27 @@
   "states": {
     "ok": "Everything ok",
     "error": "Problem detected"
+  },
+  "levels": {
+    "silent": "Silent",
+    "fatal": "Fatal",
+    "error": "Error",
+    "warn": "Warning",
+    "log": "Log",
+    "info": "Info",
+    "success": "Success",
+    "fail": "Fail",
+    "ready": "Ready",
+    "start": "Start",
+    "box": "Box",
+    "debug": "Debug",
+    "trace": "Trace",
+    "verbose": "Verbose"
+  },
+  "sources": {
+    "admin": "Admin application",
+    "display": "Display application",
+    "backend": "Application backend",
+    "other": "Other"
   }
 }

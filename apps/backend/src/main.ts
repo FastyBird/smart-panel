@@ -1,6 +1,6 @@
 import { useContainer } from 'class-validator';
 
-import { LogLevel, ValidationPipe, VersioningType } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -18,20 +18,15 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
+import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
 async function bootstrap() {
-	const isProduction = process.env.NODE_ENV === 'production';
+	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { bufferLogs: true });
 
-	const validLogLevels: LogLevel[] = ['verbose', 'debug', 'log', 'warn', 'error', 'fatal'];
+	const sysLogger = app.get(SystemLoggerService);
 
-	const logLevels =
-		(process.env.FB_LOG_LEVEL?.split(',') as LogLevel[]) ??
-		(isProduction ? ['log', 'warn', 'error', 'fatal'] : [/*'verbose', 'debug', */ 'log', 'warn', 'error', 'fatal']);
-
-	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-		logger: logLevels.filter((level): level is LogLevel => validLogLevels.includes(level)),
-	});
+	app.useLogger(sysLogger);
 
 	const reflector = app.get(Reflector);
 

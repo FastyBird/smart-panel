@@ -1,3 +1,4 @@
+import { logger } from '../../../common';
 import { AuthValidationException } from '../auth.exceptions';
 
 import { SessionLoginReqSchema, TokenPairSchema } from './session.store.schemas';
@@ -12,7 +13,7 @@ export const transformTokenPairResponse = (response: IAuthTokenPairRes): ITokenP
 	});
 
 	if (!parsedTokenPair.success) {
-		console.error('Schema validation failed with:', parsedTokenPair.error);
+		logger.error('Schema validation failed with:', parsedTokenPair.error);
 
 		throw new AuthValidationException('Failed to validate received token pair data.');
 	}
@@ -27,7 +28,7 @@ export const transformLoginRequest = (credentials: ISessionCreateActionPayload['
 	});
 
 	if (!parsedRequest.success) {
-		console.error('Schema validation failed with:', parsedRequest.error);
+		logger.error('Schema validation failed with:', parsedRequest.error);
 
 		throw new AuthValidationException('Failed to validate login credentials request.');
 	}

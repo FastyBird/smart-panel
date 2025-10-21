@@ -1,9 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { DevicesHomeAssistantValidationException } from '../devices-home-assistant.exceptions';
 
 import type { IHomeAssistantDiscoveredDeviceRes } from './home-assistant-discovered-devices.store.types';
 import { transformHomeAssistantDiscoveredDeviceResponse } from './home-assistant-discovered-devices.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const deviceId = '2fcdc656a7ae51e33482c8314b1d32b9';
 

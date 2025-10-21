@@ -1,9 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SystemValidationException } from '../system.exceptions';
 
 import type { IThrottleStatusRes } from './throttle-status.store.types';
 import { transformThrottleStatusResponse } from './throttle-status.transformers';
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		logger: {
+			error: vi.fn(),
+			info: vi.fn(),
+			warning: vi.fn(),
+			log: vi.fn(),
+		},
+	};
+});
 
 const validConfigWeatherResponse: IThrottleStatusRes = {
 	undervoltage: false,
