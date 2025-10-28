@@ -14,6 +14,8 @@ import pkg from './package.json' assert { type: 'json' }
 export default defineConfig((config: UserConfig): UserConfig => {
 	const env = loadEnv(config.mode ?? 'production', path.resolve(__dirname, '../../'), ['FB_APP_', 'FB_BACKEND_', 'FB_ADMIN_']);
 
+	const includeStatic = process.env.FB_INCLUDE_STATIC_EXT === '1';
+
 	return {
 		envPrefix: ['FB_APP_', 'FB_BACKEND_', 'FB_ADMIN_'],
 		envDir: path.resolve(__dirname, '../../'),
@@ -43,7 +45,27 @@ export default defineConfig((config: UserConfig): UserConfig => {
 				localsConvention: 'camelCaseOnly',
 			},
 		},
+		resolve: {
+			alias: {
+				'@root-config/extensions': includeStatic
+					// real generated file (CI/dev)
+					? path.resolve(__dirname, '../..', 'var', 'data', 'extensions.ts')
+					// stub (device / local dev without generation)
+					: path.resolve(__dirname, 'src', 'common', 'extensions', 'empty-extensions.ts'),
+				'@root-config/extensions-manifest': includeStatic
+					? path.resolve(__dirname, '../..', 'var', 'data', 'extensions.manifest.json')
+					: path.resolve(__dirname, 'src', 'common', 'extensions', 'empty-manifest.json'),
+				'@root-config': path.resolve(__dirname, '../..', 'var', 'data'),
+			},
+			// preserveSymlinks: true,
+		},
 		server: {
+			fs: {
+				allow: [
+					// app root is implicitly allowed
+					path.resolve(__dirname, '../..'),
+				],
+			},
 			proxy: {
 				'/api': {
 					target: `${env['FB_APP_HOST']}:${env['FB_BACKEND_PORT']}`,

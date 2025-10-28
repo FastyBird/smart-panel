@@ -44,8 +44,11 @@
     "test:e2e": "pnpm run -r test:e2e",
     "generate:openapi": "pnpm run -r generate:openapi",
     "generate:spec": "pnpm run -r generate:spec",
-    "bootstrap": "pnpm install && pnpm run generate:openapi && run generate:spec && pnpm --filter @fastybird/smart-panel-backend run typeorm:migration:run && pnpm --filter @fastybird/smart-panel-backend run build && pnpm --filter @fastybird/smart-panel-admin run build",
-    "onboard": "pnpm --filter @fastybird/smart-panel-backend run cli:prod auth:onboarding"
+    "bootstrap": "pnpm install && pnpm run generate:openapi && run generate:spec && pnpm --filter @fastybird/smart-panel-extension-sdk build && pnpm --filter @fastybird/smart-panel-extension-example build && pnpm --filter @fastybird/smart-panel-backend run typeorm:migration:run && pnpm --filter @fastybird/smart-panel-backend run build && pnpm --filter @fastybird/smart-panel-admin run build",
+    "onboard": "pnpm --filter @fastybird/smart-panel-backend run cli:prod auth:onboarding",
+    "admin:extensions": "pnpm --filter @fastybird/smart-panel-backend run cli:prod config:generate-admin-extensions",
+    "admin:build": "pnpm --filter @fastybird/smart-panel-admin build",
+    "admin:postinstall": "node -e \"process.exit(process.env.FB_NO_ADMIN_BUILD ? 0 : 1)\" || pnpm run admin:extensions && pnpm run admin:build"
   },
   "engines": {
     "node": ">=20",

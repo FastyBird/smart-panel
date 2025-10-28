@@ -8,13 +8,21 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { API_PREFIX } from '../../app.constants';
 import { getEnvValue } from '../utils/config.utils';
 
+type JsonPrimitive = string | number | boolean | null;
+
+type JsonValue = JsonPrimitive | JsonObject | Array<JsonValue>;
+
+interface JsonObject {
+	[k: string]: JsonValue;
+}
+
 @Injectable()
-export class HeaderLocationInterceptor implements NestInterceptor {
+export class LocationReplaceInterceptor implements NestInterceptor {
 	private readonly appHost: string;
 	private readonly appPort: number;
 
 	constructor(private readonly configService: NestConfigService) {
-		this.appHost = getEnvValue<string>(this.configService, 'FB_APP_HOST', 'https://localhost');
+		this.appHost = getEnvValue<string>(this.configService, 'FB_APP_HOST', 'http://localhost');
 		this.appPort = getEnvValue<number>(this.configService, 'FB_BACKEND_PORT', 3000);
 	}
 
@@ -27,7 +35,7 @@ export class HeaderLocationInterceptor implements NestInterceptor {
 		const versionMatch = request.url.match(new RegExp(`/${API_PREFIX}/(v\\d+)`));
 		const version = versionMatch ? versionMatch[1] : 'v1'; // Default to v1 if not found
 
-		const fullBaseUrl = `${this.appHost}:${this.appPort}/${API_PREFIX}/v${version}`;
+		const fullBaseUrl = `${this.appHost}:${this.appPort}/${API_PREFIX}/${version}`;
 
 		return next.handle().pipe(
 			map((data: Record<string, any>) => {
@@ -53,8 +61,46 @@ export class HeaderLocationInterceptor implements NestInterceptor {
 					response.header('Location', updatedLocation);
 				}
 
-				return data; // Pass the original data to the response
+				return this.deepReplace(data, fullBaseUrl);
 			}),
 		);
+	}
+
+	private deepReplace(value: unknown, fullBaseUrl: string, depth = 0): unknown {
+		if (depth > 10) {
+			return value;
+		}
+
+		if (
+			value === null ||
+			typeof value === 'number' ||
+			typeof value === 'boolean' ||
+			value instanceof Date ||
+			(typeof Buffer !== 'undefined' && Buffer.isBuffer(value))
+		) {
+			return value;
+		}
+
+		if (typeof value === 'string') {
+			return value.replace(':baseUrl', fullBaseUrl);
+		}
+
+		if (Array.isArray(value)) {
+			const out: Array<JsonValue> = [];
+
+			for (const el of value) {
+				out.push(this.deepReplace(el, fullBaseUrl, depth + 1) as JsonValue);
+			}
+
+			return out;
+		}
+
+		if (typeof value === 'object') {
+			for (const [k, v] of Object.entries(value)) {
+				value[k] = this.deepReplace(v, fullBaseUrl, depth + 1) as JsonValue;
+			}
+		}
+
+		return value;
 	}
 }

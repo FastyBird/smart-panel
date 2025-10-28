@@ -19,7 +19,7 @@ export const LogEntrySchema = z.object({
 	source: z.nativeEnum(SystemModuleLogEntrySource),
 	level: z.number().int().min(0).max(6),
 	type: z.nativeEnum(ConfigModuleSystemLog_levels),
-	tag: z.string().max(64).optional(),
+	tag: z.string().max(128).optional(),
 	message: z.string().max(2000).optional(),
 	args: z
 		.array(
@@ -49,7 +49,7 @@ export const AddLogEntrySchema = z.object({
 	ts: z.string().datetime(),
 	level: z.number().int().min(0).max(6),
 	type: z.nativeEnum(ConfigModuleSystemLog_levels),
-	tag: z.string().max(64).optional(),
+	tag: z.string().max(128).optional(),
 	message: z.string().max(2000).optional(),
 	args: z
 		.array(
@@ -105,7 +105,7 @@ export const LogsEntriesSetActionPayloadSchema = z.object({
 		source: z.nativeEnum(SystemModuleLogEntrySource),
 		level: z.number().int().min(0).max(6),
 		type: z.nativeEnum(ConfigModuleSystemLog_levels),
-		tag: z.string().max(64).optional(),
+		tag: z.string().max(128).optional(),
 		message: z.string().max(2000).optional(),
 		args: z
 			.array(

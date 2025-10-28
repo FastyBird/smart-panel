@@ -12,8 +12,14 @@ import enUS from './locales/en-US.json';
 import { ModuleMaintenanceRoutes, ModuleRoutes } from './router';
 import { SystemActionsService, provideSystemActionsService } from './services/system-actions.service';
 import { SystemLogsReporterService, provideSystemLogsReporter } from './services/system-logs-reporter.service';
-import { displaysStoreKey, logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
-import { registerDisplaysProfilesStore, registerLogsEntriesStore, registerSystemInfoStore, registerThrottleStatusStore } from './store/stores';
+import { displaysStoreKey, extensionsStoreKey, logsEntriesStoreKey, systemInfoStoreKey, throttleStatusStoreKey } from './store/keys';
+import {
+	registerDisplaysProfilesStore,
+	registerExtensionsStore,
+	registerLogsEntriesStore,
+	registerSystemInfoStore,
+	registerThrottleStatusStore,
+} from './store/stores';
 import { EventType, SYSTEM_MODULE_EVENT_PREFIX } from './system.constants';
 
 export default {
@@ -55,6 +61,11 @@ export default {
 
 		app.provide(logsEntriesStoreKey, logsEntriesStore);
 		storesManager.addStore(logsEntriesStoreKey, logsEntriesStore);
+
+		const extensionsStore = registerExtensionsStore(options.store);
+
+		app.provide(extensionsStoreKey, extensionsStore);
+		storesManager.addStore(extensionsStoreKey, extensionsStore);
 
 		ModuleMaintenanceRoutes.forEach((route): void => {
 			options.router.addRoute(route);

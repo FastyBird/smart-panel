@@ -8,6 +8,8 @@ const PACKAGES = [
 	{ name: "@fastybird/smart-panel-admin", path: "apps/admin", check: true },
 	{ name: "@fastybird/smart-panel-backend", path: "apps/backend", check: true },
 	{ name: "@fastybird/smart-panel-docs", path: "docs", check: false },
+	{ name: "@fastybird/smart-panel-extension-example", path: "packages/example-extension", check: false },
+	{ name: "@fastybird/smart-panel-extension-sdk", path: "packages/extension-sdk", check: false },
 ];
 
 const ROOT_PKG_PATH = "package.json";

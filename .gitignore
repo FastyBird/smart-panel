@@ -33,5 +33,7 @@ node_modules/
 # Application
 
 var/data/config.yaml
+var/data/extensions.manifest.json
+var/data/extensions.ts
 var/db/database.sqlite
 logs/smart-panel-*

@@ -12,7 +12,13 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { LogEntrySource, LogEntryType } from '../system.constants';
+import {
+	ExtensionKindType,
+	ExtensionSourceType,
+	ExtensionSurfaceType,
+	LogEntrySource,
+	LogEntryType,
+} from '../system.constants';
 
 export class MemoryInfoModel {
 	@Expose()
@@ -296,4 +302,48 @@ export class LogEntryModel {
 	@ValidateNested()
 	@Type(() => LogEntryContextModel)
 	context?: LogEntryContextModel;
+}
+
+export abstract class ExtensionBaseModel {
+	@Expose()
+	@IsString()
+	name: string;
+
+	@Expose()
+	@IsEnum(ExtensionKindType)
+	kind: ExtensionKindType;
+
+	@Expose()
+	@IsEnum(ExtensionSurfaceType)
+	surface: ExtensionSurfaceType;
+
+	@Expose({ name: 'display_name' })
+	@IsString()
+	displayName: string;
+
+	@Expose()
+	@IsString()
+	@IsOptional()
+	description?: string;
+
+	@Expose()
+	@IsString()
+	@IsOptional()
+	version?: string;
+
+	@Expose()
+	@IsEnum(ExtensionSourceType)
+	source: ExtensionSourceType;
+}
+
+export class ExtensionAdminModel extends ExtensionBaseModel {
+	@Expose({ name: 'remote_url' })
+	@IsString()
+	remoteUrl: string;
+}
+
+export class ExtensionBackendModel extends ExtensionBaseModel {
+	@Expose({ name: 'route_prefix' })
+	@IsString()
+	routePrefix: string;
 }

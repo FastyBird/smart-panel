@@ -6479,6 +6479,154 @@
         ]
       }
     },
+    "/system-module/extensions": {
+      "get": {
+        "summary": "List available Admin extensions",
+        "description": "Returns discoverable Admin UI extensions that provide a runtime ESM entry.",
+        "operationId": "get-system-module-extensions",
+        "tags": [
+          "System module"
+        ],
+        "parameters": [
+          {
+            "name": "surface",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "admin",
+                "backend",
+                "all"
+              ],
+              "default": "all"
+            },
+            "description": "Filter which surface to include."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The list of channels was successfully retrieved. The response includes metadata for each channel, including its ID, name, category, associated device, controls, and properties.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResExtensions"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/system-module/extensions/{name}": {
+      "get": {
+        "tags": [
+          "System module"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "description": "NPM package name (URL-encoded), e.g. `@fastybird/example-extension-admin`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Retrieve details of a specific extensions",
+        "description": "Fetch detailed information about a specific extensions, including its details for admin or backend or both.",
+        "operationId": "get-system-module-extension",
+        "responses": {
+          "200": {
+            "description": "The extensions were successfully retrieved. The response contains detailed information about the extension.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemModuleResExtensions"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/system-module/extensions/assets/{pkg}/{asset_path}": {
+      "get": {
+        "summary": "Serve an Admin extension asset (ESM)",
+        "description": "Streams a file (typically the ESM entry) from the discovered extension package directory. `assetPath` represents the remaining subpath inside the package and may include slashes.",
+        "operationId": "get-system-module-extension-asset",
+        "tags": [
+          "System module"
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "description": "NPM package name (URL-encoded), e.g. `@fastybird/example-extension-admin`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "asset_path",
+            "in": "path",
+            "required": true,
+            "description": "Subpath inside the package (may include slashes), e.g. `admin/index.js`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File stream",
+            "content": {
+              "application/javascript": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/javascript": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing asset path"
+          },
+          "404": {
+            "description": "Package or asset not found"
+          }
+        }
+      }
+    },
     "/weather-module/weather": {
       "get": {
         "tags": [
@@ -15038,6 +15186,125 @@
           }
         }
       },
+      "SystemModuleExtensionBase": {
+        "title": "System Module Extension",
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "surface",
+          "display_name",
+          "description",
+          "version",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "NPM package name of the extension.",
+            "example": "@fastybird/example-extension"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "module",
+              "plugin"
+            ],
+            "description": "Extension kind.",
+            "example": "plugin"
+          },
+          "surface": {
+            "type": "string",
+            "description": "Where the extension integrates.",
+            "example": "admin"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Human-readable title for the extension.",
+            "example": "Example Admin"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional short description.",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "description": "Version read from package.json if present.",
+            "example": "0.2.1",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "bundled",
+              "runtime"
+            ],
+            "description": "How the extension is provided in this installation.",
+            "nullable": true,
+            "example": "runtime"
+          }
+        }
+      },
+      "SystemModuleExtensionAdmin": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SystemModuleExtensionBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "surface",
+              "remote_url"
+            ],
+            "properties": {
+              "surface": {
+                "type": "string",
+                "enum": [
+                  "admin"
+                ],
+                "description": "Extension type",
+                "default": "admin"
+              },
+              "remote_url": {
+                "type": "string",
+                "format": "uri-reference",
+                "description": "URL to the ESM entry the Admin should import. May contain the `:baseUrl` placeholder.",
+                "example": ":baseUrl/system-module/extensions/assets/%40fastybird%2Fexample-extension/admin/index.js"
+              }
+            }
+          }
+        ]
+      },
+      "SystemModuleExtensionBackend": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SystemModuleExtensionBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "surface",
+              "route_prefix"
+            ],
+            "properties": {
+              "surface": {
+                "type": "string",
+                "enum": [
+                  "backend"
+                ],
+                "description": "Extension type",
+                "default": "backend"
+              },
+              "route_prefix": {
+                "type": "string",
+                "description": "Router base path where the backend module is mounted (without /api prefix).",
+                "example": "devices/acme"
+              }
+            }
+          }
+        ]
+      },
       "SystemModuleReqCreateDisplayProfile": {
         "title": "Create Display Request",
         "description": "Request schema for creating new display.",
@@ -15865,6 +16132,109 @@
             }
           }
         ]
+      },
+      "SystemModuleResExtensions": {
+        "title": "System Extension Asset Entries Response",
+        "x-stoplight": {
+          "id": "ef6113a07d2ca"
+        },
+        "description": "List of all registered application extensions.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/system-module/extensions",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/SystemModuleExtensionAdmin"
+                },
+                {
+                  "$ref": "#/components/schemas/SystemModuleExtensionBackend"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "surface",
+                "mapping": {
+                  "admin": "#/components/schemas/SystemModuleExtensionAdmin",
+                  "backend": "#/components/schemas/SystemModuleExtensionBackend"
+                }
+              }
+            },
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "description": "Additional metadata about the request and server performance metrics.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommonResMetadata"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "next_cursor",
+                  "has_more"
+                ],
+                "properties": {
+                  "next_cursor": {
+                    "type": "string",
+                    "description": "Opaque cursor for the next page."
+                  },
+                  "has_more": {
+                    "type": "boolean",
+                    "description": "Whether more data is available."
+                  }
+                }
+              }
+            ]
+          }
+        }
       },
       "WeatherModuleWeather": {
         "title": "Weather Condition",
@@ -20191,7 +20561,11 @@
                 "minLength": 1,
                 "description": "Cron expression for the cleanup job that removes old log files. If omitted, defaults to daily at 03:15 (`15 3 * * *`).",
                 "default": "15 3 * * *",
-                "examples": ["0 0 * * *", "15 3 * * *", "0 */6 * * *"]
+                "examples": [
+                  "0 0 * * *",
+                  "15 3 * * *",
+                  "0 */6 * * *"
+                ]
               },
               "file_prefix": {
                 "type": "string",

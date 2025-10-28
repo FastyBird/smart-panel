@@ -124,8 +124,62 @@ jobs:
             echo "No changelog updates to commit."
           fi
 
-  publish-backend:
+  publish-extension-sdk:
     needs: [ "tag", "sync-versions", "changelog" ]
+    name: "Publish Release Backend App"
+    runs-on: "${{ matrix.operating-system }}"
+
+    strategy:
+      matrix:
+        node-version: [ "22" ]
+        pnpm-version: [ "10.12.0" ]
+        operating-system: [ "ubuntu-latest" ]
+
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+
+      - name: "Pull Updated Branch"
+        run: git pull origin ${{ github.ref_name }}
+
+      - name: "Setup Node Project"
+        uses: "./.github/actions/setup-node-project"
+        with:
+          node-version: "${{ matrix.node-version }}"
+          pnpm-version: "${{ matrix.pnpm-version }}"
+
+      - name: "Build Extension SDK"
+        run: "pnpm --filter @fastybird/smart-panel-extension-sdk"
+
+      - name: "Publish To NPM"
+        uses: "./.github/actions/publish-npm-package"
+        with:
+          package-path: "packages/extension-sdk"
+          tag: "latest"
+          npm-auth-token: ${{ secrets.NPM_REGISTRY_TOKEN }}
+
+      - name: "Extract Published Version"
+        id: "extract-version"
+        working-directory: "packages/extension-sdk"
+        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: "Publish To GitHub NPM"
+        uses: "./.github/actions/publish-npm-package"
+        with:
+          package-path: "packages/extension-sdk"
+          tag: "latest"
+          npm-auth-token: ${{ secrets.GITHUB_TOKEN }}
+          npm-registry-url: "https://npm.pkg.github.com"
+          npm-registry: "npm.pkg.github.com"
+
+  publish-backend:
+    needs: [ "tag", "sync-versions", "changelog", "publish-extension-sdk" ]
     name: "Publish Release Backend App"
     runs-on: "${{ matrix.operating-system }}"
 
@@ -179,7 +233,7 @@ jobs:
           npm-registry: "npm.pkg.github.com"
 
   publish-admin:
-    needs: [ "tag", "sync-versions", "changelog" ]
+    needs: [ "tag", "sync-versions", "changelog", "publish-extension-sdk" ]
     name: "Publish Release Admin App"
     runs-on: "${{ matrix.operating-system }}"
 

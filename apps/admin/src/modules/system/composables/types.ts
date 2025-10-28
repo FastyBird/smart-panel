@@ -5,18 +5,19 @@ import { z } from 'zod';
 
 import type { IDisplayProfileEditForm } from '../schemas/displays-profiles.types';
 import type { IDisplayProfile } from '../store/displays-profiles.store.types';
+import type { IExtension } from '../store/extensions.store.types';
 import type { ILogEntry } from '../store/logs-entries.store.types';
 import type { ISystemInfo } from '../store/system-info.store.types';
 import type { IThrottleStatus } from '../store/throttle-status.store.types';
 import type { FormResultType } from '../system.constants';
 
-import { SystemLogsFilterSchema } from './schemas';
+import { DisplaysProfilesFilterSchema, ExtensionsFilterSchema, SystemLogsFilterSchema } from './schemas';
 
-export interface IDisplaysProfilesFilter {
-	search: string | undefined;
-}
+export type IDisplaysProfilesFilter = z.infer<typeof DisplaysProfilesFilterSchema>;
 
 export type ISystemLogsFilter = z.infer<typeof SystemLogsFilterSchema>;
+
+export type IExtensionsFilter = z.infer<typeof ExtensionsFilterSchema>;
 
 export interface IUseDisplayProfile {
 	display: ComputedRef<IDisplayProfile | null>;
@@ -56,8 +57,8 @@ export interface IUseDisplaysProfilesDataSource {
 	filtersActive: ComputedRef<boolean>;
 	paginateSize: Ref<number>;
 	paginatePage: Ref<number>;
-	sortBy: Ref<'uid' | 'screenWidth' | 'screenHeight' | 'pixelRatio' | 'rows' | 'cols' | 'primary'>;
-	sortDir: Ref<'ascending' | 'descending' | null>;
+	sortBy: Ref<'uid' | 'screenWidth' | 'screenHeight' | 'pixelRatio' | 'rows' | 'cols' | 'primary' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
 	resetFilter: () => void;
 }
 
@@ -96,4 +97,33 @@ export interface IUseSystemLogsDataSource {
 export interface IUseSystemLog {
 	systemLog: ComputedRef<ILogEntry | null>;
 	isLoading: ComputedRef<boolean>;
+}
+
+export interface IUseExtension {
+	extension: ComputedRef<{ admin?: IExtension; backend?: IExtension } | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchExtension: () => Promise<void>;
+}
+
+export interface IUseExtensions {
+	extensions: ComputedRef<{ admin?: IExtension; backend?: IExtension }[]>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchExtensions: () => Promise<void>;
+}
+
+export interface IUseExtensionsDataSource {
+	extensions: ComputedRef<{ admin?: IExtension; backend?: IExtension }[]>;
+	extensionsPaginated: ComputedRef<{ admin?: IExtension; backend?: IExtension }[]>;
+	totalRows: ComputedRef<number>;
+	areLoading: ComputedRef<boolean>;
+	loaded: ComputedRef<boolean>;
+	fetchExtensions: () => Promise<void>;
+	filters: Ref<IExtensionsFilter>;
+	filtersActive: ComputedRef<boolean>;
+	paginateSize: Ref<number>;
+	paginatePage: Ref<number>;
+	sortBy: Ref<'name' | 'kind' | 'surface' | 'displayName' | 'version' | 'source' | undefined>;
+	sortDir: Ref<'asc' | 'desc' | null>;
+	resetFilter: () => void;
 }

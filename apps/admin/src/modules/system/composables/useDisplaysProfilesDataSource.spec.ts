@@ -1,9 +1,11 @@
 import { type Ref, nextTick, ref } from 'vue';
 
+import { createPinia, setActivePinia } from 'pinia';
+
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { injectStoresManager } from '../../../common';
-import type { DisplaysProfilesStore, IDisplaysProfilesStateSemaphore } from '../store/displays-profiles.store.types';
+import { deepClone, injectStoresManager, useListQuery } from '../../../common';
+import type { IDisplayProfile, IDisplaysProfilesStateSemaphore } from '../store/displays-profiles.store.types';
 
 import { useDisplaysProfilesDataSource } from './useDisplaysProfilesDataSource';
 
@@ -12,90 +14,110 @@ vi.mock('../../../common', async () => {
 
 	return {
 		...actual,
-		injectStoresManager: vi.fn(() => ({
-			getStore: vi.fn(() => ({
-				findAll: vi.fn(),
-				fetch: vi.fn(),
-				semaphore: ref({
-					fetching: {
-						items: false,
-					},
-				}),
-				firstLoad: ref(false),
-			})),
-		})),
+		injectStoresManager: vi.fn(),
+		useListQuery: vi.fn(),
 	};
 });
 
-describe('useDisplaysProfiles', (): void => {
-	let displaysStoreMock: DisplaysProfilesStore;
+const DefaultFilter = {
+	search: undefined,
+};
+
+const DefaultPagination = { page: 1, size: 1 };
+
+const DefaultSort = [{ by: 'uid', dir: 'asc' }];
+
+describe('useDisplaysProfilesDataSource', (): void => {
+	let mockStore: {
+		findAll: Mock;
+		fetch: Mock;
+		semaphore: Ref;
+		firstLoad: Ref;
+	};
+	let mockDisplaysProfiles: IDisplayProfile[];
 
 	beforeEach((): void => {
-		vi.clearAllMocks();
+		setActivePinia(createPinia());
 
-		displaysStoreMock = {
-			findAll: vi.fn(),
+		mockDisplaysProfiles = [
+			{
+				id: '1',
+				uid: '91f03b2f-f6e3-45b4-8035-d95cb8b2d8b1',
+				screenWidth: 1280,
+				screenHeight: 720,
+				pixelRatio: 2,
+				rows: 6,
+				cols: 4,
+				primary: true,
+				unitSize: 10,
+				createdAt: new Date(),
+				updatedAt: null,
+			},
+			{
+				id: '2',
+				uid: '5b51618c-29c9-4ce5-b220-b060e1b4e3c2',
+				screenWidth: 720,
+				screenHeight: 720,
+				pixelRatio: 2,
+				rows: 4,
+				cols: 4,
+				primary: false,
+				unitSize: 10,
+				createdAt: new Date(),
+				updatedAt: null,
+			},
+		];
+
+		mockStore = {
+			findAll: vi.fn(() => mockDisplaysProfiles),
 			fetch: vi.fn(),
-			semaphore: ref({
-				fetching: {
-					items: false,
-				},
-			}),
-			firstLoad: ref(false),
-		} as DisplaysProfilesStore;
+			semaphore: ref({ fetching: { items: [] } }),
+			firstLoad: ref(['all']),
+		};
 
-		(injectStoresManager as Mock).mockReturnValue({
-			getStore: vi.fn(() => displaysStoreMock),
+		const mockFilter = ref(deepClone(DefaultFilter));
+		const mockPagination = ref(deepClone(DefaultPagination));
+		const mockSort = ref(deepClone(DefaultSort));
+
+		(injectStoresManager as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+			getStore: () => mockStore,
+		});
+
+		(useListQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+			filters: mockFilter,
+			sort: mockSort,
+			pagination: mockPagination,
+			reset: (): void => {
+				mockFilter.value = deepClone(DefaultFilter);
+				mockPagination.value = deepClone(DefaultPagination);
+			},
 		});
 
 		vi.clearAllMocks();
 	});
 
 	it('should fetch displays profiles', async (): Promise<void> => {
-		(displaysStoreMock.fetch as Mock).mockResolvedValue([]);
+		(mockStore.fetch as Mock).mockResolvedValue([]);
 
 		const displaysHandler = useDisplaysProfilesDataSource();
 
 		await displaysHandler.fetchDisplays();
 
-		expect(displaysStoreMock.fetch).toHaveBeenCalled();
+		expect(mockStore.fetch).toHaveBeenCalled();
 	});
 
 	it('should return sorted displays profiles', async (): Promise<void> => {
-		(displaysStoreMock.findAll as Mock).mockReturnValue([
-			{
-				id: '1',
-				uid: '91f03b2f-f6e3-45b4-8035-d95cb8b2d8b1',
-				screen_width: 1280,
-				screen_height: 720,
-				pixel_ratio: 2,
-				rows: 6,
-				cols: 4,
-				primary: true,
-			},
-			{
-				id: '2',
-				uid: '5b51618c-29c9-4ce5-b220-b060e1b4e3c2',
-				screen_width: 720,
-				screen_height: 720,
-				pixel_ratio: 2,
-				rows: 4,
-				cols: 4,
-				primary: false,
-			},
-		]);
-
 		const displaysHandler = useDisplaysProfilesDataSource();
 
 		displaysHandler.sortBy.value = 'uid';
-		displaysHandler.sortDir.value = 'ascending';
+		displaysHandler.sortDir.value = 'asc';
 
 		expect(displaysHandler.displays.value.map((u) => u.uid)).toEqual([
 			'5b51618c-29c9-4ce5-b220-b060e1b4e3c2',
 			'91f03b2f-f6e3-45b4-8035-d95cb8b2d8b1',
 		]);
 
-		displaysHandler.sortDir.value = 'descending';
+		displaysHandler.sortDir.value = 'desc';
 
 		expect(displaysHandler.displays.value.map((u) => u.uid)).toEqual([
 			'91f03b2f-f6e3-45b4-8035-d95cb8b2d8b1',
@@ -104,29 +126,6 @@ describe('useDisplaysProfiles', (): void => {
 	});
 
 	it('should filter displays by search query', async (): Promise<void> => {
-		(displaysStoreMock.findAll as Mock).mockReturnValue([
-			{
-				id: '1',
-				uid: '91f03b2f-f6e3-45b4-8035-d95cb8b2d8b1',
-				screen_width: 1280,
-				screen_height: 720,
-				pixel_ratio: 2,
-				rows: 6,
-				cols: 4,
-				primary: true,
-			},
-			{
-				id: '2',
-				uid: '5b51618c-29c9-4ce5-b220-b060e1b4e3c2',
-				screen_width: 720,
-				screen_height: 720,
-				pixel_ratio: 2,
-				rows: 4,
-				cols: 4,
-				primary: false,
-			},
-		]);
-
 		const displaysHandler = useDisplaysProfilesDataSource();
 
 		displaysHandler.filters.value.search = '5b51618c';
@@ -136,7 +135,7 @@ describe('useDisplaysProfiles', (): void => {
 	});
 
 	it('should paginate displays correctly', async (): Promise<void> => {
-		(displaysStoreMock.findAll as Mock).mockReturnValue(Array.from({ length: 30 }, (_, i) => ({ id: `${i + 1}`, uid: `uid${i + 1}` })));
+		(mockStore.findAll as Mock).mockReturnValue(Array.from({ length: 30 }, (_, i) => ({ id: `${i + 1}`, uid: `uid${i + 1}` })));
 
 		const displaysHandler = useDisplaysProfilesDataSource();
 
@@ -154,12 +153,12 @@ describe('useDisplaysProfiles', (): void => {
 	it('should handle loading states correctly', async (): Promise<void> => {
 		const displaysHandler = useDisplaysProfilesDataSource();
 
-		(displaysStoreMock.semaphore as unknown as Ref<IDisplaysProfilesStateSemaphore>).value = {
+		(mockStore.semaphore as unknown as Ref<IDisplaysProfilesStateSemaphore>).value = {
 			fetching: {
 				items: true,
 			},
 		} as unknown as IDisplaysProfilesStateSemaphore;
-		(displaysStoreMock.firstLoad as unknown as Ref<boolean>).value = false;
+		(mockStore.firstLoad as unknown as Ref<boolean>).value = false;
 
 		await nextTick();
 
@@ -167,12 +166,12 @@ describe('useDisplaysProfiles', (): void => {
 
 		vi.clearAllMocks();
 
-		(displaysStoreMock.semaphore as unknown as Ref<IDisplaysProfilesStateSemaphore>).value = {
+		(mockStore.semaphore as unknown as Ref<IDisplaysProfilesStateSemaphore>).value = {
 			fetching: {
 				items: false,
 			},
 		} as unknown as IDisplaysProfilesStateSemaphore;
-		(displaysStoreMock.firstLoad as unknown as Ref<boolean>).value = true;
+		(mockStore.firstLoad as unknown as Ref<boolean>).value = true;
 
 		await nextTick();
 

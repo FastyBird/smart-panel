@@ -55,6 +55,8 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 
 	const findById = (id: ILogEntry['id']): ILogEntry | null => (id in data.value ? data.value[id] : null);
 
+	const pendingFetchPromises: Record<string, Promise<ILogEntry[]>> = {};
+
 	const onEvent = (payload: ILogsEntriesOnEventActionPayload): ILogEntry => {
 		return set({
 			id: payload.id,
@@ -99,53 +101,67 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 	};
 
 	const fetch = async (payload?: ILogsEntriesFetchActionPayload): Promise<ILogEntry[]> => {
-		if (semaphore.value.fetching.items) {
-			throw new SystemApiException('Already fetching logs entries.');
+		if ((payload?.afterId ? payload.afterId : 'first') in pendingFetchPromises) {
+			return pendingFetchPromises[payload?.afterId ? payload.afterId : 'first'];
 		}
 
-		semaphore.value.fetching.items = true;
+		const fetchPromise = (async (): Promise<ILogEntry[]> => {
+			if (semaphore.value.fetching.items) {
+				throw new SystemApiException('Already fetching logs entries.');
+			}
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/logs`, {
-			params: {
-				query: {
-					after_id: payload?.afterId,
-					limit: payload?.limit,
+			semaphore.value.fetching.items = true;
+
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/logs`, {
+				params: {
+					query: {
+						after_id: payload?.afterId,
+						limit: payload?.limit,
+					},
 				},
-			},
-		});
+			});
 
-		semaphore.value.fetching.items = false;
+			semaphore.value.fetching.items = false;
 
-		if (typeof responseData !== 'undefined') {
-			const transformed = Object.fromEntries(
-				responseData.data.map((logEntry) => {
-					const transformedLogEntry = transformLogEntryResponse(logEntry);
+			if (typeof responseData !== 'undefined') {
+				const transformed = Object.fromEntries(
+					responseData.data.map((logEntry) => {
+						const transformedLogEntry = transformLogEntryResponse(logEntry);
 
-					return [transformedLogEntry.id, transformedLogEntry];
-				})
-			);
+						return [transformedLogEntry.id, transformedLogEntry];
+					})
+				);
 
-			data.value = payload?.append ? { ...data.value, ...transformed } : transformed;
+				data.value = payload?.append ? { ...data.value, ...transformed } : transformed;
 
-			firstLoad.value = true;
+				firstLoad.value = true;
 
-			hasMore.value = responseData.metadata.has_more;
-			nextCursor.value = responseData.metadata.next_cursor;
+				hasMore.value = responseData.metadata.has_more;
+				nextCursor.value = responseData.metadata.next_cursor;
 
-			return Object.values(data.value);
+				return Object.values(data.value);
+			}
+
+			let errorReason: string | null = 'Failed to fetch logs entries.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['get-system-module-logs']>(error, errorReason);
+			}
+
+			throw new SystemApiException(errorReason, response.status);
+		})();
+
+		pendingFetchPromises[payload?.afterId ? payload.afterId : 'first'] = fetchPromise;
+
+		try {
+			return await fetchPromise;
+		} finally {
+			delete pendingFetchPromises[payload?.afterId ? payload.afterId : 'first'];
 		}
-
-		let errorReason: string | null = 'Failed to fetch logs entries.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['get-system-module-logs']>(error, errorReason);
-		}
-
-		throw new SystemApiException(errorReason, response.status);
 	};
 
 	const add = async (payload: ILogsEntriesAddActionPayload): Promise<{ failed?: { entry: IAddLogEntry; reason: string }[] }> => {
