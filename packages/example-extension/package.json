@@ -6,8 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json & vite build",
-    "clean": "rimraf dist & rimraf admin",
+    "build": "tsc -p tsconfig.json && vite build",
+    "clean": "rimraf dist && rimraf admin",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "fastybird": {

@@ -21,7 +21,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 
 	beforeAll(async () => {
 		const moduleFixture = await Test.createTestingModule({
-			imports: [AppModule],
+			imports: [AppModule.register({ moduleExtensions: [], pluginExtensions: [] })],
 		}).compile();
 
 		app = moduleFixture.createNestApplication();
