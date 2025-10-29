@@ -68,6 +68,10 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 
 		const findById = (id: IDisplayProfile['id']): IDisplayProfile | null => (id in data.value ? data.value[id] : null);
 
+		const pendingGetPromises: Record<IDisplayProfile['id'], Promise<IDisplayProfile>> = {};
+
+		const pendingFetchPromises: Record<string, Promise<IDisplayProfile[]>> = {};
+
 		const onEvent = (payload: IDisplaysProfilesOnEventActionPayload): IDisplayProfile => {
 			return set({
 				id: payload.id,
@@ -112,73 +116,101 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 		};
 
 		const get = async (payload: IDisplaysProfilesGetActionPayload): Promise<IDisplayProfile> => {
-			if (semaphore.value.fetching.item.includes(payload.id)) {
-				throw new SystemApiException('Already fetching display.');
+			if (payload.id in pendingGetPromises) {
+				return pendingGetPromises[payload.id];
 			}
 
-			semaphore.value.fetching.item.push(payload.id);
+			const getPromise = (async (): Promise<IDisplayProfile> => {
+				if (semaphore.value.fetching.item.includes(payload.id)) {
+					throw new SystemApiException('Already fetching display.');
+				}
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
-				params: {
-					path: { id: payload.id },
-				},
-			});
+				semaphore.value.fetching.item.push(payload.id);
 
-			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+				});
 
-			if (typeof responseData !== 'undefined') {
-				const display = transformDisplayProfileResponse(responseData.data);
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 
-				data.value[display.id] = display;
+				if (typeof responseData !== 'undefined') {
+					const display = transformDisplayProfileResponse(responseData.data);
 
-				return display;
+					data.value[display.id] = display;
+
+					return display;
+				}
+
+				let errorReason: string | null = 'Failed to fetch display.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-system-module-display-profile']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			})();
+
+			pendingGetPromises[payload.id] = getPromise;
+
+			try {
+				return await getPromise;
+			} finally {
+				delete pendingGetPromises[payload.id];
 			}
-
-			let errorReason: string | null = 'Failed to fetch display.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-system-module-display-profile']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		};
 
 		const fetch = async (): Promise<IDisplayProfile[]> => {
-			if (semaphore.value.fetching.items) {
-				throw new SystemApiException('Already fetching displays.');
+			if ('all' in pendingFetchPromises) {
+				return pendingFetchPromises['all'];
 			}
 
-			semaphore.value.fetching.items = true;
+			const fetchPromise = (async (): Promise<IDisplayProfile[]> => {
+				if (semaphore.value.fetching.items) {
+					throw new SystemApiException('Already fetching displays.');
+				}
 
-			const { data: responseData, error, response } = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`);
+				semaphore.value.fetching.items = true;
 
-			semaphore.value.fetching.items = false;
+				const { data: responseData, error, response } = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`);
 
-			if (typeof responseData !== 'undefined') {
-				data.value = Object.fromEntries(
-					responseData.data.map((display) => {
-						const transformedDisplay = transformDisplayProfileResponse(display);
+				semaphore.value.fetching.items = false;
 
-						return [transformedDisplay.id, transformedDisplay];
-					})
-				);
+				if (typeof responseData !== 'undefined') {
+					data.value = Object.fromEntries(
+						responseData.data.map((display) => {
+							const transformedDisplay = transformDisplayProfileResponse(display);
 
-				firstLoad.value = true;
+							return [transformedDisplay.id, transformedDisplay];
+						})
+					);
 
-				return Object.values(data.value);
+					firstLoad.value = true;
+
+					return Object.values(data.value);
+				}
+
+				let errorReason: string | null = 'Failed to fetch displays.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-system-module-displays-profiles']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			})();
+
+			pendingFetchPromises['all'] = fetchPromise;
+
+			try {
+				return await fetchPromise;
+			} finally {
+				delete pendingFetchPromises['all'];
 			}
-
-			let errorReason: string | null = 'Failed to fetch displays.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-system-module-displays-profiles']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		};
 
 		const add = async (payload: IDisplaysProfilesAddActionPayload): Promise<IDisplayProfile> => {

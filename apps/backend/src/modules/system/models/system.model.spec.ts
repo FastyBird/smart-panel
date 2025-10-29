@@ -6,6 +6,9 @@ import { components } from '../../../openapi';
 
 import {
 	DisplayInfoModel,
+	ExtensionAdminModel,
+	ExtensionBackendModel,
+	LogEntryModel,
 	MemoryInfoModel,
 	NetworkStatsModel,
 	OperatingSystemInfoModel,
@@ -25,6 +28,9 @@ type NetworkStats = components['schemas']['SystemModuleNetworkStats'];
 type SystemHealth = components['schemas']['SystemModuleSystemHealth'];
 type SystemInfo = components['schemas']['SystemModuleSystemInfo'];
 type ThrottleStatus = components['schemas']['SystemModuleThrottleStatus'];
+type LogEntry = components['schemas']['SystemModuleLogEntry'];
+type ExtensionAdmin = components['schemas']['SystemModuleExtensionAdmin'];
+type ExtensionBackend = components['schemas']['SystemModuleExtensionBackend'];
 
 const caseRegex = new RegExp('_([a-z0-9])', 'g');
 
@@ -243,6 +249,79 @@ describe('System module model and OpenAPI component synchronization', () => {
 		};
 
 		const modelInstance = toInstance(ThrottleStatusModel, openApiModel);
+
+		validateModelAgainstComponent(modelInstance, openApiModel);
+
+		const errors = validateSync(modelInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+		expect(errors).toHaveLength(0);
+	});
+
+	test('LogEntryModel matches LogEntry', () => {
+		const openApiModel: LogEntry = {
+			id: '01K83ZYR44X43H0VP0NPQBM22N',
+			ts: '2025-10-21T18:19:28.260Z',
+			ingested_at: '2025-10-21T18:19:28.260Z',
+			seq: 6,
+			source: 'backend',
+			level: 2,
+			type: 'info',
+			tag: 'InstanceLoader',
+			message: 'Example log entry',
+			args: [],
+			user: {},
+			context: {},
+		};
+
+		const modelInstance = toInstance(LogEntryModel, openApiModel);
+
+		validateModelAgainstComponent(modelInstance, openApiModel);
+
+		const errors = validateSync(modelInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+		expect(errors).toHaveLength(0);
+	});
+
+	test('ExtensionAdminModel matches ExtensionAdmin', () => {
+		const openApiModel: ExtensionAdmin = {
+			name: '@fastybird/example-extension-admin',
+			kind: 'plugin',
+			surface: 'admin',
+			display_name: 'Example Admin',
+			description: 'Tiny demo admin plugin',
+			version: '1.0.0',
+			source: 'bundled',
+			remote_url: ':baseUrl/system-module/extensions/assets/%40fastybird%2Fexample-extension-admin/admin/index.js',
+		};
+
+		const modelInstance = toInstance(ExtensionAdminModel, openApiModel);
+
+		validateModelAgainstComponent(modelInstance, openApiModel);
+
+		const errors = validateSync(modelInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+		expect(errors).toHaveLength(0);
+	});
+
+	test('ExtensionBackendModel matches ExtensionBackend', () => {
+		const openApiModel: ExtensionBackend = {
+			name: '@fastybird/example-extension-admin',
+			kind: 'plugin',
+			surface: 'backend',
+			display_name: 'Example Admin',
+			description: 'Tiny demo admin plugin',
+			version: '1.0.0',
+			source: 'bundled',
+			route_prefix: 'devices/acme',
+		};
+
+		const modelInstance = toInstance(ExtensionBackendModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 

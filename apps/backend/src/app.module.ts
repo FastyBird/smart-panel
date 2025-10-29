@@ -2,7 +2,7 @@ import { CommandModule } from 'nestjs-command';
 import path from 'path';
 
 import { CacheModule } from '@nestjs/cache-manager';
-import { Module } from '@nestjs/common';
+import { DynamicModule, Module, type Type } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { RouterModule } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -45,132 +45,160 @@ import { TilesDevicePreviewPlugin } from './plugins/tiles-device-preview/tiles-d
 import { TilesTimePlugin } from './plugins/tiles-time/tiles-time.plugin';
 import { TilesWeatherPlugin } from './plugins/tiles-weather/tiles-weather.plugin';
 
-@Module({
-	imports: [
-		NestConfigModule.forRoot({
-			envFilePath: [path.resolve(process.cwd(), '.env.local'), path.resolve(process.cwd(), '.env')],
-		}),
-		CacheModule.register({
-			isGlobal: true,
-			ttl: 30 * 1000,
-			max: 1000,
-		}),
-		EventEmitterModule.forRoot(),
-		TypeOrmModule.forRootAsync({
-			imports: [NestConfigModule], // Ensure ConfigModule is available
-			inject: [NestConfigService],
-			useFactory: (configService: NestConfigService) => {
-				const isTest = process.env.NODE_ENV === 'test';
+export interface AppRegisterOptions {
+	moduleExtensions?: Array<{ routePrefix: string; extensionClass: Type<unknown> }>;
+	pluginExtensions?: Array<{ routePrefix: string; extensionClass: Type<unknown> }>;
+}
 
-				return {
-					type: 'sqlite',
-					database: isTest
-						? ':memory:'
-						: path.resolve(
-								getEnvValue<string>(configService, 'FB_DB_PATH', path.resolve(__dirname, '../../../var/db')),
-								'database.sqlite',
-							),
-					entities: [__dirname + '/**/*.entity{.ts,.js}'],
-					subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
-					migrations: [__dirname + '/migrations/*{.ts,.js}'],
-					synchronize: true,
-					logging: getEnvValue<boolean>(configService, 'FB_DB_LOGGING', false),
-				};
-			},
-		}),
-		ScheduleModule.forRoot(),
-		RouterModule.register([
-			{
-				path: AUTH_MODULE_PREFIX,
-				module: AuthModule,
-			},
-			{
-				path: DEVICES_MODULE_PREFIX,
-				module: DevicesModule,
-			},
-			{
-				path: DASHBOARD_MODULE_PREFIX,
-				module: DashboardModule,
-			},
-			{
-				path: CONFIG_MODULE_PREFIX,
-				module: ConfigModule,
-			},
-			{
-				path: SYSTEM_MODULE_PREFIX,
-				module: SystemModule,
-			},
-			{
-				path: USERS_MODULE_PREFIX,
-				module: UsersModule,
-			},
-			{
-				path: WEATHER_MODULE_PREFIX,
-				module: WeatherModule,
-			},
-			{
-				path: PLUGINS_PREFIX,
-				children: [
-					{
-						path: PAGES_CARDS_PLUGIN_PREFIX,
-						module: PagesCardsPlugin,
-					},
-					{
-						path: DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX,
-						module: DevicesHomeAssistantPlugin,
-					},
-					{
-						path: DEVICES_THIRD_PARTY_PLUGIN_PREFIX,
-						module: DevicesThirdPartyPlugin,
-					},
-					{
-						path: DEVICES_SHELLY_NG_PLUGIN_PREFIX,
-						module: DevicesShellyNgPlugin,
-					},
-				],
-			},
-		]),
-		AuthModule,
-		CommandModule,
-		ConfigModule,
-		DashboardModule,
-		DevicesModule,
-		PlatformModule,
-		SeedModule,
-		SystemModule,
-		UsersModule,
-		WeatherModule,
-		WebsocketModule,
-		DevicesThirdPartyPlugin,
-		DevicesHomeAssistantPlugin,
-		DevicesShellyNgPlugin,
-		PagesCardsPlugin,
-		PagesDeviceDetailPlugin,
-		PagesTilesPlugin,
-		TilesDevicePreviewPlugin,
-		TilesTimePlugin,
-		TilesWeatherPlugin,
-		DataSourcesDeviceChannelPlugin,
-		LoggerRotatingFilePlugin,
-		ServeStaticModule.forRootAsync({
-			imports: [NestConfigModule], // Ensure ConfigModule is available
-			inject: [NestConfigService],
-			useFactory: (configService: NestConfigService) => {
-				const rootPath = resolveStaticPath(
-					getEnvValue<string>(configService, 'FB_ADMIN_UI_PATH', path.resolve(__dirname, '../static')),
-				);
+@Module({})
+export class AppModule {
+	static register({ moduleExtensions, pluginExtensions }: AppRegisterOptions): DynamicModule {
+		const seen = new Set<string>();
 
-				return [
-					{
-						rootPath,
-						exclude: ['/api*', '/socket.io*', '/favicon.ico'],
-						serveStaticOptions: {
-							fallthrough: true,
-						},
+		const clean = (s: string) => s.replace(/^\/+|\/+$/g, '').replace(/\/{2,}/g, '/');
+
+		const moduleRoutes = moduleExtensions
+			.map((p) => ({ path: clean(p.routePrefix), module: p.extensionClass }))
+			.filter((r) => !seen.has(`M:${r.path}`) && seen.add(`M:${r.path}`));
+
+		const pluginRoutes = pluginExtensions
+			.map((p) => ({ path: clean(p.routePrefix), module: p.extensionClass }))
+			.filter((r) => !seen.has(`P:${r.path}`) && seen.add(`P:${r.path}`));
+
+		return {
+			module: AppModule,
+			imports: [
+				NestConfigModule.forRoot({
+					envFilePath: [path.resolve(process.cwd(), '.env.local'), path.resolve(process.cwd(), '.env')],
+				}),
+				CacheModule.register({
+					isGlobal: true,
+					ttl: 30 * 1000,
+					max: 1000,
+				}),
+				EventEmitterModule.forRoot(),
+				TypeOrmModule.forRootAsync({
+					imports: [NestConfigModule], // Ensure ConfigModule is available
+					inject: [NestConfigService],
+					useFactory: (configService: NestConfigService) => {
+						const isTest = process.env.NODE_ENV === 'test';
+
+						return {
+							type: 'sqlite',
+							database: isTest
+								? ':memory:'
+								: path.resolve(
+										getEnvValue<string>(configService, 'FB_DB_PATH', path.resolve(__dirname, '../../../var/db')),
+										'database.sqlite',
+									),
+							entities: [__dirname + '/**/*.entity{.ts,.js}'],
+							subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
+							migrations: [__dirname + '/migrations/*{.ts,.js}'],
+							synchronize: true,
+							logging: getEnvValue<boolean>(configService, 'FB_DB_LOGGING', false),
+						};
 					},
-				];
-			},
-		}),
-	],
-})
-export class AppModule {}
+				}),
+				ScheduleModule.forRoot(),
+				RouterModule.register([
+					{
+						path: AUTH_MODULE_PREFIX,
+						module: AuthModule,
+					},
+					{
+						path: DEVICES_MODULE_PREFIX,
+						module: DevicesModule,
+					},
+					{
+						path: DASHBOARD_MODULE_PREFIX,
+						module: DashboardModule,
+					},
+					{
+						path: CONFIG_MODULE_PREFIX,
+						module: ConfigModule,
+					},
+					{
+						path: SYSTEM_MODULE_PREFIX,
+						module: SystemModule,
+					},
+					{
+						path: USERS_MODULE_PREFIX,
+						module: UsersModule,
+					},
+					{
+						path: WEATHER_MODULE_PREFIX,
+						module: WeatherModule,
+					},
+					...moduleRoutes,
+					{
+						path: PLUGINS_PREFIX,
+						children: [
+							{
+								path: PAGES_CARDS_PLUGIN_PREFIX,
+								module: PagesCardsPlugin,
+							},
+							{
+								path: DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX,
+								module: DevicesHomeAssistantPlugin,
+							},
+							{
+								path: DEVICES_THIRD_PARTY_PLUGIN_PREFIX,
+								module: DevicesThirdPartyPlugin,
+							},
+							{
+								path: DEVICES_SHELLY_NG_PLUGIN_PREFIX,
+								module: DevicesShellyNgPlugin,
+							},
+							...pluginRoutes,
+						],
+					},
+				]),
+				AuthModule,
+				CommandModule,
+				ConfigModule,
+				DashboardModule,
+				DevicesModule,
+				PlatformModule,
+				SeedModule,
+				SystemModule,
+				UsersModule,
+				WeatherModule,
+				WebsocketModule,
+				DevicesThirdPartyPlugin,
+				DevicesHomeAssistantPlugin,
+				DevicesShellyNgPlugin,
+				PagesCardsPlugin,
+				PagesDeviceDetailPlugin,
+				PagesTilesPlugin,
+				TilesDevicePreviewPlugin,
+				TilesTimePlugin,
+				TilesWeatherPlugin,
+				DataSourcesDeviceChannelPlugin,
+				LoggerRotatingFilePlugin,
+				ServeStaticModule.forRootAsync({
+					imports: [NestConfigModule], // Ensure ConfigModule is available
+					inject: [NestConfigService],
+					useFactory: (configService: NestConfigService) => {
+						const rootPath = resolveStaticPath(
+							getEnvValue<string>(configService, 'FB_ADMIN_UI_PATH', path.resolve(__dirname, '../static')),
+						);
+
+						return [
+							{
+								rootPath,
+								exclude: ['/api*', '/socket.io*', '/favicon.ico'],
+								serveStaticOptions: {
+									fallthrough: true,
+								},
+							},
+						];
+					},
+				}),
+
+				// Finally import discovered extension modules so DI can wire them
+				...(moduleExtensions || []).map((p) => p.extensionClass),
+				...(pluginExtensions || []).map((p) => p.extensionClass),
+			],
+		};
+	}
+}

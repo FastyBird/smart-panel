@@ -6,6 +6,8 @@ import type { Pinia } from 'pinia';
 import type { MessageSchema } from './locales';
 import { UsersModuleUserRole } from './openapi';
 
+export type IExtensionOptions = IModuleOptions & IPluginOptions;
+
 export interface IModuleOptions {
 	router: Router;
 	store: Pinia;

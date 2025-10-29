@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Logger, Put } from '@nestjs/common';
 
-import { SkipApplicationInterceptor } from '../../../common/interceptors/response.interceptor';
+import { RawRoute } from '../../../common/decorators/raw-route.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -9,13 +9,13 @@ import { PropertiesUpdateRequestDto } from '../dto/third-party-property-update-r
 import { ThirdPartyDemoControlModel } from '../models/demo-control.model';
 
 @Controller('demo')
-@SkipApplicationInterceptor()
 export class ThirdPartyDemoController {
 	private readonly logger = new Logger(ThirdPartyDemoController.name);
 	private queue: { [key: string]: NodeJS.Timeout } = {};
 
 	constructor(private readonly channelsPropertiesService: ChannelsPropertiesService) {}
 
+	@RawRoute()
 	@Public()
 	@Put('webhook')
 	@HttpCode(204)

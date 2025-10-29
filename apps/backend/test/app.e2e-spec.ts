@@ -20,8 +20,13 @@ describe('FastyBird Smart Panel (e2e)', () => {
 	let accessToken: string;
 
 	beforeAll(async () => {
+		const dynamicAppModule = AppModule.register({
+			moduleExtensions: [],
+			pluginExtensions: [],
+		});
+
 		const moduleFixture = await Test.createTestingModule({
-			imports: [AppModule],
+			imports: [dynamicAppModule],
 		}).compile();
 
 		app = moduleFixture.createNestApplication();
@@ -35,7 +40,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			}),
 		);
 
-		useContainer(app.select(AppModule), { fallbackOnErrors: true });
+		useContainer(moduleFixture, { fallbackOnErrors: true });
 
 		await app.init();
 	});

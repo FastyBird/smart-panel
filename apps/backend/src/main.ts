@@ -7,14 +7,15 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 
 import { API_PREFIX } from './app.constants';
 import { AppModule } from './app.module';
+import { getDiscoveredExtensions } from './common/extensions/extensions.discovery-cache';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
 import { GlobalErrorFilter } from './common/filters/global-error.filter';
 import { InternalServerErrorExceptionFilter } from './common/filters/internal-server-error-exception.filter';
 import { NotFoundExceptionFilter } from './common/filters/not-found-exception.filter';
 import { QueryFailedExceptionFilter } from './common/filters/query-failed-exception.filter';
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
-import { HeaderLocationInterceptor } from './common/interceptors/header-location.interceptor';
-import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { LocationReplaceInterceptor } from './common/interceptors/location-replace.interceptor';
+import { OpenApiResponseInterceptor } from './common/interceptors/open-api-response-interceptor.service';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
@@ -22,9 +23,34 @@ import { SystemLoggerService } from './modules/system/services/system-logger.ser
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
 
 async function bootstrap() {
-	const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { bufferLogs: true });
+	const discovered = await getDiscoveredExtensions();
+
+	const moduleExtensions = discovered.backend
+		.filter((e) => e.kind === 'module')
+		.map((d) => ({
+			routePrefix: d.routePrefix,
+			extensionClass: d.extensionClass,
+		}));
+
+	const pluginExtensions = discovered.backend
+		.filter((e) => e.kind === 'plugin')
+		.map((d) => ({
+			routePrefix: d.routePrefix,
+			extensionClass: d.extensionClass,
+		}));
+
+	const appModule = AppModule.register({
+		moduleExtensions,
+		pluginExtensions,
+	});
+
+	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
 
 	const sysLogger = app.get(SystemLoggerService);
+
+	sysLogger.log(`Extensions mounted → modules: ${moduleExtensions.length}, plugins: ${pluginExtensions.length}`, [
+		'Bootstrap',
+	]);
 
 	app.useLogger(sysLogger);
 
@@ -57,9 +83,9 @@ async function bootstrap() {
 	);
 
 	app.useGlobalInterceptors(
-		new ResponseInterceptor(reflector),
-		new TransformResponseInterceptor(),
-		new HeaderLocationInterceptor(app.get(NestConfigService)),
+		new OpenApiResponseInterceptor(reflector),
+		new TransformResponseInterceptor(reflector),
+		new LocationReplaceInterceptor(app.get(NestConfigService)),
 	);
 
 	app.setGlobalPrefix(API_PREFIX);
@@ -70,7 +96,7 @@ async function bootstrap() {
 	});
 
 	// Optional: Make class-transformer aware of NestJS context
-	useContainer(app.select(AppModule), { fallbackOnErrors: true });
+	useContainer(app.select(appModule), { fallbackOnErrors: true });
 
 	const websocketGateway = app.get(WebsocketGateway);
 	websocketGateway.enable();

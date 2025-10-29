@@ -9,6 +9,8 @@ import 'nprogress/nprogress.css';
 import createClient from 'openapi-fetch';
 import 'virtual:uno.css';
 
+import { extensions as staticExtensions } from '@root-config/extensions';
+
 import { RouteNames } from './app.constants';
 import AppMain from './app.main.vue';
 import type { IModuleOptions } from './app.types';
@@ -30,6 +32,7 @@ import {
 } from './common';
 import { provideLogger } from './common';
 import CommonModule from './common/common.module';
+import { installRemoteExtensions, installStaticExtensions } from './common/extensions/extensions';
 import i18n from './locales';
 import { AuthModule } from './modules/auth';
 import { ConfigModule } from './modules/config';
@@ -143,6 +146,32 @@ app.use(TilesTimePlugin);
 app.use(TilesWeatherPlugin);
 app.use(DeviceChannelDataSourcesPlugin, pluginOptions);
 app.use(LoggerRotatingFilePlugin, pluginOptions);
+
+const installedNames = new Set<string>();
+
+installStaticExtensions(
+	app,
+	logger,
+	{
+		router,
+		store: pinia,
+		i18n,
+	},
+	installedNames,
+	staticExtensions
+);
+
+await installRemoteExtensions(
+	app,
+	backendClient,
+	logger,
+	{
+		router,
+		store: pinia,
+		i18n,
+	},
+	installedNames
+);
 
 router.beforeEach((to) => {
 	const accountManager = injectAccountManager(app);

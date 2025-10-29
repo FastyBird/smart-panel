@@ -12,6 +12,7 @@ import { CommandEventRegistryService } from '../websocket/services/command-event
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { DisplaysProfilesController } from './controllers/displays-profiles.controller';
+import { ExtensionsController } from './controllers/extensions.controller';
 import { LogsController } from './controllers/logs.controller';
 import { SystemController } from './controllers/system.controller';
 import { DisplayProfileEntity } from './entities/system.entity';
@@ -41,7 +42,7 @@ import { DisplayProfileExistsConstraintValidator } from './validators/display-pr
 		DisplayProfileExistsConstraintValidator,
 		SystemLoggerService,
 	],
-	controllers: [SystemController, DisplaysProfilesController, LogsController],
+	controllers: [SystemController, DisplaysProfilesController, LogsController, ExtensionsController],
 	exports: [SystemService, DisplaysProfilesService, FactoryResetRegistryService, SystemLoggerService],
 })
 export class SystemModule {

@@ -1,25 +1,26 @@
-import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
+import { FastifyReply, FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import os from 'os';
 import { Observable, map } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 
-import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor, SetMetadata } from '@nestjs/common';
+import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { RequestResultState } from '../../app.constants';
+import { RAW_ROUTE } from '../decorators/raw-route.decorator';
 import { getResponseMeta } from '../utils/http.utils';
 
-export const SKIP_APPLICATION_INTERCEPTOR = 'skipApplicationInterceptor';
-export const SkipApplicationInterceptor = () => SetMetadata(SKIP_APPLICATION_INTERCEPTOR, true);
-
 @Injectable()
-export class ResponseInterceptor<T> implements NestInterceptor<T, any> {
+export class OpenApiResponseInterceptor<T> implements NestInterceptor<T, any> {
 	constructor(private readonly reflector: Reflector) {}
 
 	intercept(context: ExecutionContext, next: CallHandler<T>): Observable<any> {
-		const skip = this.reflector.get<boolean>('skipApplicationInterceptor', context.getHandler());
+		const http = context.switchToHttp();
+		const reply = http.getResponse<FastifyReply>();
 
-		if (skip) {
+		const isRaw = this.reflector.get<boolean>(RAW_ROUTE, context.getHandler());
+
+		if (isRaw || reply.sent) {
 			return next.handle();
 		}
 
