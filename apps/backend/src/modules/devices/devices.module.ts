@@ -182,7 +182,7 @@ export class DevicesModule {
 
 		await this.influxDbService.createContinuousQuery(
 			'cq_dev_state_1m',
-			`SELECT LAST("online_i") AS online_i, LAST("status") AS status
+			`SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
            INTO "min_14d"."device_status_1m"
            FROM "raw_24h"."device_status"
            GROUP BY time(1m), "deviceId"`,
@@ -190,7 +190,7 @@ export class DevicesModule {
 
 		await this.influxDbService.createContinuousQuery(
 			'cq_online_count_1m',
-			`SELECT SUM("online_i") AS online_count
+			`SELECT SUM("onlineI") AS online_count
            INTO "min_14d"."online_count_1m"
            FROM "min_14d"."device_status_1m"
            GROUP BY time(1m)`,

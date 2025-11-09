@@ -52,14 +52,14 @@ export class StatsService {
 		Record<DeviceEntity['id'], { online: boolean; status: ConnectionState; lastUpdated: Date | null }>
 	> {
 		const q = `
-      SELECT LAST("online_i") AS online_i, LAST("status") AS status
+      SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
       FROM "min_14d"."device_status_1m"
       WHERE time > now() - 10m
       GROUP BY "deviceId"
     `;
 
 		const rows = await this.influx.query<{
-			online_i: number;
+			onlineI: number;
 			status: string;
 			time: Date;
 			deviceId?: string;
@@ -69,7 +69,7 @@ export class StatsService {
 
 		for (const r of rows) {
 			out[r.deviceId] = {
-				online: Number(r.online_i ?? 0) > 0,
+				online: Number(r.onlineI ?? 0) > 0,
 				status: String(r.status ?? ConnectionState.UNKNOWN) as ConnectionState,
 				lastUpdated: r.time,
 			};
