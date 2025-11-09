@@ -13,7 +13,6 @@
 		"baseUrl": "./",
 		"incremental": true,
 		"forceConsistentCasingInFileNames": true,
-		"skipLibCheck": true,
-		"allowJs": true
+		"skipLibCheck": true
 	}
 }
