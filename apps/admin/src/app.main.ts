@@ -11,7 +11,6 @@ import 'virtual:uno.css';
 
 import { extensions as staticExtensions } from '@root-config/extensions';
 
-import { RouteNames } from './app.constants';
 import AppMain from './app.main.vue';
 import type { IModuleOptions } from './app.types';
 import './assets/styles/base.scss';
@@ -38,8 +37,10 @@ import { AuthModule } from './modules/auth';
 import { ConfigModule } from './modules/config';
 import { DashboardModule } from './modules/dashboard';
 import { DevicesModule } from './modules/devices';
+import { StatsModule } from './modules/stats';
 import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
+import { WeatherModule } from './modules/weather';
 import type { paths } from './openapi';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
@@ -98,19 +99,6 @@ app.use(SocketsPlugin, {
 	baseUrl: `${window.location.protocol}//${window.location.hostname}:${import.meta.env.FB_BACKEND_PORT}`,
 });
 
-// Default route
-router.addRoute(RouteNames.ROOT, {
-	path: 'dashboard',
-	name: RouteNames.DASHBOARD,
-	component: () => import('./views/HomeView.vue'),
-	meta: {
-		guards: ['authenticated'],
-		title: 'Dashboard',
-		icon: 'mdi:monitor-dashboard',
-		menu: true,
-	},
-});
-
 // Common module
 app.use(CommonModule, { store: pinia });
 
@@ -127,6 +115,8 @@ app.use(AuthModule, moduleOptions);
 app.use(DashboardModule, moduleOptions);
 app.use(DevicesModule, moduleOptions);
 app.use(UsersModule, moduleOptions);
+app.use(StatsModule, moduleOptions);
+app.use(WeatherModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {

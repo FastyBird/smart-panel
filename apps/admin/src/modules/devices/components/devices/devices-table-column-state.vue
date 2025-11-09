@@ -27,8 +27,8 @@ import { ElIcon, ElLink } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { DevicesModuleDeviceStatusStatus } from '../../../../openapi';
 import { useDeviceState } from '../../composables/composables';
-import type { ConnectionState } from '../../devices.constants';
 
 import type { IDevicesTableColumnStateProps } from './devices-table-column-state.types';
 
@@ -39,7 +39,7 @@ defineOptions({
 const props = defineProps<IDevicesTableColumnStateProps>();
 
 const emit = defineEmits<{
-	(e: 'filter-by', value: ConnectionState, add: boolean): void;
+	(e: 'filter-by', value: DevicesModuleDeviceStatusStatus, add: boolean): void;
 }>();
 
 const { t } = useI18n();

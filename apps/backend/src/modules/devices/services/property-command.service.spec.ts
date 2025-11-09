@@ -8,7 +8,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
-import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../devices.constants';
 import { PropertyCommandDto } from '../dto/property-command.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
@@ -83,6 +90,10 @@ describe('PropertyCommandService', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		status: {
+			online: false,
+			status: ConnectionState.UNKNOWN,
+		},
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		controls: [],

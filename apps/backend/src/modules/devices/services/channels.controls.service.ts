@@ -1,5 +1,5 @@
 import { validate } from 'class-validator';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -11,8 +11,6 @@ import { DevicesNotFoundException, DevicesValidationException } from '../devices
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity } from '../entities/devices.entity';
 
-import { ChannelsService } from './channels.service';
-
 @Injectable()
 export class ChannelsControlsService {
 	private readonly logger = new Logger(ChannelsControlsService.name);
@@ -20,19 +18,17 @@ export class ChannelsControlsService {
 	constructor(
 		@InjectRepository(ChannelControlEntity)
 		private readonly repository: Repository<ChannelControlEntity>,
-		private readonly channelsService: ChannelsService,
+		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async findAll(channelId: string): Promise<ChannelControlEntity[]> {
 		this.logger.debug(`[LOOKUP ALL] Fetching all controls for channelId=${channelId}`);
 
-		const channel = await this.channelsService.getOneOrThrow(channelId);
-
 		const controls = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
-			.where('channel.id = :channelId', { channelId: channel.id })
+			.where('channel.id = :channelId', { channelId })
 			.getMany();
 
 		this.logger.debug(`[LOOKUP ALL] Found ${controls.length} controls for channelId=${channelId}`);
@@ -43,13 +39,11 @@ export class ChannelsControlsService {
 	async findOne(id: string, channelId: string): Promise<ChannelControlEntity | null> {
 		this.logger.debug(`[LOOKUP] Fetching control with id=${id} for channelId=${channelId}`);
 
-		const channel = await this.channelsService.getOneOrThrow(channelId);
-
 		const control = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
 			.where('control.id = :id', { id })
-			.andWhere('channel.id = :channelId', { channelId: channel.id })
+			.andWhere('channel.id = :channelId', { channelId })
 			.getOne();
 
 		if (!control) {
@@ -66,13 +60,11 @@ export class ChannelsControlsService {
 	async findOneByName(name: string, channelId: string): Promise<ChannelControlEntity | null> {
 		this.logger.debug(`[LOOKUP] Fetching control with name=${name} for channelId=${channelId}`);
 
-		const channel = await this.channelsService.getOneOrThrow(channelId);
-
 		const control = await this.repository
 			.createQueryBuilder('control')
 			.innerJoinAndSelect('control.channel', 'channel')
 			.where('control.name = :name', { name })
-			.andWhere('channel.id = :channelId', { channelId: channel.id })
+			.andWhere('channel.id = :channelId', { channelId })
 			.getOne();
 
 		if (!control) {
@@ -89,9 +81,7 @@ export class ChannelsControlsService {
 	async create(channelId: string, createDto: CreateChannelControlDto): Promise<ChannelControlEntity> {
 		this.logger.debug(`[CREATE] Creating new control for channelId=${channelId}`);
 
-		const channel = await this.channelsService.getOneOrThrow(channelId);
-
-		const existingControl = await this.findOneByName(createDto.name, channel.id);
+		const existingControl = await this.findOneByName(createDto.name, channelId);
 
 		if (existingControl !== null) {
 			throw new DevicesValidationException('Channel control name must be unique');
@@ -102,12 +92,12 @@ export class ChannelsControlsService {
 		const control = this.repository.create(
 			toInstance(ChannelControlEntity, {
 				...dtoInstance,
-				channel: channel.id,
+				channel: channelId,
 			}),
 		);
 		await this.repository.save(control);
 
-		const savedControl = await this.getOneOrThrow(control.id, channel.id);
+		const savedControl = await this.getOneOrThrow(control.id, channelId);
 
 		this.logger.debug(`[CREATE] Successfully created control with id=${savedControl.id} for channelId=${channelId}`);
 
@@ -116,17 +106,20 @@ export class ChannelsControlsService {
 		return savedControl;
 	}
 
-	async remove(id: string, channelId: string): Promise<void> {
+	async remove(id: string, channelId: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
 		this.logger.debug(`[DELETE] Removing control with id=${id} for channelId=${channelId}`);
 
-		const channel = await this.channelsService.getOneOrThrow(channelId);
-		const control = await this.getOneOrThrow(id, channel.id);
+		const fullControl = await this.getOneOrThrow(id, channelId);
 
-		await this.repository.delete(control.id);
+		const control = await manager.findOneOrFail<ChannelControlEntity>(ChannelControlEntity, {
+			where: { id, channel: { id: channelId } },
+		});
+
+		await manager.remove(control);
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for channelId=${channelId}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_DELETED, control);
+		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_DELETED, fullControl);
 	}
 
 	async getOneOrThrow(id: string, channelId: string): Promise<ChannelControlEntity> {

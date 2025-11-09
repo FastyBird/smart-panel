@@ -7,7 +7,7 @@
 	>
 		<template #icon>
 			<icon
-				icon="mdi:monitor-dashboard"
+				icon="mdi:view-dashboard"
 				class="w[20px] h[20px]"
 			/>
 		</template>
@@ -38,7 +38,7 @@
 	<view-header
 		:heading="t('dashboardModule.headings.pages.detail', { page: page?.title })"
 		:sub-heading="t('dashboardModule.subHeadings.pages.detail', { page: page?.title })"
-		icon="mdi:monitor-dashboard"
+		icon="mdi:view-dashboard"
 	>
 		<template #extra>
 			<div

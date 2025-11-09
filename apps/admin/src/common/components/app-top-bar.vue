@@ -52,7 +52,26 @@
 
 				<template #dropdown>
 					<el-dropdown-menu>
-						<el-dropdown-item :icon="h(Icon, { icon: 'mdi:lock' })">
+						<el-dropdown-item
+							v-if="accountManager?.routes.edit"
+							:icon="h(Icon, { icon: 'mdi:user-edit' })"
+						>
+							<div @click="onEditProfile">
+								{{ t('application.userMenu.profileGeneralSettings') }}
+							</div>
+						</el-dropdown-item>
+						<el-dropdown-item
+							v-if="accountManager?.routes.security"
+							:icon="h(Icon, { icon: 'mdi:user-lock' })"
+						>
+							<div @click="onEditSecurity">
+								{{ t('application.userMenu.profileSecuritySettings') }}
+							</div>
+						</el-dropdown-item>
+						<el-dropdown-item
+							:icon="h(Icon, { icon: 'mdi:lock' })"
+							:divided="typeof accountManager?.routes.edit !== 'undefined' || typeof accountManager?.routes.security !== 'undefined'"
+						>
 							<div @click="onLock">
 								{{ t('application.userMenu.lockScreen') }}
 							</div>
@@ -163,6 +182,18 @@ const onSignOut = (): void => {
 		accountManager.signOut();
 
 		router.push({ name: accountManager.routes.signIn });
+	}
+};
+
+const onEditProfile = (): void => {
+	if (accountManager) {
+		router.push({ name: accountManager.routes.edit });
+	}
+};
+
+const onEditSecurity = (): void => {
+	if (accountManager) {
+		router.push({ name: accountManager.routes.security });
 	}
 };
 

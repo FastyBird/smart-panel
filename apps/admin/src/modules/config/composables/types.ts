@@ -16,6 +16,7 @@ import {
 import type { FormResultType } from '../config.constants';
 import type { IPluginsComponents, IPluginsSchemas } from '../config.types';
 import type { IConfigPluginEditForm } from '../schemas/plugins.types';
+import type { IConfigApp } from '../store/config-app.store.types';
 import type { IConfigAudio } from '../store/config-audio.store.types';
 import type { IConfigDisplay } from '../store/config-display.store.types';
 import type { IConfigLanguage } from '../store/config-language.store.types';
@@ -60,6 +61,12 @@ export interface IConfigWeatherEditForm {
 
 export interface IConfigSystemEditForm {
 	logLevels: ConfigModuleSystemLog_levels[];
+}
+
+export interface IUseConfigApp {
+	configApp: ComputedRef<IConfigApp | null>;
+	isLoading: ComputedRef<boolean>;
+	fetchConfigApp: () => Promise<void>;
 }
 
 export interface IUseConfigAudio {

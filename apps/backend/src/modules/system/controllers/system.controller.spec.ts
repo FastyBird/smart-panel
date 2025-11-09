@@ -56,6 +56,12 @@ describe('SystemController', () => {
 					free: 500,
 				},
 				storage: [],
+				primaryStorage: {
+					fs: '/dev/primaryDisk',
+					used: 12044365824,
+					size: 494384795648,
+					available: 46296731648,
+				},
 				temperature: {
 					cpu: 45,
 				},
@@ -64,6 +70,9 @@ describe('SystemController', () => {
 					distro: 'Ubuntu',
 					release: '20.04',
 					uptime: 1234,
+					node: '20.18.1',
+					npm: '11.1.0',
+					timezone: 'CET+0100',
 				},
 				network: [],
 				defaultNetwork: {
@@ -71,12 +80,17 @@ describe('SystemController', () => {
 					ip4: '192.168.0.1',
 					ip6: 'fe80::134a:1e43:abc5:d413',
 					mac: 'xx:xx:xx:xx:xx:xx',
+					hostname: 'smart-panel',
 				},
 				display: {
 					resolutionX: 1024,
 					resolutionY: 768,
 					currentResX: 1024,
 					currentResY: 768,
+				},
+				process: {
+					pid: 17498,
+					uptime: 1234,
 				},
 			};
 

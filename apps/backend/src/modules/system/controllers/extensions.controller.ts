@@ -7,10 +7,10 @@ import { DiscoveredAdminExtension } from '@fastybird/smart-panel-extension-sdk';
 import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
 
-import { RawRoute } from '../../../common/decorators/raw-route.decorator';
 import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { RawRoute } from '../../api/decorators/raw-route.decorator';
 import { Public } from '../../auth/guards/auth.guard';
 import { ExtensionAdminModel, ExtensionBackendModel } from '../models/system.model';
 import {

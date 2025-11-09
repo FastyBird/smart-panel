@@ -116,3 +116,15 @@ export const safeToString = (val: unknown): string => {
 
 	return String(val as string | number | boolean);
 };
+
+export const safeNumber = (val: unknown): number => {
+	if (typeof val === 'number' && Number.isFinite(val)) {
+		return val;
+	}
+
+	if (typeof val === 'string' && val.trim() !== '' && Number.isFinite(Number(val))) {
+		return Number(val);
+	}
+
+	return Number(val as string | number | boolean);
+};

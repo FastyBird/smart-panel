@@ -21,6 +21,8 @@ export interface IAccountManager {
 		signUp: string;
 		lock?: string;
 		unlock?: string;
+		edit?: string;
+		security?: string;
 	};
 }
 

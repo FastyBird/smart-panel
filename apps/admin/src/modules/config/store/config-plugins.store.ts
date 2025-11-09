@@ -166,13 +166,13 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 				semaphore.value.fetching.items = true;
 
-				const { data: responseData, error, response } = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config`);
+				const { data: responseData, error, response } = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/plugins`);
 
 				semaphore.value.fetching.items = false;
 
 				if (typeof responseData !== 'undefined') {
 					data.value = Object.fromEntries(
-						responseData.data.plugins.map((plugin) => {
+						responseData.data.map((plugin) => {
 							const element = getPluginElement(plugin.type);
 
 							const transformed = transformConfigPluginResponse(plugin, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);

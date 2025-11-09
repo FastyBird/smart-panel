@@ -18,7 +18,7 @@ import { CreateSingleDataSourceDto } from '../dto/create-data-source.dto';
 import { UpdateDataSourceDto } from '../dto/update-data-source.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
 import { DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
-import { DataSourceService } from '../services/data-source.service';
+import { DataSourcesService } from '../services/data-sources.service';
 
 import { DataSourceController } from './data-source.controller';
 
@@ -72,7 +72,7 @@ class MockDataSourceEntity extends DataSourceEntity {
 
 describe('DataSourceController', () => {
 	let controller: DataSourceController;
-	let dataSourceService: DataSourceService;
+	let dataSourceService: DataSourcesService;
 	let mapper: DataSourcesTypeMapperService;
 
 	const mockPage: MockPageEntity = {
@@ -111,7 +111,7 @@ describe('DataSourceController', () => {
 					},
 				},
 				{
-					provide: DataSourceService,
+					provide: DataSourcesService,
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([toInstance(MockDataSourceEntity, mockDataSource)]),
 						findOne: jest.fn().mockResolvedValue(toInstance(MockDataSourceEntity, mockDataSource)),
@@ -126,7 +126,7 @@ describe('DataSourceController', () => {
 		useContainer(module, { fallbackOnErrors: true });
 
 		controller = module.get<DataSourceController>(DataSourceController);
-		dataSourceService = module.get<DataSourceService>(DataSourceService);
+		dataSourceService = module.get<DataSourcesService>(DataSourcesService);
 		mapper = module.get<DataSourcesTypeMapperService>(DataSourcesTypeMapperService);
 
 		jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);

@@ -59,6 +59,14 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		return this.gatewayEnabled;
 	}
 
+	get clientsCount(): number {
+		return this.server?.of('/')?.sockets?.size ?? this.server?.engine?.clientsCount ?? 0;
+	}
+
+	getRoomClientsCount(room: string): number {
+		return this.server?.of('/')?.adapter?.rooms?.get(room)?.size ?? 0;
+	}
+
 	afterInit(): void {
 		this.logger.debug('[WS GATEWAY] Websockets gateway started');
 	}

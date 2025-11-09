@@ -15,7 +15,6 @@ export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Maintenance',
 			icon: 'mdi:hammer',
-			menu: false,
 		},
 		redirect: () => ({ name: RouteNames.SYSTEM_INFO }),
 		children: [
@@ -31,7 +30,6 @@ export const ModuleMaintenanceRoutes: RouteRecordRaw[] = [
 					},
 					title: 'System power off',
 					icon: 'mdi:power',
-					menu: false,
 				},
 			},
 		],
@@ -49,7 +47,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'System',
 			icon: 'mdi:hammer',
-			menu: true,
+			menu: 5000,
 		},
 		redirect: () => ({ name: RouteNames.SYSTEM_INFO }),
 		children: [
@@ -65,7 +63,6 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'System information',
 					icon: 'mdi:cellphone-information',
-					menu: false,
 				},
 				children: [
 					{
@@ -80,7 +77,6 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 							},
 							title: 'Edit display',
 							icon: 'mdi:monitor-edit',
-							menu: false,
 						},
 					},
 				],
@@ -97,7 +93,6 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'System logs',
 					icon: 'mdi:console',
-					menu: false,
 				},
 				children: [
 					{
@@ -112,7 +107,6 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 							},
 							title: 'Log detail',
 							icon: 'mdi:note-text-outline',
-							menu: false,
 						},
 					},
 				],

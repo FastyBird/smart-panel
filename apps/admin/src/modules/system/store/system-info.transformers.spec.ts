@@ -19,7 +19,7 @@ vi.mock('../../../common', async () => {
 	};
 });
 
-const validConfigWeatherResponse: ISystemInfoRes = {
+const validSystemInfoResponse: ISystemInfoRes = {
 	cpu_load: 15.3,
 	memory: {
 		total: 8388608000,
@@ -34,6 +34,12 @@ const validConfigWeatherResponse: ISystemInfoRes = {
 			available: 17000000000,
 		},
 	],
+	primary_storage: {
+		fs: '/dev/mmcblk0p1',
+		used: 15000000000,
+		size: 32000000000,
+		available: 17000000000,
+	},
 	temperature: {
 		cpu: 55,
 		gpu: null,
@@ -43,6 +49,9 @@ const validConfigWeatherResponse: ISystemInfoRes = {
 		distro: 'Debian',
 		release: '11 (bullseye)',
 		uptime: 36000,
+		node: '20.18.1',
+		npm: '11.1.0',
+		timezone: 'CET+0100',
 	},
 	network: [
 		{
@@ -56,6 +65,7 @@ const validConfigWeatherResponse: ISystemInfoRes = {
 		ip4: '192.168.0.1',
 		ip6: 'fe80::134a:1e43:abc5:d413',
 		mac: 'xx:xx:xx:xx:xx:xx',
+		hostname: 'smart-panel',
 	},
 	display: {
 		resolution_x: 1920,
@@ -63,12 +73,16 @@ const validConfigWeatherResponse: ISystemInfoRes = {
 		current_res_x: 1280,
 		current_res_y: 720,
 	},
+	process: {
+		pid: 86523,
+		uptime: 1496,
+	},
 };
 
 describe('System Info Transformers', (): void => {
 	describe('transformSystemInfoResponse', (): void => {
 		it('should transform a valid system info response', (): void => {
-			const result = transformSystemInfoResponse(validConfigWeatherResponse);
+			const result = transformSystemInfoResponse(validSystemInfoResponse);
 
 			expect(result).toEqual({
 				cpuLoad: 15.3,
@@ -85,6 +99,12 @@ describe('System Info Transformers', (): void => {
 						available: 17000000000,
 					},
 				],
+				primaryStorage: {
+					fs: '/dev/mmcblk0p1',
+					used: 15000000000,
+					size: 32000000000,
+					available: 17000000000,
+				},
 				temperature: {
 					cpu: 55,
 					gpu: null,
@@ -94,6 +114,9 @@ describe('System Info Transformers', (): void => {
 					distro: 'Debian',
 					release: '11 (bullseye)',
 					uptime: 36000,
+					node: '20.18.1',
+					npm: '11.1.0',
+					timezone: 'CET+0100',
 				},
 				network: [
 					{
@@ -107,6 +130,7 @@ describe('System Info Transformers', (): void => {
 					ip4: '192.168.0.1',
 					ip6: 'fe80::134a:1e43:abc5:d413',
 					mac: 'xx:xx:xx:xx:xx:xx',
+					hostname: 'smart-panel',
 				},
 				display: {
 					resolutionX: 1920,
@@ -114,11 +138,15 @@ describe('System Info Transformers', (): void => {
 					currentResX: 1280,
 					currentResY: 720,
 				},
+				process: {
+					pid: 86523,
+					uptime: 1496,
+				},
 			});
 		});
 
 		it('should throw an error for an invalid system info response', (): void => {
-			expect(() => transformSystemInfoResponse({ ...validConfigWeatherResponse, cpu_load: 'not-a-number' } as unknown as ISystemInfoRes)).toThrow(
+			expect(() => transformSystemInfoResponse({ ...validSystemInfoResponse, cpu_load: 'not-a-number' } as unknown as ISystemInfoRes)).toThrow(
 				SystemValidationException
 			);
 		});

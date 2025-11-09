@@ -1,10 +1,12 @@
 import { exec } from 'child_process';
 import fs from 'fs/promises';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
 import si, { Systeminformation } from 'systeminformation';
 import { promisify } from 'util';
 
 import { NetworkStatsDto } from '../dto/network-stats.dto';
-import { SystemInfoDto } from '../dto/system-info.dto';
+import { StorageDto, SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
 import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { WifiNetworksDto } from '../dto/wifi-networks.dto';
@@ -15,6 +17,8 @@ import { Platform } from './abstract.platform';
 const execAsync = promisify(exec);
 
 export class RaspberryPlatform extends Platform {
+	private cachedNpmVersion: string | null = null;
+
 	async getSystemInfo() {
 		const [cpu, memory, storage, os, time, temp, network, graphics, networkInterface]: [
 			Systeminformation.CurrentLoadData,
@@ -57,11 +61,15 @@ export class RaspberryPlatform extends Platform {
 				size: row.size,
 				available: row.available,
 			})),
+			primaryStorage: await this.getPrimaryDisk(),
 			os: {
 				platform: os.platform,
 				distro: os.distro,
 				release: os.release,
 				uptime: time.uptime,
+				node: await this.getNodeVersion(),
+				npm: await this.getNpmVersion(),
+				timezone: time.timezone,
 			},
 			temperature: {
 				cpu: temp.main,
@@ -76,12 +84,17 @@ export class RaspberryPlatform extends Platform {
 				ip4: defaultNetworkInterface.ip4,
 				ip6: defaultNetworkInterface.ip6,
 				mac: defaultNetworkInterface.mac,
+				hostname: os.hostname,
 			},
 			display: {
 				resolutionX: graphics.displays[0]?.resolutionX || resolution?.width || 0,
 				resolutionY: graphics.displays[0]?.resolutionY || resolution?.height || 0,
 				currentResX: resolution?.width || 0,
 				currentResY: resolution?.height || 0,
+			},
+			process: {
+				pid: process.pid,
+				uptime: await this.getProcessUptimeSec(),
 			},
 		};
 
@@ -187,6 +200,89 @@ export class RaspberryPlatform extends Platform {
 		this.logger.log('[SYSTEM] Powering off device...');
 
 		await this.executeCommand('sudo /sbin/poweroff');
+	}
+
+	async getProcessUptimeSec(): Promise<number> {
+		return Promise.resolve(Math.floor(process.uptime()));
+	}
+
+	async getProcessStartTimeIso(): Promise<Date> {
+		const startedMs = Date.now() - Math.floor(process.uptime() * 1000);
+
+		return Promise.resolve(new Date(startedMs));
+	}
+
+	async getNodeVersion(): Promise<string> {
+		return Promise.resolve(process.version.replace(/^v/, ''));
+	}
+
+	async getNpmVersion(): Promise<string | null> {
+		if (this.cachedNpmVersion !== null) {
+			return this.cachedNpmVersion;
+		}
+
+		try {
+			const out = execSync('npm -v', { stdio: ['ignore', 'pipe', 'ignore'] })
+				.toString()
+				.trim();
+			this.cachedNpmVersion = out || null;
+		} catch {
+			this.cachedNpmVersion = null;
+		}
+
+		return Promise.resolve(this.cachedNpmVersion);
+	}
+
+	async getPrimaryDisk(): Promise<StorageDto> {
+		const targetPath = process.cwd();
+
+		const fsList = await si.fsSize(); // [{ fs, type, mount, size, used, available }, ...]
+
+		const filtered = fsList.filter((d) => !this.isPseudoFs(d.type) && d.size > 0);
+
+		// Pick the mount whose mountpoint is the longest prefix of targetPath
+		// (e.g., '/' vs '/home' vs '/var')
+		const normalized = path.resolve(targetPath);
+
+		let best = null as (typeof filtered)[number] | null;
+
+		for (const d of filtered) {
+			if (!d.mount) {
+				continue;
+			}
+
+			const m = d.mount.endsWith(path.sep) ? d.mount : d.mount + path.sep;
+			const p = normalized.endsWith(path.sep) ? normalized : normalized + path.sep;
+
+			if (p.startsWith(m)) {
+				if (!best || (best.mount?.length ?? 0) < d.mount.length) best = d;
+			}
+		}
+
+		if (!best && filtered.length) {
+			best = filtered.sort((a, b) => b.size - a.size)[0];
+		}
+
+		return {
+			fs: best.fs,
+			used: best.used,
+			size: best.size,
+			available: best.available,
+		};
+	}
+
+	private isPseudoFs(type?: string) {
+		const HIDE_FS_TYPES = new Set(['tmpfs', 'devtmpfs', 'overlay', 'squashfs', 'proc', 'sysfs', 'ramfs']);
+
+		if (!type) {
+			return false;
+		}
+
+		if (HIDE_FS_TYPES.has(type)) {
+			return true;
+		}
+
+		return type.startsWith('cgroup');
 	}
 
 	private executeCommand(command: string): Promise<void> {

@@ -1,7 +1,6 @@
 /*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-member-access,
-@typescript-eslint/no-unsafe-argument
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-member-access,
+@typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -9,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsNotEmpty, IsOptional, IsString, useContainer } from 'class-validator';
-import { DataSource as OrmDataSource, Repository } from 'typeorm';
+import { EntityManager, DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -28,7 +27,7 @@ import { UpdatePageDto } from '../dto/update-page.dto';
 import { PageEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
-import { DataSourceService } from './data-source.service';
+import { DataSourcesService } from './data-sources.service';
 import { PageCreateBuilderRegistryService } from './page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from './page-relations-loader-registry.service';
 import { PagesTypeMapperService } from './pages-type-mapper.service';
@@ -118,6 +117,12 @@ describe('PagesService', () => {
 		getOneOrThrow: jest.fn().mockResolvedValue(toInstance(DisplayProfileEntity, mockDisplay)),
 	};
 
+	const mockManager: jest.Mocked<Partial<EntityManager>> = {
+		findOneOrFail: jest.fn(),
+		find: jest.fn(),
+		remove: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const mockRepository = () => ({
 			find: jest.fn(),
@@ -140,7 +145,7 @@ describe('PagesService', () => {
 				DisplayProfileExistsConstraintValidator,
 				{ provide: getRepositoryToken(PageEntity), useFactory: mockRepository },
 				{
-					provide: DataSourceService,
+					provide: DataSourcesService,
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
 					},
@@ -185,6 +190,8 @@ describe('PagesService', () => {
 					provide: OrmDataSource,
 					useValue: {
 						getRepository: jest.fn(() => {}),
+						manager: mockManager,
+						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 					},
 				},
 			],
@@ -403,11 +410,15 @@ describe('PagesService', () => {
 	describe('remove', () => {
 		it('should delete a page', async () => {
 			jest.spyOn(service, 'findOne').mockResolvedValue(toInstance(MockPageEntity, mockPageOne));
-			jest.spyOn(repository, 'delete');
+
+			jest.spyOn(mockManager, 'findOneOrFail').mockResolvedValue(toInstance(MockPageEntity, mockPageOne));
+			jest.spyOn(mockManager, 'find').mockResolvedValue([]);
+
+			jest.spyOn(mockManager, 'remove');
 
 			await service.remove(mockPageOne.id);
 
-			expect(repository.delete).toHaveBeenCalledWith(mockPageOne.id);
+			expect(mockManager.remove).toHaveBeenCalledWith(toInstance(MockPageEntity, mockPageOne));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.PAGE_DELETED, toInstance(MockPageEntity, mockPageOne));
 		});
 

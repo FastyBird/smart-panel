@@ -16,6 +16,7 @@ import { registerConfigLanguageStore } from './store/config-language.store';
 import { registerConfigPluginStore } from './store/config-plugins.store';
 import { registerConfigWeatherStore } from './store/config-weather.store';
 import {
+	configAppStoreKey,
 	configAudioStoreKey,
 	configDisplayStoreKey,
 	configLanguageStoreKey,
@@ -23,7 +24,7 @@ import {
 	configSystemStoreKey,
 	configWeatherStoreKey,
 } from './store/keys';
-import { registerConfigSystemStore } from './store/stores';
+import { registerConfigAppStore, registerConfigSystemStore } from './store/stores';
 
 export default {
 	install: (app: App, options: IModuleOptions): void => {
@@ -39,6 +40,11 @@ export default {
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
 		}
+
+		const configAppStore = registerConfigAppStore(options.store);
+
+		app.provide(configAppStoreKey, configAppStore);
+		storesManager.addStore(configAppStoreKey, configAppStore);
 
 		const configAudioStore = registerConfigAudioStore(options.store);
 

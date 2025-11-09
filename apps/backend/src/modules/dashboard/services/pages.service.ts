@@ -17,7 +17,7 @@ import { UpdatePageDto } from '../dto/update-page.dto';
 import { DataSourceEntity, PageEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
-import { DataSourceService } from './data-source.service';
+import { DataSourcesService } from './data-sources.service';
 import { PageCreateBuilderRegistryService } from './page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from './page-relations-loader-registry.service';
 import { PagesTypeMapperService } from './pages-type-mapper.service';
@@ -29,7 +29,7 @@ export class PagesService {
 	constructor(
 		@InjectRepository(PageEntity)
 		private readonly repository: Repository<PageEntity>,
-		private readonly dataSourceService: DataSourceService,
+		private readonly dataSourceService: DataSourcesService,
 		private readonly pagesMapperService: PagesTypeMapperService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 		private readonly relationsRegistryService: PageRelationsLoaderRegistryService,
@@ -39,10 +39,28 @@ export class PagesService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async findAll<TPage extends PageEntity>(): Promise<TPage[]> {
+	async getCount<TPage extends PageEntity>(type?: string): Promise<number> {
+		const mapping = type ? this.pagesMapperService.getMapping<TPage, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		this.logger.debug('[LOOKUP ALL] Fetching all pages count');
+
+		const pages = await repository.count();
+
+		this.logger.debug(`[LOOKUP ALL] Found that in system is ${pages} pages`);
+
+		return pages;
+	}
+
+	async findAll<TPage extends PageEntity>(type?: string): Promise<TPage[]> {
+		const mapping = type ? this.pagesMapperService.getMapping<TPage, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
 		this.logger.debug('[LOOKUP ALL] Fetching all pages');
 
-		const pages = await this.repository.find({
+		const pages = await repository.find({
 			relations: ['display'],
 		});
 
@@ -55,10 +73,14 @@ export class PagesService {
 		return pages as TPage[];
 	}
 
-	async findOne<TPage extends PageEntity>(id: string): Promise<TPage | null> {
+	async findOne<TPage extends PageEntity>(id: string, type?: string): Promise<TPage | null> {
+		const mapping = type ? this.pagesMapperService.getMapping<TPage, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
 		this.logger.debug(`[LOOKUP] Fetching page with id=${id}`);
 
-		const page = (await this.repository
+		const page = (await repository
 			.createQueryBuilder('page')
 			.leftJoinAndSelect('page.display', 'display')
 			.where('page.id = :id', { id })
@@ -187,13 +209,25 @@ export class PagesService {
 	async remove(id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Removing page with id=${id}`);
 
-		const page = await this.getOneOrThrow<PageEntity>(id);
+		const fullPage = await this.getOneOrThrow<PageEntity>(id);
 
-		await this.repository.delete(page.id);
+		await this.dataSource.transaction(async (manager) => {
+			const page = await manager.findOneOrFail<PageEntity>(PageEntity, { where: { id } });
 
-		this.logger.log(`[DELETE] Successfully removed page with id=${id}`);
+			const dataSources = await manager.find<DataSourceEntity>(DataSourceEntity, {
+				where: { parentType: 'page', parentId: page.id },
+			});
 
-		this.eventEmitter.emit(EventType.PAGE_DELETED, page);
+			for (const dataSource of dataSources) {
+				await this.dataSourceService.remove(dataSource.id, manager);
+			}
+
+			await manager.remove(page);
+
+			this.logger.log(`[DELETE] Successfully removed page with id=${id}`);
+
+			this.eventEmitter.emit(EventType.PAGE_DELETED, fullPage);
+		});
 	}
 
 	async getOneOrThrow<TPage extends PageEntity>(id: string): Promise<TPage> {

@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -276,16 +276,20 @@ export class ChannelsPropertiesService {
 		return updatedProperty;
 	}
 
-	async remove(id: string): Promise<void> {
+	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
 		this.logger.debug(`[DELETE] Removing property with id=${id}`);
 
-		const property = await this.getOneOrThrow(id);
+		const fullProperty = await this.getOneOrThrow(id);
 
-		await this.repository.delete(property.id);
+		const property = await manager.findOneOrFail<ChannelPropertyEntity>(ChannelPropertyEntity, {
+			where: { id },
+		});
+
+		await manager.remove(property);
 
 		this.logger.log(`[DELETE] Successfully removed property with id=${id}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, property);
+		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, fullProperty);
 	}
 
 	async getOneOrThrow(id: string): Promise<ChannelPropertyEntity> {

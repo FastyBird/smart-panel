@@ -19,7 +19,7 @@ vi.mock('../../../common', async () => {
 	};
 });
 
-const validConfigWeatherResponse: IThrottleStatusRes = {
+const validThrottleStatusResponse: IThrottleStatusRes = {
 	undervoltage: false,
 	frequency_capping: false,
 	throttling: false,
@@ -29,7 +29,7 @@ const validConfigWeatherResponse: IThrottleStatusRes = {
 describe('System Info Transformers', (): void => {
 	describe('transformThrottleStatusResponse', (): void => {
 		it('should transform a valid throttle status response', (): void => {
-			const result = transformThrottleStatusResponse(validConfigWeatherResponse);
+			const result = transformThrottleStatusResponse(validThrottleStatusResponse);
 
 			expect(result).toEqual({
 				undervoltage: false,
@@ -41,7 +41,7 @@ describe('System Info Transformers', (): void => {
 
 		it('should throw an error for an invalid throttle status response', (): void => {
 			expect(() =>
-				transformThrottleStatusResponse({ ...validConfigWeatherResponse, undervoltage: 'not-a-boolean' } as unknown as IThrottleStatusRes)
+				transformThrottleStatusResponse({ ...validThrottleStatusResponse, undervoltage: 'not-a-boolean' } as unknown as IThrottleStatusRes)
 			).toThrow(SystemValidationException);
 		});
 	});

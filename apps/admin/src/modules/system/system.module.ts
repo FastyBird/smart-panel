@@ -48,10 +48,6 @@ export default {
 		app.provide(throttleStatusStoreKey, throttleStatusStore);
 		storesManager.addStore(throttleStatusStoreKey, throttleStatusStore);
 
-		ModuleMaintenanceRoutes.forEach((route): void => {
-			options.router.addRoute(route);
-		});
-
 		const displaysStore = registerDisplaysProfilesStore(options.store);
 
 		app.provide(displaysStoreKey, displaysStore);
@@ -67,10 +63,6 @@ export default {
 		app.provide(extensionsStoreKey, extensionsStore);
 		storesManager.addStore(extensionsStoreKey, extensionsStore);
 
-		ModuleMaintenanceRoutes.forEach((route): void => {
-			options.router.addRoute(route);
-		});
-
 		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
 
 		if (rootRoute) {
@@ -78,6 +70,10 @@ export default {
 				options.router.addRoute(AppRouteNames.ROOT, route);
 			});
 		}
+
+		ModuleMaintenanceRoutes.forEach((route): void => {
+			options.router.addRoute(route);
+		});
 
 		const systemActions = new SystemActionsService(app, options.router, options.i18n.global as Composer);
 		provideSystemActionsService(app, systemActions);

@@ -4,7 +4,7 @@ import { Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { NetworkStatsDto } from '../dto/network-stats.dto';
-import { SystemInfoDto } from '../dto/system-info.dto';
+import { StorageDto, SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
 import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { WifiNetworksDto } from '../dto/wifi-networks.dto';
@@ -24,6 +24,11 @@ export abstract class Platform {
 	abstract muteMicrophone(mute: boolean): Promise<void>;
 	abstract rebootDevice(): Promise<void>;
 	abstract powerOffDevice(): Promise<void>;
+	abstract getProcessUptimeSec(): Promise<number>;
+	abstract getProcessStartTimeIso(): Promise<Date>;
+	abstract getNodeVersion(): Promise<string>;
+	abstract getNpmVersion(): Promise<string | null>;
+	abstract getPrimaryDisk(): Promise<StorageDto>;
 
 	protected async validateDto<T extends object>(dtoClass: new () => T, rawData: unknown): Promise<T> {
 		const instance = toInstance(dtoClass, rawData);

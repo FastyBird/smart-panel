@@ -186,6 +186,17 @@ export class ConfigController {
 		return config;
 	}
 
+	@Get('plugins')
+	getPluginsConfig(): PluginConfigModel[] {
+		this.logger.debug('[LOOKUP] Fetching configuration for all plugins');
+
+		const config: PluginConfigModel[] = this.service.getPluginsConfig();
+
+		this.logger.debug('[LOOKUP] Found configuration for all plugins');
+
+		return config;
+	}
+
 	@Get('plugin/:plugin')
 	getPluginConfig(@Param('plugin') plugin: string): PluginConfigModel {
 		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);

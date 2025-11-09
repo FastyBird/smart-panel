@@ -1,27 +1,32 @@
 {
-  "application": {
-    "menu": {
-      "root": "FastyBird SmartPanel",
-      "user": "User"
-    },
-    "userMenu": {
-      "profileGeneralSettings": "Profile general setting",
-      "profileSecuritySettings": "Profile security setting",
-      "lockScreen": "Lock screen",
-      "signOut": "Sign out"
-    },
-    "headings": {
-      "loadingFailed": "An error occurred",
-      "home": "Administration"
-    },
-    "subHeadings": {
-      "home": "Smart Panel display administration"
-    },
-    "breadcrumbs": {
-      "homepage": "homepage"
-    },
-    "value": {
-      "notAvailable": "N/A"
-    }
-  }
+	"application": {
+		"menu": {
+			"root": "FastyBird SmartPanel",
+			"user": "User"
+		},
+		"userMenu": {
+			"profileGeneralSettings": "Profile general setting",
+			"profileSecuritySettings": "Profile security setting",
+			"lockScreen": "Lock screen",
+			"signOut": "Sign out"
+		},
+		"headings": {
+			"loadingFailed": "An error occurred",
+			"home": "Administration"
+		},
+		"subHeadings": {
+			"home": "Smart Panel display administration"
+		},
+		"breadcrumbs": {
+			"homepage": "homepage"
+		},
+		"value": {
+			"notAvailable": "N/A"
+		},
+		"buttons": {
+			"home": {
+				"title": "Home"
+			}
+		}
+	}
 }

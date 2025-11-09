@@ -1309,6 +1309,10 @@
                           "name": "Thermostat",
                           "description": "Living room thermostat",
                           "enabled": true,
+                          "status": {
+                            "online": true,
+                            "status": "connected"
+                          },
                           "controls": [
                             {
                               "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1493,6 +1497,10 @@
                         "name": "Thermostat",
                         "description": "Living room thermostat",
                         "enabled": true,
+                        "status": {
+                          "online": true,
+                          "status": "connected"
+                        },
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1626,6 +1634,10 @@
                         "name": "Thermostat",
                         "description": "Living room thermostat",
                         "enabled": true,
+                        "status": {
+                          "online": true,
+                          "status": "connected"
+                        },
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -1773,6 +1785,10 @@
                         "name": "Thermostat",
                         "description": "Living room thermostat",
                         "enabled": true,
+                        "status": {
+                          "online": true,
+                          "status": "connected"
+                        },
                         "controls": [
                           {
                             "id": "227349b1-a2a7-439a-b296-59f002faa8ce",
@@ -5414,6 +5430,7 @@
                       "path": "/api/v1/config-module/config",
                       "method": "GET",
                       "data": {
+                        "path": "/var/lib/smart-panel/config.yaml",
                         "audio": {
                           "type": "audio",
                           "speaker": false,
@@ -5664,6 +5681,48 @@
         ]
       }
     },
+    "/config-module/config/plugins": {
+      "get": {
+        "tags": [
+          "Configuration module"
+        ],
+        "summary": "Retrieve plugins configuration",
+        "description": "Retrieves all plugins configuration.",
+        "operationId": "get-config-module-config-plugins",
+        "responses": {
+          "200": {
+            "description": "Response containing the all plugins configuration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigModuleResPlugins"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ],
+        "x-stoplight": {
+          "id": "2772l7k2ng77f"
+        }
+      }
+    },
     "/config-module/config/plugin/{plugin}": {
       "get": {
         "tags": [
@@ -5823,6 +5882,42 @@
         ]
       }
     },
+    "/stats-module/stats": {
+      "get": {
+        "tags": [
+          "Stats module"
+        ],
+        "summary": "Retrieve system-wide statistics",
+        "description": "Returns aggregated runtime statistics collected from various backend modules. Includes real-time data such as WebSocket connections, system resource usage, API performance metrics, dashboard entity counts, and device activity. Each metric contains its current value and timestamp of the last update.",
+        "operationId": "get-stats-module-stats",
+        "responses": {
+          "200": {
+            "description": "Successful retrieval of backend statistics.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsModuleResStats"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
     "/system-module/system/health": {
       "get": {
         "tags": [
@@ -5833,31 +5928,11 @@
         "operationId": "get-system-module-system-health",
         "responses": {
           "200": {
-            "description": "Backend is healthy.",
+            "description": "Provides a detailed overview of the system’s current status, including CPU load, memory usage, storage details, temperature readings, operating system information, network statistics, and display settings.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SystemModuleResSystemHealth"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "status": "success",
-                      "timestamp": "2025-01-18T12:00:00Z",
-                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
-                      "path": "/api/v1/system-module/system/health",
-                      "method": "GET",
-                      "data": {
-                        "status": "ok",
-                        "version": "1.0.0"
-                      },
-                      "metadata": {
-                        "request_duration_ms": 57,
-                        "server_time": "2025-01-18T12:00:00Z",
-                        "cpu_usage": 25.28
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/SystemModuleResSystemInfo"
                 }
               }
             }
@@ -5907,6 +5982,12 @@
                             "available": 17000000000
                           }
                         ],
+                        "primary_storage": {
+                          "fs": "/dev/mmcblk0p1",
+                          "used": 15000000000,
+                          "size": 32000000000,
+                          "available": 17000000000
+                        },
                         "temperature": {
                           "cpu": 55,
                           "gpu": 60
@@ -5915,7 +5996,10 @@
                           "platform": "linux",
                           "distro": "Debian",
                           "release": "11 (bullseye)",
-                          "uptime": 36000
+                          "uptime": 36000,
+                          "node": "20.18.1",
+                          "npm": "11.1.0",
+                          "timezone": "CET+0100"
                         },
                         "network": [
                           {
@@ -5928,13 +6012,18 @@
                           "interface": "eth0",
                           "ip4": "192.168.1.5",
                           "ip6": "fe80::134a:1e43:abc5:d413",
-                          "mac": "xx:xx:xx:xx:xx:xx"
+                          "mac": "xx:xx:xx:xx:xx:xx",
+                          "hostname": "smart-panel"
                         },
                         "display": {
                           "resolution_x": 1920,
                           "resolution_y": 1080,
                           "current_res_x": 1280,
                           "current_res_y": 720
+                        },
+                        "process": {
+                          "pid": 86523,
+                          "uptime": 1496
                         }
                       },
                       "metadata": {
@@ -10073,6 +10162,7 @@
         "type": "object",
         "description": "Schema for the complete configuration settings for the smart panel, including audio, display, language, and weather settings.",
         "required": [
+          "path",
           "audio",
           "display",
           "language",
@@ -10081,6 +10171,11 @@
           "plugins"
         ],
         "properties": {
+          "path": {
+            "type": "string",
+            "description": "Configuration file path",
+            "example": "/var/lib/smart-panel/config.yaml"
+          },
           "audio": {
             "$ref": "#/components/schemas/ConfigModuleAudio",
             "description": "Audio configuration settings, including speaker and microphone options."
@@ -10099,7 +10194,7 @@
           },
           "system": {
             "$ref": "#/components/schemas/ConfigModuleSystem",
-            "description": "Syste, settings, including logger preferences."
+            "description": "System settings, including logger preferences."
           },
           "plugins": {
             "type": "array",
@@ -11032,6 +11127,71 @@
           }
         ]
       },
+      "ConfigModuleResPlugins": {
+        "title": "Configuration Plugins Response",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/config-module/config/plugins",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConfigModulePlugin"
+            },
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        },
+        "description": "Response containing a specific plugin of the smart panel configuration, like custom-plugin."
+      },
       "DevicesModuleDevice": {
         "title": "Device",
         "description": "Represents the core attributes of a device, including its unique identifier, name, and category. This model forms the foundation for more detailed device representations, such as those including related components (e.g., channels, properties, or controls).",
@@ -11044,6 +11204,7 @@
           "name",
           "description",
           "enabled",
+          "status",
           "controls",
           "channels",
           "created_at",
@@ -11065,8 +11226,7 @@
           },
           "category": {
             "$ref": "#/components/schemas/DevicesModuleDeviceCategory",
-            "description": "Type of the device, defining its purpose or category (e.g., thermostat, lighting).",
-            "readOnly": true
+            "description": "Type of the device, defining its purpose or category (e.g., thermostat, lighting)."
           },
           "identifier": {
             "type": "string",
@@ -11093,19 +11253,51 @@
             "default": true,
             "example": true
           },
+          "status": {
+            "type": "object",
+            "required": [
+              "online",
+              "status"
+            ],
+            "properties": {
+              "online": {
+                "type": "boolean",
+                "description": "Indicates whether the device is currently online and reachable. `true` means the device is active or in a connected state; `false` means it is offline or unreachable.",
+                "default": false,
+                "example": true
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "connected",
+                  "disconnected",
+                  "init",
+                  "ready",
+                  "running",
+                  "sleeping",
+                  "stopped",
+                  "lost",
+                  "alert",
+                  "unknown"
+                ],
+                "description": "Detailed connection state of the device as reported by its connector.",
+                "default": "unknown"
+              }
+            }
+          },
           "controls": {
             "type": "array",
+            "description": "A list of controls associated with the device. Controls represent actions or commands that can be executed on the device.",
             "items": {
               "$ref": "#/components/schemas/DevicesModuleDeviceControl"
-            },
-            "description": "A list of controls associated with the device. Controls represent actions or commands that can be executed on the device."
+            }
           },
           "channels": {
             "type": "array",
+            "description": "A list of channels associated with the device. Each channel represents a functional unit of the device, such as a sensor, actuator, or logical grouping of properties.",
             "items": {
               "$ref": "#/components/schemas/DevicesModuleChannel"
-            },
-            "description": "A list of channels associated with the device. Each channel represents a functional unit of the device, such as a sensor, actuator, or logical grouping of properties."
+            }
           },
           "created_at": {
             "type": "string",
@@ -14132,6 +14324,122 @@
           }
         }
       },
+      "StatsModuleStatsValue": {
+        "type": "object",
+        "required": [
+          "value",
+          "last_updated"
+        ],
+        "properties": {
+          "value": {
+            "description": "The metric value; may be numeric or null when unavailable.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 42.7
+          },
+          "last_updated": {
+            "description": "ISO 8601 timestamp of the last metric update.",
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-11-02T09:13:45.607Z"
+          }
+        }
+      },
+      "StatsModuleModuleStats": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/StatsModuleStatsValue"
+        },
+        "description": "Per-module metrics map (e.g., cpu_load_1m, req_per_min)."
+      },
+      "StatsModuleStats": {
+        "type": "object",
+        "properties": {
+          "websocket-module": {
+            "$ref": "#/components/schemas/StatsModuleModuleStats"
+          },
+          "system-module": {
+            "$ref": "#/components/schemas/StatsModuleModuleStats"
+          },
+          "api-module": {
+            "$ref": "#/components/schemas/StatsModuleModuleStats"
+          },
+          "dashboard-module": {
+            "$ref": "#/components/schemas/StatsModuleModuleStats"
+          },
+          "devices-module": {
+            "$ref": "#/components/schemas/StatsModuleModuleStats"
+          }
+        },
+        "additionalProperties": {
+          "$ref": "#/components/schemas/StatsModuleModuleStats"
+        },
+        "description": "Stats grouped by module name. Known modules are listed, but additional modules are allowed."
+      },
+      "StatsModuleResStats": {
+        "title": "Stats Response",
+        "description": "Response containing detailed stats, including CPU load, memory usage, storage, temperature, OS, etc.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/stats-module/stats",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE"
+            ],
+            "description": "The HTTP method used for the request (`GET`, `POST`, `PATCH`, `DELETE`).",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/StatsModuleStats",
+            "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        }
+      },
       "SystemModuleMemoryInfo": {
         "title": "Memory Info",
         "description": "Schema for a details about total, used, and free memory on the system.",
@@ -14249,7 +14557,10 @@
           "platform",
           "distro",
           "release",
-          "uptime"
+          "uptime",
+          "node",
+          "npm",
+          "timezone"
         ],
         "properties": {
           "platform": {
@@ -14275,6 +14586,25 @@
             "description": "System uptime in seconds.",
             "example": 36000,
             "readOnly": true
+          },
+          "node": {
+            "type": "string",
+            "description": "Installed Node version.",
+            "example": "20.18.1",
+            "readOnly": true
+          },
+          "npm": {
+            "type": "string",
+            "description": "Installed NPM version.",
+            "example": "11.1.0",
+            "nullable": true,
+            "readOnly": true
+          },
+          "timezone": {
+            "type": "string",
+            "description": "System timezone.",
+            "example": "CET+0100",
+            "readOnly": true
           }
         },
         "examples": [
@@ -14282,7 +14612,10 @@
             "platform": "linux",
             "distro": "Debian",
             "release": "11 (bullseye)",
-            "uptime": 36000
+            "uptime": 36000,
+            "node": "20.18.1",
+            "npm": "11.1.0",
+            "timezone": "CET+0100"
           }
         ]
       },
@@ -14331,6 +14664,35 @@
           }
         ]
       },
+      "SystemModuleProcessInfo": {
+        "title": "Process Info",
+        "description": "Schema for a information about the application process.",
+        "type": "object",
+        "required": [
+          "pid",
+          "uptime"
+        ],
+        "properties": {
+          "pid": {
+            "type": "integer",
+            "description": "Application process identification number.",
+            "example": 86523,
+            "readOnly": true
+          },
+          "uptime": {
+            "type": "integer",
+            "description": "Application uptime in seconds.",
+            "example": 1496,
+            "readOnly": true
+          }
+        },
+        "examples": [
+          {
+            "pid": 86523,
+            "uptime": 1496
+          }
+        ]
+      },
       "SystemModuleNetworkStats": {
         "title": "Network Stats",
         "description": "Schema for a network statistics, including interface, received/transmitted bytes, and speed.",
@@ -14369,7 +14731,8 @@
           "interface",
           "ip4",
           "ip6",
-          "mac"
+          "mac",
+          "hostname"
         ],
         "properties": {
           "interface": {
@@ -14394,6 +14757,12 @@
             "type": "string",
             "description": "Default network interface physical address.",
             "example": "xx:xx:xx:xx:xx:xx",
+            "readOnly": true
+          },
+          "hostname": {
+            "type": "string",
+            "description": "Default network address name.",
+            "example": "smart-panel",
             "readOnly": true
           }
         }
@@ -14435,11 +14804,13 @@
           "cpu_load",
           "memory",
           "storage",
+          "primary_storage",
           "temperature",
           "os",
           "network",
           "default_network",
-          "display"
+          "display",
+          "process"
         ],
         "properties": {
           "cpu_load": {
@@ -14450,7 +14821,8 @@
             "readOnly": true
           },
           "memory": {
-            "$ref": "#/components/schemas/SystemModuleMemoryInfo"
+            "$ref": "#/components/schemas/SystemModuleMemoryInfo",
+            "readOnly": true
           },
           "storage": {
             "type": "array",
@@ -14460,12 +14832,18 @@
             },
             "readOnly": true
           },
+          "primary_storage": {
+            "$ref": "#/components/schemas/SystemModuleStorageInfo",
+            "readOnly": true
+          },
           "temperature": {
-            "$ref": "#/components/schemas/SystemModuleTemperatureInfo"
+            "$ref": "#/components/schemas/SystemModuleTemperatureInfo",
+            "readOnly": true
           },
           "os": {
             "$ref": "#/components/schemas/SystemModuleOperatingSystemInfo",
-            "description": "Operating system name and version."
+            "description": "Operating system name and version.",
+            "readOnly": true
           },
           "network": {
             "type": "array",
@@ -14476,10 +14854,16 @@
             "readOnly": true
           },
           "default_network": {
-            "$ref": "#/components/schemas/SystemModuleDefaultNetwork"
+            "$ref": "#/components/schemas/SystemModuleDefaultNetwork",
+            "readOnly": true
           },
           "display": {
-            "$ref": "#/components/schemas/SystemModuleDisplayInfo"
+            "$ref": "#/components/schemas/SystemModuleDisplayInfo",
+            "readOnly": true
+          },
+          "process": {
+            "$ref": "#/components/schemas/SystemModuleProcessInfo",
+            "readOnly": true
           }
         },
         "examples": [
@@ -14498,6 +14882,12 @@
                 "available": 17000000000
               }
             ],
+            "primary_storage": {
+              "fs": "/dev/mmcblk0p1",
+              "used": 15000000000,
+              "size": 32000000000,
+              "available": 17000000000
+            },
             "temperature": {
               "cpu": 55,
               "gpu": 60
@@ -14519,13 +14909,18 @@
               "interface": "eth0",
               "ip4": "192.168.1.5",
               "ip6": "fe80::134a:1e43:abc5:d413",
-              "mac": "xx:xx:xx:xx:xx:xx"
+              "mac": "xx:xx:xx:xx:xx:xx",
+              "hostname": "smart-panel"
             },
             "display": {
               "resolution_x": 1920,
               "resolution_y": 1080,
               "current_res_x": 1280,
               "current_res_y": 720
+            },
+            "process": {
+              "pid": 86523,
+              "uptime": 1496
             }
           }
         ]
@@ -15554,7 +15949,8 @@
                 "interface": "eth0",
                 "ip4": "192.168.1.5",
                 "ip6": "fe80::134a:1e43:abc5:d413",
-                "mac": "xx:xx:xx:xx:xx:xx"
+                "mac": "xx:xx:xx:xx:xx:xx",
+                "hostname": "smart-panel"
               },
               "display": {
                 "resolution_x": 1920,
@@ -16135,9 +16531,6 @@
       },
       "SystemModuleResExtensions": {
         "title": "System Extension Asset Entries Response",
-        "x-stoplight": {
-          "id": "ef6113a07d2ca"
-        },
         "description": "List of all registered application extensions.",
         "type": "object",
         "required": [
@@ -17043,8 +17436,17 @@
       },
       "WeatherModuleResLocationCurrent": {
         "title": "Location Current Day Response",
-        "type": "object",
         "description": "Response containing detailed weather conditions for a current day and for a specified location.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
         "properties": {
           "status": {
             "type": "string",
@@ -17135,8 +17537,17 @@
       },
       "WeatherModuleResLocationForecast": {
         "title": "LocationForecast",
-        "type": "object",
         "description": "Response containing detailed weather conditions forecast for a specified location.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
         "properties": {
           "status": {
             "type": "string",
@@ -21288,6 +21699,10 @@
     {
       "name": "Pages cards plugin",
       "description": "A collection of endpoints that provide cards pages-related functionalities, acting as a central card plugin for handling tile interactions."
+    },
+    {
+      "name": "Stats module",
+      "description": "Provides endpoints for retrieving aggregated runtime statistics from all backend modules. This includes system metrics (CPU, memory, disk, uptime), API performance data, WebSocket connection counts, dashboard entity statistics, and device activity summaries. Useful for monitoring backend performance and overall system health."
     },
     {
       "name": "System module",

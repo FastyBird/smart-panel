@@ -1,3 +1,4 @@
+export * from './useConfigApp';
 export * from './useConfigAudio';
 export * from './useConfigAudioEditForm';
 export * from './useConfigDisplay';

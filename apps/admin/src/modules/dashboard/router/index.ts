@@ -15,8 +15,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Pages',
-			icon: 'mdi:monitor-dashboard',
-			menu: true,
+			icon: 'mdi:view-dashboard',
+			menu: 8000,
 		},
 		children: [
 			{
@@ -60,7 +60,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Page detail',
-			icon: 'mdi:monitor-dashboard',
+			icon: 'mdi:view-dashboard',
 		},
 		children: [
 			{
@@ -118,7 +118,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Tile detail',
-			icon: 'mdi:monitor-dashboard',
+			icon: 'mdi:view-dashboard',
 		},
 		children: [
 			{
@@ -176,7 +176,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
 			title: 'Page plugin',
-			icon: 'mdi:monitor-dashboard',
+			icon: 'mdi:view-dashboard',
 		},
 	},
 ];

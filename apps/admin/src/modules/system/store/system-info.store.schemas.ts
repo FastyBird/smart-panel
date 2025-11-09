@@ -22,6 +22,12 @@ export const SystemInfoSchema = z.object({
 			available: z.number(),
 		})
 	),
+	primaryStorage: z.object({
+		fs: z.string(),
+		used: z.number(),
+		size: z.number(),
+		available: z.number(),
+	}),
 	temperature: z.object({
 		cpu: z.number().nullable().optional(),
 		gpu: z.number().nullable().optional(),
@@ -31,6 +37,9 @@ export const SystemInfoSchema = z.object({
 		distro: z.string(),
 		release: z.string(),
 		uptime: z.number(),
+		node: z.string(),
+		npm: z.string().nullable(),
+		timezone: z.string(),
 	}),
 	network: z.array(
 		z.object({
@@ -44,12 +53,17 @@ export const SystemInfoSchema = z.object({
 		ip4: z.string(),
 		ip6: z.string(),
 		mac: z.string(),
+		hostname: z.string(),
 	}),
 	display: z.object({
 		resolutionX: z.number(),
 		resolutionY: z.number(),
 		currentResX: z.number(),
 		currentResY: z.number(),
+	}),
+	process: z.object({
+		pid: z.number(),
+		uptime: z.number(),
 	}),
 });
 
@@ -80,6 +94,12 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 				available: z.number(),
 			})
 		),
+		primaryStorage: z.object({
+			fs: z.string(),
+			used: z.number(),
+			size: z.number(),
+			available: z.number(),
+		}),
 		temperature: z.object({
 			cpu: z.number().nullable().optional(),
 			gpu: z.number().nullable().optional(),
@@ -89,6 +109,9 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 			distro: z.string(),
 			release: z.string(),
 			uptime: z.number(),
+			node: z.string(),
+			npm: z.string().nullable(),
+			timezone: z.string(),
 		}),
 		network: z.array(
 			z.object({
@@ -102,12 +125,17 @@ export const SystemInfoSetActionPayloadSchema = z.object({
 			ip4: z.string(),
 			ip6: z.string(),
 			mac: z.string(),
+			hostname: z.string(),
 		}),
 		display: z.object({
 			resolutionX: z.number(),
 			resolutionY: z.number(),
 			currentResX: z.number(),
 			currentResY: z.number(),
+		}),
+		process: z.object({
+			pid: z.number(),
+			uptime: z.number(),
 		}),
 	}),
 });
@@ -130,6 +158,12 @@ export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
 			available: z.number(),
 		})
 	),
+	primary_storage: z.object({
+		fs: z.string(),
+		used: z.number(),
+		size: z.number(),
+		available: z.number(),
+	}),
 	temperature: z.object({
 		cpu: z.number().nullable().optional(),
 		gpu: z.number().nullable().optional(),
@@ -139,6 +173,9 @@ export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
 		distro: z.string(),
 		release: z.string(),
 		uptime: z.number(),
+		node: z.string(),
+		npm: z.string().nullable(),
+		timezone: z.string(),
 	}),
 	network: z.array(
 		z.object({
@@ -152,11 +189,16 @@ export const SystemInfoResSchema: ZodType<ApiSystemInfo> = z.object({
 		ip4: z.string(),
 		ip6: z.string(),
 		mac: z.string(),
+		hostname: z.string(),
 	}),
 	display: z.object({
 		resolution_x: z.number(),
 		resolution_y: z.number(),
 		current_res_x: z.number(),
 		current_res_y: z.number(),
+	}),
+	process: z.object({
+		pid: z.number(),
+		uptime: z.number(),
 	}),
 });

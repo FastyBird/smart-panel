@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { type ZodType, z } from 'zod';
 
-import { DevicesModuleDeviceCategory, type components } from '../../../openapi';
+import { DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus, type components } from '../../../openapi';
 
 import { ChannelCreateReqSchema, ChannelResSchema } from './channels.store.schemas';
 import { DeviceControlCreateReqSchema, DeviceControlResSchema } from './devices.controls.store.schemas';
@@ -23,6 +23,10 @@ export const DeviceSchema = z.object({
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable().default(null),
 	enabled: z.boolean().default(true),
+	status: z.object({
+		online: z.boolean().default(false),
+		status: z.nativeEnum(DevicesModuleDeviceStatusStatus).default(DevicesModuleDeviceStatusStatus.unknown),
+	}),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -66,6 +70,10 @@ export const DevicesSetActionPayloadSchema = z.object({
 				.nullable()
 				.optional(),
 			enabled: z.boolean(),
+			status: z.object({
+				online: z.boolean(),
+				status: z.nativeEnum(DevicesModuleDeviceStatusStatus),
+			}),
 		})
 		.passthrough(),
 });
@@ -166,6 +174,10 @@ export const DeviceResSchema: ZodType<ApiDevice> = z.object({
 	name: z.string().trim().nonempty(),
 	description: z.string().trim().nullable(),
 	enabled: z.boolean(),
+	status: z.object({
+		online: z.boolean(),
+		status: z.nativeEnum(DevicesModuleDeviceStatusStatus),
+	}),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 	controls: z.array(DeviceControlResSchema),

@@ -220,6 +220,7 @@ describe('Config module model and OpenAPI component synchronization', () => {
 
 	test('AppConfigModel matches ConfigApp', () => {
 		const openApiModel: App & { weather: WeatherLatLon | WeatherCityName | WeatherCityId | WeatherZipCode } = {
+			path: '/var/smart-panel/config.yml',
 			audio: {
 				type: SectionType.AUDIO,
 				speaker: true,

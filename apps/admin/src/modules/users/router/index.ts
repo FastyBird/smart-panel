@@ -15,9 +15,9 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 				authenticated: true,
 				roles: [UsersModuleUserRole.admin, UsersModuleUserRole.owner],
 			},
-			title: 'Application users',
+			title: 'Users',
 			icon: 'mdi:users-group',
-			menu: true,
+			menu: 3000,
 		},
 		children: [
 			{

@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNumber, IsString, ValidateNested } from 'class-validator';
+import { IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { NetworkStatsDto } from './network-stats.dto';
 import { TemperatureDto } from './temperature.dto';
@@ -52,6 +52,19 @@ export class OperatingSystemDto {
 	@Expose()
 	@IsNumber()
 	uptime: number;
+
+	@Expose()
+	@IsString()
+	node: string;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	npm: string | null;
+
+	@Expose()
+	@IsString()
+	timezone: string;
 }
 
 export class DefaultNetworkDto {
@@ -70,6 +83,10 @@ export class DefaultNetworkDto {
 	@Expose()
 	@IsString()
 	mac: string;
+
+	@Expose()
+	@IsString()
+	hostname: string;
 }
 
 export class DisplayDto {
@@ -90,6 +107,16 @@ export class DisplayDto {
 	current_res_y: number;
 }
 
+export class ProcessDto {
+	@Expose()
+	@IsNumber()
+	pid: number;
+
+	@Expose()
+	@IsNumber()
+	uptime: number;
+}
+
 export class SystemInfoDto {
 	@Expose()
 	@IsNumber()
@@ -104,6 +131,11 @@ export class SystemInfoDto {
 	@ValidateNested({ each: true })
 	@Type(() => StorageDto)
 	storage: StorageDto[];
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => StorageDto)
+	primary_storage: StorageDto;
 
 	@Expose()
 	@ValidateNested()
@@ -129,4 +161,9 @@ export class SystemInfoDto {
 	@ValidateNested()
 	@Type(() => DisplayDto)
 	display: DisplayDto;
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => ProcessDto)
+	process: ProcessDto;
 }

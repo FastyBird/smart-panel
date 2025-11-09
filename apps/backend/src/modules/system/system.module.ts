@@ -6,7 +6,10 @@ import { SectionType } from '../config/config.constants';
 import { ConfigModule } from '../config/config.module';
 import { SystemConfigModel } from '../config/models/config.model';
 import { ConfigService } from '../config/services/config.service';
+import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { PlatformModule } from '../platform/platform.module';
+import { StatsRegistryService } from '../stats/services/stats-registry.service';
+import { StatsModule } from '../stats/stats.module';
 import { ClientUserDto } from '../websocket/dto/client-user.dto';
 import { CommandEventRegistryService } from '../websocket/services/command-event-registry.service';
 import { WebsocketModule } from '../websocket/websocket.module';
@@ -16,6 +19,7 @@ import { ExtensionsController } from './controllers/extensions.controller';
 import { LogsController } from './controllers/logs.controller';
 import { SystemController } from './controllers/system.controller';
 import { DisplayProfileEntity } from './entities/system.entity';
+import { SystemStatsProvider } from './providers/system-stats.provider';
 import { DisplaysProfilesService } from './services/displays-profiles.service';
 import { FactoryResetRegistryService } from './services/factory-reset-registry.service';
 import { ModuleResetService } from './services/module-reset.service';
@@ -31,6 +35,8 @@ import { DisplayProfileExistsConstraintValidator } from './validators/display-pr
 		NestConfigModule,
 		PlatformModule,
 		WebsocketModule,
+		InfluxDbModule,
+		StatsModule,
 		forwardRef(() => ConfigModule),
 	],
 	providers: [
@@ -41,6 +47,7 @@ import { DisplayProfileExistsConstraintValidator } from './validators/display-pr
 		DisplaysProfilesService,
 		DisplayProfileExistsConstraintValidator,
 		SystemLoggerService,
+		SystemStatsProvider,
 	],
 	controllers: [SystemController, DisplaysProfilesController, LogsController, ExtensionsController],
 	exports: [SystemService, DisplaysProfilesService, FactoryResetRegistryService, SystemLoggerService],
@@ -52,6 +59,8 @@ export class SystemModule {
 		private readonly moduleReset: ModuleResetService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly systemLoggerService: SystemLoggerService,
+		private readonly systemStatsProvider: SystemStatsProvider,
+		private readonly statsRegistryService: StatsRegistryService,
 		private readonly configService: ConfigService,
 	) {}
 
@@ -84,6 +93,8 @@ export class SystemModule {
 			},
 			400,
 		);
+
+		this.statsRegistryService.register(SYSTEM_MODULE_NAME, this.systemStatsProvider);
 
 		const moduleConfig = this.configService.getConfigSection<SystemConfigModel>(SectionType.SYSTEM, SystemConfigModel);
 

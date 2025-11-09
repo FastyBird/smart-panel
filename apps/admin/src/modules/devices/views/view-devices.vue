@@ -23,6 +23,22 @@
 
 	<app-bar-button
 		v-if="!isMDDevice && isDevicesListRoute"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="router.push('/')"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+
+		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
+	</app-bar-button>
+
+	<app-bar-button
+		v-if="!isMDDevice && isDevicesListRoute"
 		:align="AppBarButtonAlign.RIGHT"
 		teleport
 		small

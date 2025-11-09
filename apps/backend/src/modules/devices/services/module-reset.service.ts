@@ -58,6 +58,7 @@ export class ModuleResetService {
 			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_RESET, null);
 
 			await this.influxDbService.dropMeasurement('property_value');
+			await this.influxDbService.dropMeasurement('device_state');
 
 			this.logger.log('[RESET] Module data were successfully reset');
 

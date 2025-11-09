@@ -216,8 +216,22 @@ export enum ConnectionState {
 	UNKNOWN = 'unknown',
 }
 
+export const OnlineDeviceState = [
+	ConnectionState.CONNECTED,
+	ConnectionState.INIT,
+	ConnectionState.READY,
+	ConnectionState.RUNNING,
+	ConnectionState.SLEEPING,
+];
+
 export const PropertyInfluxDbSchema: ISchemaOptions = {
 	measurement: 'property_value',
 	fields: { stringValue: FieldType.STRING, numberValue: FieldType.FLOAT },
 	tags: ['propertyId'],
+};
+
+export const DeviceStatusInfluxDbSchema: ISchemaOptions = {
+	measurement: 'device_status',
+	fields: { online: FieldType.BOOLEAN, onlineI: FieldType.INTEGER, status: FieldType.STRING },
+	tags: ['deviceId', 'propertyId'],
 };

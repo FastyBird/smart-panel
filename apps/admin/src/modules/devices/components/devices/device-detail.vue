@@ -82,9 +82,9 @@ import { I18nT, useI18n } from 'vue-i18n';
 
 import { ElTag, ElText } from 'element-plus';
 
-import { DevicesModuleChannelCategory } from '../../../../openapi';
+import { DevicesModuleChannelCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi';
 import { useChannels, useDeviceState } from '../../composables/composables';
-import { ConnectionState, type StateColor } from '../../devices.constants';
+import { type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';
 
 import DeviceDetailDescription from './device-detail-description.vue';
@@ -108,15 +108,23 @@ const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefine
 });
 
 const stateColor = computed<StateColor>((): StateColor => {
-	if ([ConnectionState.UNKNOWN].includes(deviceState.value)) {
+	if ([DevicesModuleDeviceStatusStatus.unknown].includes(deviceState.value)) {
 		return undefined;
 	}
 
-	if ([ConnectionState.CONNECTED, ConnectionState.READY, ConnectionState.RUNNING].includes(deviceState.value)) {
+	if (
+		[DevicesModuleDeviceStatusStatus.connected, DevicesModuleDeviceStatusStatus.ready, DevicesModuleDeviceStatusStatus.running].includes(
+			deviceState.value
+		)
+	) {
 		return 'success';
-	} else if ([ConnectionState.INIT].includes(deviceState.value)) {
+	} else if ([DevicesModuleDeviceStatusStatus.init].includes(deviceState.value)) {
 		return 'info';
-	} else if ([ConnectionState.DISCONNECTED, ConnectionState.STOPPED, ConnectionState.SLEEPING].includes(deviceState.value)) {
+	} else if (
+		[DevicesModuleDeviceStatusStatus.disconnected, DevicesModuleDeviceStatusStatus.stopped, DevicesModuleDeviceStatusStatus.sleeping].includes(
+			deviceState.value
+		)
+	) {
 		return 'warning';
 	}
 

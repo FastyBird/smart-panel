@@ -11,7 +11,7 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, DeviceCategory } from '../devices.constants';
+import { ChannelCategory, ConnectionState, DeviceCategory } from '../devices.constants';
 import { CreateChannelControlDto } from '../dto/create-channel-control.dto';
 import { ChannelControlEntity, ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 import { ChannelsControlsService } from '../services/channels.controls.service';
@@ -32,6 +32,10 @@ describe('ChannelsControlsController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		status: {
+			online: false,
+			status: ConnectionState.UNKNOWN,
+		},
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		controls: [],

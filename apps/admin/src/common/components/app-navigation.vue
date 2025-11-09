@@ -70,7 +70,35 @@
 		>
 			<el-menu-item-group :class="[ns.e('group'), ns.is('phone', !isMDDevice)]">
 				<el-menu-item
+					v-if="accountManager?.routes.edit"
 					index="3-1"
+					data-test-id="navigation-user-edit"
+					@click="onEditProfile"
+				>
+					<el-icon>
+						<icon icon="mdi:user-edit" />
+					</el-icon>
+					<template #title>
+						{{ t('application.userMenu.profileGeneralSettings') }}
+					</template>
+				</el-menu-item>
+
+				<el-menu-item
+					v-if="accountManager?.routes.security"
+					index="3-2"
+					data-test-id="navigation-user-security"
+					@click="onEditSecurity"
+				>
+					<el-icon>
+						<icon icon="mdi:user-lock" />
+					</el-icon>
+					<template #title>
+						{{ t('application.userMenu.profileSecuritySettings') }}
+					</template>
+				</el-menu-item>
+
+				<el-menu-item
+					index="3-3"
 					data-test-id="navigation-sign-out"
 					@click="onSignOut"
 				>
@@ -147,6 +175,22 @@ const onSignOut = (): void => {
 		accountManager.signOut();
 
 		router.push({ name: accountManager.routes.signIn });
+	}
+};
+
+const onEditProfile = (): void => {
+	if (accountManager) {
+		router.push({ name: accountManager.routes.edit });
+
+		emit('click');
+	}
+};
+
+const onEditSecurity = (): void => {
+	if (accountManager) {
+		router.push({ name: accountManager.routes.security });
+
+		emit('click');
 	}
 };
 </script>

@@ -6,8 +6,8 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
-import { ConnectionState, DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceStatusStatus } from '../../../openapi';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../store/keys';
 
@@ -84,7 +84,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
 
-	const states = computed<Map<IDevice['id'], ConnectionState>>((): Map<IDevice['id'], ConnectionState> => {
+	const states = computed<Map<IDevice['id'], DevicesModuleDeviceStatusStatus>>((): Map<IDevice['id'], DevicesModuleDeviceStatusStatus> => {
 		const devices = devicesStore.findAll();
 
 		const statesMap = new Map();
@@ -94,7 +94,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 				channelsStore.findForDevice(device.id).find((channel) => channel.category === DevicesModuleChannelCategory.device_information) || null;
 
 			if (!channel) {
-				statesMap.set(device.id, ConnectionState.UNKNOWN);
+				statesMap.set(device.id, DevicesModuleDeviceStatusStatus.unknown);
 
 				continue;
 			}
@@ -104,18 +104,21 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 				null;
 
 			if (!property) {
-				statesMap.set(device.id, ConnectionState.UNKNOWN);
+				statesMap.set(device.id, DevicesModuleDeviceStatusStatus.unknown);
 
 				continue;
 			}
 
-			if (typeof property.value === 'string' && Object.values(ConnectionState).includes(property.value as ConnectionState)) {
-				statesMap.set(device.id, property.value as ConnectionState);
+			if (
+				typeof property.value === 'string' &&
+				Object.values(DevicesModuleDeviceStatusStatus).includes(property.value as DevicesModuleDeviceStatusStatus)
+			) {
+				statesMap.set(device.id, property.value as DevicesModuleDeviceStatusStatus);
 
 				continue;
 			}
 
-			statesMap.set(device.id, ConnectionState.UNKNOWN);
+			statesMap.set(device.id, DevicesModuleDeviceStatusStatus.unknown);
 		}
 
 		return statesMap;
@@ -139,18 +142,21 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 							(filters.value.enabled === 'enabled' && device.enabled) ||
 							(filters.value.enabled === 'disabled' && !device.enabled)) &&
 						(filters.value.states.length === 0 ||
-							(states.value.has(device.id) && filters.value.states.includes(states.value.get(device.id) as ConnectionState))) &&
+							(states.value.has(device.id) && filters.value.states.includes(states.value.get(device.id) as DevicesModuleDeviceStatusStatus))) &&
 						(filters.value.state === 'all' ||
 							(filters.value.state === 'online' &&
 								states.value.has(device.id) &&
-								[ConnectionState.READY, ConnectionState.CONNECTED, ConnectionState.RUNNING].includes(
-									states.value.get(device.id) as ConnectionState
+								[DevicesModuleDeviceStatusStatus.ready, DevicesModuleDeviceStatusStatus.connected, DevicesModuleDeviceStatusStatus.running].includes(
+									states.value.get(device.id) as DevicesModuleDeviceStatusStatus
 								)) ||
 							(filters.value.state === 'offline' &&
 								states.value.has(device.id) &&
-								[ConnectionState.DISCONNECTED, ConnectionState.STOPPED, ConnectionState.LOST, ConnectionState.UNKNOWN].includes(
-									states.value.get(device.id) as ConnectionState
-								)))
+								[
+									DevicesModuleDeviceStatusStatus.disconnected,
+									DevicesModuleDeviceStatusStatus.stopped,
+									DevicesModuleDeviceStatusStatus.lost,
+									DevicesModuleDeviceStatusStatus.unknown,
+								].includes(states.value.get(device.id) as DevicesModuleDeviceStatusStatus)))
 				),
 			[(device: IDevice) => (sortBy.value === 'state' ? (states.value.get(device.id) ?? '') : (device[sortBy.value as keyof IDevice] ?? ''))],
 			[sortDir.value === 'asc' ? 'asc' : 'desc']

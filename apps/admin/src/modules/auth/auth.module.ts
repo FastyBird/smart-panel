@@ -190,6 +190,8 @@ export default {
 				return Promise.resolve(true);
 			},
 			routes: {
+				edit: RouteNames.PROFILE_GENERAL,
+				security: RouteNames.PROFILE_SECURITY,
 				signIn: RouteNames.SIGN_IN,
 				signUp: RouteNames.SIGN_UP,
 			},

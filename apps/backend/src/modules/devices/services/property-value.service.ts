@@ -13,6 +13,11 @@ export class PropertyValueService {
 	constructor(private readonly influxDbService: InfluxDbService) {}
 
 	async write(property: ChannelPropertyEntity, value: string | boolean | number): Promise<void> {
+		if (this.valuesMap.has(property.id) && this.valuesMap.get(property.id) === value) {
+			// no change → skip Influx write
+			return;
+		}
+
 		try {
 			const formattedValue: { stringValue?: string; numberValue?: number } = {};
 
@@ -83,7 +88,11 @@ export class PropertyValueService {
 
 			this.logger.debug(`[PROPERTY] Fetching latest value id=${property.id}`);
 
-			const result = await this.influxDbService.query<{ stringValue?: string; numberValue?: number }>(query);
+			const result = await this.influxDbService.query<{
+				stringValue?: string;
+				numberValue?: number;
+				propertyId: ChannelPropertyEntity['id'];
+			}>(query);
 
 			if (!result.length) {
 				this.logger.debug(`[PROPERTY] No stored value found for id=${property.id}`);
@@ -92,6 +101,7 @@ export class PropertyValueService {
 			}
 
 			const latest = result[0];
+
 			let parsedValue: string | number | boolean | null = null;
 
 			switch (property.dataType) {

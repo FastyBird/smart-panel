@@ -3,6 +3,7 @@ import { DataSource, EntitySubscriberInterface, RemoveEvent, UpdateEvent } from 
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { DeviceStatusService } from '../services/device-status.service';
 import { PropertyValueService } from '../services/property-value.service';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 
 	constructor(
 		private readonly propertyValueService: PropertyValueService,
+		private readonly deviceStatusService: DeviceStatusService,
 		private readonly dataSource: DataSource,
 	) {
 		this.dataSource.subscribers.push(this);
@@ -55,6 +57,7 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 			this.logger.debug(`[SUBSCRIBER] Deleting stored values for id=${propertyId}`);
 
 			await this.propertyValueService.delete(event.entity);
+			await this.deviceStatusService.deleteByProperty(event.entity);
 
 			this.logger.log(`[SUBSCRIBER] Successfully removed all stored values for id=${propertyId}`);
 		} catch (error) {

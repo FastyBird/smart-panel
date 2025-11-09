@@ -1,7 +1,9 @@
+import { execSync } from 'node:child_process';
+import path from 'node:path';
 import si, { Systeminformation } from 'systeminformation';
 
 import { NetworkStatsDto } from '../dto/network-stats.dto';
-import { SystemInfoDto } from '../dto/system-info.dto';
+import { StorageDto, SystemInfoDto } from '../dto/system-info.dto';
 import { TemperatureDto } from '../dto/temperature.dto';
 import { WifiNetworksDto } from '../dto/wifi-networks.dto';
 import { PlatformNotSupportedException } from '../platform.exceptions';
@@ -9,6 +11,8 @@ import { PlatformNotSupportedException } from '../platform.exceptions';
 import { Platform } from './abstract.platform';
 
 export class GenericPlatform extends Platform {
+	private cachedNpmVersion: string | null = null;
+
 	async getSystemInfo() {
 		const [cpu, memory, storage, os, time, temp, network, graphics, networkInterface]: [
 			Systeminformation.CurrentLoadData,
@@ -49,11 +53,15 @@ export class GenericPlatform extends Platform {
 				size: row.size,
 				available: row.available,
 			})),
+			primaryStorage: await this.getPrimaryDisk(),
 			os: {
 				platform: os.platform,
 				distro: os.distro,
 				release: os.release,
 				uptime: time.uptime,
+				node: await this.getNodeVersion(),
+				npm: await this.getNpmVersion(),
+				timezone: time.timezone,
 			},
 			temperature: {
 				cpu: temp.main,
@@ -68,12 +76,17 @@ export class GenericPlatform extends Platform {
 				ip4: defaultNetworkInterface.ip4,
 				ip6: defaultNetworkInterface.ip6,
 				mac: defaultNetworkInterface.mac,
+				hostname: os.hostname,
 			},
 			display: {
 				resolutionX: graphics.displays[0]?.resolutionX || 0,
 				resolutionY: graphics.displays[0]?.resolutionY || 0,
 				currentResX: graphics.displays[0]?.currentResX || 0,
 				currentResY: graphics.displays[0]?.currentResY || 0,
+			},
+			process: {
+				pid: process.pid,
+				uptime: await this.getProcessUptimeSec(),
 			},
 		};
 
@@ -145,5 +158,88 @@ export class GenericPlatform extends Platform {
 
 	async powerOffDevice(): Promise<void> {
 		return Promise.reject(new PlatformNotSupportedException('Power off is not supported on this platform'));
+	}
+
+	async getProcessUptimeSec(): Promise<number> {
+		return Promise.resolve(Math.floor(process.uptime()));
+	}
+
+	async getProcessStartTimeIso(): Promise<Date> {
+		const startedMs = Date.now() - Math.floor(process.uptime() * 1000);
+
+		return Promise.resolve(new Date(startedMs));
+	}
+
+	async getNodeVersion(): Promise<string> {
+		return Promise.resolve(process.version.replace(/^v/, ''));
+	}
+
+	async getNpmVersion(): Promise<string | null> {
+		if (this.cachedNpmVersion !== null) {
+			return this.cachedNpmVersion;
+		}
+
+		try {
+			const out = execSync('npm -v', { stdio: ['ignore', 'pipe', 'ignore'] })
+				.toString()
+				.trim();
+			this.cachedNpmVersion = out || null;
+		} catch {
+			this.cachedNpmVersion = null;
+		}
+
+		return Promise.resolve(this.cachedNpmVersion);
+	}
+
+	async getPrimaryDisk(): Promise<StorageDto> {
+		const targetPath = process.cwd();
+
+		const fsList = await si.fsSize(); // [{ fs, type, mount, size, used, available }, ...]
+
+		const filtered = fsList.filter((d) => !this.isPseudoFs(d.type) && d.size > 0);
+
+		// Pick the mount whose mountpoint is the longest prefix of targetPath
+		// (e.g., '/' vs '/home' vs '/var')
+		const normalized = path.resolve(targetPath);
+
+		let best = null as (typeof filtered)[number] | null;
+
+		for (const d of filtered) {
+			if (!d.mount) {
+				continue;
+			}
+
+			const m = d.mount.endsWith(path.sep) ? d.mount : d.mount + path.sep;
+			const p = normalized.endsWith(path.sep) ? normalized : normalized + path.sep;
+
+			if (p.startsWith(m)) {
+				if (!best || (best.mount?.length ?? 0) < d.mount.length) best = d;
+			}
+		}
+
+		if (!best && filtered.length) {
+			best = filtered.sort((a, b) => b.size - a.size)[0];
+		}
+
+		return {
+			fs: best.fs,
+			used: best.used,
+			size: best.size,
+			available: best.available,
+		};
+	}
+
+	private isPseudoFs(type?: string) {
+		const HIDE_FS_TYPES = new Set(['tmpfs', 'devtmpfs', 'overlay', 'squashfs', 'proc', 'sysfs', 'ramfs']);
+
+		if (!type) {
+			return false;
+		}
+
+		if (HIDE_FS_TYPES.has(type)) {
+			return true;
+		}
+
+		return type.startsWith('cgroup');
 	}
 }
