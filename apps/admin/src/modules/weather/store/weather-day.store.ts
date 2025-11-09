@@ -74,25 +74,27 @@ export const useWeatherDay = defineStore<'weather_module-weather-day', WeatherDa
 
 				semaphore.value.getting = true;
 
-				const apiResponse = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/weather/current`);
+				try {
+					const apiResponse = await backend.client.GET(`/${WEATHER_MODULE_PREFIX}/weather/current`);
 
-				const { data: responseData, error, response } = apiResponse;
+					const { data: responseData, error, response } = apiResponse;
 
-				semaphore.value.getting = false;
+					if (typeof responseData !== 'undefined') {
+						data.value = transformWeatherDayResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					data.value = transformWeatherDayResponse(responseData.data);
+						return data.value;
+					}
 
-					return data.value;
+					let errorReason: string | null = 'Failed to fetch weather day.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-weather-module-current']>(error, errorReason);
+					}
+
+					throw new WeatherApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.getting = false;
 				}
-
-				let errorReason: string | null = 'Failed to fetch weather day.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-weather-module-current']>(error, errorReason);
-				}
-
-				throw new WeatherApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises = fetchPromise;

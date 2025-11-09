@@ -108,33 +108,35 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 
 		semaphore.value.fetching.item.push(payload.id);
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.GET(`/${USERS_MODULE_PREFIX}/users/{id}`, {
-			params: {
-				path: { id: payload.id },
-			},
-		});
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.GET(`/${USERS_MODULE_PREFIX}/users/{id}`, {
+				params: {
+					path: { id: payload.id },
+				},
+			});
 
-		semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+			if (typeof responseData !== 'undefined') {
+				const user = transformUserResponse(responseData.data);
 
-		if (typeof responseData !== 'undefined') {
-			const user = transformUserResponse(responseData.data);
+				data.value[user.id] = user;
 
-			data.value[user.id] = user;
+				return user;
+			}
 
-			return user;
+			let errorReason: string | null = 'Failed to fetch user.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['get-users-module-user']>(error, errorReason);
+			}
+
+			throw new UsersApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 		}
-
-		let errorReason: string | null = 'Failed to fetch user.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['get-users-module-user']>(error, errorReason);
-		}
-
-		throw new UsersApiException(errorReason, response.status);
 	};
 
 	const fetch = async (): Promise<IUser[]> => {
@@ -144,31 +146,33 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 
 		semaphore.value.fetching.items = true;
 
-		const { data: responseData, error, response } = await backend.client.GET(`/${USERS_MODULE_PREFIX}/users`);
+		try {
+			const { data: responseData, error, response } = await backend.client.GET(`/${USERS_MODULE_PREFIX}/users`);
 
-		semaphore.value.fetching.items = false;
+			if (typeof responseData !== 'undefined') {
+				data.value = Object.fromEntries(
+					responseData.data.map((user) => {
+						const transformedUser = transformUserResponse(user);
 
-		if (typeof responseData !== 'undefined') {
-			data.value = Object.fromEntries(
-				responseData.data.map((user) => {
-					const transformedUser = transformUserResponse(user);
+						return [transformedUser.id, transformedUser];
+					})
+				);
 
-					return [transformedUser.id, transformedUser];
-				})
-			);
+				firstLoad.value = true;
 
-			firstLoad.value = true;
+				return Object.values(data.value);
+			}
 
-			return Object.values(data.value);
+			let errorReason: string | null = 'Failed to fetch users.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['get-users-module-users']>(error, errorReason);
+			}
+
+			throw new UsersApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.fetching.items = false;
 		}
-
-		let errorReason: string | null = 'Failed to fetch users.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['get-users-module-users']>(error, errorReason);
-		}
-
-		throw new UsersApiException(errorReason, response.status);
 	};
 
 	const add = async (payload: IUsersAddActionPayload): Promise<IUser> => {
@@ -208,36 +212,38 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 				throw new UsersValidationException('Failed to add user.');
 			}
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/users`, {
-				body: {
-					data: transformUserCreateRequest({ ...parsedNewUser.data, ...{ id: payload.id, password } }),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/users`, {
+					body: {
+						data: transformUserCreateRequest({ ...parsedNewUser.data, ...{ id: payload.id, password } }),
+					},
+				});
 
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewUser.data.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const user = transformUserResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const user = transformUserResponse(responseData.data);
+					data.value[user.id] = user;
 
-				data.value[user.id] = user;
+					return user;
+				}
 
-				return user;
+				// Record could not be created on api, we have to remove it from a database
+				delete data.value[parsedNewUser.data.id];
+
+				let errorReason: string | null = 'Failed to create user.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-users-module-user']>(error, errorReason);
+				}
+
+				throw new UsersApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewUser.data.id);
 			}
-
-			// Record could not be created on api, we have to remove it from a database
-			delete data.value[parsedNewUser.data.id];
-
-			let errorReason: string | null = 'Failed to create user.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-users-module-user']>(error, errorReason);
-			}
-
-			throw new UsersApiException(errorReason, response.status);
 		}
 	};
 
@@ -278,41 +284,43 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 
 			return parsedEditedUser.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.PATCH(`/${USERS_MODULE_PREFIX}/users/{id}`, {
-				params: {
-					path: {
-						id: payload.id,
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.PATCH(`/${USERS_MODULE_PREFIX}/users/{id}`, {
+					params: {
+						path: {
+							id: payload.id,
+						},
 					},
-				},
-				body: {
-					data: transformUserUpdateRequest(parsedEditedUser.data),
-				},
-			});
+					body: {
+						data: transformUserUpdateRequest(parsedEditedUser.data),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const user = transformUserResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				const user = transformUserResponse(responseData.data);
+					data.value[user.id] = user;
 
-				data.value[user.id] = user;
+					return user;
+				}
 
-				return user;
+				// Updating the record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Failed to update user.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-users-module-user']>(error, errorReason);
+				}
+
+				throw new UsersApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Failed to update user.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-users-module-user']>(error, errorReason);
-			}
-
-			throw new UsersApiException(errorReason, response.status);
 		}
 	};
 
@@ -341,33 +349,35 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 			throw new UsersValidationException('Failed to add user.');
 		}
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/users`, {
-			body: {
-				data: transformUserCreateRequest({ ...parsedSaveUser.data, ...{ id: payload.id, password } }),
-			},
-		});
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/users`, {
+				body: {
+					data: transformUserCreateRequest({ ...parsedSaveUser.data, ...{ id: payload.id, password } }),
+				},
+			});
 
-		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+				const user = transformUserResponse(responseData.data);
 
-		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const user = transformUserResponse(responseData.data);
+				data.value[user.id] = user;
 
-			data.value[user.id] = user;
+				return user;
+			}
 
-			return user;
+			let errorReason: string | null = 'Failed to create user.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['create-users-module-user']>(error, errorReason);
+			}
+
+			throw new UsersApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 		}
-
-		let errorReason: string | null = 'Failed to create user.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['create-users-module-user']>(error, errorReason);
-		}
-
-		throw new UsersApiException(errorReason, response.status);
 	};
 
 	const remove = async (payload: IUsersRemoveActionPayload): Promise<boolean> => {
@@ -388,30 +398,32 @@ export const useUsers = defineStore<'users_module-users', UsersStoreSetup>('user
 		if (recordToRemove.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
-			const { error, response } = await backend.client.DELETE(`/${USERS_MODULE_PREFIX}/users/{id}`, {
-				params: {
-					path: {
-						id: payload.id,
+			try {
+				const { error, response } = await backend.client.DELETE(`/${USERS_MODULE_PREFIX}/users/{id}`, {
+					params: {
+						path: {
+							id: payload.id,
+						},
 					},
-				},
-			});
+				});
 
-			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+				if (response.status === 204) {
+					return true;
+				}
 
-			if (response.status === 204) {
-				return true;
+				// Deleting record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Remove account failed.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['delete-users-module-user']>(error, errorReason);
+				}
+
+				throw new UsersApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			}
-
-			// Deleting record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Remove account failed.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['delete-users-module-user']>(error, errorReason);
-			}
-
-			throw new UsersApiException(errorReason, response.status);
 		}
 
 		return true;

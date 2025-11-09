@@ -150,58 +150,60 @@ export const useConfigApp = defineStore<'config-module_config_app', ConfigAppSto
 
 			semaphore.value.getting = true;
 
-			const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config`);
+			try {
+				const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config`);
 
-			const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, error, response } = apiResponse;
 
-			semaphore.value.getting = false;
+				if (typeof responseData !== 'undefined') {
+					const transformed = transformConfigAppResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				const transformed = transformConfigAppResponse(responseData.data);
+					const configAudioStore = storesManager.getStore(configAudioStoreKey);
+					const configDisplayStore = storesManager.getStore(configDisplayStoreKey);
+					const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
+					const configSystemStore = storesManager.getStore(configSystemStoreKey);
+					const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
+					const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 
-				const configAudioStore = storesManager.getStore(configAudioStoreKey);
-				const configDisplayStore = storesManager.getStore(configDisplayStoreKey);
-				const configLanguageStore = storesManager.getStore(configLanguageStoreKey);
-				const configSystemStore = storesManager.getStore(configSystemStoreKey);
-				const configWeatherStore = storesManager.getStore(configWeatherStoreKey);
-				const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
-
-				configAudioStore.set({
-					data: transformed.audio,
-				});
-				configDisplayStore.set({
-					data: transformed.display,
-				});
-				configLanguageStore.set({
-					data: transformed.language,
-				});
-				configSystemStore.set({
-					data: transformed.system,
-				});
-				configWeatherStore.set({
-					data: transformed.weather,
-				});
-
-				for (const plugin of transformed.plugins) {
-					configPluginsStore.set({
-						data: plugin,
+					configAudioStore.set({
+						data: transformed.audio,
 					});
+					configDisplayStore.set({
+						data: transformed.display,
+					});
+					configLanguageStore.set({
+						data: transformed.language,
+					});
+					configSystemStore.set({
+						data: transformed.system,
+					});
+					configWeatherStore.set({
+						data: transformed.weather,
+					});
+
+					for (const plugin of transformed.plugins) {
+						configPluginsStore.set({
+							data: plugin,
+						});
+					}
+
+					dataPartial.value = {
+						path: transformed.path,
+					};
+
+					return transformed;
 				}
 
-				dataPartial.value = {
-					path: transformed.path,
-				};
+				let errorReason: string | null = 'Failed to fetch app config.';
 
-				return transformed;
+				if (error) {
+					errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
+				}
+
+				throw new ConfigApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.getting = false;
 			}
-
-			let errorReason: string | null = 'Failed to fetch app config.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
-			}
-
-			throw new ConfigApiException(errorReason, response.status);
 		})();
 
 		pendingGetPromises = fetchPromise;

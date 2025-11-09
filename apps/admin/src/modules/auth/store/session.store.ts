@@ -144,23 +144,25 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 			semaphore.value.fetching = true;
 
-			const { data: responseData, error } = await backend.client.GET(`/${AUTH_MODULE_PREFIX}/auth/profile`);
+			try {
+				const { data: responseData, error } = await backend.client.GET(`/${AUTH_MODULE_PREFIX}/auth/profile`);
 
-			semaphore.value.fetching = false;
+				if (typeof responseData !== 'undefined') {
+					profile.value = transformUserResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				profile.value = transformUserResponse(responseData.data);
+					return profile.value;
+				}
 
-				return profile.value;
+				let errorReason: string | null = 'Failed to get profile.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-auth-module-profile']>(error, errorReason);
+				}
+
+				throw new AuthException(errorReason);
+			} finally {
+				semaphore.value.fetching = false;
 			}
-
-			let errorReason: string | null = 'Failed to get profile.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-auth-module-profile']>(error, errorReason);
-			}
-
-			throw new AuthException(errorReason);
 		})();
 
 		pendingGetPromise = getPromise;
@@ -179,34 +181,36 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 		semaphore.value.creating = true;
 
-		const { data: responseData, error } = await backend.client.POST(`/${AUTH_MODULE_PREFIX}/auth/login`, {
-			body: {
-				data: {
-					username: payload.data.username,
-					password: payload.data.password,
+		try {
+			const { data: responseData, error } = await backend.client.POST(`/${AUTH_MODULE_PREFIX}/auth/login`, {
+				body: {
+					data: {
+						username: payload.data.username,
+						password: payload.data.password,
+					},
 				},
-			},
-		});
+			});
 
-		semaphore.value.creating = false;
+			if (typeof responseData !== 'undefined') {
+				tokenPair.value = transformTokenPairResponse(responseData.data);
 
-		if (typeof responseData !== 'undefined') {
-			tokenPair.value = transformTokenPairResponse(responseData.data);
+				writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
 
-			writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
+				writeCookie(REFRESH_TOKEN_COOKIE_NAME, responseData.data.refresh_token);
 
-			writeCookie(REFRESH_TOKEN_COOKIE_NAME, responseData.data.refresh_token);
+				return await get();
+			}
 
-			return await get();
+			let errorReason: string | null = 'Failed to create user session.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['create-auth-module-register']>(error, errorReason);
+			}
+
+			throw new AuthException(errorReason);
+		} finally {
+			semaphore.value.creating = false;
 		}
-
-		let errorReason: string | null = 'Failed to create user session.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['create-auth-module-register']>(error, errorReason);
-		}
-
-		throw new AuthException(errorReason);
 	};
 
 	const edit = async (payload: ISessionEditActionPayload): Promise<boolean> => {
@@ -243,29 +247,31 @@ export const useSession = defineStore<'auth_module-session', SessionStoreSetup>(
 
 			semaphore.value.updating = true;
 
-			const { data: responseData } = await backend.client.POST(`/${AUTH_MODULE_PREFIX}/auth/refresh`, {
-				body: {
-					data: {
-						token: refreshToken,
+			try {
+				const { data: responseData } = await backend.client.POST(`/${AUTH_MODULE_PREFIX}/auth/refresh`, {
+					body: {
+						data: {
+							token: refreshToken,
+						},
 					},
-				},
-			});
+				});
 
-			semaphore.value.updating = false;
+				if (typeof responseData !== 'undefined') {
+					tokenPair.value = transformTokenPairResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				tokenPair.value = transformTokenPairResponse(responseData.data);
+					writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
 
-				writeCookie(ACCESS_TOKEN_COOKIE_NAME, responseData.data.access_token);
+					writeCookie(REFRESH_TOKEN_COOKIE_NAME, responseData.data.refresh_token);
 
-				writeCookie(REFRESH_TOKEN_COOKIE_NAME, responseData.data.refresh_token);
+					return true;
+				}
 
-				return true;
+				deleteCookie(REFRESH_TOKEN_COOKIE_NAME);
+
+				return false;
+			} finally {
+				semaphore.value.updating = false;
 			}
-
-			deleteCookie(REFRESH_TOKEN_COOKIE_NAME);
-
-			return false;
 		})();
 
 		pendingRefreshPromise = refreshPromise;

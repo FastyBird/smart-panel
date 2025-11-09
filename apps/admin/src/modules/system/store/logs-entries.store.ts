@@ -112,47 +112,49 @@ export const useLogsEntries = defineStore<'system_module-logs', LogsEntriesStore
 
 			semaphore.value.fetching.items = true;
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/logs`, {
-				params: {
-					query: {
-						after_id: payload?.afterId,
-						limit: payload?.limit,
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/logs`, {
+					params: {
+						query: {
+							after_id: payload?.afterId,
+							limit: payload?.limit,
+						},
 					},
-				},
-			});
+				});
 
-			semaphore.value.fetching.items = false;
+				if (typeof responseData !== 'undefined') {
+					const transformed = Object.fromEntries(
+						responseData.data.map((logEntry) => {
+							const transformedLogEntry = transformLogEntryResponse(logEntry);
 
-			if (typeof responseData !== 'undefined') {
-				const transformed = Object.fromEntries(
-					responseData.data.map((logEntry) => {
-						const transformedLogEntry = transformLogEntryResponse(logEntry);
+							return [transformedLogEntry.id, transformedLogEntry];
+						})
+					);
 
-						return [transformedLogEntry.id, transformedLogEntry];
-					})
-				);
+					data.value = payload?.append ? { ...data.value, ...transformed } : transformed;
 
-				data.value = payload?.append ? { ...data.value, ...transformed } : transformed;
+					firstLoad.value = true;
 
-				firstLoad.value = true;
+					hasMore.value = responseData.metadata.has_more;
+					nextCursor.value = responseData.metadata.next_cursor;
 
-				hasMore.value = responseData.metadata.has_more;
-				nextCursor.value = responseData.metadata.next_cursor;
+					return Object.values(data.value);
+				}
 
-				return Object.values(data.value);
+				let errorReason: string | null = 'Failed to fetch logs entries.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-system-module-logs']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.items = false;
 			}
-
-			let errorReason: string | null = 'Failed to fetch logs entries.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-system-module-logs']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		})();
 
 		pendingFetchPromises[payload?.afterId ? payload.afterId : 'first'] = fetchPromise;

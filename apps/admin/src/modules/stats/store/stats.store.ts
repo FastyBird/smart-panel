@@ -72,25 +72,27 @@ export const useStats = defineStore<'stats_module-stats', StatsStoreSetup>('stat
 
 			semaphore.value.getting = true;
 
-			const apiResponse = await backend.client.GET(`/${STATS_MODULE_PREFIX}/stats`);
+			try {
+				const apiResponse = await backend.client.GET(`/${STATS_MODULE_PREFIX}/stats`);
 
-			const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, error, response } = apiResponse;
 
-			semaphore.value.getting = false;
+				if (typeof responseData !== 'undefined') {
+					data.value = transformStatsResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				data.value = transformStatsResponse(responseData.data);
+					return data.value;
+				}
 
-				return data.value;
+				let errorReason: string | null = 'Failed to fetch stats.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-stats-module-stats']>(error, errorReason);
+				}
+
+				throw new StatsApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.getting = false;
 			}
-
-			let errorReason: string | null = 'Failed to fetch stats.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-stats-module-stats']>(error, errorReason);
-			}
-
-			throw new StatsApiException(errorReason, response.status);
 		})();
 
 		pendingGetPromises = fetchPromise;

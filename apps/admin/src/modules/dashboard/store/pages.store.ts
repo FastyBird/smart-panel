@@ -145,43 +145,45 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 			semaphore.value.fetching.item.push(payload.id);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
-				params: {
-					path: { id: payload.id },
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+				});
 
-			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const element = getPluginElement(responseData.data.type);
 
-			if (typeof responseData !== 'undefined') {
-				const element = getPluginElement(responseData.data.type);
+					const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
 
-				const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+						insertDataSourceRelations(transformed, responseData.data.data_source);
+					}
 
-				if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
-					insertDataSourceRelations(transformed, responseData.data.data_source);
+					if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+						insertTilesRelations(transformed, responseData.data.tiles);
+					}
+
+					return transformed;
 				}
 
-				if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
-					insertTilesRelations(transformed, responseData.data.tiles);
+				let errorReason: string | null = 'Failed to fetch page.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-dashboard-module-page']>(error, errorReason);
 				}
 
-				return transformed;
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to fetch page.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-dashboard-module-page']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		})();
 
 		pendingGetPromises[payload.id] = getPromise;
@@ -207,41 +209,43 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 			firstLoad.value = false;
 
-			const { data: responseData, error, response } = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages`);
+			try {
+				const { data: responseData, error, response } = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/pages`);
 
-			semaphore.value.fetching.items = false;
+				if (typeof responseData !== 'undefined') {
+					firstLoad.value = true;
 
-			if (typeof responseData !== 'undefined') {
-				firstLoad.value = true;
+					data.value = Object.fromEntries(
+						responseData.data.map((page) => {
+							const element = getPluginElement(page.type);
 
-				data.value = Object.fromEntries(
-					responseData.data.map((page) => {
-						const element = getPluginElement(page.type);
+							const transformed = transformPageResponse(page, element?.schemas?.pageSchema || PageSchema);
 
-						const transformed = transformPageResponse(page, element?.schemas?.pageSchema || PageSchema);
+							if ('data_source' in page && Array.isArray(page.data_source)) {
+								insertDataSourceRelations(transformed, page.data_source);
+							}
 
-						if ('data_source' in page && Array.isArray(page.data_source)) {
-							insertDataSourceRelations(transformed, page.data_source);
-						}
+							if ('tiles' in page && Array.isArray(page.tiles)) {
+								insertTilesRelations(transformed, page.tiles);
+							}
 
-						if ('tiles' in page && Array.isArray(page.tiles)) {
-							insertTilesRelations(transformed, page.tiles);
-						}
+							return [transformed.id, transformed];
+						})
+					);
 
-						return [transformed.id, transformed];
-					})
-				);
+					return Object.values(data.value);
+				}
 
-				return Object.values(data.value);
+				let errorReason: string | null = 'Failed to fetch pages.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-dashboard-module-pages']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.items = false;
 			}
-
-			let errorReason: string | null = 'Failed to fetch pages.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-dashboard-module-pages']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		})();
 
 		pendingFetchPromises['all'] = fetchPromise;
@@ -286,44 +290,46 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 			return parsedNewItem.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
-				body: {
-					data: transformPageCreateRequest<IPageCreateReq>(parsedNewItem.data, element?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
+					body: {
+						data: transformPageCreateRequest<IPageCreateReq>(parsedNewItem.data, element?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
+					},
+				});
 
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+						insertDataSourceRelations(transformed, responseData.data.data_source);
+					}
 
-				if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
-					insertDataSourceRelations(transformed, responseData.data.data_source);
+					if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+						insertTilesRelations(transformed, responseData.data.tiles);
+					}
+
+					return transformed;
 				}
 
-				if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
-					insertTilesRelations(transformed, responseData.data.tiles);
+				// Record could not be created on api, we have to remove it from a database
+				delete data.value[parsedNewItem.data.id];
+
+				let errorReason: string | null = 'Failed to create page.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-dashboard-module-page']>(error, errorReason);
 				}
 
-				return transformed;
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 			}
-
-			// Record could not be created on api, we have to remove it from a database
-			delete data.value[parsedNewItem.data.id];
-
-			let errorReason: string | null = 'Failed to create page.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-dashboard-module-page']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 	};
 
@@ -366,41 +372,43 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 			return parsedEditedItem.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
-				params: {
-					path: {
-						id: payload.id,
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+					params: {
+						path: {
+							id: payload.id,
+						},
 					},
-				},
-				body: {
-					data: transformPageUpdateRequest<IPageUpdateReq>(parsedEditedItem.data, element?.schemas?.pageUpdateReqSchema || PageUpdateReqSchema),
-				},
-			});
+					body: {
+						data: transformPageUpdateRequest<IPageUpdateReq>(parsedEditedItem.data, element?.schemas?.pageUpdateReqSchema || PageUpdateReqSchema),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
 
-			if (typeof responseData !== 'undefined') {
-				const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					return transformed;
+				}
 
-				return transformed;
+				// Updating the record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Failed to update page.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-dashboard-module-page']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Failed to update page.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-dashboard-module-page']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 	};
 
@@ -425,41 +433,43 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 
 		semaphore.value.updating.push(payload.id);
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
-			body: {
-				data: transformPageCreateRequest<IPageCreateReq>(parsedSaveItem.data, element?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
-			},
-		});
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/pages`, {
+				body: {
+					data: transformPageCreateRequest<IPageCreateReq>(parsedSaveItem.data, element?.schemas?.pageCreateReqSchema || PageCreateReqSchema),
+				},
+			});
 
-		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+				const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
 
-		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const transformed = transformPageResponse(responseData.data, element?.schemas?.pageSchema || PageSchema);
+				data.value[transformed.id] = transformed;
 
-			data.value[transformed.id] = transformed;
+				if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
+					insertDataSourceRelations(transformed, responseData.data.data_source);
+				}
 
-			if ('data_source' in responseData.data && Array.isArray(responseData.data.data_source)) {
-				insertDataSourceRelations(transformed, responseData.data.data_source);
+				if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
+					insertTilesRelations(transformed, responseData.data.tiles);
+				}
+
+				return transformed;
 			}
 
-			if ('tiles' in responseData.data && Array.isArray(responseData.data.tiles)) {
-				insertTilesRelations(transformed, responseData.data.tiles);
+			let errorReason: string | null = 'Failed to create page.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['create-dashboard-module-page']>(error, errorReason);
 			}
 
-			return transformed;
+			throw new DashboardApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 		}
-
-		let errorReason: string | null = 'Failed to create page.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['create-dashboard-module-page']>(error, errorReason);
-		}
-
-		throw new DashboardApiException(errorReason, response.status);
 	};
 
 	const remove = async (payload: IPagesRemoveActionPayload): Promise<boolean> => {
@@ -480,43 +490,45 @@ export const usePages = defineStore<'dashboard_module-pages', PagesStoreSetup>('
 		if (recordToRemove.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
-			const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
-				params: {
-					path: {
-						id: payload.id,
+			try {
+				const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/pages/{id}`, {
+					params: {
+						path: {
+							id: payload.id,
+						},
 					},
-				},
-			});
-
-			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
-
-			if (response.status === 204) {
-				const tilesStore = storesManager.getStore(tilesStoreKey);
-				const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
-
-				dataSourcesStore.unset({ parent: { type: 'page', id: payload.id } });
-
-				const tiles = tilesStore.findForParent('page', payload.id);
-
-				tiles.forEach((tile) => {
-					dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
 				});
 
-				tilesStore.unset({ parent: { type: 'page', id: payload.id } });
+				if (response.status === 204) {
+					const tilesStore = storesManager.getStore(tilesStoreKey);
+					const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
 
-				return true;
+					dataSourcesStore.unset({ parent: { type: 'page', id: payload.id } });
+
+					const tiles = tilesStore.findForParent('page', payload.id);
+
+					tiles.forEach((tile) => {
+						dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
+					});
+
+					tilesStore.unset({ parent: { type: 'page', id: payload.id } });
+
+					return true;
+				}
+
+				// Deleting record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Remove account failed.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['delete-dashboard-module-page']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			}
-
-			// Deleting record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Remove account failed.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['delete-dashboard-module-page']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 
 		return true;

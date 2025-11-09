@@ -135,33 +135,35 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 
 				semaphore.value.fetching.item.push(payload.id);
 
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls/{id}`, {
-					params: {
-						path: { channelId: payload.channelId, id: payload.id },
-					},
-				});
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls/{id}`, {
+						params: {
+							path: { channelId: payload.channelId, id: payload.id },
+						},
+					});
 
-				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+					if (typeof responseData !== 'undefined') {
+						const control = transformChannelControlResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					const control = transformChannelControlResponse(responseData.data);
+						data.value[control.id] = control;
 
-					data.value[control.id] = control;
+						return control;
+					}
 
-					return control;
+					let errorReason: string | null = 'Failed to fetch channel control.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-devices-module-channel-control']>(error, errorReason);
+					}
+
+					throw new DevicesApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 				}
-
-				let errorReason: string | null = 'Failed to fetch channel control.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-devices-module-channel-control']>(error, errorReason);
-				}
-
-				throw new DevicesApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises[payload.id] = getPromise;
@@ -188,42 +190,44 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 				firstLoad.value = firstLoad.value.filter((item) => item !== payload.channelId);
 				firstLoad.value = [...new Set(firstLoad.value)];
 
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
-					params: {
-						path: { channelId: payload.channelId },
-					},
-				});
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
+						params: {
+							path: { channelId: payload.channelId },
+						},
+					});
 
-				semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.channelId);
+					if (typeof responseData !== 'undefined') {
+						firstLoad.value.push(payload.channelId);
+						firstLoad.value = [...new Set(firstLoad.value)];
 
-				if (typeof responseData !== 'undefined') {
-					firstLoad.value.push(payload.channelId);
-					firstLoad.value = [...new Set(firstLoad.value)];
+						const controls = Object.fromEntries(
+							responseData.data.map((control) => {
+								const transformedChannelControl = transformChannelControlResponse(control);
 
-					const controls = Object.fromEntries(
-						responseData.data.map((control) => {
-							const transformedChannelControl = transformChannelControlResponse(control);
+								return [transformedChannelControl.id, transformedChannelControl];
+							})
+						);
 
-							return [transformedChannelControl.id, transformedChannelControl];
-						})
-					);
+						data.value = { ...data.value, ...controls };
 
-					data.value = { ...data.value, ...controls };
+						return Object.values(data.value);
+					}
 
-					return Object.values(data.value);
+					let errorReason: string | null = 'Failed to fetch channel controls.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-devices-module-channel-controls']>(error, errorReason);
+					}
+
+					throw new DevicesApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.channelId);
 				}
-
-				let errorReason: string | null = 'Failed to fetch channel controls.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-devices-module-channel-controls']>(error, errorReason);
-				}
-
-				throw new DevicesApiException(errorReason, response.status);
 			})();
 
 			pendingFetchPromises[payload.channelId] = fetchPromise;
@@ -267,39 +271,41 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 
 				return parsedNewChannelControl.data;
 			} else {
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
-					params: {
-						path: { channelId: payload.channelId },
-					},
-					body: {
-						data: transformChannelControlCreateRequest({ ...parsedNewChannelControl.data, ...{ id: payload.id, channel: payload.channelId } }),
-					},
-				});
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
+						params: {
+							path: { channelId: payload.channelId },
+						},
+						body: {
+							data: transformChannelControlCreateRequest({ ...parsedNewChannelControl.data, ...{ id: payload.id, channel: payload.channelId } }),
+						},
+					});
 
-				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewChannelControl.data.id);
+					if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+						const control = transformChannelControlResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const control = transformChannelControlResponse(responseData.data);
+						data.value[control.id] = control;
 
-					data.value[control.id] = control;
+						return control;
+					}
 
-					return control;
+					// Record could not be created on api, we have to remove it from a database
+					delete data.value[parsedNewChannelControl.data.id];
+
+					let errorReason: string | null = 'Failed to create channel control.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['create-devices-module-channel-control']>(error, errorReason);
+					}
+
+					throw new DevicesApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewChannelControl.data.id);
 				}
-
-				// Record could not be created on api, we have to remove it from a database
-				delete data.value[parsedNewChannelControl.data.id];
-
-				let errorReason: string | null = 'Failed to create channel control.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['create-devices-module-channel-control']>(error, errorReason);
-				}
-
-				throw new DevicesApiException(errorReason, response.status);
 			}
 		};
 
@@ -322,36 +328,38 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 
 			semaphore.value.updating.push(payload.id);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
-				params: {
-					path: { channelId: parsedSaveChannelControl.data.channel },
-				},
-				body: {
-					data: transformChannelControlCreateRequest({ ...parsedSaveChannelControl.data, ...{ id: payload.id, channel: payload.channelId } }),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls`, {
+					params: {
+						path: { channelId: parsedSaveChannelControl.data.channel },
+					},
+					body: {
+						data: transformChannelControlCreateRequest({ ...parsedSaveChannelControl.data, ...{ id: payload.id, channel: payload.channelId } }),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const control = transformChannelControlResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const control = transformChannelControlResponse(responseData.data);
+					data.value[control.id] = control;
 
-				data.value[control.id] = control;
+					return control;
+				}
 
-				return control;
+				let errorReason: string | null = 'Failed to create channel control.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-devices-module-channel-control']>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to create channel control.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-devices-module-channel-control']>(error, errorReason);
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		};
 
 		const remove = async (payload: IChannelsControlsRemoveActionPayload): Promise<boolean> => {
@@ -372,28 +380,30 @@ export const useChannelsControls = defineStore<'devices_module-channels_controls
 			if (recordToRemove.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
-				const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls/{id}`, {
-					params: {
-						path: { channelId: payload.channelId, id: payload.id },
-					},
-				});
+				try {
+					const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/channels/{channelId}/controls/{id}`, {
+						params: {
+							path: { channelId: payload.channelId, id: payload.id },
+						},
+					});
 
-				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+					if (response.status === 204) {
+						return true;
+					}
 
-				if (response.status === 204) {
-					return true;
+					// Deleting record on api failed, we need to refresh the record
+					await get({ id: payload.id, channelId: payload.channelId });
+
+					let errorReason: string | null = 'Remove channel control failed.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['delete-devices-module-channel-control']>(error, errorReason);
+					}
+
+					throw new DevicesApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 				}
-
-				// Deleting record on api failed, we need to refresh the record
-				await get({ id: payload.id, channelId: payload.channelId });
-
-				let errorReason: string | null = 'Remove channel control failed.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['delete-devices-module-channel-control']>(error, errorReason);
-				}
-
-				throw new DevicesApiException(errorReason, response.status);
 			}
 
 			return true;

@@ -74,23 +74,25 @@ export const useSystemInfo = defineStore<'system_module-system_info', SystemInfo
 
 			const apiResponse = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/system/info`);
 
-			const { data: responseData, error, response } = apiResponse;
+			try {
+				const { data: responseData, error, response } = apiResponse;
 
-			semaphore.value.getting = false;
+				if (typeof responseData !== 'undefined') {
+					data.value = transformSystemInfoResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				data.value = transformSystemInfoResponse(responseData.data);
+					return data.value;
+				}
 
-				return data.value;
+				let errorReason: string | null = 'Failed to fetch system info.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-system-module-system-info']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.getting = false;
 			}
-
-			let errorReason: string | null = 'Failed to fetch system info.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-system-module-system-info']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		})();
 
 		pendingGetPromises = fetchPromise;

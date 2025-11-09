@@ -78,31 +78,33 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 
 				semaphore.value.getting = true;
 
-				const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
-					params: {
-						path: {
-							section: PathsConfigModuleConfigSectionGetParametersPathSection.language,
+				try {
+					const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
+						params: {
+							path: {
+								section: PathsConfigModuleConfigSectionGetParametersPathSection.language,
+							},
 						},
-					},
-				});
+					});
 
-				const { data: responseData, error, response } = apiResponse;
+					const { data: responseData, error, response } = apiResponse;
 
-				semaphore.value.getting = false;
+					if (typeof responseData !== 'undefined') {
+						data.value = transformConfigLanguageResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					data.value = transformConfigLanguageResponse(responseData.data);
+						return data.value;
+					}
 
-					return data.value;
+					let errorReason: string | null = 'Failed to fetch language config.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
+					}
+
+					throw new ConfigApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.getting = false;
 				}
-
-				let errorReason: string | null = 'Failed to fetch language config.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
-				}
-
-				throw new ConfigApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises = fetchPromise;
@@ -142,37 +144,39 @@ export const useConfigLanguage = defineStore<'config-module_config_language', Co
 
 			data.value = parsedEditedConfig.data;
 
-			const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
-				params: {
-					path: {
-						section: PathsConfigModuleConfigSectionGetParametersPathSection.language,
+			try {
+				const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
+					params: {
+						path: {
+							section: PathsConfigModuleConfigSectionGetParametersPathSection.language,
+						},
 					},
-				},
-				body: {
-					data: transformConfigLanguageUpdateRequest(parsedEditedConfig.data),
-				},
-			});
+					body: {
+						data: transformConfigLanguageUpdateRequest(parsedEditedConfig.data),
+					},
+				});
 
-			const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, error, response } = apiResponse;
 
-			semaphore.value.updating = false;
+				if (typeof responseData !== 'undefined') {
+					data.value = transformConfigLanguageResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				data.value = transformConfigLanguageResponse(responseData.data);
+					return data.value;
+				}
 
-				return data.value;
+				// Updating the record on api failed, we need to refresh the record
+				await get();
+
+				let errorReason: string | null = 'Failed to update language config.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
+				}
+
+				throw new ConfigApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = false;
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get();
-
-			let errorReason: string | null = 'Failed to update language config.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
-			}
-
-			throw new ConfigApiException(errorReason, response.status);
 		};
 
 		return {

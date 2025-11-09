@@ -78,31 +78,33 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 
 				semaphore.value.getting = true;
 
-				const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
-					params: {
-						path: {
-							section: PathsConfigModuleConfigSectionGetParametersPathSection.display,
+				try {
+					const apiResponse = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
+						params: {
+							path: {
+								section: PathsConfigModuleConfigSectionGetParametersPathSection.display,
+							},
 						},
-					},
-				});
+					});
 
-				const { data: responseData, error, response } = apiResponse;
+					const { data: responseData, error, response } = apiResponse;
 
-				semaphore.value.getting = false;
+					if (typeof responseData !== 'undefined') {
+						data.value = transformConfigDisplayResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					data.value = transformConfigDisplayResponse(responseData.data);
+						return data.value;
+					}
 
-					return data.value;
+					let errorReason: string | null = 'Failed to fetch display config.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
+					}
+
+					throw new ConfigApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.getting = false;
 				}
-
-				let errorReason: string | null = 'Failed to fetch display config.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-config-module-config-section']>(error, errorReason);
-				}
-
-				throw new ConfigApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises = fetchPromise;
@@ -142,37 +144,39 @@ export const useConfigDisplay = defineStore<'config-module_config_display', Conf
 
 			data.value = parsedEditedConfig.data;
 
-			const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
-				params: {
-					path: {
-						section: PathsConfigModuleConfigSectionGetParametersPathSection.display,
+			try {
+				const apiResponse = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/{section}`, {
+					params: {
+						path: {
+							section: PathsConfigModuleConfigSectionGetParametersPathSection.display,
+						},
 					},
-				},
-				body: {
-					data: transformConfigDisplayUpdateRequest(parsedEditedConfig.data),
-				},
-			});
+					body: {
+						data: transformConfigDisplayUpdateRequest(parsedEditedConfig.data),
+					},
+				});
 
-			const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, error, response } = apiResponse;
 
-			semaphore.value.updating = false;
+				if (typeof responseData !== 'undefined') {
+					data.value = transformConfigDisplayResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				data.value = transformConfigDisplayResponse(responseData.data);
+					return data.value;
+				}
 
-				return data.value;
+				// Updating the record on api failed, we need to refresh the record
+				await get();
+
+				let errorReason: string | null = 'Failed to update display config.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
+				}
+
+				throw new ConfigApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = false;
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get();
-
-			let errorReason: string | null = 'Failed to update display config.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-config-module-config-section']>(error, errorReason);
-			}
-
-			throw new ConfigApiException(errorReason, response.status);
 		};
 
 		return {

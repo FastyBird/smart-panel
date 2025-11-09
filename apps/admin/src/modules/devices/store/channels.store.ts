@@ -165,50 +165,52 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 			semaphore.value.fetching.item.push(payload.id);
 
-			let apiResponse;
+			try {
+				let apiResponse;
 
-			if (payload.deviceId) {
-				apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
-					params: {
-						path: { deviceId: payload.deviceId, id: payload.id },
-					},
-				});
-			} else {
-				apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
-					params: {
-						path: { id: payload.id },
-					},
-				});
-			}
-
-			const { data: responseData, error, response } = apiResponse;
-
-			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
-
-			if (typeof responseData !== 'undefined') {
-				const element = getPluginElement(responseData.data.type);
-
-				const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
-
-				data.value[transformed.id] = transformed;
-
-				insertChannelControlsRelations(transformed, responseData.data.controls);
-				insertChannelPropertiesRelations(transformed, responseData.data.properties);
-
-				return transformed;
-			}
-
-			let errorReason: string | null = 'Failed to fetch channel.';
-
-			if (error) {
 				if (payload.deviceId) {
-					errorReason = getErrorReason<operations['get-devices-module-device-channel']>(error, errorReason);
+					apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
+						params: {
+							path: { deviceId: payload.deviceId, id: payload.id },
+						},
+					});
 				} else {
-					errorReason = getErrorReason<operations['get-devices-module-channel']>(error, errorReason);
+					apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
+						params: {
+							path: { id: payload.id },
+						},
+					});
 				}
-			}
 
-			throw new DevicesApiException(errorReason, response.status);
+				const { data: responseData, error, response } = apiResponse;
+
+				if (typeof responseData !== 'undefined') {
+					const element = getPluginElement(responseData.data.type);
+
+					const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
+
+					data.value[transformed.id] = transformed;
+
+					insertChannelControlsRelations(transformed, responseData.data.controls);
+					insertChannelPropertiesRelations(transformed, responseData.data.properties);
+
+					return transformed;
+				}
+
+				let errorReason: string | null = 'Failed to fetch channel.';
+
+				if (error) {
+					if (payload.deviceId) {
+						errorReason = getErrorReason<operations['get-devices-module-device-channel']>(error, errorReason);
+					} else {
+						errorReason = getErrorReason<operations['get-devices-module-channel']>(error, errorReason);
+					}
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+			}
 		})();
 
 		pendingGetPromises[payload.id] = getPromise;
@@ -235,64 +237,66 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 			firstLoad.value = firstLoad.value.filter((item) => item !== (payload?.deviceId ?? 'all'));
 			firstLoad.value = [...new Set(firstLoad.value)];
 
-			let apiResponse;
+			try {
+				let apiResponse;
 
-			if (payload?.deviceId) {
-				apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
-					params: {
-						path: { deviceId: payload.deviceId },
-					},
-				});
-			} else {
-				apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels`);
-			}
-
-			const { data: responseData, error, response } = apiResponse;
-
-			semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== (payload?.deviceId ?? 'all'));
-
-			if (typeof responseData !== 'undefined') {
 				if (payload?.deviceId) {
-					firstLoad.value.push(payload.deviceId);
-					firstLoad.value = [...new Set(firstLoad.value)];
+					apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
+						params: {
+							path: { deviceId: payload.deviceId },
+						},
+					});
 				} else {
-					firstLoad.value.push('all');
-					firstLoad.value = [...new Set(firstLoad.value)];
+					apiResponse = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/channels`);
 				}
 
-				const channels = Object.fromEntries(
-					responseData.data.map((channel) => {
-						const element = getPluginElement(channel.type);
+				const { data: responseData, error, response } = apiResponse;
 
-						const transformed = transformChannelResponse(channel, element?.schemas?.channelSchema || ChannelSchema);
+				if (typeof responseData !== 'undefined') {
+					if (payload?.deviceId) {
+						firstLoad.value.push(payload.deviceId);
+						firstLoad.value = [...new Set(firstLoad.value)];
+					} else {
+						firstLoad.value.push('all');
+						firstLoad.value = [...new Set(firstLoad.value)];
+					}
 
-						insertChannelControlsRelations(transformed, channel.controls);
-						insertChannelPropertiesRelations(transformed, channel.properties);
+					const channels = Object.fromEntries(
+						responseData.data.map((channel) => {
+							const element = getPluginElement(channel.type);
 
-						return [transformed.id, transformed];
-					})
-				);
+							const transformed = transformChannelResponse(channel, element?.schemas?.channelSchema || ChannelSchema);
 
-				data.value = { ...data.value, ...channels };
+							insertChannelControlsRelations(transformed, channel.controls);
+							insertChannelPropertiesRelations(transformed, channel.properties);
 
-				if (payload?.deviceId) {
-					return findForDevice(payload.deviceId);
+							return [transformed.id, transformed];
+						})
+					);
+
+					data.value = { ...data.value, ...channels };
+
+					if (payload?.deviceId) {
+						return findForDevice(payload.deviceId);
+					}
+
+					return Object.values(data.value);
 				}
 
-				return Object.values(data.value);
+				let errorReason: string | null = 'Failed to fetch channels.';
+
+				if (error) {
+					if (payload?.deviceId) {
+						errorReason = getErrorReason<operations['get-devices-module-device-channels']>(error, errorReason);
+					} else {
+						errorReason = getErrorReason<operations['get-devices-module-channels']>(error, errorReason);
+					}
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== (payload?.deviceId ?? 'all'));
 			}
-
-			let errorReason: string | null = 'Failed to fetch channels.';
-
-			if (error) {
-				if (payload?.deviceId) {
-					errorReason = getErrorReason<operations['get-devices-module-device-channels']>(error, errorReason);
-				} else {
-					errorReason = getErrorReason<operations['get-devices-module-channels']>(error, errorReason);
-				}
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		})();
 
 		pendingFetchPromises[payload?.deviceId ?? 'all'] = fetchPromise;
@@ -338,47 +342,49 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 			return parsedNewItem.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
-				params: {
-					path: { deviceId: payload.deviceId },
-				},
-				body: {
-					data: transformChannelCreateRequest<IChannelCreateReq>(
-						parsedNewItem.data,
-						element?.schemas?.channelCreateReqSchema || ChannelCreateReqSchema
-					),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
+					params: {
+						path: { deviceId: payload.deviceId },
+					},
+					body: {
+						data: transformChannelCreateRequest<IChannelCreateReq>(
+							parsedNewItem.data,
+							element?.schemas?.channelCreateReqSchema || ChannelCreateReqSchema
+						),
+					},
+				});
 
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const element = getPluginElement(responseData.data.type);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const element = getPluginElement(responseData.data.type);
+					const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
-				const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					insertChannelControlsRelations(transformed, responseData.data.controls);
+					insertChannelPropertiesRelations(transformed, responseData.data.properties);
 
-				insertChannelControlsRelations(transformed, responseData.data.controls);
-				insertChannelPropertiesRelations(transformed, responseData.data.properties);
+					return transformed;
+				}
 
-				return transformed;
+				// Record could not be created on api, we have to remove it from a database
+				delete data.value[parsedNewItem.data.id];
+
+				let errorReason: string | null = 'Failed to create channel.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-devices-module-device-channel']>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 			}
-
-			// Record could not be created on api, we have to remove it from a database
-			delete data.value[parsedNewItem.data.id];
-
-			let errorReason: string | null = 'Failed to create channel.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-devices-module-device-channel']>(error, errorReason);
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		}
 	};
 
@@ -421,62 +427,64 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 			return parsedEditedItem.data;
 		} else {
-			let apiResponse;
+			try {
+				let apiResponse;
 
-			if (payload.deviceId) {
-				apiResponse = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
-					params: {
-						path: { deviceId: payload.deviceId, id: payload.id },
-					},
-					body: {
-						data: transformChannelUpdateRequest<IChannelUpdateReq>(
-							parsedEditedItem.data,
-							element?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
-						),
-					},
-				});
-			} else {
-				apiResponse = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
-					params: {
-						path: { id: payload.id },
-					},
-					body: {
-						data: transformChannelUpdateRequest<IChannelUpdateReq>(
-							parsedEditedItem.data,
-							element?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
-						),
-					},
-				});
-			}
-
-			const { data: responseData, error, response } = apiResponse;
-
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
-
-			if (typeof responseData !== 'undefined') {
-				const element = getPluginElement(responseData.data.type);
-
-				const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
-
-				data.value[transformed.id] = transformed;
-
-				return transformed;
-			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Failed to update channel.';
-
-			if (error) {
 				if (payload.deviceId) {
-					errorReason = getErrorReason<operations['update-devices-module-device-channel']>(error, errorReason);
+					apiResponse = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
+						params: {
+							path: { deviceId: payload.deviceId, id: payload.id },
+						},
+						body: {
+							data: transformChannelUpdateRequest<IChannelUpdateReq>(
+								parsedEditedItem.data,
+								element?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
+							),
+						},
+					});
 				} else {
-					errorReason = getErrorReason<operations['update-devices-module-channel']>(error, errorReason);
+					apiResponse = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
+						params: {
+							path: { id: payload.id },
+						},
+						body: {
+							data: transformChannelUpdateRequest<IChannelUpdateReq>(
+								parsedEditedItem.data,
+								element?.schemas?.channelUpdateReqSchema || ChannelUpdateReqSchema
+							),
+						},
+					});
 				}
-			}
 
-			throw new DevicesApiException(errorReason, response.status);
+				const { data: responseData, error, response } = apiResponse;
+
+				if (typeof responseData !== 'undefined') {
+					const element = getPluginElement(responseData.data.type);
+
+					const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
+
+					data.value[transformed.id] = transformed;
+
+					return transformed;
+				}
+
+				// Updating the record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Failed to update channel.';
+
+				if (error) {
+					if (payload.deviceId) {
+						errorReason = getErrorReason<operations['update-devices-module-device-channel']>(error, errorReason);
+					} else {
+						errorReason = getErrorReason<operations['update-devices-module-channel']>(error, errorReason);
+					}
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+			}
 		}
 	};
 
@@ -501,44 +509,46 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 
 		semaphore.value.updating.push(payload.id);
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
-			params: {
-				path: { deviceId: parsedSaveItem.data.device },
-			},
-			body: {
-				data: transformChannelCreateRequest<IChannelCreateReq>(
-					parsedSaveItem.data,
-					element?.schemas?.channelCreateReqSchema || ChannelCreateReqSchema
-				),
-			},
-		});
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels`, {
+				params: {
+					path: { deviceId: parsedSaveItem.data.device },
+				},
+				body: {
+					data: transformChannelCreateRequest<IChannelCreateReq>(
+						parsedSaveItem.data,
+						element?.schemas?.channelCreateReqSchema || ChannelCreateReqSchema
+					),
+				},
+			});
 
-		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+				const element = getPluginElement(responseData.data.type);
 
-		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const element = getPluginElement(responseData.data.type);
+				const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
 
-			const transformed = transformChannelResponse(responseData.data, element?.schemas?.channelSchema || ChannelSchema);
+				data.value[transformed.id] = transformed;
 
-			data.value[transformed.id] = transformed;
+				insertChannelControlsRelations(transformed, responseData.data.controls);
+				insertChannelPropertiesRelations(transformed, responseData.data.properties);
 
-			insertChannelControlsRelations(transformed, responseData.data.controls);
-			insertChannelPropertiesRelations(transformed, responseData.data.properties);
+				return transformed;
+			}
 
-			return transformed;
+			let errorReason: string | null = 'Failed to create channel.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['create-devices-module-device-channel']>(error, errorReason);
+			}
+
+			throw new DevicesApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 		}
-
-		let errorReason: string | null = 'Failed to create channel.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['create-devices-module-device-channel']>(error, errorReason);
-		}
-
-		throw new DevicesApiException(errorReason, response.status);
 	};
 
 	const remove = async (payload: IChannelsRemoveActionPayload): Promise<boolean> => {
@@ -559,52 +569,54 @@ export const useChannels = defineStore<'devices_module-channels', ChannelsStoreS
 		if (recordToRemove.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
-			let apiResponse;
+			try {
+				let apiResponse;
 
-			if (payload.deviceId) {
-				apiResponse = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
-					params: {
-						path: { deviceId: payload.deviceId, id: payload.id },
-					},
-				});
-			} else {
-				apiResponse = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
-					params: {
-						path: { id: payload.id },
-					},
-				});
-			}
-
-			const { error, response } = apiResponse;
-
-			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
-
-			if (response.status === 204) {
-				const channelsControlsStore = storesManager.getStore(channelsControlsStoreKey);
-
-				channelsControlsStore.unset({ channelId: payload.id });
-
-				const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
-
-				channelsPropertiesStore.unset({ channelId: payload.id });
-
-				return true;
-			}
-
-			// Deleting record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Remove channel failed.';
-
-			if (error) {
 				if (payload.deviceId) {
-					errorReason = getErrorReason<operations['delete-devices-module-device-channel']>(error, errorReason);
+					apiResponse = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/channels/{id}`, {
+						params: {
+							path: { deviceId: payload.deviceId, id: payload.id },
+						},
+					});
 				} else {
-					errorReason = getErrorReason<operations['delete-devices-module-channel']>(error, errorReason);
+					apiResponse = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/channels/{id}`, {
+						params: {
+							path: { id: payload.id },
+						},
+					});
 				}
-			}
 
-			throw new DevicesApiException(errorReason, response.status);
+				const { error, response } = apiResponse;
+
+				if (response.status === 204) {
+					const channelsControlsStore = storesManager.getStore(channelsControlsStoreKey);
+
+					channelsControlsStore.unset({ channelId: payload.id });
+
+					const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+
+					channelsPropertiesStore.unset({ channelId: payload.id });
+
+					return true;
+				}
+
+				// Deleting record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Remove channel failed.';
+
+				if (error) {
+					if (payload.deviceId) {
+						errorReason = getErrorReason<operations['delete-devices-module-device-channel']>(error, errorReason);
+					} else {
+						errorReason = getErrorReason<operations['delete-devices-module-channel']>(error, errorReason);
+					}
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+			}
 		}
 
 		return true;

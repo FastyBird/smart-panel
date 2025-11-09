@@ -127,33 +127,35 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 
 				semaphore.value.fetching.item.push(payload.id);
 
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
-					params: {
-						path: { id: payload.id },
-					},
-				});
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
+						params: {
+							path: { id: payload.id },
+						},
+					});
 
-				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+					if (typeof responseData !== 'undefined') {
+						const display = transformDisplayProfileResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					const display = transformDisplayProfileResponse(responseData.data);
+						data.value[display.id] = display;
 
-					data.value[display.id] = display;
+						return display;
+					}
 
-					return display;
+					let errorReason: string | null = 'Failed to fetch display.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-system-module-display-profile']>(error, errorReason);
+					}
+
+					throw new SystemApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 				}
-
-				let errorReason: string | null = 'Failed to fetch display.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-system-module-display-profile']>(error, errorReason);
-				}
-
-				throw new SystemApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises[payload.id] = getPromise;
@@ -177,31 +179,33 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 
 				semaphore.value.fetching.items = true;
 
-				const { data: responseData, error, response } = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`);
+				try {
+					const { data: responseData, error, response } = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`);
 
-				semaphore.value.fetching.items = false;
+					if (typeof responseData !== 'undefined') {
+						data.value = Object.fromEntries(
+							responseData.data.map((display) => {
+								const transformedDisplay = transformDisplayProfileResponse(display);
 
-				if (typeof responseData !== 'undefined') {
-					data.value = Object.fromEntries(
-						responseData.data.map((display) => {
-							const transformedDisplay = transformDisplayProfileResponse(display);
+								return [transformedDisplay.id, transformedDisplay];
+							})
+						);
 
-							return [transformedDisplay.id, transformedDisplay];
-						})
-					);
+						firstLoad.value = true;
 
-					firstLoad.value = true;
+						return Object.values(data.value);
+					}
 
-					return Object.values(data.value);
+					let errorReason: string | null = 'Failed to fetch displays.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-system-module-displays-profiles']>(error, errorReason);
+					}
+
+					throw new SystemApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.items = false;
 				}
-
-				let errorReason: string | null = 'Failed to fetch displays.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-system-module-displays-profiles']>(error, errorReason);
-				}
-
-				throw new SystemApiException(errorReason, response.status);
 			})();
 
 			pendingFetchPromises['all'] = fetchPromise;
@@ -238,36 +242,38 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 
 			data.value[parsedNewDisplay.data.id] = parsedNewDisplay.data;
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`, {
-				body: {
-					data: transformDisplayProfileCreateRequest({ ...parsedNewDisplay.data, ...{ id: payload.id } }),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`, {
+					body: {
+						data: transformDisplayProfileCreateRequest({ ...parsedNewDisplay.data, ...{ id: payload.id } }),
+					},
+				});
 
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDisplay.data.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const display = transformDisplayProfileResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const display = transformDisplayProfileResponse(responseData.data);
+					data.value[display.id] = display;
 
-				data.value[display.id] = display;
+					return display;
+				}
 
-				return display;
+				// Record could not be created on api, we have to remove it from a database
+				delete data.value[parsedNewDisplay.data.id];
+
+				let errorReason: string | null = 'Failed to create display.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-system-module-display-profile']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDisplay.data.id);
 			}
-
-			// Record could not be created on api, we have to remove it from a database
-			delete data.value[parsedNewDisplay.data.id];
-
-			let errorReason: string | null = 'Failed to create display.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-system-module-display-profile']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		};
 
 		const edit = async (payload: IDisplaysProfilesEditActionPayload): Promise<IDisplayProfile> => {
@@ -302,41 +308,43 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 
 			data.value[parsedEditedDisplay.data.id] = parsedEditedDisplay.data;
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.PATCH(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
-				params: {
-					path: {
-						id: payload.id,
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.PATCH(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
+					params: {
+						path: {
+							id: payload.id,
+						},
 					},
-				},
-				body: {
-					data: transformDisplayProfileUpdateRequest(parsedEditedDisplay.data),
-				},
-			});
+					body: {
+						data: transformDisplayProfileUpdateRequest(parsedEditedDisplay.data),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const display = transformDisplayProfileResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				const display = transformDisplayProfileResponse(responseData.data);
+					data.value[display.id] = display;
 
-				data.value[display.id] = display;
+					return display;
+				}
 
-				return display;
+				// Updating the record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Failed to update display.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-system-module-display-profile']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Failed to update display.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-system-module-display-profile']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		};
 
 		const save = async (payload: IDisplaysProfilesSaveActionPayload): Promise<IDisplayProfile> => {
@@ -358,33 +366,35 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 
 			semaphore.value.updating.push(payload.id);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`, {
-				body: {
-					data: transformDisplayProfileCreateRequest({ ...parsedSaveDisplay.data, ...{ id: payload.id } }),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${SYSTEM_MODULE_PREFIX}/displays-profiles`, {
+					body: {
+						data: transformDisplayProfileCreateRequest({ ...parsedSaveDisplay.data, ...{ id: payload.id } }),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const display = transformDisplayProfileResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const display = transformDisplayProfileResponse(responseData.data);
+					data.value[display.id] = display;
 
-				data.value[display.id] = display;
+					return display;
+				}
 
-				return display;
+				let errorReason: string | null = 'Failed to create display.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-system-module-display-profile']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to create display.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-system-module-display-profile']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		};
 
 		const remove = async (payload: IDisplaysProfilesRemoveActionPayload): Promise<boolean> => {
@@ -400,30 +410,32 @@ export const useDisplaysProfiles = defineStore<'system_module-displays-profiles'
 
 			delete data.value[payload.id];
 
-			const { error, response } = await backend.client.DELETE(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
-				params: {
-					path: {
-						id: payload.id,
+			try {
+				const { error, response } = await backend.client.DELETE(`/${SYSTEM_MODULE_PREFIX}/displays-profiles/{id}`, {
+					params: {
+						path: {
+							id: payload.id,
+						},
 					},
-				},
-			});
+				});
 
-			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+				if (response.status === 204) {
+					return true;
+				}
 
-			if (response.status === 204) {
-				return true;
+				// Deleting record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Remove account failed.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['delete-system-module-display-profile']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			}
-
-			// Deleting record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Remove account failed.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['delete-system-module-display-profile']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		};
 
 		return {
