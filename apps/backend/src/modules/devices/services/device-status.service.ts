@@ -128,7 +128,7 @@ export class DeviceStatusService {
 		if (!result.length) {
 			this.logger.debug('[DEVICE] No stored statuses found');
 
-			return null;
+			return 0;
 		}
 
 		const row = result[0];
