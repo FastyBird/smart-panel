@@ -75,10 +75,12 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			})
 			.expect(201);
 
-		const responseBody = response.body as { accessToken: string };
+		const responseBody = response.body as { data: { access_token: string } };
 
-		expect(responseBody).toHaveProperty('accessToken');
-		accessToken = responseBody.accessToken; // Save token for later tests
+		expect(responseBody).toHaveProperty('data');
+		expect(responseBody.data).toHaveProperty('access_token');
+
+		accessToken = responseBody.data.access_token; // Save token for later tests
 	});
 
 	// ✅ Fetch Profile
@@ -88,9 +90,10 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			.set('Authorization', `Bearer ${accessToken}`)
 			.expect(200);
 
-		const responseBody = response.body as { username: string };
+		const responseBody = response.body as { data: { username: string } };
 
-		expect(responseBody).toHaveProperty('username', 'testuser');
+		expect(responseBody).toHaveProperty('data');
+		expect(responseBody.data).toHaveProperty('username', 'testuser');
 	});
 
 	// ✅ Fetch All Users (Requires Admin Role)
@@ -100,7 +103,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			.set('Authorization', `Bearer ${accessToken}`)
 			.expect(200);
 
-		const users = response.body as Array<{ id: string }>;
+		const users = response.body.data as Array<{ id: string }>;
 
 		expect(users).toBeInstanceOf(Array);
 	});
@@ -113,7 +116,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			.set('Authorization', `Bearer ${accessToken}`)
 			.expect(200);
 
-		const users = usersResponse.body as Array<{ id: string }>;
+		const users = usersResponse.body.data as Array<{ id: string }>;
 
 		if (users.length > 0) {
 			const userId = users[0].id;
@@ -140,7 +143,7 @@ describe('FastyBird Smart Panel (e2e)', () => {
 			})
 			.expect(201);
 
-		const responseBody = response.body as { secret: string };
+		const responseBody = response.body.data as { secret: string };
 
 		expect(responseBody).toHaveProperty('secret');
 	});
