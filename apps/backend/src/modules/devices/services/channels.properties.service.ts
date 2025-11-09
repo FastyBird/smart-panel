@@ -279,8 +279,6 @@ export class ChannelsPropertiesService {
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
 		this.logger.debug(`[DELETE] Removing property with id=${id}`);
 
-		const fullProperty = await this.getOneOrThrow(id);
-
 		const property = await manager.findOneOrFail<ChannelPropertyEntity>(ChannelPropertyEntity, {
 			where: { id },
 		});
@@ -289,7 +287,7 @@ export class ChannelsPropertiesService {
 
 		this.logger.log(`[DELETE] Successfully removed property with id=${id}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, fullProperty);
+		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, property);
 	}
 
 	async getOneOrThrow(id: string): Promise<ChannelPropertyEntity> {

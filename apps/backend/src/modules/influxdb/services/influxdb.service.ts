@@ -269,12 +269,14 @@ export class InfluxDbService {
 		if (!byName.get('raw_24h')?.default) {
 			const cur = byName.get('raw_24h');
 
-			await this.alterRetentionPolicy('raw_24h', {
-				database,
-				duration: cur.duration,
-				replication: cur.replicaN,
-				isDefault: true,
-			});
+			if (typeof cur !== 'undefined') {
+				await this.alterRetentionPolicy('raw_24h', {
+					database,
+					duration: cur.duration,
+					replication: cur.replicaN,
+					isDefault: true,
+				});
+			}
 		}
 	}
 

@@ -302,8 +302,6 @@ export class ChannelsService {
 	async remove(id: string, manager?: EntityManager): Promise<void> {
 		this.logger.debug(`[DELETE] Removing channel with id=${id}`);
 
-		const fullChannel = await this.getOneOrThrow(id);
-
 		if (typeof manager !== 'undefined') {
 			const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
 
@@ -325,7 +323,7 @@ export class ChannelsService {
 
 			this.logger.log(`[DELETE] Successfully removed channel with id=${id}`);
 
-			this.eventEmitter.emit(EventType.CHANNEL_DELETED, fullChannel);
+			this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
 		} else {
 			await this.dataSource.transaction(async (manager) => {
 				const channel = await manager.findOneOrFail<ChannelEntity>(ChannelEntity, { where: { id } });
@@ -348,7 +346,7 @@ export class ChannelsService {
 
 				this.logger.log(`[DELETE] Successfully removed channel with id=${id}`);
 
-				this.eventEmitter.emit(EventType.CHANNEL_DELETED, fullChannel);
+				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
 			});
 		}
 	}

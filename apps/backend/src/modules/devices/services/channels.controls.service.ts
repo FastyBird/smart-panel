@@ -109,8 +109,6 @@ export class ChannelsControlsService {
 	async remove(id: string, channelId: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
 		this.logger.debug(`[DELETE] Removing control with id=${id} for channelId=${channelId}`);
 
-		const fullControl = await this.getOneOrThrow(id, channelId);
-
 		const control = await manager.findOneOrFail<ChannelControlEntity>(ChannelControlEntity, {
 			where: { id, channel: { id: channelId } },
 		});
@@ -119,7 +117,7 @@ export class ChannelsControlsService {
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for channelId=${channelId}`);
 
-		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_DELETED, fullControl);
+		this.eventEmitter.emit(EventType.CHANNEL_CONTROL_DELETED, control);
 	}
 
 	async getOneOrThrow(id: string, channelId: string): Promise<ChannelControlEntity> {

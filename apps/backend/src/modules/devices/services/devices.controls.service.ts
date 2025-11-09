@@ -109,8 +109,6 @@ export class DevicesControlsService {
 	async remove(id: string, deviceId: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
 		this.logger.debug(`[DELETE] Removing control with id=${id} for deviceId=${deviceId}`);
 
-		const fullControl = await this.getOneOrThrow(id, deviceId);
-
 		const control = await manager.findOneOrFail<DeviceControlEntity>(DeviceControlEntity, {
 			where: { id, device: { id: deviceId } },
 		});
@@ -119,7 +117,7 @@ export class DevicesControlsService {
 
 		this.logger.log(`[DELETE] Successfully removed control with id=${id} for deviceId=${deviceId}`);
 
-		this.eventEmitter.emit(EventType.DEVICE_CONTROL_DELETED, fullControl);
+		this.eventEmitter.emit(EventType.DEVICE_CONTROL_DELETED, control);
 	}
 
 	async getOneOrThrow(id: string, deviceId: string): Promise<DeviceControlEntity> {

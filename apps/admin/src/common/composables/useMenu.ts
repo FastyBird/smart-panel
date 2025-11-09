@@ -35,7 +35,7 @@ const menuWeight = (menu: MenuMeta): number => {
 	}
 
 	if (menu === true) {
-		return Number.NEGATIVE_INFINITY;
+		return Number.POSITIVE_INFINITY;
 	}
 
 	return Number.NEGATIVE_INFINITY;
