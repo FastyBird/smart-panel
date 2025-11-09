@@ -112,37 +112,39 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 				semaphore.value.fetching.item.push(payload.type);
 
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}`, {
-					params: {
-						path: {
-							plugin: payload.type,
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}`, {
+						params: {
+							path: {
+								plugin: payload.type,
+							},
 						},
-					},
-				});
+					});
 
-				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.type);
+					if (typeof responseData !== 'undefined') {
+						const element = getPluginElement(responseData.data.type);
 
-				if (typeof responseData !== 'undefined') {
-					const element = getPluginElement(responseData.data.type);
+						const transformed = transformConfigPluginResponse(responseData.data, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
 
-					const transformed = transformConfigPluginResponse(responseData.data, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
+						data.value[transformed.type] = transformed;
 
-					data.value[transformed.type] = transformed;
+						return transformed;
+					}
 
-					return transformed;
+					let errorReason: string | null = 'Failed to fetch plugin config.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-config-module-config-plugin']>(error, errorReason);
+					}
+
+					throw new ConfigApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.type);
 				}
-
-				let errorReason: string | null = 'Failed to fetch plugin config.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-config-module-config-plugin']>(error, errorReason);
-				}
-
-				throw new ConfigApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises[payload.type] = getPromise;
@@ -166,35 +168,37 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 				semaphore.value.fetching.items = true;
 
-				const { data: responseData, error, response } = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config`);
+				try {
+					const { data: responseData, error, response } = await backend.client.GET(`/${CONFIG_MODULE_PREFIX}/config/plugins`);
 
-				semaphore.value.fetching.items = false;
+					if (typeof responseData !== 'undefined') {
+						data.value = Object.fromEntries(
+							responseData.data.map((plugin) => {
+								const element = getPluginElement(plugin.type);
 
-				if (typeof responseData !== 'undefined') {
-					data.value = Object.fromEntries(
-						responseData.data.plugins.map((plugin) => {
-							const element = getPluginElement(plugin.type);
+								const transformed = transformConfigPluginResponse(plugin, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
 
-							const transformed = transformConfigPluginResponse(plugin, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
+								data.value[transformed.type] = transformed;
 
-							data.value[transformed.type] = transformed;
+								return [transformed.type, transformed];
+							})
+						);
 
-							return [transformed.type, transformed];
-						})
-					);
+						firstLoad.value = true;
 
-					firstLoad.value = true;
+						return Object.values(data.value);
+					}
 
-					return Object.values(data.value);
+					let errorReason: string | null = 'Failed to fetch plugins config.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-config-module-config']>(error, errorReason);
+					}
+
+					throw new ConfigApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.items = false;
 				}
-
-				let errorReason: string | null = 'Failed to fetch plugins config.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-config-module-config']>(error, errorReason);
-				}
-
-				throw new ConfigApiException(errorReason, response.status);
 			})();
 
 			pendingFetchPromises['all'] = fetchPromise;
@@ -240,44 +244,46 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 			data.value[parsedEditedConfig.data.type] = parsedEditedConfig.data;
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}`, {
-				params: {
-					path: {
-						plugin: payload.data.type,
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.PATCH(`/${CONFIG_MODULE_PREFIX}/config/plugin/{plugin}`, {
+					params: {
+						path: {
+							plugin: payload.data.type,
+						},
 					},
-				},
-				body: {
-					data: transformConfigPluginUpdateRequest<IConfigPluginUpdateReq>(
-						parsedEditedConfig.data,
-						element?.schemas?.pluginConfigUpdateReqSchema || ConfigPluginUpdateReqSchema
-					),
-				},
-			});
+					body: {
+						data: transformConfigPluginUpdateRequest<IConfigPluginUpdateReq>(
+							parsedEditedConfig.data,
+							element?.schemas?.pluginConfigUpdateReqSchema || ConfigPluginUpdateReqSchema
+						),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.data.type);
+				if (typeof responseData !== 'undefined') {
+					const transformed = transformConfigPluginResponse(responseData.data, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
 
-			if (typeof responseData !== 'undefined') {
-				const transformed = transformConfigPluginResponse(responseData.data, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
+					data.value[transformed.type] = transformed;
 
-				data.value[transformed.type] = transformed;
+					return transformed;
+				}
 
-				return transformed;
+				// Updating the record on api failed, we need to refresh the record
+				await get({ type: payload.data.type });
+
+				let errorReason: string | null = 'Failed to update plugin config.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-config-module-config-plugin']>(error, errorReason);
+				}
+
+				throw new ConfigApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.data.type);
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get({ type: payload.data.type });
-
-			let errorReason: string | null = 'Failed to update plugin config.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-config-module-config-plugin']>(error, errorReason);
-			}
-
-			throw new ConfigApiException(errorReason, response.status);
 		};
 
 		return {

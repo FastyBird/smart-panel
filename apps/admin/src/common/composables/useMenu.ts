@@ -9,6 +9,8 @@ declare type RouteRecord = Omit<RouteRecordRaw, 'children'> & {
 	children: { [key: string]: RouteRecord };
 };
 
+type MenuMeta = boolean | number | undefined;
+
 const getRouteName = (record: RouteRecordRaw): string => {
 	if (typeof record.name === 'string') {
 		return record.name;
@@ -19,23 +21,49 @@ const getRouteName = (record: RouteRecordRaw): string => {
 	return record.path;
 };
 
+const isInMenu = (menu: MenuMeta): boolean => {
+	if (menu === false || menu === undefined) {
+		return false;
+	}
+
+	return typeof menu === 'number' || menu === true;
+};
+
+const menuWeight = (menu: MenuMeta): number => {
+	if (typeof menu === 'number') {
+		return menu;
+	}
+
+	if (menu === true) {
+		return Number.POSITIVE_INFINITY;
+	}
+
+	return Number.NEGATIVE_INFINITY;
+};
+
 const buildRouteTree = (appUser: IAppUser | undefined, routerGuard: RouterGuards, routes: RouteRecordRaw[]): { [key: string]: RouteRecord } => {
 	const routeMap: { [key: string]: RouteRecord } = {};
 
 	for (const route of routes) {
-		// Filter out routes that do not have meta.menu: true
-		if (!route.meta?.menu) continue;
+		const menu = route.meta?.menu as MenuMeta;
 
-		if (routerGuard.handle(appUser, route) !== true) continue;
+		if (!isInMenu(menu)) {
+			continue;
+		}
 
-		routeMap[getRouteName(route)] = { ...route, children: {} };
+		if (routerGuard.handle(appUser, route) !== true) {
+			continue;
+		}
 
-		if (route.children && Array.isArray(route.children)) {
+		const name = getRouteName(route);
+
+		routeMap[name] = { ...route, children: {} } as RouteRecord;
+
+		if (Array.isArray(route.children) && route.children.length) {
 			const filteredChildren = buildRouteTree(appUser, routerGuard, route.children);
 
-			// Only add children if there are valid routes
 			if (Object.keys(filteredChildren).length) {
-				routeMap[getRouteName(route)].children = filteredChildren;
+				routeMap[name].children = filteredChildren;
 			}
 		}
 	}
@@ -75,17 +103,34 @@ const findRoute = (search: string, routes: { [key: string]: RouteRecord }): bool
 	return false;
 };
 
+const sortRouteTree = (routes: { [key: string]: RouteRecord }): { [key: string]: RouteRecord } => {
+	const withSortedChildren = Object.entries(routes).map(([key, route]) => {
+		const sortedChildren = sortRouteTree(route.children ?? {});
+
+		return [key, { ...route, children: sortedChildren } as RouteRecord] as const;
+	});
+
+	withSortedChildren.sort((a, b) => {
+		const wa = menuWeight(a[1].meta?.menu as MenuMeta);
+		const wb = menuWeight(b[1].meta?.menu as MenuMeta);
+
+		return wb - wa;
+	});
+
+	return Object.fromEntries(withSortedChildren);
+};
+
 export const useMenu = (): {
 	mainMenuItems: { [key: string]: RouteRecord };
 } => {
 	const router = useRouter();
-
 	const routerGuard = injectRouterGuard();
-
 	const accountManager = injectAccountManager();
 
-	// Build route tree and filter based on `meta.menu: true`
-	const routesTree = filterRouteTree(buildRouteTree(accountManager?.details.value ?? undefined, routerGuard, router.getRoutes()));
+	const built = buildRouteTree(accountManager?.details.value ?? undefined, routerGuard, router.getRoutes());
+
+	const rootsOnly = filterRouteTree(built);
+	const routesTree = sortRouteTree(rootsOnly);
 
 	return {
 		mainMenuItems: routesTree,

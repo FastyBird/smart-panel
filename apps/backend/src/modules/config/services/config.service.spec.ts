@@ -21,6 +21,7 @@ import { PlatformService } from '../../platform/services/platform.service';
 import {
 	EventType,
 	LanguageType,
+	LogLevelType,
 	SectionType,
 	TemperatureUnitType,
 	TimeFormatType,
@@ -79,6 +80,7 @@ describe('ConfigService', () => {
 	};
 
 	const mockConfig: Partial<AppConfigModel> = {
+		path: '/var/smart-panel/config.yaml',
 		audio: {
 			type: SectionType.AUDIO,
 			speaker: true,
@@ -107,6 +109,10 @@ describe('ConfigService', () => {
 			locationType: WeatherLocationType.CITY_NAME,
 			openWeatherApiKey: null,
 			unit: TemperatureUnitType.CELSIUS,
+		},
+		system: {
+			type: SectionType.SYSTEM,
+			logLevels: [LogLevelType.INFO, LogLevelType.WARN, LogLevelType.ERROR, LogLevelType.FATAL],
 		},
 		plugins: [
 			{
@@ -185,6 +191,8 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
 
+			jest.spyOn(service as any, 'configPath', 'get').mockReturnValue('/var/smart-panel/');
+
 			const toCompare = toInstance(AppConfigModel, mockConfig);
 			toCompare.plugins = [toInstance(MockPluginConfig, mockConfig.plugins[0])];
 
@@ -215,6 +223,8 @@ describe('ConfigService', () => {
 			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
 			jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(mockRawConfig));
 			jest.spyOn(yaml, 'parse').mockReturnValue(mockRawConfig);
+
+			jest.spyOn(service as any, 'configPath', 'get').mockReturnValue('/var/smart-panel/');
 
 			const toCompare = toInstance(AppConfigModel, mockConfig);
 			toCompare.plugins = [toInstance(MockPluginConfig, mockConfig.plugins[0])];

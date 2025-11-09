@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DeviceCategory } from '../devices.constants';
+import { ConnectionState, DeviceCategory } from '../devices.constants';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 import { DevicesTypeMapperService } from '../services/devices-type-mapper.service';
@@ -33,6 +33,10 @@ describe('DevicesControlsController', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		status: {
+			online: false,
+			status: ConnectionState.UNKNOWN,
+		},
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		controls: [],

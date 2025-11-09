@@ -154,34 +154,36 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 			semaphore.value.fetching.item.push(payload.id);
 
-			const apiResponse = await backend.client.GET(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
-				params: {
-					path: { pageId: payload.pageId, id: payload.id },
-				},
-			});
+			try {
+				const apiResponse = await backend.client.GET(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
+					params: {
+						path: { pageId: payload.pageId, id: payload.id },
+					},
+				});
 
-			const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, error, response } = apiResponse;
 
-			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const card = transformCardResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				const card = transformCardResponse(responseData.data);
+					data.value[card.id] = card;
 
-				data.value[card.id] = card;
+					insertDataSourceRelations(card, responseData.data.data_source);
+					insertTilesRelations(card, responseData.data.tiles);
 
-				insertDataSourceRelations(card, responseData.data.data_source);
-				insertTilesRelations(card, responseData.data.tiles);
+					return card;
+				}
 
-				return card;
+				let errorReason: string | null = 'Failed to fetch card.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-pages-cards-plugin-page-card']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to fetch card.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-pages-cards-plugin-page-card']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		})();
 
 		pendingGetPromises[payload.id] = fetchPromise;
@@ -208,47 +210,49 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			firstLoad.value = firstLoad.value.filter((item) => item !== payload.pageId);
 			firstLoad.value = [...new Set(firstLoad.value)];
 
-			const apiResponse = await backend.client.GET(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
-				params: {
-					query: { page: payload.pageId },
-				},
-			});
+			try {
+				const apiResponse = await backend.client.GET(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
+					params: {
+						query: { page: payload.pageId },
+					},
+				});
 
-			const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, error, response } = apiResponse;
 
-			semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.pageId);
+				if (typeof responseData !== 'undefined') {
+					firstLoad.value.push(payload.pageId);
+					firstLoad.value = [...new Set(firstLoad.value)];
 
-			if (typeof responseData !== 'undefined') {
-				firstLoad.value.push(payload.pageId);
-				firstLoad.value = [...new Set(firstLoad.value)];
+					const cards = Object.fromEntries(
+						responseData.data.map((card) => {
+							const transformedCard = transformCardResponse(card);
 
-				const cards = Object.fromEntries(
-					responseData.data.map((card) => {
-						const transformedCard = transformCardResponse(card);
+							insertDataSourceRelations(transformedCard, card.data_source);
+							insertTilesRelations(transformedCard, card.tiles);
 
-						insertDataSourceRelations(transformedCard, card.data_source);
-						insertTilesRelations(transformedCard, card.tiles);
+							return [transformedCard.id, transformedCard];
+						})
+					);
 
-						return [transformedCard.id, transformedCard];
-					})
-				);
+					data.value = { ...data.value, ...cards };
 
-				data.value = { ...data.value, ...cards };
+					if (payload.pageId) {
+						return findForPage(payload.pageId);
+					}
 
-				if (payload.pageId) {
-					return findForPage(payload.pageId);
+					return Object.values(data.value);
 				}
 
-				return Object.values(data.value);
+				let errorReason: string | null = 'Failed to fetch cards.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-pages-cards-plugin-page-cards']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.pageId);
 			}
-
-			let errorReason: string | null = 'Failed to fetch cards.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-pages-cards-plugin-page-cards']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		})();
 
 		pendingFetchPromises[payload.pageId] = fetchPromise;
@@ -292,39 +296,41 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 			return parsedNewCard.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
-				body: {
-					data: { ...transformCardCreateRequest({ ...parsedNewCard.data, ...{ id: payload.id } }), page: payload.pageId },
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
+					body: {
+						data: { ...transformCardCreateRequest({ ...parsedNewCard.data, ...{ id: payload.id } }), page: payload.pageId },
+					},
+				});
 
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewCard.data.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const card = transformCardResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const card = transformCardResponse(responseData.data);
+					data.value[card.id] = card;
 
-				data.value[card.id] = card;
+					insertDataSourceRelations(card, responseData.data.data_source);
+					insertTilesRelations(card, responseData.data.tiles);
 
-				insertDataSourceRelations(card, responseData.data.data_source);
-				insertTilesRelations(card, responseData.data.tiles);
+					return card;
+				}
 
-				return card;
+				// Record could not be created on api, we have to remove it from a database
+				delete data.value[parsedNewCard.data.id];
+
+				let errorReason: string | null = 'Failed to create card.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-pages-cards-plugin-page-card']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewCard.data.id);
 			}
-
-			// Record could not be created on api, we have to remove it from a database
-			delete data.value[parsedNewCard.data.id];
-
-			let errorReason: string | null = 'Failed to create card.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-pages-cards-plugin-page-card']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 	};
 
@@ -365,37 +371,39 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 			return parsedEditedCard.data;
 		} else {
-			const apiResponse = await backend.client.PATCH(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
-				params: {
-					path: { id: payload.id },
-				},
-				body: {
-					data: transformCardUpdateRequest(parsedEditedCard.data),
-				},
-			});
+			try {
+				const apiResponse = await backend.client.PATCH(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+					body: {
+						data: transformCardUpdateRequest(parsedEditedCard.data),
+					},
+				});
 
-			const { data: responseData, error, response } = apiResponse;
+				const { data: responseData, error, response } = apiResponse;
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const card = transformCardResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				const card = transformCardResponse(responseData.data);
+					data.value[card.id] = card;
 
-				data.value[card.id] = card;
+					return card;
+				}
 
-				return card;
+				// Updating the record on api failed, we need to refresh the record
+				await get({ id: payload.id, pageId: payload.pageId });
+
+				let errorReason: string | null = 'Failed to update card.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-pages-cards-plugin-page-card']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get({ id: payload.id, pageId: payload.pageId });
-
-			let errorReason: string | null = 'Failed to update card.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-pages-cards-plugin-page-card']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 	};
 
@@ -418,36 +426,38 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 
 		semaphore.value.updating.push(payload.id);
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
-			body: {
-				data: { ...transformCardCreateRequest({ ...parsedSaveCard.data, ...{ id: payload.id } }), page: payload.pageId },
-			},
-		});
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards`, {
+				body: {
+					data: { ...transformCardCreateRequest({ ...parsedSaveCard.data, ...{ id: payload.id } }), page: payload.pageId },
+				},
+			});
 
-		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+				const card = transformCardResponse(responseData.data);
 
-		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const card = transformCardResponse(responseData.data);
+				data.value[card.id] = card;
 
-			data.value[card.id] = card;
+				insertDataSourceRelations(card, responseData.data.data_source);
+				insertTilesRelations(card, responseData.data.tiles);
 
-			insertDataSourceRelations(card, responseData.data.data_source);
-			insertTilesRelations(card, responseData.data.tiles);
+				return card;
+			}
 
-			return card;
+			let errorReason: string | null = 'Failed to create card.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['create-pages-cards-plugin-page-card']>(error, errorReason);
+			}
+
+			throw new DashboardApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 		}
-
-		let errorReason: string | null = 'Failed to create card.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['create-pages-cards-plugin-page-card']>(error, errorReason);
-		}
-
-		throw new DashboardApiException(errorReason, response.status);
 	};
 
 	const remove = async (payload: ICardsRemoveActionPayload): Promise<boolean> => {
@@ -468,43 +478,45 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 		if (recordToRemove.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
-			const apiResponse = await backend.client.DELETE(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
-				params: {
-					path: { pageId: payload.pageId, id: payload.id },
-				},
-			});
-
-			const { error, response } = apiResponse;
-
-			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
-
-			if (response.status === 204) {
-				const tilesStore = storesManager.getStore(tilesStoreKey);
-				const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
-
-				dataSourcesStore.unset({ parent: { type: 'card', id: payload.id } });
-
-				const tiles = tilesStore.findForParent('card', payload.id);
-
-				tiles.forEach((tile) => {
-					dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
+			try {
+				const apiResponse = await backend.client.DELETE(`/plugins/${PAGES_CARDS_PLUGIN_PREFIX}/cards/{id}`, {
+					params: {
+						path: { pageId: payload.pageId, id: payload.id },
+					},
 				});
 
-				tilesStore.unset({ parent: { type: 'card', id: payload.id } });
+				const { error, response } = apiResponse;
 
-				return true;
+				if (response.status === 204) {
+					const tilesStore = storesManager.getStore(tilesStoreKey);
+					const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
+
+					dataSourcesStore.unset({ parent: { type: 'card', id: payload.id } });
+
+					const tiles = tilesStore.findForParent('card', payload.id);
+
+					tiles.forEach((tile) => {
+						dataSourcesStore.unset({ parent: { type: 'tile', id: tile.id } });
+					});
+
+					tilesStore.unset({ parent: { type: 'card', id: payload.id } });
+
+					return true;
+				}
+
+				// Deleting record on api failed, we need to refresh the record
+				await get({ id: payload.id, pageId: payload.pageId });
+
+				let errorReason: string | null = 'Remove card failed.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['delete-pages-cards-plugin-page-card']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			}
-
-			// Deleting record on api failed, we need to refresh the record
-			await get({ id: payload.id, pageId: payload.pageId });
-
-			let errorReason: string | null = 'Remove card failed.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['delete-pages-cards-plugin-page-card']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 
 		return true;

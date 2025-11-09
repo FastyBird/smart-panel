@@ -45,6 +45,7 @@ describe('ConfigController', () => {
 	let configService: ConfigService;
 
 	const mockConfig: AppConfigModel = {
+		path: '/var/smart-panel/config.yml',
 		audio: {
 			type: SectionType.AUDIO,
 			speaker: true,

@@ -65,9 +65,16 @@ export class ConfigService {
 			const parsedConfig = yaml.parse(fileContents) as Partial<AppConfigModel>;
 
 			// Transform YAML data into AppConfig instance
-			const appConfigInstance = toInstance(AppConfigModel, parsedConfig, {
-				excludeExtraneousValues: false,
-			});
+			const appConfigInstance = toInstance(
+				AppConfigModel,
+				{
+					path: path.resolve(this.configPath, this.filename),
+					...parsedConfig,
+				},
+				{
+					excludeExtraneousValues: false,
+				},
+			);
 			appConfigInstance.plugins = this.loadPlugins(parsedConfig);
 
 			// Validate the transformed configuration
@@ -89,7 +96,9 @@ export class ConfigService {
 		} else {
 			this.logger.warn('[LOAD] Configuration file not found. Initializing default configuration');
 
-			const config = toInstance(AppConfigModel, {});
+			const config = toInstance(AppConfigModel, {
+				path: path.resolve(this.configPath, this.filename),
+			});
 			config.plugins = this.loadPlugins({});
 
 			this.saveConfig(config);
@@ -268,9 +277,16 @@ export class ConfigService {
 
 			Object.assign(plainAppConfig, { [key]: { ...instanceToPlain(configSection), ...instance } });
 
-			const appConfig = toInstance(AppConfigModel, plainAppConfig, {
-				excludeExtraneousValues: true,
-			});
+			const appConfig = toInstance(
+				AppConfigModel,
+				{
+					path: path.resolve(this.configPath, this.filename),
+					...plainAppConfig,
+				},
+				{
+					excludeExtraneousValues: true,
+				},
+			);
 			appConfig.plugins = this.loadPlugins(plainAppConfig);
 
 			this.logger.log(`[SAVE] Saving updated configuration for section=${key}`);
@@ -328,6 +344,46 @@ export class ConfigService {
 		this.logger.error(`[VALIDATION] Validation failed for section=${key}`);
 
 		throw new ConfigValidationException(`New configuration for section '${key}' is invalid.`);
+	}
+
+	getPluginsConfig<TConfig extends PluginConfigModel>(): TConfig[] {
+		this.logger.debug('[LOOKUP] Fetching configuration for plugins');
+
+		const configSection = this.appConfig['plugins'];
+
+		if (!configSection) {
+			this.logger.error('[ERROR] Configuration section=plugins not found');
+
+			throw new ConfigNotFoundException("Configuration section 'plugins' not found.");
+		}
+
+		const configs: TConfig[] = [];
+
+		for (const pluginConfig of configSection) {
+			const mapping = this.pluginsMapperService.getMapping<TConfig, UpdatePluginConfigDto>(pluginConfig.type);
+
+			const instance = toInstance(mapping.class, pluginConfig, {
+				excludeExtraneousValues: false,
+			});
+
+			const errors = validateSync(instance, { whitelist: true, forbidNonWhitelisted: true, stopAtFirstError: false });
+
+			if (errors.length > 0) {
+				this.logger.error(
+					`[VALIDATION] Configuration plugin=${pluginConfig.type} is corrupted error=${JSON.stringify(errors)}`,
+				);
+
+				throw new ConfigCorruptedException(
+					`Configuration plugin '${pluginConfig.type}' is corrupted and can not be loaded.`,
+				);
+			}
+
+			configs.push(instance);
+		}
+
+		this.logger.log('[LOOKUP] Successfully retrieved configuration for all plugin');
+
+		return configs;
 	}
 
 	getPluginConfig<TConfig extends PluginConfigModel>(plugin: string): TConfig {

@@ -17,7 +17,24 @@ import { Column, Entity, Index, ManyToOne, OneToMany, TableInheritance, Unique }
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AbstractInstanceValidator } from '../../../common/validation/abstract-instance.validator';
-import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../devices.constants';
+
+export class DeviceConnectionStatus {
+	@Expose()
+	@IsBoolean()
+	online: boolean = false;
+
+	@Expose()
+	@IsEnum(ConnectionState)
+	status: ConnectionState = ConnectionState.UNKNOWN;
+}
 
 @Entity('devices_module_devices')
 @Unique('UQ_devices_identifier_type', ['identifier', 'type'])
@@ -70,6 +87,11 @@ export class DeviceEntity extends BaseEntity {
 	channels: ChannelEntity[];
 
 	@Expose()
+	@ValidateNested()
+	@Type(() => DeviceConnectionStatus)
+	status: DeviceConnectionStatus = new DeviceConnectionStatus();
+
+	@Expose()
 	get type(): string {
 		const constructorName = (this.constructor as { name: string }).name;
 		return constructorName.toLowerCase();
@@ -91,7 +113,9 @@ export class DeviceControlEntity extends BaseEntity {
 	@Validate(AbstractInstanceValidator, [DeviceEntity], {
 		message: '[{"field":"device","reason":"Device must be a valid subclass of DeviceEntity."}]',
 	})
-	@Transform(({ value }: { value: DeviceEntity }) => value.id, { toPlainOnly: true })
+	@Transform(({ value }: { value: DeviceEntity | string }) => (typeof value === 'string' ? value : value?.id), {
+		toPlainOnly: true,
+	})
 	@ManyToOne(() => DeviceEntity, (device) => device.controls, { onDelete: 'CASCADE' })
 	device: DeviceEntity | string;
 }
@@ -134,7 +158,9 @@ export class ChannelEntity extends BaseEntity {
 	@Validate(AbstractInstanceValidator, [DeviceEntity], {
 		message: '[{"field":"device","reason":"Device must be a valid subclass of DeviceEntity."}]',
 	})
-	@Transform(({ value }: { value: DeviceEntity }) => value.id, { toPlainOnly: true })
+	@Transform(({ value }: { value: DeviceEntity | string }) => (typeof value === 'string' ? value : value?.id), {
+		toPlainOnly: true,
+	})
 	@ManyToOne(() => DeviceEntity, (device) => device.channels, { onDelete: 'CASCADE' })
 	device: DeviceEntity | string;
 
@@ -171,7 +197,9 @@ export class ChannelControlEntity extends BaseEntity {
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => value instanceof ChannelEntity)
 	@IsInstance(ChannelEntity, { message: '[{"field":"channel","Channel":"Card must be a valid ChannelEntity."}]' })
-	@Transform(({ value }: { value: ChannelEntity }) => value.id, { toPlainOnly: true })
+	@Transform(({ value }: { value: ChannelEntity | string }) => (typeof value === 'string' ? value : value?.id), {
+		toPlainOnly: true,
+	})
 	@ManyToOne(() => ChannelEntity, (channel) => channel.controls, { onDelete: 'CASCADE' })
 	channel: ChannelEntity | string;
 }
@@ -264,7 +292,9 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
 	@ValidateIf((_, value) => value instanceof ChannelEntity)
 	@IsInstance(ChannelEntity, { message: '[{"field":"channel","Channel":"Card must be a valid ChannelEntity."}]' })
-	@Transform(({ value }: { value: ChannelEntity }) => value.id, { toPlainOnly: true })
+	@Transform(({ value }: { value: ChannelEntity | string }) => (typeof value === 'string' ? value : value?.id), {
+		toPlainOnly: true,
+	})
 	@ManyToOne(() => ChannelEntity, (channel) => channel.properties, { onDelete: 'CASCADE' })
 	channel: ChannelEntity | string;
 

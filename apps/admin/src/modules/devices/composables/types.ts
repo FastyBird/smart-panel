@@ -10,8 +10,9 @@ import {
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
+	DevicesModuleDeviceStatusStatus,
 } from '../../../openapi';
-import type { ConnectionState, FormResultType } from '../devices.constants';
+import type { FormResultType } from '../devices.constants';
 import type {
 	IChannelPluginsComponents,
 	IChannelPluginsSchemas,
@@ -241,7 +242,7 @@ export interface IUseDeviceSpecification {
 }
 
 export interface IUseDeviceState {
-	state: ComputedRef<ConnectionState>;
+	state: ComputedRef<DevicesModuleDeviceStatusStatus>;
 	isReady: ComputedRef<boolean>;
 }
 

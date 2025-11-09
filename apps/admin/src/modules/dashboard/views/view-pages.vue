@@ -7,7 +7,7 @@
 	>
 		<template #icon>
 			<icon
-				icon="mdi:monitor-dashboard"
+				icon="mdi:view-dashboard"
 				class="w[20px] h[20px]"
 			/>
 		</template>
@@ -23,6 +23,22 @@
 
 	<app-bar-button
 		v-if="!isMDDevice && isPagesListRoute"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="router.push('/')"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+
+		<span class="uppercase">{{ t('application.buttons.home.title') }}</span>
+	</app-bar-button>
+
+	<app-bar-button
+		v-if="!isMDDevice && isPagesListRoute"
 		:align="AppBarButtonAlign.RIGHT"
 		teleport
 		small
@@ -34,7 +50,7 @@
 	<view-header
 		:heading="t('dashboardModule.headings.pages.list')"
 		:sub-heading="t('dashboardModule.subHeadings.pages.list')"
-		icon="mdi:monitor-dashboard"
+		icon="mdi:view-dashboard"
 	>
 		<template #extra>
 			<div class="flex items-center">
@@ -119,7 +135,7 @@
 
 				<view-error v-else>
 					<template #icon>
-						<icon icon="mdi:monitor-dashboard" />
+						<icon icon="mdi:view-dashboard" />
 					</template>
 					<template #message>
 						{{ t('dashboardModule.messages.misc.requestError') }}

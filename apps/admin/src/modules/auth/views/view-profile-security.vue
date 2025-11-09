@@ -9,7 +9,7 @@
 		/>
 	</el-card>
 
-	<template v-else>
+	<div v-else>
 		<settings-password-form
 			v-if="profile"
 			v-model:remote-form-submit="remoteFormSubmit"
@@ -18,7 +18,7 @@
 			:profile="profile"
 			:layout="Layout.PHONE"
 		/>
-	</template>
+	</div>
 </template>
 
 <script setup lang="ts">

@@ -5,18 +5,26 @@ import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType } from '../devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	EventType as DevicesModuleEventType,
+	EventType,
+	PropertyCategory,
+} from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
-import { DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsService } from './channels.service';
+import { DeviceStatusService } from './device-status.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
+import { DevicesControlsService } from './devices.controls.service';
 
 @Injectable()
 export class DevicesService {
@@ -27,9 +35,25 @@ export class DevicesService {
 		private readonly repository: Repository<DeviceEntity>,
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly channelsService: ChannelsService,
+		private readonly devicesControlsService: DevicesControlsService,
+		private readonly deviceStatusService: DeviceStatusService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
+
+	async getCount<TDevice extends DeviceEntity>(type?: string): Promise<number> {
+		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		this.logger.debug('[LOOKUP ALL] Fetching all devices count');
+
+		const devices = await repository.count();
+
+		this.logger.debug(`[LOOKUP ALL] Found that in system is ${devices} devices`);
+
+		return devices;
+	}
 
 	// Devices
 	async findAll<TDevice extends DeviceEntity>(type?: string): Promise<TDevice[]> {
@@ -233,13 +257,27 @@ export class DevicesService {
 	async remove(id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Removing device with id=${id}`);
 
-		const device = await this.getOneOrThrow(id);
+		await this.dataSource.transaction(async (manager) => {
+			const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
 
-		await this.repository.delete(device.id);
+			const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
 
-		this.logger.log(`[DELETE] Successfully removed device with id=${id}`);
+			for (const channel of channels) {
+				await this.channelsService.remove(channel.id, manager);
+			}
 
-		this.eventEmitter.emit(EventType.DEVICE_DELETED, device);
+			const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, { where: { device: { id } } });
+
+			for (const control of controls) {
+				await this.devicesControlsService.remove(control.id, device.id, manager);
+			}
+
+			await manager.remove(device);
+
+			this.logger.log(`[DELETE] Successfully removed device with id=${id}`);
+
+			this.eventEmitter.emit(EventType.DEVICE_DELETED, device);
+		});
 	}
 
 	async getOneOrThrow(id: string): Promise<DeviceEntity> {
@@ -252,6 +290,37 @@ export class DevicesService {
 		}
 
 		return device;
+	}
+
+	@OnEvent([DevicesModuleEventType.CHANNEL_PROPERTY_CREATED, DevicesModuleEventType.CHANNEL_PROPERTY_UPDATED])
+	async handleDevicePropertyChangedEvent(property: ChannelPropertyEntity) {
+		if (property.category !== PropertyCategory.STATUS) {
+			return;
+		}
+
+		let channel = property.channel;
+
+		if (typeof channel === 'string') {
+			channel = await this.channelsService.getOneOrThrow(channel);
+		}
+
+		if (channel.category !== ChannelCategory.DEVICE_INFORMATION) {
+			return;
+		}
+
+		let device = channel.device;
+
+		if (typeof device === 'string') {
+			device = await this.getOneOrThrow(device);
+		}
+
+		const status = property.value;
+
+		if (typeof status !== 'string' || !Object.values(ConnectionState).includes(status as ConnectionState)) {
+			throw new DevicesException('Device status is invalid.');
+		}
+
+		await this.deviceStatusService.write(device, property, status as ConnectionState);
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

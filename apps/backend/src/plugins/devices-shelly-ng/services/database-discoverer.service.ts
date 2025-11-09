@@ -19,7 +19,7 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 	async run() {
 		for (const d of await this.devicesService.findAll<ShellyNgDeviceEntity>(DEVICES_SHELLY_NG_TYPE)) {
 			if (d.enabled === false) {
-				return;
+				continue;
 			}
 
 			if (d.identifier === null) {
@@ -27,7 +27,7 @@ export class DatabaseDiscovererService extends DeviceDiscoverer {
 					`Failed to prepare device to be managed by Shelly manager. Missing identifier for device=${d.id}`,
 				);
 
-				return;
+				continue;
 			}
 
 			await this.emitDevice({

@@ -1,0 +1,106 @@
+{
+	"meta": {
+		"stats": {
+			"title": "Application overview"
+		}
+	},
+	"breadcrumbs": {
+		"stats": "overview"
+	},
+	"headings": {
+		"stats": "Application overview",
+		"systemInformation": "System Information",
+		"applicationOverview": "Smart Panel",
+		"quickLinks": "Quick Links",
+		"cpu": "CPU",
+		"memory": "Memory",
+		"uptime": "Uptime",
+		"logs": "Logs",
+		"dashboard": "Smart Panel Pages",
+		"devices": "Connected devices",
+		"devicesCommunication": "Device updates today"
+	},
+	"subHeadings": {
+		"stats": "Smart panel system statistics"
+	},
+	"fields": {
+		"systemInformation": {
+			"timezone": {
+				"title": "Timezone"
+			},
+			"operatingSystem": {
+				"title": "OS"
+			},
+			"hostname": {
+				"title": "Hostname"
+			},
+			"ipv4": {
+				"title": "IPv4"
+			},
+			"ipv6": {
+				"title": "IPv6"
+			},
+			"configPath": {
+				"title": "Config path",
+				"tooltip": "Config file path:"
+			}
+		},
+		"applicationOverview": {
+			"version": {
+				"title": "Version"
+			},
+			"apip95": {
+				"title": "API p95 (5m)",
+				"tooltip": "95th percentile API response time (last 5 minutes). Shows how fast 95% of API requests are."
+			},
+			"webSocket": {
+				"title": "WebSocket",
+				"tooltip": "Avail 5m: {wsAvailability5m} (updated {last})",
+				"state": {
+					"connected": "Connected",
+					"disconnected": "Disconnected"
+				}
+			}
+		},
+		"cpu": {
+			"temperature": {
+				"title": "Temp {temperature} {unit}"
+			}
+		},
+		"memory": {
+			"total": {
+				"title": "of {total} {unit}"
+			}
+		},
+		"uptime": {
+			"process": {
+				"title": "Process {uptime}"
+			}
+		}
+	},
+	"texts": {
+		"updated": "Updated {time}",
+		"noLogs": "No any application logs were recorded.",
+		"noFilteredLogs": "No any application logs found matching the active filter criteria"
+	},
+	"buttons": {
+		"copy": {
+			"title": "Copy"
+		},
+		"pages": {
+			"title": "Pages"
+		},
+		"devices": {
+			"title": "Devices"
+		},
+		"config": {
+			"title": "Config"
+		},
+		"docs": {
+			"title": "Docs"
+		},
+		"resetFilters": {
+			"title": "Reset filters"
+		}
+	}
+}

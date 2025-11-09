@@ -3,8 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
-import { ConnectionState } from '../devices.constants';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceStatusStatus } from '../../../openapi';
 import type { IDevice } from '../store/devices.store.types';
 
 import { useDeviceState } from './useDeviceState';
@@ -63,7 +62,7 @@ describe('useDeviceState', () => {
 
 		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
-		expect(state.value).toBe(ConnectionState.UNKNOWN);
+		expect(state.value).toBe(DevicesModuleDeviceStatusStatus.unknown);
 	});
 
 	it('returns UNKNOWN if no status property is found', () => {
@@ -72,7 +71,7 @@ describe('useDeviceState', () => {
 
 		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
-		expect(state.value).toBe(ConnectionState.UNKNOWN);
+		expect(state.value).toBe(DevicesModuleDeviceStatusStatus.unknown);
 	});
 
 	it('returns UNKNOWN if property value is invalid', () => {
@@ -81,21 +80,25 @@ describe('useDeviceState', () => {
 
 		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
-		expect(state.value).toBe(ConnectionState.UNKNOWN);
+		expect(state.value).toBe(DevicesModuleDeviceStatusStatus.unknown);
 	});
 
 	it('returns proper connection state if value is valid', () => {
 		findForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
-		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: ConnectionState.CONNECTED }]);
+		findForChannel.mockReturnValue([
+			{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: DevicesModuleDeviceStatusStatus.connected },
+		]);
 
 		const { state } = useDeviceState({ device: { id: deviceId } as IDevice });
 
-		expect(state.value).toBe(ConnectionState.CONNECTED);
+		expect(state.value).toBe(DevicesModuleDeviceStatusStatus.connected);
 	});
 
 	it('returns isReady = true for READY, CONNECTED, or RUNNING states', () => {
 		findForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
-		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: ConnectionState.READY }]);
+		findForChannel.mockReturnValue([
+			{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: DevicesModuleDeviceStatusStatus.ready },
+		]);
 
 		const { isReady } = useDeviceState({ device: { id: deviceId } as IDevice });
 
@@ -104,7 +107,9 @@ describe('useDeviceState', () => {
 
 	it('returns isReady = false for other states', () => {
 		findForDevice.mockReturnValue([{ id: channelId, category: DevicesModuleChannelCategory.device_information }]);
-		findForChannel.mockReturnValue([{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: ConnectionState.DISCONNECTED }]);
+		findForChannel.mockReturnValue([
+			{ id: 'prop-1', category: DevicesModuleChannelPropertyCategory.status, value: DevicesModuleDeviceStatusStatus.disconnected },
+		]);
 
 		const { isReady } = useDeviceState({ device: { id: deviceId } as IDevice });
 

@@ -8,8 +8,13 @@
 				v-bind="props"
 				:size="props.small ? 'small' : 'large'"
 				:disabled="props.disabled"
-				:circle="'icon' in $slots"
-				:class="[ns.b(), ns.m(`align-${props.align}`), ...(props.classes ?? [])]"
+				:class="[
+					ns.b(),
+					ns.m(`align-${props.align}`),
+					...(props.classes ?? []),
+					{ 'pr-0!': 'icon' in $slots && props.align !== AppBarButtonAlign.LEFT },
+					{ 'pl-0!': 'icon' in $slots && props.align !== AppBarButtonAlign.RIGHT },
+				]"
 				class="ml-0!"
 				type="primary"
 				@click="emit('click', $event)"
@@ -27,8 +32,13 @@
 			v-bind="props"
 			:size="props.small ? 'small' : 'large'"
 			:disabled="props.disabled"
-			:circle="'icon' in $slots"
-			:class="[ns.b(), ns.m(`align-${props.align}`), ...(props.classes ?? [])]"
+			:class="[
+				ns.b(),
+				ns.m(`align-${props.align}`),
+				...(props.classes ?? []),
+				{ 'pr-0!': 'icon' in $slots && props.align !== AppBarButtonAlign.LEFT },
+				{ 'pl-0!': 'icon' in $slots && props.align !== AppBarButtonAlign.RIGHT },
+			]"
 			class="ml-0!"
 			type="primary"
 			@click="emit('click', $event)"

@@ -162,7 +162,7 @@
 				<devices-table-column-state
 					:device="scope.row"
 					:filters="innerFilters"
-					@filter-by="(value: ConnectionState, add: boolean) => onFilterBy('state', value, add)"
+					@filter-by="(value: DevicesModuleDeviceStatusStatus, add: boolean) => onFilterBy('state', value, add)"
 				/>
 			</template>
 		</el-table-column>
@@ -288,9 +288,8 @@ import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { type IPluginElement, IconWithChild, useBreakpoints } from '../../../../common';
-import type { DevicesModuleDeviceCategory } from '../../../../openapi';
+import { type DevicesModuleDeviceCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi';
 import type { IDevicesFilter } from '../../composables/types';
-import type { ConnectionState } from '../../devices.constants';
 import type { IDevice } from '../../store/devices.store.types';
 
 import DevicesTableColumnIcon from './devices-table-column-icon.vue';
@@ -367,7 +366,7 @@ const onFilterBy = (column: string, data: string, add?: boolean): void => {
 		let filteredStates = innerFilters.value.states;
 
 		if (add === true) {
-			filteredStates.push(data as ConnectionState);
+			filteredStates.push(data as DevicesModuleDeviceStatusStatus);
 		} else {
 			filteredStates = innerFilters.value.states.filter((item) => item !== data);
 		}

@@ -55,20 +55,20 @@ describe('ThrottleStatus Store', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should set config audio data successfully', () => {
+	it('should set throttle status data successfully', () => {
 		const result = store.set({ data: mockThrottleStatus });
 
 		expect(result).toEqual(mockThrottleStatus);
 		expect(store.data).toEqual(mockThrottleStatus);
 	});
 
-	it('should throw validation error if set config audio with invalid data', () => {
+	it('should throw validation error if set throttle status with invalid data', () => {
 		expect(() => store.set({ data: { ...mockThrottleStatus, undervoltage: 'invalid' } } as unknown as IThrottleStatusSetActionPayload)).toThrow(
 			SystemValidationException
 		);
 	});
 
-	it('should fetch config audio successfully', async () => {
+	it('should fetch throttle status successfully', async () => {
 		(backendClient.GET as Mock).mockResolvedValue({
 			data: { data: mockThrottleStatusRes },
 			error: undefined,

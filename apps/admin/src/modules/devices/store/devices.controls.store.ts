@@ -135,33 +135,35 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 				semaphore.value.fetching.item.push(payload.id);
 
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls/{id}`, {
-					params: {
-						path: { deviceId: payload.deviceId, id: payload.id },
-					},
-				});
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls/{id}`, {
+						params: {
+							path: { deviceId: payload.deviceId, id: payload.id },
+						},
+					});
 
-				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+					if (typeof responseData !== 'undefined') {
+						const control = transformDeviceControlResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					const control = transformDeviceControlResponse(responseData.data);
+						data.value[control.id] = control;
 
-					data.value[control.id] = control;
+						return control;
+					}
 
-					return control;
+					let errorReason: string | null = 'Failed to fetch device control.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-devices-module-device-control']>(error, errorReason);
+					}
+
+					throw new DevicesApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 				}
-
-				let errorReason: string | null = 'Failed to fetch device control.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-devices-module-device-control']>(error, errorReason);
-				}
-
-				throw new DevicesApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises[payload.id] = getPromise;
@@ -188,42 +190,44 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 				firstLoad.value = firstLoad.value.filter((item) => item !== payload.deviceId);
 				firstLoad.value = [...new Set(firstLoad.value)];
 
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls`, {
-					params: {
-						path: { deviceId: payload.deviceId },
-					},
-				});
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls`, {
+						params: {
+							path: { deviceId: payload.deviceId },
+						},
+					});
 
-				semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.deviceId);
+					if (typeof responseData !== 'undefined') {
+						firstLoad.value.push(payload.deviceId);
+						firstLoad.value = [...new Set(firstLoad.value)];
 
-				if (typeof responseData !== 'undefined') {
-					firstLoad.value.push(payload.deviceId);
-					firstLoad.value = [...new Set(firstLoad.value)];
+						const controls = Object.fromEntries(
+							responseData.data.map((control) => {
+								const transformedDeviceControl = transformDeviceControlResponse(control);
 
-					const controls = Object.fromEntries(
-						responseData.data.map((control) => {
-							const transformedDeviceControl = transformDeviceControlResponse(control);
+								return [transformedDeviceControl.id, transformedDeviceControl];
+							})
+						);
 
-							return [transformedDeviceControl.id, transformedDeviceControl];
-						})
-					);
+						data.value = { ...data.value, ...controls };
 
-					data.value = { ...data.value, ...controls };
+						return Object.values(data.value);
+					}
 
-					return Object.values(data.value);
+					let errorReason: string | null = 'Failed to fetch device controls.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-devices-module-device-controls']>(error, errorReason);
+					}
+
+					throw new DevicesApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.deviceId);
 				}
-
-				let errorReason: string | null = 'Failed to fetch device controls.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-devices-module-device-controls']>(error, errorReason);
-				}
-
-				throw new DevicesApiException(errorReason, response.status);
 			})();
 
 			pendingFetchPromises[payload.deviceId] = fetchPromise;
@@ -267,39 +271,41 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 				return parsedNewDeviceControl.data;
 			} else {
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls`, {
-					params: {
-						path: { deviceId: payload.deviceId },
-					},
-					body: {
-						data: transformDeviceControlCreateRequest({ ...parsedNewDeviceControl.data, ...{ id: payload.id, device: payload.deviceId } }),
-					},
-				});
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls`, {
+						params: {
+							path: { deviceId: payload.deviceId },
+						},
+						body: {
+							data: transformDeviceControlCreateRequest({ ...parsedNewDeviceControl.data, ...{ id: payload.id, device: payload.deviceId } }),
+						},
+					});
 
-				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDeviceControl.data.id);
+					if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+						const control = transformDeviceControlResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const control = transformDeviceControlResponse(responseData.data);
+						data.value[control.id] = control;
 
-					data.value[control.id] = control;
+						return control;
+					}
 
-					return control;
+					// Record could not be created on api, we have to remove it from a database
+					delete data.value[parsedNewDeviceControl.data.id];
+
+					let errorReason: string | null = 'Failed to create device control.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['create-devices-module-device-control']>(error, errorReason);
+					}
+
+					throw new DevicesApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDeviceControl.data.id);
 				}
-
-				// Record could not be created on api, we have to remove it from a database
-				delete data.value[parsedNewDeviceControl.data.id];
-
-				let errorReason: string | null = 'Failed to create device control.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['create-devices-module-device-control']>(error, errorReason);
-				}
-
-				throw new DevicesApiException(errorReason, response.status);
 			}
 		};
 
@@ -322,36 +328,38 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 
 			semaphore.value.updating.push(payload.id);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls`, {
-				params: {
-					path: { deviceId: parsedSaveDeviceControl.data.device },
-				},
-				body: {
-					data: transformDeviceControlCreateRequest({ ...parsedSaveDeviceControl.data, ...{ id: payload.id, device: payload.deviceId } }),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls`, {
+					params: {
+						path: { deviceId: parsedSaveDeviceControl.data.device },
+					},
+					body: {
+						data: transformDeviceControlCreateRequest({ ...parsedSaveDeviceControl.data, ...{ id: payload.id, device: payload.deviceId } }),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const control = transformDeviceControlResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const control = transformDeviceControlResponse(responseData.data);
+					data.value[control.id] = control;
 
-				data.value[control.id] = control;
+					return control;
+				}
 
-				return control;
+				let errorReason: string | null = 'Failed to create device control.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-devices-module-device-control']>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to create device control.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-devices-module-device-control']>(error, errorReason);
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		};
 
 		const remove = async (payload: IDevicesControlsRemoveActionPayload): Promise<boolean> => {
@@ -372,28 +380,30 @@ export const useDevicesControls = defineStore<'devices_module-devices_controls',
 			if (recordToRemove.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
-				const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls/{id}`, {
-					params: {
-						path: { deviceId: payload.deviceId, id: payload.id },
-					},
-				});
+				try {
+					const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/devices/{deviceId}/controls/{id}`, {
+						params: {
+							path: { deviceId: payload.deviceId, id: payload.id },
+						},
+					});
 
-				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+					if (response.status === 204) {
+						return true;
+					}
 
-				if (response.status === 204) {
-					return true;
+					// Deleting record on api failed, we need to refresh the record
+					await get({ id: payload.id, deviceId: payload.deviceId });
+
+					let errorReason: string | null = 'Remove device control failed.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['delete-devices-module-device-control']>(error, errorReason);
+					}
+
+					throw new DevicesApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 				}
-
-				// Deleting record on api failed, we need to refresh the record
-				await get({ id: payload.id, deviceId: payload.deviceId });
-
-				let errorReason: string | null = 'Remove device control failed.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['delete-devices-module-device-control']>(error, errorReason);
-				}
-
-				throw new DevicesApiException(errorReason, response.status);
 			}
 
 			return true;

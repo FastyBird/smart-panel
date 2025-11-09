@@ -118,33 +118,35 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 
 			semaphore.value.fetching.item.push(payload.id);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.GET(`/${USERS_MODULE_PREFIX}/displays-instances/{id}`, {
-				params: {
-					path: { id: payload.id },
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${USERS_MODULE_PREFIX}/displays-instances/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+				});
 
-			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const display = transformDisplayInstanceResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined') {
-				const display = transformDisplayInstanceResponse(responseData.data);
+					data.value[display.id] = display;
 
-				data.value[display.id] = display;
+					return display;
+				}
 
-				return display;
+				let errorReason: string | null = 'Failed to fetch display.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-users-module-display-instance']>(error, errorReason);
+				}
+
+				throw new UsersApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to fetch display.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-users-module-display-instance']>(error, errorReason);
-			}
-
-			throw new UsersApiException(errorReason, response.status);
 		};
 
 		const fetch = async (): Promise<IDisplayInstance[]> => {
@@ -212,36 +214,38 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 
 				return parsedNewDisplay.data;
 			} else {
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/displays-instances`, {
-					body: {
-						data: transformDisplayInstanceCreateRequest({ ...parsedNewDisplay.data, ...{ id: payload.id } }),
-					},
-				});
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/displays-instances`, {
+						body: {
+							data: transformDisplayInstanceCreateRequest({ ...parsedNewDisplay.data, ...{ id: payload.id } }),
+						},
+					});
 
-				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDisplay.data.id);
+					if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+						const display = transformDisplayInstanceResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-					const display = transformDisplayInstanceResponse(responseData.data);
+						data.value[display.id] = display;
 
-					data.value[display.id] = display;
+						return display;
+					}
 
-					return display;
+					// Record could not be created on api, we have to remove it from a database
+					delete data.value[parsedNewDisplay.data.id];
+
+					let errorReason: string | null = 'Failed to create display.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['create-users-module-display-instance']>(error, errorReason);
+					}
+
+					throw new UsersApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewDisplay.data.id);
 				}
-
-				// Record could not be created on api, we have to remove it from a database
-				delete data.value[parsedNewDisplay.data.id];
-
-				let errorReason: string | null = 'Failed to create display.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['create-users-module-display-instance']>(error, errorReason);
-				}
-
-				throw new UsersApiException(errorReason, response.status);
 			}
 		};
 
@@ -282,41 +286,43 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 
 				return parsedEditedDisplay.data;
 			} else {
-				const {
-					data: responseData,
-					error,
-					response,
-				} = await backend.client.PATCH(`/${USERS_MODULE_PREFIX}/displays-instances/{id}`, {
-					params: {
-						path: {
-							id: payload.id,
+				try {
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await backend.client.PATCH(`/${USERS_MODULE_PREFIX}/displays-instances/{id}`, {
+						params: {
+							path: {
+								id: payload.id,
+							},
 						},
-					},
-					body: {
-						data: transformDisplayInstanceUpdateRequest(parsedEditedDisplay.data),
-					},
-				});
+						body: {
+							data: transformDisplayInstanceUpdateRequest(parsedEditedDisplay.data),
+						},
+					});
 
-				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+					if (typeof responseData !== 'undefined') {
+						const display = transformDisplayInstanceResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					const display = transformDisplayInstanceResponse(responseData.data);
+						data.value[display.id] = display;
 
-					data.value[display.id] = display;
+						return display;
+					}
 
-					return display;
+					// Updating the record on api failed, we need to refresh the record
+					await get({ id: payload.id });
+
+					let errorReason: string | null = 'Failed to update display.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['update-users-module-display-instance']>(error, errorReason);
+					}
+
+					throw new UsersApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 				}
-
-				// Updating the record on api failed, we need to refresh the record
-				await get({ id: payload.id });
-
-				let errorReason: string | null = 'Failed to update display.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['update-users-module-display-instance']>(error, errorReason);
-				}
-
-				throw new UsersApiException(errorReason, response.status);
 			}
 		};
 
@@ -339,33 +345,35 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 
 			semaphore.value.updating.push(payload.id);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/displays-instances`, {
-				body: {
-					data: transformDisplayInstanceCreateRequest({ ...parsedSaveDisplay.data, ...{ id: payload.id } }),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${USERS_MODULE_PREFIX}/displays-instances`, {
+					body: {
+						data: transformDisplayInstanceCreateRequest({ ...parsedSaveDisplay.data, ...{ id: payload.id } }),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const display = transformDisplayInstanceResponse(responseData.data);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const display = transformDisplayInstanceResponse(responseData.data);
+					data.value[display.id] = display;
 
-				data.value[display.id] = display;
+					return display;
+				}
 
-				return display;
+				let errorReason: string | null = 'Failed to create display.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-users-module-display-instance']>(error, errorReason);
+				}
+
+				throw new UsersApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to create display.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-users-module-display-instance']>(error, errorReason);
-			}
-
-			throw new UsersApiException(errorReason, response.status);
 		};
 
 		const remove = async (payload: IDisplaysInstancesRemoveActionPayload): Promise<boolean> => {
@@ -386,30 +394,32 @@ export const useDisplaysInstances = defineStore<'users_module-displays-instances
 			if (recordToRemove.draft) {
 				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			} else {
-				const { error, response } = await backend.client.DELETE(`/${USERS_MODULE_PREFIX}/displays-instances/{id}`, {
-					params: {
-						path: {
-							id: payload.id,
+				try {
+					const { error, response } = await backend.client.DELETE(`/${USERS_MODULE_PREFIX}/displays-instances/{id}`, {
+						params: {
+							path: {
+								id: payload.id,
+							},
 						},
-					},
-				});
+					});
 
-				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
+					if (response.status === 204) {
+						return true;
+					}
 
-				if (response.status === 204) {
-					return true;
+					// Deleting record on api failed, we need to refresh the record
+					await get({ id: payload.id });
+
+					let errorReason: string | null = 'Remove account failed.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['delete-users-module-display-instance']>(error, errorReason);
+					}
+
+					throw new UsersApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 				}
-
-				// Deleting record on api failed, we need to refresh the record
-				await get({ id: payload.id });
-
-				let errorReason: string | null = 'Remove account failed.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['delete-users-module-display-instance']>(error, errorReason);
-				}
-
-				throw new UsersApiException(errorReason, response.status);
 			}
 
 			return true;

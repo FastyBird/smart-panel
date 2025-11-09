@@ -7,7 +7,7 @@
 	>
 		<template #icon>
 			<icon
-				icon="mdi:monitor-dashboard"
+				icon="mdi:view-dashboard"
 				class="w[20px] h[20px]"
 			/>
 		</template>
@@ -48,7 +48,7 @@
 	<view-header
 		:heading="t('dashboardModule.headings.pages.detail', { page: page?.title })"
 		:sub-heading="t('dashboardModule.subHeadings.pages.detail', { page: page?.title })"
-		icon="mdi:monitor-dashboard"
+		icon="mdi:view-dashboard"
 	>
 		<template #extra>
 			<div class="flex items-center">
@@ -145,7 +145,7 @@
 
 				<view-error v-else>
 					<template #icon>
-						<icon icon="mdi:monitor-dashboard" />
+						<icon icon="mdi:view-dashboard" />
 					</template>
 					<template #message>
 						{{ t('dashboardModule.messages.misc.requestError') }}

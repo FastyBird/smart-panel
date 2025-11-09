@@ -3,7 +3,14 @@ import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import type { components } from '../../../openapi';
-import { ChannelCategory, DataTypeType, DeviceCategory, PermissionType, PropertyCategory } from '../devices.constants';
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../devices.constants';
 
 import {
 	ChannelControlEntity,
@@ -51,6 +58,10 @@ describe('Devices module entity and OpenAPI component synchronization', () => {
 			name: 'Thermostat',
 			description: 'Living room thermostat',
 			enabled: true,
+			status: {
+				online: false,
+				status: ConnectionState.UNKNOWN,
+			},
 			controls: [],
 			channels: [],
 			created_at: new Date().toISOString(),

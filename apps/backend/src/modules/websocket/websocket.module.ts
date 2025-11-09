@@ -5,11 +5,18 @@ import { JwtModule } from '@nestjs/jwt';
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
 import { AuthModule } from '../auth/auth.module';
+import { InfluxDbModule } from '../influxdb/influxdb.module';
+import { InfluxDbService } from '../influxdb/services/influxdb.service';
+import { StatsRegistryService } from '../stats/services/stats-registry.service';
+import { StatsModule } from '../stats/stats.module';
 import { UsersModule } from '../users/users.module';
 
 import { WebsocketGateway } from './gateway/websocket.gateway';
+import { WsStatsProvider } from './providers/ws-stats.provider';
 import { CommandEventRegistryService } from './services/command-event-registry.service';
 import { WsAuthService } from './services/ws-auth.service';
+import { WsMetricsService } from './services/ws-metrics.service';
+import { WEBSOCKET_MODULE_NAME, WsConnInfluxDbSchema, WsStatsInfluxDbSchema } from './websocket.constants';
 
 @Module({
 	imports: [
@@ -25,8 +32,23 @@ import { WsAuthService } from './services/ws-auth.service';
 		}),
 		forwardRef(() => AuthModule),
 		forwardRef(() => UsersModule),
+		InfluxDbModule,
+		StatsModule,
 	],
-	providers: [WebsocketGateway, CommandEventRegistryService, WsAuthService],
+	providers: [WebsocketGateway, CommandEventRegistryService, WsAuthService, WsMetricsService, WsStatsProvider],
 	exports: [WebsocketGateway, CommandEventRegistryService],
 })
-export class WebsocketModule {}
+export class WebsocketModule {
+	constructor(
+		private readonly wsStatsProvider: WsStatsProvider,
+		private readonly statsRegistryService: StatsRegistryService,
+		private readonly influxDbService: InfluxDbService,
+	) {}
+
+	onModuleInit() {
+		this.influxDbService.registerSchema(WsStatsInfluxDbSchema);
+		this.influxDbService.registerSchema(WsConnInfluxDbSchema);
+
+		this.statsRegistryService.register(WEBSOCKET_MODULE_NAME, this.wsStatsProvider);
+	}
+}

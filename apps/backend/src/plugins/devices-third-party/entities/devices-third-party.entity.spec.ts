@@ -2,7 +2,7 @@ import { validateSync } from 'class-validator';
 import { v4 as uuid } from 'uuid';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import type { components } from '../../../openapi';
 import { DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
 
@@ -40,6 +40,10 @@ describe('Devices Third-Party plugin entity and OpenAPI Model Synchronization', 
 			name: 'Thermostat',
 			description: 'Living room thermostat',
 			enabled: true,
+			status: {
+				online: true,
+				status: ConnectionState.CONNECTED,
+			},
 			controls: [],
 			channels: [],
 			created_at: new Date().toISOString(),

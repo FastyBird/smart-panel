@@ -24,6 +24,12 @@ const mockAudio: ISystemInfo = {
 			available: 17000000000,
 		},
 	],
+	primaryStorage: {
+		fs: '/dev/mmcblk0p1',
+		used: 15000000000,
+		size: 32000000000,
+		available: 17000000000,
+	},
 	temperature: {
 		cpu: 55,
 		gpu: null,
@@ -33,6 +39,9 @@ const mockAudio: ISystemInfo = {
 		distro: 'Debian',
 		release: '11 (bullseye)',
 		uptime: 36000,
+		node: '20.18.1',
+		npm: '11.1.0',
+		timezone: 'CET+0100',
 	},
 	network: [
 		{
@@ -46,12 +55,17 @@ const mockAudio: ISystemInfo = {
 		ip4: '192.168.0.1',
 		ip6: 'fe80::134a:1e43:abc5:d413',
 		mac: 'xx:xx:xx:xx:xx:xx',
+		hostname: 'smart-panel',
 	},
 	display: {
 		resolutionX: 1920,
 		resolutionY: 1080,
 		currentResX: 1280,
 		currentResY: 720,
+	},
+	process: {
+		pid: 86523,
+		uptime: 1496,
 	},
 };
 

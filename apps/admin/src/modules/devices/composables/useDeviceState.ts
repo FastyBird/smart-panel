@@ -1,8 +1,7 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory } from '../../../openapi';
-import { ConnectionState } from '../devices.constants';
+import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceStatusStatus } from '../../../openapi';
 import type { IDevice } from '../store/devices.store.types';
 import { channelsPropertiesStoreKey, channelsStoreKey } from '../store/keys';
 
@@ -19,12 +18,12 @@ export const useDeviceState = ({ device }: IUseDeviceStateProps): IUseDeviceStat
 
 	const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
-	const state = computed<ConnectionState>((): ConnectionState => {
+	const state = computed<DevicesModuleDeviceStatusStatus>((): DevicesModuleDeviceStatusStatus => {
 		const channel =
 			channelsStore.findForDevice(device.id).find((channel) => channel.category === DevicesModuleChannelCategory.device_information) || null;
 
 		if (!channel) {
-			return ConnectionState.UNKNOWN;
+			return DevicesModuleDeviceStatusStatus.unknown;
 		}
 
 		const property =
@@ -32,18 +31,23 @@ export const useDeviceState = ({ device }: IUseDeviceStateProps): IUseDeviceStat
 			null;
 
 		if (!property) {
-			return ConnectionState.UNKNOWN;
+			return DevicesModuleDeviceStatusStatus.unknown;
 		}
 
-		if (typeof property.value === 'string' && Object.values(ConnectionState).includes(property.value as ConnectionState)) {
-			return property.value as ConnectionState;
+		if (
+			typeof property.value === 'string' &&
+			Object.values(DevicesModuleDeviceStatusStatus).includes(property.value as DevicesModuleDeviceStatusStatus)
+		) {
+			return property.value as DevicesModuleDeviceStatusStatus;
 		}
 
-		return ConnectionState.UNKNOWN;
+		return DevicesModuleDeviceStatusStatus.unknown;
 	});
 
 	const isReady = computed<boolean>((): boolean => {
-		return ([ConnectionState.READY, ConnectionState.CONNECTED, ConnectionState.RUNNING] as string[]).includes(state.value);
+		return (
+			[DevicesModuleDeviceStatusStatus.ready, DevicesModuleDeviceStatusStatus.connected, DevicesModuleDeviceStatusStatus.running] as string[]
+		).includes(state.value);
 	});
 
 	return {

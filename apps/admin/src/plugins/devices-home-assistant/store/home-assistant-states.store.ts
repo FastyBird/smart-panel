@@ -99,31 +99,33 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 
 				semaphore.value.fetching.item.push(payload.entityId);
 
-				const apiResponse = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states/{entityId}`, {
-					params: {
-						path: { entityId: payload.entityId },
-					},
-				});
+				try {
+					const apiResponse = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states/{entityId}`, {
+						params: {
+							path: { entityId: payload.entityId },
+						},
+					});
 
-				const { data: responseData, error, response } = apiResponse;
+					const { data: responseData, error, response } = apiResponse;
 
-				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.entityId);
+					if (typeof responseData !== 'undefined') {
+						const transformed = transformHomeAssistantStateResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					const transformed = transformHomeAssistantStateResponse(responseData.data);
+						data.value[transformed.entityId] = transformed;
 
-					data.value[transformed.entityId] = transformed;
+						return transformed;
+					}
 
-					return transformed;
+					let errorReason: string | null = 'Failed to fetch HomeAssistantState.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-devices-home-assistant-plugin-state']>(error, errorReason);
+					}
+
+					throw new DevicesHomeAssistantApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.entityId);
 				}
-
-				let errorReason: string | null = 'Failed to fetch HomeAssistantState.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-devices-home-assistant-plugin-state']>(error, errorReason);
-				}
-
-				throw new DevicesHomeAssistantApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises[payload.entityId] = fetchPromise;
@@ -147,31 +149,33 @@ export const useHomeAssistantStates = defineStore<'devices_home_assistant_plugin
 
 				semaphore.value.fetching.items = true;
 
-				const { data: responseData, error, response } = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states`);
+				try {
+					const { data: responseData, error, response } = await backend.client.GET(`/plugins/${DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX}/states`);
 
-				semaphore.value.fetching.items = false;
+					if (typeof responseData !== 'undefined') {
+						data.value = Object.fromEntries(
+							responseData.data.map((states) => {
+								const transformed = transformHomeAssistantStateResponse(states);
 
-				if (typeof responseData !== 'undefined') {
-					data.value = Object.fromEntries(
-						responseData.data.map((states) => {
-							const transformed = transformHomeAssistantStateResponse(states);
+								return [transformed.entityId, transformed];
+							})
+						);
 
-							return [transformed.entityId, transformed];
-						})
-					);
+						firstLoad.value = true;
 
-					firstLoad.value = true;
+						return Object.values(data.value);
+					}
 
-					return Object.values(data.value);
+					let errorReason: string | null = 'Failed to fetch Home Assistant states.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-devices-home-assistant-plugin-states']>(error, errorReason);
+					}
+
+					throw new DevicesHomeAssistantApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.fetching.items = false;
 				}
-
-				let errorReason: string | null = 'Failed to fetch Home Assistant states.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-devices-home-assistant-plugin-states']>(error, errorReason);
-				}
-
-				throw new DevicesHomeAssistantApiException(errorReason, response.status);
 			})();
 
 			pendingFetchPromises['all'] = fetchPromise;

@@ -145,38 +145,40 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 			semaphore.value.fetching.item.push(payload.id);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
-				params: {
-					path: { id: payload.id },
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+				});
 
-			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const element = getPluginElement(responseData.data.type);
 
-			if (typeof responseData !== 'undefined') {
-				const element = getPluginElement(responseData.data.type);
+					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					insertDeviceControlsRelations(transformed, responseData.data.controls);
+					insertChannelsRelations(transformed, responseData.data.channels);
 
-				insertDeviceControlsRelations(transformed, responseData.data.controls);
-				insertChannelsRelations(transformed, responseData.data.channels);
+					return transformed;
+				}
 
-				return transformed;
+				let errorReason: string | null = 'Failed to fetch device.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-devices-module-device']>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to fetch device.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-devices-module-device']>(error, errorReason);
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		})();
 
 		pendingGetPromises[payload.id] = getPromise;
@@ -200,36 +202,38 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 			semaphore.value.fetching.items = true;
 
-			const { data: responseData, error, response } = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices`);
+			try {
+				const { data: responseData, error, response } = await backend.client.GET(`/${DEVICES_MODULE_PREFIX}/devices`);
 
-			semaphore.value.fetching.items = false;
+				if (typeof responseData !== 'undefined') {
+					data.value = Object.fromEntries(
+						responseData.data.map((device) => {
+							const element = getPluginElement(device.type);
 
-			if (typeof responseData !== 'undefined') {
-				data.value = Object.fromEntries(
-					responseData.data.map((device) => {
-						const element = getPluginElement(device.type);
+							const transformed = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
 
-						const transformed = transformDeviceResponse(device, element?.schemas?.deviceSchema || DeviceSchema);
+							insertDeviceControlsRelations(transformed, device.controls);
+							insertChannelsRelations(transformed, device.channels);
 
-						insertDeviceControlsRelations(transformed, device.controls);
-						insertChannelsRelations(transformed, device.channels);
+							return [transformed.id, transformed];
+						})
+					);
 
-						return [transformed.id, transformed];
-					})
-				);
+					firstLoad.value = true;
 
-				firstLoad.value = true;
+					return Object.values(data.value);
+				}
 
-				return Object.values(data.value);
+				let errorReason: string | null = 'Failed to fetch devices.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-devices-module-devices']>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.items = false;
 			}
-
-			let errorReason: string | null = 'Failed to fetch devices.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-devices-module-devices']>(error, errorReason);
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		})();
 
 		pendingFetchPromises['all'] = fetchPromise;
@@ -274,41 +278,46 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 			return parsedNewItem.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices`, {
-				body: {
-					data: transformDeviceCreateRequest<IDeviceCreateReq>(parsedNewItem.data, element?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices`, {
+					body: {
+						data: transformDeviceCreateRequest<IDeviceCreateReq>(
+							parsedNewItem.data,
+							element?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema
+						),
+					},
+				});
 
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const element = getPluginElement(responseData.data.type);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const element = getPluginElement(responseData.data.type);
+					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					insertDeviceControlsRelations(transformed, responseData.data.controls);
+					insertChannelsRelations(transformed, responseData.data.channels);
 
-				insertDeviceControlsRelations(transformed, responseData.data.controls);
-				insertChannelsRelations(transformed, responseData.data.channels);
+					return transformed;
+				}
 
-				return transformed;
+				// Record could not be created on api, we have to remove it from a database
+				delete data.value[parsedNewItem.data.id];
+
+				let errorReason: string | null = 'Failed to create device.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-devices-module-device']>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 			}
-
-			// Record could not be created on api, we have to remove it from a database
-			delete data.value[parsedNewItem.data.id];
-
-			let errorReason: string | null = 'Failed to create device.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-devices-module-device']>(error, errorReason);
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		}
 	};
 
@@ -351,46 +360,48 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 			return parsedEditedItem.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
-				params: {
-					path: {
-						id: payload.id,
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.PATCH(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
+					params: {
+						path: {
+							id: payload.id,
+						},
 					},
-				},
-				body: {
-					data: transformDeviceUpdateRequest<IDeviceUpdateReq>(
-						parsedEditedItem.data,
-						element?.schemas?.deviceUpdateReqSchema || DeviceUpdateReqSchema
-					),
-				},
-			});
+					body: {
+						data: transformDeviceUpdateRequest<IDeviceUpdateReq>(
+							parsedEditedItem.data,
+							element?.schemas?.deviceUpdateReqSchema || DeviceUpdateReqSchema
+						),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const element = getPluginElement(responseData.data.type);
 
-			if (typeof responseData !== 'undefined') {
-				const element = getPluginElement(responseData.data.type);
+					const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					return transformed;
+				}
 
-				return transformed;
+				// Updating the record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Failed to update device.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-devices-module-device']>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Failed to update device.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-devices-module-device']>(error, errorReason);
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		}
 	};
 
@@ -415,38 +426,40 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 
 		semaphore.value.updating.push(payload.id);
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices`, {
-			body: {
-				data: transformDeviceCreateRequest<IDeviceCreateReq>(parsedSaveItem.data, element?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema),
-			},
-		});
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${DEVICES_MODULE_PREFIX}/devices`, {
+				body: {
+					data: transformDeviceCreateRequest<IDeviceCreateReq>(parsedSaveItem.data, element?.schemas?.deviceCreateReqSchema || DeviceCreateReqSchema),
+				},
+			});
 
-		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+				const element = getPluginElement(responseData.data.type);
 
-		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const element = getPluginElement(responseData.data.type);
+				const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
 
-			const transformed = transformDeviceResponse(responseData.data, element?.schemas?.deviceSchema || DeviceSchema);
+				data.value[transformed.id] = transformed;
 
-			data.value[transformed.id] = transformed;
+				insertDeviceControlsRelations(transformed, responseData.data.controls);
+				insertChannelsRelations(transformed, responseData.data.channels);
 
-			insertDeviceControlsRelations(transformed, responseData.data.controls);
-			insertChannelsRelations(transformed, responseData.data.channels);
+				return transformed;
+			}
 
-			return transformed;
+			let errorReason: string | null = 'Failed to create device.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['create-devices-module-device']>(error, errorReason);
+			}
+
+			throw new DevicesApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 		}
-
-		let errorReason: string | null = 'Failed to create device.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['create-devices-module-device']>(error, errorReason);
-		}
-
-		throw new DevicesApiException(errorReason, response.status);
 	};
 
 	const remove = async (payload: IDevicesRemoveActionPayload): Promise<boolean> => {
@@ -467,47 +480,49 @@ export const useDevices = defineStore<'devices_module-devices', DevicesStoreSetu
 		if (recordToRemove.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
-			const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
-				params: {
-					path: {
-						id: payload.id,
+			try {
+				const { error, response } = await backend.client.DELETE(`/${DEVICES_MODULE_PREFIX}/devices/{id}`, {
+					params: {
+						path: {
+							id: payload.id,
+						},
 					},
-				},
-			});
-
-			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
-
-			if (response.status === 204) {
-				const devicesControlsStore = storesManager.getStore(devicesControlsStoreKey);
-
-				devicesControlsStore.unset({ deviceId: payload.id });
-
-				const channelsStore = storesManager.getStore(channelsStoreKey);
-				const channelsControlsStore = storesManager.getStore(channelsControlsStoreKey);
-				const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
-
-				const channels = channelsStore.findForDevice(payload.id);
-
-				channels.forEach((channel) => {
-					channelsControlsStore.unset({ channelId: channel.id });
-					channelsPropertiesStore.unset({ channelId: channel.id });
 				});
 
-				channelsStore.unset({ deviceId: payload.id });
+				if (response.status === 204) {
+					const devicesControlsStore = storesManager.getStore(devicesControlsStoreKey);
 
-				return true;
+					devicesControlsStore.unset({ deviceId: payload.id });
+
+					const channelsStore = storesManager.getStore(channelsStoreKey);
+					const channelsControlsStore = storesManager.getStore(channelsControlsStoreKey);
+					const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
+
+					const channels = channelsStore.findForDevice(payload.id);
+
+					channels.forEach((channel) => {
+						channelsControlsStore.unset({ channelId: channel.id });
+						channelsPropertiesStore.unset({ channelId: channel.id });
+					});
+
+					channelsStore.unset({ deviceId: payload.id });
+
+					return true;
+				}
+
+				// Deleting record on api failed, we need to refresh the record
+				await get({ id: payload.id });
+
+				let errorReason: string | null = 'Remove account failed.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['delete-devices-module-device']>(error, errorReason);
+				}
+
+				throw new DevicesApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			}
-
-			// Deleting record on api failed, we need to refresh the record
-			await get({ id: payload.id });
-
-			let errorReason: string | null = 'Remove account failed.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['delete-devices-module-device']>(error, errorReason);
-			}
-
-			throw new DevicesApiException(errorReason, response.status);
 		}
 
 		return true;

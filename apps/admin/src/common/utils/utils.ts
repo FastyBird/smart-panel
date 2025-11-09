@@ -1,4 +1,5 @@
 export * from './api-error.utils';
+export * from './format.utils';
 export * from './number.utils';
 export * from './objects.utils';
 export * from './logger.utils';

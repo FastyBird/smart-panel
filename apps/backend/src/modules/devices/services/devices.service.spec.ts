@@ -1,7 +1,6 @@
 /*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-argument,
-@typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -9,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -18,14 +17,16 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DeviceCategory, EventType } from '../devices.constants';
+import { ConnectionState, DeviceCategory, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsService } from './channels.service';
+import { DeviceStatusService } from './device-status.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
+import { DevicesControlsService } from './devices.controls.service';
 import { DevicesService } from './devices.service';
 
 class MockDevice extends DeviceEntity {
@@ -70,11 +71,21 @@ describe('DevicesService', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		status: {
+			online: false,
+			status: ConnectionState.UNKNOWN,
+		},
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		controls: [],
 		channels: [],
 		mockValue: 'Some value',
+	};
+
+	const mockManager: jest.Mocked<Partial<EntityManager>> = {
+		findOneOrFail: jest.fn(),
+		find: jest.fn(),
+		remove: jest.fn(),
 	};
 
 	beforeEach(async () => {
@@ -118,9 +129,23 @@ describe('DevicesService', () => {
 					},
 				},
 				{
+					provide: DevicesControlsService,
+					useValue: {
+						remove: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: DeviceStatusService,
+					useValue: {
+						write: jest.fn(() => {}),
+					},
+				},
+				{
 					provide: DataSource,
 					useValue: {
 						getRepository: jest.fn(() => {}),
+						manager: mockManager,
+						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 					},
 				},
 				{
@@ -233,6 +258,7 @@ describe('DevicesService', () => {
 				name: mockCrateDevice.name,
 				description: mockCrateDevice.description,
 				enabled: mockCrateDevice.enabled,
+				status: mockCrateDevice.status,
 				createdAt: new Date(),
 				updatedAt: null,
 				controls: [],
@@ -298,6 +324,7 @@ describe('DevicesService', () => {
 				name: updateDto.name,
 				description: mockDevice.description,
 				enabled: mockDevice.enabled,
+				status: mockDevice.status,
 				controls: mockDevice.controls,
 				channels: mockDevice.channels,
 				createdAt: mockDevice.createdAt,
@@ -312,6 +339,7 @@ describe('DevicesService', () => {
 				name: mockUpdateDevice.name,
 				description: mockUpdateDevice.description,
 				enabled: mockUpdateDevice.enabled,
+				status: mockUpdateDevice.status,
 				createdAt: mockUpdateDevice.createdAt,
 				updatedAt: new Date(),
 				controls: mockUpdateDevice.controls,
@@ -363,11 +391,15 @@ describe('DevicesService', () => {
 			};
 
 			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'delete');
+
+			jest.spyOn(mockManager, 'findOneOrFail').mockResolvedValue(toInstance(MockDevice, mockDevice));
+			jest.spyOn(mockManager, 'find').mockResolvedValue([]);
+
+			jest.spyOn(mockManager, 'remove');
 
 			await service.remove(mockDevice.id);
 
-			expect(repository.delete).toHaveBeenCalledWith(mockDevice.id);
+			expect(mockManager.remove).toHaveBeenCalledWith(toInstance(MockDevice, mockDevice));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.DEVICE_DELETED, toInstance(MockDevice, mockDevice));
 		});
 	});

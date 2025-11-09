@@ -1,7 +1,7 @@
 import { Body, Controller, HttpCode, Logger, Put } from '@nestjs/common';
 
-import { RawRoute } from '../../../common/decorators/raw-route.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { RawRoute } from '../../../modules/api/decorators/raw-route.decorator';
 import { Public } from '../../../modules/auth/guards/auth.guard';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';

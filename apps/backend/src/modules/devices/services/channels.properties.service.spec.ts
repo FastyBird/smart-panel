@@ -1,7 +1,6 @@
 /*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-argument,
-@typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -9,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -112,6 +111,11 @@ describe('ChannelsPropertiesService', () => {
 		mockValue: 'Some value',
 	};
 
+	const mockManager: jest.Mocked<Partial<EntityManager>> = {
+		findOneOrFail: jest.fn(),
+		remove: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const mockRepository = () => ({
 			find: jest.fn(),
@@ -147,12 +151,6 @@ describe('ChannelsPropertiesService', () => {
 					},
 				},
 				{
-					provide: ChannelsService,
-					useValue: {
-						getOneOrThrow: jest.fn(() => {}),
-					},
-				},
-				{
 					provide: PropertyValueService,
 					useValue: {
 						write: jest.fn(() => {}),
@@ -161,6 +159,8 @@ describe('ChannelsPropertiesService', () => {
 				{
 					provide: DataSource,
 					useValue: {
+						manager: mockManager,
+						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 						getRepository: jest.fn(() => {}),
 					},
 				},
@@ -168,6 +168,12 @@ describe('ChannelsPropertiesService', () => {
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: ChannelsService,
+					useValue: {
+						getOneOrThrow: jest.fn(() => {}),
 					},
 				},
 			],
@@ -442,12 +448,13 @@ describe('ChannelsPropertiesService', () => {
 			jest
 				.spyOn(channelsPropertiesService, 'findOne')
 				.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+			jest.spyOn(mockManager, 'findOneOrFail').mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
 
-			jest.spyOn(repository, 'delete');
+			jest.spyOn(mockManager, 'remove');
 
 			await channelsPropertiesService.remove(mockChannelProperty.id);
 
-			expect(repository.delete).toHaveBeenCalledWith(mockChannelProperty.id);
+			expect(mockManager.remove).toHaveBeenCalledWith(toInstance(MockChannelProperty, mockChannelProperty));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_PROPERTY_DELETED,
 				toInstance(MockChannelProperty, mockChannelProperty),

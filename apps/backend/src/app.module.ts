@@ -12,6 +12,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PLUGINS_PREFIX } from './app.constants';
 import { getEnvValue, resolveStaticPath } from './common/utils/config.utils';
+import { ApiModule } from './modules/api/api.module';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
 import { CONFIG_MODULE_PREFIX } from './modules/config/config.constants';
@@ -22,6 +23,8 @@ import { DEVICES_MODULE_PREFIX } from './modules/devices/devices.constants';
 import { DevicesModule } from './modules/devices/devices.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { SeedModule } from './modules/seed/seeding.module';
+import { STATS_MODULE_PREFIX } from './modules/stats/stats.constants';
+import { StatsModule } from './modules/stats/stats.module';
 import { SYSTEM_MODULE_PREFIX } from './modules/system/system.constants';
 import { SystemModule } from './modules/system/system.module';
 import { USERS_MODULE_PREFIX } from './modules/users/users.constants';
@@ -129,6 +132,14 @@ export class AppModule {
 						path: WEATHER_MODULE_PREFIX,
 						module: WeatherModule,
 					},
+					{
+						path: STATS_MODULE_PREFIX,
+						module: StatsModule,
+					},
+					{
+						path: AUTH_MODULE_PREFIX,
+						module: ApiModule,
+					},
 					...moduleRoutes,
 					{
 						path: PLUGINS_PREFIX,
@@ -154,12 +165,14 @@ export class AppModule {
 					},
 				]),
 				AuthModule,
+				ApiModule,
 				CommandModule,
 				ConfigModule,
 				DashboardModule,
 				DevicesModule,
 				PlatformModule,
 				SeedModule,
+				StatsModule,
 				SystemModule,
 				UsersModule,
 				WeatherModule,

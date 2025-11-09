@@ -1,7 +1,6 @@
 /*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-argument,
-@typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -9,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsString } from 'class-validator';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -18,7 +17,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { DeviceCategory, EventType } from '../devices.constants';
+import { ConnectionState, DeviceCategory, EventType } from '../devices.constants';
 import { DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceControlDto } from '../dto/create-device-control.dto';
 import { DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
@@ -54,6 +53,10 @@ describe('DevicesControlsService', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		status: {
+			online: false,
+			status: ConnectionState.UNKNOWN,
+		},
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		controls: [],
@@ -67,6 +70,11 @@ describe('DevicesControlsService', () => {
 		device: mockDevice.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),
+	};
+
+	const mockManager: jest.Mocked<Partial<EntityManager>> = {
+		findOneOrFail: jest.fn(),
+		remove: jest.fn(),
 	};
 
 	beforeEach(async () => {
@@ -92,15 +100,23 @@ describe('DevicesControlsService', () => {
 				DevicesControlsService,
 				{ provide: getRepositoryToken(DeviceControlEntity), useFactory: mockRepository },
 				{
-					provide: DevicesService,
+					provide: DataSource,
 					useValue: {
-						getOneOrThrow: jest.fn(() => {}),
+						manager: mockManager,
+						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
+						getRepository: jest.fn(() => {}),
 					},
 				},
 				{
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: DevicesService,
+					useValue: {
+						getOneOrThrow: jest.fn(() => {}),
 					},
 				},
 			],
@@ -287,12 +303,13 @@ describe('DevicesControlsService', () => {
 			jest
 				.spyOn(devicesControlsService, 'findOne')
 				.mockResolvedValue(toInstance(DeviceControlEntity, mockDeviceControl));
+			jest.spyOn(mockManager, 'findOneOrFail').mockResolvedValue(toInstance(DeviceControlEntity, mockDeviceControl));
 
-			jest.spyOn(repository, 'delete');
+			jest.spyOn(mockManager, 'remove');
 
 			await devicesControlsService.remove(mockDeviceControl.id, mockDevice.id);
 
-			expect(repository.delete).toHaveBeenCalledWith(mockDeviceControl.id);
+			expect(mockManager.remove).toHaveBeenCalledWith(toInstance(DeviceControlEntity, mockDeviceControl));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.DEVICE_CONTROL_DELETED,
 				toInstance(DeviceControlEntity, mockDeviceControl),

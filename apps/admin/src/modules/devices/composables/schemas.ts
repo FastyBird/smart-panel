@@ -6,14 +6,14 @@ import {
 	DevicesModuleChannelPropertyData_type,
 	DevicesModuleChannelPropertyPermissions,
 	DevicesModuleDeviceCategory,
+	DevicesModuleDeviceStatusStatus,
 } from '../../../openapi';
-import { ConnectionState } from '../devices.constants';
 
 export const DevicesFilterSchema = z.object({
 	search: z.string().optional(),
 	types: z.array(z.string()),
 	state: z.enum(['all', 'offline', 'online']).default('all'),
-	states: z.array(z.nativeEnum(ConnectionState)),
+	states: z.array(z.nativeEnum(DevicesModuleDeviceStatusStatus)),
 	categories: z.array(z.nativeEnum(DevicesModuleDeviceCategory)),
 	enabled: z.enum(['all', 'enabled', 'disabled']).default('all'),
 });

@@ -1,7 +1,6 @@
 /*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-argument,
-@typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -9,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsString } from 'class-validator';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -69,6 +68,11 @@ describe('ChannelsControlsService', () => {
 		updatedAt: new Date(),
 	};
 
+	const mockManager: jest.Mocked<Partial<EntityManager>> = {
+		findOneOrFail: jest.fn(),
+		remove: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const mockRepository = () => ({
 			find: jest.fn(),
@@ -92,15 +96,23 @@ describe('ChannelsControlsService', () => {
 				ChannelsControlsService,
 				{ provide: getRepositoryToken(ChannelControlEntity), useFactory: mockRepository },
 				{
-					provide: ChannelsService,
+					provide: DataSource,
 					useValue: {
-						getOneOrThrow: jest.fn(() => {}),
+						manager: mockManager,
+						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
+						getRepository: jest.fn(() => {}),
 					},
 				},
 				{
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: ChannelsService,
+					useValue: {
+						getOneOrThrow: jest.fn(() => {}),
 					},
 				},
 			],
@@ -280,12 +292,13 @@ describe('ChannelsControlsService', () => {
 			jest
 				.spyOn(channelsControlsService, 'findOne')
 				.mockResolvedValue(toInstance(ChannelControlEntity, mockChannelControl));
+			jest.spyOn(mockManager, 'findOneOrFail').mockResolvedValue(toInstance(ChannelControlEntity, mockChannelControl));
 
-			jest.spyOn(repository, 'delete');
+			jest.spyOn(mockManager, 'remove');
 
 			await channelsControlsService.remove(mockChannelControl.id, mockChannel.id);
 
-			expect(repository.delete).toHaveBeenCalledWith(mockChannelControl.id);
+			expect(mockManager.remove).toHaveBeenCalledWith(toInstance(ChannelControlEntity, mockChannelControl));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.CHANNEL_CONTROL_DELETED,
 				toInstance(ChannelControlEntity, mockChannelControl),

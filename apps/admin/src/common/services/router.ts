@@ -14,7 +14,7 @@ export const router = createRouter({
 			meta: {
 				guards: ['authenticated'],
 			},
-			redirect: () => ({ name: RouteNames.DASHBOARD }),
+			redirect: () => ({ name: 'stats_module-module' }),
 			children: [],
 		},
 	],

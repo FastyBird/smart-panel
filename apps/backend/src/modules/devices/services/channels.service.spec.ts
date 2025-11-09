@@ -1,7 +1,6 @@
 /*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-argument,
-@typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -9,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString, useContainer } from 'class-validator';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -18,7 +17,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ChannelCategory, DeviceCategory, EventType } from '../devices.constants';
+import { ChannelCategory, ConnectionState, DeviceCategory, EventType } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto } from '../dto/create-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
@@ -26,6 +25,7 @@ import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
 import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
 
 import { ChannelsTypeMapperService } from './channels-type-mapper.service';
+import { ChannelsControlsService } from './channels.controls.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DevicesService } from './devices.service';
@@ -86,6 +86,10 @@ describe('ChannelsService', () => {
 		name: 'Test Device',
 		description: null,
 		enabled: true,
+		status: {
+			online: false,
+			status: ConnectionState.UNKNOWN,
+		},
 		createdAt: new Date(),
 		updatedAt: new Date(),
 		controls: [],
@@ -106,6 +110,12 @@ describe('ChannelsService', () => {
 		controls: [],
 		properties: [],
 		mockValue: 'Some value',
+	};
+
+	const mockManager: jest.Mocked<Partial<EntityManager>> = {
+		findOneOrFail: jest.fn(),
+		find: jest.fn(),
+		remove: jest.fn(),
 	};
 
 	beforeEach(async () => {
@@ -144,27 +154,35 @@ describe('ChannelsService', () => {
 					},
 				},
 				{
-					provide: DevicesService,
-					useValue: {
-						findOne: jest.fn().mockReturnValue(mockDevice),
-					},
-				},
-				{
 					provide: ChannelsPropertiesService,
 					useValue: {
 						create: jest.fn(() => {}),
 					},
 				},
 				{
+					provide: ChannelsControlsService,
+					useValue: {
+						remove: jest.fn(() => {}),
+					},
+				},
+				{
 					provide: DataSource,
 					useValue: {
 						getRepository: jest.fn(() => {}),
+						manager: mockManager,
+						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 					},
 				},
 				{
 					provide: EventEmitter2,
 					useValue: {
 						emit: jest.fn(() => {}),
+					},
+				},
+				{
+					provide: DevicesService,
+					useValue: {
+						findOne: jest.fn().mockReturnValue(mockDevice),
 					},
 				},
 			],
@@ -391,11 +409,15 @@ describe('ChannelsService', () => {
 	describe('remove', () => {
 		it('should remove a channel', async () => {
 			jest.spyOn(service, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
-			jest.spyOn(repository, 'delete');
+
+			jest.spyOn(mockManager, 'findOneOrFail').mockResolvedValue(toInstance(MockChannel, mockChannel));
+			jest.spyOn(mockManager, 'find').mockResolvedValue([]);
+
+			jest.spyOn(mockManager, 'remove');
 
 			await service.remove(mockChannel.id);
 
-			expect(repository.delete).toHaveBeenCalledWith(mockChannel.id);
+			expect(mockManager.remove).toHaveBeenCalledWith(toInstance(MockChannel, mockChannel));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_DELETED, toInstance(MockChannel, mockChannel));
 		});
 	});

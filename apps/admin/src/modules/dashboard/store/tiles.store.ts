@@ -177,37 +177,39 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 			semaphore.value.fetching.item.push(payload.id);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
-				params: {
-					path: { id: payload.id },
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+				});
 
-			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const element = getPluginElement(responseData.data.type);
 
-			if (typeof responseData !== 'undefined') {
-				const element = getPluginElement(responseData.data.type);
+					const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
 
-				const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					insertDataSourceRelations(transformed, responseData.data.data_source);
 
-				insertDataSourceRelations(transformed, responseData.data.data_source);
+					return transformed;
+				}
 
-				return transformed;
+				let errorReason: string | null = 'Failed to fetch tile.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-dashboard-module-tile']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.id);
 			}
-
-			let errorReason: string | null = 'Failed to fetch tile.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-dashboard-module-tile']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		})();
 
 		pendingGetPromises[payload.id] = getPromise;
@@ -230,49 +232,51 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 			firstLoad.value = firstLoad.value.filter((item) => item !== payload.parent.id);
 			firstLoad.value = [...new Set(firstLoad.value)];
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
-				params: {
-					query: {
-						parent_type: payload.parent.type,
-						parent_id: payload.parent.id,
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
+					params: {
+						query: {
+							parent_type: payload.parent.type,
+							parent_id: payload.parent.id,
+						},
 					},
-				},
-			});
+				});
 
-			semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.parent.id);
+				if (typeof responseData !== 'undefined') {
+					firstLoad.value.push(payload.parent.id);
+					firstLoad.value = [...new Set(firstLoad.value)];
 
-			if (typeof responseData !== 'undefined') {
-				firstLoad.value.push(payload.parent.id);
-				firstLoad.value = [...new Set(firstLoad.value)];
+					const tiles = Object.fromEntries(
+						responseData.data.map((tile) => {
+							const element = getPluginElement(tile.type);
 
-				const tiles = Object.fromEntries(
-					responseData.data.map((tile) => {
-						const element = getPluginElement(tile.type);
+							const transformed = transformTileResponse(tile, element?.schemas?.tileSchema || TileSchema);
 
-						const transformed = transformTileResponse(tile, element?.schemas?.tileSchema || TileSchema);
+							insertDataSourceRelations(transformed, tile.data_source);
 
-						insertDataSourceRelations(transformed, tile.data_source);
+							return [transformed.id, transformed];
+						})
+					);
 
-						return [transformed.id, transformed];
-					})
-				);
+					data.value = { ...data.value, ...tiles };
 
-				data.value = { ...data.value, ...tiles };
+					return Object.values(data.value);
+				}
 
-				return Object.values(data.value);
+				let errorReason: string | null = 'Failed to fetch tiles.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['get-dashboard-module-tiles']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.items = semaphore.value.fetching.items.filter((item) => item !== payload.parent.id);
 			}
-
-			let errorReason: string | null = 'Failed to fetch tiles.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-dashboard-module-tiles']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		})();
 
 		pendingFetchPromises[payload.parent.id] = fetchPromise;
@@ -319,38 +323,40 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 			return parsedNewItem.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
-				body: {
-					data: transformTileCreateRequest<ITileCreateReq>(parsedNewItem.data, element?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
+					body: {
+						data: transformTileCreateRequest<ITileCreateReq>(parsedNewItem.data, element?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
+					},
+				});
 
-			semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
+				if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+					const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
 
-			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-				const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					insertDataSourceRelations(transformed, responseData.data.data_source);
 
-				insertDataSourceRelations(transformed, responseData.data.data_source);
+					return transformed;
+				}
 
-				return transformed;
+				// Record could not be created on api, we have to remove it from a database
+				delete data.value[parsedNewItem.data.id];
+
+				let errorReason: string | null = 'Failed to create tile.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['create-dashboard-module-tile']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.creating = semaphore.value.creating.filter((item) => item !== parsedNewItem.data.id);
 			}
-
-			// Record could not be created on api, we have to remove it from a database
-			delete data.value[parsedNewItem.data.id];
-
-			let errorReason: string | null = 'Failed to create tile.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['create-dashboard-module-tile']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 	};
 
@@ -393,41 +399,43 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 			return parsedEditedItem.data;
 		} else {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
-				params: {
-					path: { id: payload.id },
-				},
-				body: {
-					data: transformTileUpdateRequest<ITileUpdateReq>(parsedEditedItem.data, element?.schemas?.tileUpdateReqSchema || TileUpdateReqSchema),
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.PATCH(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
+					body: {
+						data: transformTileUpdateRequest<ITileUpdateReq>(parsedEditedItem.data, element?.schemas?.tileUpdateReqSchema || TileUpdateReqSchema),
+					},
+				});
 
-			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+				if (typeof responseData !== 'undefined') {
+					const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
 
-			if (typeof responseData !== 'undefined') {
-				const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
+					data.value[transformed.id] = transformed;
 
-				data.value[transformed.id] = transformed;
+					insertDataSourceRelations(transformed, responseData.data.data_source);
 
-				insertDataSourceRelations(transformed, responseData.data.data_source);
+					return transformed;
+				}
 
-				return transformed;
+				// Updating the record on api failed, we need to refresh the record
+				await get({ id: payload.id, parent: payload.parent });
+
+				let errorReason: string | null = 'Failed to update tile.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['update-dashboard-module-tile']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 			}
-
-			// Updating the record on api failed, we need to refresh the record
-			await get({ id: payload.id, parent: payload.parent });
-
-			let errorReason: string | null = 'Failed to update tile.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['update-dashboard-module-tile']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 	};
 
@@ -452,35 +460,37 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 
 		semaphore.value.updating.push(payload.id);
 
-		const {
-			data: responseData,
-			error,
-			response,
-		} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
-			body: {
-				data: transformTileCreateRequest<ITileCreateReq>(parsedSaveItem.data, element?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
-			},
-		});
+		try {
+			const {
+				data: responseData,
+				error,
+				response,
+			} = await backend.client.POST(`/${DASHBOARD_MODULE_PREFIX}/tiles`, {
+				body: {
+					data: transformTileCreateRequest<ITileCreateReq>(parsedSaveItem.data, element?.schemas?.tileCreateReqSchema || TileCreateReqSchema),
+				},
+			});
 
-		semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
+			if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
+				const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
 
-		if (typeof responseData !== 'undefined' && responseData.data.id === payload.id) {
-			const transformed = transformTileResponse(responseData.data, element?.schemas?.tileSchema || TileSchema);
+				data.value[transformed.id] = transformed;
 
-			data.value[transformed.id] = transformed;
+				insertDataSourceRelations(transformed, responseData.data.data_source);
 
-			insertDataSourceRelations(transformed, responseData.data.data_source);
+				return transformed;
+			}
 
-			return transformed;
+			let errorReason: string | null = 'Failed to create tile.';
+
+			if (error) {
+				errorReason = getErrorReason<operations['create-dashboard-module-tile']>(error, errorReason);
+			}
+
+			throw new DashboardApiException(errorReason, response.status);
+		} finally {
+			semaphore.value.updating = semaphore.value.updating.filter((item) => item !== payload.id);
 		}
-
-		let errorReason: string | null = 'Failed to create tile.';
-
-		if (error) {
-			errorReason = getErrorReason<operations['create-dashboard-module-tile']>(error, errorReason);
-		}
-
-		throw new DashboardApiException(errorReason, response.status);
 	};
 
 	const remove = async (payload: ITilesRemoveActionPayload): Promise<boolean> => {
@@ -501,34 +511,36 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		if (recordToRemove.draft) {
 			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 		} else {
-			const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
-				params: {
-					path: { id: payload.id },
-				},
-			});
-
-			semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
-
-			if (response.status === 204) {
-				const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
-
-				dataSourcesStore.unset({
-					parent: payload.parent,
+			try {
+				const { error, response } = await backend.client.DELETE(`/${DASHBOARD_MODULE_PREFIX}/tiles/{id}`, {
+					params: {
+						path: { id: payload.id },
+					},
 				});
 
-				return true;
+				if (response.status === 204) {
+					const dataSourcesStore = storesManager.getStore(dataSourcesStoreKey);
+
+					dataSourcesStore.unset({
+						parent: payload.parent,
+					});
+
+					return true;
+				}
+
+				// Deleting record on api failed, we need to refresh the record
+				await get({ id: payload.id, parent: payload.parent });
+
+				let errorReason: string | null = 'Remove tile failed.';
+
+				if (error) {
+					errorReason = getErrorReason<operations['delete-dashboard-module-tile']>(error, errorReason);
+				}
+
+				throw new DashboardApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.deleting = semaphore.value.deleting.filter((item) => item !== payload.id);
 			}
-
-			// Deleting record on api failed, we need to refresh the record
-			await get({ id: payload.id, parent: payload.parent });
-
-			let errorReason: string | null = 'Remove tile failed.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['delete-dashboard-module-tile']>(error, errorReason);
-			}
-
-			throw new DashboardApiException(errorReason, response.status);
 		}
 
 		return true;

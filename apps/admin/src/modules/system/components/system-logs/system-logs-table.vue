@@ -88,7 +88,6 @@
 				<span class="font-mono text-xs">
 					<el-tooltip
 						class="box-item"
-						effect="dark"
 						:content="formatFull(e.ts)"
 						placement="top-start"
 					>

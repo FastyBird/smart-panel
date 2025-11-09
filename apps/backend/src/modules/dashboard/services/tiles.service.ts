@@ -16,7 +16,7 @@ import { UpdateTileDto } from '../dto/update-tile.dto';
 import { DataSourceEntity, TileEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
-import { DataSourceService } from './data-source.service';
+import { DataSourcesService } from './data-sources.service';
 import { TileCreateBuilderRegistryService } from './tile-create-builder-registry.service';
 import { TileRelationsLoaderRegistryService } from './tile-relations-loader-registry.service';
 import { TilesTypeMapperService } from './tiles-type-mapper.service';
@@ -33,7 +33,7 @@ export class TilesService {
 	constructor(
 		@InjectRepository(TileEntity)
 		private readonly repository: Repository<TileEntity>,
-		private readonly dataSourceService: DataSourceService,
+		private readonly dataSourceService: DataSourcesService,
 		private readonly tilesMapperService: TilesTypeMapperService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 		private readonly relationsRegistryService: TileRelationsLoaderRegistryService,
@@ -42,13 +42,49 @@ export class TilesService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async findAll<TTile extends TileEntity>(relation?: Relation): Promise<TTile[]> {
+	async getCount<TTile extends TileEntity>(relation?: Relation, type?: string): Promise<number> {
+		const mapping = type ? this.tilesMapperService.getMapping<TTile, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
+		if (relation) {
+			this.logger.debug(
+				`[LOOKUP ALL] Fetching all tiles count for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			const tiles = await repository
+				.createQueryBuilder('tile')
+				.where('tile.parentType = :parentType', { parentType: relation.parentType })
+				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
+				.getCount();
+
+			this.logger.debug(
+				`[LOOKUP ALL] Found that in system is ${tiles} tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
+			);
+
+			return tiles;
+		}
+
+		this.logger.debug('[LOOKUP ALL] Fetching all tiles count');
+
+		const tiles = await repository.count();
+
+		this.logger.debug(`[LOOKUP ALL] Found that in system is ${tiles} tiles`);
+
+		return tiles;
+	}
+
+	async findAll<TTile extends TileEntity>(relation?: Relation, type?: string): Promise<TTile[]> {
+		const mapping = type ? this.tilesMapperService.getMapping<TTile, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
 		if (relation) {
 			this.logger.debug(
 				`[LOOKUP ALL] Fetching all tiles for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
-			const tiles = await this.repository
+			const tiles = await repository
 				.createQueryBuilder('tile')
 				.where('tile.parentType = :parentType', { parentType: relation.parentType })
 				.andWhere('tile.parentId = :parentId', { parentId: relation.parentId })
@@ -67,7 +103,7 @@ export class TilesService {
 
 		this.logger.debug('[LOOKUP ALL] Fetching all tiles');
 
-		const tiles = await this.repository.find();
+		const tiles = await repository.find();
 
 		this.logger.debug(`[LOOKUP ALL] Found ${tiles.length} tiles`);
 
@@ -78,7 +114,11 @@ export class TilesService {
 		return tiles as TTile[];
 	}
 
-	async findOne<TTile extends TileEntity>(id: string, relation?: Relation): Promise<TTile | null> {
+	async findOne<TTile extends TileEntity>(id: string, relation?: Relation, type?: string): Promise<TTile | null> {
+		const mapping = type ? this.tilesMapperService.getMapping<TTile, any, any>(type) : null;
+
+		const repository = mapping ? this.dataSource.getRepository(mapping.class) : this.repository;
+
 		let tile: TileEntity | null;
 
 		if (relation) {
@@ -86,7 +126,7 @@ export class TilesService {
 				`[LOOKUP] Fetching tile with id=${id} for parentType=${relation.parentType} and parentId=${relation.parentId}`,
 			);
 
-			tile = await this.repository
+			tile = await repository
 				.createQueryBuilder('tile')
 				.where('tile.id = :id', { id })
 				.andWhere('tile.parentType = :parentType', { parentType: relation.parentType })
@@ -107,9 +147,7 @@ export class TilesService {
 		} else {
 			this.logger.debug(`[LOOKUP] Fetching tile with id=${id}`);
 
-			tile = await this.repository.findOne({
-				where: { id },
-			});
+			tile = await repository.createQueryBuilder('tile').where('tile.id = :id', { id }).getOne();
 
 			if (!tile) {
 				this.logger.debug(`[LOOKUP] Tile with id=${id} not found`);
@@ -214,13 +252,25 @@ export class TilesService {
 	async remove(id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Removing tile with id=${id}`);
 
-		const tile = await this.getOneOrThrow<TileEntity>(id);
+		const fullTile = await this.getOneOrThrow<TileEntity>(id);
 
-		await this.repository.delete(tile.id);
+		await this.dataSource.transaction(async (manager) => {
+			const tile = await manager.findOneOrFail<TileEntity>(TileEntity, { where: { id } });
 
-		this.logger.log(`[DELETE] Successfully removed tile with id=${id}`);
+			const dataSources = await manager.find<DataSourceEntity>(DataSourceEntity, {
+				where: { parentType: 'tile', parentId: tile.id },
+			});
 
-		this.eventEmitter.emit(EventType.TILE_DELETED, tile);
+			for (const dataSource of dataSources) {
+				await this.dataSourceService.remove(dataSource.id, manager);
+			}
+
+			await manager.remove(tile);
+
+			this.logger.log(`[DELETE] Successfully removed tile with id=${id}`);
+
+			this.eventEmitter.emit(EventType.TILE_DELETED, fullTile);
+		});
 	}
 
 	async getOneOrThrow<TTile extends TileEntity>(id: string, relation?: Relation): Promise<TTile> {

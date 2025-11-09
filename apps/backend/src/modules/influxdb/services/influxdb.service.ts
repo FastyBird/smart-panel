@@ -4,6 +4,44 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { safeNumber, safeToString } from '../../../common/utils/transform.utils';
+
+type RetentionPolicyRow = {
+	name: string;
+	duration: string;
+	shardGroupDuration: string;
+	replicaN: number;
+	default: boolean;
+};
+
+type ContinuousQueryRow = {
+	name: string;
+	query: string;
+};
+
+type InfluxSeries = {
+	values?: unknown[][];
+};
+
+type InfluxResults = {
+	results?: Array<{ series?: InfluxSeries[] }>;
+};
+
+const isObject = (v: unknown): boolean => {
+	return typeof v === 'object' && v !== null;
+};
+
+const isArrayOfRetentionPolicies = (v: unknown): boolean => {
+	return (
+		Array.isArray(v) && v.length > 0 && isObject(v[0]) && typeof (v[0] as Record<string, unknown>).name === 'string'
+	);
+};
+
+const isArrayOfContinuousQueries = (v: unknown): boolean => {
+	return (
+		Array.isArray(v) && v.length > 0 && isObject(v[0]) && typeof (v[0] as Record<string, unknown>).name === 'string'
+	);
+};
 
 @Injectable()
 export class InfluxDbService {
@@ -49,6 +87,8 @@ export class InfluxDbService {
 				await this.connection.createDatabase(database);
 				this.logger.log(`[INFLUXDB] Database '${database}' created.`);
 			}
+
+			await this.ensureRetentionPolicies(database);
 		} catch (error) {
 			const err = error as Error;
 
@@ -73,7 +113,31 @@ export class InfluxDbService {
 	}
 
 	public async createContinuousQuery(...args: Parameters<InfluxDB['createContinuousQuery']>): Promise<void> {
-		return this.getConnection().createContinuousQuery(...args);
+		const [name, body, db] = args;
+
+		if (!db) {
+			const cfgDb = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
+
+			return this.createContinuousQuery(name, body, cfgDb);
+		}
+
+		const existing = await this.listContinuousQueriesClean(db);
+		const current = existing.find((cq) => cq.name === name);
+
+		if (!current) {
+			return this.getConnection().createContinuousQuery(name, body, db);
+		}
+
+		const have = this.normalizeCqForCompare(current.query, db);
+		const want = this.normalizeCqForCompare(body, db);
+
+		if (have === want) {
+			return;
+		}
+
+		await this.getConnection().dropContinuousQuery(name, db);
+
+		return this.getConnection().createContinuousQuery(name, body, db);
 	}
 
 	public async createDatabase(...args: Parameters<InfluxDB['createDatabase']>): Promise<void> {
@@ -187,5 +251,112 @@ export class InfluxDbService {
 
 	public writePoints(...args: Parameters<InfluxDB['writePoints']>): Promise<void> {
 		return this.getConnection().writePoints(...args);
+	}
+
+	private async ensureRetentionPolicies(database: string): Promise<void> {
+		const existing = await this.listRetentionPoliciesClean(database);
+
+		const byName = new Map(existing.map((rp) => [rp.name, rp]));
+
+		if (!byName.has('raw_24h')) {
+			await this.createRetentionPolicy('raw_24h', { database, duration: '24h', replication: 1, isDefault: true });
+		}
+
+		if (!byName.has('min_14d')) {
+			await this.createRetentionPolicy('min_14d', { database, duration: '14d', replication: 1 });
+		}
+
+		if (!byName.get('raw_24h')?.default) {
+			const cur = byName.get('raw_24h');
+
+			if (typeof cur !== 'undefined') {
+				await this.alterRetentionPolicy('raw_24h', {
+					database,
+					duration: cur.duration,
+					replication: cur.replicaN,
+					isDefault: true,
+				});
+			}
+		}
+	}
+
+	private async listRetentionPoliciesClean(db: string): Promise<RetentionPolicyRow[]> {
+		const res = await this.showRetentionPolicies(db);
+
+		// Case 1: some Influx drivers return a flat array already (typed by us)
+		if (isArrayOfRetentionPolicies(res)) {
+			return res;
+		}
+
+		// Case 2: raw Influx shape: { results: [ { series: [ { values: [...] } ] } ] }
+		const raw = res as unknown as InfluxResults;
+		const series = raw.results?.[0]?.series?.[0];
+
+		if (series?.values && Array.isArray(series.values)) {
+			// Expected order for show retention policies:
+			// [ default:boolean, duration:string, name:string, replicaN:number, shardGroupDuration:string ]
+			return series.values.map((row: unknown[]): RetentionPolicyRow => {
+				const v = Array.isArray(row) ? row : [];
+
+				return {
+					default: Boolean(v[0]),
+					duration: safeToString(v[1]),
+					name: safeToString(v[2]),
+					replicaN: safeNumber(v[3]),
+					shardGroupDuration: safeToString(v[4]),
+				};
+			});
+		}
+
+		return [];
+	}
+
+	private async listContinuousQueriesClean(db?: string): Promise<ContinuousQueryRow[]> {
+		const res = await this.showContinuousQueries(db);
+
+		// Case 1: flat array shape
+		if (isArrayOfContinuousQueries(res)) {
+			return res;
+		}
+
+		// Case 2: raw Influx shape
+		const raw = res as unknown as InfluxResults;
+		const series = raw.results?.[0]?.series?.[0];
+
+		if (series?.values && Array.isArray(series.values)) {
+			// Expected order for show continuous queries:
+			// [ name:string, query:string ]
+			return series.values.map((row: unknown[]): ContinuousQueryRow => {
+				const v = Array.isArray(row) ? row : [];
+
+				return {
+					name: safeToString(v[0]),
+					query: safeToString(v[1]),
+				};
+			});
+		}
+
+		return [];
+	}
+
+	private normalizeCqForCompare(q: string, db: string): string {
+		if (!q) {
+			return '';
+		}
+
+		let s = q.trim();
+
+		s = s.replace(/create\s+continuous\s+query\s+\S+\s+on\s+\S+\s+begin\s*/i, '');
+		s = s.replace(/\s*end\s*$/i, '');
+
+		const dbPrefix = new RegExp(`\\b${db}\\.`, 'gi');
+
+		s = s.replace(dbPrefix, '');
+
+		s = s.replace(/"/g, '');
+		s = s.toLowerCase();
+		s = s.replace(/\s+/g, '');
+
+		return s;
 	}
 }

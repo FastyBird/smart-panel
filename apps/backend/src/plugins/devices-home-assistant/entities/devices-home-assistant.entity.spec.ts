@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	PermissionType,
@@ -53,6 +54,10 @@ describe('Devices Home Assistant plugin entity and OpenAPI Model Synchronization
 			name: 'Thermostat',
 			description: 'Living room thermostat',
 			enabled: true,
+			status: {
+				online: true,
+				status: ConnectionState.CONNECTED,
+			},
 			controls: [],
 			channels: [],
 			created_at: new Date().toISOString(),

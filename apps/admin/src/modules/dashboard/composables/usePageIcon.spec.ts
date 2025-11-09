@@ -44,7 +44,7 @@ describe('usePageIcon', () => {
 
 		const { icon } = usePageIcon({ id: pageId });
 
-		expect(icon.value).toBe('mdi:monitor-dashboard');
+		expect(icon.value).toBe('mdi:view-dashboard');
 	});
 
 	it('returns default icon if page is null', () => {
@@ -52,7 +52,7 @@ describe('usePageIcon', () => {
 
 		const { icon } = usePageIcon({ id: pageId });
 
-		expect(icon.value).toBe('mdi:monitor-dashboard');
+		expect(icon.value).toBe('mdi:view-dashboard');
 	});
 
 	it('returns page cuctom icon', () => {

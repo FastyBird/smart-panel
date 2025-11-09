@@ -19,7 +19,11 @@ export const defaultSystemLogsFilter: ISystemLogsFilter = {
 	tag: undefined,
 };
 
-export const useSystemLogsDataSource = (): IUseSystemLogsDataSource => {
+interface IUseSystemLogsDataSourceProps {
+	syncQuery?: boolean;
+}
+
+export const useSystemLogsDataSource = (props?: IUseSystemLogsDataSourceProps): IUseSystemLogsDataSource => {
 	const storesManager = injectStoresManager();
 
 	const logsStore = storesManager.getStore(logsEntriesStoreKey);
@@ -32,7 +36,7 @@ export const useSystemLogsDataSource = (): IUseSystemLogsDataSource => {
 			schema: SystemLogsFilterSchema,
 			defaults: defaultSystemLogsFilter,
 		},
-		syncQuery: true,
+		syncQuery: props?.syncQuery ?? true,
 		version: 1,
 	});
 

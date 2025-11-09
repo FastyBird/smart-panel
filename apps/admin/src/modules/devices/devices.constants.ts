@@ -49,19 +49,6 @@ export const RouteNames = {
 	CHANNEL_EDIT_PROPERTY: 'devices_module-channel_edit_property',
 };
 
-export enum ConnectionState {
-	CONNECTED = 'connected',
-	DISCONNECTED = 'disconnected',
-	INIT = 'init',
-	READY = 'ready',
-	RUNNING = 'running',
-	SLEEPING = 'sleeping',
-	STOPPED = 'stopped',
-	LOST = 'lost',
-	ALERT = 'alert',
-	UNKNOWN = 'unknown',
-}
-
 export type StateColor = 'info' | 'warning' | 'success' | 'primary' | 'danger' | undefined;
 
 export const DEFAULT_PAGE = 1;

@@ -76,27 +76,29 @@ export const useThrottleStatus = defineStore<'system_module-throttle_status', Th
 
 				const apiResponse = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/system/throttle`);
 
-				const { data: responseData, error, response } = apiResponse;
+				try {
+					const { data: responseData, error, response } = apiResponse;
 
-				semaphore.value.getting = false;
+					if (typeof responseData !== 'undefined') {
+						data.value = transformThrottleStatusResponse(responseData.data);
 
-				if (typeof responseData !== 'undefined') {
-					data.value = transformThrottleStatusResponse(responseData.data);
+						return data.value;
+					}
 
-					return data.value;
+					if (response.status === 400) {
+						return null;
+					}
+
+					let errorReason: string | null = 'Failed to fetch throttle status.';
+
+					if (error) {
+						errorReason = getErrorReason<operations['get-system-module-system-throttle']>(error, errorReason);
+					}
+
+					throw new SystemApiException(errorReason, response.status);
+				} finally {
+					semaphore.value.getting = false;
 				}
-
-				if (response.status === 400) {
-					return null;
-				}
-
-				let errorReason: string | null = 'Failed to fetch throttle status.';
-
-				if (error) {
-					errorReason = getErrorReason<operations['get-system-module-system-throttle']>(error, errorReason);
-				}
-
-				throw new SystemApiException(errorReason, response.status);
 			})();
 
 			pendingGetPromises = fetchPromise;

@@ -13,7 +13,7 @@ import { CreateTileDto } from '../dto/create-tile.dto';
 import { DataSourceEntity, PageEntity, TileEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
-import { DataSourceService } from './data-source.service';
+import { DataSourcesService } from './data-sources.service';
 import { PagesTypeMapperService } from './pages-type-mapper.service';
 import { PagesService } from './pages.service';
 import { TilesTypeMapperService } from './tiles-type-mapper.service';
@@ -27,7 +27,7 @@ export class DashboardSeederService implements Seeder {
 		private readonly configService: NestConfigService,
 		private readonly pagesService: PagesService,
 		private readonly tilesService: TilesService,
-		private readonly dataSourceService: DataSourceService,
+		private readonly dataSourceService: DataSourcesService,
 		private readonly pagesMapperService: PagesTypeMapperService,
 		private readonly tilesMapperService: TilesTypeMapperService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,

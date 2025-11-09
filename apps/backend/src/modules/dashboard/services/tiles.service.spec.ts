@@ -1,7 +1,6 @@
 /*
-eslint-disable @typescript-eslint/unbound-method,
-@typescript-eslint/no-unsafe-argument,
-@typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -9,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
-import { DataSource as OrmDataSource, Repository } from 'typeorm';
+import { EntityManager, DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
@@ -25,7 +24,7 @@ import { UpdateTileDto } from '../dto/update-tile.dto';
 import { PageEntity, TileEntity } from '../entities/dashboard.entity';
 
 import { DataSourcesTypeMapperService } from './data-source-type-mapper.service';
-import { DataSourceService } from './data-source.service';
+import { DataSourcesService } from './data-sources.service';
 import { TileCreateBuilderRegistryService } from './tile-create-builder-registry.service';
 import { TileRelationsLoaderRegistryService } from './tile-relations-loader-registry.service';
 import { TilesTypeMapperService } from './tiles-type-mapper.service';
@@ -117,6 +116,12 @@ describe('TilesService', () => {
 		mockValue: 'Some mock value',
 	} as MockTileEntity;
 
+	const mockManager: jest.Mocked<Partial<EntityManager>> = {
+		findOneOrFail: jest.fn(),
+		find: jest.fn(),
+		remove: jest.fn(),
+	};
+
 	beforeEach(async () => {
 		const mockRepository = () => ({
 			find: jest.fn(),
@@ -138,7 +143,7 @@ describe('TilesService', () => {
 				TilesService,
 				{ provide: getRepositoryToken(TileEntity), useFactory: mockRepository },
 				{
-					provide: DataSourceService,
+					provide: DataSourcesService,
 					useValue: {
 						findAll: jest.fn().mockResolvedValue([]),
 					},
@@ -179,6 +184,8 @@ describe('TilesService', () => {
 					provide: OrmDataSource,
 					useValue: {
 						getRepository: jest.fn(() => {}),
+						manager: mockManager,
+						transaction: jest.fn(async (cb: (m: any) => any) => await cb(mockManager)),
 					},
 				},
 			],
@@ -414,10 +421,17 @@ describe('TilesService', () => {
 
 			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			jest
-				.spyOn(repository, 'findOne')
-				.mockResolvedValueOnce(toInstance(MockTileEntity, mockTile))
-				.mockResolvedValueOnce(toInstance(MockTileEntity, mockUpdatedTile));
+			const queryBuilderMock: any = {
+				where: jest.fn().mockReturnThis(),
+				andWhere: jest.fn().mockReturnThis(),
+				getOne: jest
+					.fn()
+					.mockResolvedValueOnce(toInstance(MockTileEntity, mockTile))
+					.mockResolvedValueOnce(toInstance(MockTileEntity, mockUpdatedTile)),
+			};
+
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+
 			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockTileEntity, mockUpdatedTile));
 
 			const result = await tilesService.update(mockTile.id, updateDto);
@@ -428,9 +442,8 @@ describe('TilesService', () => {
 				EventType.TILE_UPDATED,
 				toInstance(MockTileEntity, mockUpdatedTile),
 			);
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: mockTile.id },
-			});
+			expect(queryBuilderMock.where).toHaveBeenCalledWith('tile.id = :id', { id: mockTile.id });
+			expect(queryBuilderMock.getOne).toHaveBeenCalled();
 		});
 	});
 
@@ -438,11 +451,14 @@ describe('TilesService', () => {
 		it('should remove a tile', async () => {
 			jest.spyOn(tilesService, 'findOne').mockResolvedValue(toInstance(MockTileEntity, mockTile));
 
-			jest.spyOn(repository, 'delete');
+			jest.spyOn(mockManager, 'findOneOrFail').mockResolvedValue(toInstance(MockTileEntity, mockTile));
+			jest.spyOn(mockManager, 'find').mockResolvedValue([]);
+
+			jest.spyOn(mockManager, 'remove');
 
 			await tilesService.remove(mockTile.id);
 
-			expect(repository.delete).toHaveBeenCalledWith(mockTile.id);
+			expect(mockManager.remove).toHaveBeenCalledWith(toInstance(MockTileEntity, mockTile));
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.TILE_DELETED, toInstance(MockTileEntity, mockTile));
 		});
 	});

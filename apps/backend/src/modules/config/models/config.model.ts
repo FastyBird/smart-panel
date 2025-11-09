@@ -221,6 +221,10 @@ export abstract class PluginConfigModel {
 
 export class AppConfigModel {
 	@Expose()
+	@IsString()
+	path: string;
+
+	@Expose()
 	@ValidateNested()
 	@Type(() => AudioConfigModel)
 	audio: AudioConfigModel = new AudioConfigModel();

@@ -50,7 +50,6 @@ export const ModuleAccountRoutes: RouteRecordRaw[] = [
 			guards: ['authenticated'],
 			title: 'Your profile',
 			icon: 'mdi:user',
-			menu: true,
 		},
 		redirect: () => ({ name: RouteNames.PROFILE_GENERAL }),
 		children: [
@@ -62,7 +61,6 @@ export const ModuleAccountRoutes: RouteRecordRaw[] = [
 					guards: ['authenticated'],
 					title: 'General settings',
 					icon: 'mdi:user-edit',
-					menu: true,
 				},
 			},
 			{
@@ -73,7 +71,6 @@ export const ModuleAccountRoutes: RouteRecordRaw[] = [
 					guards: ['authenticated'],
 					title: 'Security settings',
 					icon: 'mdi:user-lock',
-					menu: true,
 				},
 			},
 		],

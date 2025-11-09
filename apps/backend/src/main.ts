@@ -2,7 +2,7 @@ import { useContainer } from 'class-validator';
 
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { API_PREFIX } from './app.constants';
@@ -14,9 +14,6 @@ import { InternalServerErrorExceptionFilter } from './common/filters/internal-se
 import { NotFoundExceptionFilter } from './common/filters/not-found-exception.filter';
 import { QueryFailedExceptionFilter } from './common/filters/query-failed-exception.filter';
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
-import { LocationReplaceInterceptor } from './common/interceptors/location-replace.interceptor';
-import { OpenApiResponseInterceptor } from './common/interceptors/open-api-response-interceptor.service';
-import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
@@ -54,8 +51,6 @@ async function bootstrap() {
 
 	app.useLogger(sysLogger);
 
-	const reflector = app.get(Reflector);
-
 	const configService = app.get(NestConfigService);
 	const port = getEnvValue<number>(configService, 'FB_BACKEND_PORT', 3000);
 
@@ -80,12 +75,6 @@ async function bootstrap() {
 				return ValidationExceptionFactory.createException(validationErrors);
 			},
 		}),
-	);
-
-	app.useGlobalInterceptors(
-		new OpenApiResponseInterceptor(reflector),
-		new TransformResponseInterceptor(reflector),
-		new LocationReplaceInterceptor(app.get(NestConfigService)),
 	);
 
 	app.setGlobalPrefix(API_PREFIX);

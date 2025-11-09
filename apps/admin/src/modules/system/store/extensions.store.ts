@@ -60,49 +60,51 @@ export const useExtensions = defineStore<'system_module-logs', ExtensionsStoreSe
 
 			semaphore.value.fetching.item.push(payload.name);
 
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/extensions/{name}`, {
-				params: {
-					path: { name: payload.name },
-				},
-			});
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/extensions/{name}`, {
+					params: {
+						path: { name: payload.name },
+					},
+				});
 
-			semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.name);
+				if (typeof responseData !== 'undefined') {
+					const merged: { [name: string]: { admin?: IExtension; backend?: IExtension } } = {};
 
-			if (typeof responseData !== 'undefined') {
-				const merged: { [name: string]: { admin?: IExtension; backend?: IExtension } } = {};
+					merged[payload.name] = {};
 
-				merged[payload.name] = {};
+					for (const raw of responseData.data) {
+						const transformedExtension = transformExtensionResponse(raw);
 
-				for (const raw of responseData.data) {
-					const transformedExtension = transformExtensionResponse(raw);
+						if (!Object.prototype.hasOwnProperty.call(merged, transformedExtension.name)) {
+							throw new SystemApiException('Received extension name is different');
+						}
 
-					if (!Object.prototype.hasOwnProperty.call(merged, transformedExtension.name)) {
-						throw new SystemApiException('Received extension name is different');
+						if (transformedExtension.surface === SystemModuleExtensionAdminSurface.admin) {
+							merged[transformedExtension.name].admin = transformedExtension;
+						} else {
+							merged[transformedExtension.name].backend = transformedExtension;
+						}
 					}
 
-					if (transformedExtension.surface === SystemModuleExtensionAdminSurface.admin) {
-						merged[transformedExtension.name].admin = transformedExtension;
-					} else {
-						merged[transformedExtension.name].backend = transformedExtension;
-					}
+					data.value = { ...data.value, ...merged };
+
+					return merged[payload.name];
 				}
 
-				data.value = { ...data.value, ...merged };
+				let errorReason: string | null = 'Failed to fetch extension.';
 
-				return merged[payload.name];
+				if (error) {
+					errorReason = getErrorReason<operations['get-system-module-extension']>(error, errorReason);
+				}
+
+				throw new SystemApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.item = semaphore.value.fetching.item.filter((item) => item !== payload.name);
 			}
-
-			let errorReason: string | null = 'Failed to fetch extension.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-system-module-extension']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		})();
 
 		pendingGetPromises[payload.name] = getPromise;
@@ -126,41 +128,43 @@ export const useExtensions = defineStore<'system_module-logs', ExtensionsStoreSe
 
 			semaphore.value.fetching.items = true;
 
-			const { data: responseData, error, response } = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/extensions`);
+			try {
+				const { data: responseData, error, response } = await backend.client.GET(`/${SYSTEM_MODULE_PREFIX}/extensions`);
 
-			semaphore.value.fetching.items = false;
+				if (typeof responseData !== 'undefined') {
+					const merged: { [name: string]: { admin?: IExtension; backend?: IExtension } } = {};
 
-			if (typeof responseData !== 'undefined') {
-				const merged: { [name: string]: { admin?: IExtension; backend?: IExtension } } = {};
+					for (const raw of responseData.data) {
+						const transformedExtension = transformExtensionResponse(raw);
 
-				for (const raw of responseData.data) {
-					const transformedExtension = transformExtensionResponse(raw);
+						if (!Object.prototype.hasOwnProperty.call(merged, transformedExtension.name)) {
+							merged[transformedExtension.name] = {};
+						}
 
-					if (!Object.prototype.hasOwnProperty.call(merged, transformedExtension.name)) {
-						merged[transformedExtension.name] = {};
+						if (transformedExtension.surface === SystemModuleExtensionAdminSurface.admin) {
+							merged[transformedExtension.name].admin = transformedExtension;
+						} else if (transformedExtension.surface === SystemModuleExtensionBackendSurface.backend) {
+							merged[transformedExtension.name].backend = transformedExtension;
+						}
 					}
 
-					if (transformedExtension.surface === SystemModuleExtensionAdminSurface.admin) {
-						merged[transformedExtension.name].admin = transformedExtension;
-					} else if (transformedExtension.surface === SystemModuleExtensionBackendSurface.backend) {
-						merged[transformedExtension.name].backend = transformedExtension;
-					}
+					data.value = merged;
+
+					firstLoad.value = true;
+
+					return Object.values(data.value);
 				}
 
-				data.value = merged;
+				let errorReason: string | null = 'Failed to fetch logs entries.';
 
-				firstLoad.value = true;
+				if (error) {
+					errorReason = getErrorReason<operations['get-system-module-logs']>(error, errorReason);
+				}
 
-				return Object.values(data.value);
+				throw new SystemApiException(errorReason, response.status);
+			} finally {
+				semaphore.value.fetching.items = false;
 			}
-
-			let errorReason: string | null = 'Failed to fetch logs entries.';
-
-			if (error) {
-				errorReason = getErrorReason<operations['get-system-module-logs']>(error, errorReason);
-			}
-
-			throw new SystemApiException(errorReason, response.status);
 		})();
 
 		pendingFetchPromises['all'] = fetchPromise;

@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
+import { StatsRegistryService } from '../stats/services/stats-registry.service';
+import { StatsModule } from '../stats/stats.module';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
 
@@ -12,11 +14,12 @@ import { PagesController } from './controllers/pages.controller';
 import { TilesController } from './controllers/tiles.controller';
 import { DASHBOARD_MODULE_NAME } from './dashboard.constants';
 import { DataSourceEntity, PageEntity, TileEntity } from './entities/dashboard.entity';
+import { DashboardStatsProvider } from './providers/dashboard-stats.provider';
 import { DashboardSeederService } from './services/dashboard-seeder.service';
 import { DataSourceCreateBuilderRegistryService } from './services/data-source-create-builder-registry.service';
 import { DataSourceRelationsLoaderRegistryService } from './services/data-source-relations-loader-registry.service';
 import { DataSourcesTypeMapperService } from './services/data-source-type-mapper.service';
-import { DataSourceService } from './services/data-source.service';
+import { DataSourcesService } from './services/data-sources.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PageCreateBuilderRegistryService } from './services/page-create-builder-registry.service';
 import { PageRelationsLoaderRegistryService } from './services/page-relations-loader-registry.service';
@@ -35,11 +38,12 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 		TypeOrmModule.forFeature([PageEntity, TileEntity, DataSourceEntity]),
 		SeedModule,
 		SystemModule,
+		StatsModule,
 	],
 	providers: [
 		PagesService,
 		TilesService,
-		DataSourceService,
+		DataSourcesService,
 		PagesTypeMapperService,
 		TilesTypeMapperService,
 		TileTypeConstraintValidator,
@@ -53,12 +57,13 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 		TileCreateBuilderRegistryService,
 		DataSourceCreateBuilderRegistryService,
 		ModuleResetService,
+		DashboardStatsProvider,
 	],
 	controllers: [PagesController, TilesController, DataSourceController],
 	exports: [
 		PagesService,
 		TilesService,
-		DataSourceService,
+		DataSourcesService,
 		PagesTypeMapperService,
 		TilesTypeMapperService,
 		DataSourcesTypeMapperService,
@@ -77,6 +82,8 @@ export class DashboardModule {
 		private readonly moduleReset: ModuleResetService,
 		private readonly seedRegistry: SeedRegistryService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
+		private readonly statsRegistryService: StatsRegistryService,
+		private readonly dashboardStatsProvider: DashboardStatsProvider,
 	) {}
 
 	onModuleInit() {
@@ -95,5 +102,7 @@ export class DashboardModule {
 			},
 			100,
 		);
+
+		this.statsRegistryService.register(DASHBOARD_MODULE_NAME, this.dashboardStatsProvider);
 	}
 }

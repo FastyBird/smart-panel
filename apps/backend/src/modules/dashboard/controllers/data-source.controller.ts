@@ -25,14 +25,14 @@ import { CreateDataSourceDto, CreateSingleDataSourceDto } from '../dto/create-da
 import { UpdateDataSourceDto, UpdateSingleDataSourceDto } from '../dto/update-data-source.dto';
 import { DataSourceEntity } from '../entities/dashboard.entity';
 import { DataSourceTypeMapping, DataSourcesTypeMapperService } from '../services/data-source-type-mapper.service';
-import { DataSourceService } from '../services/data-source.service';
+import { DataSourcesService } from '../services/data-sources.service';
 
 @Controller('data-source')
 export class DataSourceController {
 	private readonly logger = new Logger(DataSourceController.name);
 
 	constructor(
-		private readonly dataSourceService: DataSourceService,
+		private readonly dataSourceService: DataSourcesService,
 		private readonly dataSourcesMapperService: DataSourcesTypeMapperService,
 	) {}
 

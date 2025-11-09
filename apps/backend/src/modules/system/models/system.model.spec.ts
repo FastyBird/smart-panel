@@ -12,6 +12,7 @@ import {
 	MemoryInfoModel,
 	NetworkStatsModel,
 	OperatingSystemInfoModel,
+	ProcessInfoModel,
 	StorageInfoModel,
 	SystemHealthModel,
 	SystemInfoModel,
@@ -24,6 +25,7 @@ type StorageInfo = components['schemas']['SystemModuleStorageInfo'];
 type TemperatureInfo = components['schemas']['SystemModuleTemperatureInfo'];
 type OperatingSystemInfo = components['schemas']['SystemModuleOperatingSystemInfo'];
 type DisplayInfo = components['schemas']['SystemModuleDisplayInfo'];
+type ProcessInfo = components['schemas']['SystemModuleProcessInfo'];
 type NetworkStats = components['schemas']['SystemModuleNetworkStats'];
 type SystemHealth = components['schemas']['SystemModuleSystemHealth'];
 type SystemInfo = components['schemas']['SystemModuleSystemInfo'];
@@ -115,6 +117,9 @@ describe('System module model and OpenAPI component synchronization', () => {
 			distro: 'Debian',
 			release: '11 (bullseye)',
 			uptime: 36000,
+			node: '20.18.1',
+			npm: '11.1.0',
+			timezone: 'CET+0100',
 		};
 
 		const modelInstance = toInstance(OperatingSystemInfoModel, openApiModel);
@@ -137,6 +142,23 @@ describe('System module model and OpenAPI component synchronization', () => {
 		};
 
 		const modelInstance = toInstance(DisplayInfoModel, openApiModel);
+
+		validateModelAgainstComponent(modelInstance, openApiModel);
+
+		const errors = validateSync(modelInstance, {
+			whitelist: true,
+			forbidNonWhitelisted: true,
+		});
+		expect(errors).toHaveLength(0);
+	});
+
+	test('ProcessModel matches ProcessInfo', () => {
+		const openApiModel: ProcessInfo = {
+			pid: 86523,
+			uptime: 1496,
+		};
+
+		const modelInstance = toInstance(ProcessInfoModel, openApiModel);
 
 		validateModelAgainstComponent(modelInstance, openApiModel);
 
@@ -181,6 +203,12 @@ describe('System module model and OpenAPI component synchronization', () => {
 					available: 17000000000,
 				},
 			],
+			primary_storage: {
+				fs: '/dev/mmcblk0p1',
+				used: 15000000000,
+				size: 32000000000,
+				available: 17000000000,
+			},
 			temperature: {
 				cpu: 55,
 				gpu: null,
@@ -190,6 +218,9 @@ describe('System module model and OpenAPI component synchronization', () => {
 				distro: 'Debian',
 				release: '11 (bullseye)',
 				uptime: 36000,
+				node: '20.18.1',
+				npm: '11.1.0',
+				timezone: 'CET+0100',
 			},
 			network: [
 				{
@@ -203,12 +234,17 @@ describe('System module model and OpenAPI component synchronization', () => {
 				ip4: '192.168.0.1',
 				ip6: 'fe80::134a:1e43:abc5:d413',
 				mac: 'xx:xx:xx:xx:xx:xx',
+				hostname: 'smart-panel',
 			},
 			display: {
 				resolution_x: 1920,
 				resolution_y: 1080,
 				current_res_x: 1280,
 				current_res_y: 720,
+			},
+			process: {
+				pid: 86523,
+				uptime: 1496,
 			},
 		};
 

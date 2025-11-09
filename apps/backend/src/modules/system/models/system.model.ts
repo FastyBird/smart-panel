@@ -1,7 +1,8 @@
-import { Expose, Type } from 'class-transformer';
+import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsBoolean,
+	IsDate,
 	IsEnum,
 	IsInt,
 	IsNumber,
@@ -12,6 +13,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ExtensionKindType,
 	ExtensionSourceType,
@@ -80,6 +82,19 @@ export class OperatingSystemInfoModel {
 	@Expose()
 	@IsNumber()
 	uptime: number;
+
+	@Expose()
+	@IsString()
+	node: string;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	npm: string | null;
+
+	@Expose()
+	@IsString()
+	timezone: string;
 }
 
 export class DisplayInfoModel {
@@ -98,6 +113,16 @@ export class DisplayInfoModel {
 	@Expose({ name: 'current_res_y' })
 	@IsNumber()
 	currentResY: number;
+}
+
+export class ProcessInfoModel {
+	@Expose()
+	@IsNumber()
+	pid: number;
+
+	@Expose()
+	@IsNumber()
+	uptime: number;
 }
 
 export class NetworkStatsModel {
@@ -130,6 +155,10 @@ export class DefaultNetworkModel {
 	@Expose()
 	@IsString()
 	mac: string;
+
+	@Expose()
+	@IsString()
+	hostname: string;
 }
 
 export class SystemHealthModel {
@@ -158,6 +187,11 @@ export class SystemInfoModel {
 	@Type(() => StorageInfoModel)
 	storage: StorageInfoModel[];
 
+	@Expose({ name: 'primary_storage' })
+	@ValidateNested()
+	@Type(() => StorageInfoModel)
+	primaryStorage: StorageInfoModel;
+
 	@Expose()
 	@ValidateNested()
 	@Type(() => TemperatureInfoModel)
@@ -183,6 +217,11 @@ export class SystemInfoModel {
 	@ValidateNested()
 	@Type(() => DisplayInfoModel)
 	display: DisplayInfoModel;
+
+	@Expose()
+	@ValidateNested()
+	@Type(() => ProcessInfoModel)
+	process: ProcessInfoModel;
 }
 
 export class ThrottleStatusModel {
@@ -220,9 +259,6 @@ export class LogEntryUserModel {
 	id?: string;
 }
 
-/**
- * Describes contextual data about the client environment at the time of logging.
- */
 export class LogEntryContextModel {
 	@Expose({ name: 'app_version' })
 	@IsOptional()
@@ -346,4 +382,196 @@ export class ExtensionBackendModel extends ExtensionBaseModel {
 	@Expose({ name: 'route_prefix' })
 	@IsString()
 	routePrefix: string;
+}
+
+export class CpuLoad1mModel {
+	@Expose()
+	@IsNumber()
+	value: number;
+
+	@Expose({ name: 'last_updated' })
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { last_updated?: string | Date; lastUpdated?: string | Date } }) => {
+			const value: string | Date = obj.last_updated || obj.lastUpdated;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	lastUpdated: Date;
+}
+
+export class MemUsedPctModel {
+	@Expose()
+	@IsNumber()
+	value: number;
+
+	@Expose({ name: 'last_updated' })
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { last_updated?: string | Date; lastUpdated?: string | Date } }) => {
+			const value: string | Date = obj.last_updated || obj.lastUpdated;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	lastUpdated: Date;
+}
+
+export class DiskUsedPctModel {
+	@Expose()
+	@IsNumber()
+	value: number;
+
+	@Expose({ name: 'last_updated' })
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { last_updated?: string | Date; lastUpdated?: string | Date } }) => {
+			const value: string | Date = obj.last_updated || obj.lastUpdated;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	lastUpdated: Date;
+}
+
+export class SystemUptimeSecModel {
+	@Expose()
+	@IsNumber()
+	value: number;
+
+	@Expose({ name: 'last_updated' })
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { last_updated?: string | Date; lastUpdated?: string | Date } }) => {
+			const value: string | Date = obj.last_updated || obj.lastUpdated;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	lastUpdated: Date;
+}
+
+export class ProcessUptimeSecModel {
+	@Expose()
+	@IsNumber()
+	value: number;
+
+	@Expose({ name: 'last_updated' })
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { last_updated?: string | Date; lastUpdated?: string | Date } }) => {
+			const value: string | Date = obj.last_updated || obj.lastUpdated;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	lastUpdated: Date;
+}
+
+export class TemperatureCpuModel {
+	@Expose()
+	@IsNumber()
+	value: number | null;
+
+	@Expose({ name: 'last_updated' })
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { last_updated?: string | Date; lastUpdated?: string | Date } }) => {
+			const value: string | Date = obj.last_updated || obj.lastUpdated;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	lastUpdated: Date;
+}
+
+export class TemperatureGpuModel {
+	@Expose()
+	@IsNumber()
+	value: number | null;
+
+	@Expose({ name: 'last_updated' })
+	@IsDate()
+	@Transform(
+		({ obj }: { obj: { last_updated?: string | Date; lastUpdated?: string | Date } }) => {
+			const value: string | Date = obj.last_updated || obj.lastUpdated;
+			return typeof value === 'string' ? new Date(value) : value;
+		},
+		{ toClassOnly: true },
+	)
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	lastUpdated: Date;
+}
+
+export class ModuleStatsModel {
+	@Expose({ name: 'cpu_load_1m' })
+	@Transform(
+		({ obj }: { obj: { cpuLoad1m?: unknown; cpu_load_1m?: unknown; cpu_load1m?: unknown } }) => {
+			const value: { value?: number; lastUpdated?: Date | string; last_updated?: Date | string } =
+				obj.cpuLoad1m ?? obj.cpu_load_1m ?? obj.cpu_load1m ?? undefined;
+
+			return toInstance(CpuLoad1mModel, {
+				value: 'value' in value ? value['value'] : undefined,
+				lastUpdated:
+					'lastUpdated' in value ? value['lastUpdated'] : 'last_updated' in value ? value['last_updated'] : undefined,
+			});
+		},
+		{
+			toClassOnly: true,
+		},
+	)
+	@ValidateNested()
+	@Type(() => CpuLoad1mModel)
+	cpuLoad1m: CpuLoad1mModel;
+
+	@Expose({ name: 'mem_used_pct' })
+	@ValidateNested()
+	@Type(() => MemUsedPctModel)
+	memUsedPct: MemUsedPctModel;
+
+	@Expose({ name: 'disk_used_pct' })
+	@ValidateNested()
+	@Type(() => DiskUsedPctModel)
+	diskUsedPct: DiskUsedPctModel;
+
+	@Expose({ name: 'system_uptime_sec' })
+	@ValidateNested()
+	@Type(() => SystemUptimeSecModel)
+	systemUptimeSec: SystemUptimeSecModel;
+
+	@Expose({ name: 'process_uptime_sec' })
+	@ValidateNested()
+	@Type(() => ProcessUptimeSecModel)
+	processUptimeSec: ProcessUptimeSecModel;
+
+	@Expose({ name: 'temperature_cpu' })
+	@ValidateNested()
+	@Type(() => TemperatureCpuModel)
+	temperatureCpu: TemperatureCpuModel;
+
+	@Expose({ name: 'temperature_gpu' })
+	@ValidateNested()
+	@Type(() => TemperatureGpuModel)
+	temperatureGpu: TemperatureGpuModel;
 }

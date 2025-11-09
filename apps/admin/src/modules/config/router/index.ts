@@ -15,7 +15,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Configuration',
 			icon: 'mdi:cog',
-			menu: true,
+			menu: 4000,
 		},
 		redirect: () => ({ name: RouteNames.CONFIG_AUDIO }),
 		children: [
@@ -31,7 +31,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'Audio',
 					icon: 'mdi:monitor-speaker',
-					menu: true,
+					menu: 4600,
 				},
 			},
 			{
@@ -46,7 +46,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'Display',
 					icon: 'mdi:monitor-dashboard',
-					menu: true,
+					menu: 4500,
 				},
 			},
 			{
@@ -61,7 +61,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'Language',
 					icon: 'mdi:translate',
-					menu: true,
+					menu: 4400,
 				},
 			},
 			{
@@ -76,7 +76,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'Weather',
 					icon: 'mdi:weather-partly-cloudy',
-					menu: true,
+					menu: 4300,
 				},
 			},
 			{
@@ -91,7 +91,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'System',
 					icon: 'mdi:cogs',
-					menu: true,
+					menu: 4200,
 				},
 			},
 			{
@@ -106,7 +106,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 					},
 					title: 'Plugins',
 					icon: 'mdi:toy-brick',
-					menu: true,
+					menu: 4100,
 				},
 			},
 		],
