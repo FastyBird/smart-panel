@@ -244,7 +244,7 @@ export class RaspberryPlatform extends Platform {
 		// (e.g., '/' vs '/home' vs '/var')
 		const normalized = path.resolve(targetPath);
 
-		let best = null as (typeof filtered)[number] | null;
+		let best: (typeof filtered)[number] | null = null;
 
 		for (const d of filtered) {
 			if (!d.mount) {
@@ -261,6 +261,10 @@ export class RaspberryPlatform extends Platform {
 
 		if (!best && filtered.length) {
 			best = filtered.sort((a, b) => b.size - a.size)[0];
+		}
+
+		if (!best) {
+			return { fs: '', used: 0, size: 0, available: 0 };
 		}
 
 		return {
