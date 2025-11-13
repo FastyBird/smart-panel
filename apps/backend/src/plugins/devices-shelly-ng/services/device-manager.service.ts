@@ -40,7 +40,7 @@ export class DeviceManagerService {
 
 	private readonly strictSchema: boolean = true;
 
-	private timeoutSec: number = 5;
+	private timeoutSec: number = 30;
 
 	private rpcConcurrency: number = 1;
 

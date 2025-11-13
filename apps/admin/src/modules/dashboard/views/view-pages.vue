@@ -115,6 +115,7 @@
 					<app-bar-button
 						:align="AppBarButtonAlign.RIGHT"
 						@click="() => onCloseDrawer()"
+						class="mr-2"
 					>
 						<template #icon>
 							<el-icon>

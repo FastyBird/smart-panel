@@ -686,12 +686,17 @@ export class ShellyRpcClientService {
 		const timeoutSec = options?.timeoutSec ?? 30;
 
 		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), timeoutSec * 1000);
+		const timer = setTimeout(() => controller.abort(), timeoutSec * 1000 + 1000);
 
 		try {
 			let url: string;
 
-			const init: RequestInit = { method: httpMethod, signal: controller.signal, headers: {} };
+			const init: RequestInit = {
+				method: httpMethod,
+				signal: controller.signal,
+				headers: {},
+				timeout: timeoutSec * 1000,
+			};
 
 			if (options?.password) {
 				(init.headers as Record<string, string>).Authorization = this.basicAuthHeader('admin', options.password);
