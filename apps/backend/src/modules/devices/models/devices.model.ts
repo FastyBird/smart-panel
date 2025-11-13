@@ -4,10 +4,12 @@ import {
 	IsArray,
 	IsBoolean,
 	IsDate,
+	IsDateString,
 	IsEnum,
 	IsNumber,
 	IsOptional,
 	IsString,
+	IsUUID,
 	ValidateIf,
 	ValidateNested,
 } from 'class-validator';
@@ -280,4 +282,37 @@ export class ModuleStatsModel {
 	@ValidateNested()
 	@Type(() => OnlineNowModel)
 	onlineNow: OnlineNowModel;
+}
+
+export class TimeseriesPointModel {
+	@Expose()
+	@IsDateString()
+	time: string;
+
+	@Expose()
+	value: string | number | boolean;
+}
+
+export class PropertyTimeseriesModel {
+	@Expose()
+	@IsUUID()
+	property: string;
+
+	@Expose()
+	@IsDateString()
+	from: string;
+
+	@Expose()
+	@IsDateString()
+	to: string;
+
+	@Expose()
+	@IsOptional()
+	@IsString()
+	bucket: string | null;
+
+	@Expose()
+	@IsArray()
+	@ValidateNested({ each: true })
+	points: TimeseriesPointModel[];
 }

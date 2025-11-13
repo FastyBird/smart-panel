@@ -51,6 +51,7 @@ import { DevicesService } from './services/devices.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PlatformRegistryService } from './services/platform.registry.service';
 import { PropertyCommandService } from './services/property-command.service';
+import { PropertyTimeseriesService } from './services/property-timeseries.service';
 import { PropertyValueService } from './services/property-value.service';
 import { StatsService } from './services/stats.service';
 import { ChannelControlEntitySubscriber } from './subscribers/channel-control-entity.subscriber';
@@ -98,6 +99,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		DevicesSeederService,
 		PlatformRegistryService,
 		PropertyValueService,
+		PropertyTimeseriesService,
 		PropertyCommandService,
 		DeviceConnectionStateService,
 		StatsService,

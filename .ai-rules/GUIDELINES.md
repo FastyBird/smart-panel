@@ -286,6 +286,19 @@ make docker-bash-root
 
 ## OpenAPI & Spec Generation
 
+### OpenAPI Specification (source of truth)
+
+The file:
+
+- `spec/api/v1/openapi.json`
+
+is **the canonical source of truth** for the Smart Panel HTTP API.
+
+It is **not generated from the backend code**.
+
+It may be edited manually or maintained through external tools (e.g., Stoplight).  
+Changes to the backend controllers and DTOs **must be reflected in this file**.
+
 ### OpenAPI Types
 
 Generate TypeScript types from OpenAPI specification:
