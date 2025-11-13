@@ -41,7 +41,7 @@
 					:type="stateColor"
 					size="small"
 				>
-					{{ t(`devicesModule.states.${deviceState.toLowerCase()}`) }}
+					{{ t(`devicesModule.states.${String(device.status?.status ?? DevicesModuleDeviceStatusStatus.unknown).toLowerCase()}`) }}
 				</el-tag>
 			</el-text>
 		</dd>
@@ -83,7 +83,7 @@ import { I18nT, useI18n } from 'vue-i18n';
 import { ElTag, ElText } from 'element-plus';
 
 import { DevicesModuleChannelCategory, DevicesModuleDeviceStatusStatus } from '../../../../openapi';
-import { useChannels, useDeviceState } from '../../composables/composables';
+import { useChannels } from '../../composables/composables';
 import { type StateColor } from '../../devices.constants';
 import type { IChannel } from '../../store/channels.store.types';
 
@@ -98,7 +98,6 @@ const props = defineProps<IDeviceDetailProps>();
 
 const { t } = useI18n();
 
-const { state: deviceState } = useDeviceState({ device: props.device });
 const { channels } = useChannels({ deviceId: props.device.id });
 
 const alerts: string[] = [];
@@ -108,21 +107,21 @@ const deviceInfoChannel = computed<IChannel | undefined>((): IChannel | undefine
 });
 
 const stateColor = computed<StateColor>((): StateColor => {
-	if ([DevicesModuleDeviceStatusStatus.unknown].includes(deviceState.value)) {
+	if ([DevicesModuleDeviceStatusStatus.unknown].includes(props.device.status.status)) {
 		return undefined;
 	}
 
 	if (
 		[DevicesModuleDeviceStatusStatus.connected, DevicesModuleDeviceStatusStatus.ready, DevicesModuleDeviceStatusStatus.running].includes(
-			deviceState.value
+			props.device.status.status
 		)
 	) {
 		return 'success';
-	} else if ([DevicesModuleDeviceStatusStatus.init].includes(deviceState.value)) {
+	} else if ([DevicesModuleDeviceStatusStatus.init].includes(props.device.status.status)) {
 		return 'info';
 	} else if (
 		[DevicesModuleDeviceStatusStatus.disconnected, DevicesModuleDeviceStatusStatus.stopped, DevicesModuleDeviceStatusStatus.sleeping].includes(
-			deviceState.value
+			props.device.status.status
 		)
 	) {
 		return 'warning';

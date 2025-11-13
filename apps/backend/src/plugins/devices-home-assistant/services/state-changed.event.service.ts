@@ -41,17 +41,15 @@ export class StateChangedEventService implements WsEventService {
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 	) {}
 
-	@OnEvent([
-		DevicesModuleEventType.DEVICE_CREATED,
-		DevicesModuleEventType.DEVICE_UPDATED,
-		DevicesModuleEventType.DEVICE_DELETED,
-		DevicesModuleEventType.CHANNEL_CREATED,
-		DevicesModuleEventType.CHANNEL_UPDATED,
-		DevicesModuleEventType.CHANNEL_DELETED,
-		DevicesModuleEventType.CHANNEL_PROPERTY_CREATED,
-		DevicesModuleEventType.CHANNEL_PROPERTY_UPDATED,
-		DevicesModuleEventType.CHANNEL_PROPERTY_DELETED,
-	])
+	@OnEvent(DevicesModuleEventType.DEVICE_CREATED)
+	@OnEvent(DevicesModuleEventType.DEVICE_UPDATED)
+	@OnEvent(DevicesModuleEventType.DEVICE_DELETED)
+	@OnEvent(DevicesModuleEventType.CHANNEL_CREATED)
+	@OnEvent(DevicesModuleEventType.CHANNEL_UPDATED)
+	@OnEvent(DevicesModuleEventType.CHANNEL_DELETED)
+	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_CREATED)
+	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_UPDATED)
+	@OnEvent(DevicesModuleEventType.CHANNEL_PROPERTY_DELETED)
 	handleDevicesUpdatedEvent() {
 		this.entityIdToHaDevice = null;
 	}

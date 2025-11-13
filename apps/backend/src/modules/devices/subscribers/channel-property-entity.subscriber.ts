@@ -3,7 +3,7 @@ import { DataSource, EntitySubscriberInterface, RemoveEvent, UpdateEvent } from 
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ChannelPropertyEntity } from '../entities/devices.entity';
-import { DeviceStatusService } from '../services/device-status.service';
+import { DeviceConnectionStateService } from '../services/device-connection-state.service';
 import { PropertyValueService } from '../services/property-value.service';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 
 	constructor(
 		private readonly propertyValueService: PropertyValueService,
-		private readonly deviceStatusService: DeviceStatusService,
+		private readonly deviceStatusService: DeviceConnectionStateService,
 		private readonly dataSource: DataSource,
 	) {
 		this.dataSource.subscribers.push(this);

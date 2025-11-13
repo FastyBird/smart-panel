@@ -53,6 +53,18 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyN
 	}
 
 	async afterUpdate(event: UpdateEvent<ShellyNgDeviceEntity>): Promise<void> {
+		let credentialsUpdated = false;
+
+		for (const updatedColumn of event.updatedColumns) {
+			if (['password', 'hostname'].includes(updatedColumn.databaseName.toLowerCase())) {
+				credentialsUpdated = true;
+			}
+		}
+
+		if (!credentialsUpdated) {
+			return;
+		}
+
 		try {
 			await this.deviceManagerService.createOrUpdate(event.databaseEntity.id);
 

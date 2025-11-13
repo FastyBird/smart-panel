@@ -26,7 +26,7 @@
 	</div>
 
 	<div class="text-3xl mt-1 flex flex-row items-center">
-		{{ devicesModuleSection?.onlineNow.value ?? 0 }}
+		{{ formatNumber(devicesModuleSection?.onlineNow.value ?? 0, { maximumFractionDigits: 0 }) }}
 	</div>
 </template>
 
@@ -38,7 +38,7 @@ import { ElIcon, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { formatRelative } from '../../../common';
+import { formatNumber, formatRelative } from '../../../common';
 import { STALE_MS } from '../stats.constants';
 
 import type { IStatsDevicesProps } from './stats-devices.types';

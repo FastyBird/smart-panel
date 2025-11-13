@@ -1,13 +1,13 @@
 <template>
 	<el-link
-		:type="props.filters.states.includes(state) ? 'danger' : undefined"
+		:type="props.filters.states.includes(device.status.status) ? 'danger' : undefined"
 		underline="never"
 		class="font-400!"
-		@click.stop="emit('filter-by', state, !props.filters.states.includes(state))"
+		@click.stop="emit('filter-by', device.status.status, !props.filters.states.includes(device.status.status))"
 	>
 		<el-icon class="el-icon--left">
 			<icon
-				v-if="props.filters.states.includes(state)"
+				v-if="props.filters.states.includes(device.status.status)"
 				icon="mdi:filter-minus"
 			/>
 			<icon
@@ -16,7 +16,7 @@
 			/>
 		</el-icon>
 
-		{{ t(`devicesModule.states.${state}`) }}
+		{{ t(`devicesModule.states.${device.status.status}`) }}
 	</el-link>
 </template>
 
@@ -28,7 +28,6 @@ import { ElIcon, ElLink } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { DevicesModuleDeviceStatusStatus } from '../../../../openapi';
-import { useDeviceState } from '../../composables/composables';
 
 import type { IDevicesTableColumnStateProps } from './devices-table-column-state.types';
 
@@ -43,6 +42,4 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-
-const { state } = useDeviceState({ device: props.device });
 </script>

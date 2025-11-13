@@ -113,31 +113,34 @@ export class InfluxDbService {
 	}
 
 	public async createContinuousQuery(...args: Parameters<InfluxDB['createContinuousQuery']>): Promise<void> {
-		const [name, body, db] = args;
+		const [name, body, db, resample] = args;
 
 		if (!db) {
 			const cfgDb = getEnvValue<string>(this.configService, 'FB_INFLUXDB_DB', 'fastybird');
 
-			return this.createContinuousQuery(name, body, cfgDb);
+			return this.createContinuousQuery(name, body, cfgDb, resample);
 		}
 
 		const existing = await this.listContinuousQueriesClean(db);
 		const current = existing.find((cq) => cq.name === name);
 
 		if (!current) {
-			return this.getConnection().createContinuousQuery(name, body, db);
+			return this.getConnection().createContinuousQuery(name, body, db, resample);
 		}
 
 		const have = this.normalizeCqForCompare(current.query, db);
 		const want = this.normalizeCqForCompare(body, db);
 
-		if (have === want) {
+		const resampleHave = this.normalizeCqResample(current.query);
+		const resampleWant = this.normalizeCqResample(resample);
+
+		if (have === want && resampleHave === resampleWant) {
 			return;
 		}
 
 		await this.getConnection().dropContinuousQuery(name, db);
 
-		return this.getConnection().createContinuousQuery(name, body, db);
+		return this.getConnection().createContinuousQuery(name, body, db, resample);
 	}
 
 	public async createDatabase(...args: Parameters<InfluxDB['createDatabase']>): Promise<void> {
@@ -346,17 +349,50 @@ export class InfluxDbService {
 
 		let s = q.trim();
 
-		s = s.replace(/create\s+continuous\s+query\s+\S+\s+on\s+\S+\s+begin\s*/i, '');
-		s = s.replace(/\s*end\s*$/i, '');
+		const m = s.match(/begin\s*([\s\S]*?)\s*end/i);
 
-		const dbPrefix = new RegExp(`\\b${db}\\.`, 'gi');
+		if (m) {
+			s = m[1];
+		}
+
+		const dbPrefix = new RegExp(String.raw`(?:"?${db}"?\.)`, 'gi');
 
 		s = s.replace(dbPrefix, '');
-
 		s = s.replace(/"/g, '');
 		s = s.toLowerCase();
-		s = s.replace(/\s+/g, '');
+		s = s.replace(/\s+/g, ' ').trim();
+		s = s
+			.replace(/\s*,\s*/g, ',')
+			.replace(/\(\s*/g, '(')
+			.replace(/\s*\)/g, ')');
 
 		return s;
+	}
+
+	private normalizeCqResample(q: string): string {
+		if (!q) {
+			return '';
+		}
+
+		const s = q.toLowerCase();
+
+		// Match RESAMPLE with ANY order of EVERY/FOR and optional presence
+		// Examples:
+		//   RESAMPLE EVERY 1m FOR 10m
+		//   RESAMPLE FOR 24h EVERY 1m
+		//   RESAMPLE EVERY 1m
+		//   RESAMPLE FOR 24h
+		const m = s.match(
+			/resample\s+(?:every\s+(\S+))?(?:\s+for\s+(\S+))?|resample\s+(?:for\s+(\S+))?(?:\s+every\s+(\S+))?/i,
+		);
+
+		if (!m) {
+			return '';
+		}
+
+		const every = (m[1] || m[4] || '').trim();
+		const dur = (m[2] || m[3] || '').trim();
+
+		return `every=${every};for=${dur}`;
 	}
 }

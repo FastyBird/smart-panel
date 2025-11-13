@@ -108,7 +108,8 @@ jest.mock('../devices-shelly-ng.constants', () => {
 				{ type: 'devicePower', cls: DevicePower, ids: [0] },
 				{ type: 'humidity', cls: Humidity, ids: [0] },
 				{ type: 'temperature', cls: Temperature, ids: [0] },
-				{ type: 'pm', cls: Pm1, ids: [0] },
+				// POZOR: typ pro PM1 musí odpovídat ComponentType.PM1 v implementaci
+				{ type: 'pm1', cls: Pm1, ids: [0] },
 			],
 		},
 	};
@@ -119,7 +120,7 @@ jest.mock('../devices-shelly-ng.constants', () => {
 			SWITCH: 'switch',
 			LIGHT: 'light',
 			COVER: 'cover',
-			PM: 'pm',
+			PM1: 'pm1',
 			INPUT: 'input',
 			DEVICE_POWER: 'devicePower',
 			HUMIDITY: 'humidity',
@@ -127,25 +128,30 @@ jest.mock('../devices-shelly-ng.constants', () => {
 		},
 		DeviceProfile: {
 			COVER: 'cover',
+			SWITCH: 'switch',
 		},
 	};
 });
 
 describe('ShellyDeviceDelegate', () => {
 	test('constructs for supported model and wires components', () => {
+		const { Switch, Light, Cover, Input, DevicePower, Humidity, Temperature, Pm1 } = require('shellies-ds9');
+
 		const comps = new Map<string, typeof Component>([
-			['switch:0', new (require('shellies-ds9').Switch)('switch:0')],
-			['switch:1', new (require('shellies-ds9').Switch)('switch:1')],
-			['light:0', new (require('shellies-ds9').Light)('light:0')],
-			['cover:0', new (require('shellies-ds9').Cover)('cover:0')],
-			['input:0', new (require('shellies-ds9').Input)('input:0')],
-			['devicePower:0', new (require('shellies-ds9').DevicePower)('devicePower:0')],
-			['humidity:0', new (require('shellies-ds9').Humidity)('humidity:0')],
-			['temperature:0', new (require('shellies-ds9').Temperature)('temperature:0')],
-			['pm:0', new (require('shellies-ds9').Pm1)('pm:0')],
+			['switch:0', new Switch('switch:0')],
+			['switch:1', new Switch('switch:1')],
+			['light:0', new Light('light:0')],
+			['cover:0', new Cover('cover:0')],
+			['input:0', new Input('input:0')],
+			['devicePower:0', new DevicePower('devicePower:0')],
+			['humidity:0', new Humidity('humidity:0')],
+			['temperature:0', new Temperature('temperature:0')],
+			// PM1 – klíč musí odpovídat type 'pm1'
+			['pm1:0', new Pm1('pm1:0')],
 		]);
 
-		const dev = new (require('shellies-ds9').Device)('dev-1', 'FAKE_MODEL', comps, true);
+		const { Device } = require('shellies-ds9');
+		const dev = new Device('dev-1', 'FAKE_MODEL', comps, true);
 		const delegate = new ShellyDeviceDelegate(dev);
 
 		expect(delegate.connected).toBe(true);
@@ -154,17 +160,19 @@ describe('ShellyDeviceDelegate', () => {
 		expect(delegate.covers.size).toBe(1);
 		expect(delegate.inputs.size).toBe(1);
 		expect(delegate.devPwr.size).toBe(1);
-		expect(delegate.hums.size).toBe(1);
-		expect(delegate.temps.size).toBe(1);
-		expect(delegate.powerMeter.size).toBe(1);
+		expect(delegate.humidity.size).toBe(1);
+		expect(delegate.temperature.size).toBe(1);
+		expect(delegate.pm1.size).toBe(1);
 		expect(delegate.components.has('switch:0')).toBe(true);
 		expect(delegate.components.has('light:0')).toBe(true);
 	});
 
 	test('propagates component "change" into delegate "value"', (done) => {
-		const sw = new (require('shellies-ds9').Switch)('switch:0');
+		const { Switch, Device } = require('shellies-ds9');
+
+		const sw = new Switch('switch:0');
 		const comps = new Map<string, typeof Component>([['switch:0', sw]]);
-		const dev = new (require('shellies-ds9').Device)('dev-2', 'FAKE_MODEL', comps, true);
+		const dev = new Device('dev-2', 'FAKE_MODEL', comps, true);
 
 		const delegate = new ShellyDeviceDelegate(dev);
 
@@ -183,9 +191,11 @@ describe('ShellyDeviceDelegate', () => {
 	});
 
 	test('emits connected events on rpc connect/disconnect', () => {
-		const sw = new (require('shellies-ds9').Switch)('switch:0');
+		const { Switch, Device } = require('shellies-ds9');
+
+		const sw = new Switch('switch:0');
 		const comps = new Map<string, typeof Component>([['switch:0', sw]]);
-		const dev = new (require('shellies-ds9').Device)('dev-3', 'FAKE_MODEL', comps, false);
+		const dev = new Device('dev-3', 'FAKE_MODEL', comps, false);
 
 		const delegate = new ShellyDeviceDelegate(dev);
 		const states: boolean[] = [];
@@ -199,9 +209,11 @@ describe('ShellyDeviceDelegate', () => {
 	});
 
 	test('detach removes listeners and stops forwarding changes', () => {
-		const sw = new (require('shellies-ds9').Switch)('switch:0');
+		const { Switch, Device } = require('shellies-ds9');
+
+		const sw = new Switch('switch:0');
 		const comps = new Map<string, typeof Component>([['switch:0', sw]]);
-		const dev = new (require('shellies-ds9').Device)('dev-4', 'FAKE_MODEL', comps, true);
+		const dev = new Device('dev-4', 'FAKE_MODEL', comps, true);
 
 		const delegate = new ShellyDeviceDelegate(dev);
 		const spy = jest.fn();
@@ -216,13 +228,16 @@ describe('ShellyDeviceDelegate', () => {
 	});
 
 	test('multi-profile: profile=cover → switches skipped, covers included', () => {
-		const sw = new (require('shellies-ds9').Switch)('switch:0');
-		const cov = new (require('shellies-ds9').Cover)('cover:0');
+		const { Switch, Cover, MultiProfileDevice } = require('shellies-ds9');
+
+		const sw = new Switch('switch:0');
+		const cov = new Cover('cover:0');
 		const comps = new Map<string, typeof Component>([
 			['switch:0', sw],
 			['cover:0', cov],
 		]);
-		const dev = new (require('shellies-ds9').MultiProfileDevice)('dev-5', 'FAKE_MODEL', comps, 'cover', true);
+
+		const dev = new MultiProfileDevice('dev-5', 'FAKE_MODEL', comps, 'cover', true);
 
 		const delegate = new ShellyDeviceDelegate(dev);
 
@@ -231,13 +246,17 @@ describe('ShellyDeviceDelegate', () => {
 	});
 
 	test('multi-profile: profile!=cover → covers skipped, switches included', () => {
-		const sw = new (require('shellies-ds9').Switch)('switch:0');
-		const cov = new (require('shellies-ds9').Cover)('cover:0');
+		const { Switch, Cover, MultiProfileDevice } = require('shellies-ds9');
+
+		const sw = new Switch('switch:0');
+		const cov = new Cover('cover:0');
 		const comps = new Map<string, typeof Component>([
 			['switch:0', sw],
 			['cover:0', cov],
 		]);
-		const dev = new (require('shellies-ds9').MultiProfileDevice)('dev-6', 'FAKE_MODEL', comps, 'switch', true);
+
+		// Profile "switch" – teď odpovídá DeviceProfile.SWITCH v mocku
+		const dev = new MultiProfileDevice('dev-6', 'FAKE_MODEL', comps, 'switch', true);
 
 		const delegate = new ShellyDeviceDelegate(dev);
 
@@ -246,8 +265,10 @@ describe('ShellyDeviceDelegate', () => {
 	});
 
 	test('unsupported model throws', () => {
+		const { Device } = require('shellies-ds9');
+
 		const comps = new Map<string, typeof Component>();
-		const dev = new (require('shellies-ds9').Device)('dev-7', 'UNKNOWN', comps, true);
+		const dev = new Device('dev-7', 'UNKNOWN', comps, true);
 
 		expect(() => new ShellyDeviceDelegate(dev)).toThrow('Device is not supported.');
 	});

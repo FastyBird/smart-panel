@@ -10,53 +10,62 @@ export class StatsService {
 
 	async getUpdatesPerMin(): Promise<{ value: number; lastUpdated: Date }> {
 		const q = `
-      SELECT LAST("cn") AS cn, LAST("cs") AS cs
-      FROM "min_14d"."property_value_counts_1m"
-      WHERE time > now() - 10m
-    `;
+    SELECT "cn","cs"
+    FROM "min_14d"."property_value_counts_1m"
+    ORDER BY time DESC
+    LIMIT 1
+  `;
 
 		const rows = await this.influx.query<{ cn: number; cs: number; time: Date }>(q);
 
-		const r = rows?.[0] ?? { cn: 0, cs: 0, time: new Date() };
+		const r = rows?.[0];
 
-		return { value: Number(r.cn ?? 0) + Number(r.cs ?? 0), lastUpdated: r.time };
-	}
-
-	async getUpdatesToday(midnightIso: string): Promise<{ value: number; lastUpdated: Date }> {
-		const q = `
-      SELECT COUNT("numberValue") AS cn, COUNT("stringValue") AS cs
-      FROM "raw_24h"."property_value"
-      WHERE time >= '${midnightIso}'
-    `;
-
-		const rows = await this.influx.query<{ cn: number; cs: number; time: Date }>(q);
-
-		const r = rows?.[0] ?? { cn: 0, cs: 0, time: new Date() };
-
-		return { value: Number(r.cn ?? 0) + Number(r.cs ?? 0), lastUpdated: r.time };
+		return {
+			value: Number(r?.cn ?? 0) + Number(r?.cs ?? 0),
+			lastUpdated: r?.time ?? new Date(0),
+		};
 	}
 
 	async getOnlineNow(): Promise<{ value: number; lastUpdated: Date }> {
 		const q = `
-      SELECT LAST("online_count") AS online
-      FROM "min_14d"."online_count_1m"
-      WHERE time > now() - 10m
-    `;
+			SELECT "online_count"
+			FROM "min_14d"."online_count_1m"
+			ORDER BY time DESC
+			LIMIT 1
+		`;
 
-		const rows = await this.influx.query<{ online: number; time: Date }>(q);
+		const rows = await this.influx.query<{ online_count: number; time: Date }>(q);
 
-		return { value: Number(rows?.[0]?.online ?? 0), lastUpdated: rows?.[0]?.time ?? new Date() };
+		const r = rows?.[0];
+
+		return {
+			value: Number(r?.online_count ?? 0),
+			lastUpdated: r?.time ?? new Date(0),
+		};
+	}
+
+	async getUpdatesToday(midnightIso: string): Promise<{ value: number; lastUpdated: Date }> {
+		const q = `
+    SELECT COUNT("numberValue") + COUNT("stringValue") AS total
+    FROM "raw_24h"."property_value"
+    WHERE time >= '${midnightIso}' AND time < now()
+  `;
+
+		const rows = await this.influx.query<{ total: number }>(q);
+
+		const total = Number(rows?.[0]?.total ?? 0);
+
+		return { value: total, lastUpdated: new Date() };
 	}
 
 	async getLatestStates(): Promise<
 		Record<DeviceEntity['id'], { online: boolean; status: ConnectionState; lastUpdated: Date | null }>
 	> {
 		const q = `
-      SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
-      FROM "min_14d"."device_status_1m"
-      WHERE time > now() - 10m
-      GROUP BY "deviceId"
-    `;
+			SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
+			FROM "min_14d"."device_status_1m"
+			GROUP BY "deviceId"
+		`;
 
 		const rows = await this.influx.query<{
 			onlineI: number;
@@ -67,11 +76,15 @@ export class StatsService {
 
 		const out: Record<string, { online: boolean; status: ConnectionState; lastUpdated: Date | null }> = {};
 
-		for (const r of rows) {
+		for (const r of rows ?? []) {
+			if (!r.deviceId) {
+				continue;
+			}
+
 			out[r.deviceId] = {
 				online: Number(r.onlineI ?? 0) > 0,
-				status: String(r.status ?? ConnectionState.UNKNOWN) as ConnectionState,
-				lastUpdated: r.time,
+				status: (r.status ?? ConnectionState.UNKNOWN) as ConnectionState,
+				lastUpdated: r.time ?? null,
 			};
 		}
 

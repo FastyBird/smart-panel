@@ -9,6 +9,7 @@ import { Logger } from '@nestjs/common';
 
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { DevicesShellyNgNotImplementedException } from '../devices-shelly-ng.exceptions';
 import {
 	ShellyNgChannelEntity,
 	ShellyNgChannelPropertyEntity,
@@ -40,24 +41,25 @@ describe('ShellyNgDevicePlatform', () => {
 	const makeChannel = (id = 'channel-1'): ShellyNgChannelEntity => Object.assign(new ShellyNgChannelEntity(), { id });
 
 	const makeProp = (id = 'prop-1'): ShellyNgChannelPropertyEntity =>
-		({ id }) as unknown as ShellyNgChannelPropertyEntity;
+		Object.assign(new ShellyNgChannelPropertyEntity(), { id });
 
-	const makePlatform = (setPropertyValue?: jest.Mock) => {
+	const makePlatform = (opts?: { setChannelValue?: jest.Mock; setPropertyValue?: jest.Mock }) => {
 		const delegates = {
-			setPropertyValue: setPropertyValue ?? jest.fn(),
+			setChannelValue: opts?.setChannelValue ?? jest.fn(),
+			setPropertyValue: opts?.setPropertyValue ?? jest.fn(),
 		} as unknown as DelegatesManagerService;
 
-		return new ShellyNgDevicePlatform(delegates);
+		return { platform: new ShellyNgDevicePlatform(delegates), delegates };
 	};
 
 	it('getType returns DEVICES_SHELLY_NG_TYPE', () => {
-		const platform = makePlatform();
+		const { platform } = makePlatform();
 		expect(platform.getType()).toBe(DEVICES_SHELLY_NG_TYPE);
 	});
 
-	it('process delegates to processBatch with single update', async () => {
-		const setMock = jest.fn().mockResolvedValue(true);
-		const platform = makePlatform(setMock);
+	it('process delegates to processBatch and uses batch handler (setChannelValue)', async () => {
+		const setChannelValue = jest.fn().mockResolvedValue(true);
+		const { platform, delegates } = makePlatform({ setChannelValue });
 
 		const device = makeDevice('dev-1');
 		const channel = makeChannel('ch-1');
@@ -71,13 +73,18 @@ describe('ShellyNgDevicePlatform', () => {
 		});
 
 		expect(ok).toBe(true);
-		expect(setMock).toHaveBeenCalledWith(device, property, true);
-		expect(Logger.prototype.log).toHaveBeenCalled(); // success log
+		expect(setChannelValue).toHaveBeenCalledTimes(1);
+		expect(setChannelValue).toHaveBeenCalledWith(device, channel, [{ property, value: true }]);
+		// per-property handler by se v tomto scénáři volat neměl
+		expect(delegates.setPropertyValue as jest.Mock).not.toHaveBeenCalled();
+		expect(Logger.prototype.log).toHaveBeenCalledWith(
+			`[SHELLY NG][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
+		);
 	});
 
 	it('processBatch returns false immediately when device is not ShellyNgDeviceEntity', async () => {
-		const platform = makePlatform(jest.fn());
-		const notShellyDevice = { id: 'x' } as ShellyNgDeviceEntity;
+		const { platform } = makePlatform();
+		const notShellyDevice = { id: 'x' } as ShellyNgDeviceEntity; // není instance ShellyNgDeviceEntity
 
 		const ok = await platform.processBatch([
 			{ device: notShellyDevice, channel: makeChannel('ch'), property: makeProp('p'), value: 1 },
@@ -89,9 +96,9 @@ describe('ShellyNgDevicePlatform', () => {
 		);
 	});
 
-	it('processBatch returns true when all updates succeed', async () => {
-		const setMock = jest.fn().mockResolvedValue(true);
-		const platform = makePlatform(setMock);
+	it('processBatch uses batch handler when available and all updates succeed', async () => {
+		const setChannelValue = jest.fn().mockResolvedValue(true);
+		const { platform, delegates } = makePlatform({ setChannelValue });
 
 		const device = makeDevice('dev-2');
 		const channel = makeChannel('ch-2');
@@ -104,17 +111,21 @@ describe('ShellyNgDevicePlatform', () => {
 		]);
 
 		expect(ok).toBe(true);
-		expect(setMock).toHaveBeenNthCalledWith(1, device, p1, 10);
-		expect(setMock).toHaveBeenNthCalledWith(2, device, p2, false);
+
+		expect(setChannelValue).toHaveBeenCalledTimes(1);
+		expect(setChannelValue).toHaveBeenCalledWith(device, channel, [
+			{ property: p1, value: 10 },
+			{ property: p2, value: false },
+		]);
+		expect(delegates.setPropertyValue as jest.Mock).not.toHaveBeenCalled();
 		expect(Logger.prototype.log).toHaveBeenCalledWith(
 			`[SHELLY NG][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
 		);
 	});
 
-	it('processBatch returns false when any update returns false', async () => {
-		const setMock = jest.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false); // second fails
-
-		const platform = makePlatform(setMock);
+	it('processBatch returns false when batch handler returns false (no fallback)', async () => {
+		const setChannelValue = jest.fn().mockResolvedValue(false);
+		const { platform, delegates } = makePlatform({ setChannelValue });
 
 		const device = makeDevice('dev-3');
 		const channel = makeChannel('ch-3');
@@ -127,18 +138,82 @@ describe('ShellyNgDevicePlatform', () => {
 		]);
 
 		expect(ok).toBe(false);
+		// batch handler byl volán
+		expect(setChannelValue).toHaveBeenCalledTimes(1);
+		// per-property fallback by se v tomto scénáři volat neměl
+		expect(delegates.setPropertyValue as jest.Mock).not.toHaveBeenCalled();
+
 		expect(Logger.prototype.error).toHaveBeenCalledWith('[SHELLY NG][PLATFORM] Failed to update device property');
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
 			expect.stringContaining(`[SHELLY NG][PLATFORM] Some properties failed to update for device id=${device.id}`),
 		);
 	});
 
-	it('processBatch returns false when setPropertyValue throws', async () => {
-		const setMock = jest.fn().mockRejectedValue(new Error('boom'));
-		const platform = makePlatform(setMock);
+	it('processBatch falls back to per-property handlers when batch handler throws DevicesShellyNgNotImplementedException and returns true when all succeed', async () => {
+		const setChannelValue = jest.fn().mockRejectedValue(new DevicesShellyNgNotImplementedException('not implemented'));
+
+		const setPropertyValue = jest.fn().mockResolvedValue(true);
+
+		const { platform } = makePlatform({ setChannelValue, setPropertyValue });
 
 		const device = makeDevice('dev-4');
 		const channel = makeChannel('ch-4');
+		const p1 = makeProp('p-1');
+		const p2 = makeProp('p-2');
+
+		const ok = await platform.processBatch([
+			{ device, channel, property: p1, value: 10 },
+			{ device, channel, property: p2, value: 20 },
+		]);
+
+		expect(ok).toBe(true);
+
+		expect(setChannelValue).toHaveBeenCalledTimes(1);
+		expect(setPropertyValue).toHaveBeenNthCalledWith(1, device, p1, 10);
+		expect(setPropertyValue).toHaveBeenNthCalledWith(2, device, p2, 20);
+
+		expect(Logger.prototype.log).toHaveBeenCalledWith(
+			`[SHELLY NG][PLATFORM] Successfully processed all property updates for device id=${device.id}`,
+		);
+	});
+
+	it('processBatch returns false when any per-property update returns false in fallback mode', async () => {
+		const setChannelValue = jest.fn().mockRejectedValue(new DevicesShellyNgNotImplementedException('not implemented'));
+
+		const setPropertyValue = jest.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false); // druhý prop selže
+
+		const { platform } = makePlatform({ setChannelValue, setPropertyValue });
+
+		const device = makeDevice('dev-5');
+		const channel = makeChannel('ch-5');
+		const p1 = makeProp('p-1');
+		const p2 = makeProp('p-2');
+
+		const ok = await platform.processBatch([
+			{ device, channel, property: p1, value: 1 },
+			{ device, channel, property: p2, value: 2 },
+		]);
+
+		expect(ok).toBe(false);
+
+		expect(setPropertyValue).toHaveBeenNthCalledWith(1, device, p1, 1);
+		expect(setPropertyValue).toHaveBeenNthCalledWith(2, device, p2, 2);
+
+		expect(Logger.prototype.error).toHaveBeenCalledWith('[SHELLY NG][PLATFORM] Failed to update device property');
+		expect(Logger.prototype.warn).toHaveBeenCalledWith(
+			expect.stringContaining(`[SHELLY NG][PLATFORM] Some properties failed to update for device id=${device.id}`),
+		);
+	});
+
+	it('processBatch returns false when per-property update throws in fallback mode', async () => {
+		const setChannelValue = jest.fn().mockRejectedValue(new DevicesShellyNgNotImplementedException('not implemented'));
+
+		const setPropertyValue = jest.fn().mockRejectedValue(new Error('boom'));
+
+		const { platform } = makePlatform({ setChannelValue, setPropertyValue });
+
+		const device = makeDevice('dev-6');
+		const channel = makeChannel('ch-6');
 		const p = makeProp('p-1');
 
 		const ok = await platform.processBatch([{ device, channel, property: p, value: 'x' }]);

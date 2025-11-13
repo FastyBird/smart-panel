@@ -6,10 +6,10 @@ import { isEqual } from 'lodash';
 import { orderBy } from 'natural-orderby';
 
 import { type ISortEntry, injectStoresManager, useListQuery } from '../../../common';
-import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyCategory, DevicesModuleDeviceStatusStatus } from '../../../openapi';
+import { DevicesModuleDeviceStatusStatus } from '../../../openapi';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEVICES_MODULE_NAME } from '../devices.constants';
 import type { IDevice } from '../store/devices.store.types';
-import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '../store/keys';
+import { devicesStoreKey } from '../store/keys';
 
 import { DevicesFilterSchema } from './schemas';
 import type { IDevicesFilter, IUseDevicesDataSource } from './types';
@@ -32,10 +32,6 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 	const storesManager = injectStoresManager();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
-
-	const channelsStore = storesManager.getStore(channelsStoreKey);
-
-	const channelsPropertiesStore = storesManager.getStore(channelsPropertiesStoreKey);
 
 	const { firstLoad, semaphore } = storeToRefs(devicesStore);
 
@@ -84,46 +80,6 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 
 	const sortDir = ref<'asc' | 'desc' | null>(sort.value.length > 0 ? sort.value[0].dir : null);
 
-	const states = computed<Map<IDevice['id'], DevicesModuleDeviceStatusStatus>>((): Map<IDevice['id'], DevicesModuleDeviceStatusStatus> => {
-		const devices = devicesStore.findAll();
-
-		const statesMap = new Map();
-
-		for (const device of devices) {
-			const channel =
-				channelsStore.findForDevice(device.id).find((channel) => channel.category === DevicesModuleChannelCategory.device_information) || null;
-
-			if (!channel) {
-				statesMap.set(device.id, DevicesModuleDeviceStatusStatus.unknown);
-
-				continue;
-			}
-
-			const property =
-				channelsPropertiesStore.findForChannel(channel.id).find((property) => property.category === DevicesModuleChannelPropertyCategory.status) ||
-				null;
-
-			if (!property) {
-				statesMap.set(device.id, DevicesModuleDeviceStatusStatus.unknown);
-
-				continue;
-			}
-
-			if (
-				typeof property.value === 'string' &&
-				Object.values(DevicesModuleDeviceStatusStatus).includes(property.value as DevicesModuleDeviceStatusStatus)
-			) {
-				statesMap.set(device.id, property.value as DevicesModuleDeviceStatusStatus);
-
-				continue;
-			}
-
-			statesMap.set(device.id, DevicesModuleDeviceStatusStatus.unknown);
-		}
-
-		return statesMap;
-	});
-
 	const devices = computed<IDevice[]>((): IDevice[] => {
 		return orderBy<IDevice>(
 			devicesStore
@@ -141,24 +97,26 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 						(filters.value.enabled === 'all' ||
 							(filters.value.enabled === 'enabled' && device.enabled) ||
 							(filters.value.enabled === 'disabled' && !device.enabled)) &&
-						(filters.value.states.length === 0 ||
-							(states.value.has(device.id) && filters.value.states.includes(states.value.get(device.id) as DevicesModuleDeviceStatusStatus))) &&
+						(filters.value.states.length === 0 || filters.value.states.includes(device.status?.status ?? DevicesModuleDeviceStatusStatus.unknown)) &&
 						(filters.value.state === 'all' ||
 							(filters.value.state === 'online' &&
-								states.value.has(device.id) &&
 								[DevicesModuleDeviceStatusStatus.ready, DevicesModuleDeviceStatusStatus.connected, DevicesModuleDeviceStatusStatus.running].includes(
-									states.value.get(device.id) as DevicesModuleDeviceStatusStatus
+									device.status.status
 								)) ||
 							(filters.value.state === 'offline' &&
-								states.value.has(device.id) &&
 								[
 									DevicesModuleDeviceStatusStatus.disconnected,
 									DevicesModuleDeviceStatusStatus.stopped,
 									DevicesModuleDeviceStatusStatus.lost,
 									DevicesModuleDeviceStatusStatus.unknown,
-								].includes(states.value.get(device.id) as DevicesModuleDeviceStatusStatus)))
+								].includes(device.status.status)))
 				),
-			[(device: IDevice) => (sortBy.value === 'state' ? (states.value.get(device.id) ?? '') : (device[sortBy.value as keyof IDevice] ?? ''))],
+			[
+				(device: IDevice) =>
+					sortBy.value === 'state'
+						? (device.status?.status ?? DevicesModuleDeviceStatusStatus.unknown)
+						: (device[sortBy.value as keyof IDevice] ?? ''),
+			],
 			[sortDir.value === 'asc' ? 'asc' : 'desc']
 		);
 	});

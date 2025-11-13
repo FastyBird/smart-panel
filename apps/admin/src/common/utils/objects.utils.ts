@@ -39,7 +39,11 @@ export const camelToSnake = <T extends Record<string, any>>(obj: T): any => {
 
 export const deepClone = <T>(value: T): T => {
 	if (typeof structuredClone === 'function') {
-		return structuredClone(toRaw(value));
+		try {
+			return (typeof value !== 'undefined' ? structuredClone(toRaw(value)) : undefined) as T;
+		} catch {
+			// Silently fail to fallback
+		}
 	}
 
 	if (value === null || typeof value !== 'object') {

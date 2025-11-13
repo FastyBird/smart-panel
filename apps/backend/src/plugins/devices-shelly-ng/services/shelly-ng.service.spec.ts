@@ -11,11 +11,13 @@ import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
 import { DatabaseDiscovererService } from './database-discoverer.service';
+import { DeviceManagerService } from './device-manager.service';
 import { ShellyNgService } from './shelly-ng.service';
 
 // 🔑 Mock the constants module so it doesn't evaluate the real DESCRIPTORS table
@@ -58,6 +60,12 @@ jest.mock('shellies-ds9', () => {
 		}
 		registerDiscoverer(d: any) {
 			this.registered.push(d);
+		}
+		removeAllListeners() {
+			this.listeners = {};
+		}
+		clear() {
+			/* noop */
 		}
 	}
 
@@ -106,11 +114,22 @@ const mockDelegates = () => ({ insert: jest.fn(), remove: jest.fn(), detach: jes
 
 const mockDevicesService = (devices: any[] = []) => ({
 	findAll: jest.fn().mockResolvedValue(devices),
+	findOneBy: jest.fn().mockResolvedValue(null),
 });
 
 const mockDbDiscoverer = () => ({ run: jest.fn().mockResolvedValue(undefined) });
 
 const mkDevice = (over: Partial<any> = {}) => ({ id: 'dev-1', ...over });
+
+const mockDeviceManagerService = {
+	createOrUpdate: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockDeviceConnectivityService = {
+	setConnectionState: jest.fn().mockResolvedValue(undefined),
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('ShellyNgService', () => {
 	afterEach(() => {
@@ -128,11 +147,13 @@ describe('ShellyNgService', () => {
 				{ provide: DatabaseDiscovererService, useFactory: mockDbDiscoverer },
 				{ provide: DelegatesManagerService, useFactory: mockDelegates },
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
+				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
+				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 			],
 		}).compile();
 
 		const svc = moduleRef.get(ShellyNgService);
-		await svc.start();
+		await svc.requestStart(0);
 
 		const ds9 = require('shellies-ds9');
 		expect(ds9.__testing.shelliesInstances).toHaveLength(0);
@@ -154,11 +175,14 @@ describe('ShellyNgService', () => {
 							{ id: '2', identifier: 'sh-2', enabled: false, password: null, type: DEVICES_SHELLY_NG_TYPE },
 						]),
 				},
+				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
+				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 			],
 		}).compile();
 
 		const svc = mod.get(ShellyNgService);
-		await svc.start();
+		await svc.requestStart(0);
+		await sleep(0);
 
 		const ds9 = require('shellies-ds9');
 		expect(ds9.__testing.shelliesInstances).toHaveLength(1);
@@ -183,11 +207,14 @@ describe('ShellyNgService', () => {
 				{ provide: DatabaseDiscovererService, useFactory: mockDbDiscoverer },
 				{ provide: DelegatesManagerService, useFactory: mockDelegates },
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
+				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
+				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 			],
 		}).compile();
 
 		const svc = mod.get(ShellyNgService);
-		await svc.start();
+		await svc.requestStart(0);
+		await sleep(0);
 
 		const ds9 = require('shellies-ds9');
 		expect(ds9.__testing.shelliesInstances).toHaveLength(1);
@@ -203,18 +230,24 @@ describe('ShellyNgService', () => {
 				{ provide: DatabaseDiscovererService, useFactory: mockDbDiscoverer },
 				{ provide: DelegatesManagerService, useValue: delegates },
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
+				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
+				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 			],
 		}).compile();
 
 		const svc = mod.get(ShellyNgService);
-		await svc.start();
+		await svc.requestStart(0);
+		await sleep(0); // čekáme na debounce + start
 
 		const ds9 = require('shellies-ds9');
 		const sh = ds9.__testing.shelliesInstances[0] as any;
 		const emit = (evt: string, ...args: any[]) => (sh.listeners[evt] ?? []).forEach((fn: Function) => fn(...args));
 
 		delegates.insert.mockResolvedValue({ id: 'dev-1' });
+
 		emit('add', mkDevice({ id: 'dev-1' }));
+		await sleep(0); // 👈 důležité – počkat na .then v handleAddedDevice
+
 		expect(delegates.insert).toHaveBeenCalledWith(expect.objectContaining({ id: 'dev-1' }));
 
 		emit('remove', mkDevice({ id: 'dev-9' }));
@@ -236,17 +269,20 @@ describe('ShellyNgService', () => {
 				{ provide: DatabaseDiscovererService, useFactory: mockDbDiscoverer },
 				{ provide: DelegatesManagerService, useValue: delegates },
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
+				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
+				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 			],
 		}).compile();
 
 		const svc = mod.get(ShellyNgService);
-		await svc.start();
+		await svc.requestStart(0);
+		await sleep(0);
 
 		const ds9 = require('shellies-ds9');
 		const sh = ds9.__testing.shelliesInstances[0] as any;
 
 		expect(Object.values(sh.listeners).flat().length).toBeGreaterThan(0);
-		svc.stop();
+		await svc.stop();
 		expect(delegates.detach).toHaveBeenCalledTimes(1);
 	});
 
@@ -259,12 +295,14 @@ describe('ShellyNgService', () => {
 				{ provide: DatabaseDiscovererService, useFactory: mockDbDiscoverer },
 				{ provide: DelegatesManagerService, useValue: delegates },
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
+				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
+				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 			],
 		}).compile();
 
 		const svc = mod.get(ShellyNgService);
-		const startSpy = jest.spyOn(svc, 'start');
-		const stopSpy = jest.spyOn(svc, 'stop');
+		const startSpy = jest.spyOn(svc, 'requestStart').mockResolvedValue(undefined);
+		const stopSpy = jest.spyOn(svc, 'stop').mockResolvedValue(undefined);
 
 		await svc.restart();
 
@@ -280,6 +318,8 @@ describe('ShellyNgService', () => {
 				{ provide: DatabaseDiscovererService, useFactory: mockDbDiscoverer },
 				{ provide: DelegatesManagerService, useFactory: mockDelegates },
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
+				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
+				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
 			],
 		}).compile();
 
