@@ -31,6 +31,7 @@ export class ShellyNgService {
 
 	// Optional: if config updates can flip enabled on/off quickly
 	private desiredEnabled = false;
+	private startStopLock: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -85,45 +86,50 @@ export class ShellyNgService {
 	}
 
 	private async ensureStarted(): Promise<void> {
-		if (this.config.enabled !== true) {
-			return;
-		}
+		await this.withLock(async () => {
+			if (this.config.enabled !== true) {
+				return;
+			}
 
-		switch (this.state) {
-			case 'started':
-				// already running — nothing to do
-				return;
-			case 'starting':
-				// let the current start finish
-				return;
-			case 'stopping':
-				// wait until stopped, then start
-				await this.waitUntil('stopped');
-				// re-check enabled (it could have changed while waiting)
-				if (this.config.enabled === true) {
+			switch (this.state) {
+				case 'started':
+					return;
+				case 'starting':
+					return;
+				case 'stopping':
+					await this.waitUntil('stopped');
+					if (this.config.enabled === true) {
+						await this.doStart();
+					}
+					return;
+				case 'stopped':
 					await this.doStart();
-				}
-				return;
-			case 'stopped':
-				await this.doStart();
-				return;
-		}
+					return;
+			}
+		});
 	}
 
 	private async ensureStopped(): Promise<void> {
-		switch (this.state) {
-			case 'stopped':
-				return;
-			case 'stopping':
-				return;
-			case 'starting':
-				// wait for start to finish, then stop
-				await this.waitUntil('started');
-			// fallthrough
-			case 'started':
-				this.doStop();
-				return;
-		}
+		await this.withLock(async () => {
+			switch (this.state) {
+				case 'stopped':
+					return;
+				case 'stopping':
+					return;
+				case 'starting':
+					await this.waitUntil('started');
+				// fallthrough
+				case 'started':
+					this.doStop();
+					return;
+			}
+		});
+	}
+
+	private withLock<T>(fn: () => Promise<T>): Promise<T> {
+		const run = async () => fn();
+		this.startStopLock = this.startStopLock.then(run, run) as Promise<void>;
+		return this.startStopLock as unknown as Promise<T>;
 	}
 
 	private async doStart(): Promise<void> {

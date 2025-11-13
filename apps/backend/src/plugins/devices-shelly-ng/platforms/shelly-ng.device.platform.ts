@@ -77,13 +77,11 @@ export class ShellyNgDevicePlatform extends HttpDevicePlatform implements IDevic
 
 		const result = new Map<ShellyNgChannelPropertyEntity['id'], boolean>();
 
-		for (const { device, channel, props } of byDeviceChannel.values()) {
+		for (const group of byDeviceChannel.values()) {
+			const { device, channel, props, order } = group;
 			try {
-				const response = await this.delegatesManagerService.setChannelValue(
-					device,
-					channel,
-					Array.from(props.values()),
-				);
+				const ordered = order.map((id) => props.get(id)!).filter(Boolean);
+				const response = await this.delegatesManagerService.setChannelValue(device, channel, ordered);
 
 				for (const { property } of props.values()) {
 					result.set(property.id, response !== false);

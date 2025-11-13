@@ -97,7 +97,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 						(filters.value.enabled === 'all' ||
 							(filters.value.enabled === 'enabled' && device.enabled) ||
 							(filters.value.enabled === 'disabled' && !device.enabled)) &&
-						(filters.value.states.length === 0 || filters.value.states.includes(device.status.status)) &&
+						(filters.value.states.length === 0 || filters.value.states.includes(device.status?.status ?? 'unknown')) &&
 						(filters.value.state === 'all' ||
 							(filters.value.state === 'online' &&
 								[DevicesModuleDeviceStatusStatus.ready, DevicesModuleDeviceStatusStatus.connected, DevicesModuleDeviceStatusStatus.running].includes(
@@ -111,7 +111,7 @@ export const useDevicesDataSource = (): IUseDevicesDataSource => {
 									DevicesModuleDeviceStatusStatus.unknown,
 								].includes(device.status.status)))
 				),
-			[(device: IDevice) => (sortBy.value === 'state' ? device.status.status : (device[sortBy.value as keyof IDevice] ?? ''))],
+			[(device: IDevice) => (sortBy.value === 'state' ? (device.status?.status ?? 'unknown') : (device[sortBy.value as keyof IDevice] ?? ''))],
 			[sortDir.value === 'asc' ? 'asc' : 'desc']
 		);
 	});

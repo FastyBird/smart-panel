@@ -376,14 +376,20 @@ export class InfluxDbService {
 
 		const s = q.toLowerCase();
 
-		const m = s.match(/resample\s+(?:(?:every\s+(\S+))|(?:for\s+(\S+)))(?:\s+(?:every\s+(\S+)|for\s+(\S+)))?/i);
+		// Match RESAMPLE with ANY order of EVERY/FOR and optional presence
+		// Examples:
+		//   RESAMPLE EVERY 1m FOR 10m
+		//   RESAMPLE FOR 24h EVERY 1m
+		//   RESAMPLE EVERY 1m
+		//   RESAMPLE FOR 24h
+		const m = s.match(/resample\s+(?:every\s+(\S+))?(?:\s+for\s+(\S+))?|resample\s+(?:for\s+(\S+))?(?:\s+every\s+(\S+))?/i);
 
 		if (!m) {
 			return '';
 		}
 
-		const every = m[1] ?? m[3] ?? '';
-		const dur = m[2] ?? m[4] ?? '';
+		const every = (m[1] || m[4] || '').trim();
+		const dur = (m[2] || m[3] || '').trim();
 
 		return `every=${every};for=${dur}`;
 	}
