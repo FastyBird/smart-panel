@@ -1,0 +1,54 @@
+# Qodo agent configuration for FastyBird Smart Panel
+name: smart-panel-review
+description: >
+  Code review agent for the FastyBird Smart Panel monorepo.
+  Follows project architecture, coding guidelines, and AI assistant rules.
+
+# Optional tags / metadata – adapt to what Qodo supports
+tags:
+  - smart-panel
+  - fastybird
+  - monorepo
+  - backend
+  - frontend
+  - flutter
+
+guidelines:
+  - Always respect existing architecture (NestJS modules, Vue structure, Flutter widgets).
+  - Avoid suggesting large refactors unless explicitly asked.
+  - Only focus on the files in the diff.
+  - Never modify generated files (OpenAPI generated types, swagger parser output, etc.).
+  - Encourage adding or expanding tests when new logic is added.
+  - Avoid adding new dependencies unless there is a clear benefit.
+
+code_style:
+  languages:
+    typescript:
+      indentation: 2
+      quotes: single
+      semicolons: always
+      naming:
+        variables: camelCase
+        functions: camelCase
+        classes: PascalCase
+    php:
+      indentation: 4
+    dart:
+      indentation: 2
+
+severity:
+  critical:
+    - Security vulnerabilities (auth, tokens, session handling, secrets).
+    - Incorrect usage of async / promises / observables that can lead to data loss or crashes.
+    - Broken state handling (Pinia, Vue reactivity, Flutter stateful widgets).
+    - DTO / API type mismatches that can break communication with the backend.
+  major:
+    - Missing validation or edge-case handling.
+    - Misconfigured dependency injection.
+    - Incorrect error handling that hides real problems.
+  minor:
+    - Naming inconsistencies.
+    - Readability / maintainability issues.
+    - Non-critical performance issues.
+  info:
+    - Optional refactors or stylistic preferences.

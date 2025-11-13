@@ -1,0 +1,13 @@
+# Junie cache and temporary files (future-proof)
+cache/
+tmp/
+logs/
+sessions/
+state/
+
+# JetBrains internal AI temp files (just in case)
+.idea/
+*.iml
+
+# Do NOT ignore guidelines.md or any other rules files
+!guidelines.md

@@ -117,11 +117,11 @@ make server-cov-tests
 #### Jest Configuration
 
 - **Unit tests config**: `apps/backend/jest.config.mjs`
-  - Test files: `*.spec.ts` in `src/` directory
-  - Coverage output: `apps/backend/coverage/`
-  
+    - Test files: `*.spec.ts` in `src/` directory
+    - Coverage output: `apps/backend/coverage/`
+
 - **E2E tests config**: `apps/backend/test/jest-e2e.json`
-  - Test files: `*.e2e-spec.ts` in `test/` directory
+    - Test files: `*.e2e-spec.ts` in `test/` directory
 
 #### Writing Tests
 
@@ -183,11 +183,11 @@ pnpm test:unit path/to/file.spec.ts
 - Config file: `apps/backend/eslint.config.mjs`
 - Based on: TypeScript ESLint recommended + Prettier integration
 - Custom rules:
-  - `@typescript-eslint/no-explicit-any`: off (allows `any` type)
-  - `@typescript-eslint/no-floating-promises`: warn
-  - `@typescript-eslint/no-unsafe-argument`: warn
-  - `@typescript-eslint/no-unused-vars`: error (except params starting with `_`)
-  - `comma-dangle`: error (always-multiline)
+    - `@typescript-eslint/no-explicit-any`: off (allows `any` type)
+    - `@typescript-eslint/no-floating-promises`: warn
+    - `@typescript-eslint/no-unsafe-argument`: warn
+    - `@typescript-eslint/no-unused-vars`: error (except params starting with `_`)
+    - `comma-dangle`: error (always-multiline)
 
 ```bash
 # Lint code
@@ -204,15 +204,15 @@ pnpm run lint:deps
 
 - Config file: `apps/backend/prettier.config.mjs`
 - Key settings:
-  - **Tabs**: Use tabs for indentation (not spaces)
-  - **Print width**: 120 characters
-  - **Quotes**: Single quotes
-  - **Semicolons**: Always
-  - **Trailing commas**: Always on multiline
-  - **Import sorting**: Enabled via `@trivago/prettier-plugin-sort-imports`
-    - External imports first
-    - Then relative imports (`../`, `./`)
-    - With separation between groups
+    - **Tabs**: Use tabs for indentation (not spaces)
+    - **Print width**: 120 characters
+    - **Quotes**: Single quotes
+    - **Semicolons**: Always
+    - **Trailing commas**: Always on multiline
+    - **Import sorting**: Enabled via `@trivago/prettier-plugin-sort-imports`
+        - External imports first
+        - Then relative imports (`../`, `./`)
+        - With separation between groups
 
 ```bash
 # Check formatting
@@ -232,9 +232,9 @@ pnpm run pretty
 - Config file: `apps/panel/analysis_options.yaml`
 - Based on: `package:flutter_lints/flutter.yaml`
 - Custom rules:
-  - `prefer_relative_imports`: false (disabled)
-  - `always_use_package_imports`: true (enforced)
-  - Excludes: `lib/api/**` (generated code)
+    - `prefer_relative_imports`: false (disabled)
+    - `always_use_package_imports`: true (enforced)
+    - Excludes: `lib/api/**` (generated code)
 
 ```bash
 # Analyze Dart code
@@ -379,3 +379,189 @@ pnpm run cli:prod <command>
 pnpm run cli:prod auth:onboarding           # Create first user
 pnpm run cli:prod config:generate-admin-extensions  # Generate admin extensions
 ```
+
+---
+
+# AI Coding & Tooling Guidelines (Unified)
+
+The following rules extend the project documentation above and are intended for **Junie**, **JetBrains AI Assistant**, and **Qodo**.
+
+## Architecture & Design Rules
+
+- Always respect the modular architecture:
+    - Backend modules (`devices`, `dashboard`, `plugins`, `users`, etc.).
+    - Admin app organized by modules, pages, and Pinia stores.
+    - Panel app with clear API/spec → UI layering.
+- Avoid “god services” and large classes that mix multiple concerns.
+- Prefer small, focused services, composables, and widgets.
+- Do not move logic between modules unless there is a clear architectural reason.
+
+### Generated Code (DO NOT EDIT)
+
+Never change generated code manually. If behavior must change, update the generator or source spec.
+
+Generated code includes (but is not limited to):
+
+- `apps/backend/src/openapi.d.ts`
+- `apps/backend/src/spec/**`
+- `apps/panel/lib/api/**`
+- `apps/panel/lib/spec/**`
+
+## Coding Style Rules
+
+### TypeScript (Backend & Admin)
+
+- Indentation: tabs
+- Print width: 120
+- Quotes: single
+- Semicolons: always
+- Trailing commas: always on multiline
+- Import sorting:
+    - External imports first
+    - Then relative imports (`../` → `./`)
+
+Naming:
+
+- Variables & functions: `camelCase`
+- Classes, interfaces, enums, types: `PascalCase`
+- Vue components: `PascalCase` filenames
+- Folders: `kebab-case`
+
+### Flutter/Dart
+
+- Prefer package imports, not relative imports.
+- Files: `snake_case.dart`
+- Classes/widgets: `PascalCase`
+- `lib/api/**` and `lib/spec/**` are generated and must not be edited.
+
+### Matter-style Capabilities
+
+When defining device types, channels, properties:
+
+- Use terminology aligned with **Matter** where it makes sense (clusters, features, capabilities).
+- Keep metadata (units, formats, permissions) aligned with the existing spec schemas.
+
+## Tests
+
+- Backend (NestJS):
+    - Use Jest.
+    - New business logic should have unit tests and, if relevant, E2E coverage.
+- Admin (Vue):
+    - Use Vitest + `@testing-library/vue`.
+    - Non-trivial composables and stores should have tests.
+- Panel (Flutter):
+    - Prefer widget tests for non-trivial UI logic.
+
+**Rule:**  
+When adding significant new logic (manually or via AI), add or extend tests, or clearly explain in the PR why tests are omitted.
+
+## Commits & Pull Requests
+
+- Commit messages:
+    - English
+    - Imperative mood
+    - Examples:
+        - `Add Home Assistant device registry sync`
+        - `Refactor dashboard card builder`
+        - `Fix panel screen saver timeout handling`
+
+- PR descriptions must use Markdown.
+
+Recommended PR template:
+
+```markdown
+## Summary
+
+Short, high-level description of the change.
+
+## Changes
+
+- Bullet list of relevant changes.
+- Focus on behavior and architecture, not just file names.
+
+## Testing
+
+- How the change was tested (unit tests, E2E tests, manual steps, etc.).
+
+## Notes
+
+- Any important implications, migration steps, or follow-ups.
+
+## Related issues
+
+- Links to issues / tickets, if applicable.
+```
+
+## AI Usage Guidelines
+
+These rules apply to **Junie**, **JetBrains AI Assistant**, and **Qodo**:
+
+1. AI-generated code is **never auto-mergeable**. A human must always review diffs.
+2. Do **not** modify generated files.
+3. Respect the **scope** of the request:
+    - Stick to the described feature or bugfix.
+    - If refactors/cleanups are beneficial, suggest them as a **separate PR**.
+4. Prefer existing patterns:
+    - Use existing helpers, mappers, stores, and abstractions instead of inventing new ones.
+5. Avoid introducing new dependencies without a strong, documented reason.
+6. When adding new logic:
+    - Propose or generate matching tests.
+    - If tests are skipped, describe what should be tested.
+7. Pay special attention to:
+    - Authentication & authorization
+    - Error handling & logging
+    - External API calls (timeouts, retries)
+    - Data validation & serialization
+
+## Tool-Specific Notes
+
+### Junie
+
+- Can perform multi-file edits; use this power carefully and keep changes scoped.
+- When generating backend features:
+    - Create module, controller, service, DTOs, and tests.
+- When working with the panel:
+    - Never edit generated API/spec code.
+    - Use existing UI patterns and theming.
+
+### JetBrains AI Assistant
+
+- For inline suggestions:
+    - Keep changes minimal and in line with existing style.
+- For chat/agent usage:
+    - Explain non-trivial refactors or multi-file changes briefly so they are easy to review.
+
+### Qodo (GitHub App & IDE Plugin)
+
+- Use these guidelines for:
+    - Severity classification (critical, major, minor, info).
+    - Detecting missing tests and edge cases.
+    - Enforcing that generated code is not touched.
+- Prefer clear, actionable review comments.
+
+## Qodo Severity Levels
+
+- **Critical:**
+    - Security issues
+    - Broken async flow (promises, observables, streams)
+    - Incorrect DI or module wiring
+    - Type mismatches that break APIs
+    - Severe Flutter state mismanagement
+
+- **Major:**
+    - Missing validation / edge-case handling
+    - Error handling that hides real failures
+    - Significant architecture violations
+
+- **Minor:**
+    - Naming inconsistencies
+    - Readability issues
+    - Non-critical performance problems
+
+- **Info:**
+    - Optional refactors
+    - Style and cosmetic improvements
+
+---
+
+By keeping this file as the unified source of truth for **commands**, **architecture**, **coding style**, and **AI behavior**, all tools (Junie, JetBrains AI Assistant, Qodo) can collaborate effectively while respecting the same rules.
