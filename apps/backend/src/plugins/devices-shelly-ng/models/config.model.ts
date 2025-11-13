@@ -19,7 +19,7 @@ export class ShellyNgWebsocketsConfigModel {
 	@Expose({ name: 'request_timeout' })
 	@IsInt()
 	@Min(1)
-	requestTimeout: number = 10; // seconds
+	requestTimeout: number = 60; // seconds
 
 	@Expose({ name: 'ping_interval' })
 	@IsInt()
