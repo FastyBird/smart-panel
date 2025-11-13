@@ -10,6 +10,7 @@ import { EventType as ConfigModuleEventType } from '../../../modules/config/conf
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME, DEVICES_HOME_ASSISTANT_TYPE } from '../devices-home-assistant.constants';
 import {
@@ -46,6 +47,7 @@ export class HomeAssistantHttpService {
 		private readonly devicesService: DevicesService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly homeAssistantMapperService: MapperService,
+		private readonly deviceConnectivityService: DeviceConnectivityService,
 	) {}
 
 	async getDiscoveredDevice(id: string): Promise<HomeAssistantDiscoveredDeviceModel> {
@@ -270,13 +272,9 @@ export class HomeAssistantHttpService {
 						(state) => typeof state.state === 'string' && state.state.toLowerCase() === 'unavailable',
 					);
 
-					await this.channelsPropertiesService.update(
-						stateProperty.id,
-						toInstance(UpdateHomeAssistantChannelPropertyDto, {
-							...instanceToPlain(stateProperty),
-							value: isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
-						}),
-					);
+					await this.deviceConnectivityService.setConnectionState(device.id, {
+						state: isOffline ? ConnectionState.DISCONNECTED : ConnectionState.CONNECTED,
+					});
 
 					this.logger.debug(
 						`[HOME ASSISTANT][HTTP SERVICE] Device ${device.name} (${device.id}) marked as ${isOffline ? 'DISCONNECTED' : 'CONNECTED'}`,

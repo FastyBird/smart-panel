@@ -203,7 +203,7 @@ export interface LightStatus {
 	brightness: number;
 	timer_started_at: number;
 	timer_duration: number;
-	transition?: { 'target.output': boolean; 'target.brightness': number; started_at: number; duration: number };
+	transition?: { target: { output: boolean; brightness: number }; started_at: number; duration: number };
 	temperature?: { tC: number | null; tF: number | null };
 	aenergy?: { total: number; by_minute: number[]; minute_ts: number };
 	apower?: number;
@@ -212,6 +212,143 @@ export interface LightStatus {
 	calibration: { progess: number };
 	errors: string[];
 	flags: string[];
+}
+
+export interface RgbConfig {
+	id: number;
+	name: string | null;
+	in_mode: 'follow' | 'flip' | 'activate' | 'detached' | 'dim';
+	initial_state: 'off' | 'on' | 'restore_last';
+	auto_on: boolean;
+	auto_on_delay: number;
+	auto_off: boolean;
+	auto_off_delay: number;
+	transition_duration?: number;
+	min_brightness_on_toggle: number;
+	night_mode: { enable: boolean; brightness: number | null; rgb: number[] | null; active_between: string[] };
+	button_fade_rate: number;
+	button_presets: { button_doublepush: { brightness: number | null; rgb: number[] | null } | null };
+	current_limit?: number;
+	power_limit?: number;
+	voltage_limit?: number;
+}
+
+export interface RgbStatus {
+	id: number;
+	source: string;
+	output: boolean;
+	rgb: number[];
+	brightness: number;
+	timer_started_at: number;
+	timer_duration: number;
+	transition?: {
+		target: { output: boolean; rgb: number[]; brightness: number };
+		started_at: number;
+		duration: number;
+	};
+	temperature?: { tC: number | null; tF: number | null };
+	aenergy?: { total: number; by_minute: number[]; minute_ts: number };
+	apower?: number;
+	voltage?: number;
+	current?: number;
+	errors: string[];
+}
+
+export interface RgbwConfig {
+	id: number;
+	name: string | null;
+	in_mode: 'follow' | 'flip' | 'activate' | 'detached' | 'dim';
+	initial_state: 'off' | 'on' | 'restore_last';
+	auto_on: boolean;
+	auto_on_delay: number;
+	auto_off: boolean;
+	auto_off_delay: number;
+	transition_duration?: number;
+	min_brightness_on_toggle: number;
+	night_mode: {
+		enable: boolean;
+		brightness: number | null;
+		rgb: number[] | null;
+		white: number | null;
+		active_between: string[];
+	};
+	button_fade_rate: number;
+	button_presets: {
+		button_doublepush: { brightness: number | null; rgb: number[] | null; white: number | null } | null;
+	};
+	current_limit?: number;
+	power_limit?: number;
+	voltage_limit?: number;
+}
+
+export interface RgbwStatus {
+	id: number;
+	source: string;
+	output: boolean;
+	rgb: number[];
+	brightness: number;
+	white: number;
+	timer_started_at: number;
+	timer_duration: number;
+	transition?: {
+		target: { output: boolean; rgb: number[]; brightness: number; white: number };
+		started_at: number;
+		duration: number;
+	};
+	temperature?: { tC: number | null; tF: number | null };
+	aenergy?: { total: number; by_minute: number[]; minute_ts: number };
+	apower?: number;
+	voltage?: number;
+	current?: number;
+	errors: string[];
+}
+
+export interface CctConfig {
+	id: number;
+	name: string | null;
+	initial_state: 'off' | 'on' | 'restore_last';
+	auto_on: boolean;
+	auto_on_delay: number;
+	auto_off: boolean;
+	auto_off_delay: number;
+	transition_duration?: number;
+	min_brightness_on_toggle: number;
+	night_mode: {
+		enable: boolean;
+		brightness: number | null;
+		ct: number | null;
+		active_between: string[];
+	};
+	button_fade_rate: number;
+	button_presets: {
+		button_doublepush: { brightness: number | null; ct: number | null } | null;
+	};
+	range_map: number[] | null;
+	ct_range: number[] | null;
+	current_limit?: number;
+	power_limit?: number;
+	voltage_limit?: number;
+}
+
+export interface CctStatus {
+	id: number;
+	source: string;
+	output: boolean;
+	brightness: number;
+	ct: number;
+	timer_started_at: number;
+	timer_duration: number;
+	transition?: {
+		target: { output: boolean; brightness: number; ct: number };
+		started_at: number;
+		duration: number;
+	};
+	temperature?: { tC: number | null; tF: number | null };
+	aenergy?: { total: number; by_minute: number[]; minute_ts: number };
+	apower?: number;
+	voltage?: number;
+	current?: number;
+	errors: string[];
 }
 
 export interface InputConfig {
@@ -402,6 +539,54 @@ export class ShellyRpcClientService {
 		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
 	): Promise<LightStatus> {
 		return this.call<LightStatus>(host, 'Light.GetStatus', { id }, options);
+	}
+
+	getRgbConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<RgbConfig> {
+		return this.call<RgbConfig>(host, 'RGB.GetConfig', { id }, options);
+	}
+
+	getRgbStatus(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<RgbStatus> {
+		return this.call<RgbStatus>(host, 'RGB.GetStatus', { id }, options);
+	}
+
+	getRgbwConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<RgbwConfig> {
+		return this.call<RgbwConfig>(host, 'RGBW.GetConfig', { id }, options);
+	}
+
+	getRgbwStatus(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<RgbwStatus> {
+		return this.call<RgbwStatus>(host, 'RGBW.GetStatus', { id }, options);
+	}
+
+	getCctConfig(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<CctConfig> {
+		return this.call<CctConfig>(host, 'CCT.GetConfig', { id }, options);
+	}
+
+	getCctStatus(
+		host: string,
+		id: number,
+		options?: { password?: string | null; https?: boolean; timeoutSec?: number },
+	): Promise<CctStatus> {
+		return this.call<CctStatus>(host, 'CCT.GetStatus', { id }, options);
 	}
 
 	getInputConfig(

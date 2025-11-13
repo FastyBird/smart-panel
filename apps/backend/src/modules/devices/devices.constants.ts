@@ -25,6 +25,7 @@ export enum EventType {
 	DEVICE_UPDATED = 'DevicesModule.Device.Updated',
 	DEVICE_DELETED = 'DevicesModule.Device.Deleted',
 	DEVICE_RESET = 'DevicesModule.Device.Reset',
+	DEVICE_CONNECTION_CHANGED = 'DevicesModule.Device.ConnectionChanged',
 	DEVICE_CONTROL_CREATED = 'DevicesModule.DeviceControl.Created',
 	DEVICE_CONTROL_DELETED = 'DevicesModule.DeviceControl.Deleted',
 	DEVICE_CONTROL_RESET = 'DevicesModule.DeviceControl.Reset',

@@ -5,24 +5,17 @@ import { DataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import {
-	ChannelCategory,
-	ConnectionState,
-	EventType as DevicesModuleEventType,
-	EventType,
-	PropertyCategory,
-} from '../devices.constants';
+import { EventType } from '../devices.constants';
 import { DevicesException, DevicesNotFoundException, DevicesValidationException } from '../devices.exceptions';
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
-import { ChannelEntity, ChannelPropertyEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsService } from './channels.service';
-import { DeviceStatusService } from './device-status.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
 
@@ -36,7 +29,6 @@ export class DevicesService {
 		private readonly devicesMapperService: DevicesTypeMapperService,
 		private readonly channelsService: ChannelsService,
 		private readonly devicesControlsService: DevicesControlsService,
-		private readonly deviceStatusService: DeviceStatusService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -290,37 +282,6 @@ export class DevicesService {
 		}
 
 		return device;
-	}
-
-	@OnEvent([DevicesModuleEventType.CHANNEL_PROPERTY_CREATED, DevicesModuleEventType.CHANNEL_PROPERTY_UPDATED])
-	async handleDevicePropertyChangedEvent(property: ChannelPropertyEntity) {
-		if (property.category !== PropertyCategory.STATUS) {
-			return;
-		}
-
-		let channel = property.channel;
-
-		if (typeof channel === 'string') {
-			channel = await this.channelsService.getOneOrThrow(channel);
-		}
-
-		if (channel.category !== ChannelCategory.DEVICE_INFORMATION) {
-			return;
-		}
-
-		let device = channel.device;
-
-		if (typeof device === 'string') {
-			device = await this.getOneOrThrow(device);
-		}
-
-		const status = property.value;
-
-		if (typeof status !== 'string' || !Object.values(ConnectionState).includes(status as ConnectionState)) {
-			throw new DevicesException('Device status is invalid.');
-		}
-
-		await this.deviceStatusService.write(device, property, status as ConnectionState);
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

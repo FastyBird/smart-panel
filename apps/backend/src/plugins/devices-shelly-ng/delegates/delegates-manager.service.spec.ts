@@ -1,69 +1,27 @@
 /*
-eslint-disable  @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-require-imports,
+eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-require-imports,
 @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await,
-@typescript-eslint/no-unnecessary-type-assertion
+@typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-argument
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { EventEmitter } from 'events';
 import { Device } from 'shellies-ds9';
+import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 
-import {
-	ChannelCategory,
-	ConnectionState,
-	DeviceCategory,
-	PropertyCategory,
-} from '../../../modules/devices/devices.constants';
-import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
+import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
-import { ShellyNgChannelPropertyEntity, ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
+import {
+	ShellyNgChannelEntity,
+	ShellyNgChannelPropertyEntity,
+	ShellyNgDeviceEntity,
+} from '../entities/devices-shelly-ng.entity';
 
 import { DelegatesManagerService } from './delegates-manager.service';
 
-type Id = string;
-
-const mkId = (() => {
-	let n = 1;
-	return () => String(n++);
-})();
-
-class MockShellyNgDeviceEntity {
-	id: Id = mkId();
-	type = DEVICES_SHELLY_NG_TYPE;
-	category = DeviceCategory.SWITCHER;
-	identifier!: string;
-	hostname!: string | null;
-	name!: string;
-}
-
-class MockShellyNgChannelEntity {
-	id: Id = mkId();
-	type = DEVICES_SHELLY_NG_TYPE;
-	device: Id | MockShellyNgDeviceEntity;
-	category!: ChannelCategory;
-	identifier!: string | null;
-	name!: string;
-	constructor(init: Partial<MockShellyNgChannelEntity>) {
-		Object.assign(this, init);
-	}
-}
-
-class MockShellyNgChannelPropertyEntity {
-	id: Id = mkId();
-	channel: Id | MockShellyNgChannelEntity;
-	category!: PropertyCategory;
-	identifier!: string | null;
-	value: string | number | boolean | null = null;
-	constructor(init: Partial<MockShellyNgChannelPropertyEntity>) {
-		Object.assign(this, init);
-	}
-}
-
-// --- Mock dependent services
 const devicesService = {
 	findOneBy: jest.fn(),
 	create: jest.fn(),
@@ -79,7 +37,10 @@ const channelsPropertiesService = {
 	update: jest.fn(),
 };
 
-// --- Fake Shelly Device + Delegate plumbing
+const deviceConnectivityService = {
+	setConnectionState: jest.fn().mockResolvedValue(undefined),
+};
+
 type Wifi = { key: string; rssi: number; sta_ip?: string | null };
 
 type FakeSwitch = {
@@ -93,19 +54,6 @@ type FakeSwitch = {
 	set: (v: boolean) => Promise<{ was_on: boolean }>;
 };
 
-type FakeLight = FakeSwitch & { brightness?: number };
-
-type FakeCover = {
-	id: number;
-	key: string;
-	state: string;
-	current_pos: number;
-	open: () => Promise<void>;
-	close: () => Promise<void>;
-	stop: () => Promise<void>;
-	goToPosition: (p: number) => Promise<void>;
-};
-
 type FakeDevice = {
 	id: string;
 	modelName: string;
@@ -115,33 +63,6 @@ type FakeDevice = {
 	switch?: { key: string; output: boolean };
 };
 
-// Lightweight mock delegate that mirrors the signals the manager listens to.
-class MockShellyDeviceDelegate extends EventEmitter {
-	constructor(public readonly shelly: FakeDevice) {
-		super();
-		this.id = shelly.id;
-	}
-	id: string;
-
-	// component maps the manager iterates
-	switches: Map<number, FakeSwitch> = new Map();
-	lights: Map<number, FakeLight> = new Map();
-	covers: Map<number, FakeCover> = new Map();
-	inputs = new Map();
-	devPwr = new Map();
-	hums = new Map();
-	temps = new Map();
-	powerMeter = new Map();
-
-	// helpers to simulate device emitting updates
-	emitValue(compKey: string, attr: string, value: unknown) {
-		this.emit('value', compKey, attr, value);
-	}
-	emitConnected(state: boolean | null) {
-		this.emit('connected', state);
-	}
-}
-
 jest.mock('../delegates/shelly-device.delegate', () => {
 	const { EventEmitter } = require('events');
 
@@ -150,23 +71,30 @@ jest.mock('../delegates/shelly-device.delegate', () => {
 			super();
 			this.shelly = shelly;
 			this.id = shelly.id;
+
 			// component maps the manager iterates over
 			this.switches = new Map();
 			this.lights = new Map();
+			this.rgb = new Map();
+			this.rgbw = new Map();
+			this.cct = new Map();
 			this.covers = new Map();
 			this.inputs = new Map();
 			this.devPwr = new Map();
-			this.hums = new Map();
-			this.temps = new Map();
-			this.powerMeter = new Map();
+			this.humidity = new Map();
+			this.temperature = new Map();
+			this.pm1 = new Map();
 
+			// simple one-switch wiring for tests
 			if (shelly.switch) {
 				this.switches.set(0, shelly.switch);
 			}
 		}
+
 		emitValue(compKey, attr, value) {
 			this.emit('value', compKey, attr, value);
 		}
+
 		emitConnected(state) {
 			this.emit('connected', state);
 		}
@@ -187,78 +115,90 @@ describe('DelegatesManagerService', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 
+		deviceConnectivityService.setConnectionState = jest.fn().mockResolvedValue(undefined);
+
 		svc = new DelegatesManagerService(
 			// @ts-expect-error bare mock
 			devicesService,
 			channelsService,
 			channelsPropertiesService,
+			deviceConnectivityService,
 		);
 	});
 
 	function arrangeBaseEntities() {
-		const device = new MockShellyNgDeviceEntity();
-		const deviceInfoCh = new MockShellyNgChannelEntity({
+		const device = {
+			id: uuid().toString(),
+		} as ShellyNgDeviceEntity;
+
+		const deviceInfoCh = {
 			device: device.id,
 			category: ChannelCategory.DEVICE_INFORMATION,
 			identifier: 'device-information',
 			name: 'Device information',
-		});
+		} as ShellyNgChannelEntity;
 
-		const statusProp = new MockShellyNgChannelPropertyEntity({
+		const statusProp = {
 			channel: deviceInfoCh.id,
 			category: PropertyCategory.STATUS,
 			identifier: 'status',
 			value: ConnectionState.UNKNOWN,
-		});
+		} as ShellyNgChannelPropertyEntity;
 
-		const linkQProp = new MockShellyNgChannelPropertyEntity({
+		const linkQProp = {
 			channel: deviceInfoCh.id,
 			category: PropertyCategory.LINK_QUALITY,
 			identifier: 'link_quality',
 			value: 0,
-		});
+		} as ShellyNgChannelPropertyEntity;
 
-		// Per-switch channels/props for switch:0
-		const switchCh = new MockShellyNgChannelEntity({
+		const switchCh = {
 			device: device.id,
 			category: ChannelCategory.SWITCHER,
 			identifier: 'switch:0',
 			name: 'Switch 0',
-		});
+		} as ShellyNgChannelEntity;
 
-		const switchOn = new MockShellyNgChannelPropertyEntity({
+		const switchOn = {
 			channel: switchCh.id,
 			category: PropertyCategory.ON,
 			identifier: 'output',
 			value: false,
-		});
+		} as ShellyNgChannelPropertyEntity;
 
-		// wire mocks
+		// devicesService mocks
 		(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
-		(devicesService.create as jest.Mock).mockImplementation(async (dto: CreateShellyNgDeviceDto) => {
-			device.identifier = dto.identifier;
-			device.hostname = dto.hostname;
-			device.name = dto.name;
-			device.category = dto.category;
-			return device;
-		});
+		(devicesService.create as jest.Mock).mockImplementation(
+			async (dto: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
+				device.identifier = dto.identifier;
+				device.hostname = dto.hostname;
+				device.name = dto.name;
+				device.category = dto.category;
+				return device as unknown as ShellyNgDeviceEntity;
+			},
+		);
 
-		(channelsService.findOneBy as jest.Mock).mockImplementationOnce(async () => deviceInfoCh);
-		(channelsService.findOneBy as jest.Mock).mockImplementationOnce(async () => switchCh);
+		// channelsService mocks (device information + switch)
+		(channelsService.findOneBy as jest.Mock)
+			.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity)
+			.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity);
 
-		(channelsPropertiesService.findOneBy as jest.Mock).mockImplementationOnce(async () => statusProp);
-		(channelsPropertiesService.findOneBy as jest.Mock).mockImplementationOnce(async () => linkQProp);
-		(channelsPropertiesService.findOneBy as jest.Mock).mockImplementationOnce(async () => switchOn);
+		// propertiesService mocks (status, link_quality, switch output)
+		(channelsPropertiesService.findOneBy as jest.Mock)
+			.mockImplementationOnce(async () => statusProp as unknown as ShellyNgChannelPropertyEntity)
+			.mockImplementationOnce(async () => linkQProp as unknown as ShellyNgChannelPropertyEntity)
+			.mockImplementationOnce(async () => switchOn as unknown as ShellyNgChannelPropertyEntity);
 
-		(channelsPropertiesService.update as jest.Mock).mockImplementation(async (_id, payload: unknown) => payload);
+		(channelsPropertiesService.update as jest.Mock).mockImplementation(
+			async (_id: string, payload: unknown): Promise<unknown> => payload,
+		);
 
 		return { device, deviceInfoCh, statusProp, linkQProp, switchCh, switchOn };
 	}
 
-	test('insert() wires up and writes initial values (wifi → link quality, switch output)', async () => {
-		const { switchOn, linkQProp } = arrangeBaseEntities();
+	test('insert() wires up initial values (wifi → link quality, switch output) and call setConnectionState', async () => {
+		const { device, switchOn, linkQProp } = arrangeBaseEntities();
 
-		// Fake Shelly device + one switch
 		const shelly: FakeDevice = {
 			id: 'shelly123',
 			modelName: 'Plus 1',
@@ -267,30 +207,38 @@ describe('DelegatesManagerService', () => {
 			switch: { key: 'switch:0', output: false },
 		};
 
-		const delegate = (await svc.insert(shelly as unknown as Device)) as unknown as MockShellyDeviceDelegate;
+		const delegate = (await svc.insert(shelly as unknown as Device)) as any;
 
-		// add one switch AFTER construction (test doesn’t need full descriptor path)
 		delegate.switches.set(0, {
 			id: 0,
 			key: 'switch:0',
 			output: true,
 			set: async (v: boolean) => ({ was_on: !v }),
-		});
+		} as FakeSwitch);
 
-		// Simulate the delegate emitting initial events:
 		delegate.emitValue('switch:0', 'output', true);
 
-		const updates = (channelsPropertiesService.update as jest.Mock).mock.calls.map(([, payload]): unknown => payload);
+		const updateCalls = (channelsPropertiesService.update as jest.Mock).mock.calls;
+		const updates = updateCalls.map(([, payload]) => payload as ShellyNgChannelPropertyEntity);
 
-		expect(updates.some((p: MockShellyNgChannelPropertyEntity) => p.value === 80)).toBe(true);
-		expect(updates.some((p: MockShellyNgChannelPropertyEntity) => p.value === true)).toBe(true);
+		expect(
+			updates.some(
+				(p) =>
+					p && p.identifier === linkQProp.identifier && typeof p.value === 'number' && p.value > 0 && p.value <= 100,
+			),
+		).toBe(true);
 
-		expect((channelsPropertiesService.update as jest.Mock).mock.calls.map(([id]: string[]): string => id)).toEqual(
-			expect.arrayContaining([linkQProp.id, switchOn.id]),
-		);
+		expect(updates.some((p) => p && p.identifier === switchOn.identifier && p.value === true)).toBe(true);
+
+		expect(updateCalls.map(([id]: [string]) => id)).toEqual(expect.arrayContaining([linkQProp.id, switchOn.id]));
+
+		expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledTimes(1);
+		expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(device.id, {
+			state: ConnectionState.CONNECTED,
+		});
 	});
 
-	test('setPropertyValue() calls stored set handler', async () => {
+	test('setPropertyValue() zavolá uložený property handler', async () => {
 		arrangeBaseEntities();
 
 		const shelly: FakeDevice = {
@@ -300,23 +248,19 @@ describe('DelegatesManagerService', () => {
 			wifi: { key: 'wifi:0', rssi: -70, sta_ip: '192.168.1.22' },
 		};
 
-		const delegate = (await svc.insert(shelly as unknown as Device)) as unknown as MockShellyDeviceDelegate;
+		const delegate = (await svc.insert(shelly as unknown as Device)) as any;
 
-		// create a switch with a set() we can observe
 		const setSpy = jest.fn(async (v: boolean) => ({ was_on: !v }));
 		delegate.switches.set(0, {
 			id: 0,
 			key: 'switch:0',
 			output: false,
 			set: setSpy,
-		});
+		} as FakeSwitch);
 
-		// we need the ON property id that the manager computed & stored a handler for.
-		// Simplify: the handler key format is `${delegate.id}|${switchOn.id}`
-		// We'll grab a property id by faking what insert() would have found earlier:
 		const somePropertyId = 'prop-output-1';
-		// Pretend the set handler is there:
-		svc['setHandlers'].set(`${delegate.id}|${somePropertyId}`, async (v: unknown) => {
+
+		svc['setPropertiesHandlers'].set(`${delegate.id}|${somePropertyId}`, async (v: unknown) => {
 			if (typeof v !== 'boolean') return false;
 			await setSpy(v);
 			return true;
@@ -332,8 +276,66 @@ describe('DelegatesManagerService', () => {
 		expect(setSpy).toHaveBeenCalledWith(true);
 	});
 
-	test('remove() detaches and clears internal state', async () => {
+	test('setPropertyValue() return false, when handler is not defined', async () => {
 		arrangeBaseEntities();
+
+		const device = { id: 'dev-no-handler', identifier: 'dev-no-handler' } as unknown as ShellyNgDeviceEntity;
+		const property = { id: 'prop-no-handler' } as unknown as ShellyNgChannelPropertyEntity;
+
+		const ok = await svc.setPropertyValue(device, property, true);
+
+		expect(ok).toBe(false);
+	});
+
+	test('setChannelValue() use batch handler and map results', async () => {
+		const device = {
+			id: 'dev-batch',
+			identifier: 'dev-batch',
+		} as unknown as ShellyNgDeviceEntity;
+
+		const channel = {
+			id: 'ch-batch',
+		} as unknown as ShellyNgChannelEntity;
+
+		const prop1 = { id: 'p1', identifier: 'output' } as unknown as ShellyNgChannelPropertyEntity;
+		const prop2 = { id: 'p2', identifier: 'brightness' } as unknown as ShellyNgChannelPropertyEntity;
+
+		const handlerSpy = jest.fn(async (updates: { property: ShellyNgChannelPropertyEntity; val: unknown }[]) => {
+			expect(updates).toEqual([
+				{ property: prop1, val: true },
+				{ property: prop2, val: 50 },
+			]);
+			return true;
+		});
+
+		svc['setChannelsHandlers'].set(`${device.identifier}|${channel.id}`, handlerSpy);
+
+		const result = await svc.setChannelValue(device, channel, [
+			{ property: prop1, value: true },
+			{ property: prop2, value: 50 },
+		]);
+
+		expect(result).toBe(true);
+		expect(handlerSpy).toHaveBeenCalledTimes(1);
+	});
+
+	test('setChannelValue() throws DevicesShellyNgNotImplementedException when handler is not defined', async () => {
+		const device = {
+			id: 'dev-no-batch',
+			identifier: 'dev-no-batch',
+		} as unknown as ShellyNgDeviceEntity;
+
+		const channel = {
+			id: 'ch-no-batch',
+		} as unknown as ShellyNgChannelEntity;
+
+		await expect(svc.setChannelValue(device, channel, [])).rejects.toThrowError(
+			'Multiple property writes are not supported by the component.',
+		);
+	});
+
+	test('remove() detaches device, call connection=null and clear statuses', async () => {
+		const { device } = arrangeBaseEntities();
 
 		const shelly: FakeDevice = {
 			id: 'shelly-remove',
@@ -342,28 +344,58 @@ describe('DelegatesManagerService', () => {
 			wifi: { key: 'wifi:0', rssi: -55, sta_ip: '192.168.1.30' },
 		};
 
-		const delegate = (await svc.insert(shelly as Device)) as unknown as MockShellyDeviceDelegate;
+		const delegate = (await svc.insert(shelly as unknown as Device)) as any;
 
-		// store a timer
+		// pendingWrites + propertiesMap
 		svc['pendingWrites'].set(
 			'p1',
 			setTimeout(() => {}, 10),
 		);
-
-		// store handler maps entries
-		svc['changeHandlers'].set(`${delegate.id}|switch:0|output`, () => {});
-		svc['setHandlers'].set(`${delegate.id}|prop-1`, async () => true);
 		svc['propertiesMap'].set(delegate.id, new Set(['p1']));
+
+		// changeHandlers + setPropertiesHandlers
+		svc['changeHandlers'].set(`${delegate.id}|switch:0|output`, () => {});
+		svc['setPropertiesHandlers'].set(`${delegate.id}|prop-1`, async () => true);
+
+		(deviceConnectivityService.setConnectionState as jest.Mock).mockClear();
 
 		svc.remove(delegate.id);
 
-		// listeners should be gone (emitting now should do nothing but not throw)
+		expect(svc['changeHandlers'].size).toBe(0);
+		expect(svc['setPropertiesHandlers'].size).toBe(0);
+		expect(svc['propertiesMap'].has(delegate.id)).toBe(false);
+
+		expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith(device.id, {
+			state: ConnectionState.UNKNOWN,
+		});
+
 		delegate.emitValue('switch:0', 'output', false);
 		delegate.emitConnected(false);
+	});
 
-		// internals cleared
+	test('detach() clear all delegates and clear pending writes', async () => {
+		arrangeBaseEntities();
+
+		const shelly1: FakeDevice = {
+			id: 'shelly-detach-1',
+			modelName: 'Plus 1',
+			system: { config: { device: { name: 'D1' } } },
+			wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.11' },
+		};
+
+		await svc.insert(shelly1 as unknown as Device);
+
+		svc['pendingWrites'].set(
+			'p-detach-1',
+			setTimeout(() => {}, 10),
+		);
+
+		svc.detach();
+
+		expect(svc['delegates'].size).toBe(0);
 		expect(svc['changeHandlers'].size).toBe(0);
-		expect(svc['setHandlers'].size).toBe(0);
-		expect(svc['propertiesMap'].has(delegate.id)).toBe(false);
+		expect(svc['setPropertiesHandlers'].size).toBe(0);
+		expect(svc['propertiesMap'].size).toBe(0);
+		expect(svc['pendingWrites'].size).toBe(0);
 	});
 });

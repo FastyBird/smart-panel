@@ -23,7 +23,6 @@ export * from './useDevicesDataSource';
 export * from './useDevicesActions';
 export * from './useDeviceIcon';
 export * from './useDeviceSpecification';
-export * from './useDeviceState';
 export * from './useDeviceAddForm';
 export * from './useDeviceEditForm';
 export * from './useDevicesPlugin';

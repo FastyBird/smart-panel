@@ -39,7 +39,7 @@ export const camelToSnake = <T extends Record<string, any>>(obj: T): any => {
 
 export const deepClone = <T>(value: T): T => {
 	if (typeof structuredClone === 'function') {
-		return structuredClone(toRaw(value));
+		return (typeof value !== 'undefined' ? structuredClone(JSON.parse(JSON.stringify(toRaw(value)))) : undefined) as T;
 	}
 
 	if (value === null || typeof value !== 'object') {

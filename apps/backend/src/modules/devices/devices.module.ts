@@ -42,7 +42,8 @@ import { ChannelsControlsService } from './services/channels.controls.service';
 import { ChannelsPropertiesTypeMapperService } from './services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './services/channels.properties.service';
 import { ChannelsService } from './services/channels.service';
-import { DeviceStatusService } from './services/device-status.service';
+import { DeviceConnectionStateService } from './services/device-connection-state.service';
+import { DeviceConnectivityService } from './services/device-connectivity.service';
 import { DevicesSeederService } from './services/devices-seeder.service';
 import { DevicesTypeMapperService } from './services/devices-type-mapper.service';
 import { DevicesControlsService } from './services/devices.controls.service';
@@ -98,10 +99,11 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		PlatformRegistryService,
 		PropertyValueService,
 		PropertyCommandService,
-		DeviceStatusService,
+		DeviceConnectionStateService,
 		StatsService,
 		ModuleResetService,
 		DevicesStatsProvider,
+		DeviceConnectivityService,
 	],
 	controllers: [
 		DevicesController,
@@ -127,6 +129,7 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		DeviceExistsConstraintValidator,
 		ChannelExistsConstraintValidator,
 		ChannelPropertyExistsConstraintValidator,
+		DeviceConnectivityService,
 	],
 })
 export class DevicesModule {
@@ -178,6 +181,8 @@ export class DevicesModule {
            INTO "min_14d"."property_value_counts_1m"
            FROM "raw_24h"."property_value"
            GROUP BY time(1m)`,
+			undefined,
+			'RESAMPLE EVERY 1m FOR 24h',
 		);
 
 		await this.influxDbService.createContinuousQuery(
@@ -185,7 +190,9 @@ export class DevicesModule {
 			`SELECT LAST("onlineI") AS onlineI, LAST("status") AS status
            INTO "min_14d"."device_status_1m"
            FROM "raw_24h"."device_status"
-           GROUP BY time(1m), "deviceId"`,
+           GROUP BY time(1m), "deviceId" fill(previous)`,
+			undefined,
+			'RESAMPLE EVERY 1m FOR 24h',
 		);
 
 		await this.influxDbService.createContinuousQuery(
@@ -193,7 +200,9 @@ export class DevicesModule {
 			`SELECT SUM("onlineI") AS online_count
            INTO "min_14d"."online_count_1m"
            FROM "min_14d"."device_status_1m"
-           GROUP BY time(1m)`,
+           GROUP BY time(1m) fill(previous)`,
+			undefined,
+			'RESAMPLE EVERY 1m FOR 24h',
 		);
 	}
 }

@@ -18,9 +18,14 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ComponentType, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
-import { DevicesShellyNgException, DevicesShellyNgNotFoundException } from '../devices-shelly-ng.exceptions';
+import {
+	DevicesShellyNgException,
+	DevicesShellyNgNotFoundException,
+	DevicesShellyNgNotImplementedException,
+} from '../devices-shelly-ng.exceptions';
 import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
 import { UpdateShellyNgChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
@@ -35,6 +40,11 @@ import { ShellyDeviceDelegate } from './shelly-device.delegate';
 type MaybeNet = {
 	wifi?: WiFi & { sta_ip?: string | null };
 	ethernet?: Ethernet & { ip?: string | null };
+};
+
+type BatchUpdate = {
+	property: ShellyNgChannelPropertyEntity;
+	val: string | number | boolean;
 };
 
 @Injectable()
@@ -52,7 +62,9 @@ export class DelegatesManagerService {
 
 	private readonly changeHandlers: Map<string, (val: CharacteristicValue) => void> = new Map();
 
-	private readonly setHandlers: Map<string, (val: string | number | boolean) => Promise<boolean>> = new Map();
+	private readonly setChannelsHandlers: Map<string, (updates: BatchUpdate[]) => Promise<boolean>> = new Map();
+
+	private readonly setPropertiesHandlers: Map<string, (val: string | number | boolean) => Promise<boolean>> = new Map();
 
 	private readonly pendingWrites: Map<string, NodeJS.Timeout> = new Map();
 
@@ -62,15 +74,20 @@ export class DelegatesManagerService {
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly deviceConnectivityService: DeviceConnectivityService,
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
 		return this.delegates.get(id);
 	}
 
-	async insert(shelly: Device & MaybeNet): Promise<ShellyDeviceDelegate> {
+	async insert(shelly: Device & MaybeNet, force: boolean = false): Promise<ShellyDeviceDelegate> {
 		if (this.delegates.has(shelly.id)) {
-			return this.delegates.get(shelly.id);
+			if (force) {
+				this.remove(shelly.id);
+			} else {
+				return this.delegates.get(shelly.id);
+			}
 		}
 
 		const delegate = new ShellyDeviceDelegate(shelly);
@@ -110,7 +127,7 @@ export class DelegatesManagerService {
 			throw new DevicesShellyNgNotFoundException('Failed to load device information channel');
 		}
 
-		const connectionState = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+		await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 			'category',
 			PropertyCategory.STATUS,
 			deviceInformation.id,
@@ -191,7 +208,7 @@ export class DelegatesManagerService {
 				});
 			});
 
-			this.setHandlers.set(
+			this.setPropertiesHandlers.set(
 				`${delegate.id}|${switcherOn.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					if (typeof val !== 'boolean') {
@@ -301,97 +318,6 @@ export class DelegatesManagerService {
 			}
 		}
 
-		for (const comp of delegate.lights.values()) {
-			const light = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
-				'identifier',
-				`light:${comp.id}`,
-				device.id,
-				DEVICES_SHELLY_NG_TYPE,
-			);
-
-			if (light === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load light channel');
-			}
-
-			const lightOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-				'identifier',
-				'output',
-				light.id,
-			);
-
-			if (lightOn === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load light on channel property');
-			}
-
-			await this.setDefaultPropertyValue(device.id, lightOn, comp.output);
-
-			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
-				this.handleChange(lightOn, coerceBooleanSafe(val)).catch((err: Error): void => {
-					this.logger.error(
-						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${lightOn.id}`,
-						{
-							message: err.message,
-							stack: err.stack,
-						},
-					);
-				});
-			});
-
-			this.setHandlers.set(`${delegate.id}|${lightOn.id}`, async (val: string | number | boolean): Promise<boolean> => {
-				if (typeof val !== 'boolean') {
-					return false;
-				}
-
-				await comp.set(val);
-
-				return true;
-			});
-
-			if (typeof comp.brightness !== 'undefined') {
-				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'identifier',
-					'brightness',
-					light.id,
-				);
-
-				if (brightness === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load light brightness channel property');
-				}
-
-				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(
-						comp.key,
-						'brightness',
-						brightness.id,
-						val,
-						(n) => this.handleChange(brightness, n, false),
-						{ clamp: { min: 0, max: 100 } },
-					);
-				});
-
-				this.setHandlers.set(
-					`${delegate.id}|${brightness.id}`,
-					async (val: string | number | boolean): Promise<boolean> => {
-						const n = coerceNumberSafe(val);
-
-						if (n === null || Number.isNaN(n)) {
-							this.logger.warn(
-								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
-							);
-
-							return;
-						}
-
-						await comp.set(comp.output, clampNumber(n, 0, 100));
-
-						return true;
-					},
-				);
-			}
-		}
-
 		for (const comp of delegate.covers.values()) {
 			const cover = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
@@ -457,7 +383,7 @@ export class DelegatesManagerService {
 				);
 			});
 
-			this.setHandlers.set(
+			this.setPropertiesHandlers.set(
 				`${delegate.id}|${coverPosition.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					const n = coerceNumberSafe(val);
@@ -488,7 +414,7 @@ export class DelegatesManagerService {
 
 			await this.setDefaultPropertyValue(device.id, coverCommand, 'stop');
 
-			this.setHandlers.set(
+			this.setPropertiesHandlers.set(
 				`${delegate.id}|${coverCommand.id}`,
 				async (val: string | number | boolean): Promise<boolean> => {
 					if (typeof val !== 'string') {
@@ -504,7 +430,801 @@ export class DelegatesManagerService {
 			);
 		}
 
-		for (const comp of delegate.hums.values()) {
+		for (const comp of delegate.lights.values()) {
+			const light = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`light:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (light === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load light channel');
+			}
+
+			const lightOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'output',
+				light.id,
+			);
+
+			if (lightOn === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load light on channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, lightOn, comp.output);
+
+			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
+				this.handleChange(lightOn, coerceBooleanSafe(val)).catch((err: Error): void => {
+					this.logger.error(
+						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${lightOn.id}`,
+						{
+							message: err.message,
+							stack: err.stack,
+						},
+					);
+				});
+			});
+
+			this.setPropertiesHandlers.set(
+				`${delegate.id}|${lightOn.id}`,
+				async (val: string | number | boolean): Promise<boolean> => {
+					if (typeof val !== 'boolean') {
+						return false;
+					}
+
+					await comp.set(val);
+
+					return true;
+				},
+			);
+
+			if (typeof comp.brightness !== 'undefined') {
+				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'brightness',
+					light.id,
+				);
+
+				if (brightness === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load light brightness channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
+					this.handleNumericChange(
+						comp.key,
+						'brightness',
+						brightness.id,
+						val,
+						(n) => this.handleChange(brightness, n, false),
+						{ clamp: { min: 0, max: 100 } },
+					);
+				});
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${brightness.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, clampNumber(n, 0, 100));
+
+						return true;
+					},
+				);
+			}
+		}
+
+		for (const comp of delegate.rgb.values()) {
+			const rgb = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`rgb:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (rgb === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load rgb channel');
+			}
+
+			const rgbOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'output',
+				rgb.id,
+			);
+
+			if (rgbOn === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load rgb on channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, rgbOn, comp.output);
+
+			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
+				this.handleChange(rgbOn, coerceBooleanSafe(val)).catch((err: Error): void => {
+					this.logger.error(
+						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${rgbOn.id}`,
+						{
+							message: err.message,
+							stack: err.stack,
+						},
+					);
+				});
+			});
+
+			this.setPropertiesHandlers.set(
+				`${delegate.id}|${rgbOn.id}`,
+				async (val: string | number | boolean): Promise<boolean> => {
+					if (typeof val !== 'boolean') {
+						return false;
+					}
+
+					await comp.set(val);
+
+					return true;
+				},
+			);
+
+			if (typeof comp.brightness !== 'undefined') {
+				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'brightness',
+					rgb.id,
+				);
+
+				if (brightness === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load rgb brightness channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
+					this.handleNumericChange(
+						comp.key,
+						'brightness',
+						brightness.id,
+						val,
+						(n) => this.handleChange(brightness, n, false),
+						{ clamp: { min: 0, max: 100 } },
+					);
+				});
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${brightness.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, clampNumber(n, 0, 100));
+
+						return true;
+					},
+				);
+			}
+
+			if (typeof comp.rgb !== 'undefined') {
+				const colorRed = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'rgb:red',
+					rgb.id,
+				);
+				const colorGreen = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'rgb:green',
+					rgb.id,
+				);
+				const colorBlue = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'rgb:blue',
+					rgb.id,
+				);
+
+				if (colorRed === null || colorGreen === null || colorBlue === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load rgb color channels properties');
+				}
+
+				await this.setDefaultPropertyValue(device.id, colorRed, clampNumber(comp.rgb[0], 0, 255));
+				await this.setDefaultPropertyValue(device.id, colorGreen, clampNumber(comp.rgb[1], 0, 255));
+				await this.setDefaultPropertyValue(device.id, colorBlue, clampNumber(comp.rgb[2], 0, 255));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|rgb`, (val: CharacteristicValue): void => {
+					this.handleNumericChange(
+						comp.key,
+						'rgb:red',
+						colorRed.id,
+						val[0],
+						(n) => this.handleChange(colorRed, n, false),
+						{ clamp: { min: 0, max: 255 } },
+					);
+					this.handleNumericChange(
+						comp.key,
+						'rgb:green',
+						colorGreen.id,
+						val[1],
+						(n) => this.handleChange(colorGreen, n, false),
+						{ clamp: { min: 0, max: 255 } },
+					);
+					this.handleNumericChange(
+						comp.key,
+						'rgb:blue',
+						colorBlue.id,
+						val[2],
+						(n) => this.handleChange(colorBlue, n, false),
+						{ clamp: { min: 0, max: 255 } },
+					);
+				});
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${colorRed.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, comp.brightness, [clampNumber(n, 0, 255), comp.rgb[1], comp.rgb[2]]);
+
+						return true;
+					},
+				);
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${colorGreen.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, comp.brightness, [comp.rgb[0], clampNumber(n, 0, 255), comp.rgb[2]]);
+
+						return true;
+					},
+				);
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${colorBlue.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, comp.brightness, [comp.rgb[0], comp.rgb[1], clampNumber(n, 0, 255)]);
+
+						return true;
+					},
+				);
+			}
+
+			this.setChannelsHandlers.set(`${delegate.id}|${rgb.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
+				const outputUpdate = updates.find((u) => u.property.identifier === 'output');
+				const brightnessUpdate = updates.find((u) => u.property.identifier === 'brightness');
+				const colorRedUpdate = updates.find((u) => u.property.identifier === 'rgb:red');
+				const colorGreenUpdate = updates.find((u) => u.property.identifier === 'rgb:green');
+				const colorBlueUpdate = updates.find((u) => u.property.identifier === 'rgb:blue');
+
+				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : comp.output;
+				const brightnessValue = brightnessUpdate ? coerceNumberSafe(brightnessUpdate.val) : comp.brightness;
+				const colorRedValue = colorRedUpdate ? coerceNumberSafe(colorRedUpdate.val) : comp.rgb[0];
+				const colorGreenValue = colorGreenUpdate ? coerceNumberSafe(colorGreenUpdate.val) : comp.rgb[1];
+				const colorBlueValue = colorBlueUpdate ? coerceNumberSafe(colorBlueUpdate.val) : comp.rgb[2];
+
+				if (
+					outputValue === null ||
+					typeof outputValue !== 'boolean' ||
+					brightnessValue === null ||
+					Number.isNaN(brightnessValue) ||
+					colorRedValue === null ||
+					Number.isNaN(colorRedValue) ||
+					colorGreenValue === null ||
+					Number.isNaN(colorGreenValue) ||
+					colorBlueValue === null ||
+					Number.isNaN(colorBlueValue)
+				) {
+					this.logger.warn(
+						`[SHELLY NG][DELEGATES MANAGER] Dropping invalid batch update for ${comp.key} (channel=${rgb.id})`,
+					);
+
+					return;
+				}
+
+				await comp.set(outputValue, clampNumber(brightnessValue, 0, 100), [
+					clampNumber(colorRedValue, 0, 255),
+					clampNumber(colorGreenValue, 0, 255),
+					clampNumber(colorBlueValue, 0, 255),
+				]);
+
+				return true;
+			});
+		}
+
+		for (const comp of delegate.rgbw.values()) {
+			const rgbw = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`rgbw:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (rgbw === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load rgbw channel');
+			}
+
+			const rgbwOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'output',
+				rgbw.id,
+			);
+
+			if (rgbwOn === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load rgbw on channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, rgbwOn, comp.output);
+
+			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
+				this.handleChange(rgbwOn, coerceBooleanSafe(val)).catch((err: Error): void => {
+					this.logger.error(
+						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${rgbwOn.id}`,
+						{
+							message: err.message,
+							stack: err.stack,
+						},
+					);
+				});
+			});
+
+			this.setPropertiesHandlers.set(
+				`${delegate.id}|${rgbwOn.id}`,
+				async (val: string | number | boolean): Promise<boolean> => {
+					if (typeof val !== 'boolean') {
+						return false;
+					}
+
+					await comp.set(val);
+
+					return true;
+				},
+			);
+
+			if (typeof comp.brightness !== 'undefined') {
+				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'brightness',
+					rgbw.id,
+				);
+
+				if (brightness === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load rgbw brightness channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
+					this.handleNumericChange(
+						comp.key,
+						'brightness',
+						brightness.id,
+						val,
+						(n) => this.handleChange(brightness, n, false),
+						{ clamp: { min: 0, max: 100 } },
+					);
+				});
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${brightness.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, clampNumber(n, 0, 100));
+
+						return true;
+					},
+				);
+			}
+
+			if (typeof comp.rgb !== 'undefined') {
+				const colorRed = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'rgb:red',
+					rgbw.id,
+				);
+				const colorGreen = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'rgb:green',
+					rgbw.id,
+				);
+				const colorBlue = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'rgb:blue',
+					rgbw.id,
+				);
+
+				if (colorRed === null || colorGreen === null || colorBlue === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load rgbw color channels properties');
+				}
+
+				await this.setDefaultPropertyValue(device.id, colorRed, clampNumber(comp.rgb[0], 0, 255));
+				await this.setDefaultPropertyValue(device.id, colorGreen, clampNumber(comp.rgb[1], 0, 255));
+				await this.setDefaultPropertyValue(device.id, colorBlue, clampNumber(comp.rgb[2], 0, 255));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|rgb`, (val: CharacteristicValue): void => {
+					this.handleNumericChange(
+						comp.key,
+						'rgb:red',
+						colorRed.id,
+						val[0],
+						(n) => this.handleChange(colorRed, n, false),
+						{ clamp: { min: 0, max: 255 } },
+					);
+					this.handleNumericChange(
+						comp.key,
+						'rgb:green',
+						colorGreen.id,
+						val[1],
+						(n) => this.handleChange(colorGreen, n, false),
+						{ clamp: { min: 0, max: 255 } },
+					);
+					this.handleNumericChange(
+						comp.key,
+						'rgb:blue',
+						colorBlue.id,
+						val[2],
+						(n) => this.handleChange(colorBlue, n, false),
+						{ clamp: { min: 0, max: 255 } },
+					);
+				});
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${colorRed.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:red -> ${String(val)} (property=${colorRed.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, comp.brightness, [clampNumber(n, 0, 255), comp.rgb[1], comp.rgb[2]]);
+
+						return true;
+					},
+				);
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${colorGreen.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:green -> ${String(val)} (property=${colorGreen.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, comp.brightness, [comp.rgb[0], clampNumber(n, 0, 255), comp.rgb[2]]);
+
+						return true;
+					},
+				);
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${colorBlue.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.rgb:blue -> ${String(val)} (property=${colorBlue.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, comp.brightness, [comp.rgb[0], comp.rgb[1], clampNumber(n, 0, 255)]);
+
+						return true;
+					},
+				);
+			}
+
+			if (typeof comp.white !== 'undefined') {
+				const white = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'white',
+					rgbw.id,
+				);
+
+				if (white === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load rgbw white channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, white, clampNumber(comp.white, 0, 255));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|white`, (val: CharacteristicValue): void => {
+					this.handleNumericChange(comp.key, 'white', white.id, val, (n) => this.handleChange(white, n, false), {
+						clamp: { min: 0, max: 255 },
+					});
+				});
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${white.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.white -> ${String(val)} (property=${white.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, clampNumber(n, 0, 255));
+
+						return true;
+					},
+				);
+			}
+
+			this.setChannelsHandlers.set(`${delegate.id}|${rgbw.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
+				const outputUpdate = updates.find((u) => u.property.identifier === 'output');
+				const brightnessUpdate = updates.find((u) => u.property.identifier === 'brightness');
+				const colorRedUpdate = updates.find((u) => u.property.identifier === 'rgb:red');
+				const colorGreenUpdate = updates.find((u) => u.property.identifier === 'rgb:green');
+				const colorBlueUpdate = updates.find((u) => u.property.identifier === 'rgb:blue');
+				const whiteUpdate = updates.find((u) => u.property.identifier === 'white');
+
+				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : comp.output;
+				const brightnessValue = brightnessUpdate ? coerceNumberSafe(brightnessUpdate.val) : comp.brightness;
+				const colorRedValue = colorRedUpdate ? coerceNumberSafe(colorRedUpdate.val) : comp.rgb[0];
+				const colorGreenValue = colorGreenUpdate ? coerceNumberSafe(colorGreenUpdate.val) : comp.rgb[1];
+				const colorBlueValue = colorBlueUpdate ? coerceNumberSafe(colorBlueUpdate.val) : comp.rgb[2];
+				const whiteValue = whiteUpdate ? coerceNumberSafe(whiteUpdate.val) : comp.white;
+
+				if (
+					outputValue === null ||
+					typeof outputValue !== 'boolean' ||
+					brightnessValue === null ||
+					Number.isNaN(brightnessValue) ||
+					colorRedValue === null ||
+					Number.isNaN(colorRedValue) ||
+					colorGreenValue === null ||
+					Number.isNaN(colorGreenValue) ||
+					colorBlueValue === null ||
+					Number.isNaN(colorBlueValue) ||
+					whiteValue === null ||
+					Number.isNaN(whiteValue)
+				) {
+					this.logger.warn(
+						`[SHELLY NG][DELEGATES MANAGER] Dropping invalid batch update for ${comp.key} (channel=${rgbw.id})`,
+					);
+
+					return;
+				}
+
+				await comp.set(
+					outputValue,
+					clampNumber(brightnessValue, 0, 100),
+					[
+						clampNumber(colorRedValue, 0, 255),
+						clampNumber(colorGreenValue, 0, 255),
+						clampNumber(colorBlueValue, 0, 255),
+					],
+					clampNumber(whiteValue, 0, 255),
+				);
+
+				return true;
+			});
+		}
+
+		for (const comp of delegate.cct.values()) {
+			const cct = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`cct:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (cct === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load cct channel');
+			}
+
+			const cctOn = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'identifier',
+				'output',
+				cct.id,
+			);
+
+			if (cctOn === null) {
+				throw new DevicesShellyNgNotFoundException('Failed to load cct on channel property');
+			}
+
+			await this.setDefaultPropertyValue(device.id, cctOn, comp.output);
+
+			this.changeHandlers.set(`${delegate.id}|${comp.key}|output`, (val: CharacteristicValue): void => {
+				this.handleChange(cctOn, coerceBooleanSafe(val)).catch((err: Error): void => {
+					this.logger.error(
+						`[SHELLY NG][DELEGATES MANAGER] Failed to set value for component=${comp.key} attribute=output and property=${cctOn.id}`,
+						{
+							message: err.message,
+							stack: err.stack,
+						},
+					);
+				});
+			});
+
+			this.setPropertiesHandlers.set(
+				`${delegate.id}|${cctOn.id}`,
+				async (val: string | number | boolean): Promise<boolean> => {
+					if (typeof val !== 'boolean') {
+						return false;
+					}
+
+					await comp.set(val);
+
+					return true;
+				},
+			);
+
+			if (typeof comp.brightness !== 'undefined') {
+				const brightness = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'brightness',
+					cct.id,
+				);
+
+				if (brightness === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load cct brightness channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, brightness, clampNumber(comp.brightness, 0, 100));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|brightness`, (val: CharacteristicValue): void => {
+					this.handleNumericChange(
+						comp.key,
+						'brightness',
+						brightness.id,
+						val,
+						(n) => this.handleChange(brightness, n, false),
+						{ clamp: { min: 0, max: 100 } },
+					);
+				});
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${brightness.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.brightness -> ${String(val)} (property=${brightness.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, clampNumber(n, 0, 100));
+
+						return true;
+					},
+				);
+			}
+
+			if (typeof comp.ct !== 'undefined') {
+				const ct = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'temperature',
+					cct.id,
+				);
+
+				if (ct === null) {
+					throw new DevicesShellyNgNotFoundException('Failed to load cct ct channel property');
+				}
+
+				await this.setDefaultPropertyValue(device.id, ct, clampNumber(comp.ct, 2_700, 6_500));
+
+				this.changeHandlers.set(`${delegate.id}|${comp.key}|ct`, (val: CharacteristicValue): void => {
+					this.handleNumericChange(comp.key, 'ct', ct.id, val, (n) => this.handleChange(ct, n, false), {
+						clamp: { min: 0, max: 100 },
+					});
+				});
+
+				this.setPropertiesHandlers.set(
+					`${delegate.id}|${ct.id}`,
+					async (val: string | number | boolean): Promise<boolean> => {
+						const n = coerceNumberSafe(val);
+
+						if (n === null || Number.isNaN(n)) {
+							this.logger.warn(
+								`[SHELLY NG][DELEGATES MANAGER] Dropping invalid numeric update for ${comp.key}.ct -> ${String(val)} (property=${ct.id})`,
+							);
+
+							return;
+						}
+
+						await comp.set(comp.output, clampNumber(n, 2_700, 6_500));
+
+						return true;
+					},
+				);
+			}
+
+			this.setChannelsHandlers.set(`${delegate.id}|${cct.id}`, async (updates: BatchUpdate[]): Promise<boolean> => {
+				const outputUpdate = updates.find((u) => u.property.identifier === 'output');
+				const brightnessUpdate = updates.find((u) => u.property.identifier === 'brightness');
+				const ctUpdate = updates.find((u) => u.property.identifier === 'temperature');
+
+				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : comp.output;
+				const brightnessValue = brightnessUpdate ? coerceNumberSafe(brightnessUpdate.val) : comp.brightness;
+				const ctValue = ctUpdate ? coerceNumberSafe(ctUpdate.val) : comp.ct;
+
+				if (
+					outputValue === null ||
+					typeof outputValue !== 'boolean' ||
+					brightnessValue === null ||
+					Number.isNaN(brightnessValue) ||
+					ctValue === null ||
+					Number.isNaN(ctValue)
+				) {
+					this.logger.warn(
+						`[SHELLY NG][DELEGATES MANAGER] Dropping invalid batch update for ${comp.key} (channel=${cct.id})`,
+					);
+
+					return;
+				}
+
+				await comp.set(outputValue, clampNumber(brightnessValue, 0, 100), clampNumber(ctValue, 2_700, 6_500));
+
+				return true;
+			});
+		}
+
+		for (const comp of delegate.humidity.values()) {
 			const humidity = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
 				`humidity:${comp.id}`,
@@ -540,7 +1260,7 @@ export class DelegatesManagerService {
 			});
 		}
 
-		for (const comp of delegate.temps.values()) {
+		for (const comp of delegate.temperature.values()) {
 			const temperature = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
 				`temperature:${comp.id}`,
@@ -609,7 +1329,7 @@ export class DelegatesManagerService {
 			}
 		}
 
-		for (const comp of delegate.powerMeter.values()) {
+		for (const comp of delegate.pm1.values()) {
 			const electricalPower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
 				'identifier',
 				`power:${comp.id}`,
@@ -732,10 +1452,11 @@ export class DelegatesManagerService {
 		this.delegateValueHandlers.set(delegate.id, valueHandler);
 
 		const connectionHandler = (state: boolean | null): void => {
-			this.handleChange(
-				connectionState,
-				state === null ? ConnectionState.UNKNOWN : state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
-			)
+			this.deviceConnectivityService
+				.setConnectionState(device.id, {
+					state:
+						state === null ? ConnectionState.UNKNOWN : state ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
+				})
 				.then((): void => {
 					if (state) {
 						this.logger.debug(
@@ -801,9 +1522,9 @@ export class DelegatesManagerService {
 			}
 		}
 
-		for (const key of Array.from(this.setHandlers.keys())) {
+		for (const key of Array.from(this.setPropertiesHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
-				this.setHandlers.delete(key);
+				this.setPropertiesHandlers.delete(key);
 			}
 		}
 
@@ -824,12 +1545,36 @@ export class DelegatesManagerService {
 		this.logger.log(`[SHELLY NG][DELEGATES MANAGER] Detached Shelly device=${deviceId}`);
 	}
 
+	async setChannelValue(
+		device: ShellyNgDeviceEntity,
+		channel: ShellyNgChannelEntity,
+		updates: { property: ShellyNgChannelPropertyEntity; value: string | number | boolean }[],
+	): Promise<boolean> {
+		const handler = this.setChannelsHandlers.get(`${device.identifier}|${channel.id}`);
+
+		if (!handler) {
+			this.logger.debug(
+				`[SHELLY NG][DELEGATES MANAGER] Trying to write to device=${device.identifier} and channel=${channel.id} multiple properties`,
+			);
+
+			return Promise.reject(
+				new DevicesShellyNgNotImplementedException('Multiple property writes are not supported by the component.'),
+			);
+		}
+
+		this.logger.debug(
+			`[SHELLY NG][DELEGATES MANAGER] Writing value to Shelly device=${device.identifier} channel=${channel.id}`,
+		);
+
+		return handler(updates.map((row): BatchUpdate => ({ property: row.property, val: row.value })));
+	}
+
 	async setPropertyValue(
 		device: ShellyNgDeviceEntity,
 		property: ShellyNgChannelPropertyEntity,
 		value: string | number | boolean,
 	): Promise<boolean> {
-		const handler = this.setHandlers.get(`${device.identifier}|${property.id}`);
+		const handler = this.setPropertiesHandlers.get(`${device.identifier}|${property.id}`);
 
 		if (!handler) {
 			this.logger.warn(
@@ -879,15 +1624,15 @@ export class DelegatesManagerService {
 	private determineCategory(delegate: ShellyDeviceDelegate): DeviceCategory {
 		if (delegate.covers.size > 0) {
 			return DeviceCategory.WINDOW_COVERING;
-		} else if (delegate.lights.size > 0) {
+		} else if (delegate.lights.size > 0 || delegate.rgb.size > 0 || delegate.rgbw.size > 0 || delegate.cct.size > 0) {
 			return DeviceCategory.LIGHTING;
 		} else if (delegate.switches.size > 0) {
 			return DeviceCategory.SWITCHER;
 		} else if (
 			delegate.inputs.size > 0 ||
-			delegate.temps.size > 0 ||
-			delegate.hums.size > 0 ||
-			delegate.powerMeter.size > 0
+			delegate.temperature.size > 0 ||
+			delegate.humidity.size > 0 ||
+			delegate.pm1.size > 0
 		) {
 			return DeviceCategory.SENSOR;
 		}
@@ -967,12 +1712,14 @@ export class DelegatesManagerService {
 		}
 
 		this.changeHandlers.clear();
-		this.setHandlers.clear();
+		this.setPropertiesHandlers.clear();
 		this.propertiesMap.clear();
 
 		for (const pendingWrite of this.pendingWrites.values()) {
 			clearTimeout(pendingWrite);
 		}
+
+		this.pendingWrites.clear();
 	}
 
 	destroy(): void {

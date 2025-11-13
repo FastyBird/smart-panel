@@ -196,7 +196,7 @@ export class DeviceManagerService {
 				rssiToQuality(wifiInfo.rssi),
 			);
 		} catch {
-			// Could be ignored, device is not supporting WiFi component
+			// Could be ignored, a device is not supporting Wi-Fi component
 		}
 
 		const deviceComponents: { [key: string]: number[] } = deviceInfo.components.reduce((acc, group) => {
@@ -458,6 +458,282 @@ export class DeviceManagerService {
 						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} light component(s) failed for device=${device.id}`,
 					);
 				}
+			} else if (type === String(ComponentType.RGB)) {
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [rgbConfig, rgbStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getRgbConfig(host, key, { password }),
+										this.shellyRpcClientService.getRgbStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`RGB.GetConfig+RGB.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for rgb=${key} on device=${device.id}`, {
+								message: err.message,
+								stack: err.stack,
+							});
+
+							throw err;
+						});
+
+						const chan = await this.ensureChannel(
+							device,
+							'identifier',
+							`rgb:${key}`,
+							ChannelCategory.LIGHT,
+							rgbConfig.name ?? `RGB: ${key}`,
+						);
+
+						channelsIds.push(chan.id);
+
+						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', rgbStatus.output);
+
+						if (typeof rgbStatus.brightness !== 'undefined') {
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.BRIGHTNESS,
+								'identifier',
+								'brightness',
+								rgbStatus.brightness,
+							);
+						}
+
+						if (typeof rgbStatus.rgb !== 'undefined' && Array.isArray(rgbStatus.rgb) && rgbStatus.rgb.length === 3) {
+							await this.ensureProperty(chan, PropertyCategory.COLOR_RED, 'identifier', 'rgb:red', rgbStatus.rgb[0]);
+
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.COLOR_GREEN,
+								'identifier',
+								'rgb:green',
+								rgbStatus.rgb[1],
+							);
+
+							await this.ensureProperty(chan, PropertyCategory.COLOR_BLUE, 'identifier', 'rgb:blue', rgbStatus.rgb[2]);
+						}
+
+						const ee = await this.ensureElectricalEnergy(
+							device,
+							key,
+							rgbStatus,
+							rgbConfig.name ? `Consumption: ${rgbConfig.name}` : `RGB consumption: ${key}`,
+						);
+
+						if (ee) {
+							channelsIds.push(ee.channel.id);
+						}
+
+						const ep = await this.ensureElectricalPower(
+							device,
+							key,
+							rgbStatus,
+							rgbConfig.name ? `Power: ${rgbConfig.name}` : `RGB power: ${key}`,
+						);
+
+						if (ep) {
+							channelsIds.push(ep.channel.id);
+						}
+					}),
+				);
+
+				const settled = await Promise.allSettled(tasks);
+
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} rgb component(s) failed for device=${device.id}`,
+					);
+				}
+			} else if (type === String(ComponentType.RGBW)) {
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [rgbwConfig, rgbwStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getRgbwConfig(host, key, { password }),
+										this.shellyRpcClientService.getRgbwStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`RGBW.GetConfig+RGBW.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for rgbw=${key} on device=${device.id}`, {
+								message: err.message,
+								stack: err.stack,
+							});
+
+							throw err;
+						});
+
+						const chan = await this.ensureChannel(
+							device,
+							'identifier',
+							`rgbw:${key}`,
+							ChannelCategory.LIGHT,
+							rgbwConfig.name ?? `RGBW: ${key}`,
+						);
+
+						channelsIds.push(chan.id);
+
+						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', rgbwStatus.output);
+
+						if (typeof rgbwStatus.brightness !== 'undefined') {
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.BRIGHTNESS,
+								'identifier',
+								'brightness',
+								rgbwStatus.brightness,
+							);
+						}
+
+						if (typeof rgbwStatus.rgb !== 'undefined' && Array.isArray(rgbwStatus.rgb) && rgbwStatus.rgb.length === 3) {
+							await this.ensureProperty(chan, PropertyCategory.COLOR_RED, 'identifier', 'rgb:red', rgbwStatus.rgb[0]);
+
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.COLOR_GREEN,
+								'identifier',
+								'rgb:green',
+								rgbwStatus.rgb[1],
+							);
+
+							await this.ensureProperty(chan, PropertyCategory.COLOR_BLUE, 'identifier', 'rgb:blue', rgbwStatus.rgb[2]);
+						}
+
+						if (typeof rgbwStatus.white !== 'undefined') {
+							await this.ensureProperty(chan, PropertyCategory.COLOR_WHITE, 'identifier', 'white', rgbwStatus.white);
+						}
+
+						const ee = await this.ensureElectricalEnergy(
+							device,
+							key,
+							rgbwStatus,
+							rgbwConfig.name ? `Consumption: ${rgbwConfig.name}` : `RGBW consumption: ${key}`,
+						);
+
+						if (ee) {
+							channelsIds.push(ee.channel.id);
+						}
+
+						const ep = await this.ensureElectricalPower(
+							device,
+							key,
+							rgbwStatus,
+							rgbwConfig.name ? `Power: ${rgbwConfig.name}` : `RGBW power: ${key}`,
+						);
+
+						if (ep) {
+							channelsIds.push(ep.channel.id);
+						}
+					}),
+				);
+
+				const settled = await Promise.allSettled(tasks);
+
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} rgbw component(s) failed for device=${device.id}`,
+					);
+				}
+			} else if (type === String(ComponentType.CCT)) {
+				const tasks = ids.map((key) =>
+					limit(async () => {
+						const [cctConfig, cctStatus] = await retry(
+							() =>
+								withTimeout(
+									Promise.all([
+										this.shellyRpcClientService.getCctConfig(host, key, { password }),
+										this.shellyRpcClientService.getCctStatus(host, key, { password }),
+									]),
+									this.timeoutSec * 1000,
+									`CCT.GetConfig+CCT.GetStatus - ${key}`,
+								),
+							{ retries: 2, baseMs: 300, factor: 2 },
+						).catch((err: Error) => {
+							this.logger.error(`[SHELLY NG][DEVICE MANAGER] Failed load for cct=${key} on device=${device.id}`, {
+								message: err.message,
+								stack: err.stack,
+							});
+
+							throw err;
+						});
+
+						const chan = await this.ensureChannel(
+							device,
+							'identifier',
+							`cct:${key}`,
+							ChannelCategory.LIGHT,
+							cctConfig.name ?? `CCT: ${key}`,
+						);
+
+						channelsIds.push(chan.id);
+
+						await this.ensureProperty(chan, PropertyCategory.ON, 'identifier', 'output', cctStatus.output);
+
+						if (typeof cctStatus.brightness !== 'undefined') {
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.BRIGHTNESS,
+								'identifier',
+								'brightness',
+								cctStatus.brightness,
+							);
+						}
+
+						if (typeof cctStatus.ct !== 'undefined') {
+							await this.ensureProperty(
+								chan,
+								PropertyCategory.COLOR_TEMPERATURE,
+								'identifier',
+								'temperature',
+								cctStatus.ct,
+							);
+						}
+
+						const ee = await this.ensureElectricalEnergy(
+							device,
+							key,
+							cctStatus,
+							cctConfig.name ? `Consumption: ${cctConfig.name}` : `CCT consumption: ${key}`,
+						);
+
+						if (ee) {
+							channelsIds.push(ee.channel.id);
+						}
+
+						const ep = await this.ensureElectricalPower(
+							device,
+							key,
+							cctStatus,
+							cctConfig.name ? `Power: ${cctConfig.name}` : `CCT power: ${key}`,
+						);
+
+						if (ep) {
+							channelsIds.push(ep.channel.id);
+						}
+					}),
+				);
+
+				const settled = await Promise.allSettled(tasks);
+
+				const failed = settled.filter((r) => r.status === 'rejected').length;
+
+				if (failed) {
+					this.logger.warn(
+						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} cct component(s) failed for device=${device.id}`,
+					);
+				}
 			} else if (type === String(ComponentType.INPUT)) {
 				const tasks = ids.map((key) =>
 					limit(async () => {
@@ -635,7 +911,7 @@ export class DeviceManagerService {
 						`[SHELLY NG][DEVICE MANAGER] ${failed}/${ids.length} temperature component(s) failed for device=${device.id}`,
 					);
 				}
-			} else if (type === String(ComponentType.PM)) {
+			} else if (type === String(ComponentType.PM1)) {
 				const tasks = ids.map((key) =>
 					limit(async () => {
 						const [pm1Config, pm1Status] = await retry(

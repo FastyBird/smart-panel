@@ -25,3 +25,10 @@ export class DevicesShellyNgNotAllowedException extends DevicesShellyNgException
 		this.name = 'DevicesShellyNgNotAllowedException';
 	}
 }
+
+export class DevicesShellyNgNotImplementedException extends DevicesShellyNgException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'DevicesShellyNgNotImplementedException';
+	}
+}

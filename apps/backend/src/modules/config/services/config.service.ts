@@ -419,7 +419,7 @@ export class ConfigService {
 			throw new ConfigCorruptedException(`Configuration plugin '${plugin}' is corrupted and can not be loaded.`);
 		}
 
-		this.logger.log(`[LOOKUP] Successfully retrieved configuration plugin=${plugin}`);
+		this.logger.debug(`[LOOKUP] Successfully retrieved configuration plugin=${plugin}`);
 
 		return instance;
 	}

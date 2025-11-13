@@ -24,7 +24,7 @@ import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { DeviceEntity } from '../entities/devices.entity';
 
 import { ChannelsService } from './channels.service';
-import { DeviceStatusService } from './device-status.service';
+import { DeviceConnectionStateService } from './device-connection-state.service';
 import { DevicesTypeMapperService } from './devices-type-mapper.service';
 import { DevicesControlsService } from './devices.controls.service';
 import { DevicesService } from './devices.service';
@@ -135,7 +135,7 @@ describe('DevicesService', () => {
 					},
 				},
 				{
-					provide: DeviceStatusService,
+					provide: DeviceConnectionStateService,
 					useValue: {
 						write: jest.fn(() => {}),
 					},

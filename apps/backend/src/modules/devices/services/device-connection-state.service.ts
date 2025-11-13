@@ -5,8 +5,8 @@ import { ConnectionState, OnlineDeviceState, PropertyCategory } from '../devices
 import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 
 @Injectable()
-export class DeviceStatusService {
-	private readonly logger = new Logger(DeviceStatusService.name);
+export class DeviceConnectionStateService {
+	private readonly logger = new Logger(DeviceConnectionStateService.name);
 
 	private statusMap: Map<DeviceEntity['id'], { online: boolean; status: ConnectionState }> = new Map();
 	private statusPropertyMap: Map<DeviceEntity['id'], ChannelPropertyEntity['id']> = new Map();

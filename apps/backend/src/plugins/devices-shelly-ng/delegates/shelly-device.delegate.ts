@@ -1,4 +1,5 @@
 import {
+	Cct,
 	CharacteristicValue,
 	Cover,
 	Device,
@@ -8,6 +9,8 @@ import {
 	Light,
 	MultiProfileDevice,
 	Pm1,
+	Rgb,
+	Rgbw,
 	Switch,
 	Temperature,
 } from 'shellies-ds9';
@@ -18,7 +21,18 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ComponentType, DESCRIPTORS, DeviceProfile } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 
-type SupportedComponent = Switch | Light | Cover | Input | DevicePower | Humidity | Temperature | Pm1;
+type SupportedComponent =
+	| Switch
+	| Light
+	| Rgb
+	| Rgbw
+	| Cct
+	| Cover
+	| Input
+	| DevicePower
+	| Humidity
+	| Temperature
+	| Pm1;
 
 export class ShellyDeviceDelegate extends EventEmitter2 {
 	private readonly logger = new Logger(ShellyDeviceDelegate.name);
@@ -31,17 +45,23 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 	public lights: Map<number, Light> = new Map();
 
+	public rgb: Map<number, Rgb> = new Map();
+
+	public rgbw: Map<number, Rgbw> = new Map();
+
+	public cct: Map<number, Cct> = new Map();
+
 	public covers: Map<number, Cover> = new Map();
 
 	public inputs: Map<number, Input> = new Map();
 
 	public devPwr: Map<number, DevicePower> = new Map();
 
-	public hums: Map<number, Humidity> = new Map();
+	public humidity: Map<number, Humidity> = new Map();
 
-	public temps: Map<number, Temperature> = new Map();
+	public temperature: Map<number, Temperature> = new Map();
 
-	public powerMeter: Map<number, Pm1> = new Map();
+	public pm1: Map<number, Pm1> = new Map();
 
 	private changeHandlers: Map<string, (char: string, val: CharacteristicValue) => void> = new Map();
 
@@ -65,58 +85,95 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 					for (const id of componentSpec.ids) {
 						const componentKey = `${componentSpec.type}:${id}`;
 
-						if (this.shelly.hasComponent(componentKey)) {
-							const component = this.shelly.getComponent(componentKey);
+						if (!this.shelly.hasComponent(componentKey)) {
+							continue;
+						}
 
-							if (typeof component === 'undefined') {
-								throw new Error(`Missing component ${componentKey}`);
-							}
+						const component = this.shelly.getComponent(componentKey);
 
-							if (!(component instanceof componentSpec.cls)) {
-								this.logger.warn(
-									`[SHELLY NG][DEVICE DELEGATE] Component key=${componentKey} for device=${this.shelly.id} is not instance of expected class`,
-								);
+						if (typeof component === 'undefined') {
+							throw new Error(`Missing component ${componentKey}`);
+						}
 
+						if (!(component instanceof componentSpec.cls)) {
+							this.logger.warn(
+								`[SHELLY NG][DEVICE DELEGATE] Component key=${componentKey} for device=${this.shelly.id} is not instance of expected class`,
+							);
+
+							continue;
+						}
+
+						if (componentSpec.type === ComponentType.SWITCH) {
+							if (this.shelly instanceof MultiProfileDevice && this.shelly.profile !== String(DeviceProfile.SWITCH)) {
 								continue;
 							}
 
-							if (componentSpec.type === ComponentType.SWITCH) {
-								if (this.shelly instanceof MultiProfileDevice && this.shelly.profile === String(DeviceProfile.COVER)) {
-									continue;
-								}
-
-								this.switches.set(id, component as unknown as Switch);
-							} else if (componentSpec.type === ComponentType.LIGHT) {
-								this.lights.set(id, component as unknown as Light);
-							} else if (componentSpec.type === ComponentType.COVER) {
-								if (this.shelly instanceof MultiProfileDevice && this.shelly.profile !== String(DeviceProfile.COVER)) {
-									continue;
-								}
-
-								this.covers.set(id, component as unknown as Cover);
-							} else if (componentSpec.type === ComponentType.PM) {
-								this.powerMeter.set(id, component as unknown as Pm1);
-							} else if (componentSpec.type === ComponentType.INPUT) {
-								this.inputs.set(id, component as unknown as Input);
-							} else if (componentSpec.type === ComponentType.DEVICE_POWER) {
-								this.devPwr.set(id, component as unknown as DevicePower);
-							} else if (componentSpec.type === ComponentType.HUMIDITY) {
-								this.hums.set(id, component as unknown as Humidity);
-							} else if (componentSpec.type === ComponentType.TEMPERATURE) {
-								this.temps.set(id, component as unknown as Temperature);
+							this.switches.set(id, component as unknown as Switch);
+						} else if (componentSpec.type === ComponentType.COVER) {
+							if (this.shelly instanceof MultiProfileDevice && this.shelly.profile !== String(DeviceProfile.COVER)) {
+								continue;
 							}
 
-							this.components.set(componentKey, component);
+							this.covers.set(id, component as unknown as Cover);
+						} else if (componentSpec.type === ComponentType.LIGHT) {
+							if (
+								this.shelly instanceof MultiProfileDevice &&
+								this.shelly.profile !== String(DeviceProfile.LIGHT) &&
+								this.shelly.profile !== String(DeviceProfile.RGB_X2_LIGHT)
+							) {
+								continue;
+							}
 
-							const handler = (char: string, val: CharacteristicValue): void =>
-								this.handleChange(componentKey, char, val);
+							this.lights.set(id, component as unknown as Light);
+						} else if (componentSpec.type === ComponentType.RGB) {
+							if (
+								this.shelly instanceof MultiProfileDevice &&
+								this.shelly.profile !== String(DeviceProfile.RGB) &&
+								this.shelly.profile !== String(DeviceProfile.RGB_CCT) &&
+								this.shelly.profile !== String(DeviceProfile.RGB_X2_LIGHT)
+							) {
+								continue;
+							}
 
-							this.changeHandlers.set(componentKey, handler);
+							this.rgb.set(id, component as unknown as Rgb);
+						} else if (componentSpec.type === ComponentType.RGBW) {
+							if (this.shelly instanceof MultiProfileDevice && this.shelly.profile !== String(DeviceProfile.RGBW)) {
+								continue;
+							}
 
-							component.on('change', handler);
+							this.rgbw.set(id, component as unknown as Rgbw);
+						} else if (componentSpec.type === ComponentType.CCT) {
+							if (
+								this.shelly instanceof MultiProfileDevice &&
+								this.shelly.profile !== String(DeviceProfile.RGB_CCT) &&
+								this.shelly.profile !== String(DeviceProfile.CCT_X2)
+							) {
+								continue;
+							}
 
-							this.components.set(componentKey, component);
+							this.cct.set(id, component as unknown as Cct);
+						} else if (componentSpec.type === ComponentType.PM1) {
+							this.pm1.set(id, component as unknown as Pm1);
+						} else if (componentSpec.type === ComponentType.INPUT) {
+							this.inputs.set(id, component as unknown as Input);
+						} else if (componentSpec.type === ComponentType.DEVICE_POWER) {
+							this.devPwr.set(id, component as unknown as DevicePower);
+						} else if (componentSpec.type === ComponentType.HUMIDITY) {
+							this.humidity.set(id, component as unknown as Humidity);
+						} else if (componentSpec.type === ComponentType.TEMPERATURE) {
+							this.temperature.set(id, component as unknown as Temperature);
 						}
+
+						this.components.set(componentKey, component);
+
+						const handler = (char: string, val: CharacteristicValue): void =>
+							this.handleChange(componentKey, char, val);
+
+						this.changeHandlers.set(componentKey, handler);
+
+						component.on('change', handler);
+
+						this.components.set(componentKey, component);
 					}
 				});
 

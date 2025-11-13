@@ -100,12 +100,12 @@ export class DevicesShellyNgPlugin {
 	async onApplicationBootstrap() {
 		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
 
-		if (!isCli && this.appConfigService.getPluginConfig(DEVICES_SHELLY_NG_PLUGIN_NAME).enabled === true) {
-			await this.shellyNgService.start();
+		if (!isCli) {
+			await this.shellyNgService.requestStart();
 		}
 	}
 
-	onModuleDestroy() {
-		this.shellyNgService.stop();
+	async onModuleDestroy() {
+		await this.shellyNgService.stop();
 	}
 }
