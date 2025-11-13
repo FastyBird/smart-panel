@@ -734,11 +734,15 @@ export class DelegatesManagerService {
 				const colorGreenUpdate = updates.find((u) => u.property.identifier === 'rgb:green');
 				const colorBlueUpdate = updates.find((u) => u.property.identifier === 'rgb:blue');
 
-				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : comp.output;
-				const brightnessValue = brightnessUpdate ? coerceNumberSafe(brightnessUpdate.val) : comp.brightness;
-				const colorRedValue = colorRedUpdate ? coerceNumberSafe(colorRedUpdate.val) : comp.rgb[0];
-				const colorGreenValue = colorGreenUpdate ? coerceNumberSafe(colorGreenUpdate.val) : comp.rgb[1];
-				const colorBlueValue = colorBlueUpdate ? coerceNumberSafe(colorBlueUpdate.val) : comp.rgb[2];
+				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : coerceBooleanSafe(comp.output);
+				const brightnessValue = brightnessUpdate
+					? coerceNumberSafe(brightnessUpdate.val)
+					: coerceNumberSafe(comp.brightness);
+				const colorRedValue = colorRedUpdate ? coerceNumberSafe(colorRedUpdate.val) : coerceNumberSafe(comp.rgb[0]);
+				const colorGreenValue = colorGreenUpdate
+					? coerceNumberSafe(colorGreenUpdate.val)
+					: coerceNumberSafe(comp.rgb[1]);
+				const colorBlueValue = colorBlueUpdate ? coerceNumberSafe(colorBlueUpdate.val) : coerceNumberSafe(comp.rgb[2]);
 
 				if (
 					outputValue === null ||
@@ -1019,12 +1023,16 @@ export class DelegatesManagerService {
 				const colorBlueUpdate = updates.find((u) => u.property.identifier === 'rgb:blue');
 				const whiteUpdate = updates.find((u) => u.property.identifier === 'white');
 
-				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : comp.output;
-				const brightnessValue = brightnessUpdate ? coerceNumberSafe(brightnessUpdate.val) : comp.brightness;
-				const colorRedValue = colorRedUpdate ? coerceNumberSafe(colorRedUpdate.val) : comp.rgb[0];
-				const colorGreenValue = colorGreenUpdate ? coerceNumberSafe(colorGreenUpdate.val) : comp.rgb[1];
-				const colorBlueValue = colorBlueUpdate ? coerceNumberSafe(colorBlueUpdate.val) : comp.rgb[2];
-				const whiteValue = whiteUpdate ? coerceNumberSafe(whiteUpdate.val) : comp.white;
+				const outputValue = outputUpdate ? coerceBooleanSafe(outputUpdate.val) : coerceBooleanSafe(comp.output);
+				const brightnessValue = brightnessUpdate
+					? coerceNumberSafe(brightnessUpdate.val)
+					: coerceNumberSafe(comp.brightness);
+				const colorRedValue = colorRedUpdate ? coerceNumberSafe(colorRedUpdate.val) : coerceNumberSafe(comp.rgb[0]);
+				const colorGreenValue = colorGreenUpdate
+					? coerceNumberSafe(colorGreenUpdate.val)
+					: coerceNumberSafe(comp.rgb[1]);
+				const colorBlueValue = colorBlueUpdate ? coerceNumberSafe(colorBlueUpdate.val) : coerceNumberSafe(comp.rgb[2]);
+				const whiteValue = whiteUpdate ? coerceNumberSafe(whiteUpdate.val) : coerceNumberSafe(comp.white);
 
 				if (
 					outputValue === null ||

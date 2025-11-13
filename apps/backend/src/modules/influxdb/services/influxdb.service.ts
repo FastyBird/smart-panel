@@ -382,7 +382,9 @@ export class InfluxDbService {
 		//   RESAMPLE FOR 24h EVERY 1m
 		//   RESAMPLE EVERY 1m
 		//   RESAMPLE FOR 24h
-		const m = s.match(/resample\s+(?:every\s+(\S+))?(?:\s+for\s+(\S+))?|resample\s+(?:for\s+(\S+))?(?:\s+every\s+(\S+))?/i);
+		const m = s.match(
+			/resample\s+(?:every\s+(\S+))?(?:\s+for\s+(\S+))?|resample\s+(?:for\s+(\S+))?(?:\s+every\s+(\S+))?/i,
+		);
 
 		if (!m) {
 			return '';

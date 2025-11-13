@@ -41,7 +41,7 @@
 					:type="stateColor"
 					size="small"
 				>
-					{{ t(`devicesModule.states.${String(device.status?.status ?? 'unknown').toLowerCase()}`) }}
+					{{ t(`devicesModule.states.${String(device.status?.status ?? DevicesModuleDeviceStatusStatus.unknown).toLowerCase()}`) }}
 				</el-tag>
 			</el-text>
 		</dd>

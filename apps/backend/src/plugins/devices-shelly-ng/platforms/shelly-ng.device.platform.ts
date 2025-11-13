@@ -80,7 +80,7 @@ export class ShellyNgDevicePlatform extends HttpDevicePlatform implements IDevic
 		for (const group of byDeviceChannel.values()) {
 			const { device, channel, props, order } = group;
 			try {
-				const ordered = order.map((id) => props.get(id)!).filter(Boolean);
+				const ordered = order.map((id) => props.get(id)).filter(Boolean);
 				const response = await this.delegatesManagerService.setChannelValue(device, channel, ordered);
 
 				for (const { property } of props.values()) {
