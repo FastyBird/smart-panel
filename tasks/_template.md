@@ -4,7 +4,7 @@ Type: feature | technical | bug | chore
 Scope: backend | admin | panel | backend, admin | backend, admin, panel
 Size: tiny | small | medium | large
 Parent: (none) | <ID of parent task>
-Status: planned | in-progress | done
+Status: planned | in-progress | review | done
 
 ## 1. Business goal
 
