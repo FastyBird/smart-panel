@@ -27,6 +27,7 @@ import { ChannelsPropertiesTypeMapperService } from '../services/channels.proper
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
+import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
 import { DevicesChannelsPropertiesController } from './devices.channels.properties.controller';
 
@@ -36,6 +37,7 @@ describe('DevicesChannelsPropertiesController', () => {
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
 	let mapper: ChannelsPropertiesTypeMapperService;
+	let propertyTimeseriesService: PropertyTimeseriesService;
 
 	const mockDevice: DeviceEntity = {
 		id: uuid().toString(),
@@ -128,6 +130,12 @@ describe('DevicesChannelsPropertiesController', () => {
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
+				{
+					provide: PropertyTimeseriesService,
+					useValue: {
+						queryTimeseries: jest.fn(),
+					},
+				},
 			],
 		}).compile();
 
@@ -138,6 +146,7 @@ describe('DevicesChannelsPropertiesController', () => {
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 		mapper = module.get<ChannelsPropertiesTypeMapperService>(ChannelsPropertiesTypeMapperService);
+		propertyTimeseriesService = module.get<PropertyTimeseriesService>(PropertyTimeseriesService);
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 	});
@@ -152,6 +161,7 @@ describe('DevicesChannelsPropertiesController', () => {
 		expect(channelsService).toBeDefined();
 		expect(channelsPropertiesService).toBeDefined();
 		expect(mapper).toBeDefined();
+		expect(propertyTimeseriesService).toBeDefined();
 	});
 
 	describe('Channel properties', () => {
@@ -217,6 +227,117 @@ describe('DevicesChannelsPropertiesController', () => {
 
 			expect(result).toBeUndefined();
 			expect(channelsPropertiesService.remove).toHaveBeenCalledWith(mockChannelProperty.id);
+		});
+	});
+
+	describe('Property timeseries', () => {
+		it('should return timeseries data with HTTP 200', async () => {
+			const mockTimeseriesResult = {
+				property: mockChannelProperty.id,
+				from: '2025-01-01T10:00:00.000Z',
+				to: '2025-01-01T22:00:00.000Z',
+				bucket: '5m',
+				points: [
+					{ time: '2025-01-01T10:00:00Z', value: 21.4 },
+					{ time: '2025-01-01T10:05:00Z', value: 21.6 },
+				],
+			};
+
+			jest.spyOn(propertyTimeseriesService, 'queryTimeseries').mockResolvedValue(mockTimeseriesResult);
+
+			const query = {
+				from: '2025-01-01T10:00:00Z',
+				to: '2025-01-01T22:00:00Z',
+				bucket: '5m' as const,
+			};
+
+			const result = await controller.getTimeseries(mockDevice.id, mockChannel.id, mockChannelProperty.id, query);
+
+			expect(result).toEqual(mockTimeseriesResult);
+			expect(propertyTimeseriesService.queryTimeseries).toHaveBeenCalledWith(
+				expect.objectContaining({ id: mockChannelProperty.id }),
+				expect.any(Date),
+				expect.any(Date),
+				'5m',
+			);
+		});
+
+		it('should return empty points array when no data exists', async () => {
+			const mockEmptyResult = {
+				property: mockChannelProperty.id,
+				from: '2025-01-01T10:00:00.000Z',
+				to: '2025-01-01T22:00:00.000Z',
+				bucket: '5m',
+				points: [],
+			};
+
+			jest.spyOn(propertyTimeseriesService, 'queryTimeseries').mockResolvedValue(mockEmptyResult);
+
+			const query = {
+				from: '2025-01-01T10:00:00Z',
+				to: '2025-01-01T22:00:00Z',
+			};
+
+			const result = await controller.getTimeseries(mockDevice.id, mockChannel.id, mockChannelProperty.id, query);
+
+			expect(result.points).toEqual([]);
+			expect(result.property).toBe(mockChannelProperty.id);
+		});
+
+		it('should use default time range (last 24 hours) when not provided', async () => {
+			const mockTimeseriesResult = {
+				property: mockChannelProperty.id,
+				from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+				to: new Date().toISOString(),
+				bucket: '5m',
+				points: [],
+			};
+
+			jest.spyOn(propertyTimeseriesService, 'queryTimeseries').mockResolvedValue(mockTimeseriesResult);
+
+			const result = await controller.getTimeseries(mockDevice.id, mockChannel.id, mockChannelProperty.id, {});
+
+			expect(result).toEqual(mockTimeseriesResult);
+			expect(propertyTimeseriesService.queryTimeseries).toHaveBeenCalled();
+		});
+
+		it('should throw NotFoundException when device does not exist', async () => {
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(null);
+
+			const query = {
+				from: '2025-01-01T10:00:00Z',
+				to: '2025-01-01T22:00:00Z',
+			};
+
+			await expect(
+				controller.getTimeseries('non-existent-device', mockChannel.id, mockChannelProperty.id, query),
+			).rejects.toThrow();
+		});
+
+		it('should throw NotFoundException when channel does not exist', async () => {
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(null);
+
+			const query = {
+				from: '2025-01-01T10:00:00Z',
+				to: '2025-01-01T22:00:00Z',
+			};
+
+			await expect(
+				controller.getTimeseries(mockDevice.id, 'non-existent-channel', mockChannelProperty.id, query),
+			).rejects.toThrow();
+		});
+
+		it('should throw NotFoundException when property does not exist', async () => {
+			jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
+
+			const query = {
+				from: '2025-01-01T10:00:00Z',
+				to: '2025-01-01T22:00:00Z',
+			};
+
+			await expect(
+				controller.getTimeseries(mockDevice.id, mockChannel.id, 'non-existent-property', query),
+			).rejects.toThrow();
 		});
 	});
 });

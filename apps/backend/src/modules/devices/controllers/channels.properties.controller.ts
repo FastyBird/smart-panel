@@ -13,6 +13,7 @@ import {
 	ParseUUIDPipe,
 	Patch,
 	Post,
+	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
 
@@ -21,14 +22,17 @@ import { ValidationExceptionFactory } from '../../../common/validation/validatio
 import { DEVICES_MODULE_PREFIX } from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
+import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
+import { PropertyTimeseriesModel } from '../models/devices.model';
 import {
 	ChannelPropertyTypeMapping,
 	ChannelsPropertiesTypeMapperService,
 } from '../services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
 import { ChannelsService } from '../services/channels.service';
+import { PropertyTimeseriesService } from '../services/property-timeseries.service';
 
 @Controller('channels/:channelId/properties')
 export class ChannelsPropertiesController {
@@ -38,6 +42,7 @@ export class ChannelsPropertiesController {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly channelsPropertiesMapperService: ChannelsPropertiesTypeMapperService,
+		private readonly propertyTimeseriesService: PropertyTimeseriesService,
 	) {}
 
 	@Get()
@@ -69,6 +74,40 @@ export class ChannelsPropertiesController {
 		this.logger.debug(`[LOOKUP] Found property id=${property.id} for channelId=${channel.id}`);
 
 		return property;
+	}
+
+	@Get(':id/timeseries')
+	async getTimeseries(
+		@Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Query() query: QueryPropertyTimeseriesDto,
+	): Promise<PropertyTimeseriesModel> {
+		this.logger.debug(
+			`[TIMESERIES] Fetching timeseries for property id=${id} channelId=${channelId} from=${query.from ?? 'default'} to=${query.to ?? 'default'} bucket=${query.bucket ?? 'auto'}`,
+		);
+
+		const channel = await this.getChannelOrThrow(channelId);
+		const property = await this.getOneOrThrow(id, channel.id);
+
+		// Determine time range: use query params or default to last 24 hours
+		const to = query.to ? new Date(query.to) : new Date();
+		const from = query.from ? new Date(query.from) : new Date(to.getTime() - 24 * 60 * 60 * 1000);
+
+		if (isNaN(from.getTime())) {
+			throw new BadRequestException([JSON.stringify({ field: 'from', reason: 'Invalid date format.' })]);
+		}
+
+		if (isNaN(to.getTime())) {
+			throw new BadRequestException([JSON.stringify({ field: 'to', reason: 'Invalid date format.' })]);
+		}
+
+		const result = await this.propertyTimeseriesService.queryTimeseries(property, from, to, query.bucket);
+
+		this.logger.debug(
+			`[TIMESERIES] Retrieved ${result.points.length} points for property id=${property.id} channelId=${channel.id}`,
+		);
+
+		return result;
 	}
 
 	@Post()

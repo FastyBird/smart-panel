@@ -2722,6 +2722,123 @@
         ]
       }
     },
+    "/devices-module/devices/{deviceId}/channels/{channelId}/properties/{id}/timeseries": {
+      "get": {
+        "tags": [
+          "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          },
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start of the time range in ISO 8601 format. Must be provided together with 'to'. If not provided, defaults to 24 hours before 'to'."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End of the time range in ISO 8601 format. Must be provided together with 'from'. If not provided, defaults to current time."
+          },
+          {
+            "name": "bucket",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "1h"
+              ]
+            },
+            "description": "Optional downsampling bucket duration. If not specified, bucket is automatically selected based on time range."
+          }
+        ],
+        "summary": "Get timeseries data for a specific property.",
+        "description": "Retrieves historical timeseries data for a property within a specified time range. Supports optional downsampling via bucket parameter. Returns empty array if no data exists.",
+        "operationId": "get-devices-module-device-channel-property-timeseries",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved timeseries data for the property.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesModuleResPropertyTimeseries"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141/timeseries",
+                      "method": "GET",
+                      "data": {
+                        "property": "208f4790-21b0-4927-8835-7302d883a141",
+                        "from": "2025-01-01T10:00:00Z",
+                        "to": "2025-01-01T22:00:00Z",
+                        "bucket": "5m",
+                        "points": [
+                          {
+                            "time": "2025-01-01T10:00:00Z",
+                            "value": 21.4
+                          },
+                          {
+                            "time": "2025-01-01T10:05:00Z",
+                            "value": 21.6
+                          }
+                        ]
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
     "/devices-module/devices/{deviceId}/channels/{channelId}/controls": {
       "get": {
         "tags": [
@@ -4666,6 +4783,120 @@
         "responses": {
           "204": {
             "description": "The property was successfully deleted. No response body is returned."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        },
+        "security": [
+          {
+            "authentication": []
+          },
+          {
+            "x-display-secret": []
+          }
+        ]
+      }
+    },
+    "/devices-module/channels/{channelId}/properties/{id}/timeseries": {
+      "get": {
+        "tags": [
+          "Devices module"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/channelId"
+          },
+          {
+            "$ref": "#/components/parameters/id"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start of the time range in ISO 8601 format. Must be provided together with 'to'. If not provided, defaults to 24 hours before 'to'."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End of the time range in ISO 8601 format. Must be provided together with 'from'. If not provided, defaults to current time."
+          },
+          {
+            "name": "bucket",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1m",
+                "5m",
+                "15m",
+                "1h"
+              ]
+            },
+            "description": "Optional downsampling bucket duration. If not specified, bucket is automatically selected based on time range."
+          }
+        ],
+        "summary": "Get timeseries data for a specific property.",
+        "description": "Retrieves historical timeseries data for a property within a specified time range. Supports optional downsampling via bucket parameter. Returns empty array if no data exists.",
+        "operationId": "get-devices-module-channel-property-timeseries",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved timeseries data for the property.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicesModuleResPropertyTimeseries"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "status": "success",
+                      "timestamp": "2025-01-18T12:00:00Z",
+                      "request_id": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+                      "path": "/api/v1/devices-module/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141/timeseries",
+                      "method": "GET",
+                      "data": {
+                        "property": "208f4790-21b0-4927-8835-7302d883a141",
+                        "from": "2025-01-01T10:00:00Z",
+                        "to": "2025-01-01T22:00:00Z",
+                        "bucket": "5m",
+                        "points": [
+                          {
+                            "time": "2025-01-01T10:00:00Z",
+                            "value": 21.4
+                          },
+                          {
+                            "time": "2025-01-01T10:05:00Z",
+                            "value": 21.6
+                          }
+                        ]
+                      },
+                      "metadata": {
+                        "request_duration_ms": 57,
+                        "server_time": "2025-01-18T12:00:00Z",
+                        "cpu_usage": 25.28
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/responses/BadRequestError"
@@ -13012,6 +13243,166 @@
               "$ref": "#/components/schemas/DevicesModuleChannelProperty"
             },
             "description": "The actual data payload returned by the API. The structure depends on the specific endpoint response."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/CommonResMetadata",
+            "description": "Additional metadata about the request and server performance metrics."
+          }
+        }
+      },
+      "DevicesModuleTimeseriesPoint": {
+        "title": "Timeseries Point",
+        "description": "A single data point in a property timeseries, containing a timestamp and value.",
+        "type": "object",
+        "required": [
+          "time",
+          "value"
+        ],
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the data point in ISO 8601 format.",
+            "example": "2025-01-01T10:00:00Z"
+          },
+          "value": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ],
+            "description": "Value of the property at this point in time.",
+            "example": 21.4
+          }
+        }
+      },
+      "DevicesModulePropertyTimeseries": {
+        "title": "Property Timeseries",
+        "description": "Timeseries data for a property, including time range, bucket, and data points.",
+        "type": "object",
+        "required": [
+          "property",
+          "from",
+          "to",
+          "bucket",
+          "points"
+        ],
+        "properties": {
+          "property": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier of the property.",
+            "example": "208f4790-21b0-4927-8835-7302d883a141"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start of the time range in ISO 8601 format.",
+            "example": "2025-01-01T10:00:00Z"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End of the time range in ISO 8601 format.",
+            "example": "2025-01-01T22:00:00Z"
+          },
+          "bucket": {
+            "type": "string",
+            "nullable": true,
+            "description": "Downsampling bucket duration (e.g., '1m', '5m', '15m', '1h'), or null if using raw data.",
+            "example": "5m"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DevicesModuleTimeseriesPoint"
+            },
+            "description": "Array of timeseries data points."
+          }
+        }
+      },
+      "DevicesModuleQueryPropertyTimeseries": {
+        "title": "Query Property Timeseries",
+        "description": "Query parameters for requesting property timeseries data.",
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start of the time range in ISO 8601 format. Must be provided together with 'to'.",
+            "example": "2025-01-01T10:00:00Z"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End of the time range in ISO 8601 format. Must be provided together with 'from'.",
+            "example": "2025-01-01T22:00:00Z"
+          },
+          "bucket": {
+            "type": "string",
+            "enum": [
+              "1m",
+              "5m",
+              "15m",
+              "1h"
+            ],
+            "description": "Optional downsampling bucket duration. If not specified, bucket is automatically selected based on time range.",
+            "example": "5m"
+          }
+        }
+      },
+      "DevicesModuleResPropertyTimeseries": {
+        "title": "Property Timeseries Response",
+        "description": "Response schema containing property timeseries data.",
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp",
+          "request_id",
+          "path",
+          "method",
+          "data",
+          "metadata"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Indicates whether the API request was successful (`success`) or encountered an error (`error`).",
+            "example": "success",
+            "readOnly": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the response was generated, in ISO 8601 format (`YYYY-MM-DDTHH:mm:ssZ`).",
+            "example": "2025-01-18T12:00:00Z",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A unique identifier assigned to this API request. Useful for debugging and tracking API calls.",
+            "example": "b27b7c58-76f6-407a-bc78-4068e4cfd082",
+            "readOnly": true
+          },
+          "path": {
+            "type": "string",
+            "description": "The API endpoint that was requested, including any dynamic parameters.",
+            "example": "/api/v1/devices-module/devices/332dda32-b7de-4557-956a-b6ed6c6799a4/channels/568e43e9-c9da-4a4e-ac7c-9904b42730c6/properties/208f4790-21b0-4927-8835-7302d883a141/timeseries",
+            "readOnly": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET"
+            ],
+            "description": "The HTTP method used for the request.",
+            "example": "GET",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/DevicesModulePropertyTimeseries",
+            "description": "The timeseries data payload."
           },
           "metadata": {
             "$ref": "#/components/schemas/CommonResMetadata",
