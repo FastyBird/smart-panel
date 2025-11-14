@@ -135,7 +135,7 @@ export class PropertyTimeseriesService {
 	private parseValue(
 		row: { stringValue?: string; numberValue?: number },
 		dataType: DataTypeType,
-	): string | number | boolean {
+	): string | number | boolean | null {
 		switch (dataType) {
 			case DataTypeType.ENUM:
 			case DataTypeType.STRING:
