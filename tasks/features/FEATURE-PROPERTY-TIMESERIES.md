@@ -34,15 +34,16 @@ I want the backend to expose a timeseries endpoint for property values so the pa
 
 ## 4. Acceptance criteria
 
-- [ ] OpenAPI spec contains a new timeseries endpoint under the correct module.
-- [ ] Endpoint supports:
-  - [ ] property identification
-  - [ ] time range (`from`/`to` ISO datetimes OR relative range like `12h`)
-  - [ ] optional downsampling bucket (`5m`, `1h`, etc.)
-- [ ] Output format:
+- [x] OpenAPI spec contains a new timeseries endpoint under the correct module.
+- [x] Endpoint supports:
+  - [x] property identification
+  - [x] time range (`from`/`to` ISO datetimes OR relative range like `12h`)
+  - [x] optional downsampling bucket (`5m`, `1h`, etc.)
+- [x] Output format:
 ```json
 {
-  "propertyId": "<id>",
+  "property": "<id>",
+  // Compatibility note: if older clients expect `propertyId`, consider providing both fields for one release cycle.
   "from": "2025-01-01T10:00:00Z",
   "to": "2025-01-01T22:00:00Z",
   "bucket": "5m",
@@ -52,9 +53,9 @@ I want the backend to expose a timeseries endpoint for property values so the pa
   ]
 }
 ```
-- [ ] Endpoint returns HTTP 200 with `"points": []` when no data exists.
-- [ ] Input validation for invalid ranges.
-- [ ] Unit tests for service + controller.
+- [x] Endpoint returns HTTP 200 with `"points": []` when no data exists.
+- [x] Input validation for invalid ranges.
+- [x] Unit tests for service + controller.
 - [ ] Optionally 1 E2E test.
 
 ## 5. Example scenarios
