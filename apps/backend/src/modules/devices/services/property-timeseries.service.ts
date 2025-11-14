@@ -1,3 +1,5 @@
+import { plainToInstance } from 'class-transformer';
+
 import { Injectable, Logger } from '@nestjs/common';
 
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
@@ -29,13 +31,13 @@ export class PropertyTimeseriesService {
 		try {
 			const points = await this.fetchPoints(property, from, to, bucket);
 
-			return {
+			return plainToInstance(PropertyTimeseriesModel, {
 				property: property.id,
 				from: from.toISOString(),
 				to: to.toISOString(),
 				bucket: bucket ?? this.getDefaultBucket(from, to),
 				points,
-			};
+			});
 		} catch (error) {
 			const err = error as Error;
 
@@ -45,13 +47,13 @@ export class PropertyTimeseriesService {
 			);
 
 			// Return empty result on error
-			return {
+			return plainToInstance(PropertyTimeseriesModel, {
 				property: property.id,
 				from: from.toISOString(),
 				to: to.toISOString(),
 				bucket: bucket ?? this.getDefaultBucket(from, to),
 				points: [],
-			};
+			});
 		}
 	}
 
@@ -133,14 +135,14 @@ export class PropertyTimeseriesService {
 	private parseValue(
 		row: { stringValue?: string; numberValue?: number },
 		dataType: DataTypeType,
-	): string | number | boolean {
+	): string | number | boolean | null {
 		switch (dataType) {
 			case DataTypeType.ENUM:
 			case DataTypeType.STRING:
-				return row.stringValue ?? '';
+				return row.stringValue ?? null;
 
 			case DataTypeType.BOOL:
-				return row.stringValue === 'true';
+				return row.stringValue != null ? row.stringValue === 'true' : null;
 
 			case DataTypeType.CHAR:
 			case DataTypeType.UCHAR:
@@ -148,13 +150,13 @@ export class PropertyTimeseriesService {
 			case DataTypeType.USHORT:
 			case DataTypeType.INT:
 			case DataTypeType.UINT:
-				return row.numberValue != null ? Math.round(row.numberValue) : 0;
+				return row.numberValue != null ? Math.round(row.numberValue) : null;
 
 			case DataTypeType.FLOAT:
-				return row.numberValue ?? 0;
+				return row.numberValue ?? null;
 
 			default:
-				return row.stringValue ?? '';
+				return null;
 		}
 	}
 

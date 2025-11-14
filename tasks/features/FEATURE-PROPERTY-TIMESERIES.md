@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: (none)
-Status: planned
+Status: done
 Created: 2025-11-13
 
 ## 1. Business goal
