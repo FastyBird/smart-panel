@@ -1,4 +1,9 @@
-import { DeviceCategory } from '../../modules/devices/devices.constants';
+import {
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../modules/devices/devices.constants';
 
 export const DEVICES_SHELLY_V1_PLUGIN_PREFIX = 'devices-shelly-v1';
 
@@ -28,11 +33,34 @@ export interface ComponentSpec {
 	id: number;
 }
 
+export interface PropertyBinding {
+	shelliesProperty: string;
+	channelIdentifier: string;
+	propertyIdentifier: string;
+
+	category: PropertyCategory;
+	data_type: DataTypeType;
+	permissions: PermissionType[];
+	unit?: string;
+	format?: number[];
+}
+
+export interface DeviceInstanceInfo {
+	modeProperty?: string;
+}
+
+export interface DeviceModeProfile {
+	modeValue: string;
+	bindings: PropertyBinding[];
+}
+
 export interface DeviceDescriptor {
 	name: string;
 	models: string[];
-	components: ComponentSpec[];
 	categories: DeviceCategory[];
+	instance?: DeviceInstanceInfo;
+	bindings?: PropertyBinding[];
+	modes?: DeviceModeProfile[];
 }
 
 // Device descriptors for common Shelly Gen 1 devices
@@ -41,10 +69,6 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 	SHELLY1: {
 		name: 'Shelly 1',
 		models: ['SHSW-1'],
-		components: [
-			{ type: ComponentType.RELAY, id: 0 },
-			{ type: ComponentType.INPUT, id: 0 },
-		],
 		categories: [
 			DeviceCategory.OUTLET,
 			DeviceCategory.SWITCHER,
@@ -53,16 +77,31 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 			DeviceCategory.SPRINKLER,
 			DeviceCategory.VALVE,
 			DeviceCategory.LIGHTING,
+		],
+		bindings: [
+			// relay 0
+			{
+				shelliesProperty: 'relay0',
+				channelIdentifier: 'relay_0',
+				propertyIdentifier: 'state',
+				category: PropertyCategory.ON,
+				data_type: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			},
+			// input
+			{
+				shelliesProperty: 'input0',
+				channelIdentifier: 'input_0',
+				propertyIdentifier: 'state',
+				category: PropertyCategory.DETECTED,
+				data_type: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+			},
 		],
 	},
 	SHELLY1PM: {
 		name: 'Shelly 1PM',
 		models: ['SHSW-PM'],
-		components: [
-			{ type: ComponentType.RELAY, id: 0 },
-			{ type: ComponentType.INPUT, id: 0 },
-			{ type: ComponentType.POWER_METER, id: 0 },
-		],
 		categories: [
 			DeviceCategory.OUTLET,
 			DeviceCategory.SWITCHER,
@@ -72,19 +111,50 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 			DeviceCategory.VALVE,
 			DeviceCategory.LIGHTING,
 		],
-	},
-	SHELLY25: {
-		name: 'Shelly 2.5',
-		models: ['SHSW-25'],
-		components: [
-			{ type: ComponentType.RELAY, id: 0 },
-			{ type: ComponentType.RELAY, id: 1 },
-			{ type: ComponentType.ROLLER, id: 0 },
-			{ type: ComponentType.INPUT, id: 0 },
-			{ type: ComponentType.INPUT, id: 1 },
-			{ type: ComponentType.POWER_METER, id: 0 },
-			{ type: ComponentType.POWER_METER, id: 1 },
+		bindings: [
+			// relay 0
+			{
+				shelliesProperty: 'relay0',
+				channelIdentifier: 'relay_0',
+				propertyIdentifier: 'state',
+				category: PropertyCategory.ON,
+				data_type: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			},
+			// power meter
+			{
+				shelliesProperty: 'power0',
+				channelIdentifier: 'power_0',
+				propertyIdentifier: 'power',
+				category: PropertyCategory.POWER,
+				data_type: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				unit: 'W',
+			},
+			// energy meter
+			{
+				shelliesProperty: 'energyCounter0',
+				channelIdentifier: 'energy_0',
+				propertyIdentifier: 'energy',
+				category: PropertyCategory.CONSUMPTION,
+				data_type: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				unit: 'Wh',
+			},
+			// input
+			{
+				shelliesProperty: 'input0',
+				channelIdentifier: 'input_0',
+				propertyIdentifier: 'state',
+				category: PropertyCategory.DETECTED,
+				data_type: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+			},
 		],
+	},
+	SHELLY1L: {
+		name: 'Shelly 1L',
+		models: ['SHSW-L'],
 		categories: [
 			DeviceCategory.OUTLET,
 			DeviceCategory.SWITCHER,
@@ -93,59 +163,318 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 			DeviceCategory.SPRINKLER,
 			DeviceCategory.VALVE,
 			DeviceCategory.LIGHTING,
-			DeviceCategory.WINDOW_COVERING,
 		],
-	},
-	SHELLYDIMMER: {
-		name: 'Shelly Dimmer',
-		models: ['SHDM-1'],
-		components: [
-			{ type: ComponentType.DIMMER, id: 0 },
-			{ type: ComponentType.INPUT, id: 0 },
-			{ type: ComponentType.INPUT, id: 1 },
-			{ type: ComponentType.POWER_METER, id: 0 },
+		bindings: [
+			// relay 0
+			{
+				shelliesProperty: 'relay0',
+				channelIdentifier: 'relay_0',
+				propertyIdentifier: 'state',
+				category: PropertyCategory.ON,
+				data_type: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			},
+			// power meter
+			{
+				shelliesProperty: 'power0',
+				channelIdentifier: 'power_0',
+				propertyIdentifier: 'power',
+				category: PropertyCategory.POWER,
+				data_type: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				unit: 'W',
+			},
+			// energy meter
+			{
+				shelliesProperty: 'energyCounter0',
+				channelIdentifier: 'energy_0',
+				propertyIdentifier: 'energy',
+				category: PropertyCategory.CONSUMPTION,
+				data_type: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				unit: 'Wh',
+			},
+			// input
+			{
+				shelliesProperty: 'input0',
+				channelIdentifier: 'input_0',
+				propertyIdentifier: 'state',
+				category: PropertyCategory.DETECTED,
+				data_type: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+			},
+			{
+				shelliesProperty: 'input1',
+				channelIdentifier: 'input_1',
+				propertyIdentifier: 'state',
+				category: PropertyCategory.DETECTED,
+				data_type: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+			},
 		],
-		categories: [DeviceCategory.LIGHTING],
-	},
-	SHELLYDIMMER2: {
-		name: 'Shelly Dimmer 2',
-		models: ['SHDM-2'],
-		components: [
-			{ type: ComponentType.DIMMER, id: 0 },
-			{ type: ComponentType.INPUT, id: 0 },
-			{ type: ComponentType.INPUT, id: 1 },
-			{ type: ComponentType.POWER_METER, id: 0 },
-		],
-		categories: [DeviceCategory.LIGHTING],
-	},
-	SHELLYHT: {
-		name: 'Shelly H&T',
-		models: ['SHHT-1'],
-		components: [
-			{ type: ComponentType.TEMPERATURE, id: 0 },
-			{ type: ComponentType.HUMIDITY, id: 0 },
-		],
-		categories: [DeviceCategory.SENSOR],
 	},
 	SHELLYRGBW2: {
 		name: 'Shelly RGBW2',
 		models: ['SHRGBW2'],
-		components: [
-			{ type: ComponentType.LIGHT, id: 0 },
-			{ type: ComponentType.LIGHT, id: 1 },
-			{ type: ComponentType.LIGHT, id: 2 },
-			{ type: ComponentType.LIGHT, id: 3 },
-			{ type: ComponentType.POWER_METER, id: 0 },
-		],
 		categories: [DeviceCategory.LIGHTING],
-	},
-	SHELLYBULB: {
-		name: 'Shelly Bulb',
-		models: ['SHBLB-1'],
-		components: [
-			{ type: ComponentType.LIGHT, id: 0 },
-			{ type: ComponentType.POWER_METER, id: 0 },
+		instance: {
+			modeProperty: 'mode',
+		},
+		modes: [
+			{
+				modeValue: 'color',
+				bindings: [
+					// RGBW light
+					{
+						shelliesProperty: 'switch',
+						channelIdentifier: 'light_0',
+						propertyIdentifier: 'state',
+						category: PropertyCategory.ON,
+						data_type: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_WRITE],
+					},
+					{
+						shelliesProperty: 'red',
+						channelIdentifier: 'light_0',
+						propertyIdentifier: 'red',
+						category: PropertyCategory.LEVEL,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [0, 255],
+					},
+					{
+						shelliesProperty: 'green',
+						channelIdentifier: 'light_0',
+						propertyIdentifier: 'green',
+						category: PropertyCategory.LEVEL,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [0, 255],
+					},
+					{
+						shelliesProperty: 'blue',
+						channelIdentifier: 'light_0',
+						propertyIdentifier: 'blue',
+						category: PropertyCategory.LEVEL,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [0, 255],
+					},
+					{
+						shelliesProperty: 'white',
+						channelIdentifier: 'light_0',
+						propertyIdentifier: 'white',
+						category: PropertyCategory.LEVEL,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [0, 255],
+					},
+					{
+						shelliesProperty: 'gain',
+						channelIdentifier: 'light_0',
+						propertyIdentifier: 'gain',
+						category: PropertyCategory.BRIGHTNESS,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [0, 100],
+					},
+					// power meter
+					{
+						shelliesProperty: 'power0',
+						channelIdentifier: 'power_0',
+						propertyIdentifier: 'power',
+						category: PropertyCategory.POWER,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'W',
+					},
+					// energy meter
+					{
+						shelliesProperty: 'energyCounter0',
+						channelIdentifier: 'energy_0',
+						propertyIdentifier: 'energy',
+						category: PropertyCategory.CONSUMPTION,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'Wh',
+					},
+					// input
+					{
+						shelliesProperty: 'input0',
+						channelIdentifier: 'input_0',
+						propertyIdentifier: 'state',
+						category: PropertyCategory.DETECTED,
+						data_type: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_ONLY],
+					},
+				],
+			},
+			{
+				modeValue: 'white',
+				bindings: [
+					// light
+					{
+						shelliesProperty: 'switch0',
+						channelIdentifier: 'light_0',
+						propertyIdentifier: 'state',
+						category: PropertyCategory.ON,
+						data_type: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_WRITE],
+					},
+					{
+						shelliesProperty: 'brightness0',
+						channelIdentifier: 'light_0',
+						propertyIdentifier: 'brightness',
+						category: PropertyCategory.BRIGHTNESS,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [0, 100],
+					},
+					// power meter
+					{
+						shelliesProperty: 'power0',
+						channelIdentifier: 'power_0',
+						propertyIdentifier: 'power',
+						category: PropertyCategory.POWER,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'W',
+					},
+					// energy meter
+					{
+						shelliesProperty: 'energyCounter0',
+						channelIdentifier: 'energy_0',
+						propertyIdentifier: 'energy',
+						category: PropertyCategory.CONSUMPTION,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'Wh',
+					},
+					// light
+					{
+						shelliesProperty: 'switch1',
+						channelIdentifier: 'light_1',
+						propertyIdentifier: 'state',
+						category: PropertyCategory.ON,
+						data_type: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_WRITE],
+					},
+					{
+						shelliesProperty: 'brightness1',
+						channelIdentifier: 'light_1',
+						propertyIdentifier: 'brightness',
+						category: PropertyCategory.BRIGHTNESS,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [1, 111],
+					},
+					// power meter
+					{
+						shelliesProperty: 'power1',
+						channelIdentifier: 'power_1',
+						propertyIdentifier: 'power',
+						category: PropertyCategory.POWER,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'W',
+					},
+					// energy meter
+					{
+						shelliesProperty: 'energyCounter1',
+						channelIdentifier: 'energy_1',
+						propertyIdentifier: 'energy',
+						category: PropertyCategory.CONSUMPTION,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'Wh',
+					},
+					// light
+					{
+						shelliesProperty: 'switch2',
+						channelIdentifier: 'light_2',
+						propertyIdentifier: 'state',
+						category: PropertyCategory.ON,
+						data_type: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_WRITE],
+					},
+					{
+						shelliesProperty: 'brightness2',
+						channelIdentifier: 'light_2',
+						propertyIdentifier: 'brightness',
+						category: PropertyCategory.BRIGHTNESS,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [2, 122],
+					},
+					// power meter
+					{
+						shelliesProperty: 'power2',
+						channelIdentifier: 'power_2',
+						propertyIdentifier: 'power',
+						category: PropertyCategory.POWER,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'W',
+					},
+					// energy meter
+					{
+						shelliesProperty: 'energyCounter2',
+						channelIdentifier: 'energy_2',
+						propertyIdentifier: 'energy',
+						category: PropertyCategory.CONSUMPTION,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'Wh',
+					},
+					// light
+					{
+						shelliesProperty: 'switch3',
+						channelIdentifier: 'light_3',
+						propertyIdentifier: 'state',
+						category: PropertyCategory.ON,
+						data_type: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_WRITE],
+					},
+					{
+						shelliesProperty: 'brightness3',
+						channelIdentifier: 'light_3',
+						propertyIdentifier: 'brightness',
+						category: PropertyCategory.BRIGHTNESS,
+						data_type: DataTypeType.UINT,
+						permissions: [PermissionType.READ_WRITE],
+						format: [3, 133],
+					},
+					// power meter
+					{
+						shelliesProperty: 'power3',
+						channelIdentifier: 'power_3',
+						propertyIdentifier: 'power',
+						category: PropertyCategory.POWER,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'W',
+					},
+					// energy meter
+					{
+						shelliesProperty: 'energyCounter3',
+						channelIdentifier: 'energy_3',
+						propertyIdentifier: 'energy',
+						category: PropertyCategory.CONSUMPTION,
+						data_type: DataTypeType.FLOAT,
+						permissions: [PermissionType.READ_ONLY],
+						unit: 'Wh',
+					},
+					// input
+					{
+						shelliesProperty: 'input0',
+						channelIdentifier: 'input_0',
+						propertyIdentifier: 'state',
+						category: PropertyCategory.DETECTED,
+						data_type: DataTypeType.BOOL,
+						permissions: [PermissionType.READ_ONLY],
+					},
+				],
+			},
 		],
-		categories: [DeviceCategory.LIGHTING],
 	},
 };

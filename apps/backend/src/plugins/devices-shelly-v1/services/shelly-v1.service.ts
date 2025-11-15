@@ -113,7 +113,7 @@ export class ShellyV1Service {
 
 			this.state = 'starting';
 
-			this.logger.log('Starting Shelly V1 plugin service');
+			this.logger.log('[SHELLY V1][SERVICE] Starting Shelly V1 plugin service');
 
 			try {
 				// Initialize all devices to UNKNOWN connection state
@@ -122,11 +122,14 @@ export class ShellyV1Service {
 				// Start the shellies adapter for device discovery
 				this.shelliesAdapter.start();
 
-				this.logger.log('Shelly V1 plugin service started successfully');
+				this.logger.log('[SHELLY V1][SERVICE] Shelly V1 plugin service started successfully');
 
 				this.state = 'started';
 			} catch (error) {
-				this.logger.error('Failed to start Shelly V1 plugin service', error);
+				this.logger.error('[SHELLY V1][SERVICE] Failed to start Shelly V1 plugin service', {
+					message: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+				});
 
 				this.state = 'stopped';
 
@@ -157,17 +160,20 @@ export class ShellyV1Service {
 
 			this.state = 'stopping';
 
-			this.logger.log('Stopping Shelly V1 plugin service');
+			this.logger.log('[SHELLY V1][SERVICE] Stopping Shelly V1 plugin service');
 
 			try {
 				// Stop the shellies adapter
 				this.shelliesAdapter.stop();
 
-				this.logger.log('Shelly V1 plugin service stopped');
+				this.logger.log('[SHELLY V1][SERVICE] Shelly V1 plugin service stopped');
 
 				this.state = 'stopped';
 			} catch (error) {
-				this.logger.error('Failed to stop Shelly V1 plugin service', error);
+				this.logger.error('[SHELLY V1][SERVICE] Failed to stop Shelly V1 plugin service', {
+					message: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+				});
 
 				this.state = 'stopped';
 
@@ -181,15 +187,19 @@ export class ShellyV1Service {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_DISCOVERED)
 	async handleDeviceDiscovered(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.log(`Device discovered: ${event.id} (${event.type}) at ${event.host}`);
+		this.logger.log(`[SHELLY V1][SERVICE] Device discovered: ${event.id} (${event.type}) at ${event.host}`);
 
 		try {
 			// Map and create the device with its channels and properties
 			const device = await this.deviceMapper.mapDevice(event);
 
-			this.logger.log(`Device mapped successfully: ${device.identifier} (${device.id})`);
+			this.logger.log(`[SHELLY V1][SERVICE] Device mapped successfully: ${device.identifier} (${device.id})`);
 		} catch (error) {
-			this.logger.error(`Failed to map device ${event.id}:`, error);
+			console.error(error);
+			this.logger.error(`[SHELLY V1][SERVICE] Failed to map device ${event.id}:`, {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 		}
 	}
 
@@ -198,15 +208,21 @@ export class ShellyV1Service {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_CHANGED)
 	async handleDeviceChanged(event: NormalizedDeviceChangeEvent): Promise<void> {
-		this.logger.debug(`Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`);
+		this.logger.debug(
+			`[SHELLY V1][SERVICE] Device ${event.id} property changed: ${event.property} = ${JSON.stringify(event.newValue)}`,
+		);
 
 		try {
 			// Find the device
-			const device = await this.devicesService.findOne<ShellyV1DeviceEntity>(event.id, DEVICES_SHELLY_V1_TYPE);
+			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
+				'identifier',
+				event.id,
+				DEVICES_SHELLY_V1_TYPE,
+			);
 
 			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping property update`);
-
+				this.logger.debug(`[SHELLY V1][SERVICE] Device not found in database: ${event.id}, skipping property update`);
+				console.log('RET1');
 				return;
 			}
 
@@ -214,15 +230,16 @@ export class ShellyV1Service {
 			const { channelIdentifier, propertyIdentifier } = this.parsePropertyPath(event.property);
 
 			if (!channelIdentifier || !propertyIdentifier) {
-				this.logger.debug(`Unable to parse property path: ${event.property}, skipping`);
-
+				this.logger.debug(`[SHELLY V1][SERVICE] Unable to parse property path: ${event.property}, skipping`);
+				console.log('RET2');
 				return;
 			}
 
 			// Find the channel
-			const channel = await this.channelsService.findOne<ShellyV1ChannelEntity>(
-				device.id,
+			const channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
+				'identifier',
 				channelIdentifier,
+				device.id,
 				DEVICES_SHELLY_V1_TYPE,
 			);
 
@@ -230,14 +247,15 @@ export class ShellyV1Service {
 				this.logger.debug(
 					`Channel not found: ${channelIdentifier} for device ${device.identifier}, skipping property update`,
 				);
-
+				console.log('RET3');
 				return;
 			}
 
 			// Find the property
-			const property = await this.channelsPropertiesService.findOne<ShellyV1ChannelPropertyEntity>(
-				channel.id,
+			const property = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+				'identifier',
 				propertyIdentifier,
+				channel.id,
 				DEVICES_SHELLY_V1_TYPE,
 			);
 
@@ -245,7 +263,7 @@ export class ShellyV1Service {
 				this.logger.debug(
 					`Property not found: ${propertyIdentifier} for channel ${channel.identifier}, skipping property update`,
 				);
-
+				console.log('RET4');
 				return;
 			}
 
@@ -259,10 +277,13 @@ export class ShellyV1Service {
 			);
 
 			this.logger.debug(
-				`Updated property ${property.identifier} for channel ${channel.identifier} to ${JSON.stringify(event.newValue)}`,
+				`[SHELLY V1][SERVICE] Updated property ${property.identifier} for channel ${channel.identifier} to ${JSON.stringify(event.newValue)}`,
 			);
 		} catch (error) {
-			this.logger.error(`Failed to update property for device ${event.id}:`, error);
+			this.logger.error(`[SHELLY V1][SERVICE] Failed to update property for device ${event.id}:`, {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 		}
 	}
 
@@ -271,14 +292,20 @@ export class ShellyV1Service {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_OFFLINE)
 	async handleDeviceOffline(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.debug(`Device went offline: ${event.id}`);
+		this.logger.debug(`[SHELLY V1][SERVICE] Device went offline: ${event.id}`);
 
 		try {
 			// Find the device
-			const device = await this.devicesService.findOne<ShellyV1DeviceEntity>(event.id, DEVICES_SHELLY_V1_TYPE);
+			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
+				'identifier',
+				event.id,
+				DEVICES_SHELLY_V1_TYPE,
+			);
 
 			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping offline state update`);
+				this.logger.debug(
+					`[SHELLY V1][SERVICE] Device not found in database: ${event.id}, skipping offline state update`,
+				);
 
 				return;
 			}
@@ -288,9 +315,12 @@ export class ShellyV1Service {
 				state: ConnectionState.DISCONNECTED,
 			});
 
-			this.logger.debug(`Device ${device.identifier} marked as offline`);
+			this.logger.debug(`[SHELLY V1][SERVICE] Device ${device.identifier} marked as offline`);
 		} catch (error) {
-			this.logger.error(`Failed to mark device ${event.id} as offline:`, error);
+			this.logger.error(`[SHELLY V1][SERVICE] Failed to mark device ${event.id} as offline:`, {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 		}
 	}
 
@@ -299,14 +329,20 @@ export class ShellyV1Service {
 	 */
 	@OnEvent(ShelliesAdapterEventType.DEVICE_ONLINE)
 	async handleDeviceOnline(event: NormalizedDeviceEvent): Promise<void> {
-		this.logger.debug(`Device came online: ${event.id}`);
+		this.logger.debug(`[SHELLY V1][SERVICE] Device came online: ${event.id}`);
 
 		try {
 			// Find the device
-			const device = await this.devicesService.findOne<ShellyV1DeviceEntity>(event.id, DEVICES_SHELLY_V1_TYPE);
+			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
+				'identifier',
+				event.id,
+				DEVICES_SHELLY_V1_TYPE,
+			);
 
 			if (!device) {
-				this.logger.debug(`Device not found in database: ${event.id}, skipping online state update`);
+				this.logger.debug(
+					`[SHELLY V1][SERVICE] Device not found in database: ${event.id}, skipping online state update`,
+				);
 
 				return;
 			}
@@ -316,9 +352,12 @@ export class ShellyV1Service {
 				state: ConnectionState.CONNECTED,
 			});
 
-			this.logger.debug(`Device ${device.identifier} marked as online`);
+			this.logger.debug(`[SHELLY V1][SERVICE] Device ${device.identifier} marked as online`);
 		} catch (error) {
-			this.logger.error(`Failed to mark device ${event.id} as online:`, error);
+			this.logger.error(`[SHELLY V1][SERVICE] Failed to mark device ${event.id} as online:`, {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 		}
 	}
 
@@ -349,12 +388,15 @@ export class ShellyV1Service {
 	 */
 	@OnEvent(ShelliesAdapterEventType.ERROR)
 	handleAdapterError(error: Error): void {
-		this.logger.error('Shellies adapter error', error);
+		this.logger.error('[SHELLY V1][SERVICE] Shellies adapter error', {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
 	}
 
 	@OnEvent(`${ConfigModuleEventType.CONFIG_UPDATED}.${DEVICES_SHELLY_V1_PLUGIN_NAME}`)
 	async handleConfigUpdated(): Promise<void> {
-		this.logger.log('Config updated, restarting service');
+		this.logger.log('[SHELLY V1][SERVICE] Config updated, restarting service');
 
 		await this.restart();
 	}
@@ -408,7 +450,7 @@ export class ShellyV1Service {
 		try {
 			const devices = await this.devicesService.findAll<ShellyV1DeviceEntity>(DEVICES_SHELLY_V1_TYPE);
 
-			this.logger.log(`Initializing connection state for ${devices.length} Shelly V1 devices`);
+			this.logger.log(`[SHELLY V1][SERVICE] Initializing connection state for ${devices.length} Shelly V1 devices`);
 
 			for (const device of devices) {
 				await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -416,7 +458,10 @@ export class ShellyV1Service {
 				});
 			}
 		} catch (error) {
-			this.logger.error('Failed to initialize device states', error);
+			this.logger.error('[SHELLY V1][SERVICE] Failed to initialize device states', {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
 		}
 	}
 }

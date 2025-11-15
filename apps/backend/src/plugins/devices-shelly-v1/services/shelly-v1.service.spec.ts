@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
@@ -8,6 +9,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+import { DevicesShellyV1NotSupportedException } from '../devices-shelly-v1.exceptions';
 import {
 	ShellyV1ChannelEntity,
 	ShellyV1ChannelPropertyEntity,
@@ -20,11 +22,13 @@ import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1Service } from './shelly-v1.service';
 
 describe('ShellyV1Service', () => {
+	let module: TestingModule;
 	let service: ShellyV1Service;
 	let devicesService: jest.Mocked<DevicesService>;
 	let channelsService: jest.Mocked<ChannelsService>;
 	let channelsPropertiesService: jest.Mocked<ChannelsPropertiesService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
+	let deviceMapper: jest.Mocked<DeviceMapperService>;
 
 	const mockDevice = {
 		id: 'device-uuid',
@@ -52,7 +56,7 @@ describe('ShellyV1Service', () => {
 	} as ShellyV1ChannelPropertyEntity;
 
 	beforeEach(async () => {
-		const module: TestingModule = await Test.createTestingModule({
+		module = await Test.createTestingModule({
 			providers: [
 				ShellyV1Service,
 				{
@@ -114,6 +118,7 @@ describe('ShellyV1Service', () => {
 		channelsService = module.get(ChannelsService) as jest.Mocked<ChannelsService>;
 		channelsPropertiesService = module.get(ChannelsPropertiesService) as jest.Mocked<ChannelsPropertiesService>;
 		deviceConnectivityService = module.get(DeviceConnectivityService) as jest.Mocked<DeviceConnectivityService>;
+		deviceMapper = module.get(DeviceMapperService) as jest.Mocked<DeviceMapperService>;
 	});
 
 	afterEach(() => {
@@ -410,6 +415,70 @@ describe('ShellyV1Service', () => {
 			await (service as any).initializeDeviceStates();
 
 			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Exception handling', () => {
+		it('should handle DevicesShellyV1NotSupportedException when device type is not supported', async () => {
+			const discoveryEvent: NormalizedDeviceEvent = {
+				id: 'unsupported-device',
+				type: 'UNSUPPORTED_TYPE',
+				host: '192.168.1.100',
+				online: true,
+				device: {} as any,
+			};
+
+			deviceMapper.mapDevice.mockRejectedValue(
+				new DevicesShellyV1NotSupportedException('Unsupported device type: UNSUPPORTED_TYPE'),
+			);
+
+			await expect(service.handleDeviceDiscovered(discoveryEvent)).resolves.not.toThrow();
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
+		});
+	});
+
+	describe('Logging prefixes', () => {
+		it('should use [SHELLY V1][SERVICE] prefix in log messages', async () => {
+			const loggerSpy = jest.spyOn(Logger.prototype, 'log');
+			const discoveryEvent: NormalizedDeviceEvent = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				host: '192.168.1.100',
+				online: true,
+				device: {} as any,
+			};
+
+			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
+
+			await service.handleDeviceDiscovered(discoveryEvent);
+
+			expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('[SHELLY V1][SERVICE]'));
+			loggerSpy.mockRestore();
+		});
+
+		it('should use [SHELLY V1][SERVICE] prefix in error messages with metadata', async () => {
+			const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error');
+			const discoveryEvent: NormalizedDeviceEvent = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				host: '192.168.1.100',
+				online: true,
+				device: {} as any,
+			};
+
+			const testError = new Error('Test error');
+			deviceMapper.mapDevice.mockRejectedValue(testError);
+
+			await service.handleDeviceDiscovered(discoveryEvent);
+
+			expect(loggerErrorSpy).toHaveBeenCalledWith(
+				expect.stringContaining('[SHELLY V1][SERVICE]'),
+				expect.objectContaining({
+					message: 'Test error',
+					stack: expect.any(String),
+				}),
+			);
+			loggerErrorSpy.mockRestore();
 		});
 	});
 });

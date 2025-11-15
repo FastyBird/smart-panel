@@ -11,6 +11,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ComponentSpec, ComponentType, DESCRIPTORS, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+import { DevicesShellyV1NotSupportedException } from '../devices-shelly-v1.exceptions';
 import { CreateShellyV1ChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateShellyV1ChannelDto } from '../dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from '../dto/create-device.dto';
@@ -45,21 +46,25 @@ export class DeviceMapperService {
 	 * Map and create or update a discovered device
 	 */
 	async mapDevice(event: NormalizedDeviceEvent): Promise<ShellyV1DeviceEntity> {
-		this.logger.debug(`Mapping device: ${event.id} (${event.type})`);
+		this.logger.debug(`[SHELLY V1][MAPPER] Mapping device: ${event.id} (${event.type})`);
 
 		// Find the device descriptor for this device type
 		const descriptor = this.findDescriptor(event.type);
 
 		if (!descriptor) {
-			this.logger.warn(`No descriptor found for device type: ${event.type}`);
-			throw new Error(`Unsupported device type: ${event.type}`);
+			this.logger.warn(`[SHELLY V1][MAPPER] No descriptor found for device type: ${event.type}`);
+			throw new DevicesShellyV1NotSupportedException(`Unsupported device type: ${event.type}`);
 		}
 
 		// Create or update the device entity
-		let device = await this.devicesService.findOne<ShellyV1DeviceEntity>(event.id, DEVICES_SHELLY_V1_TYPE);
+		let device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
+			'identifier',
+			event.id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
 
 		if (!device) {
-			this.logger.log(`Creating new device: ${event.id}`);
+			this.logger.log(`[SHELLY V1][MAPPER] Creating new device: ${event.id}`);
 
 			const createDto: CreateShellyV1DeviceDto = {
 				type: DEVICES_SHELLY_V1_TYPE,
@@ -72,11 +77,11 @@ export class DeviceMapperService {
 
 			device = await this.devicesService.create<ShellyV1DeviceEntity, CreateShellyV1DeviceDto>(createDto);
 		} else {
-			this.logger.debug(`Device already exists: ${event.id}`);
+			this.logger.debug(`[SHELLY V1][MAPPER] Device already exists: ${event.id}`);
 		}
 
 		// Create channels for the device
-		await this.createChannels(device, descriptor.components);
+		//await this.createChannels(device, descriptor.components);
 
 		return device;
 	}
@@ -89,14 +94,15 @@ export class DeviceMapperService {
 			const channelIdentifier = `${component.type}_${component.id}`;
 
 			// Check if channel already exists
-			let channel = await this.channelsService.findOne<ShellyV1ChannelEntity>(
-				device.id,
+			let channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
+				'identifier',
 				channelIdentifier,
+				device.id,
 				DEVICES_SHELLY_V1_TYPE,
 			);
 
 			if (!channel) {
-				this.logger.debug(`Creating channel: ${channelIdentifier} for device ${device.identifier}`);
+				this.logger.debug(`[SHELLY V1][MAPPER] Creating channel: ${channelIdentifier} for device ${device.identifier}`);
 
 				const channelCategory = this.getChannelCategory(component.type);
 				const channelName = this.getChannelName(component.type, component.id);
@@ -124,15 +130,18 @@ export class DeviceMapperService {
 		const properties = this.getPropertiesForComponent(componentType);
 
 		for (const propDef of properties) {
-			// Check if property already exists
-			const existingProperty = await this.channelsPropertiesService.findOne<ShellyV1ChannelPropertyEntity>(
-				channel.id,
+			// Check if a property already exists
+			const existingProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+				'identifier',
 				propDef.identifier,
+				channel.id,
 				DEVICES_SHELLY_V1_TYPE,
 			);
 
 			if (!existingProperty) {
-				this.logger.debug(`Creating property: ${propDef.identifier} for channel ${channel.identifier}`);
+				this.logger.debug(
+					`[SHELLY V1][MAPPER] Creating property: ${propDef.identifier} for channel ${channel.identifier}`,
+				);
 
 				const createPropertyDto: CreateShellyV1ChannelPropertyDto = {
 					type: DEVICES_SHELLY_V1_TYPE,
@@ -336,7 +345,7 @@ export class DeviceMapperService {
 				];
 
 			default:
-				this.logger.warn(`No properties defined for component type: ${componentType}`);
+				this.logger.warn(`[SHELLY V1][MAPPER] No properties defined for component type: ${componentType}`);
 
 				return [];
 		}

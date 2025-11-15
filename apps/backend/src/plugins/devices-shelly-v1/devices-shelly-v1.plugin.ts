@@ -5,7 +5,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
-import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
@@ -43,7 +42,6 @@ import { ShellyV1Service } from './services/shelly-v1.service';
 export class DevicesShellyV1Plugin {
 	constructor(
 		private readonly configService: NestConfigService,
-		private readonly appConfigService: ConfigService,
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly shellyV1Service: ShellyV1Service,
 		private readonly devicesMapper: DevicesTypeMapperService,

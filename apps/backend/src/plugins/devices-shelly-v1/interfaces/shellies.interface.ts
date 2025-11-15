@@ -48,7 +48,6 @@ export interface NormalizedDeviceEvent {
 	type: string;
 	host: string;
 	online: boolean;
-	device: ShellyDevice; // Raw device reference for issuing commands later
 }
 
 /**
@@ -57,9 +56,8 @@ export interface NormalizedDeviceEvent {
 export interface NormalizedDeviceChangeEvent {
 	id: string;
 	property: string;
-	newValue: unknown;
-	oldValue: unknown;
-	device: ShellyDevice;
+	newValue: string | number | boolean;
+	oldValue: string | number | boolean | null;
 }
 
 /**

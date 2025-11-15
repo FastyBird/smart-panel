@@ -1,25 +1,31 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-export class ShellyV1Exception extends HttpException {
+export class DevicesShellyV1Exception extends HttpException {
 	constructor(message: string, status: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR) {
 		super(message, status);
 	}
 }
 
-export class ShellyV1DeviceNotFoundException extends ShellyV1Exception {
-	constructor(deviceId: string) {
-		super(`Shelly V1 device with ID ${deviceId} not found`, HttpStatus.NOT_FOUND);
+export class DevicesShellyV1NotSupportedException extends DevicesShellyV1Exception {
+	constructor(message: string) {
+		super(message, HttpStatus.NOT_IMPLEMENTED);
 	}
 }
 
-export class ShellyV1CommunicationException extends ShellyV1Exception {
+export class DevicesShellyV1ValidationException extends DevicesShellyV1Exception {
 	constructor(message: string) {
-		super(`Shelly V1 communication error: ${message}`, HttpStatus.SERVICE_UNAVAILABLE);
+		super(message, HttpStatus.BAD_REQUEST);
 	}
 }
 
-export class ShellyV1ConfigurationException extends ShellyV1Exception {
+export class DevicesShellyV1NotAllowedException extends DevicesShellyV1Exception {
 	constructor(message: string) {
-		super(`Shelly V1 configuration error: ${message}`, HttpStatus.BAD_REQUEST);
+		super(message, HttpStatus.FORBIDDEN);
+	}
+}
+
+export class DevicesShellyV1NotImplementedException extends DevicesShellyV1Exception {
+	constructor(message: string) {
+		super(message, HttpStatus.NOT_IMPLEMENTED);
 	}
 }
