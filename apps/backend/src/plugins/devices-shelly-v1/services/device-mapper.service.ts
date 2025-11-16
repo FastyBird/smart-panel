@@ -64,6 +64,22 @@ export class DeviceMapperService {
 			throw new DevicesShellyV1NotSupportedException(`Unsupported device type: ${event.type}`);
 		}
 
+		// Fetch device settings to get the device name
+		let deviceName = event.id; // Default to device ID
+
+		try {
+			const settings = await this.httpClient.getDeviceSettings(shellyDevice.host);
+
+			deviceName = settings.name || event.id;
+
+			this.logger.debug(`[SHELLY V1][MAPPER] Fetched device name: ${deviceName}`);
+		} catch (error) {
+			this.logger.warn(`[SHELLY V1][MAPPER] Failed to fetch device settings from ${shellyDevice.host}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+			// Continue with default name (device ID) if settings fetch fails
+		}
+
 		// Create or update the device entity
 		let device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
 			'identifier',
@@ -72,12 +88,12 @@ export class DeviceMapperService {
 		);
 
 		if (!device) {
-			this.logger.log(`[SHELLY V1][MAPPER] Creating new device: ${event.id}`);
+			this.logger.log(`[SHELLY V1][MAPPER] Creating new device: ${event.id} with name: ${deviceName}`);
 
 			const createDto: CreateShellyV1DeviceDto = {
 				type: DEVICES_SHELLY_V1_TYPE,
 				identifier: event.id,
-				name: event.id,
+				name: deviceName,
 				category: descriptor.categories[0] || DeviceCategory.GENERIC,
 				enabled: true,
 				hostname: event.host,
