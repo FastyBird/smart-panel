@@ -10,6 +10,7 @@ import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
 import { ShellyNgDevicesController } from './controllers/shelly-ng-devices.controller';
 import { DelegatesManagerService } from './delegates/delegates-manager.service';
@@ -60,6 +61,8 @@ export class DevicesShellyNgPlugin {
 		private readonly devicesMapper: DevicesTypeMapperService,
 		private readonly channelsMapper: ChannelsTypeMapperService,
 		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
+		private readonly shellyNgDevicePlatform: ShellyNgDevicePlatform,
+		private readonly platformRegistryService: PlatformRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -93,6 +96,8 @@ export class DevicesShellyNgPlugin {
 			updateDto: UpdateShellyNgChannelPropertyDto,
 			class: ShellyNgChannelPropertyEntity,
 		});
+
+		this.platformRegistryService.register(this.shellyNgDevicePlatform);
 	}
 
 	async onApplicationBootstrap() {
