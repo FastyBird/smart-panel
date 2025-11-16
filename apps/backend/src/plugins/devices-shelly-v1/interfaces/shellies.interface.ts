@@ -19,6 +19,7 @@ export interface ShellyDevice extends EventEmitter {
 	setRelay?(index: number, value: boolean): Promise<void>;
 	setLight?(index: number, value: any): Promise<void>;
 	setRoller?(index: number, command: string, position?: number): Promise<void>;
+	setAuthCredentials?(username: string, password: string): void;
 }
 
 export interface ShelliesLibrary extends EventEmitter {

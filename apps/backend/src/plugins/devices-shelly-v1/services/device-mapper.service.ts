@@ -17,6 +17,7 @@ import {
 	DESCRIPTORS,
 	DEVICES_SHELLY_V1_TYPE,
 	PropertyBinding,
+	SHELLY_AUTH_USERNAME,
 	SHELLY_V1_CHANNEL_IDENTIFIERS,
 	SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS,
 } from '../devices-shelly-v1.constants';
@@ -127,6 +128,13 @@ export class DeviceMapperService {
 
 			// Update registry to ensure device is marked as enabled
 			this.shelliesAdapter.updateDeviceEnabledStatus(event.id, true);
+
+			// Set auth credentials if password is configured
+			if (device.password) {
+				this.logger.debug(`[SHELLY V1][MAPPER] Setting auth credentials for device ${event.id}`);
+
+				this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, SHELLY_AUTH_USERNAME, device.password);
+			}
 
 			// Update hostname if it changed (device might have a new IP address)
 			if (device.hostname !== event.host) {

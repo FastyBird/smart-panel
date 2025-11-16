@@ -14,6 +14,11 @@ export const DEVICES_SHELLY_V1_PLUGIN_NAME = 'devices-shelly-v1';
 export const DEVICES_SHELLY_V1_TYPE = 'devices-shelly-v1';
 
 /**
+ * Authentication constants
+ */
+export const SHELLY_AUTH_USERNAME = 'admin';
+
+/**
  * Channel identifiers
  */
 export const SHELLY_V1_CHANNEL_IDENTIFIERS = {

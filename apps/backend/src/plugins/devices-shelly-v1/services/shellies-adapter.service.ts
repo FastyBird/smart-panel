@@ -156,6 +156,21 @@ export class ShelliesAdapterService {
 	}
 
 	/**
+	 * Set authentication credentials for a device
+	 */
+	setDeviceAuthCredentials(deviceType: string, deviceId: string, username: string, password: string): void {
+		const device = this.getDevice(deviceType, deviceId);
+
+		if (device && device.setAuthCredentials) {
+			device.setAuthCredentials(username, password);
+
+			this.logger.debug(`[SHELLY V1][ADAPTER] Set auth credentials for ${deviceId} (username: ${username})`);
+		} else if (!device) {
+			this.logger.warn(`[SHELLY V1][ADAPTER] Cannot set auth credentials - device not found: ${deviceId}`);
+		}
+	}
+
+	/**
 	 * Handle device discovered event from a shellies library
 	 */
 	private handleDeviceDiscovered(device: ShellyDevice): void {
