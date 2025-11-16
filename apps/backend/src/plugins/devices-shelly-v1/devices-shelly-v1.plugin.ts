@@ -10,6 +10,7 @@ import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
 import { DEVICES_SHELLY_V1_PLUGIN_NAME, DEVICES_SHELLY_V1_TYPE } from './devices-shelly-v1.constants';
 import { CreateShellyV1ChannelPropertyDto } from './dto/create-channel-property.dto';
@@ -25,6 +26,7 @@ import {
 	ShellyV1DeviceEntity,
 } from './entities/devices-shelly-v1.entity';
 import { ShellyV1ConfigModel } from './models/config.model';
+import { ShellyV1DevicePlatform } from './platforms/shelly-v1.device.platform';
 import { DeviceMapperService } from './services/device-mapper.service';
 import { ShelliesAdapterService } from './services/shellies-adapter.service';
 import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
@@ -37,7 +39,13 @@ import { ShellyV1Service } from './services/shelly-v1.service';
 		DevicesModule,
 		ConfigModule,
 	],
-	providers: [ShelliesAdapterService, DeviceMapperService, ShellyV1HttpClientService, ShellyV1Service],
+	providers: [
+		ShelliesAdapterService,
+		DeviceMapperService,
+		ShellyV1HttpClientService,
+		ShellyV1DevicePlatform,
+		ShellyV1Service,
+	],
 	controllers: [],
 })
 export class DevicesShellyV1Plugin {
@@ -48,6 +56,8 @@ export class DevicesShellyV1Plugin {
 		private readonly devicesMapper: DevicesTypeMapperService,
 		private readonly channelsMapper: ChannelsTypeMapperService,
 		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
+		private readonly shellyV1DevicePlatform: ShellyV1DevicePlatform,
+		private readonly platformRegistryService: PlatformRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -81,6 +91,8 @@ export class DevicesShellyV1Plugin {
 			updateDto: UpdateShellyV1ChannelPropertyDto,
 			class: ShellyV1ChannelPropertyEntity,
 		});
+
+		this.platformRegistryService.register(this.shellyV1DevicePlatform);
 	}
 
 	async onApplicationBootstrap() {
