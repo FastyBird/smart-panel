@@ -6,10 +6,6 @@ import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 
 export class ShellyV1DiscoveryConfigModel {
 	@Expose()
-	@IsBoolean()
-	enabled: boolean = true;
-
-	@Expose()
 	@IsOptional()
 	@IsString()
 	interface: string | null = null;
@@ -21,10 +17,10 @@ export class ShellyV1TimeoutsConfigModel {
 	@Min(1)
 	requestTimeout: number = 10; // seconds
 
-	@Expose({ name: 'status_update_interval' })
+	@Expose({ name: 'stale_timeout' })
 	@IsInt()
 	@Min(1)
-	statusUpdateInterval: number = 30; // seconds
+	staleTimeout: number = 30; // seconds
 }
 
 export class ShellyV1ConfigModel extends PluginConfigModel {

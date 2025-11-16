@@ -1,14 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
+import { ConfigService } from '../../../modules/config/services/config.service';
+import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 import {
 	NormalizedDeviceChangeEvent,
 	NormalizedDeviceEvent,
+	RegisteredDevice,
 	ShelliesAdapterEventType,
 	ShelliesLibrary,
 	ShellyDevice,
 } from '../interfaces/shellies.interface';
 import shellies from '../lib/shellies';
+import { ShellyV1ConfigModel } from '../models/config.model';
 
 @Injectable()
 export class ShelliesAdapterService {
@@ -17,7 +22,18 @@ export class ShelliesAdapterService {
 	private shellies: ShelliesLibrary | null = null;
 	private isStarted = false;
 
-	constructor(private readonly eventEmitter: EventEmitter2) {}
+	private pluginConfig: ShellyV1ConfigModel | null = null;
+
+	/**
+	 * Registry of discovered devices
+	 * Key: device ID, Value: device info (id, type, host)
+	 */
+	private readonly devicesRegistry = new Map<string, RegisteredDevice>();
+
+	constructor(
+		private readonly configService: ConfigService,
+		private readonly eventEmitter: EventEmitter2,
+	) {}
 
 	/**
 	 * Start the shellies library and begin device discovery
@@ -34,6 +50,9 @@ export class ShelliesAdapterService {
 
 			// Initialize the shellies library
 			this.shellies = shellies;
+
+			shellies.request.timeout(this.config.timeouts.requestTimeout * 1000);
+			shellies.staleTimeout = this.config.timeouts.staleTimeout * 1000;
 
 			// Register event handlers
 			const deviceDiscoveredHandler = (device: ShellyDevice): void => this.handleDeviceDiscovered(device);
@@ -80,6 +99,9 @@ export class ShelliesAdapterService {
 			// Stop discovery
 			this.shellies.stop();
 
+			// Clear devices registry
+			this.devicesRegistry.clear();
+
 			this.shellies = null;
 			this.isStarted = false;
 
@@ -106,17 +128,21 @@ export class ShelliesAdapterService {
 	}
 
 	/**
-	 * Check if the adapter is started
-	 */
-	isActive(): boolean {
-		return this.isStarted;
-	}
-
-	/**
-	 * Handle device discovered event from shellies library
+	 * Handle device discovered event from a shellies library
 	 */
 	private handleDeviceDiscovered(device: ShellyDevice): void {
 		this.logger.debug(`[SHELLY V1][ADAPTER] Device discovered: ${device.id} (${device.type})`);
+
+		// Add a device to a registry
+		this.devicesRegistry.set(device.id, {
+			id: device.id,
+			type: device.type,
+			host: device.host,
+		});
+
+		this.logger.debug(
+			`[SHELLY V1][ADAPTER] Device registered: ${device.id} (${this.devicesRegistry.size} total devices)`,
+		);
 
 		// Register device-specific event handlers
 		device.on('change', (property: string, newValue: any, oldValue: any) => {
@@ -129,6 +155,14 @@ export class ShelliesAdapterService {
 
 		device.on('online', () => {
 			this.handleDeviceOnline(device);
+		});
+
+		device.on('stale', () => {
+			this.logger.debug(`[SHELLY V1][ADAPTER] Device stale: ${device.id}`);
+		});
+
+		device.on('remove', () => {
+			this.handleDeviceRemoved(device);
 		});
 
 		// Normalize and emit the discovery event
@@ -192,5 +226,71 @@ export class ShelliesAdapterService {
 		};
 
 		this.eventEmitter.emit(ShelliesAdapterEventType.DEVICE_ONLINE, normalizedEvent);
+	}
+
+	/**
+	 * Handle device removed event
+	 */
+	private handleDeviceRemoved(device: ShellyDevice): void {
+		this.logger.debug(`[SHELLY V1][ADAPTER] Device removed: ${device.id}`);
+
+		// Remove device from registry
+		this.devicesRegistry.delete(device.id);
+
+		this.logger.debug(
+			`[SHELLY V1][ADAPTER] Device unregistered: ${device.id} (${this.devicesRegistry.size} total devices)`,
+		);
+	}
+
+	private get config(): ShellyV1ConfigModel {
+		if (!this.pluginConfig) {
+			this.pluginConfig = this.configService.getPluginConfig<ShellyV1ConfigModel>(DEVICES_SHELLY_V1_PLUGIN_NAME);
+		}
+
+		return this.pluginConfig;
+	}
+
+	/**
+	 * Periodically check device status based on the lastSeen timestamp
+	 * This is a workaround because shellies library's stale/offline events don't work properly
+	 */
+	@Cron(CronExpression.EVERY_5_SECONDS)
+	async checkDevicesStatus(): Promise<void> {
+		if (!this.isStarted || !this.shellies) {
+			return;
+		}
+
+		const now = Date.now();
+		const staleTimeout = this.config.timeouts.staleTimeout * 1000;
+
+		this.logger.debug(`[SHELLY V1][ADAPTER] Checking status of ${this.devicesRegistry.size} registered devices`);
+
+		for (const registeredDevice of this.devicesRegistry.values()) {
+			try {
+				const device = this.shellies.getDevice(registeredDevice.type, registeredDevice.id);
+				if (!device) {
+					this.logger.warn(`[SHELLY V1][ADAPTER] Device ${registeredDevice.id} not found in shellies library`);
+					continue;
+				}
+
+				// Check if a device has exceeded the stale timeout
+				if (device.lastSeen && typeof device.lastSeen === 'number') {
+					const timeSinceLastSeen = now - device.lastSeen;
+
+					if (timeSinceLastSeen > staleTimeout && device.online) {
+						this.logger.warn(
+							`[SHELLY V1][ADAPTER] Device ${device.id} is stale (${Math.round(timeSinceLastSeen / 1000)}s since last seen, threshold: ${this.config.timeouts.staleTimeout}s), marking as offline`,
+						);
+
+						// Manually trigger offline event since shellies library events don't work properly
+						this.handleDeviceOffline(device);
+					}
+				}
+			} catch (error) {
+				this.logger.error(`[SHELLY V1][ADAPTER] Error checking device status for ${registeredDevice.id}`, {
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
 	}
 }

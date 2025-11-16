@@ -10,6 +10,7 @@ export interface ShellyDevice extends EventEmitter {
 	type: string;
 	host: string;
 	online: boolean;
+	lastSeen?: number; // Timestamp of last communication
 
 	// Device properties (varies by device type)
 	[key: string]: any;
@@ -30,10 +31,25 @@ export interface ShelliesLibrary extends EventEmitter {
 	// Get device by ID
 	getDevice(type: string, id: string): ShellyDevice | undefined;
 
+	staleTimeout: number;
+
+	request: {
+		timeout: (timeout: number) => void;
+	};
+
 	// Events emitted:
 	// - 'discover' (device: ShellyDevice)
 	// - 'add' (device: ShellyDevice) - synonym for discover in Gen 1
 	// - 'remove' (device: ShellyDevice)
+}
+
+/**
+ * Registered device in the adapter registry
+ */
+export interface RegisteredDevice {
+	id: string;
+	type: string;
+	host: string;
 }
 
 /**

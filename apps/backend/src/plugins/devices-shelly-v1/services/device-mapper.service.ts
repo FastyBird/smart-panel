@@ -83,7 +83,7 @@ export class DeviceMapperService {
 			this.logger.warn(`[SHELLY V1][MAPPER] Failed to fetch device settings from ${shellyDevice.host}`, {
 				message: error instanceof Error ? error.message : String(error),
 			});
-			// Continue with default name (device ID) if settings fetch fails
+			// Continue with the default name (device ID) if settings fetch fails
 		}
 
 		// Create or update the device entity

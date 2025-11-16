@@ -7,11 +7,6 @@ import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 export class ShellyV1UpdatePluginConfigDiscoveryDto {
 	@Expose()
 	@IsOptional()
-	@IsBoolean({ message: '[{"field":"enabled","reason":"Discovery enabled attribute must be a boolean."}]' })
-	enabled?: boolean;
-
-	@Expose()
-	@IsOptional()
 	@IsString({ message: '[{"field":"interface","reason":"Discovery interface must be a valid string."}]' })
 	interface?: string | null;
 }
@@ -28,13 +23,12 @@ export class ShellyV1UpdatePluginConfigTimeoutsDto {
 	@Expose()
 	@IsOptional()
 	@IsInt({
-		message: '[{"field":"status_update_interval","reason":"Status update interval must be a whole number."}]',
+		message: '[{"field":"stale_timeout","reason":"Stale timeout interval must be a whole number."}]',
 	})
 	@Min(1, {
-		message:
-			'[{"field":"status_update_interval","reason":"Status update interval minimum value must be greater than 0."}]',
+		message: '[{"field":"stale_timeout","reason":"Stale timeout interval minimum value must be greater than 0."}]',
 	})
-	status_update_interval?: number;
+	stale_timeout?: number;
 }
 
 export class ShellyV1UpdatePluginConfigDto extends UpdatePluginConfigDto {
