@@ -29,18 +29,25 @@ describe('ShellyV1Service', () => {
 	let channelsPropertiesService: jest.Mocked<ChannelsPropertiesService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
 	let deviceMapper: jest.Mocked<DeviceMapperService>;
+	let shelliesAdapter: jest.Mocked<ShelliesAdapterService>;
 
 	const mockDevice = {
 		id: 'device-uuid',
 		identifier: 'shelly1pm-ABC123',
-		get type() {
-			return DEVICES_SHELLY_V1_TYPE;
-		},
-	} as ShellyV1DeviceEntity;
+		type: 'SHSW-PM', // Device model type
+	} as unknown as ShellyV1DeviceEntity;
 
 	const mockChannel = {
 		id: 'channel-uuid',
 		identifier: 'relay_0',
+		get type() {
+			return DEVICES_SHELLY_V1_TYPE;
+		},
+	} as ShellyV1ChannelEntity;
+
+	const mockDeviceInfoChannel = {
+		id: 'device-info-channel-uuid',
+		identifier: 'device_information',
 		get type() {
 			return DEVICES_SHELLY_V1_TYPE;
 		},
@@ -53,6 +60,15 @@ describe('ShellyV1Service', () => {
 			return DEVICES_SHELLY_V1_TYPE;
 		},
 		value: false,
+	} as ShellyV1ChannelPropertyEntity;
+
+	const mockModelProperty = {
+		id: 'model-property-uuid',
+		identifier: 'model',
+		get type() {
+			return DEVICES_SHELLY_V1_TYPE;
+		},
+		value: 'SHSW-PM',
 	} as ShellyV1ChannelPropertyEntity;
 
 	beforeEach(async () => {
@@ -70,6 +86,7 @@ describe('ShellyV1Service', () => {
 					useValue: {
 						start: jest.fn(),
 						stop: jest.fn(),
+				getDevice: jest.fn(),
 					},
 				},
 				{
@@ -81,20 +98,20 @@ describe('ShellyV1Service', () => {
 				{
 					provide: DevicesService,
 					useValue: {
-						findOne: jest.fn(),
+						findOneBy: jest.fn(),
 						findAll: jest.fn(),
 					},
 				},
 				{
 					provide: ChannelsService,
 					useValue: {
-						findOne: jest.fn(),
+						findOneBy: jest.fn(),
 					},
 				},
 				{
 					provide: ChannelsPropertiesService,
 					useValue: {
-						findOne: jest.fn(),
+						findOneBy: jest.fn(),
 						update: jest.fn(),
 					},
 				},
@@ -119,6 +136,7 @@ describe('ShellyV1Service', () => {
 		channelsPropertiesService = module.get(ChannelsPropertiesService) as jest.Mocked<ChannelsPropertiesService>;
 		deviceConnectivityService = module.get(DeviceConnectivityService) as jest.Mocked<DeviceConnectivityService>;
 		deviceMapper = module.get(DeviceMapperService) as jest.Mocked<DeviceMapperService>;
+		shelliesAdapter = module.get(ShelliesAdapterService) as jest.Mocked<ShelliesAdapterService>;
 	});
 
 	afterEach(() => {
@@ -129,15 +147,18 @@ describe('ShellyV1Service', () => {
 		it('should update property value when device, channel, and property are found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
-				property: 'relay_0.state',
+				property: 'relay0',
 				newValue: true,
 				oldValue: false,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
-			channelsService.findOne.mockResolvedValue(mockChannel);
-			channelsPropertiesService.findOne.mockResolvedValue(mockProperty);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy
+				.mockResolvedValueOnce(mockDeviceInfoChannel) // First call for device_information
+				.mockResolvedValueOnce(mockChannel); // Second call for relay_0
+			channelsPropertiesService.findOneBy
+				.mockResolvedValueOnce(mockModelProperty) // First call for model property
+				.mockResolvedValueOnce(mockProperty); // Second call for state property
 			channelsPropertiesService.update.mockResolvedValue({
 				...mockProperty,
 				value: true,
@@ -148,99 +169,106 @@ describe('ShellyV1Service', () => {
 
 			await service.handleDeviceChanged(changeEvent);
 
-			expect(devicesService.findOne).toHaveBeenCalledWith('shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsService.findOne).toHaveBeenCalledWith('device-uuid', 'relay_0', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsPropertiesService.findOne).toHaveBeenCalledWith('channel-uuid', 'state', DEVICES_SHELLY_V1_TYPE);
+			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
+			expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'device_information', 'device-uuid', DEVICES_SHELLY_V1_TYPE);
+			expect(channelsPropertiesService.findOneBy).toHaveBeenCalledWith('identifier', 'model', 'device-info-channel-uuid', DEVICES_SHELLY_V1_TYPE);
+			expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'relay_0', 'device-uuid', DEVICES_SHELLY_V1_TYPE);
+			expect(channelsPropertiesService.findOneBy).toHaveBeenCalledWith('identifier', 'state', 'channel-uuid', DEVICES_SHELLY_V1_TYPE);
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith('property-uuid', expect.objectContaining({ value: true }));
 		});
 
 		it('should skip update if device is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'unknown-device',
-				property: 'relay_0.state',
+				property: 'relay0',
 				newValue: true,
 				oldValue: false,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(null);
+			devicesService.findOneBy.mockResolvedValue(null);
 
 			await service.handleDeviceChanged(changeEvent);
 
-			expect(devicesService.findOne).toHaveBeenCalledWith('unknown-device', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsService.findOne).not.toHaveBeenCalled();
+			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'unknown-device', DEVICES_SHELLY_V1_TYPE);
+			expect(channelsService.findOneBy).not.toHaveBeenCalled();
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 
 		it('should skip update if channel is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
-				property: 'unknown_channel.state',
+				property: 'relay0',
 				newValue: true,
 				oldValue: false,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
-			channelsService.findOne.mockResolvedValue(null);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy
+				.mockResolvedValueOnce(mockDeviceInfoChannel) // First call for device_information
+				.mockResolvedValueOnce(null); // Second call for relay_0 - not found
+			channelsPropertiesService.findOneBy.mockResolvedValue(mockModelProperty); // For model property
 
 			await service.handleDeviceChanged(changeEvent);
 
-			expect(channelsService.findOne).toHaveBeenCalledWith('device-uuid', 'unknown_channel', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsPropertiesService.findOne).not.toHaveBeenCalled();
+			expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'relay_0', 'device-uuid', DEVICES_SHELLY_V1_TYPE);
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 
 		it('should skip update if property is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
-				property: 'relay_0.unknown_property',
+				property: 'power0',
 				newValue: 100,
 				oldValue: 0,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
-			channelsService.findOne.mockResolvedValue(mockChannel);
-			channelsPropertiesService.findOne.mockResolvedValue(null);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy
+				.mockResolvedValueOnce(mockDeviceInfoChannel) // First call for device_information
+				.mockResolvedValueOnce(mockChannel); // Second call for channel
+			channelsPropertiesService.findOneBy
+				.mockResolvedValueOnce(mockModelProperty) // First call for model property
+				.mockResolvedValueOnce(null); // Second call for power property - not found
 
 			await service.handleDeviceChanged(changeEvent);
 
-			expect(channelsPropertiesService.findOne).toHaveBeenCalledWith(
+			expect(channelsPropertiesService.findOneBy).toHaveBeenCalledWith(
+				'identifier',
+				'power',
 				'channel-uuid',
-				'unknown_property',
 				DEVICES_SHELLY_V1_TYPE,
 			);
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 
-		it('should skip update if property path cannot be parsed', async () => {
+		it('should skip update if binding is not found', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
-				property: 'invalid-path',
+				property: 'unknownProperty',
 				newValue: true,
 				oldValue: false,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy.mockResolvedValue(mockDeviceInfoChannel); // For device_information
+			channelsPropertiesService.findOneBy.mockResolvedValue(mockModelProperty); // For model property
 
 			await service.handleDeviceChanged(changeEvent);
 
-			expect(channelsService.findOne).not.toHaveBeenCalled();
+			// Should call to get device_information and model, but not the actual channel
+			expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'device_information', 'device-uuid', DEVICES_SHELLY_V1_TYPE);
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 
 		it('should handle errors gracefully', async () => {
 			const changeEvent: NormalizedDeviceChangeEvent = {
 				id: 'shelly1pm-ABC123',
-				property: 'relay_0.state',
+				property: 'relay0',
 				newValue: true,
 				oldValue: false,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockRejectedValue(new Error('Database error'));
+			devicesService.findOneBy.mockRejectedValue(new Error('Database error'));
 
 			await expect(service.handleDeviceChanged(changeEvent)).resolves.not.toThrow();
 		});
@@ -253,14 +281,13 @@ describe('ShellyV1Service', () => {
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
 				online: false,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
 
 			await service.handleDeviceOffline(offlineEvent);
 
-			expect(devicesService.findOne).toHaveBeenCalledWith('shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
+			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-uuid', {
 				state: ConnectionState.DISCONNECTED,
 			});
@@ -272,10 +299,9 @@ describe('ShellyV1Service', () => {
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
 				online: false,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(null);
+			devicesService.findOneBy.mockResolvedValue(null);
 
 			await service.handleDeviceOffline(offlineEvent);
 
@@ -288,10 +314,9 @@ describe('ShellyV1Service', () => {
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
 				online: false,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockRejectedValue(new Error('Database error'));
+			devicesService.findOneBy.mockRejectedValue(new Error('Database error'));
 
 			await expect(service.handleDeviceOffline(offlineEvent)).resolves.not.toThrow();
 		});
@@ -304,14 +329,13 @@ describe('ShellyV1Service', () => {
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
 				online: true,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(mockDevice);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
 
 			await service.handleDeviceOnline(onlineEvent);
 
-			expect(devicesService.findOne).toHaveBeenCalledWith('shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
+			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
 			expect(deviceConnectivityService.setConnectionState).toHaveBeenCalledWith('device-uuid', {
 				state: ConnectionState.CONNECTED,
 			});
@@ -323,10 +347,9 @@ describe('ShellyV1Service', () => {
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
 				online: true,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockResolvedValue(null);
+			devicesService.findOneBy.mockResolvedValue(null);
 
 			await service.handleDeviceOnline(onlineEvent);
 
@@ -339,43 +362,14 @@ describe('ShellyV1Service', () => {
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
 				online: true,
-				device: {} as any,
 			};
 
-			devicesService.findOne.mockRejectedValue(new Error('Database error'));
+			devicesService.findOneBy.mockRejectedValue(new Error('Database error'));
 
 			await expect(service.handleDeviceOnline(onlineEvent)).resolves.not.toThrow();
 		});
 	});
 
-	describe('parsePropertyPath', () => {
-		it('should parse valid property paths correctly', () => {
-			const testCases = [
-				{ input: 'relay_0.state', expected: { channelIdentifier: 'relay_0', propertyIdentifier: 'state' } },
-				{
-					input: 'light_0.brightness',
-					expected: { channelIdentifier: 'light_0', propertyIdentifier: 'brightness' },
-				},
-				{ input: 'roller_0.position', expected: { channelIdentifier: 'roller_0', propertyIdentifier: 'position' } },
-			];
-
-			for (const testCase of testCases) {
-				const result = (service as any).parsePropertyPath(testCase.input);
-
-				expect(result).toEqual(testCase.expected);
-			}
-		});
-
-		it('should return null for invalid property paths', () => {
-			const invalidPaths = ['invalid', 'relay_0', 'relay_0.state.extra', ''];
-
-			for (const path of invalidPaths) {
-				const result = (service as any).parsePropertyPath(path);
-
-				expect(result).toEqual({ channelIdentifier: null, propertyIdentifier: null });
-			}
-		});
-	});
 
 	describe('initializeDeviceStates', () => {
 		it('should set all devices to UNKNOWN state', async () => {
@@ -425,7 +419,6 @@ describe('ShellyV1Service', () => {
 				type: 'UNSUPPORTED_TYPE',
 				host: '192.168.1.100',
 				online: true,
-				device: {} as any,
 			};
 
 			deviceMapper.mapDevice.mockRejectedValue(
@@ -445,7 +438,6 @@ describe('ShellyV1Service', () => {
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
 				online: true,
-				device: {} as any,
 			};
 
 			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
@@ -463,7 +455,6 @@ describe('ShellyV1Service', () => {
 				type: 'SHSW-PM',
 				host: '192.168.1.100',
 				online: true,
-				device: {} as any,
 			};
 
 			const testError = new Error('Test error');

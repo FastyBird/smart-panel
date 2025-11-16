@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { toInstance } from '../../../common/utils/transform.utils';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	PermissionType,
@@ -10,27 +12,20 @@ import {
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { ComponentSpec, ComponentType, DESCRIPTORS, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+import { DESCRIPTORS, DEVICES_SHELLY_V1_TYPE, PropertyBinding } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1NotSupportedException } from '../devices-shelly-v1.exceptions';
 import { CreateShellyV1ChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateShellyV1ChannelDto } from '../dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from '../dto/create-device.dto';
+import { UpdateShellyV1ChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
 	ShellyV1ChannelEntity,
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import { NormalizedDeviceEvent } from '../interfaces/shellies.interface';
+import { NormalizedDeviceEvent, ShellyDevice } from '../interfaces/shellies.interface';
 
-interface ChannelPropertyDefinition {
-	identifier: string;
-	name: string;
-	category: PropertyCategory;
-	data_type: DataTypeType;
-	permissions: PermissionType[];
-	unit?: string;
-	format?: number[];
-}
+import { ShelliesAdapterService } from './shellies-adapter.service';
 
 @Injectable()
 export class DeviceMapperService {
@@ -40,6 +35,7 @@ export class DeviceMapperService {
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly shelliesAdapter: ShelliesAdapterService,
 	) {}
 
 	/**
@@ -47,6 +43,14 @@ export class DeviceMapperService {
 	 */
 	async mapDevice(event: NormalizedDeviceEvent): Promise<ShellyV1DeviceEntity> {
 		this.logger.debug(`[SHELLY V1][MAPPER] Mapping device: ${event.id} (${event.type})`);
+
+		// Get the device instance from the adapter
+		const shellyDevice = this.shelliesAdapter.getDevice(event.type, event.id);
+
+		if (!shellyDevice) {
+			this.logger.warn(`[SHELLY V1][MAPPER] Device ${event.id} not found in adapter`);
+			throw new DevicesShellyV1NotSupportedException(`Device ${event.id} not found in adapter`);
+		}
 
 		// Find the device descriptor for this device type
 		const descriptor = this.findDescriptor(event.type);
@@ -80,86 +84,326 @@ export class DeviceMapperService {
 			this.logger.debug(`[SHELLY V1][MAPPER] Device already exists: ${event.id}`);
 		}
 
-		// Create channels for the device
-		//await this.createChannels(device, descriptor.components);
+		// Create device_information channel
+		await this.createDeviceInformationChannel(device, shellyDevice);
+
+		// Determine which bindings to use based on mode (if applicable)
+		let bindings: PropertyBinding[] = [];
+
+		if (descriptor.instance?.modeProperty && descriptor.modes) {
+			// Device has mode-based configuration
+			const modeValue = shellyDevice[descriptor.instance.modeProperty];
+
+			this.logger.debug(
+				`[SHELLY V1][MAPPER] Device ${event.id} has mode property: ${descriptor.instance.modeProperty} = ${modeValue}`,
+			);
+
+			const modeProfile = descriptor.modes.find((mode) => mode.modeValue === modeValue);
+
+			if (modeProfile) {
+				bindings = modeProfile.bindings;
+				this.logger.debug(`[SHELLY V1][MAPPER] Using mode profile: ${modeValue}`);
+			} else {
+				this.logger.warn(
+					`[SHELLY V1][MAPPER] No mode profile found for mode value: ${modeValue}, device will have no channels`,
+				);
+			}
+		} else if (descriptor.bindings) {
+			// Device has static bindings
+			bindings = descriptor.bindings;
+		}
+
+		// Create channels and properties from bindings
+		await this.createChannelsFromBindings(device, bindings, shellyDevice);
 
 		return device;
 	}
 
 	/**
-	 * Create channels for a device based on its components
+	 * Create device_information channel with device metadata properties
 	 */
-	private async createChannels(device: ShellyV1DeviceEntity, components: ComponentSpec[]): Promise<void> {
-		for (const component of components) {
-			const channelIdentifier = `${component.type}_${component.id}`;
+	private async createDeviceInformationChannel(
+		device: ShellyV1DeviceEntity,
+		shellyDevice: ShellyDevice,
+	): Promise<void> {
+		const channelIdentifier = 'device_information';
 
-			// Check if channel already exists
-			let channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
-				'identifier',
-				channelIdentifier,
-				device.id,
-				DEVICES_SHELLY_V1_TYPE,
-			);
+		// Check if channel already exists
+		let channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
+			'identifier',
+			channelIdentifier,
+			device.id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
 
-			if (!channel) {
-				this.logger.debug(`[SHELLY V1][MAPPER] Creating channel: ${channelIdentifier} for device ${device.identifier}`);
+		if (!channel) {
+			this.logger.debug(`[SHELLY V1][MAPPER] Creating device_information channel for device ${device.identifier}`);
 
-				const channelCategory = this.getChannelCategory(component.type);
-				const channelName = this.getChannelName(component.type, component.id);
+			const createChannelDto: CreateShellyV1ChannelDto = {
+				type: DEVICES_SHELLY_V1_TYPE,
+				device: device.id,
+				identifier: channelIdentifier,
+				name: 'Device information',
+				category: ChannelCategory.DEVICE_INFORMATION,
+			};
 
-				const createChannelDto: CreateShellyV1ChannelDto = {
-					type: DEVICES_SHELLY_V1_TYPE,
-					device: device.id,
-					identifier: channelIdentifier,
-					name: channelName,
-					category: channelCategory,
-				};
+			channel = await this.channelsService.create<ShellyV1ChannelEntity, CreateShellyV1ChannelDto>(createChannelDto);
+		}
 
-				channel = await this.channelsService.create<ShellyV1ChannelEntity, CreateShellyV1ChannelDto>(createChannelDto);
-			}
+		// Define device information properties
+		const deviceInfoProperties = [
+			{
+				identifier: 'manufacturer',
+				name: 'Manufacturer',
+				category: PropertyCategory.MANUFACTURER,
+				dataType: DataTypeType.STRING,
+				value: 'Shelly',
+			},
+			{
+				identifier: 'model',
+				name: 'Model',
+				category: PropertyCategory.MODEL,
+				dataType: DataTypeType.STRING,
+				value: shellyDevice.type,
+			},
+			{
+				identifier: 'serial_number',
+				name: 'Serial number',
+				category: PropertyCategory.SERIAL_NUMBER,
+				dataType: DataTypeType.STRING,
+				value: shellyDevice.id,
+			},
+			{
+				identifier: 'firmware_version',
+				name: 'Firmware Version',
+				category: PropertyCategory.FIRMWARE_REVISION,
+				dataType: DataTypeType.STRING,
+				value: '', // ADD firmware version from device info
+			},
+			{
+				identifier: 'link_quality',
+				name: 'Link quality',
+				category: PropertyCategory.LINK_QUALITY,
+				dataType: DataTypeType.STRING,
+				value: 0, // ADD RSSI from device info
+			},
+			{
+				identifier: 'status',
+				name: 'Status',
+				category: PropertyCategory.STATUS,
+				dataType: DataTypeType.ENUM,
+				value: ConnectionState.UNKNOWN,
+				format: [ConnectionState.CONNECTED, ConnectionState.DISCONNECTED, ConnectionState.UNKNOWN],
+			},
+		];
 
-			// Create properties for the channel
-			await this.createProperties(channel, component.type);
+		// Add mode property if device has it
+		if (shellyDevice['mode']) {
+			deviceInfoProperties.push({
+				identifier: 'mode',
+				name: 'Mode',
+				category: PropertyCategory.MODE,
+				dataType: DataTypeType.STRING,
+				value: shellyDevice['mode'],
+			});
+		}
+
+		// Create or update device information properties
+		for (const propDef of deviceInfoProperties) {
+			await this.createOrUpdateProperty(channel, propDef);
 		}
 	}
 
 	/**
-	 * Create properties for a channel based on its component type
+	 * Create channels and properties from bindings
 	 */
-	private async createProperties(channel: ShellyV1ChannelEntity, componentType: ComponentType): Promise<void> {
-		const properties = this.getPropertiesForComponent(componentType);
+	private async createChannelsFromBindings(
+		device: ShellyV1DeviceEntity,
+		bindings: PropertyBinding[],
+		shellyDevice: ShellyDevice,
+	): Promise<void> {
+		// Group bindings by channel
+		const channelBindingsMap = new Map<string, PropertyBinding[]>();
 
-		for (const propDef of properties) {
-			// Check if a property already exists
-			const existingProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
-				'identifier',
-				propDef.identifier,
-				channel.id,
-				DEVICES_SHELLY_V1_TYPE,
+		for (const binding of bindings) {
+			if (!channelBindingsMap.has(binding.channelIdentifier)) {
+				channelBindingsMap.set(binding.channelIdentifier, []);
+			}
+
+			channelBindingsMap.get(binding.channelIdentifier)!.push(binding);
+		}
+
+		// Create channels and their properties
+		for (const [channelIdentifier, channelBindings] of channelBindingsMap) {
+			await this.createChannelWithProperties(device, channelIdentifier, channelBindings, shellyDevice);
+		}
+	}
+
+	/**
+	 * Create a channel with its properties
+	 */
+	private async createChannelWithProperties(
+		device: ShellyV1DeviceEntity,
+		channelIdentifier: string,
+		bindings: PropertyBinding[],
+		shellyDevice: ShellyDevice,
+	): Promise<void> {
+		// Check if channel already exists
+		let channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
+			'identifier',
+			channelIdentifier,
+			device.id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
+
+		if (!channel) {
+			this.logger.debug(`[SHELLY V1][MAPPER] Creating channel: ${channelIdentifier} for device ${device.identifier}`);
+
+			const channelCategory = this.inferChannelCategory(bindings);
+			const channelName = this.formatChannelName(channelIdentifier);
+
+			const createChannelDto: CreateShellyV1ChannelDto = {
+				type: DEVICES_SHELLY_V1_TYPE,
+				device: device.id,
+				identifier: channelIdentifier,
+				name: channelName,
+				category: channelCategory,
+			};
+
+			channel = await this.channelsService.create<ShellyV1ChannelEntity, CreateShellyV1ChannelDto>(createChannelDto);
+		}
+
+		// Create properties for the channel with initial values from device state
+		for (const binding of bindings) {
+			const initialValue = shellyDevice[binding.shelliesProperty];
+
+			await this.createOrUpdateProperty(channel, {
+				identifier: binding.propertyIdentifier,
+				name: this.formatPropertyName(binding.propertyIdentifier),
+				category: binding.category,
+				dataType: binding.data_type,
+				permissions: binding.permissions,
+				unit: binding.unit,
+				format: binding.format,
+				value: initialValue !== undefined ? initialValue : null,
+			});
+		}
+	}
+
+	/**
+	 * Create or update a property with its initial value
+	 */
+	private async createOrUpdateProperty(
+		channel: ShellyV1ChannelEntity,
+		propDef: {
+			identifier: string;
+			name: string;
+			category: PropertyCategory;
+			dataType: DataTypeType;
+			permissions?: PermissionType[];
+			unit?: string;
+			format?: number[] | string[];
+			value?: any;
+		},
+	): Promise<void> {
+		// Check if property already exists
+		const existingProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+			'identifier',
+			propDef.identifier,
+			channel.id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
+
+		if (!existingProperty) {
+			this.logger.debug(
+				`[SHELLY V1][MAPPER] Creating property: ${propDef.identifier} for channel ${channel.identifier}`,
 			);
 
-			if (!existingProperty) {
-				this.logger.debug(
-					`[SHELLY V1][MAPPER] Creating property: ${propDef.identifier} for channel ${channel.identifier}`,
-				);
+			const createPropertyDto: CreateShellyV1ChannelPropertyDto = {
+				type: DEVICES_SHELLY_V1_TYPE,
+				identifier: propDef.identifier,
+				name: propDef.name,
+				category: propDef.category,
+				data_type: propDef.dataType,
+				permissions: propDef.permissions || [PermissionType.READ_ONLY],
+				...(propDef.unit !== undefined && { unit: propDef.unit }),
+				...(propDef.format !== undefined && { format: propDef.format }),
+				...(propDef.value !== undefined && propDef.value !== null && { value: propDef.value }),
+			};
 
-				const createPropertyDto: CreateShellyV1ChannelPropertyDto = {
+			await this.channelsPropertiesService.create<ShellyV1ChannelPropertyEntity, CreateShellyV1ChannelPropertyDto>(
+				channel.id,
+				createPropertyDto,
+			);
+		} else if (propDef.value !== undefined && propDef.value !== null) {
+			// Update existing property with new value if provided
+			this.logger.debug(
+				`[SHELLY V1][MAPPER] Updating property: ${propDef.identifier} for channel ${channel.identifier} with value: ${propDef.value}`,
+			);
+
+			await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
+				existingProperty.id,
+				toInstance(UpdateShellyV1ChannelPropertyDto, {
 					type: DEVICES_SHELLY_V1_TYPE,
 					identifier: propDef.identifier,
 					name: propDef.name,
 					category: propDef.category,
-					data_type: propDef.data_type,
-					permissions: propDef.permissions,
+					data_type: propDef.dataType,
+					permissions: propDef.permissions || [PermissionType.READ_ONLY],
 					...(propDef.unit !== undefined && { unit: propDef.unit }),
 					...(propDef.format !== undefined && { format: propDef.format }),
-				};
+					value: propDef.value,
+				}),
+			);
+		}
+	}
 
-				await this.channelsPropertiesService.create<ShellyV1ChannelPropertyEntity, CreateShellyV1ChannelPropertyDto>(
-					channel.id,
-					createPropertyDto,
-				);
+	/**
+	 * Infer channel category from its property bindings
+	 */
+	private inferChannelCategory(bindings: PropertyBinding[]): ChannelCategory {
+		// Look for the most specific property category to infer channel category
+		for (const binding of bindings) {
+			switch (binding.category) {
+				case PropertyCategory.ON:
+				case PropertyCategory.BRIGHTNESS:
+				case PropertyCategory.LEVEL:
+					return ChannelCategory.LIGHT;
+				case PropertyCategory.POWER:
+				case PropertyCategory.CONSUMPTION:
+					return ChannelCategory.ELECTRICAL_POWER;
+				case PropertyCategory.TEMPERATURE:
+					return ChannelCategory.TEMPERATURE;
+				case PropertyCategory.HUMIDITY:
+					return ChannelCategory.HUMIDITY;
+				case PropertyCategory.DETECTED:
+					return ChannelCategory.CONTACT;
 			}
 		}
+
+		return ChannelCategory.GENERIC;
+	}
+
+	/**
+	 * Format channel identifier into a human-readable name
+	 */
+	private formatChannelName(identifier: string): string {
+		// Convert snake_case to Title Case
+		return identifier
+			.split('_')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
+	}
+
+	/**
+	 * Format property identifier into a human-readable name
+	 */
+	private formatPropertyName(identifier: string): string {
+		// Convert snake_case to Title Case
+		return identifier
+			.split('_')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
 	}
 
 	/**
@@ -183,171 +427,5 @@ export class DeviceMapperService {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Get the channel category for a component type
-	 */
-	private getChannelCategory(componentType: ComponentType): ChannelCategory {
-		switch (componentType) {
-			case ComponentType.RELAY:
-				return ChannelCategory.OUTLET;
-			case ComponentType.DIMMER:
-			case ComponentType.LIGHT:
-				return ChannelCategory.LIGHT;
-			case ComponentType.ROLLER:
-				return ChannelCategory.WINDOW_COVERING;
-			case ComponentType.INPUT:
-				return ChannelCategory.CONTACT;
-			case ComponentType.TEMPERATURE:
-				return ChannelCategory.TEMPERATURE;
-			case ComponentType.HUMIDITY:
-				return ChannelCategory.HUMIDITY;
-			case ComponentType.POWER_METER:
-				return ChannelCategory.ELECTRICAL_POWER;
-			default:
-				return ChannelCategory.GENERIC;
-		}
-	}
-
-	/**
-	 * Get a human-readable channel name
-	 */
-	private getChannelName(componentType: ComponentType, id: number): string {
-		const baseName = componentType.charAt(0).toUpperCase() + componentType.slice(1);
-
-		return `${baseName} ${id}`;
-	}
-
-	/**
-	 * Create a property definition helper
-	 */
-	private createPropertyDef(
-		identifier: string,
-		name: string,
-		category: PropertyCategory,
-		data_type: DataTypeType,
-		permissions: PermissionType[],
-		options?: { unit?: string; format?: number[] },
-	): ChannelPropertyDefinition {
-		return {
-			identifier,
-			name,
-			category,
-			data_type,
-			permissions,
-			...options,
-		};
-	}
-
-	/**
-	 * Get properties for a component type
-	 */
-	private getPropertiesForComponent(componentType: ComponentType): ChannelPropertyDefinition[] {
-		switch (componentType) {
-			case ComponentType.RELAY:
-				return [
-					this.createPropertyDef('state', 'State', PropertyCategory.ON, DataTypeType.BOOL, [PermissionType.READ_WRITE]),
-					this.createPropertyDef(
-						'power',
-						'Power',
-						PropertyCategory.POWER,
-						DataTypeType.FLOAT,
-						[PermissionType.READ_ONLY],
-						{
-							unit: 'W',
-						},
-					),
-				];
-
-			case ComponentType.DIMMER:
-			case ComponentType.LIGHT:
-				return [
-					this.createPropertyDef('state', 'State', PropertyCategory.ON, DataTypeType.BOOL, [PermissionType.READ_WRITE]),
-					this.createPropertyDef(
-						'brightness',
-						'Brightness',
-						PropertyCategory.BRIGHTNESS,
-						DataTypeType.UINT,
-						[PermissionType.READ_WRITE],
-						{ unit: '%', format: [0, 100] },
-					),
-				];
-
-			case ComponentType.ROLLER:
-				return [
-					this.createPropertyDef(
-						'position',
-						'Position',
-						PropertyCategory.POSITION,
-						DataTypeType.UINT,
-						[PermissionType.READ_WRITE],
-						{ unit: '%', format: [0, 100] },
-					),
-					this.createPropertyDef('state', 'State', PropertyCategory.STATUS, DataTypeType.STRING, [
-						PermissionType.READ_ONLY,
-					]),
-				];
-
-			case ComponentType.INPUT:
-				return [
-					this.createPropertyDef('state', 'State', PropertyCategory.DETECTED, DataTypeType.BOOL, [
-						PermissionType.READ_ONLY,
-					]),
-				];
-
-			case ComponentType.TEMPERATURE:
-				return [
-					this.createPropertyDef(
-						'temperature',
-						'Temperature',
-						PropertyCategory.TEMPERATURE,
-						DataTypeType.FLOAT,
-						[PermissionType.READ_ONLY],
-						{ unit: '°C' },
-					),
-				];
-
-			case ComponentType.HUMIDITY:
-				return [
-					this.createPropertyDef(
-						'humidity',
-						'Humidity',
-						PropertyCategory.HUMIDITY,
-						DataTypeType.FLOAT,
-						[PermissionType.READ_ONLY],
-						{
-							unit: '%',
-						},
-					),
-				];
-
-			case ComponentType.POWER_METER:
-				return [
-					this.createPropertyDef(
-						'power',
-						'Power',
-						PropertyCategory.POWER,
-						DataTypeType.FLOAT,
-						[PermissionType.READ_ONLY],
-						{
-							unit: 'W',
-						},
-					),
-					this.createPropertyDef(
-						'energy',
-						'Energy',
-						PropertyCategory.CONSUMPTION,
-						DataTypeType.FLOAT,
-						[PermissionType.READ_ONLY],
-						{ unit: 'Wh' },
-					),
-				];
-
-			default:
-				this.logger.warn(`[SHELLY V1][MAPPER] No properties defined for component type: ${componentType}`);
-
-				return [];
-		}
 	}
 }

@@ -38,8 +38,8 @@ export class ShelliesAdapterService {
 			// Register event handlers
 			const deviceDiscoveredHandler = (device: ShellyDevice): void => this.handleDeviceDiscovered(device);
 
-			this.shellies.on('discover', deviceDiscoveredHandler);
-			// this.shellies.on('add', deviceDiscoveredHandler); // Synonym in Gen 1
+			//this.shellies.on('discover', deviceDiscoveredHandler);
+			this.shellies.on('add', deviceDiscoveredHandler); // Synonym in Gen 1
 
 			this.logger.log('[SHELLY V1][ADAPTER] Shellies library initialized, starting discovery');
 
@@ -97,23 +97,12 @@ export class ShelliesAdapterService {
 	/**
 	 * Get a device by ID
 	 */
-	getDevice(id: string): ShellyDevice | undefined {
+	getDevice(type: string, id: string): ShellyDevice | undefined {
 		if (!this.shellies) {
 			return undefined;
 		}
 
-		return this.shellies.getDevice(id);
-	}
-
-	/**
-	 * Get all discovered devices
-	 */
-	getDevices(): ShellyDevice[] {
-		if (!this.shellies) {
-			return [];
-		}
-
-		return this.shellies.getDevices();
+		return this.shellies.getDevice(type, id);
 	}
 
 	/**
@@ -131,17 +120,14 @@ export class ShelliesAdapterService {
 
 		// Register device-specific event handlers
 		device.on('change', (property: string, newValue: any, oldValue: any) => {
-			console.log('CHANGE', property, newValue, oldValue);
 			this.handleDeviceChange(device, property, newValue, oldValue);
 		});
 
 		device.on('offline', () => {
-			console.log('OFFLINE', device.id);
 			this.handleDeviceOffline(device);
 		});
 
 		device.on('online', () => {
-			console.log('ONLINE', device.id);
 			this.handleDeviceOnline(device);
 		});
 
@@ -152,7 +138,6 @@ export class ShelliesAdapterService {
 			host: device.host,
 			online: device.online,
 		};
-		console.log('DEVICE', device.id, device.modelName, device.mode);
 		this.eventEmitter.emit(ShelliesAdapterEventType.DEVICE_DISCOVERED, normalizedEvent);
 	}
 

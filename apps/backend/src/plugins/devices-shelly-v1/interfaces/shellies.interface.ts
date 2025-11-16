@@ -28,10 +28,7 @@ export interface ShelliesLibrary extends EventEmitter {
 	stop(): void;
 
 	// Get device by ID
-	getDevice(id: string): ShellyDevice | undefined;
-
-	// Get all devices
-	getDevices(): ShellyDevice[];
+	getDevice(type: string, id: string): ShellyDevice | undefined;
 
 	// Events emitted:
 	// - 'discover' (device: ShellyDevice)

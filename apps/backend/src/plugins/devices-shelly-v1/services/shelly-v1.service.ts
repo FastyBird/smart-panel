@@ -11,7 +11,12 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_SHELLY_V1_PLUGIN_NAME, DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
+import {
+	DESCRIPTORS,
+	DEVICES_SHELLY_V1_PLUGIN_NAME,
+	DEVICES_SHELLY_V1_TYPE,
+	PropertyBinding,
+} from '../devices-shelly-v1.constants';
 import { UpdateShellyV1ChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
 	ShellyV1ChannelEntity,
@@ -195,7 +200,6 @@ export class ShellyV1Service {
 
 			this.logger.log(`[SHELLY V1][SERVICE] Device mapped successfully: ${device.identifier} (${device.id})`);
 		} catch (error) {
-			console.error(error);
 			this.logger.error(`[SHELLY V1][SERVICE] Failed to map device ${event.id}:`, {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
@@ -222,18 +226,23 @@ export class ShellyV1Service {
 
 			if (!device) {
 				this.logger.debug(`[SHELLY V1][SERVICE] Device not found in database: ${event.id}, skipping property update`);
-				console.log('RET1');
+
 				return;
 			}
 
-			// Parse the property path (e.g., "relay_0.state", "light_0.brightness")
-			const { channelIdentifier, propertyIdentifier } = this.parsePropertyPath(event.property);
+			// Look up the property binding using the shelliesProperty from the event
+			const binding = await this.findPropertyBinding(device, event.property);
 
-			if (!channelIdentifier || !propertyIdentifier) {
-				this.logger.debug(`[SHELLY V1][SERVICE] Unable to parse property path: ${event.property}, skipping`);
-				console.log('RET2');
+			if (!binding) {
+				this.logger.debug(
+					`[SHELLY V1][SERVICE] No binding found for property: ${event.property} on device ${device.identifier}, skipping`,
+				);
+
 				return;
 			}
+
+			const channelIdentifier = binding.channelIdentifier;
+			const propertyIdentifier = binding.propertyIdentifier;
 
 			// Find the channel
 			const channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
@@ -247,7 +256,6 @@ export class ShellyV1Service {
 				this.logger.debug(
 					`Channel not found: ${channelIdentifier} for device ${device.identifier}, skipping property update`,
 				);
-				console.log('RET3');
 				return;
 			}
 
@@ -263,7 +271,6 @@ export class ShellyV1Service {
 				this.logger.debug(
 					`Property not found: ${propertyIdentifier} for channel ${channel.identifier}, skipping property update`,
 				);
-				console.log('RET4');
 				return;
 			}
 
@@ -362,25 +369,119 @@ export class ShellyV1Service {
 	}
 
 	/**
-	 * Parse a property path from the shellies library into channel and property identifiers
-	 * Examples:
-	 * - "relay_0.state" -> { channelIdentifier: "relay_0", propertyIdentifier: "state" }
-	 * - "light_0.brightness" -> { channelIdentifier: "light_0", propertyIdentifier: "brightness" }
+	 * Find the property binding for a given shelliesProperty
+	 * This looks up the device descriptor and finds which channel/property
+	 * the Shelly property maps to
 	 */
-	private parsePropertyPath(propertyPath: string): {
-		channelIdentifier: string | null;
-		propertyIdentifier: string | null;
-	} {
-		const parts = propertyPath.split('.');
+	private async findPropertyBinding(device: ShellyV1DeviceEntity, shelliesProperty: string): Promise<PropertyBinding | null> {
+		// Find the device descriptor
+		const descriptor = await this.findDescriptor(device);
 
-		if (parts.length !== 2) {
-			return { channelIdentifier: null, propertyIdentifier: null };
+		if (!descriptor) {
+			this.logger.warn(`[SHELLY V1][SERVICE] No descriptor found for device: ${device.identifier}`);
+
+			return null;
 		}
 
-		return {
-			channelIdentifier: parts[0],
-			propertyIdentifier: parts[1],
-		};
+		// Get bindings based on device mode (if applicable)
+		let bindings: PropertyBinding[] = [];
+
+		if (descriptor.instance?.modeProperty && descriptor.modes) {
+			// Device has mode-based configuration - need to get current mode from adapter
+			// Use the model type from descriptor to get the device from adapter
+			const deviceModel = descriptor.models[0]; // Use first model as the type
+			const shellyDevice = this.shelliesAdapter.getDevice(deviceModel, device.identifier);
+
+			if (!shellyDevice) {
+				this.logger.warn(
+					`[SHELLY V1][SERVICE] Device ${device.identifier} not found in adapter, cannot determine mode`,
+				);
+
+				return null;
+			}
+
+			const modeValue = shellyDevice[descriptor.instance.modeProperty];
+			const modeProfile = descriptor.modes.find((mode) => mode.modeValue === modeValue);
+
+			if (modeProfile) {
+				bindings = modeProfile.bindings;
+			} else {
+				this.logger.warn(
+					`[SHELLY V1][SERVICE] No mode profile found for mode value: ${modeValue} on device ${device.identifier}`,
+				);
+
+				return null;
+			}
+		} else if (descriptor.bindings) {
+			// Device has static bindings
+			bindings = descriptor.bindings;
+		}
+
+		// Find the binding that matches the shelliesProperty
+		const binding = bindings.find((b) => b.shelliesProperty === shelliesProperty);
+
+		if (!binding) {
+			this.logger.debug(
+				`[SHELLY V1][SERVICE] No binding found for shelliesProperty: ${shelliesProperty} on device ${device.identifier}`,
+			);
+
+			return null;
+		}
+
+		return binding;
+	}
+
+	/**
+	 * Find the descriptor for a device entity by querying the model from device_information channel
+	 */
+	private async findDescriptor(device: ShellyV1DeviceEntity): Promise<(typeof DESCRIPTORS)[keyof typeof DESCRIPTORS] | null> {
+		// Get the device_information channel
+		const deviceInfoChannel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
+			'identifier',
+			'device_information',
+			device.id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
+
+		if (!deviceInfoChannel) {
+			this.logger.warn(`[SHELLY V1][SERVICE] No device_information channel found for device: ${device.identifier}`);
+
+			return null;
+		}
+
+		// Get the model property from device_information channel
+		const modelProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+			'identifier',
+			'model',
+			deviceInfoChannel.id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
+
+		if (!modelProperty || !modelProperty.value) {
+			this.logger.warn(`[SHELLY V1][SERVICE] No model property found for device: ${device.identifier}`);
+
+			return null;
+		}
+
+		const deviceModel = String(modelProperty.value).toUpperCase();
+
+		// Try to find by device model match
+		for (const descriptor of Object.values(DESCRIPTORS)) {
+			if (descriptor.models.some((model) => deviceModel.includes(model))) {
+				return descriptor;
+			}
+		}
+
+		// Fallback: try to match by partial name
+		for (const [key, descriptor] of Object.entries(DESCRIPTORS)) {
+			if (deviceModel.includes(key) || descriptor.name.toUpperCase().includes(deviceModel)) {
+				return descriptor;
+			}
+		}
+
+		this.logger.warn(`[SHELLY V1][SERVICE] No descriptor found for device model: ${deviceModel}`);
+
+		return null;
 	}
 
 	/**

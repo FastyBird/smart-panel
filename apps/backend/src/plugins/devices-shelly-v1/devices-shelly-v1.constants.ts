@@ -5,33 +5,27 @@ import {
 	PropertyCategory,
 } from '../../modules/devices/devices.constants';
 
+import { ShellyInfoResponse, ShellySettingsResponse, ShellyStatusResponse } from './interfaces/shelly-http.interface';
+
 export const DEVICES_SHELLY_V1_PLUGIN_PREFIX = 'devices-shelly-v1';
 
 export const DEVICES_SHELLY_V1_PLUGIN_NAME = 'devices-shelly-v1';
 
 export const DEVICES_SHELLY_V1_TYPE = 'devices-shelly-v1';
 
-export enum ComponentType {
-	RELAY = 'relay',
-	LIGHT = 'light',
-	DIMMER = 'dimmer',
-	ROLLER = 'roller',
-	INPUT = 'input',
-	TEMPERATURE = 'temperature',
-	HUMIDITY = 'humidity',
-	POWER_METER = 'powerMeter',
-	VOLTAGE = 'voltage',
-	MOTION = 'motion',
-	FLOOD = 'flood',
-	SMOKE = 'smoke',
-	GAS = 'gas',
-	DOOR_WINDOW = 'doorWindow',
-}
+export type ShellyHttpEndpoint = '/shelly' | '/status' | '/settings';
 
-export interface ComponentSpec {
-	type: ComponentType;
-	id: number;
-}
+export const SHELLY_HTTP_ENDPOINTS = {
+	DEVICE_INFO: '/shelly' as ShellyHttpEndpoint,
+	STATUS: '/status' as ShellyHttpEndpoint,
+	SETTINGS: '/settings' as ShellyHttpEndpoint,
+} as const;
+
+export type ShellyHttpEndpointResponseMap = {
+	'/shelly': ShellyInfoResponse;
+	'/status': ShellyStatusResponse;
+	'/settings': ShellySettingsResponse;
+};
 
 export interface PropertyBinding {
 	shelliesProperty: string;
