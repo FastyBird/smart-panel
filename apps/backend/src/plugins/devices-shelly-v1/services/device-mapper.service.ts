@@ -11,6 +11,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DESCRIPTORS, DEVICES_SHELLY_V1_TYPE, PropertyBinding } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1NotSupportedException } from '../devices-shelly-v1.exceptions';
@@ -26,6 +27,7 @@ import {
 import { NormalizedDeviceEvent, ShellyDevice } from '../interfaces/shellies.interface';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 @Injectable()
 export class DeviceMapperService {
@@ -35,7 +37,9 @@ export class DeviceMapperService {
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly shelliesAdapter: ShelliesAdapterService,
+		private readonly httpClient: ShellyV1HttpClientService,
 	) {}
 
 	/**
@@ -116,6 +120,13 @@ export class DeviceMapperService {
 		// Create channels and properties from bindings
 		await this.createChannelsFromBindings(device, bindings, shellyDevice);
 
+		// Set device connection state to CONNECTED after successful discovery
+		await this.deviceConnectivityService.setConnectionState(device.id, {
+			state: ConnectionState.CONNECTED,
+		});
+
+		this.logger.log(`[SHELLY V1][MAPPER] Device ${device.identifier} discovery completed and set to CONNECTED`);
+
 		return device;
 	}
 
@@ -127,6 +138,30 @@ export class DeviceMapperService {
 		shellyDevice: ShellyDevice,
 	): Promise<void> {
 		const channelIdentifier = 'device_information';
+
+		this.logger.debug(`[SHELLY V1][MAPPER] Fetching additional device info from ${shellyDevice.host}`);
+
+		// Fetch additional device information from HTTP API
+		let deviceInfo;
+		let deviceStatus;
+
+		try {
+			[deviceInfo, deviceStatus] = await Promise.all([
+				this.httpClient.getDeviceInfo(shellyDevice.host),
+				this.httpClient.getDeviceStatus(shellyDevice.host),
+			]);
+
+			this.logger.debug(
+				`[SHELLY V1][MAPPER] Fetched device info: fw=${deviceInfo.fw}, rssi=${deviceStatus.wifi_sta?.rssi}`,
+			);
+		} catch (error) {
+			this.logger.warn(`[SHELLY V1][MAPPER] Failed to fetch device info from ${shellyDevice.host}`, {
+				message: error instanceof Error ? error.message : String(error),
+			});
+			// Continue with discovery even if HTTP requests fail
+			deviceInfo = null;
+			deviceStatus = null;
+		}
 
 		// Check if channel already exists
 		let channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
@@ -143,7 +178,7 @@ export class DeviceMapperService {
 				type: DEVICES_SHELLY_V1_TYPE,
 				device: device.id,
 				identifier: channelIdentifier,
-				name: 'Device information',
+				name: 'Device Information',
 				category: ChannelCategory.DEVICE_INFORMATION,
 			};
 
@@ -168,31 +203,31 @@ export class DeviceMapperService {
 			},
 			{
 				identifier: 'serial_number',
-				name: 'Serial number',
+				name: 'Serial Number',
 				category: PropertyCategory.SERIAL_NUMBER,
 				dataType: DataTypeType.STRING,
-				value: shellyDevice.id,
+				value: deviceInfo?.mac || shellyDevice.id,
 			},
 			{
 				identifier: 'firmware_version',
 				name: 'Firmware Version',
 				category: PropertyCategory.FIRMWARE_REVISION,
 				dataType: DataTypeType.STRING,
-				value: '', // ADD firmware version from device info
+				value: deviceInfo?.fw || null,
 			},
 			{
 				identifier: 'link_quality',
-				name: 'Link quality',
+				name: 'Link Quality',
 				category: PropertyCategory.LINK_QUALITY,
-				dataType: DataTypeType.STRING,
-				value: 0, // ADD RSSI from device info
+				dataType: DataTypeType.INT,
+				value: deviceStatus?.wifi_sta?.rssi || null,
 			},
 			{
 				identifier: 'status',
 				name: 'Status',
 				category: PropertyCategory.STATUS,
 				dataType: DataTypeType.ENUM,
-				value: ConnectionState.UNKNOWN,
+				value: ConnectionState.CONNECTED,
 				format: [ConnectionState.CONNECTED, ConnectionState.DISCONNECTED, ConnectionState.UNKNOWN],
 			},
 		];

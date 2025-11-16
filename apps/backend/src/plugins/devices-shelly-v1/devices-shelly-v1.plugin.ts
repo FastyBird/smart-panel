@@ -27,6 +27,7 @@ import {
 import { ShellyV1ConfigModel } from './models/config.model';
 import { DeviceMapperService } from './services/device-mapper.service';
 import { ShelliesAdapterService } from './services/shellies-adapter.service';
+import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
 import { ShellyV1Service } from './services/shelly-v1.service';
 
 @Module({
@@ -36,7 +37,7 @@ import { ShellyV1Service } from './services/shelly-v1.service';
 		DevicesModule,
 		ConfigModule,
 	],
-	providers: [ShelliesAdapterService, DeviceMapperService, ShellyV1Service],
+	providers: [ShelliesAdapterService, DeviceMapperService, ShellyV1HttpClientService, ShellyV1Service],
 	controllers: [],
 })
 export class DevicesShellyV1Plugin {
