@@ -13,7 +13,13 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DESCRIPTORS, DEVICES_SHELLY_V1_TYPE, PropertyBinding } from '../devices-shelly-v1.constants';
+import {
+	DESCRIPTORS,
+	DEVICES_SHELLY_V1_TYPE,
+	PropertyBinding,
+	SHELLY_V1_CHANNEL_IDENTIFIERS,
+	SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS,
+} from '../devices-shelly-v1.constants';
 import { DevicesShellyV1NotSupportedException } from '../devices-shelly-v1.exceptions';
 import { CreateShellyV1ChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { CreateShellyV1ChannelDto } from '../dto/create-channel.dto';
@@ -153,7 +159,7 @@ export class DeviceMapperService {
 		device: ShellyV1DeviceEntity,
 		shellyDevice: ShellyDevice,
 	): Promise<void> {
-		const channelIdentifier = 'device_information';
+		const channelIdentifier = SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION;
 
 		this.logger.debug(`[SHELLY V1][MAPPER] Fetching additional device info from ${shellyDevice.host}`);
 
@@ -202,44 +208,52 @@ export class DeviceMapperService {
 		}
 
 		// Define device information properties
-		const deviceInfoProperties = [
+		const deviceInfoProperties: Array<{
+			identifier: string;
+			name: string;
+			category: PropertyCategory;
+			dataType: DataTypeType;
+			unit?: string;
+			format?: number[] | string[];
+			value?: any;
+		}> = [
 			{
-				identifier: 'manufacturer',
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MANUFACTURER,
 				name: 'Manufacturer',
 				category: PropertyCategory.MANUFACTURER,
 				dataType: DataTypeType.STRING,
 				value: 'Shelly',
 			},
 			{
-				identifier: 'model',
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
 				name: 'Model',
 				category: PropertyCategory.MODEL,
 				dataType: DataTypeType.STRING,
 				value: shellyDevice.type,
 			},
 			{
-				identifier: 'serial_number',
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
 				name: 'Serial Number',
 				category: PropertyCategory.SERIAL_NUMBER,
 				dataType: DataTypeType.STRING,
 				value: deviceInfo?.mac || shellyDevice.id,
 			},
 			{
-				identifier: 'firmware_version',
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_VERSION,
 				name: 'Firmware Version',
 				category: PropertyCategory.FIRMWARE_REVISION,
 				dataType: DataTypeType.STRING,
 				value: deviceInfo?.fw || null,
 			},
 			{
-				identifier: 'link_quality',
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
 				name: 'Link Quality',
 				category: PropertyCategory.LINK_QUALITY,
 				dataType: DataTypeType.INT,
 				value: deviceStatus?.wifi_sta?.rssi || null,
 			},
 			{
-				identifier: 'status',
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.STATUS,
 				name: 'Status',
 				category: PropertyCategory.STATUS,
 				dataType: DataTypeType.ENUM,
@@ -251,7 +265,7 @@ export class DeviceMapperService {
 		// Add mode property if device has it
 		if (shellyDevice['mode']) {
 			deviceInfoProperties.push({
-				identifier: 'mode',
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODE,
 				name: 'Mode',
 				category: PropertyCategory.MODE,
 				dataType: DataTypeType.STRING,

@@ -13,6 +13,26 @@ export const DEVICES_SHELLY_V1_PLUGIN_NAME = 'devices-shelly-v1';
 
 export const DEVICES_SHELLY_V1_TYPE = 'devices-shelly-v1';
 
+/**
+ * Channel identifiers
+ */
+export const SHELLY_V1_CHANNEL_IDENTIFIERS = {
+	DEVICE_INFORMATION: 'device_information',
+} as const;
+
+/**
+ * Property identifiers for device_information channel
+ */
+export const SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS = {
+	MANUFACTURER: 'manufacturer',
+	MODEL: 'model',
+	SERIAL_NUMBER: 'serial_number',
+	FIRMWARE_VERSION: 'firmware_version',
+	LINK_QUALITY: 'link_quality',
+	STATUS: 'status',
+	MODE: 'mode',
+} as const;
+
 export type ShellyHttpEndpoint = '/shelly' | '/status' | '/settings';
 
 export const SHELLY_HTTP_ENDPOINTS = {

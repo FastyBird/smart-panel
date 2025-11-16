@@ -16,6 +16,8 @@ import {
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
 	PropertyBinding,
+	SHELLY_V1_CHANNEL_IDENTIFIERS,
+	SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS,
 } from '../devices-shelly-v1.constants';
 import { UpdateShellyV1ChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
@@ -438,7 +440,7 @@ export class ShellyV1Service {
 		// Get the device_information channel
 		const deviceInfoChannel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
 			'identifier',
-			'device_information',
+			SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
 			device.id,
 			DEVICES_SHELLY_V1_TYPE,
 		);
@@ -452,7 +454,7 @@ export class ShellyV1Service {
 		// Get the model property from device_information channel
 		const modelProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
 			'identifier',
-			'model',
+			SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
 			deviceInfoChannel.id,
 			DEVICES_SHELLY_V1_TYPE,
 		);
