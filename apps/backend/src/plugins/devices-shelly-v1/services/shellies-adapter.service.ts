@@ -128,6 +128,13 @@ export class ShelliesAdapterService {
 	}
 
 	/**
+	 * Get all registered devices
+	 */
+	getRegisteredDevices(): RegisteredDevice[] {
+		return Array.from(this.devicesRegistry.values());
+	}
+
+	/**
 	 * Handle device discovered event from a shellies library
 	 */
 	private handleDeviceDiscovered(device: ShellyDevice): void {

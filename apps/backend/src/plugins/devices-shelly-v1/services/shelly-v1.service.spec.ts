@@ -19,6 +19,7 @@ import { NormalizedDeviceChangeEvent, NormalizedDeviceEvent } from '../interface
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 import { ShellyV1Service } from './shelly-v1.service';
 
 describe('ShellyV1Service', () => {
@@ -119,6 +120,14 @@ describe('ShellyV1Service', () => {
 					provide: DeviceConnectivityService,
 					useValue: {
 						setConnectionState: jest.fn(),
+					},
+				},
+				{
+					provide: ShellyV1HttpClientService,
+					useValue: {
+						getDeviceInfo: jest.fn(),
+						getDeviceStatus: jest.fn(),
+						getDeviceSettings: jest.fn(),
 					},
 				},
 				{

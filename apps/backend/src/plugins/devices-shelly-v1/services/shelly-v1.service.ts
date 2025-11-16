@@ -2,6 +2,7 @@ import { instanceToPlain } from 'class-transformer';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../../modules/config/config.constants';
@@ -34,6 +35,7 @@ import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
+import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 
 type ServiceState = 'stopped' | 'starting' | 'started' | 'stopping';
 
@@ -57,6 +59,7 @@ export class ShellyV1Service {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
+		private readonly httpClient: ShellyV1HttpClientService,
 	) {}
 
 	async requestStart(delayMs = 1000): Promise<void> {
@@ -375,7 +378,10 @@ export class ShellyV1Service {
 	 * This looks up the device descriptor and finds which channel/property
 	 * the Shelly property maps to
 	 */
-	private async findPropertyBinding(device: ShellyV1DeviceEntity, shelliesProperty: string): Promise<PropertyBinding | null> {
+	private async findPropertyBinding(
+		device: ShellyV1DeviceEntity,
+		shelliesProperty: string,
+	): Promise<PropertyBinding | null> {
 		// Find the device descriptor
 		const descriptor = await this.findDescriptor(device);
 
@@ -436,7 +442,9 @@ export class ShellyV1Service {
 	/**
 	 * Find the descriptor for a device entity by querying the model from device_information channel
 	 */
-	private async findDescriptor(device: ShellyV1DeviceEntity): Promise<(typeof DESCRIPTORS)[keyof typeof DESCRIPTORS] | null> {
+	private async findDescriptor(
+		device: ShellyV1DeviceEntity,
+	): Promise<(typeof DESCRIPTORS)[keyof typeof DESCRIPTORS] | null> {
 		// Get the device_information channel
 		const deviceInfoChannel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
 			'identifier',
@@ -562,6 +570,115 @@ export class ShellyV1Service {
 			}
 		} catch (error) {
 			this.logger.error('[SHELLY V1][SERVICE] Failed to initialize device states', {
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+			});
+		}
+	}
+
+	/**
+	 * Periodically update signal strength (RSSI) and firmware version for all devices
+	 * Runs every minute to keep device information up to date
+	 */
+	@Cron(CronExpression.EVERY_5_MINUTES)
+	private async updateDevicesSignalStrength(): Promise<void> {
+		if (this.state !== 'started') {
+			return;
+		}
+
+		try {
+			const registeredDevices = this.shelliesAdapter.getRegisteredDevices();
+
+			if (registeredDevices.length === 0) {
+				return;
+			}
+
+			this.logger.debug(`[SHELLY V1][SERVICE] Updating device information for ${registeredDevices.length} devices`);
+
+			for (const registeredDevice of registeredDevices) {
+				try {
+					// Fetch device info and status from HTTP API in parallel
+					const [info, status] = await Promise.all([
+						this.httpClient.getDeviceInfo(registeredDevice.host),
+						this.httpClient.getDeviceStatus(registeredDevice.host),
+					]);
+
+					// Find the device in database
+					const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
+						'identifier',
+						registeredDevice.id,
+						DEVICES_SHELLY_V1_TYPE,
+					);
+
+					if (!device) {
+						continue;
+					}
+
+					// Get the device_information channel
+					const deviceInfoChannel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
+						'identifier',
+						SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
+						device.id,
+						DEVICES_SHELLY_V1_TYPE,
+					);
+
+					if (!deviceInfoChannel) {
+						continue;
+					}
+
+					// Update RSSI (signal strength)
+					if (status.wifi_sta?.rssi) {
+						const linkQualityProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+							'identifier',
+							SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
+							deviceInfoChannel.id,
+							DEVICES_SHELLY_V1_TYPE,
+						);
+
+						if (linkQualityProperty) {
+							await this.channelsPropertiesService.update<
+								ShellyV1ChannelPropertyEntity,
+								UpdateShellyV1ChannelPropertyDto
+							>(linkQualityProperty.id, {
+								type: DEVICES_SHELLY_V1_TYPE,
+								value: status.wifi_sta.rssi,
+							});
+
+							this.logger.debug(
+								`[SHELLY V1][SERVICE] Updated signal strength for ${registeredDevice.id}: ${status.wifi_sta.rssi} dBm`,
+							);
+						}
+					}
+
+					// Update firmware version
+					if (info.fw) {
+						const firmwareProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+							'identifier',
+							SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_VERSION,
+							deviceInfoChannel.id,
+							DEVICES_SHELLY_V1_TYPE,
+						);
+
+						if (firmwareProperty) {
+							await this.channelsPropertiesService.update<
+								ShellyV1ChannelPropertyEntity,
+								UpdateShellyV1ChannelPropertyDto
+							>(firmwareProperty.id, {
+								type: DEVICES_SHELLY_V1_TYPE,
+								value: info.fw,
+							});
+
+							this.logger.debug(`[SHELLY V1][SERVICE] Updated firmware version for ${registeredDevice.id}: ${info.fw}`);
+						}
+					}
+				} catch (error) {
+					this.logger.warn(`[SHELLY V1][SERVICE] Failed to update device information for ${registeredDevice.id}`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+		} catch (error) {
+			this.logger.error('[SHELLY V1][SERVICE] Failed to update devices information', {
 				message: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 			});
