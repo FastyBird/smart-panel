@@ -5,7 +5,12 @@ import {
 	PropertyCategory,
 } from '../../modules/devices/devices.constants';
 
-import { ShellyInfoResponse, ShellySettingsResponse, ShellyStatusResponse } from './interfaces/shelly-http.interface';
+import {
+	ShellyInfoResponse,
+	ShellyLoginResponse,
+	ShellySettingsResponse,
+	ShellyStatusResponse,
+} from './interfaces/shelly-http.interface';
 
 export const DEVICES_SHELLY_V1_PLUGIN_PREFIX = 'devices-shelly-v1';
 
@@ -38,18 +43,20 @@ export const SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS = {
 	MODE: 'mode',
 } as const;
 
-export type ShellyHttpEndpoint = '/shelly' | '/status' | '/settings';
+export type ShellyHttpEndpoint = '/shelly' | '/status' | '/settings' | '/settings/login';
 
 export const SHELLY_HTTP_ENDPOINTS = {
 	DEVICE_INFO: '/shelly' as ShellyHttpEndpoint,
 	STATUS: '/status' as ShellyHttpEndpoint,
 	SETTINGS: '/settings' as ShellyHttpEndpoint,
+	LOGIN: '/settings/login' as ShellyHttpEndpoint,
 } as const;
 
 export type ShellyHttpEndpointResponseMap = {
 	'/shelly': ShellyInfoResponse;
 	'/status': ShellyStatusResponse;
 	'/settings': ShellySettingsResponse;
+	'/settings/login': ShellyLoginResponse;
 };
 
 export interface PropertyBinding {

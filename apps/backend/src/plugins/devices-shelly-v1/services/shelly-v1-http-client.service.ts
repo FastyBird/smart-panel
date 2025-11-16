@@ -2,7 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { SHELLY_HTTP_ENDPOINTS, ShellyHttpEndpoint, ShellyHttpEndpointResponseMap } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
-import { ShellyInfoResponse, ShellySettingsResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
+import {
+	ShellyInfoResponse,
+	ShellyLoginResponse,
+	ShellySettingsResponse,
+	ShellyStatusResponse,
+} from '../interfaces/shelly-http.interface';
 
 /**
  * HTTP client for Shelly Gen 1 REST API
@@ -33,6 +38,13 @@ export class ShellyV1HttpClientService {
 	 */
 	async getDeviceStatus(host: string, timeout?: number): Promise<ShellyStatusResponse> {
 		return this.get(host, SHELLY_HTTP_ENDPOINTS.STATUS, timeout) as Promise<ShellyStatusResponse>;
+	}
+
+	/**
+	 * Get login settings from /settings/login endpoint
+	 */
+	async getLoginSettings(host: string, timeout?: number): Promise<ShellyLoginResponse> {
+		return this.get(host, SHELLY_HTTP_ENDPOINTS.LOGIN, timeout) as Promise<ShellyLoginResponse>;
 	}
 
 	/**

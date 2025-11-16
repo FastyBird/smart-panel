@@ -89,3 +89,9 @@ export interface ShellySettingsResponse {
 		connected?: boolean;
 	};
 }
+
+export interface ShellyLoginResponse {
+	enabled: boolean; // Whether HTTP authentication is required
+	unprotected: boolean; // Whether the user is aware of the risks
+	username: string;
+}

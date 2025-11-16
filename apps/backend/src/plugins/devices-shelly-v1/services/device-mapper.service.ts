@@ -131,9 +131,23 @@ export class DeviceMapperService {
 
 			// Set auth credentials if password is configured
 			if (device.password) {
-				this.logger.debug(`[SHELLY V1][MAPPER] Setting auth credentials for device ${event.id}`);
+				this.logger.debug(`[SHELLY V1][MAPPER] Fetching username from login settings for device ${event.id}`);
 
-				this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, SHELLY_AUTH_USERNAME, device.password);
+				try {
+					// Get the real username from the login endpoint
+					const loginSettings = await this.httpClient.getLoginSettings(shellyDevice.host);
+					const username = loginSettings.username || SHELLY_AUTH_USERNAME;
+
+					this.logger.debug(`[SHELLY V1][MAPPER] Setting auth credentials for device ${event.id} (username: ${username})`);
+					this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, username, device.password);
+				} catch (error) {
+					this.logger.warn(`[SHELLY V1][MAPPER] Failed to fetch login settings from ${shellyDevice.host}, using default username`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
+
+					// Fallback to default username if login endpoint fails
+					this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, SHELLY_AUTH_USERNAME, device.password);
+				}
 			}
 
 			// Update hostname if it changed (device might have a new IP address)
