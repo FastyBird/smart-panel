@@ -50,6 +50,7 @@ export interface RegisteredDevice {
 	id: string;
 	type: string;
 	host: string;
+	enabled: boolean; // Whether device is enabled for updates
 }
 
 /**

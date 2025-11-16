@@ -87,7 +87,10 @@ describe('ShellyV1Service', () => {
 					useValue: {
 						start: jest.fn(),
 						stop: jest.fn(),
-				getDevice: jest.fn(),
+						getDevice: jest.fn(),
+						getRegisteredDevice: jest.fn().mockReturnValue({ id: 'shelly1pm-ABC123', type: 'SHSW-PM', host: '192.168.1.100', enabled: true }),
+						getRegisteredDevices: jest.fn().mockReturnValue([]),
+						updateDeviceEnabledStatus: jest.fn(),
 					},
 				},
 				{

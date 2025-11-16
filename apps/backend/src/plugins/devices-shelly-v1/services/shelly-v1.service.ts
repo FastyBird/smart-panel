@@ -222,6 +222,15 @@ export class ShellyV1Service {
 		);
 
 		try {
+			// Check if device is enabled in registry
+			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
+
+			if (registeredDevice && !registeredDevice.enabled) {
+				this.logger.debug(`[SHELLY V1][SERVICE] Device ${event.id} is disabled, ignoring property change`);
+
+				return;
+			}
+
 			// Find the device
 			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
 				'identifier',
@@ -307,6 +316,15 @@ export class ShellyV1Service {
 		this.logger.debug(`[SHELLY V1][SERVICE] Device went offline: ${event.id}`);
 
 		try {
+			// Check if device is enabled in registry
+			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
+
+			if (registeredDevice && !registeredDevice.enabled) {
+				this.logger.debug(`[SHELLY V1][SERVICE] Device ${event.id} is disabled, ignoring offline event`);
+
+				return;
+			}
+
 			// Find the device
 			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
 				'identifier',
@@ -344,6 +362,15 @@ export class ShellyV1Service {
 		this.logger.debug(`[SHELLY V1][SERVICE] Device came online: ${event.id}`);
 
 		try {
+			// Check if device is enabled in registry
+			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
+
+			if (registeredDevice && !registeredDevice.enabled) {
+				this.logger.debug(`[SHELLY V1][SERVICE] Device ${event.id} is disabled, ignoring online event`);
+
+				return;
+			}
+
 			// Find the device
 			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
 				'identifier',
@@ -596,6 +623,11 @@ export class ShellyV1Service {
 			this.logger.debug(`[SHELLY V1][SERVICE] Updating device information for ${registeredDevices.length} devices`);
 
 			for (const registeredDevice of registeredDevices) {
+				// Skip disabled devices
+				if (!registeredDevice.enabled) {
+					continue;
+				}
+
 				try {
 					// Fetch device info and status from HTTP API in parallel
 					const [info, status] = await Promise.all([

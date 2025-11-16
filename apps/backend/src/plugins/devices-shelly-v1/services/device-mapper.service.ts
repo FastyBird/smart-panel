@@ -108,7 +108,25 @@ export class DeviceMapperService {
 
 			device = await this.devicesService.create<ShellyV1DeviceEntity, CreateShellyV1DeviceDto>(createDto);
 		} else {
+			// If device is disabled, set to UNKNOWN and skip updates
+			if (!device.enabled) {
+				this.logger.debug(`[SHELLY V1][MAPPER] Device ${event.id} is disabled, setting to UNKNOWN and skipping updates`);
+
+				// Update registry to mark device as disabled
+				this.shelliesAdapter.updateDeviceEnabledStatus(event.id, false);
+
+				// Set connection state to UNKNOWN for disabled devices
+				await this.deviceConnectivityService.setConnectionState(device.id, {
+					state: ConnectionState.UNKNOWN,
+				});
+
+				return device;
+			}
+
 			this.logger.debug(`[SHELLY V1][MAPPER] Device already exists: ${event.id}, updating hostname if changed`);
+
+			// Update registry to ensure device is marked as enabled
+			this.shelliesAdapter.updateDeviceEnabledStatus(event.id, true);
 
 			// Update hostname if it changed (device might have a new IP address)
 			if (device.hostname !== event.host) {

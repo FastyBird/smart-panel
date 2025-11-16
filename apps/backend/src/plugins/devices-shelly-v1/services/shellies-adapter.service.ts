@@ -135,16 +135,38 @@ export class ShelliesAdapterService {
 	}
 
 	/**
+	 * Get a registered device by ID
+	 */
+	getRegisteredDevice(deviceId: string): RegisteredDevice | undefined {
+		return this.devicesRegistry.get(deviceId);
+	}
+
+	/**
+	 * Update the enabled flag for a registered device
+	 */
+	updateDeviceEnabledStatus(deviceId: string, enabled: boolean): void {
+		const device = this.devicesRegistry.get(deviceId);
+
+		if (device) {
+			device.enabled = enabled;
+			this.devicesRegistry.set(deviceId, device);
+
+			this.logger.debug(`[SHELLY V1][ADAPTER] Updated enabled status for ${deviceId}: ${enabled}`);
+		}
+	}
+
+	/**
 	 * Handle device discovered event from a shellies library
 	 */
 	private handleDeviceDiscovered(device: ShellyDevice): void {
 		this.logger.debug(`[SHELLY V1][ADAPTER] Device discovered: ${device.id} (${device.type})`);
 
-		// Add a device to a registry
+		// Add a device to a registry (default enabled = true, will be updated by mapper)
 		this.devicesRegistry.set(device.id, {
 			id: device.id,
 			type: device.type,
 			host: device.host,
+			enabled: true,
 		});
 
 		this.logger.debug(
