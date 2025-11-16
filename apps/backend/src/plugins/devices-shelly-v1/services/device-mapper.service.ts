@@ -25,6 +25,7 @@ import { CreateShellyV1ChannelPropertyDto } from '../dto/create-channel-property
 import { CreateShellyV1ChannelDto } from '../dto/create-channel.dto';
 import { CreateShellyV1DeviceDto } from '../dto/create-device.dto';
 import { UpdateShellyV1ChannelPropertyDto } from '../dto/update-channel-property.dto';
+import { UpdateShellyV1DeviceDto } from '../dto/update-device.dto';
 import {
 	ShellyV1ChannelEntity,
 	ShellyV1ChannelPropertyEntity,
@@ -107,7 +108,24 @@ export class DeviceMapperService {
 
 			device = await this.devicesService.create<ShellyV1DeviceEntity, CreateShellyV1DeviceDto>(createDto);
 		} else {
-			this.logger.debug(`[SHELLY V1][MAPPER] Device already exists: ${event.id}`);
+			this.logger.debug(`[SHELLY V1][MAPPER] Device already exists: ${event.id}, updating hostname if changed`);
+
+			// Update hostname if it changed (device might have a new IP address)
+			if (device.hostname !== event.host) {
+				this.logger.log(
+					`[SHELLY V1][MAPPER] Updating hostname for device ${event.id}: ${device.hostname} -> ${event.host}`,
+				);
+
+				const updateDto: UpdateShellyV1DeviceDto = {
+					type: DEVICES_SHELLY_V1_TYPE,
+					hostname: event.host,
+				};
+
+				device = await this.devicesService.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(
+					device.id,
+					updateDto,
+				);
+			}
 		}
 
 		// Create device_information channel
@@ -400,24 +418,23 @@ export class DeviceMapperService {
 				channel.id,
 				createPropertyDto,
 			);
-		} else if (propDef.value !== undefined && propDef.value !== null) {
-			// Update existing property with new value if provided
+		} else {
+			// Update existing property metadata and value (preserve name and description)
 			this.logger.debug(
-				`[SHELLY V1][MAPPER] Updating property: ${propDef.identifier} for channel ${channel.identifier} with value: ${propDef.value}`,
+				`[SHELLY V1][MAPPER] Updating property metadata: ${propDef.identifier} for channel ${channel.identifier}`,
 			);
 
 			await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
 				existingProperty.id,
 				toInstance(UpdateShellyV1ChannelPropertyDto, {
 					type: DEVICES_SHELLY_V1_TYPE,
-					identifier: propDef.identifier,
-					name: propDef.name,
+					// Don't update identifier or name - preserve user configuration
 					category: propDef.category,
 					data_type: propDef.dataType,
 					permissions: propDef.permissions || [PermissionType.READ_ONLY],
 					...(propDef.unit !== undefined && { unit: propDef.unit }),
 					...(propDef.format !== undefined && { format: propDef.format }),
-					value: propDef.value,
+					...(propDef.value !== undefined && propDef.value !== null && { value: propDef.value }),
 				}),
 			);
 		}
