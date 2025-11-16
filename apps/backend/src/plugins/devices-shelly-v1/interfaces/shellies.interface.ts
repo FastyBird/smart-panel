@@ -24,7 +24,7 @@ export interface ShellyDevice extends EventEmitter {
 
 export interface ShelliesLibrary extends EventEmitter {
 	// Start discovery
-	start(): void;
+	start(networkInterface?: string): void;
 
 	// Stop discovery and cleanup
 	stop(): void;

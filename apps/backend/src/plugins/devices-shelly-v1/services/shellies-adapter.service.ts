@@ -1,3 +1,5 @@
+import si, { Systeminformation } from 'systeminformation';
+
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -38,7 +40,7 @@ export class ShelliesAdapterService {
 	/**
 	 * Start the shellies library and begin device discovery
 	 */
-	start(): void {
+	async start(): Promise<void> {
 		if (this.isStarted) {
 			this.logger.warn('[SHELLY V1][ADAPTER] Shellies adapter already started');
 
@@ -62,8 +64,11 @@ export class ShelliesAdapterService {
 
 			this.logger.log('[SHELLY V1][ADAPTER] Shellies library initialized, starting discovery');
 
+			// Get network interface if configured
+			const networkInterface = await this.getNetworkInterface();
+
 			// Start discovery
-			this.shellies.start();
+			this.shellies.start(networkInterface);
 
 			this.isStarted = true;
 
@@ -336,5 +341,42 @@ export class ShelliesAdapterService {
 				});
 			}
 		}
+	}
+
+	/**
+	 * Returns the configured network interface IP address to listen for CoAP messages on,
+	 * if one has been configured.
+	 */
+	async getNetworkInterface(): Promise<string | null> {
+		const iface = this.config.discovery.interface;
+
+		if (!iface) {
+			return null;
+		}
+
+		const networkInterfaces: Systeminformation.NetworkInterfacesData[] = await si.networkInterfaces();
+
+		// Check if the configured value matches any interface name
+		const interfaceByName = networkInterfaces.find((ni) => ni.iface === iface);
+
+		if (interfaceByName) {
+			// Return the IPv4 address of the matching interface
+			return interfaceByName.ip4 || null;
+		}
+
+		// Otherwise, check if the configured value is an IP address that exists on any interface
+		const interfaceByAddress = networkInterfaces.find((ni) => ni.ip4 === iface);
+
+		if (interfaceByAddress) {
+			// Address found, so it's valid
+			return interfaceByAddress.ip4;
+		}
+
+		// The configured value doesn't match any interface name or address, so ignore it
+		this.logger.warn(
+			`[SHELLY V1][ADAPTER] Ignoring unknown network interface name or address: ${iface}`,
+		);
+
+		return null;
 	}
 }

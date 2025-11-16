@@ -131,7 +131,7 @@ export class ShellyV1Service {
 				await this.initializeDeviceStates();
 
 				// Start the shellies adapter for device discovery
-				this.shelliesAdapter.start();
+				await this.shelliesAdapter.start();
 
 				this.logger.log('[SHELLY V1][SERVICE] Shelly V1 plugin service started successfully');
 
