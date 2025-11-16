@@ -33,6 +33,7 @@ import {
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
 import { NormalizedDeviceEvent, ShellyDevice } from '../interfaces/shellies.interface';
+import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -72,6 +73,10 @@ export class DeviceMapperService {
 			throw new DevicesShellyV1NotSupportedException(`Unsupported device type: ${event.type}`);
 		}
 
+		// Variables to store credentials for HTTP requests
+		let username: string | undefined;
+		let password: string | undefined;
+
 		// Fetch device settings to get the device name
 		let deviceName = event.id; // Default to device ID
 
@@ -109,11 +114,13 @@ export class DeviceMapperService {
 
 			device = await this.devicesService.create<ShellyV1DeviceEntity, CreateShellyV1DeviceDto>(createDto);
 		} else {
-			// If device is disabled, set to UNKNOWN and skip updates
+			// If a device is disabled, set to UNKNOWN and skip updates
 			if (!device.enabled) {
-				this.logger.debug(`[SHELLY V1][MAPPER] Device ${event.id} is disabled, setting to UNKNOWN and skipping updates`);
+				this.logger.debug(
+					`[SHELLY V1][MAPPER] Device ${event.id} is disabled, setting to UNKNOWN and skipping updates`,
+				);
 
-				// Update registry to mark device as disabled
+				// Update registry to mark a device as disabled
 				this.shelliesAdapter.updateDeviceEnabledStatus(event.id, false);
 
 				// Set connection state to UNKNOWN for disabled devices
@@ -126,31 +133,39 @@ export class DeviceMapperService {
 
 			this.logger.debug(`[SHELLY V1][MAPPER] Device already exists: ${event.id}, updating hostname if changed`);
 
-			// Update registry to ensure device is marked as enabled
+			// Update the registry to ensure a device is marked as enabled
 			this.shelliesAdapter.updateDeviceEnabledStatus(event.id, true);
 
-			// Set auth credentials if password is configured
+			// Set auth credentials if the password is configured
 			if (device.password) {
 				this.logger.debug(`[SHELLY V1][MAPPER] Fetching username from login settings for device ${event.id}`);
 
 				try {
 					// Get the real username from the login endpoint
 					const loginSettings = await this.httpClient.getLoginSettings(shellyDevice.host);
-					const username = loginSettings.username || SHELLY_AUTH_USERNAME;
+					username = loginSettings.username || SHELLY_AUTH_USERNAME;
+					password = device.password;
 
-					this.logger.debug(`[SHELLY V1][MAPPER] Setting auth credentials for device ${event.id} (username: ${username})`);
-					this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, username, device.password);
+					this.logger.debug(
+						`[SHELLY V1][MAPPER] Setting auth credentials for device ${event.id} (username: ${username})`,
+					);
+					this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, username, password);
 				} catch (error) {
-					this.logger.warn(`[SHELLY V1][MAPPER] Failed to fetch login settings from ${shellyDevice.host}, using default username`, {
-						message: error instanceof Error ? error.message : String(error),
-					});
+					this.logger.warn(
+						`[SHELLY V1][MAPPER] Failed to fetch login settings from ${shellyDevice.host}, using default username`,
+						{
+							message: error instanceof Error ? error.message : String(error),
+						},
+					);
 
 					// Fallback to default username if login endpoint fails
-					this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, SHELLY_AUTH_USERNAME, device.password);
+					username = SHELLY_AUTH_USERNAME;
+					password = device.password;
+					this.shelliesAdapter.setDeviceAuthCredentials(event.type, event.id, username, password);
 				}
 			}
 
-			// Update hostname if it changed (device might have a new IP address)
+			// Update hostname if it changed (a device might have a new IP address)
 			if (device.hostname !== event.host) {
 				this.logger.log(
 					`[SHELLY V1][MAPPER] Updating hostname for device ${event.id}: ${device.hostname} -> ${event.host}`,
@@ -161,15 +176,12 @@ export class DeviceMapperService {
 					hostname: event.host,
 				};
 
-				device = await this.devicesService.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(
-					device.id,
-					updateDto,
-				);
+				device = await this.devicesService.update<ShellyV1DeviceEntity, UpdateShellyV1DeviceDto>(device.id, updateDto);
 			}
 		}
 
-		// Create device_information channel
-		await this.createDeviceInformationChannel(device, shellyDevice);
+		// Create a device_information channel
+		await this.createDeviceInformationChannel(device, shellyDevice, username, password);
 
 		// Determine which bindings to use based on mode (if applicable)
 		let bindings: PropertyBinding[] = [];
@@ -216,19 +228,21 @@ export class DeviceMapperService {
 	private async createDeviceInformationChannel(
 		device: ShellyV1DeviceEntity,
 		shellyDevice: ShellyDevice,
+		username?: string,
+		password?: string,
 	): Promise<void> {
 		const channelIdentifier = SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION;
 
 		this.logger.debug(`[SHELLY V1][MAPPER] Fetching additional device info from ${shellyDevice.host}`);
 
 		// Fetch additional device information from HTTP API
-		let deviceInfo;
-		let deviceStatus;
+		let deviceInfo: ShellyInfoResponse | undefined;
+		let deviceStatus: ShellyStatusResponse | undefined;
 
 		try {
 			[deviceInfo, deviceStatus] = await Promise.all([
 				this.httpClient.getDeviceInfo(shellyDevice.host),
-				this.httpClient.getDeviceStatus(shellyDevice.host),
+				this.httpClient.getDeviceStatus(shellyDevice.host, undefined, username, password),
 			]);
 
 			this.logger.debug(
@@ -243,7 +257,7 @@ export class DeviceMapperService {
 			deviceStatus = null;
 		}
 
-		// Check if channel already exists
+		// Check if a channel already exists
 		let channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
 			'identifier',
 			channelIdentifier,
@@ -320,7 +334,7 @@ export class DeviceMapperService {
 			},
 		];
 
-		// Add mode property if device has it
+		// Add mode property if a device has it
 		if (shellyDevice['mode']) {
 			deviceInfoProperties.push({
 				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODE,
@@ -371,7 +385,7 @@ export class DeviceMapperService {
 		bindings: PropertyBinding[],
 		shellyDevice: ShellyDevice,
 	): Promise<void> {
-		// Check if channel already exists
+		// Check if a channel already exists
 		let channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
 			'identifier',
 			channelIdentifier,
@@ -396,7 +410,7 @@ export class DeviceMapperService {
 			channel = await this.channelsService.create<ShellyV1ChannelEntity, CreateShellyV1ChannelDto>(createChannelDto);
 		}
 
-		// Create properties for the channel with initial values from device state
+		// Create properties for the channel with initial values from the device state
 		for (const binding of bindings) {
 			const initialValue = shellyDevice[binding.shelliesProperty];
 
@@ -429,7 +443,7 @@ export class DeviceMapperService {
 			value?: any;
 		},
 	): Promise<void> {
-		// Check if property already exists
+		// Check if a property already exists
 		const existingProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
 			'identifier',
 			propDef.identifier,
@@ -481,10 +495,10 @@ export class DeviceMapperService {
 	}
 
 	/**
-	 * Infer channel category from its property bindings
+	 * Infer a channel category from its property bindings
 	 */
 	private inferChannelCategory(bindings: PropertyBinding[]): ChannelCategory {
-		// Look for the most specific property category to infer channel category
+		// Look for the most specific property category to infer the channel category
 		for (const binding of bindings) {
 			switch (binding.category) {
 				case PropertyCategory.ON:

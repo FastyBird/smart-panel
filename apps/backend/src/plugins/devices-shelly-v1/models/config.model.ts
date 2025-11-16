@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';

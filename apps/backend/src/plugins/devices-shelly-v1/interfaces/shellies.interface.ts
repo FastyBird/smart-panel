@@ -40,7 +40,7 @@ export interface ShelliesLibrary extends EventEmitter {
 
 	// Events emitted:
 	// - 'discover' (device: ShellyDevice)
-	// - 'add' (device: ShellyDevice) - synonym for discover in Gen 1
+	// - 'add' (device: ShellyDevice) - synonym for discovery in Gen 1
 	// - 'remove' (device: ShellyDevice)
 }
 
@@ -51,7 +51,7 @@ export interface RegisteredDevice {
 	id: string;
 	type: string;
 	host: string;
-	enabled: boolean; // Whether device is enabled for updates
+	enabled: boolean; // Whether a device is enabled for updates
 }
 
 /**

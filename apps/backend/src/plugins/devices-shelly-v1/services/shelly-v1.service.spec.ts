@@ -1,6 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
@@ -88,7 +88,9 @@ describe('ShellyV1Service', () => {
 						start: jest.fn(),
 						stop: jest.fn(),
 						getDevice: jest.fn(),
-						getRegisteredDevice: jest.fn().mockReturnValue({ id: 'shelly1pm-ABC123', type: 'SHSW-PM', host: '192.168.1.100', enabled: true }),
+						getRegisteredDevice: jest
+							.fn()
+							.mockReturnValue({ id: 'shelly1pm-ABC123', type: 'SHSW-PM', host: '192.168.1.100', enabled: true }),
 						getRegisteredDevices: jest.fn().mockReturnValue([]),
 						updateDeviceEnabledStatus: jest.fn(),
 					},
@@ -182,11 +184,34 @@ describe('ShellyV1Service', () => {
 			await service.handleDeviceChanged(changeEvent);
 
 			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'device_information', 'device-uuid', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsPropertiesService.findOneBy).toHaveBeenCalledWith('identifier', 'model', 'device-info-channel-uuid', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'relay_0', 'device-uuid', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsPropertiesService.findOneBy).toHaveBeenCalledWith('identifier', 'state', 'channel-uuid', DEVICES_SHELLY_V1_TYPE);
-			expect(channelsPropertiesService.update).toHaveBeenCalledWith('property-uuid', expect.objectContaining({ value: true }));
+			expect(channelsService.findOneBy).toHaveBeenCalledWith(
+				'identifier',
+				'device_information',
+				'device-uuid',
+				DEVICES_SHELLY_V1_TYPE,
+			);
+			expect(channelsPropertiesService.findOneBy).toHaveBeenCalledWith(
+				'identifier',
+				'model',
+				'device-info-channel-uuid',
+				DEVICES_SHELLY_V1_TYPE,
+			);
+			expect(channelsService.findOneBy).toHaveBeenCalledWith(
+				'identifier',
+				'relay_0',
+				'device-uuid',
+				DEVICES_SHELLY_V1_TYPE,
+			);
+			expect(channelsPropertiesService.findOneBy).toHaveBeenCalledWith(
+				'identifier',
+				'state',
+				'channel-uuid',
+				DEVICES_SHELLY_V1_TYPE,
+			);
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				'property-uuid',
+				expect.objectContaining({ value: true }),
+			);
 		});
 
 		it('should skip update if device is not found', async () => {
@@ -222,7 +247,12 @@ describe('ShellyV1Service', () => {
 
 			await service.handleDeviceChanged(changeEvent);
 
-			expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'relay_0', 'device-uuid', DEVICES_SHELLY_V1_TYPE);
+			expect(channelsService.findOneBy).toHaveBeenCalledWith(
+				'identifier',
+				'relay_0',
+				'device-uuid',
+				DEVICES_SHELLY_V1_TYPE,
+			);
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 
@@ -237,7 +267,7 @@ describe('ShellyV1Service', () => {
 			devicesService.findOneBy.mockResolvedValue(mockDevice);
 			channelsService.findOneBy
 				.mockResolvedValueOnce(mockDeviceInfoChannel) // First call for device_information
-				.mockResolvedValueOnce(mockChannel); // Second call for channel
+				.mockResolvedValueOnce(mockChannel); // Second call for a channel
 			channelsPropertiesService.findOneBy
 				.mockResolvedValueOnce(mockModelProperty) // First call for model property
 				.mockResolvedValueOnce(null); // Second call for power property - not found
@@ -268,7 +298,12 @@ describe('ShellyV1Service', () => {
 			await service.handleDeviceChanged(changeEvent);
 
 			// Should call to get device_information and model, but not the actual channel
-			expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'device_information', 'device-uuid', DEVICES_SHELLY_V1_TYPE);
+			expect(channelsService.findOneBy).toHaveBeenCalledWith(
+				'identifier',
+				'device_information',
+				'device-uuid',
+				DEVICES_SHELLY_V1_TYPE,
+			);
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
 
@@ -381,7 +416,6 @@ describe('ShellyV1Service', () => {
 			await expect(service.handleDeviceOnline(onlineEvent)).resolves.not.toThrow();
 		});
 	});
-
 
 	describe('initializeDeviceStates', () => {
 		it('should set all devices to UNKNOWN state', async () => {

@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { SHELLY_HTTP_ENDPOINTS, ShellyHttpEndpoint, ShellyHttpEndpointResponseMap } from '../devices-shelly-v1.constants';
+import {
+	SHELLY_HTTP_ENDPOINTS,
+	ShellyHttpEndpoint,
+	ShellyHttpEndpointResponseMap,
+} from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
 import {
 	ShellyInfoResponse,
@@ -21,6 +25,7 @@ export class ShellyV1HttpClientService {
 
 	/**
 	 * Get device information from /shelly endpoint
+	 * Note: This endpoint does not require authentication
 	 */
 	async getDeviceInfo(host: string, timeout?: number): Promise<ShellyInfoResponse> {
 		return this.get(host, SHELLY_HTTP_ENDPOINTS.DEVICE_INFO, timeout) as Promise<ShellyInfoResponse>;
@@ -28,37 +33,70 @@ export class ShellyV1HttpClientService {
 
 	/**
 	 * Get device settings from /settings endpoint
+	 * Note: This endpoint requires authentication when enabled
 	 */
-	async getDeviceSettings(host: string, timeout?: number): Promise<ShellySettingsResponse> {
-		return this.get(host, SHELLY_HTTP_ENDPOINTS.SETTINGS, timeout) as Promise<ShellySettingsResponse>;
+	async getDeviceSettings(
+		host: string,
+		timeout?: number,
+		username?: string,
+		password?: string,
+	): Promise<ShellySettingsResponse> {
+		return this.get(
+			host,
+			SHELLY_HTTP_ENDPOINTS.SETTINGS,
+			timeout,
+			username,
+			password,
+		) as Promise<ShellySettingsResponse>;
 	}
 
 	/**
 	 * Get device status from /status endpoint
+	 * Note: This endpoint requires authentication when enabled
 	 */
-	async getDeviceStatus(host: string, timeout?: number): Promise<ShellyStatusResponse> {
-		return this.get(host, SHELLY_HTTP_ENDPOINTS.STATUS, timeout) as Promise<ShellyStatusResponse>;
+	async getDeviceStatus(
+		host: string,
+		timeout?: number,
+		username?: string,
+		password?: string,
+	): Promise<ShellyStatusResponse> {
+		return this.get(host, SHELLY_HTTP_ENDPOINTS.STATUS, timeout, username, password) as Promise<ShellyStatusResponse>;
 	}
 
 	/**
 	 * Get login settings from /settings/login endpoint
+	 * Note: This endpoint does not require authentication
 	 */
 	async getLoginSettings(host: string, timeout?: number): Promise<ShellyLoginResponse> {
 		return this.get(host, SHELLY_HTTP_ENDPOINTS.LOGIN, timeout) as Promise<ShellyLoginResponse>;
 	}
 
 	/**
-	 * Generic HTTP GET request to Shelly device with type-safe endpoint mapping
+	 * Generic HTTP GET request to a Shelly device with type-safe endpoint mapping
+	 * Supports Basic HTTP authentication when username and password are provided
 	 */
 	private async get<E extends ShellyHttpEndpoint>(
 		host: string,
 		endpoint: E,
 		timeout?: number,
+		username?: string,
+		password?: string,
 	): Promise<ShellyHttpEndpointResponseMap[E]> {
 		const url = `http://${host}${endpoint}`;
 		const requestTimeout = timeout || this.DEFAULT_TIMEOUT;
 
-		this.logger.debug(`[SHELLY V1][HTTP CLIENT] Fetching ${url}`);
+		this.logger.debug(`[SHELLY V1][HTTP CLIENT] Fetching ${url}${username ? ' (with authentication)' : ''}`);
+
+		// Build headers
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+		};
+
+		// Add a Basic Authentication header if credentials are provided
+		if (username && password) {
+			const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+			headers['Authorization'] = `Basic ${credentials}`;
+		}
 
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
@@ -66,18 +104,14 @@ export class ShellyV1HttpClientService {
 		try {
 			const response = await fetch(url, {
 				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers,
 				signal: controller.signal,
 			});
 
 			clearTimeout(timeoutId);
 
 			if (!response.ok) {
-				throw new DevicesShellyV1Exception(
-					`HTTP request failed: ${response.status} ${response.statusText}`,
-				);
+				throw new DevicesShellyV1Exception(`HTTP request failed: ${response.status} ${response.statusText}`);
 			}
 
 			const data = (await response.json()) as ShellyHttpEndpointResponseMap[E];
@@ -90,19 +124,13 @@ export class ShellyV1HttpClientService {
 
 			if (error instanceof Error) {
 				if (error.name === 'AbortError') {
-					throw new DevicesShellyV1Exception(
-						`Request timeout after ${requestTimeout}ms for ${url}`,
-					);
+					throw new DevicesShellyV1Exception(`Request timeout after ${requestTimeout}ms for ${url}`);
 				}
 
-				throw new DevicesShellyV1Exception(
-					`HTTP request failed: ${error.message}`,
-				);
+				throw new DevicesShellyV1Exception(`HTTP request failed: ${error.message}`);
 			}
 
-			throw new DevicesShellyV1Exception(
-				`HTTP request failed: ${String(error)}`,
-			);
+			throw new DevicesShellyV1Exception(`HTTP request failed: ${String(error)}`);
 		}
 	}
 }

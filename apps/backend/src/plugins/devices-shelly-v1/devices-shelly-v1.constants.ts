@@ -31,7 +31,7 @@ export const SHELLY_V1_CHANNEL_IDENTIFIERS = {
 } as const;
 
 /**
- * Property identifiers for device_information channel
+ * Property identifiers for a device_information channel
  */
 export const SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS = {
 	MANUFACTURER: 'manufacturer',

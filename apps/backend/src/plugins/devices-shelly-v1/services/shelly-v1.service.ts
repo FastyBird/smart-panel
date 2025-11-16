@@ -17,6 +17,7 @@ import {
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
 	PropertyBinding,
+	SHELLY_AUTH_USERNAME,
 	SHELLY_V1_CHANNEL_IDENTIFIERS,
 	SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS,
 } from '../devices-shelly-v1.constants';
@@ -222,7 +223,7 @@ export class ShellyV1Service {
 		);
 
 		try {
-			// Check if device is enabled in registry
+			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
@@ -316,7 +317,7 @@ export class ShellyV1Service {
 		this.logger.debug(`[SHELLY V1][SERVICE] Device went offline: ${event.id}`);
 
 		try {
-			// Check if device is enabled in registry
+			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
@@ -362,7 +363,7 @@ export class ShellyV1Service {
 		this.logger.debug(`[SHELLY V1][SERVICE] Device came online: ${event.id}`);
 
 		try {
-			// Check if device is enabled in registry
+			// Check if a device is enabled in the registry
 			const registeredDevice = this.shelliesAdapter.getRegisteredDevice(event.id);
 
 			if (registeredDevice && !registeredDevice.enabled) {
@@ -424,7 +425,7 @@ export class ShellyV1Service {
 		if (descriptor.instance?.modeProperty && descriptor.modes) {
 			// Device has mode-based configuration - need to get current mode from adapter
 			// Use the model type from descriptor to get the device from adapter
-			const deviceModel = descriptor.models[0]; // Use first model as the type
+			const deviceModel = descriptor.models[0]; // Use the first model as the type
 			const shellyDevice = this.shelliesAdapter.getDevice(deviceModel, device.identifier);
 
 			if (!shellyDevice) {
@@ -467,7 +468,7 @@ export class ShellyV1Service {
 	}
 
 	/**
-	 * Find the descriptor for a device entity by querying the model from device_information channel
+	 * Find the descriptor for a device entity by querying the model from a device_information channel
 	 */
 	private async findDescriptor(
 		device: ShellyV1DeviceEntity,
@@ -486,7 +487,7 @@ export class ShellyV1Service {
 			return null;
 		}
 
-		// Get the model property from device_information channel
+		// Get the model property from a device_information channel
 		const modelProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
 			'identifier',
 			SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
@@ -629,13 +630,7 @@ export class ShellyV1Service {
 				}
 
 				try {
-					// Fetch device info and status from HTTP API in parallel
-					const [info, status] = await Promise.all([
-						this.httpClient.getDeviceInfo(registeredDevice.host),
-						this.httpClient.getDeviceStatus(registeredDevice.host),
-					]);
-
-					// Find the device in database
+					// Find the device in a database first to get credentials
 					const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
 						'identifier',
 						registeredDevice.id,
@@ -645,6 +640,28 @@ export class ShellyV1Service {
 					if (!device) {
 						continue;
 					}
+
+					// Get credentials if the password is set
+					let username: string | undefined;
+					let password: string | undefined;
+
+					if (device.password) {
+						try {
+							const loginSettings = await this.httpClient.getLoginSettings(registeredDevice.host);
+							username = loginSettings.username || SHELLY_AUTH_USERNAME;
+							password = device.password;
+						} catch (error) {
+							// Fallback to default username if login endpoint fails
+							username = SHELLY_AUTH_USERNAME;
+							password = device.password;
+						}
+					}
+
+					// Fetch device info and status from HTTP API in parallel
+					const [info, status] = await Promise.all([
+						this.httpClient.getDeviceInfo(registeredDevice.host),
+						this.httpClient.getDeviceStatus(registeredDevice.host, undefined, username, password),
+					]);
 
 					// Get the device_information channel
 					const deviceInfoChannel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
