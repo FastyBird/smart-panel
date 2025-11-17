@@ -303,7 +303,7 @@ describe('ShellyV1DevicePlatform', () => {
 	});
 
 	describe('Roller commands', () => {
-		it.skip('should execute roller position command', async () => {
+		it('should execute roller position command', async () => {
 			const shellyDevice = makeShellyDevice('SHSW-25');
 			shellyDevice.mode = 'roller';
 			const getDevice = jest.fn().mockReturnValue(shellyDevice);
@@ -319,7 +319,7 @@ describe('ShellyV1DevicePlatform', () => {
 			expect(shellyDevice.setRoller).toHaveBeenCalledWith(0, 'to', 50);
 		});
 
-		it.skip('should execute roller open command', async () => {
+		it('should execute roller open command', async () => {
 			const shellyDevice = makeShellyDevice('SHSW-25');
 			shellyDevice.mode = 'roller';
 			const getDevice = jest.fn().mockReturnValue(shellyDevice);
@@ -335,7 +335,7 @@ describe('ShellyV1DevicePlatform', () => {
 			expect(shellyDevice.setRoller).toHaveBeenCalledWith(0, 'open');
 		});
 
-		it.skip('should return false for invalid roller command', async () => {
+		it('should return false for invalid roller command', async () => {
 			const shellyDevice = makeShellyDevice('SHSW-25');
 			shellyDevice.mode = 'roller';
 			const getDevice = jest.fn().mockReturnValue(shellyDevice);
