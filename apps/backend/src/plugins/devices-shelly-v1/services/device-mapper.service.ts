@@ -19,6 +19,7 @@ import {
 	PropertyBinding,
 	SHELLY_AUTH_USERNAME,
 	SHELLY_V1_CHANNEL_IDENTIFIERS,
+	SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY,
 	SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS,
 } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1NotSupportedException } from '../devices-shelly-v1.exceptions';
@@ -396,7 +397,7 @@ export class DeviceMapperService {
 		if (!channel) {
 			this.logger.debug(`[SHELLY V1][MAPPER] Creating channel: ${channelIdentifier} for device ${device.identifier}`);
 
-			const channelCategory = this.inferChannelCategory(bindings);
+			const channelCategory = this.inferChannelCategory(channelIdentifier, bindings);
 			const channelName = this.formatChannelName(channelIdentifier);
 
 			const createChannelDto: CreateShellyV1ChannelDto = {
@@ -418,7 +419,7 @@ export class DeviceMapperService {
 				identifier: binding.propertyIdentifier,
 				name: this.formatPropertyName(binding.propertyIdentifier),
 				category: binding.category,
-				dataType: binding.data_type,
+				dataType: binding.dataType,
 				permissions: binding.permissions,
 				unit: binding.unit,
 				format: binding.format,
@@ -496,9 +497,31 @@ export class DeviceMapperService {
 
 	/**
 	 * Infer a channel category from its property bindings
+	 * 1. If channelCategory is defined in PropertyBinding, use that
+	 * 2. If not, try to find category in SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY by prefix
+	 * 3. If not found, use default property-based mapping
 	 */
-	private inferChannelCategory(bindings: PropertyBinding[]): ChannelCategory {
-		// Look for the most specific property category to infer the channel category
+	private inferChannelCategory(channelIdentifier: string, bindings: PropertyBinding[]): ChannelCategory {
+		// Step 1: Check if any binding has an explicit channelCategory defined
+		for (const binding of bindings) {
+			if (binding.channelCategory !== undefined) {
+				this.logger.debug(
+					`[SHELLY V1][MAPPER] Using explicit channelCategory from binding: ${binding.channelCategory}`,
+				);
+				return binding.channelCategory;
+			}
+		}
+
+		// Step 2: Try to find category by channel identifier prefix
+		const prefix = channelIdentifier.split('_')[0];
+		if (SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix]) {
+			this.logger.debug(
+				`[SHELLY V1][MAPPER] Found category by prefix '${prefix}': ${SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix]}`,
+			);
+			return SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY[prefix];
+		}
+
+		// Step 3: Fall back to property-based inference
 		for (const binding of bindings) {
 			switch (binding.category) {
 				case PropertyCategory.ON:
@@ -506,8 +529,9 @@ export class DeviceMapperService {
 				case PropertyCategory.LEVEL:
 					return ChannelCategory.LIGHT;
 				case PropertyCategory.POWER:
-				case PropertyCategory.CONSUMPTION:
 					return ChannelCategory.ELECTRICAL_POWER;
+				case PropertyCategory.CONSUMPTION:
+					return ChannelCategory.ELECTRICAL_ENERGY;
 				case PropertyCategory.TEMPERATURE:
 					return ChannelCategory.TEMPERATURE;
 				case PropertyCategory.HUMIDITY:
