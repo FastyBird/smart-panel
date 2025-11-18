@@ -308,7 +308,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					`[SHELLY V1][PLATFORM] Setting roller ${index} to position ${position}% on device ${device.identifier}`,
 				);
 
-				await shellyDevice.setRoller(index, 'to', position);
+				await shellyDevice.setRollerPosition(position);
 			} else if (property.identifier === 'command') {
 				// Execute command (open/close/stop)
 				const command = String(value).toLowerCase();
@@ -323,7 +323,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					`[SHELLY V1][PLATFORM] Executing roller ${index} command ${command} on device ${device.identifier}`,
 				);
 
-				await shellyDevice.setRoller(index, command);
+				await shellyDevice.setRollerState(command);
 			} else {
 				this.logger.debug(`[SHELLY V1][PLATFORM] Unknown roller property: ${property.identifier}, ignoring`);
 			}
