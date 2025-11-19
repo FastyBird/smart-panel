@@ -159,7 +159,13 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				return await this.executeRelayCommand(device, shellyDevice, parseInt(relayMatch[1], 10), propertyUpdates);
 			} else if (lightMatch) {
 				// Light command
-				return await this.executeLightCommand(device, shellyDevice, parseInt(lightMatch[1], 10), propertyUpdates);
+				return await this.executeLightCommand(
+					device,
+					shellyDevice,
+					parseInt(lightMatch[1], 10),
+					propertyUpdates,
+					descriptor,
+				);
 			} else if (rollerMatch) {
 				// Roller command
 				return await this.executeRollerCommand(device, shellyDevice, parseInt(rollerMatch[1], 10), propertyUpdates);
@@ -220,50 +226,68 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		shellyDevice: ShellyDevice,
 		index: number,
 		propertyUpdates: Array<{ property: ShellyV1ChannelPropertyEntity; value: string | number | boolean }>,
+		descriptor: (typeof DESCRIPTORS)[keyof typeof DESCRIPTORS],
 	): Promise<boolean> {
-		if (!shellyDevice.setLight) {
-			this.logger.warn(`[SHELLY V1][PLATFORM] Device ${device.identifier} does not support setLight method`);
-
-			return false;
-		}
-
-		// Build light command object from all property updates
-		const lightCommand: any = {};
+		// Collect property values
+		const values: {
+			state?: boolean;
+			brightness?: number;
+			temperature?: number;
+			red?: number;
+			green?: number;
+			blue?: number;
+			white?: number;
+			gain?: number;
+		} = {};
+		let hasColorProperties = false;
+		let hasWhiteProperties = false;
 
 		for (const { property, value } of propertyUpdates) {
 			switch (property.identifier) {
 				case 'state':
-					lightCommand.switch = this.parseBoolean(value);
+					values.state = this.parseBoolean(value);
 
 					break;
 
 				case 'brightness':
-					lightCommand.brightness = this.parseNumber(value, 0, 100);
+					values.brightness = this.parseNumber(value, 0, 100);
+					hasWhiteProperties = true;
+
+					break;
+
+				case 'color_temperature':
+					values.temperature = this.parseNumber(value, 2700, 6500);
+					hasWhiteProperties = true;
 
 					break;
 
 				case 'red':
-					lightCommand.red = this.parseNumber(value, 0, 255);
+					values.red = this.parseNumber(value, 0, 255);
+					hasColorProperties = true;
 
 					break;
 
 				case 'green':
-					lightCommand.green = this.parseNumber(value, 0, 255);
+					values.green = this.parseNumber(value, 0, 255);
+					hasColorProperties = true;
 
 					break;
 
 				case 'blue':
-					lightCommand.blue = this.parseNumber(value, 0, 255);
+					values.blue = this.parseNumber(value, 0, 255);
+					hasColorProperties = true;
 
 					break;
 
 				case 'white':
-					lightCommand.white = this.parseNumber(value, 0, 255);
+					values.white = this.parseNumber(value, 0, 255);
+					hasColorProperties = true;
 
 					break;
 
 				case 'gain':
-					lightCommand.gain = this.parseNumber(value, 0, 100);
+					values.gain = this.parseNumber(value, 0, 100);
+					hasColorProperties = true;
 
 					break;
 
@@ -272,11 +296,127 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			}
 		}
 
-		this.logger.log(
-			`[SHELLY V1][PLATFORM] Setting light ${index} with command ${JSON.stringify(lightCommand)} on device ${device.identifier}`,
-		);
+		// Execute the appropriate command(s) based on properties
+		// Both color and white commands can be in the same batch
+		let executed = false;
 
-		await shellyDevice.setLight(index, lightCommand);
+		if (hasColorProperties) {
+			// RGB/RGBW color mode
+			if (!shellyDevice.setColor) {
+				this.logger.warn(`[SHELLY V1][PLATFORM] Device ${device.identifier} does not support setColor method`);
+			} else {
+				const colorOpts: any = {};
+
+				if (values.state !== undefined) {
+					colorOpts.switch = values.state;
+				}
+
+				if (values.red !== undefined) {
+					colorOpts.red = values.red;
+				}
+
+				if (values.green !== undefined) {
+					colorOpts.green = values.green;
+				}
+
+				if (values.blue !== undefined) {
+					colorOpts.blue = values.blue;
+				}
+
+				if (values.white !== undefined) {
+					colorOpts.white = values.white;
+				}
+
+				if (values.gain !== undefined) {
+					colorOpts.gain = values.gain;
+				}
+
+				this.logger.log(
+					`[SHELLY V1][PLATFORM] Setting light ${index} color with options ${JSON.stringify(colorOpts)} on device ${device.identifier}`,
+				);
+
+				await shellyDevice.setColor(colorOpts);
+				executed = true;
+			}
+		}
+
+		if (hasWhiteProperties) {
+			// White/brightness mode
+			if (!shellyDevice.setWhite) {
+				this.logger.warn(`[SHELLY V1][PLATFORM] Device ${device.identifier} does not support setWhite method`);
+			} else {
+				const brightness = values.brightness ?? 100; // Default brightness
+				const on = values.state ?? true; // Default on state
+
+				// Check if a device has multi-channel lights
+				const isMultiChannel = descriptor.instance?.multiChannelLights ?? false;
+
+				// Check if a device supports color temperature
+				if (values.temperature !== undefined) {
+					// Device with temperature control: setWhite(temperature, brightness, on)
+					const temperature = values.temperature;
+
+					this.logger.log(
+						`[SHELLY V1][PLATFORM] Setting light ${index} white with temperature (temp=${temperature}, brightness=${brightness}, on=${on}) on device ${device.identifier}`,
+					);
+
+					await shellyDevice.setWhite(temperature, brightness, on);
+				} else if (isMultiChannel) {
+					// Multi-channel device without temperature: setWhite(index, brightness, on)
+					this.logger.log(
+						`[SHELLY V1][PLATFORM] Setting light ${index} white multi-channel (index=${index}, brightness=${brightness}, on=${on}) on device ${device.identifier}`,
+					);
+
+					await shellyDevice.setWhite(index, brightness, on);
+				} else {
+					// Single-channel device without temperature: setWhite(brightness, on)
+					this.logger.log(
+						`[SHELLY V1][PLATFORM] Setting light white single-channel (brightness=${brightness}, on=${on}) on device ${device.identifier}`,
+					);
+
+					await shellyDevice.setWhite(brightness, on);
+				}
+
+				executed = true;
+			}
+		}
+
+		if (!executed && values.state !== undefined) {
+			// Only state change, try setColor first, then setWhite
+			if (shellyDevice.setColor) {
+				this.logger.log(
+					`[SHELLY V1][PLATFORM] Setting light ${index} state to ${values.state ? 'ON' : 'OFF'} on device ${device.identifier}`,
+				);
+
+				await shellyDevice.setColor({ switch: values.state });
+				executed = true;
+			} else if (shellyDevice.setWhite) {
+				// Check if a device has multi-channel lights
+				const isMultiChannel = descriptor.instance?.multiChannelLights ?? false;
+
+				this.logger.log(
+					`[SHELLY V1][PLATFORM] Setting light ${index} state to ${values.state ? 'ON' : 'OFF'} on device ${device.identifier}`,
+				);
+
+				if (isMultiChannel) {
+					// Multi-channel: use index signature
+					await shellyDevice.setWhite(index, 100, values.state);
+				} else {
+					// Single-channel: use a simple signature
+					await shellyDevice.setWhite(100, values.state);
+				}
+
+				executed = true;
+			}
+		}
+
+		if (!executed) {
+			this.logger.warn(
+				`[SHELLY V1][PLATFORM] No recognized light properties to update or methods not supported for device ${device.identifier}`,
+			);
+
+			return false;
+		}
 
 		this.logger.debug(`[SHELLY V1][PLATFORM] Successfully set light ${index} on device ${device.identifier}`);
 

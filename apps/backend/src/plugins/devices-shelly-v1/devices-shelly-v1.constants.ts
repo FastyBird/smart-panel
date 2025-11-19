@@ -76,6 +76,8 @@ export interface PropertyBinding {
 
 export interface DeviceInstanceInfo {
 	modeProperty?: string;
+	multiChannelLights?: boolean;
+	multiChannelRelays?: boolean;
 }
 
 export interface DeviceModeProfile {
@@ -243,6 +245,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		categories: [DeviceCategory.LIGHTING],
 		instance: {
 			modeProperty: 'mode',
+			multiChannelLights: true, // White mode has 4 light channels
 		},
 		modes: [
 			{
@@ -498,6 +501,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		],
 		instance: {
 			modeProperty: 'mode',
+			multiChannelRelays: true, // Relay mode has 2 relays
 		},
 		modes: [
 			{
@@ -614,6 +618,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		],
 		instance: {
 			modeProperty: 'mode',
+			multiChannelRelays: true, // Relay mode has 2 relays
 		},
 		modes: [
 			{
@@ -845,6 +850,9 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		name: 'Shelly 2LED',
 		models: ['SH2LED-1'],
 		categories: [DeviceCategory.LIGHTING],
+		instance: {
+			multiChannelLights: true, // Has 2 light channels
+		},
 		bindings: [
 			// light 0 switch
 			{
@@ -1028,6 +1036,9 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 			DeviceCategory.VALVE,
 			DeviceCategory.LIGHTING,
 		],
+		instance: {
+			multiChannelRelays: true, // Has 4 relay channels
+		},
 		bindings: [
 			// relay 0
 			{
@@ -1530,6 +1541,9 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 			DeviceCategory.VALVE,
 			DeviceCategory.LIGHTING,
 		],
+		instance: {
+			multiChannelRelays: true, // Has 2 relay channels
+		},
 		bindings: [
 			// relay 0
 			{
@@ -1827,6 +1841,9 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 			DeviceCategory.VALVE,
 			DeviceCategory.LIGHTING,
 		],
+		instance: {
+			multiChannelRelays: true, // Has 2 relay channels
+		},
 		bindings: [
 			// relay 0
 			{
