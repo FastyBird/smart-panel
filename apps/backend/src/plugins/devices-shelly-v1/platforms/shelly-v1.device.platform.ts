@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { coerceBooleanSafe, coerceNumberSafe } from '../../../common/utils/transform.utils';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DESCRIPTORS, DEVICES_SHELLY_V1_TYPE, PropertyBinding } from '../devices-shelly-v1.constants';
 import { DevicesShellyV1Exception } from '../devices-shelly-v1.exceptions';
@@ -205,7 +206,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			return false;
 		}
 
-		const boolValue = this.parseBoolean(stateUpdate.value);
+		const boolValue = coerceBooleanSafe(stateUpdate.value);
 
 		this.logger.log(
 			`[SHELLY V1][PLATFORM] Setting relay ${index} to ${boolValue ? 'ON' : 'OFF'} on device ${device.identifier}`,
@@ -245,48 +246,48 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		for (const { property, value } of propertyUpdates) {
 			switch (property.identifier) {
 				case 'state':
-					values.state = this.parseBoolean(value);
+					values.state = coerceBooleanSafe(value);
 
 					break;
 
 				case 'brightness':
-					values.brightness = this.parseNumber(value, 0, 100);
+					values.brightness = coerceNumberSafe(value, { clamp: { min: 0, max: 100 } }) ?? 0;
 					hasWhiteProperties = true;
 
 					break;
 
 				case 'color_temperature':
-					values.temperature = this.parseNumber(value, 2700, 6500);
+					values.temperature = coerceNumberSafe(value, { clamp: { min: 2700, max: 6500 } }) ?? 3000;
 					hasWhiteProperties = true;
 
 					break;
 
 				case 'red':
-					values.red = this.parseNumber(value, 0, 255);
+					values.red = coerceNumberSafe(value, { clamp: { min: 0, max: 255 } }) ?? 0;
 					hasColorProperties = true;
 
 					break;
 
 				case 'green':
-					values.green = this.parseNumber(value, 0, 255);
+					values.green = coerceNumberSafe(value, { clamp: { min: 0, max: 255 } }) ?? 0;
 					hasColorProperties = true;
 
 					break;
 
 				case 'blue':
-					values.blue = this.parseNumber(value, 0, 255);
+					values.blue = coerceNumberSafe(value, { clamp: { min: 0, max: 255 } }) ?? 0;
 					hasColorProperties = true;
 
 					break;
 
 				case 'white':
-					values.white = this.parseNumber(value, 0, 255);
+					values.white = coerceNumberSafe(value, { clamp: { min: 0, max: 255 } }) ?? 0;
 					hasColorProperties = true;
 
 					break;
 
 				case 'gain':
-					values.gain = this.parseNumber(value, 0, 100);
+					values.gain = coerceNumberSafe(value, { clamp: { min: 0, max: 100 } }) ?? 0;
 					hasColorProperties = true;
 
 					break;
@@ -442,7 +443,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		for (const { property, value } of propertyUpdates) {
 			if (property.identifier === 'position') {
 				// Set position (0-100)
-				const position = this.parseNumber(value, 0, 100);
+				const position = coerceNumberSafe(value, { clamp: { min: 0, max: 100 } }) ?? 0;
 
 				this.logger.log(
 					`[SHELLY V1][PLATFORM] Setting roller ${index} to position ${position}% on device ${device.identifier}`,
@@ -474,47 +475,6 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		);
 
 		return true;
-	}
-
-	/**
-	 * Parse boolean value
-	 */
-	private parseBoolean(value: any): boolean {
-		if (typeof value === 'boolean') {
-			return value;
-		}
-
-		if (typeof value === 'string') {
-			return value.toLowerCase() === 'true' || value === '1' || value === 'on';
-		}
-
-		if (typeof value === 'number') {
-			return value !== 0;
-		}
-
-		return Boolean(value);
-	}
-
-	/**
-	 * Parse number value with min/max constraints
-	 */
-	private parseNumber(value: any, min: number, max: number): number {
-		let num: number;
-
-		if (typeof value === 'number') {
-			num = value;
-		} else if (typeof value === 'string') {
-			num = parseFloat(value);
-		} else {
-			num = Number(value);
-		}
-
-		if (isNaN(num)) {
-			throw new DevicesShellyV1Exception(`Invalid number value: ${value}`);
-		}
-
-		// Clamp to range
-		return Math.max(min, Math.min(max, num));
 	}
 
 	/**
