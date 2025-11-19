@@ -194,7 +194,7 @@ export class ShelliesAdapterService {
 		);
 
 		// Register device-specific event handlers
-		device.on('change', (property: string, newValue: any, oldValue: any) => {
+		device.on('change', (property: string, newValue: string | number | boolean, oldValue: string | number | boolean | null) => {
 			this.handleDeviceChange(device, property, newValue, oldValue);
 		});
 

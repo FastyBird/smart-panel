@@ -9,7 +9,7 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
-import { ShellyDevice } from '../interfaces/shellies.interface';
+import { ShellyColorOptions, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 
 export type IShellyV1DevicePropertyData = IDevicePropertyData & {
@@ -306,7 +306,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			if (!shellyDevice.setColor) {
 				this.logger.warn(`[SHELLY V1][PLATFORM] Device ${device.identifier} does not support setColor method`);
 			} else {
-				const colorOpts: any = {};
+				const colorOpts: ShellyColorOptions = {};
 
 				if (values.state !== undefined) {
 					colorOpts.switch = values.state;

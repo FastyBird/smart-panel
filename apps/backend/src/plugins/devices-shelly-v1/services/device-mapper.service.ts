@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ShellyDevicePropertyValue } from '../interfaces/shellies.interface';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -288,7 +289,7 @@ export class DeviceMapperService {
 			dataType: DataTypeType;
 			unit?: string;
 			format?: number[] | string[];
-			value?: any;
+			value?: string | number | boolean | null;
 		}> = [
 			{
 				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MANUFACTURER,
@@ -337,12 +338,14 @@ export class DeviceMapperService {
 
 		// Add mode property if a device has it
 		if (shellyDevice['mode']) {
+			const modeValue = shellyDevice['mode'];
+
 			deviceInfoProperties.push({
 				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODE,
 				name: 'Mode',
 				category: PropertyCategory.MODE,
 				dataType: DataTypeType.STRING,
-				value: shellyDevice['mode'],
+				value: typeof modeValue === 'function' ? null : modeValue,
 			});
 		}
 
@@ -413,7 +416,10 @@ export class DeviceMapperService {
 
 		// Create properties for the channel with initial values from the device state
 		for (const binding of bindings) {
-			const initialValue = shellyDevice[binding.shelliesProperty];
+			const rawValue = shellyDevice[binding.shelliesProperty];
+			// Filter out function values (methods on the device object)
+			const initialValue: ShellyDevicePropertyValue =
+				typeof rawValue === 'function' ? undefined : (rawValue as ShellyDevicePropertyValue);
 
 			await this.createOrUpdateProperty(channel, {
 				identifier: binding.propertyIdentifier,
@@ -441,7 +447,7 @@ export class DeviceMapperService {
 			permissions?: PermissionType[];
 			unit?: string;
 			format?: number[] | string[];
-			value?: any;
+			value?: string | number | boolean | null;
 		},
 	): Promise<void> {
 		// Check if a property already exists

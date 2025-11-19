@@ -5,6 +5,23 @@ import EventEmitter from 'events';
  * The shellies package is a CommonJS module without TypeScript support
  */
 
+/**
+ * Property value types that can be stored on a Shelly device
+ */
+export type ShellyDevicePropertyValue = string | number | boolean | null | undefined;
+
+/**
+ * Options for setting color on RGB/RGBW lights
+ */
+export interface ShellyColorOptions {
+	switch?: boolean;
+	red?: number;
+	green?: number;
+	blue?: number;
+	white?: number;
+	gain?: number;
+}
+
 export interface ShellyDevice extends EventEmitter {
 	id: string;
 	type: string;
@@ -13,12 +30,16 @@ export interface ShellyDevice extends EventEmitter {
 	lastSeen?: number; // Timestamp of last communication
 
 	// Device properties (varies by device type)
-	[key: string]: any;
+	// Examples: relay0, relay1, switch, mode, brightness, red, green, blue, etc.
+	[key: string]: ShellyDevicePropertyValue | ((...args: unknown[]) => unknown);
 
 	// Methods
 	setRelay?(index: number, value: boolean): Promise<void>;
-	setLight?(index: number, value: any): Promise<void>;
+	setColor?(options: ShellyColorOptions): Promise<void>;
+	setWhite?(temperatureOrIndex: number, brightnessOrOn?: number | boolean, on?: boolean): Promise<void>;
 	setRoller?(index: number, command: string, position?: number): Promise<void>;
+	setRollerPosition?(position: number): Promise<void>;
+	setRollerState?(command: string): Promise<void>;
 	setAuthCredentials?(username: string, password: string): void;
 }
 
