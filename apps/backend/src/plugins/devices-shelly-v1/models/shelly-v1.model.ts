@@ -1,96 +1,76 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+
+export class ShellyV1SupportedDeviceModel {
+	@Expose()
+	@IsString()
+	group: string;
+
+	@Expose()
+	@IsString()
+	name: string;
+
+	@Expose()
+	@IsArray()
+	@IsString({ each: true })
+	models: string[];
+
+	@Expose()
+	@IsArray()
+	@IsString({ each: true })
+	categories: string[];
+}
 
 export class ShellyV1DeviceInfoModel {
-	@Expose()
-	@IsString()
-	id: string;
+	@Expose({ name: 'reachable' })
+	@IsBoolean()
+	reachable: boolean;
 
-	@Expose()
+	@Expose({ name: 'auth_required' })
+	@IsBoolean()
+	authRequired: boolean;
+
+	@Expose({ name: 'auth_valid' })
 	@IsOptional()
-	@IsString()
-	name: string | null = null;
+	@IsBoolean()
+	authValid?: boolean;
 
-	@Expose()
-	@IsString()
-	type: string;
-
-	@Expose()
-	@IsString()
-	mac: string;
-
-	@Expose()
+	@Expose({ name: 'host' })
 	@IsString()
 	host: string;
 
-	@Expose()
+	@Expose({ name: 'ip' })
 	@IsOptional()
 	@IsString()
-	firmware: string | null = null;
+	ip?: string;
 
-	@Expose()
+	@Expose({ name: 'mac' })
 	@IsOptional()
-	@IsBoolean()
-	auth: boolean = false;
-
-	@Expose()
-	@IsOptional()
-	@IsBoolean()
-	online: boolean = false;
-}
-
-export class ShellyV1ComponentModel {
-	@Expose()
 	@IsString()
-	type: string;
+	mac?: string;
 
-	@Expose()
-	@IsInt()
-	id: number;
-}
-
-export class ShellyV1RelayStateModel {
-	@Expose()
-	@IsBoolean()
-	ison: boolean;
-
-	@Expose()
+	@Expose({ name: 'model' })
 	@IsOptional()
-	@IsBoolean()
-	hasTimer?: boolean;
+	@IsString()
+	model?: string;
 
-	@Expose()
+	@Expose({ name: 'firmware' })
 	@IsOptional()
-	@IsInt()
-	timerRemaining?: number;
-}
+	@IsString()
+	firmware?: string;
 
-export class ShellyV1MeterStateModel {
-	@Expose()
+	@Expose({ name: 'device_type' })
 	@IsOptional()
-	power?: number;
+	@IsString()
+	deviceType?: string;
 
-	@Expose()
+	@Expose({ name: 'descriptor_key' })
 	@IsOptional()
-	total?: number;
+	@IsString()
+	descriptorKey?: string;
 
-	@Expose()
+	@Expose({ name: 'description' })
 	@IsOptional()
-	timestamp?: number;
-}
-
-export class ShellyV1TemperatureStateModel {
-	@Expose()
-	@IsOptional()
-	tC?: number;
-
-	@Expose()
-	@IsOptional()
-	tF?: number;
-}
-
-export class ShellyV1HumidityStateModel {
-	@Expose()
-	@IsOptional()
-	value?: number;
+	@IsString()
+	description?: string;
 }

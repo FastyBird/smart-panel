@@ -12,6 +12,7 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
+import { ShellyV1DevicesController } from './controllers/shelly-v1-devices.controller';
 import { DEVICES_SHELLY_V1_PLUGIN_NAME, DEVICES_SHELLY_V1_TYPE } from './devices-shelly-v1.constants';
 import { CreateShellyV1ChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateShellyV1ChannelDto } from './dto/create-channel.dto';
@@ -30,6 +31,7 @@ import { ShellyV1DevicePlatform } from './platforms/shelly-v1.device.platform';
 import { DeviceMapperService } from './services/device-mapper.service';
 import { ShelliesAdapterService } from './services/shellies-adapter.service';
 import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
+import { ShellyV1ProbeService } from './services/shelly-v1-probe.service';
 import { ShellyV1Service } from './services/shelly-v1.service';
 
 @Module({
@@ -43,10 +45,11 @@ import { ShellyV1Service } from './services/shelly-v1.service';
 		ShelliesAdapterService,
 		DeviceMapperService,
 		ShellyV1HttpClientService,
+		ShellyV1ProbeService,
 		ShellyV1DevicePlatform,
 		ShellyV1Service,
 	],
-	controllers: [],
+	controllers: [ShellyV1DevicesController],
 })
 export class DevicesShellyV1Plugin {
 	constructor(
