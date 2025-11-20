@@ -346,8 +346,13 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 			if (!shellyDevice.setWhite) {
 				this.logger.warn(`[SHELLY V1][PLATFORM] Device ${device.identifier} does not support setWhite method`);
 			} else {
-				const brightness = values.brightness ?? 100; // Default brightness
-				const on = values.state ?? true; // Default on state
+				// Use current device values as defaults if not provided in the command
+				const currentBrightness = shellyDevice[`brightness${index}`] ?? shellyDevice['brightness'];
+				const currentSwitch = shellyDevice[`switch${index}`] ?? shellyDevice['switch'];
+
+				const brightness =
+					values.brightness ?? (typeof currentBrightness === 'number' ? currentBrightness : 100);
+				const on = values.state ?? (typeof currentSwitch === 'boolean' ? currentSwitch : true);
 
 				// Check if a device has multi-channel lights
 				const isMultiChannel = descriptor.instance?.multiChannelLights ?? false;
@@ -395,16 +400,20 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				// Check if a device has multi-channel lights
 				const isMultiChannel = descriptor.instance?.multiChannelLights ?? false;
 
+				// Use current brightness from device or fallback to 100
+				const currentBrightness = shellyDevice[`brightness${index}`] ?? shellyDevice['brightness'];
+				const brightness = typeof currentBrightness === 'number' ? currentBrightness : 100;
+
 				this.logger.log(
 					`[SHELLY V1][PLATFORM] Setting light ${index} state to ${values.state ? 'ON' : 'OFF'} on device ${device.identifier}`,
 				);
 
 				if (isMultiChannel) {
 					// Multi-channel: use index signature
-					await shellyDevice.setWhite(index, 100, values.state);
+					await shellyDevice.setWhite(index, brightness, values.state);
 				} else {
 					// Single-channel: use a simple signature
-					await shellyDevice.setWhite(100, values.state);
+					await shellyDevice.setWhite(brightness, values.state);
 				}
 
 				executed = true;
