@@ -72,6 +72,11 @@ export interface PropertyBinding {
 	permissions: PermissionType[];
 	unit?: string;
 	format?: number[] | string[];
+	/**
+	 * Optional value map for ENUM properties that need raw→canonical value conversion
+	 * Key: name of the value map in value-mapping.utils.ts (e.g., 'ROLLER_STATUS')
+	 */
+	valueMap?: string;
 }
 
 export interface DeviceInstanceInfo {
@@ -104,11 +109,8 @@ export const SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY: Record<string, ChannelCategor
 	energy: ChannelCategory.ELECTRICAL_ENERGY,
 	light: ChannelCategory.LIGHT,
 	roller: ChannelCategory.WINDOW_COVERING,
-	button: ChannelCategory.CONTACT,
 	battery: ChannelCategory.BATTERY,
 	illuminance: ChannelCategory.ILLUMINANCE,
-	valve: ChannelCategory.VALVE,
-	thermostat: ChannelCategory.THERMOSTAT,
 	contact: ChannelCategory.CONTACT,
 	leak: ChannelCategory.LEAK,
 	temperature: ChannelCategory.TEMPERATURE,
@@ -569,15 +571,26 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 						format: [0, 100],
 						unit: '%',
 					},
-					// roller state
+					// roller status (mapped from rollerState: 'open'→'opened', 'close'→'closed', 'stop'→'stopped')
+					{
+						shelliesProperty: 'rollerState',
+						channelIdentifier: 'roller_0',
+						propertyIdentifier: 'status',
+						category: PropertyCategory.STATUS,
+						dataType: DataTypeType.ENUM,
+						permissions: [PermissionType.READ_ONLY],
+						format: ['opened', 'closed', 'stopped'], // Subset: no 'opening'/'closing' as Shelly doesn't report them
+						valueMap: 'ROLLER_STATUS', // Use ROLLER_STATUS value map for raw→canonical conversion
+					},
+					// roller command
 					{
 						shelliesProperty: 'rollerState',
 						channelIdentifier: 'roller_0',
 						propertyIdentifier: 'command',
 						category: PropertyCategory.COMMAND,
-						dataType: DataTypeType.STRING,
-						permissions: [PermissionType.READ_ONLY],
-						format: ['open', 'close', 'stop'],
+						dataType: DataTypeType.ENUM,
+						permissions: [PermissionType.WRITE_ONLY],
+						format: ['open', 'close', 'stop'], // Canonical command values
 					},
 					// power meter
 					{
@@ -714,15 +727,26 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 						format: [0, 100],
 						unit: '%',
 					},
-					// roller state
+					// roller status (mapped from rollerState: 'open'→'opened', 'close'→'closed', 'stop'→'stopped')
+					{
+						shelliesProperty: 'rollerState',
+						channelIdentifier: 'roller_0',
+						propertyIdentifier: 'status',
+						category: PropertyCategory.STATUS,
+						dataType: DataTypeType.ENUM,
+						permissions: [PermissionType.READ_ONLY],
+						format: ['opened', 'closed', 'stopped'], // Subset: no 'opening'/'closing' as Shelly doesn't report them
+						valueMap: 'ROLLER_STATUS', // Use ROLLER_STATUS value map for raw→canonical conversion
+					},
+					// roller command
 					{
 						shelliesProperty: 'rollerState',
 						channelIdentifier: 'roller_0',
 						propertyIdentifier: 'command',
 						category: PropertyCategory.COMMAND,
-						dataType: DataTypeType.STRING,
-						permissions: [PermissionType.READ_ONLY],
-						format: ['open', 'close', 'stop'],
+						dataType: DataTypeType.ENUM,
+						permissions: [PermissionType.WRITE_ONLY],
+						format: ['open', 'close', 'stop'], // Canonical command values
 					},
 					// power meter
 					{
@@ -1287,15 +1311,16 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
 			},
-			// illuminance
+			// illuminance density (lux value)
 			{
 				shelliesProperty: 'illuminance',
 				channelIdentifier: 'illuminance_0',
-				propertyIdentifier: 'illuminance',
-				category: PropertyCategory.LEVEL,
-				dataType: DataTypeType.UINT,
+				propertyIdentifier: 'density',
+				category: PropertyCategory.DENSITY,
+				dataType: DataTypeType.FLOAT,
 				permissions: [PermissionType.READ_ONLY],
 				unit: 'lx',
+				format: [0, 100000],
 			},
 			// battery
 			{
@@ -1324,15 +1349,16 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
 			},
-			// illuminance
+			// illuminance density (lux value)
 			{
 				shelliesProperty: 'illuminance',
 				channelIdentifier: 'illuminance_0',
-				propertyIdentifier: 'illuminance',
-				category: PropertyCategory.LEVEL,
-				dataType: DataTypeType.UINT,
+				propertyIdentifier: 'density',
+				category: PropertyCategory.DENSITY,
+				dataType: DataTypeType.FLOAT,
 				permissions: [PermissionType.READ_ONLY],
 				unit: 'lx',
+				format: [0, 100000],
 			},
 			// battery
 			{
@@ -1642,15 +1668,16 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
 			},
-			// illuminance
+			// illuminance density (lux value)
 			{
 				shelliesProperty: 'illuminance',
 				channelIdentifier: 'illuminance_0',
-				propertyIdentifier: 'illuminance',
-				category: PropertyCategory.LEVEL,
-				dataType: DataTypeType.UINT,
+				propertyIdentifier: 'density',
+				category: PropertyCategory.DENSITY,
+				dataType: DataTypeType.FLOAT,
 				permissions: [PermissionType.READ_ONLY],
 				unit: 'lx',
+				format: [0, 100000],
 			},
 			// battery
 			{
@@ -1698,15 +1725,16 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
 			},
-			// illuminance
+			// illuminance density (lux value)
 			{
 				shelliesProperty: 'illuminance',
 				channelIdentifier: 'illuminance_0',
-				propertyIdentifier: 'illuminance',
-				category: PropertyCategory.LEVEL,
-				dataType: DataTypeType.UINT,
+				propertyIdentifier: 'density',
+				category: PropertyCategory.DENSITY,
+				dataType: DataTypeType.FLOAT,
 				permissions: [PermissionType.READ_ONLY],
 				unit: 'lx',
+				format: [0, 100000],
 			},
 			// battery
 			{

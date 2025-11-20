@@ -11,6 +11,7 @@ import {
 } from '../entities/devices-shelly-v1.entity';
 import { ShellyColorOptions, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShelliesAdapterService } from '../services/shellies-adapter.service';
+import { ROLLER_COMMAND_VALUE_MAP, validateEnumValue } from '../utils/value-mapping.utils';
 
 export type IShellyV1DevicePropertyData = IDevicePropertyData & {
 	device: ShellyV1DeviceEntity;
@@ -350,8 +351,7 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				const currentBrightness = shellyDevice[`brightness${index}`] ?? shellyDevice['brightness'];
 				const currentSwitch = shellyDevice[`switch${index}`] ?? shellyDevice['switch'];
 
-				const brightness =
-					values.brightness ?? (typeof currentBrightness === 'number' ? currentBrightness : 100);
+				const brightness = values.brightness ?? (typeof currentBrightness === 'number' ? currentBrightness : 100);
 				const on = values.state ?? (typeof currentSwitch === 'boolean' ? currentSwitch : true);
 
 				// Check if a device has multi-channel lights
@@ -463,8 +463,13 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 				// Execute command (open/close/stop)
 				const command = String(value).toLowerCase();
 
-				if (!['open', 'close', 'stop'].includes(command)) {
-					this.logger.warn(`[SHELLY V1][PLATFORM] Invalid roller command: ${command}, must be open/close/stop`);
+				// Validate command is in the allowed format (ENUM validation)
+				const allowedCommands = Object.keys(ROLLER_COMMAND_VALUE_MAP);
+
+				if (!validateEnumValue(command, allowedCommands, 'roller command')) {
+					this.logger.warn(
+						`[SHELLY V1][PLATFORM] Invalid roller command: ${command}, must be one of: ${allowedCommands.join(', ')}`,
+					);
 
 					return false;
 				}
@@ -473,6 +478,8 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 					`[SHELLY V1][PLATFORM] Executing roller ${index} command ${command} on device ${device.identifier}`,
 				);
 
+				// For roller commands, canonical values match raw values (open/close/stop)
+				// No reverse mapping needed
 				await shellyDevice.setRollerState(command);
 			} else {
 				this.logger.debug(`[SHELLY V1][PLATFORM] Unknown roller property: ${property.identifier}, ignoring`);

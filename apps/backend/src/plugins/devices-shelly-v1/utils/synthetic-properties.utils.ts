@@ -23,9 +23,11 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 			sourcePropertyCategory: PropertyCategory.PERCENTAGE,
 			deriveValue: (percentage: string | number | boolean | null): string => {
 				// Derive battery status from percentage
+				// Global schema allows: ['ok', 'low', 'charging']
+				// Shelly V1 devices can only derive: 'ok' or 'low' (subset is intentional)
 				// - ok: > 20%
 				// - low: <= 20%
-				// - charging: would need additional info, default to 'ok' or 'low'
+				// - charging: would need additional info, cannot be derived
 				if (percentage === null || percentage === undefined) {
 					return 'ok'; // Default
 				}
@@ -41,6 +43,52 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 				}
 
 				return 'ok';
+			},
+		},
+	],
+	[ChannelCategory.WINDOW_COVERING]: [
+		{
+			propertyCategory: PropertyCategory.TYPE,
+			sourcePropertyCategory: PropertyCategory.POSITION, // Use position as trigger (always present)
+			deriveValue: (): string => {
+				// For all Shelly roller devices, type is always 'roller'
+				// This is a static/default value - format includes all schema values
+				return 'roller';
+			},
+		},
+	],
+	[ChannelCategory.ILLUMINANCE]: [
+		{
+			propertyCategory: PropertyCategory.LEVEL,
+			sourcePropertyCategory: PropertyCategory.DENSITY,
+			deriveValue: (density: string | number | boolean | null): string => {
+				// Derive illuminance level from lux density
+				// Global schema allows: ['bright', 'moderate', 'dusky', 'dark']
+				// Shelly devices can derive all values based on lux thresholds
+				if (density === null || density === undefined) {
+					return 'dark'; // Default to dark if no value
+				}
+
+				const luxValue = typeof density === 'number' ? density : Number(density);
+
+				if (isNaN(luxValue)) {
+					return 'dark'; // Default to dark if invalid value
+				}
+
+				// Thresholds based on typical illuminance levels:
+				// - bright: > 10000 lux (very bright, direct sunlight)
+				// - moderate: 100-10000 lux (well-lit indoor/outdoor)
+				// - dusky: 10-100 lux (dim indoor lighting)
+				// - dark: < 10 lux (very dark)
+				if (luxValue >= 10000) {
+					return 'bright';
+				} else if (luxValue >= 100) {
+					return 'moderate';
+				} else if (luxValue >= 10) {
+					return 'dusky';
+				} else {
+					return 'dark';
+				}
 			},
 		},
 	],

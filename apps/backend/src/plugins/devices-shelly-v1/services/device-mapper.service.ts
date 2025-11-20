@@ -38,6 +38,7 @@ import { NormalizedDeviceEvent, ShellyDevice } from '../interfaces/shellies.inte
 import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import { getPropertyDefaultValue, getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { getSyntheticProperties, isSyntheticProperty } from '../utils/synthetic-properties.utils';
+import { mapValueToCanonical, validateEnumValue, VALUE_MAP_REGISTRY } from '../utils/value-mapping.utils';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -420,8 +421,64 @@ export class DeviceMapperService {
 		for (const binding of bindings) {
 			const rawValue = shellyDevice[binding.shelliesProperty];
 			// Filter out function values (methods on the device object)
-			const initialValue: ShellyDevicePropertyValue =
+			let initialValue: ShellyDevicePropertyValue =
 				typeof rawValue === 'function' ? undefined : (rawValue as ShellyDevicePropertyValue);
+
+			// Apply value mapping for ENUM properties (data-driven via binding.valueMap)
+			if (
+				binding.dataType === DataTypeType.ENUM &&
+				binding.valueMap &&
+				initialValue !== undefined &&
+				initialValue !== null
+			) {
+				const valueMapConfig = VALUE_MAP_REGISTRY[binding.valueMap];
+
+				if (valueMapConfig) {
+					const mappedValue = mapValueToCanonical(
+						initialValue,
+						valueMapConfig.forward,
+						`${channel.identifier}.${binding.propertyIdentifier}`,
+					);
+
+					if (mappedValue !== null) {
+						// Validate mapped value is in format
+						if (binding.format && validateEnumValue(mappedValue, binding.format, binding.propertyIdentifier)) {
+							initialValue = mappedValue;
+						} else {
+							// Invalid mapped value, skip setting it
+							this.logger.warn(
+								`[SHELLY V1][MAPPER] Mapped value "${mappedValue}" for ${binding.propertyIdentifier} is not in format, skipping`,
+							);
+							initialValue = null;
+						}
+					} else {
+						// Unknown raw value, skip setting it
+						this.logger.warn(
+							`[SHELLY V1][MAPPER] Unknown raw value "${rawValue}" for ${binding.propertyIdentifier}, skipping`,
+						);
+						initialValue = null;
+					}
+				} else {
+					this.logger.warn(
+						`[SHELLY V1][MAPPER] Value map "${binding.valueMap}" not found in registry for ${binding.propertyIdentifier}`,
+					);
+				}
+			}
+
+			// For ENUM properties, validate value is in format
+			if (
+				binding.dataType === DataTypeType.ENUM &&
+				binding.format &&
+				initialValue !== undefined &&
+				initialValue !== null
+			) {
+				if (!validateEnumValue(initialValue, binding.format, binding.propertyIdentifier)) {
+					this.logger.warn(
+						`[SHELLY V1][MAPPER] Value "${initialValue}" for ${binding.propertyIdentifier} is not in format, skipping`,
+					);
+					initialValue = null;
+				}
+			}
 
 			await this.createOrUpdateProperty(channel, {
 				identifier: binding.propertyIdentifier,
