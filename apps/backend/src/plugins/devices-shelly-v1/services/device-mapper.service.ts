@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ShellyDevicePropertyValue } from '../interfaces/shellies.interface';
 import {
 	ChannelCategory,
 	ConnectionState,
@@ -34,8 +33,11 @@ import {
 	ShellyV1ChannelPropertyEntity,
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
+import { ShellyDevicePropertyValue } from '../interfaces/shellies.interface';
 import { NormalizedDeviceEvent, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
+import { getPropertyDefaultValue, getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
+import { getSyntheticProperties, isSyntheticProperty } from '../utils/synthetic-properties.utils';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -430,6 +432,137 @@ export class DeviceMapperService {
 				unit: binding.unit,
 				format: binding.format,
 				value: initialValue !== undefined ? initialValue : null,
+			});
+		}
+
+		// Ensure all required properties from schema exist
+		await this.ensureRequiredProperties(channel, bindings, shellyDevice);
+
+		// Ensure synthetic properties (e.g., battery status derived from percentage)
+		await this.ensureSyntheticProperties(channel, shellyDevice);
+	}
+
+	/**
+	 * Ensure all required properties from schema exist for the channel
+	 * If a required property is missing, create it with schema default value
+	 */
+	private async ensureRequiredProperties(
+		channel: ShellyV1ChannelEntity,
+		bindings: PropertyBinding[],
+		shellyDevice: ShellyDevice,
+	): Promise<void> {
+		// Get required properties from schema for this channel category
+		const requiredProperties = getRequiredProperties(channel.category);
+
+		this.logger.debug(
+			`[SHELLY V1][MAPPER] Checking required properties for channel ${channel.identifier} (${channel.category}): ${requiredProperties.join(', ')}`,
+		);
+
+		// Get existing property categories from bindings
+		const existingPropertyCategories = bindings.map((b) => b.category);
+
+		// Check each required property
+		for (const requiredPropertyCategory of requiredProperties) {
+			// Skip if already exists in bindings
+			if (existingPropertyCategories.includes(requiredPropertyCategory)) {
+				continue;
+			}
+
+			// Skip if it's a synthetic property (will be handled separately)
+			if (isSyntheticProperty(channel.category, requiredPropertyCategory)) {
+				continue;
+			}
+
+			// Get property metadata from schema
+			const propertyMetadata = getPropertyMetadata(channel.category, requiredPropertyCategory);
+
+			if (!propertyMetadata) {
+				this.logger.warn(
+					`[SHELLY V1][MAPPER] No schema metadata found for required property ${requiredPropertyCategory} in channel ${channel.category}`,
+				);
+				continue;
+			}
+
+			// Get default value from schema
+			const defaultValue = getPropertyDefaultValue(channel.category, requiredPropertyCategory);
+
+			this.logger.debug(
+				`[SHELLY V1][MAPPER] Adding missing required property ${requiredPropertyCategory} to channel ${channel.identifier} with default value: ${defaultValue}`,
+			);
+
+			// Create the missing required property with schema metadata and default value
+			await this.createOrUpdateProperty(channel, {
+				identifier: `${requiredPropertyCategory.toLowerCase()}`,
+				name: this.formatPropertyName(requiredPropertyCategory.toLowerCase()),
+				category: requiredPropertyCategory,
+				dataType: propertyMetadata.data_type,
+				permissions: propertyMetadata.permissions,
+				unit: propertyMetadata.unit ?? undefined,
+				format: propertyMetadata.format ?? undefined,
+				value: defaultValue,
+			});
+		}
+	}
+
+	/**
+	 * Ensure synthetic properties are created and updated
+	 * Synthetic properties are derived from other properties (e.g., battery status from percentage)
+	 */
+	private async ensureSyntheticProperties(channel: ShellyV1ChannelEntity, shellyDevice: ShellyDevice): Promise<void> {
+		// Get synthetic properties for this channel category
+		const syntheticProperties = getSyntheticProperties(channel.category);
+
+		if (syntheticProperties.length === 0) {
+			return;
+		}
+
+		this.logger.debug(
+			`[SHELLY V1][MAPPER] Processing ${syntheticProperties.length} synthetic properties for channel ${channel.identifier}`,
+		);
+
+		// Process each synthetic property
+		for (const syntheticProp of syntheticProperties) {
+			// Find the source property in the channel
+			const sourceProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+				'category',
+				syntheticProp.sourcePropertyCategory,
+				channel.id,
+			);
+
+			if (!sourceProperty) {
+				this.logger.warn(
+					`[SHELLY V1][MAPPER] Source property ${syntheticProp.sourcePropertyCategory} not found for synthetic property ${syntheticProp.propertyCategory} in channel ${channel.identifier}`,
+				);
+				continue;
+			}
+
+			// Derive the synthetic value from the source property
+			const syntheticValue = syntheticProp.deriveValue(sourceProperty.value);
+
+			// Get property metadata from schema
+			const propertyMetadata = getPropertyMetadata(channel.category, syntheticProp.propertyCategory);
+
+			if (!propertyMetadata) {
+				this.logger.warn(
+					`[SHELLY V1][MAPPER] No schema metadata found for synthetic property ${syntheticProp.propertyCategory} in channel ${channel.category}`,
+				);
+				continue;
+			}
+
+			this.logger.debug(
+				`[SHELLY V1][MAPPER] Creating/updating synthetic property ${syntheticProp.propertyCategory} in channel ${channel.identifier} with derived value: ${syntheticValue}`,
+			);
+
+			// Create or update the synthetic property
+			await this.createOrUpdateProperty(channel, {
+				identifier: `${syntheticProp.propertyCategory.toLowerCase()}`,
+				name: this.formatPropertyName(syntheticProp.propertyCategory.toLowerCase()),
+				category: syntheticProp.propertyCategory,
+				dataType: propertyMetadata.data_type,
+				permissions: propertyMetadata.permissions,
+				unit: propertyMetadata.unit ?? undefined,
+				format: propertyMetadata.format ?? undefined,
+				value: syntheticValue,
 			});
 		}
 	}
