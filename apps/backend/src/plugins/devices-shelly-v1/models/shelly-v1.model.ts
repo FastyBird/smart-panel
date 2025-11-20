@@ -22,7 +22,7 @@ export class ShellyV1SupportedDeviceModel {
 }
 
 export class ShellyV1DeviceInfoModel {
-	@Expose({ name: 'reachable' })
+	@Expose()
 	@IsBoolean()
 	reachable: boolean;
 
@@ -35,26 +35,26 @@ export class ShellyV1DeviceInfoModel {
 	@IsBoolean()
 	authValid?: boolean;
 
-	@Expose({ name: 'host' })
+	@Expose()
 	@IsString()
 	host: string;
 
-	@Expose({ name: 'ip' })
+	@Expose()
 	@IsOptional()
 	@IsString()
 	ip?: string;
 
-	@Expose({ name: 'mac' })
+	@Expose()
 	@IsOptional()
 	@IsString()
 	mac?: string;
 
-	@Expose({ name: 'model' })
+	@Expose()
 	@IsOptional()
 	@IsString()
 	model?: string;
 
-	@Expose({ name: 'firmware' })
+	@Expose()
 	@IsOptional()
 	@IsString()
 	firmware?: string;
@@ -64,12 +64,7 @@ export class ShellyV1DeviceInfoModel {
 	@IsString()
 	deviceType?: string;
 
-	@Expose({ name: 'descriptor_key' })
-	@IsOptional()
-	@IsString()
-	descriptorKey?: string;
-
-	@Expose({ name: 'description' })
+	@Expose()
 	@IsOptional()
 	@IsString()
 	description?: string;

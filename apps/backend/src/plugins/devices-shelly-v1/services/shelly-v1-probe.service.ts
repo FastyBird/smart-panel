@@ -101,7 +101,6 @@ export class ShellyV1ProbeService {
 			const descriptorMatch = this.findDescriptorForDevice(shellyInfo.type);
 
 			if (descriptorMatch) {
-				response.descriptorKey = descriptorMatch.key;
 				response.deviceType = descriptorMatch.descriptor.name;
 				response.description = `${descriptorMatch.descriptor.name} (${shellyInfo.type})`;
 

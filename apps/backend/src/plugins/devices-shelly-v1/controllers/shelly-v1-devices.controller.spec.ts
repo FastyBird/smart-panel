@@ -57,7 +57,6 @@ describe('ShellyV1DevicesController', () => {
 				model: 'SHSW-1',
 				firmware: '1.14.0',
 				deviceType: 'Shelly 1',
-				descriptorKey: 'SHELLY1',
 				description: 'Shelly 1 (SHSW-1)',
 			};
 
@@ -70,7 +69,6 @@ describe('ShellyV1DevicesController', () => {
 			expect(result.authRequired).toBe(false);
 			expect(result.host).toBe('192.168.1.100');
 			expect(result.model).toBe('SHSW-1');
-			expect(result.descriptorKey).toBe('SHELLY1');
 
 			expect(probeService.probeDevice).toHaveBeenCalledWith({ host: '192.168.1.100' });
 		});
@@ -86,7 +84,6 @@ describe('ShellyV1DevicesController', () => {
 				model: 'SHSW-25',
 				firmware: '1.14.0',
 				deviceType: 'Shelly 2.5',
-				descriptorKey: 'SHELLY25',
 				description: 'Shelly 2.5 (SHSW-25)',
 			};
 
