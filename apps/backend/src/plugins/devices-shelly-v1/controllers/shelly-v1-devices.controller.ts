@@ -16,7 +16,7 @@ export class ShellyV1DevicesController {
 	constructor(private readonly probeService: ShellyV1ProbeService) {}
 
 	@Post('info')
-	async probe(@Body() body: { data: ShellyV1ProbeDto }): Promise<ShellyV1DeviceInfoModel> {
+	async getInfo(@Body() body: { data: ShellyV1ProbeDto }): Promise<ShellyV1DeviceInfoModel> {
 		this.logger.debug(`[SHELLY V1][DEVICES CONTROLLER] Incoming request to probe device at ${body.data.host}`);
 
 		let probeResult: ShellyV1DeviceInfoModel;

@@ -47,7 +47,7 @@ describe('ShellyV1DevicesController', () => {
 		expect(controller).toBeDefined();
 	});
 
-	describe('POST /devices/probe', () => {
+	describe('POST /devices/info', () => {
 		it('returns successful probe result for reachable device without auth', async () => {
 			const mockResponse: ShellyV1DeviceInfoModel = {
 				reachable: true,
@@ -65,7 +65,7 @@ describe('ShellyV1DevicesController', () => {
 			probeService.probeDevice.mockResolvedValue(mockResponse);
 
 			const payload = { data: { host: '192.168.1.100' } };
-			const result = await controller.probe(payload);
+			const result = await controller.getInfo(payload);
 
 			expect(result.reachable).toBe(true);
 			expect(result.authRequired).toBe(false);
@@ -94,7 +94,7 @@ describe('ShellyV1DevicesController', () => {
 			probeService.probeDevice.mockResolvedValue(mockResponse);
 
 			const payload = { data: { host: '192.168.1.101', password: 'secret' } };
-			const result = await controller.probe(payload);
+			const result = await controller.getInfo(payload);
 
 			expect(result.reachable).toBe(true);
 			expect(result.authRequired).toBe(true);
@@ -113,7 +113,7 @@ describe('ShellyV1DevicesController', () => {
 			probeService.probeDevice.mockResolvedValue(mockResponse);
 
 			const payload = { data: { host: '192.168.1.200' } };
-			const result = await controller.probe(payload);
+			const result = await controller.getInfo(payload);
 
 			expect(result.reachable).toBe(false);
 			expect(result.host).toBe('192.168.1.200');
@@ -123,7 +123,7 @@ describe('ShellyV1DevicesController', () => {
 			probeService.probeDevice.mockRejectedValue(new DevicesShellyV1Exception('Network timeout'));
 
 			const payload = { data: { host: '192.168.1.200' } };
-			const result = await controller.probe(payload);
+			const result = await controller.getInfo(payload);
 
 			expect(result.reachable).toBe(false);
 			expect(result.host).toBe('192.168.1.200');
@@ -136,7 +136,7 @@ describe('ShellyV1DevicesController', () => {
 
 			const payload = { data: { host: '192.168.1.100' } };
 
-			await expect(controller.probe(payload)).rejects.toThrow(unexpectedError);
+			await expect(controller.getInfo(payload)).rejects.toThrow(unexpectedError);
 		});
 	});
 
