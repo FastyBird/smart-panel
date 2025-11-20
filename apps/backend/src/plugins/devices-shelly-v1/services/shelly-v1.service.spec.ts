@@ -1,3 +1,11 @@
+/*
+eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unused-vars
+*/
+/*
+Reason: The mocking and test setup requires dynamic assignment and
+handling of Jest mocks, which ESLint rules flag unnecessarily.
+*/
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -145,12 +153,12 @@ describe('ShellyV1Service', () => {
 		}).compile();
 
 		service = module.get<ShellyV1Service>(ShellyV1Service);
-		devicesService = module.get(DevicesService) as jest.Mocked<DevicesService>;
-		channelsService = module.get(ChannelsService) as jest.Mocked<ChannelsService>;
-		channelsPropertiesService = module.get(ChannelsPropertiesService) as jest.Mocked<ChannelsPropertiesService>;
-		deviceConnectivityService = module.get(DeviceConnectivityService) as jest.Mocked<DeviceConnectivityService>;
-		deviceMapper = module.get(DeviceMapperService) as jest.Mocked<DeviceMapperService>;
-		shelliesAdapter = module.get(ShelliesAdapterService) as jest.Mocked<ShelliesAdapterService>;
+		devicesService = module.get(DevicesService);
+		channelsService = module.get(ChannelsService);
+		channelsPropertiesService = module.get(ChannelsPropertiesService);
+		deviceConnectivityService = module.get(DeviceConnectivityService);
+		deviceMapper = module.get(DeviceMapperService);
+		shelliesAdapter = module.get(ShelliesAdapterService);
 	});
 
 	afterEach(() => {

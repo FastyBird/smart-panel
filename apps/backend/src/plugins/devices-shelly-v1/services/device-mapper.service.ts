@@ -14,6 +14,11 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
+	getPropertyDefaultValue,
+	getPropertyMetadata,
+	getRequiredProperties,
+} from '../../../modules/devices/utils/schema.utils';
+import {
 	DESCRIPTORS,
 	DEVICES_SHELLY_V1_TYPE,
 	PropertyBinding,
@@ -36,9 +41,8 @@ import {
 import { ShellyDevicePropertyValue } from '../interfaces/shellies.interface';
 import { NormalizedDeviceEvent, ShellyDevice } from '../interfaces/shellies.interface';
 import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
-import { getPropertyDefaultValue, getPropertyMetadata, getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { getSyntheticProperties, isSyntheticProperty } from '../utils/synthetic-properties.utils';
-import { mapValueToCanonical, validateEnumValue, VALUE_MAP_REGISTRY } from '../utils/value-mapping.utils';
+import { VALUE_MAP_REGISTRY, mapValueToCanonical, validateEnumValue } from '../utils/value-mapping.utils';
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -196,17 +200,17 @@ export class DeviceMapperService {
 			const modeValue = shellyDevice[descriptor.instance.modeProperty];
 
 			this.logger.debug(
-				`[SHELLY V1][MAPPER] Device ${event.id} has mode property: ${descriptor.instance.modeProperty} = ${modeValue}`,
+				`[SHELLY V1][MAPPER] Device ${event.id} has mode property: ${descriptor.instance.modeProperty} = ${String(modeValue)}`,
 			);
 
 			const modeProfile = descriptor.modes.find((mode) => mode.modeValue === modeValue);
 
 			if (modeProfile) {
 				bindings = modeProfile.bindings;
-				this.logger.debug(`[SHELLY V1][MAPPER] Using mode profile: ${modeValue}`);
+				this.logger.debug(`[SHELLY V1][MAPPER] Using mode profile: ${String(modeValue)}`);
 			} else {
 				this.logger.warn(
-					`[SHELLY V1][MAPPER] No mode profile found for mode value: ${modeValue}, device will have no channels`,
+					`[SHELLY V1][MAPPER] No mode profile found for mode value: ${String(modeValue)}, device will have no channels`,
 				);
 			}
 		} else if (descriptor.bindings) {
@@ -374,7 +378,7 @@ export class DeviceMapperService {
 				channelBindingsMap.set(binding.channelIdentifier, []);
 			}
 
-			channelBindingsMap.get(binding.channelIdentifier)!.push(binding);
+			channelBindingsMap.get(binding.channelIdentifier).push(binding);
 		}
 
 		// Create channels and their properties
@@ -421,8 +425,7 @@ export class DeviceMapperService {
 		for (const binding of bindings) {
 			const rawValue = shellyDevice[binding.shelliesProperty];
 			// Filter out function values (methods on the device object)
-			let initialValue: ShellyDevicePropertyValue =
-				typeof rawValue === 'function' ? undefined : (rawValue as ShellyDevicePropertyValue);
+			let initialValue: ShellyDevicePropertyValue = typeof rawValue === 'function' ? undefined : rawValue;
 
 			// Apply value mapping for ENUM properties (data-driven via binding.valueMap)
 			if (
@@ -454,7 +457,7 @@ export class DeviceMapperService {
 					} else {
 						// Unknown raw value, skip setting it
 						this.logger.warn(
-							`[SHELLY V1][MAPPER] Unknown raw value "${rawValue}" for ${binding.propertyIdentifier}, skipping`,
+							`[SHELLY V1][MAPPER] Unknown raw value "${String(rawValue)}" for ${binding.propertyIdentifier}, skipping`,
 						);
 						initialValue = null;
 					}
@@ -506,7 +509,7 @@ export class DeviceMapperService {
 	private async ensureRequiredProperties(
 		channel: ShellyV1ChannelEntity,
 		bindings: PropertyBinding[],
-		shellyDevice: ShellyDevice,
+		_shellyDevice: ShellyDevice,
 	): Promise<void> {
 		// Get required properties from schema for this channel category
 		const requiredProperties = getRequiredProperties(channel.category);
@@ -565,7 +568,7 @@ export class DeviceMapperService {
 	 * Ensure synthetic properties are created and updated
 	 * Synthetic properties are derived from other properties (e.g., battery status from percentage)
 	 */
-	private async ensureSyntheticProperties(channel: ShellyV1ChannelEntity, shellyDevice: ShellyDevice): Promise<void> {
+	private async ensureSyntheticProperties(channel: ShellyV1ChannelEntity, _shellyDevice: ShellyDevice): Promise<void> {
 		// Get synthetic properties for this channel category
 		const syntheticProperties = getSyntheticProperties(channel.category);
 

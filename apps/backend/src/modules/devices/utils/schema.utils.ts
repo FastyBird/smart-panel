@@ -1,6 +1,19 @@
+import { channelsSchema } from '../../../spec/channels';
 import { DataTypeType, PermissionType, PropertyCategory } from '../devices.constants';
 import { ChannelCategory as ChannelCategoryType } from '../devices.constants';
-import { channelsSchema } from '../../../spec/channels';
+
+/**
+ * Type for property spec from schema
+ */
+interface PropertySpec {
+	required?: boolean;
+	permissions?: string[];
+	data_type?: string;
+	unit?: string;
+	format?: string[] | number[];
+	invalid?: unknown;
+	step?: number;
+}
 
 /**
  * Property metadata from channel schema
@@ -12,7 +25,7 @@ export interface PropertyMetadata {
 	data_type: DataTypeType;
 	unit: string | null;
 	format: string[] | number[] | null;
-	invalid: unknown | null;
+	invalid: unknown;
 	step: number | null;
 }
 
@@ -31,7 +44,8 @@ export function getRequiredProperties(channelCategory: ChannelCategoryType): Pro
 	const requiredProperties: PropertyCategory[] = [];
 
 	for (const [propKey, propSpec] of Object.entries(channelSpec.properties)) {
-		if (typeof propSpec === 'object' && propSpec.required === true) {
+		const spec = propSpec as PropertySpec;
+		if (typeof spec === 'object' && spec.required === true) {
 			// Map property category string to PropertyCategory enum
 			const propertyCategory = mapPropertyCategory(propKey);
 
@@ -67,7 +81,7 @@ export function getPropertyMetadata(
 		return null;
 	}
 
-	const propertySpec = channelSpec.properties[propertyKey];
+	const propertySpec = channelSpec.properties[propertyKey] as PropertySpec;
 
 	if (!propertySpec || typeof propertySpec !== 'object') {
 		return null;
@@ -76,8 +90,8 @@ export function getPropertyMetadata(
 	return {
 		category: propertyCategory,
 		required: propertySpec.required ?? false,
-		permissions: mapPermissions(propertySpec.permissions as string[]),
-		data_type: mapDataType(propertySpec.data_type as string),
+		permissions: mapPermissions(propertySpec.permissions ?? []),
+		data_type: mapDataType(propertySpec.data_type ?? ''),
 		unit: propertySpec.unit ?? null,
 		format: propertySpec.format ?? null,
 		invalid: propertySpec.invalid ?? null,

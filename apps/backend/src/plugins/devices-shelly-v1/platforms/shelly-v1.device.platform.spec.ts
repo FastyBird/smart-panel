@@ -1,5 +1,6 @@
 /*
-eslint-disable @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-return,
+@typescript-eslint/no-unsafe-assignment
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -7,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
 
-import { PropertyCategory, PermissionType } from '../../../modules/devices/devices.constants';
+import { PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DEVICES_SHELLY_V1_TYPE } from '../devices-shelly-v1.constants';
 import {
 	ShellyV1ChannelEntity,
@@ -15,9 +16,9 @@ import {
 	ShellyV1DeviceEntity,
 } from '../entities/devices-shelly-v1.entity';
 import { ShellyDevice } from '../interfaces/shellies.interface';
+import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 
 import { ShellyV1DevicePlatform } from './shelly-v1.device.platform';
-import { ShelliesAdapterService } from '../services/shellies-adapter.service';
 
 describe('ShellyV1DevicePlatform', () => {
 	// Quiet logger noise and let us assert calls
@@ -116,9 +117,7 @@ describe('ShellyV1DevicePlatform', () => {
 		const { platform } = makePlatform();
 		const device = makeDevice('dev-1', 'shelly1pm-ABC123', false); // disabled
 
-		const ok = await platform.processBatch([
-			{ device, channel: makeChannel('ch'), property: makeProp('p'), value: 1 },
-		]);
+		const ok = await platform.processBatch([{ device, channel: makeChannel('ch'), property: makeProp('p'), value: 1 }]);
 
 		expect(ok).toBe(false);
 		expect(Logger.prototype.debug).toHaveBeenCalledWith(
@@ -132,9 +131,7 @@ describe('ShellyV1DevicePlatform', () => {
 
 		const device = makeDevice('dev-1');
 
-		const ok = await platform.processBatch([
-			{ device, channel: makeChannel('ch'), property: makeProp('p'), value: 1 },
-		]);
+		const ok = await platform.processBatch([{ device, channel: makeChannel('ch'), property: makeProp('p'), value: 1 }]);
 
 		expect(ok).toBe(false);
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(

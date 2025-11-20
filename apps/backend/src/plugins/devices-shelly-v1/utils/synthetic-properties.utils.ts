@@ -24,7 +24,10 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 		{
 			propertyCategory: PropertyCategory.STATUS,
 			sourcePropertyCategory: PropertyCategory.PERCENTAGE,
-			deriveValue: (percentage: string | number | boolean | null, _currentValue?: string | number | boolean | null): string => {
+			deriveValue: (
+				percentage: string | number | boolean | null,
+				_currentValue?: string | number | boolean | null,
+			): string => {
 				// Derive battery status from percentage
 				// Global schema allows: ['ok', 'low', 'charging']
 				// Shelly V1 devices can only derive: 'ok' or 'low' (subset is intentional)
@@ -54,7 +57,10 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 		{
 			propertyCategory: PropertyCategory.TYPE,
 			sourcePropertyCategory: PropertyCategory.POSITION, // Use position as trigger (always present)
-			deriveValue: (_sourceValue: string | number | boolean | null, currentValue?: string | number | boolean | null): string => {
+			deriveValue: (
+				_sourceValue: string | number | boolean | null,
+				currentValue?: string | number | boolean | null,
+			): string => {
 				// For window covering type, preserve user-configured value if it exists
 				// Users can change this via administration (e.g., from 'roller' to 'blind')
 				// Only use default 'roller' if no value is set yet
@@ -71,7 +77,10 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 		{
 			propertyCategory: PropertyCategory.LEVEL,
 			sourcePropertyCategory: PropertyCategory.DENSITY,
-			deriveValue: (density: string | number | boolean | null, _currentValue?: string | number | boolean | null): string => {
+			deriveValue: (
+				density: string | number | boolean | null,
+				_currentValue?: string | number | boolean | null,
+			): string => {
 				// Derive illuminance level from lux density
 				// Global schema allows: ['bright', 'moderate', 'dusky', 'dark']
 				// Shelly devices can derive all values based on lux thresholds

@@ -443,7 +443,7 @@ export class ShellyV1Service {
 				bindings = modeProfile.bindings;
 			} else {
 				this.logger.warn(
-					`[SHELLY V1][SERVICE] No mode profile found for mode value: ${modeValue} on device ${device.identifier}`,
+					`[SHELLY V1][SERVICE] No mode profile found for mode value: ${String(modeValue)} on device ${device.identifier}`,
 				);
 
 				return null;
@@ -650,7 +650,7 @@ export class ShellyV1Service {
 							const loginSettings = await this.httpClient.getLoginSettings(registeredDevice.host);
 							username = loginSettings.username || SHELLY_AUTH_USERNAME;
 							password = device.password;
-						} catch (error) {
+						} catch {
 							// Fallback to default username if login endpoint fails
 							username = SHELLY_AUTH_USERNAME;
 							password = device.password;

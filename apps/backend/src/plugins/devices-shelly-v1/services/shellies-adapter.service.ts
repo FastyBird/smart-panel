@@ -194,9 +194,12 @@ export class ShelliesAdapterService {
 		);
 
 		// Register device-specific event handlers
-		device.on('change', (property: string, newValue: string | number | boolean, oldValue: string | number | boolean | null) => {
-			this.handleDeviceChange(device, property, newValue, oldValue);
-		});
+		device.on(
+			'change',
+			(property: string, newValue: string | number | boolean, oldValue: string | number | boolean | null) => {
+				this.handleDeviceChange(device, property, newValue, oldValue);
+			},
+		);
 
 		device.on('offline', () => {
 			this.handleDeviceOffline(device);
@@ -304,7 +307,7 @@ export class ShelliesAdapterService {
 	 * This is a workaround because shellies library's stale/offline events don't work properly
 	 */
 	@Cron(CronExpression.EVERY_5_SECONDS)
-	async checkDevicesStatus(): Promise<void> {
+	checkDevicesStatus(): void {
 		if (!this.isStarted || !this.shellies) {
 			return;
 		}
@@ -373,9 +376,7 @@ export class ShelliesAdapterService {
 		}
 
 		// The configured value doesn't match any interface name or address, so ignore it
-		this.logger.warn(
-			`[SHELLY V1][ADAPTER] Ignoring unknown network interface name or address: ${iface}`,
-		);
+		this.logger.warn(`[SHELLY V1][ADAPTER] Ignoring unknown network interface name or address: ${iface}`);
 
 		return null;
 	}

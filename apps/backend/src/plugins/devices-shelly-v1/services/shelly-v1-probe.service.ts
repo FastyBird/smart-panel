@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { DESCRIPTORS, SHELLY_AUTH_USERNAME } from '../devices-shelly-v1.constants';
 import { ShellyV1ProbeDto } from '../dto/shelly-v1-probe.dto';
-import { ShellyInfoResponse, ShellySettingsResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
+import { ShellyInfoResponse, ShellyStatusResponse } from '../interfaces/shelly-http.interface';
 import { ShellyV1DeviceInfoModel } from '../models/shelly-v1.model';
 
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
@@ -34,7 +34,6 @@ export class ShellyV1ProbeService {
 
 		let shellyInfo: ShellyInfoResponse | null = null;
 		let statusInfo: ShellyStatusResponse | null = null;
-		let settingsInfo: ShellySettingsResponse | null = null;
 
 		// Step 1: Try to fetch /shelly endpoint (no auth required)
 		try {
@@ -76,18 +75,7 @@ export class ShellyV1ProbeService {
 					// Still continue to return basic info from /shelly
 				}
 
-				// If auth is valid, also fetch /settings
-				if (response.authValid) {
-					try {
-						settingsInfo = await this.httpClient.getDeviceSettings(host, undefined, SHELLY_AUTH_USERNAME, password);
-
-						this.logger.debug(`[SHELLY V1][PROBE] Settings fetched for ${host}`);
-					} catch (error) {
-						this.logger.warn(
-							`[SHELLY V1][PROBE] Failed to fetch settings for ${host}: ${error instanceof Error ? error.message : String(error)}`,
-						);
-					}
-				}
+				// If auth is valid, settings endpoint is also available but not fetched for now
 			} else {
 				// Auth required but no password provided
 				response.authValid = undefined; // Cannot validate
@@ -104,16 +92,6 @@ export class ShellyV1ProbeService {
 			} catch (error) {
 				this.logger.warn(
 					`[SHELLY V1][PROBE] Failed to fetch status for ${host}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-
-			try {
-				settingsInfo = await this.httpClient.getDeviceSettings(host);
-
-				this.logger.debug(`[SHELLY V1][PROBE] Settings fetched for ${host}`);
-			} catch (error) {
-				this.logger.warn(
-					`[SHELLY V1][PROBE] Failed to fetch settings for ${host}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
 		}
