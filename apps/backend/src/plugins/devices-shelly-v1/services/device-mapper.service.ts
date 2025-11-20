@@ -593,8 +593,15 @@ export class DeviceMapperService {
 				continue;
 			}
 
-			// Derive the synthetic value from the source property
-			const syntheticValue = syntheticProp.deriveValue(sourceProperty.value);
+			// Check if the synthetic property already exists (to preserve user-configured values)
+			const existingSyntheticProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+				'category',
+				syntheticProp.propertyCategory,
+				channel.id,
+			);
+
+			// Derive the synthetic value from the source property (passing existing value to preserve if needed)
+			const syntheticValue = syntheticProp.deriveValue(sourceProperty.value, existingSyntheticProperty?.value ?? null);
 
 			// Get property metadata from schema
 			const propertyMetadata = getPropertyMetadata(channel.category, syntheticProp.propertyCategory);

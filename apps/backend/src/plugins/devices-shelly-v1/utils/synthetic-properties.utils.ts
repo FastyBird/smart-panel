@@ -10,7 +10,10 @@ export interface SyntheticProperty {
 	/** The property category that this synthetic property is derived from */
 	sourcePropertyCategory: PropertyCategory;
 	/** Function to derive the synthetic property value from the source property value */
-	deriveValue: (sourceValue: string | number | boolean | null) => string | number | boolean | null;
+	deriveValue: (
+		sourceValue: string | number | boolean | null,
+		currentValue?: string | number | boolean | null,
+	) => string | number | boolean | null;
 }
 
 /**
@@ -21,13 +24,14 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 		{
 			propertyCategory: PropertyCategory.STATUS,
 			sourcePropertyCategory: PropertyCategory.PERCENTAGE,
-			deriveValue: (percentage: string | number | boolean | null): string => {
+			deriveValue: (percentage: string | number | boolean | null, _currentValue?: string | number | boolean | null): string => {
 				// Derive battery status from percentage
 				// Global schema allows: ['ok', 'low', 'charging']
 				// Shelly V1 devices can only derive: 'ok' or 'low' (subset is intentional)
 				// - ok: > 20%
 				// - low: <= 20%
 				// - charging: would need additional info, cannot be derived
+				// Note: This always recalculates from source (doesn't preserve currentValue)
 				if (percentage === null || percentage === undefined) {
 					return 'ok'; // Default
 				}
@@ -50,9 +54,15 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 		{
 			propertyCategory: PropertyCategory.TYPE,
 			sourcePropertyCategory: PropertyCategory.POSITION, // Use position as trigger (always present)
-			deriveValue: (): string => {
-				// For all Shelly roller devices, type is always 'roller'
-				// This is a static/default value - format includes all schema values
+			deriveValue: (_sourceValue: string | number | boolean | null, currentValue?: string | number | boolean | null): string => {
+				// For window covering type, preserve user-configured value if it exists
+				// Users can change this via administration (e.g., from 'roller' to 'blind')
+				// Only use default 'roller' if no value is set yet
+				if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+					return String(currentValue); // Preserve existing user-configured value
+				}
+
+				// Default to 'roller' for Shelly devices
 				return 'roller';
 			},
 		},
@@ -61,10 +71,11 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 		{
 			propertyCategory: PropertyCategory.LEVEL,
 			sourcePropertyCategory: PropertyCategory.DENSITY,
-			deriveValue: (density: string | number | boolean | null): string => {
+			deriveValue: (density: string | number | boolean | null, _currentValue?: string | number | boolean | null): string => {
 				// Derive illuminance level from lux density
 				// Global schema allows: ['bright', 'moderate', 'dusky', 'dark']
 				// Shelly devices can derive all values based on lux thresholds
+				// Note: This always recalculates from source (doesn't preserve currentValue)
 				if (density === null || density === undefined) {
 					return 'dark'; // Default to dark if no value
 				}
