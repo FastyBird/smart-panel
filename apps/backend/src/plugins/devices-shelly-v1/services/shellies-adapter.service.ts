@@ -336,6 +336,8 @@ export class ShelliesAdapterService {
 
 						// Manually trigger offline event since shellies library events don't work properly
 						this.handleDeviceOffline(device);
+						// Prevent re-triggering by updating the device's online status in memory
+						device.online = false;
 					}
 				}
 			} catch (error) {

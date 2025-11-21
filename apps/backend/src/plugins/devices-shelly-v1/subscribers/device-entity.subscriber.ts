@@ -49,12 +49,12 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		}
 
 		try {
-			// Set auth credentials if password is provided
+			// Set auth credentials if a password is provided
 			if (device.password) {
 				const registeredDevice = this.shelliesAdapter.getRegisteredDevice(device.identifier);
 
 				if (registeredDevice) {
-					// Fetch username from device, fallback to default constant
+					// Fetch username from a device, fallback to default constant
 					const username = await this.fetchDeviceUsername(registeredDevice.host);
 
 					this.shelliesAdapter.setDeviceAuthCredentials(
@@ -128,7 +128,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 				const registeredDevice = this.shelliesAdapter.getRegisteredDevice(device.identifier);
 
 				if (registeredDevice) {
-					// Fetch username from device, fallback to default constant
+					// Fetch username from a device, fallback to default constant
 					const username = await this.fetchDeviceUsername(registeredDevice.host);
 
 					this.shelliesAdapter.setDeviceAuthCredentials(
@@ -165,7 +165,7 @@ export class DeviceEntitySubscriber implements EntitySubscriberInterface<ShellyV
 		}
 
 		try {
-			// Mark device as disabled when removed from database
+			// Mark the device as disabled when removed from a database
 			this.shelliesAdapter.updateDeviceEnabledStatus(device.identifier, false);
 
 			this.logger.debug(

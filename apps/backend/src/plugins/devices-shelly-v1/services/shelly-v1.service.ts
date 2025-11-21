@@ -503,7 +503,13 @@ export class ShellyV1Service {
 
 		const deviceModel = String(modelProperty.value).toUpperCase();
 
-		// Try to find by device model match
+		// Try to find by exact device model match first
+		for (const descriptor of Object.values(DESCRIPTORS)) {
+			if (descriptor.models.some((model) => deviceModel === model)) {
+				return descriptor;
+			}
+		}
+		// Fallback: try to find by partial device model match
 		for (const descriptor of Object.values(DESCRIPTORS)) {
 			if (descriptor.models.some((model) => deviceModel.includes(model))) {
 				return descriptor;
