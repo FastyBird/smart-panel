@@ -50,16 +50,23 @@ describe('ShellyV1DevicePlatform', () => {
 	const makeProp = (id = 'prop-1', identifier = 'state'): ShellyV1ChannelPropertyEntity =>
 		Object.assign(new ShellyV1ChannelPropertyEntity(), { id, identifier, category: PropertyCategory.ON });
 
-	const makeShellyDevice = (type = 'SHSW-PM'): jest.Mocked<ShellyDevice> =>
-		({
-			id: 'shelly1pm-ABC123',
+	const makeShellyDevice = (type = 'SHSW-PM', id?: string): jest.Mocked<ShellyDevice> => {
+		const defaultId =
+			type === 'SHRGBW2' ? 'shellyrgbw2-DEF456' : type === 'SHSW-25' ? 'shelly25-GHI789' : 'shelly1pm-ABC123';
+
+		return {
+			id: id || defaultId,
 			type,
 			host: '192.168.1.100',
 			online: true,
 			setRelay: jest.fn().mockResolvedValue(undefined),
-			setLight: jest.fn().mockResolvedValue(undefined),
+			setColor: jest.fn().mockResolvedValue(undefined),
+			setWhite: jest.fn().mockResolvedValue(undefined),
 			setRoller: jest.fn().mockResolvedValue(undefined),
-		}) as any;
+			setRollerPosition: jest.fn().mockResolvedValue(undefined),
+			setRollerState: jest.fn().mockResolvedValue(undefined),
+		} as any;
+	};
 
 	const makePlatform = (opts?: { getDevice?: jest.Mock }) => {
 		const shelliesAdapter = {
@@ -217,12 +224,14 @@ describe('ShellyV1DevicePlatform', () => {
 			const ok = await platform.processBatch([{ device, channel, property, value: true }]);
 
 			expect(ok).toBe(true);
-			expect(shellyDevice.setLight).toHaveBeenCalledWith(0, { switch: true });
+			expect(shellyDevice.setColor).toHaveBeenCalledWith({ switch: true });
 		});
 
 		it('should execute light brightness command', async () => {
 			const shellyDevice = makeShellyDevice('SHRGBW2');
 			shellyDevice.mode = 'white';
+			shellyDevice.brightness = 50; // current brightness
+			shellyDevice.switch = true; // current state
 			const getDevice = jest.fn().mockReturnValue(shellyDevice);
 			const { platform } = makePlatform({ getDevice });
 
@@ -233,12 +242,15 @@ describe('ShellyV1DevicePlatform', () => {
 			const ok = await platform.processBatch([{ device, channel, property, value: 75 }]);
 
 			expect(ok).toBe(true);
-			expect(shellyDevice.setLight).toHaveBeenCalledWith(0, { brightness: 75 });
+			// SHRGBW2 is multi-channel: setWhite(index, brightness, on)
+			expect(shellyDevice.setWhite).toHaveBeenCalledWith(0, 75, true);
 		});
 
 		it('should clamp brightness value to 0-100 range', async () => {
 			const shellyDevice = makeShellyDevice('SHRGBW2');
 			shellyDevice.mode = 'white';
+			shellyDevice.brightness = 50;
+			shellyDevice.switch = true;
 			const getDevice = jest.fn().mockReturnValue(shellyDevice);
 			const { platform } = makePlatform({ getDevice });
 
@@ -248,7 +260,8 @@ describe('ShellyV1DevicePlatform', () => {
 
 			await platform.processBatch([{ device, channel, property, value: 150 }]);
 
-			expect(shellyDevice.setLight).toHaveBeenCalledWith(0, { brightness: 100 });
+			// Brightness clamped to 100, SHRGBW2 is multi-channel: setWhite(index, brightness, on)
+			expect(shellyDevice.setWhite).toHaveBeenCalledWith(0, 100, true);
 		});
 
 		it('should execute RGBW color commands', async () => {
@@ -263,15 +276,15 @@ describe('ShellyV1DevicePlatform', () => {
 			// Test red
 			await platform.processBatch([{ device, channel, property: makeProp('p-1', 'red'), value: 255 }]);
 
-			expect(shellyDevice.setLight).toHaveBeenCalledWith(0, { red: 255 });
+			expect(shellyDevice.setColor).toHaveBeenCalledWith({ red: 255 });
 
 			// Reset mock
-			(shellyDevice.setLight as jest.Mock).mockClear();
+			(shellyDevice.setColor as jest.Mock).mockClear();
 
 			// Test green
 			await platform.processBatch([{ device, channel, property: makeProp('p-2', 'green'), value: 128 }]);
 
-			expect(shellyDevice.setLight).toHaveBeenCalledWith(0, { green: 128 });
+			expect(shellyDevice.setColor).toHaveBeenCalledWith({ green: 128 });
 		});
 
 		it('should batch multiple light property updates into single command', async () => {
@@ -290,8 +303,8 @@ describe('ShellyV1DevicePlatform', () => {
 			]);
 
 			expect(ok).toBe(true);
-			expect(shellyDevice.setLight).toHaveBeenCalledTimes(1);
-			expect(shellyDevice.setLight).toHaveBeenCalledWith(0, {
+			expect(shellyDevice.setColor).toHaveBeenCalledTimes(1);
+			expect(shellyDevice.setColor).toHaveBeenCalledWith({
 				switch: true,
 				red: 255,
 				green: 128,
@@ -313,7 +326,7 @@ describe('ShellyV1DevicePlatform', () => {
 			const ok = await platform.processBatch([{ device, channel, property, value: 50 }]);
 
 			expect(ok).toBe(true);
-			expect(shellyDevice.setRoller).toHaveBeenCalledWith(0, 'to', 50);
+			expect(shellyDevice.setRollerPosition).toHaveBeenCalledWith(50);
 		});
 
 		it('should execute roller open command', async () => {
@@ -329,7 +342,7 @@ describe('ShellyV1DevicePlatform', () => {
 			const ok = await platform.processBatch([{ device, channel, property, value: 'open' }]);
 
 			expect(ok).toBe(true);
-			expect(shellyDevice.setRoller).toHaveBeenCalledWith(0, 'open');
+			expect(shellyDevice.setRollerState).toHaveBeenCalledWith('open');
 		});
 
 		it('should return false for invalid roller command', async () => {
@@ -342,11 +355,14 @@ describe('ShellyV1DevicePlatform', () => {
 			const channel = makeChannel('ch-1', 'roller_0');
 			const property = makeProp('p-1', 'command');
 
+			// Clear previous warn calls
+			warnSpy.mockClear();
+
 			const ok = await platform.processBatch([{ device, channel, property, value: 'invalid' }]);
 
 			expect(ok).toBe(false);
 			expect(Logger.prototype.warn).toHaveBeenCalledWith(
-				'[SHELLY V1][PLATFORM] Invalid roller command: invalid, must be open/close/stop',
+				'[SHELLY V1][PLATFORM] Invalid roller command: invalid, must be one of: open, close, stop',
 			);
 		});
 	});

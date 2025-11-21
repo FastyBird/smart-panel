@@ -150,7 +150,7 @@ describe('ShellyV1ProbeService', () => {
 
 			expect(httpClient.getDeviceInfo).toHaveBeenCalledWith('192.168.1.100');
 			expect(httpClient.getDeviceStatus).toHaveBeenCalledWith('192.168.1.100');
-			expect(httpClient.getDeviceSettings).toHaveBeenCalledWith('192.168.1.100');
+			// Note: getDeviceSettings is no longer called during probe (optimization)
 		});
 
 		it('successfully probes device with valid auth', async () => {
@@ -158,7 +158,6 @@ describe('ShellyV1ProbeService', () => {
 
 			httpClient.getDeviceInfo.mockResolvedValue(shellyInfoWithAuth);
 			httpClient.getDeviceStatus.mockResolvedValue(mockStatus);
-			httpClient.getDeviceSettings.mockResolvedValue(mockSettings);
 
 			const result = await service.probeDevice({ host: '192.168.1.100', password: 'secret' });
 
@@ -174,12 +173,7 @@ describe('ShellyV1ProbeService', () => {
 				SHELLY_AUTH_USERNAME,
 				'secret',
 			);
-			expect(httpClient.getDeviceSettings).toHaveBeenCalledWith(
-				'192.168.1.100',
-				undefined,
-				SHELLY_AUTH_USERNAME,
-				'secret',
-			);
+			// Note: getDeviceSettings is no longer called during probe (optimization)
 		});
 
 		it('returns authValid=false when auth credentials are invalid', async () => {
