@@ -145,7 +145,6 @@ describe('ShellyV1ProbeService', () => {
 			expect(result.model).toBe('SHSW-1');
 			expect(result.firmware).toBe('1.14.0');
 			expect(result.ip).toBe('192.168.1.100');
-			expect(result.descriptorKey).toBe('SHELLY1');
 			expect(result.deviceType).toBe('Shelly 1');
 			expect(result.description).toBe('Shelly 1 (SHSW-1)');
 
@@ -235,7 +234,6 @@ describe('ShellyV1ProbeService', () => {
 
 			expect(result.reachable).toBe(true);
 			expect(result.ip).toBeUndefined(); // No IP from status
-			expect(result.descriptorKey).toBe('SHELLY1'); // Still matched descriptor
 		});
 
 		it('handles partial failures gracefully (settings fetch fails)', async () => {
@@ -247,7 +245,6 @@ describe('ShellyV1ProbeService', () => {
 
 			expect(result.reachable).toBe(true);
 			expect(result.ip).toBe('192.168.1.100');
-			expect(result.descriptorKey).toBe('SHELLY1');
 		});
 
 		it('matches device to descriptor by model string', async () => {
@@ -259,7 +256,6 @@ describe('ShellyV1ProbeService', () => {
 
 			const result = await service.probeDevice({ host: '192.168.1.100' });
 
-			expect(result.descriptorKey).toBe('SHELLY25');
 			expect(result.deviceType).toBe('Shelly 2.5');
 		});
 
@@ -274,7 +270,6 @@ describe('ShellyV1ProbeService', () => {
 
 			expect(result.reachable).toBe(true);
 			expect(result.model).toBe('UNKNOWN-DEVICE');
-			expect(result.descriptorKey).toBeUndefined();
 			expect(result.deviceType).toBeUndefined();
 		});
 	});
