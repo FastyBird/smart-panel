@@ -1,5 +1,6 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access,
+@typescript-eslint/require-await
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and

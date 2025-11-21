@@ -1,5 +1,7 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method,
+@typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return,
+@typescript-eslint/no-unsafe-argument
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -11,7 +13,6 @@ import {
 	ChannelCategory,
 	ConnectionState,
 	DataTypeType,
-	DeviceCategory,
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
@@ -94,6 +95,7 @@ describe('DeviceMapperService', () => {
 
 		shelliesAdapter = {
 			getDevice: jest.fn(),
+			updateDeviceEnabledStatus: jest.fn(),
 		} as any;
 
 		httpClient = {
@@ -228,23 +230,25 @@ describe('DeviceMapperService', () => {
 			});
 			devicesService.create.mockResolvedValue(mockDevice);
 
-			// Mock channel creation
-			const mockDeviceInfoChannel = Object.assign(new ShellyV1ChannelEntity(), {
-				id: 'channel-device-info-uuid',
-				identifier: SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
+			// Mock channel creation - return different channels based on identifier
+			channelsService.create.mockImplementation((dto: any) => {
+				const channelId = `channel-${dto.identifier}-uuid`;
+				return Promise.resolve(
+					Object.assign(new ShellyV1ChannelEntity(), {
+						id: channelId,
+						identifier: dto.identifier,
+					}),
+				);
 			});
-			const mockRelayChannel = Object.assign(new ShellyV1ChannelEntity(), {
-				id: 'channel-relay-uuid',
-				identifier: 'relay_0',
-			});
-			channelsService.create.mockResolvedValueOnce(mockDeviceInfoChannel).mockResolvedValueOnce(mockRelayChannel);
 
 			// Mock property creation
-			channelsPropertiesService.create.mockImplementation(async (dto: any) =>
-				Object.assign(new ShellyV1ChannelPropertyEntity(), {
-					id: `prop-${dto.identifier}-uuid`,
-					identifier: dto.identifier,
-				}),
+			channelsPropertiesService.create.mockImplementation((dto: any) =>
+				Promise.resolve(
+					Object.assign(new ShellyV1ChannelPropertyEntity(), {
+						id: `prop-${dto.identifier}-uuid`,
+						identifier: dto.identifier,
+					}),
+				),
 			);
 
 			const result = await service.mapDevice(event);
@@ -255,7 +259,7 @@ describe('DeviceMapperService', () => {
 					identifier: 'shelly1pm-ABC123',
 					name: 'Living Room Switch',
 					type: DEVICES_SHELLY_V1_TYPE,
-					categories: DESCRIPTORS.SHELLY1PM.categories,
+					category: DESCRIPTORS.SHELLY1PM.categories[0],
 				}),
 			);
 
@@ -263,7 +267,7 @@ describe('DeviceMapperService', () => {
 			expect(channelsService.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					identifier: SHELLY_V1_CHANNEL_IDENTIFIERS.DEVICE_INFORMATION,
-					deviceId: 'device-uuid',
+					device: 'device-uuid',
 				}),
 			);
 
@@ -272,20 +276,22 @@ describe('DeviceMapperService', () => {
 				expect.objectContaining({
 					identifier: 'relay_0',
 					category: ChannelCategory.SWITCHER,
-					deviceId: 'device-uuid',
+					device: 'device-uuid',
 				}),
 			);
 
 			// Verify relay state property was created
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: 'state',
-					category: PropertyCategory.ON,
-					dataType: DataTypeType.BOOL,
-					permissions: [PermissionType.READ_WRITE],
-					channelId: 'channel-relay-uuid',
-				}),
+			const createCalls = (channelsPropertiesService.create as jest.Mock).mock.calls;
+			const statePropertyCall = createCalls.find(
+				(call) => call[1]?.identifier === 'state' && call[0] === 'channel-relay_0-uuid',
 			);
+			expect(statePropertyCall).toBeDefined();
+			expect(statePropertyCall?.[1]).toMatchObject({
+				identifier: 'state',
+				category: PropertyCategory.ON,
+				data_type: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			});
 
 			expect(result).toBe(mockDevice);
 		});
@@ -357,28 +363,30 @@ describe('DeviceMapperService', () => {
 			);
 
 			// Verify color mode properties were created (red, green, blue, white)
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: 'red',
-					category: PropertyCategory.LEVEL,
-					dataType: DataTypeType.UINT,
-					format: [0, 255],
-				}),
-			);
+			const createCalls = (channelsPropertiesService.create as jest.Mock).mock.calls;
 
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: 'green',
-					category: PropertyCategory.LEVEL,
-				}),
-			);
+			const redPropertyCall = createCalls.find((call) => call[1]?.identifier === 'red');
+			expect(redPropertyCall).toBeDefined();
+			expect(redPropertyCall?.[1]).toMatchObject({
+				identifier: 'red',
+				category: PropertyCategory.LEVEL,
+				data_type: DataTypeType.UINT,
+				format: [0, 255],
+			});
 
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: 'blue',
-					category: PropertyCategory.LEVEL,
-				}),
-			);
+			const greenPropertyCall = createCalls.find((call) => call[1]?.identifier === 'green');
+			expect(greenPropertyCall).toBeDefined();
+			expect(greenPropertyCall?.[1]).toMatchObject({
+				identifier: 'green',
+				category: PropertyCategory.LEVEL,
+			});
+
+			const bluePropertyCall = createCalls.find((call) => call[1]?.identifier === 'blue');
+			expect(bluePropertyCall).toBeDefined();
+			expect(bluePropertyCall?.[1]).toMatchObject({
+				identifier: 'blue',
+				category: PropertyCategory.LEVEL,
+			});
 		});
 
 		it('should create device with white mode bindings', async () => {
@@ -409,18 +417,19 @@ describe('DeviceMapperService', () => {
 			await service.mapDevice(event);
 
 			// Verify brightness property was created (white mode)
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: 'brightness',
-					category: PropertyCategory.LEVEL,
-					dataType: DataTypeType.UINT,
-					format: [0, 100],
-				}),
-			);
+			const createCalls = (channelsPropertiesService.create as jest.Mock).mock.calls;
+
+			const brightnessPropertyCall = createCalls.find((call) => call[1]?.identifier === 'brightness');
+			expect(brightnessPropertyCall).toBeDefined();
+			expect(brightnessPropertyCall?.[1]).toMatchObject({
+				identifier: 'brightness',
+				category: PropertyCategory.BRIGHTNESS,
+				data_type: DataTypeType.UINT,
+				format: [0, 100],
+			});
 
 			// Verify color properties (red, green, blue) were NOT created in white mode
-			const createCalls = (channelsPropertiesService.create as jest.Mock).mock.calls;
-			const hasRedProperty = createCalls.some((call) => call[0].identifier === 'red');
+			const hasRedProperty = createCalls.some((call) => call[1]?.identifier === 'red');
 
 			expect(hasRedProperty).toBe(false);
 		});
@@ -443,6 +452,7 @@ describe('DeviceMapperService', () => {
 				name: 'Old Name',
 			});
 			devicesService.findOneBy.mockResolvedValue(existingDevice);
+			devicesService.update.mockResolvedValue(existingDevice); // Return the device after update
 
 			// Mock channel and property lookups
 			const mockChannel = Object.assign(new ShellyV1ChannelEntity(), {
@@ -464,7 +474,8 @@ describe('DeviceMapperService', () => {
 			expect(devicesService.update).toHaveBeenCalledWith(
 				'device-uuid',
 				expect.objectContaining({
-					name: 'Updated Name',
+					hostname: '192.168.1.100',
+					type: DEVICES_SHELLY_V1_TYPE,
 				}),
 			);
 
@@ -486,16 +497,22 @@ describe('DeviceMapperService', () => {
 				identifier: 'shelly1pm-ABC123',
 			});
 			devicesService.findOneBy.mockResolvedValue(existingDevice);
+			devicesService.update.mockResolvedValue(existingDevice); // Return the device after update
 
 			// No existing channels - return null when looking them up
 			channelsService.findOneBy.mockResolvedValue(null);
 			channelsPropertiesService.findOneBy.mockResolvedValue(null);
 
-			const mockChannel = Object.assign(new ShellyV1ChannelEntity(), {
-				id: 'channel-relay-uuid',
-				identifier: 'relay_0',
+			// Mock channel creation - return different channels based on identifier
+			channelsService.create.mockImplementation((dto: any) => {
+				const channelId = `channel-${dto.identifier}-uuid`;
+				return Promise.resolve(
+					Object.assign(new ShellyV1ChannelEntity(), {
+						id: channelId,
+						identifier: dto.identifier,
+					}),
+				);
 			});
-			channelsService.create.mockResolvedValue(mockChannel);
 			channelsPropertiesService.create.mockResolvedValue({} as any);
 
 			await service.mapDevice(event);
@@ -508,11 +525,9 @@ describe('DeviceMapperService', () => {
 			);
 
 			// Verify missing property was created
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: 'state',
-				}),
-			);
+			const createCalls = (channelsPropertiesService.create as jest.Mock).mock.calls;
+			const statePropertyCall = createCalls.find((call) => call[1]?.identifier === 'state');
+			expect(statePropertyCall).toBeDefined();
 		});
 	});
 
@@ -544,14 +559,17 @@ describe('DeviceMapperService', () => {
 			await service.mapDevice(event);
 
 			// Verify connection state property was created
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.STATUS,
-					category: PropertyCategory.STATUS,
-					dataType: DataTypeType.ENUM,
-					format: Object.values(ConnectionState),
-				}),
+			const createCalls = (channelsPropertiesService.create as jest.Mock).mock.calls;
+			const statusPropertyCall = createCalls.find(
+				(call) => call[1]?.identifier === SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.STATUS,
 			);
+			expect(statusPropertyCall).toBeDefined();
+			expect(statusPropertyCall?.[1]).toMatchObject({
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.STATUS,
+				category: PropertyCategory.STATUS,
+				data_type: DataTypeType.ENUM,
+				format: [ConnectionState.CONNECTED, ConnectionState.DISCONNECTED, ConnectionState.UNKNOWN],
+			});
 		});
 	});
 
@@ -598,37 +616,47 @@ describe('DeviceMapperService', () => {
 
 			await service.mapDevice(event);
 
+			const createCalls = (channelsPropertiesService.create as jest.Mock).mock.calls;
+
 			// Verify model property was created with correct value
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
-					category: PropertyCategory.MODEL,
-				}),
+			const modelPropertyCall = createCalls.find(
+				(call) => call[1]?.identifier === SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
 			);
+			expect(modelPropertyCall).toBeDefined();
+			expect(modelPropertyCall?.[1]).toMatchObject({
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.MODEL,
+				category: PropertyCategory.MODEL,
+			});
 
 			// Verify firmware version property was created
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_VERSION,
-					category: PropertyCategory.FIRMWARE_REVISION,
-				}),
+			const firmwarePropertyCall = createCalls.find(
+				(call) => call[1]?.identifier === SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_VERSION,
 			);
+			expect(firmwarePropertyCall).toBeDefined();
+			expect(firmwarePropertyCall?.[1]).toMatchObject({
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.FIRMWARE_VERSION,
+				category: PropertyCategory.FIRMWARE_REVISION,
+			});
 
 			// Verify serial number (MAC) property was created
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
-					category: PropertyCategory.SERIAL_NUMBER,
-				}),
+			const serialPropertyCall = createCalls.find(
+				(call) => call[1]?.identifier === SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
 			);
+			expect(serialPropertyCall).toBeDefined();
+			expect(serialPropertyCall?.[1]).toMatchObject({
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.SERIAL_NUMBER,
+				category: PropertyCategory.SERIAL_NUMBER,
+			});
 
 			// Verify link quality (RSSI) property was created
-			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({
-					identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
-					category: PropertyCategory.LEVEL,
-				}),
+			const linkQualityPropertyCall = createCalls.find(
+				(call) => call[1]?.identifier === SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
 			);
+			expect(linkQualityPropertyCall).toBeDefined();
+			expect(linkQualityPropertyCall?.[1]).toMatchObject({
+				identifier: SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS.LINK_QUALITY,
+				category: PropertyCategory.LINK_QUALITY,
+			});
 		});
 	});
 });
