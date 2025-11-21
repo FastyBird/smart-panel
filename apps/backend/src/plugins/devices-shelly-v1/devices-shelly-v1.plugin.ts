@@ -33,6 +33,7 @@ import { ShelliesAdapterService } from './services/shellies-adapter.service';
 import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
 import { ShellyV1ProbeService } from './services/shelly-v1-probe.service';
 import { ShellyV1Service } from './services/shelly-v1.service';
+import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 
 @Module({
 	imports: [
@@ -48,6 +49,7 @@ import { ShellyV1Service } from './services/shelly-v1.service';
 		ShellyV1ProbeService,
 		ShellyV1DevicePlatform,
 		ShellyV1Service,
+		DeviceEntitySubscriber,
 	],
 	controllers: [ShellyV1DevicesController],
 })
