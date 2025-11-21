@@ -202,8 +202,8 @@
 				<template #button-right>
 					<app-bar-button
 						:align="AppBarButtonAlign.RIGHT"
-						@click="() => onCloseDrawer()"
 						class="mr-2"
+						@click="() => onCloseDrawer()"
 					>
 						<template #icon>
 							<el-icon>
