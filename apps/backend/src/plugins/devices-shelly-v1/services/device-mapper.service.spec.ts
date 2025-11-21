@@ -369,7 +369,7 @@ describe('DeviceMapperService', () => {
 			expect(redPropertyCall).toBeDefined();
 			expect(redPropertyCall?.[1]).toMatchObject({
 				identifier: 'red',
-				category: PropertyCategory.LEVEL,
+				category: PropertyCategory.COLOR_RED,
 				data_type: DataTypeType.UINT,
 				format: [0, 255],
 			});
@@ -378,14 +378,14 @@ describe('DeviceMapperService', () => {
 			expect(greenPropertyCall).toBeDefined();
 			expect(greenPropertyCall?.[1]).toMatchObject({
 				identifier: 'green',
-				category: PropertyCategory.LEVEL,
+				category: PropertyCategory.COLOR_GREEN,
 			});
 
 			const bluePropertyCall = createCalls.find((call) => call[1]?.identifier === 'blue');
 			expect(bluePropertyCall).toBeDefined();
 			expect(bluePropertyCall?.[1]).toMatchObject({
 				identifier: 'blue',
-				category: PropertyCategory.LEVEL,
+				category: PropertyCategory.COLOR_BLUE,
 			});
 		});
 
