@@ -29,6 +29,7 @@
             "electrical_power",
             "fan",
             "flow",
+            "gas",
             "heater",
             "humidity",
             "illuminance",
