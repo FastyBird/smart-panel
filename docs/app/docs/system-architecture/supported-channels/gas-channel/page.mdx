@@ -1,0 +1,84 @@
+import { Callout } from 'nextra/components'
+
+# Gas Sensor Channel
+
+<Callout type="info">
+	**Channel Category**: `gas`
+</Callout>
+
+Detects the presence of gas in the environment.
+The exact type of gas depends on the device (e.g., combustible gas, carbon monoxide, LPG, natural gas, etc.).
+
+---
+
+## Required Properties
+
+| **Property** | **Data Type** | **Range**               | **Unit** | **Permissions** |
+|--------------|---------------|-------------------------|----------|-----------------|
+| `detected`   | `Bool`        | `true/false`            | -        | RO (Read-Only)  |
+| `status`     | `String`      | `normal/warning/alarm"` | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
+
+#### `detected`
+
+Indicates whether the sensor detects a gas event:
+
+- `true`: Gas is detected (potential hazard).
+- `false`: No gas detected (normal condition).
+
+#### `status`
+
+Represents the **severity level** of the detected gas concentration:
+
+- Possible values:
+    - `normal` – No risk detected
+    - `warning` – Elevated gas levels
+    - `alarm` – Dangerous concentration detected
+
+---
+
+## Optional Properties
+
+| **Property** | **Data Type** | **Range**    | **Unit** | **Permissions** |
+|--------------|---------------|--------------|----------|-----------------|
+| `density`    | `Uint`        | `0–65535`    | `ppm`    | RO (Read-Only)  |
+| `active`     | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+| `fault`      | `Uchar`       | `0–255`      | -        | RO (Read-Only)  |
+| `tampered`   | `Bool`        | `true/false` | -        | RO (Read-Only)  |
+
+---
+
+### Property Details
+
+#### `density`
+
+Gas concentration in **parts per million**:
+
+- `0` = no measurable concentration
+- `65535` = maximum measurable concentration
+
+This property is optional because not all gas sensors expose an analog concentration measurement.
+
+#### `active`
+
+Indicates the channel's current working status:
+
+- `true`: The sensor is active and functioning correctly.
+- `false`: The sensor is inactive or non-functional.
+
+#### `fault`
+
+Represents the fault state of the sensor:
+
+- `0`: No fault detected.
+- Non-zero: A fault has been detected, potentially affecting functionality.
+
+#### `tampered`
+
+Indicates whether the channel has been tampered with:
+
+- `true`: The channel has been tampered with.
+- `false`: The channel is in a normal, non-tampered state.

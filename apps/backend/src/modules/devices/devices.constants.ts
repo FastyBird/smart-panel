@@ -89,6 +89,7 @@ export enum ChannelCategory {
 	ELECTRICAL_POWER = 'electrical_power',
 	FAN = 'fan',
 	FLOW = 'flow',
+	GAS = 'gas',
 	HEATER = 'heater',
 	HUMIDITY = 'humidity',
 	ILLUMINANCE = 'illuminance',

@@ -77,17 +77,17 @@ These can be addressed in follow-up tasks.
     - [x] discovers Shelly Gen 1 devices available in the network (depending on chosen discovery strategy, e.g. via `shellies.start()`),
     - [x] creates corresponding **Device** entities in the Smart Panel backend,
     - [x] creates appropriate **Channels** and **Properties** based on device capabilities for discovered and supported models.
-- [ ] For at least the following device types, mapping to channels/properties is correctly defined:
+- [x] For at least the following device types, mapping to channels/properties is correctly defined:
     - [x] simple relay / switch (on/off),
     - [x] dimmer / light with brightness,
-    - [ ] temperature sensor,
+    - [x] temperature sensor,
     - [x] power/energy sensor (if available).
 - [x] Property values are updated when device state changes (polling, push, or hybrid) and when `shellies` emits `change` events.
 - [x] Online/offline status is reflected based on:
     - `shellies` events **or**
     - `lastSeen` timestamp combined with a configurable `staleTimeout`.
-- [ ] Commands from the Smart Panel (e.g. toggling a switch, setting brightness) are propagated to the Shelly device and reflected back in state.
-- [ ] All new services are covered with **unit tests** (following existing testing patterns in devices/plugins modules), including:
+- [x] Commands from the Smart Panel (e.g. toggling a switch, setting brightness) are propagated to the Shelly device and reflected back in state.
+- [x] All new services are covered with **unit tests** (following existing testing patterns in devices/plugins modules), including:
     - discovery & mapping,
     - availability handling,
     - HTTP metadata sync,

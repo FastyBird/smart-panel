@@ -1290,6 +1290,109 @@
       }
     }
   },
+  "gas": {
+    "category": "gas",
+    "properties": {
+      "detected": {
+        "category": "detected",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "status": {
+        "category": "status",
+        "required": true,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "enum",
+        "unit": null,
+        "format": [
+          "normal",
+          "warning",
+          "alarm"
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "density": {
+        "category": "density",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uint",
+        "unit": "ppm",
+        "format": [
+          0,
+          65535
+        ]
+      },
+      "active": {
+        "category": "active",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      },
+      "fault": {
+        "category": "fault",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "uchar",
+        "unit": null,
+        "format": [
+          0,
+          255
+        ],
+        "invalid": null,
+        "step": null
+      },
+      "tampered": {
+        "category": "tampered",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "ro"
+        ],
+        "data_type": "bool",
+        "unit": null,
+        "format": null,
+        "invalid": null,
+        "step": null
+      }
+    }
+  },
   "heater": {
     "category": "heater",
     "properties": {
@@ -1338,6 +1441,24 @@
         "format": null,
         "invalid": null,
         "step": null
+      },
+      "position": {
+        "category": "position",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ],
+        "invalid": null,
+        "step": 1
       }
     }
   },
@@ -3021,6 +3142,24 @@
         ],
         "invalid": null,
         "step": null
+      },
+      "position": {
+        "category": "position",
+        "required": false,
+        "description": {
+          "en": ""
+        },
+        "permissions": [
+          "rw"
+        ],
+        "data_type": "uchar",
+        "unit": "%",
+        "format": [
+          0,
+          100
+        ],
+        "invalid": null,
+        "step": 1
       },
       "fault": {
         "category": "fault",

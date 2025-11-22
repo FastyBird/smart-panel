@@ -13547,6 +13547,7 @@
           "electrical_power",
           "fan",
           "flow",
+          "gas",
           "heater",
           "humidity",
           "illuminance",
@@ -20746,10 +20747,16 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
+                  "enabled",
                   "interface"
                 ],
                 "description": "Discovery settings for Shelly Gen 1 devices (CoAP/multicast).",
                 "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable CoAP discovery for Shelly V1 devices.",
+                    "default": true
+                  },
                   "interface": {
                     "type": "string",
                     "nullable": true,
@@ -20828,6 +20835,11 @@
                 "additionalProperties": false,
                 "description": "Discovery settings for Shelly Gen 1 devices (CoAP/multicast).",
                 "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Enable CoAP discovery for Shelly V1 devices.",
+                    "default": true
+                  },
                   "interface": {
                     "type": "string",
                     "nullable": true,

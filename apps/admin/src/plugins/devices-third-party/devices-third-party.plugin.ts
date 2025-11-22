@@ -43,7 +43,7 @@ export default {
 		pluginsManager.addPlugin(devicesThirdPartyPluginKey, {
 			type: DEVICES_THIRD_PARTY_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.devices-third-party',
-			name: 'Third Party Devices',
+			name: 'Third Party',
 			description: 'Control and monitor third-party devices seamlessly from the FastyBird Smart Panel',
 			links: {
 				documentation: 'http://www.fastybird.com',
