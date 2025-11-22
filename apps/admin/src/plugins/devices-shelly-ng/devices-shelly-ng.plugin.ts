@@ -50,7 +50,7 @@ export default {
 		pluginsManager.addPlugin(devicesShellyNgPluginKey, {
 			type: DEVICES_SHELLY_NG_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.devices-shelly-ng',
-			name: 'Shelly Next Generation Devices',
+			name: 'Shelly Next Generation',
 			description: 'Connect and control your Shelly Next Generation devices directly from the FastyBird Smart Panel',
 			links: {
 				documentation: 'http://www.fastybird.com',

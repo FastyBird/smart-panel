@@ -87,7 +87,11 @@ describe('ShellyV1Service', () => {
 				{
 					provide: ConfigService,
 					useValue: {
-						getPluginConfig: jest.fn().mockReturnValue({ enabled: true }),
+						getPluginConfig: jest.fn().mockReturnValue({
+							enabled: true,
+							discovery: { enabled: true, interface: null },
+							timeouts: { requestTimeout: 10, staleTimeout: 30 },
+						}),
 					},
 				},
 				{
@@ -463,6 +467,80 @@ describe('ShellyV1Service', () => {
 			await (service as any).initializeDeviceStates();
 
 			expect(deviceConnectivityService.setConnectionState).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Discovery enabled/disabled', () => {
+		it('should process new devices when discovery is enabled', async () => {
+			const discoveryEvent: NormalizedDeviceEvent = {
+				id: 'shelly1pm-NEW123',
+				type: 'SHSW-PM',
+				host: '192.168.1.200',
+				online: true,
+			};
+
+			// Mock that device does not exist in database
+			devicesService.findOneBy.mockResolvedValue(null);
+			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
+
+			await service.handleDeviceDiscovered(discoveryEvent);
+
+			// Discovery is enabled by default, should call mapDevice for new devices
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
+		});
+
+		it('should ignore new devices when discovery is disabled', async () => {
+			// Update config to disable discovery
+			const configService = module.get(ConfigService);
+			jest.spyOn(configService, 'getPluginConfig').mockReturnValue({
+				enabled: true,
+				discovery: { enabled: false, interface: null },
+				timeouts: { requestTimeout: 10, staleTimeout: 30 },
+			} as any);
+
+			const discoveryEvent: NormalizedDeviceEvent = {
+				id: 'shelly1pm-NEW123',
+				type: 'SHSW-PM',
+				host: '192.168.1.200',
+				online: true,
+			};
+
+			// Mock that device does not exist in database (new device)
+			devicesService.findOneBy.mockResolvedValue(null);
+			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
+
+			await service.handleDeviceDiscovered(discoveryEvent);
+
+			// Discovery is disabled, should NOT call mapDevice for new devices
+			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-NEW123', DEVICES_SHELLY_V1_TYPE);
+			expect(deviceMapper.mapDevice).not.toHaveBeenCalled();
+		});
+
+		it('should still process existing devices when discovery is disabled', async () => {
+			// Update config to disable discovery
+			const configService = module.get(ConfigService);
+			jest.spyOn(configService, 'getPluginConfig').mockReturnValue({
+				enabled: true,
+				discovery: { enabled: false, interface: null },
+				timeouts: { requestTimeout: 10, staleTimeout: 30 },
+			} as any);
+
+			const discoveryEvent: NormalizedDeviceEvent = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				host: '192.168.1.100',
+				online: true,
+			};
+
+			// Mock that device exists in database (existing device)
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			deviceMapper.mapDevice.mockResolvedValue(mockDevice);
+
+			await service.handleDeviceDiscovered(discoveryEvent);
+
+			// Discovery is disabled, but device exists, should still call mapDevice
+			expect(devicesService.findOneBy).toHaveBeenCalledWith('identifier', 'shelly1pm-ABC123', DEVICES_SHELLY_V1_TYPE);
+			expect(deviceMapper.mapDevice).toHaveBeenCalledWith(discoveryEvent);
 		});
 	});
 

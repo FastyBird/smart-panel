@@ -201,6 +201,28 @@ export class ShellyV1Service {
 		this.logger.log(`[SHELLY V1][SERVICE] Device discovered: ${event.id} (${event.type}) at ${event.host}`);
 
 		try {
+			// Check if discovery is enabled
+			if (!this.config.discovery.enabled) {
+				// Discovery is disabled, only process devices that already exist in the database
+				const existingDevice = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
+					'identifier',
+					event.id,
+					DEVICES_SHELLY_V1_TYPE,
+				);
+
+				if (!existingDevice) {
+					this.logger.debug(
+						`[SHELLY V1][SERVICE] Discovery is disabled, ignoring new device: ${event.id} (${event.type})`,
+					);
+
+					return;
+				}
+
+				this.logger.debug(
+					`[SHELLY V1][SERVICE] Discovery is disabled, but device ${event.id} already exists, processing update`,
+				);
+			}
+
 			// Map and create the device with its channels and properties
 			const device = await this.deviceMapper.mapDevice(event);
 

@@ -46,6 +46,20 @@ export const BATTERY_STATUS_VALUE_MAP: Record<string, string> = {
 	charging: 'charging',
 } as const;
 
+export const GAS_STATUS_VALUE_MAP: Record<string, string> = {
+	none: 'normal',
+	test: 'test',
+	mild: 'warning',
+	heavy: 'alarm',
+} as const;
+
+export const GAS_STATUS_REVERSE_VALUE_MAP: Record<string, string> = {
+	normal: 'none',
+	test: 'test',
+	warning: 'mild',
+	alarm: 'heavy',
+} as const;
+
 /**
  * Value map registry
  * Maps value map names to their corresponding forward and reverse maps
@@ -69,6 +83,10 @@ export const VALUE_MAP_REGISTRY: Record<
 	BATTERY_STATUS: {
 		forward: BATTERY_STATUS_VALUE_MAP,
 		reverse: BATTERY_STATUS_VALUE_MAP, // Identity map
+	},
+	GAS_STATUS: {
+		forward: GAS_STATUS_VALUE_MAP,
+		reverse: GAS_STATUS_REVERSE_VALUE_MAP,
 	},
 };
 

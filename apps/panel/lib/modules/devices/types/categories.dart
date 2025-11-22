@@ -58,6 +58,7 @@ enum ChannelCategory {
   electricalPower('electrical_power'),
   fan('fan'),
   flow('flow'),
+  gas('gas'),
   heater('heater'),
   humidity('humidity'),
   illuminance('illuminance'),

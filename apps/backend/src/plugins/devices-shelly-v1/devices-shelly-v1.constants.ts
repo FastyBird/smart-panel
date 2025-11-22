@@ -116,6 +116,9 @@ export const SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY: Record<string, ChannelCategor
 	temperature: ChannelCategory.TEMPERATURE,
 	humidity: ChannelCategory.HUMIDITY,
 	smoke: ChannelCategory.SMOKE,
+	gas: ChannelCategory.GAS,
+	thermostat: ChannelCategory.THERMOSTAT,
+	heater: ChannelCategory.HEATER,
 };
 
 // Device descriptors for common Shelly Gen 1 devices
@@ -1306,7 +1309,6 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				shelliesProperty: 'state',
 				channelIdentifier: 'contact_0',
 				propertyIdentifier: 'state',
-				channelCategory: ChannelCategory.CONTACT,
 				category: PropertyCategory.DETECTED,
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
@@ -1344,7 +1346,6 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				shelliesProperty: 'state',
 				channelIdentifier: 'contact_0',
 				propertyIdentifier: 'state',
-				channelCategory: ChannelCategory.CONTACT,
 				category: PropertyCategory.DETECTED,
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_ONLY],
@@ -1553,7 +1554,29 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		name: 'Shelly Gas',
 		models: ['SHGS-1'],
 		categories: [DeviceCategory.SENSOR],
-		bindings: [],
+		bindings: [
+			// gas
+			{
+				shelliesProperty: 'gas',
+				channelIdentifier: 'gas_0',
+				propertyIdentifier: 'status',
+				category: PropertyCategory.STATUS,
+				dataType: DataTypeType.ENUM,
+				permissions: [PermissionType.READ_ONLY],
+				format: ['normal', 'test', 'warning', 'alarm'],
+				valueMap: 'GAS_STATUS',
+			},
+			// concentration
+			{
+				shelliesProperty: 'concentration',
+				channelIdentifier: 'gas_0',
+				propertyIdentifier: 'density',
+				category: PropertyCategory.DENSITY,
+				dataType: DataTypeType.UINT,
+				permissions: [PermissionType.READ_ONLY],
+				unit: 'ppm',
+			},
+		],
 	},
 	SHELLYHD: {
 		name: 'Shelly HD',
@@ -1844,6 +1867,44 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				dataType: DataTypeType.FLOAT,
 				permissions: [PermissionType.READ_ONLY],
 				unit: '°C',
+			},
+			// target temperature
+			{
+				shelliesProperty: 'targetTemperature',
+				channelIdentifier: 'heater_0',
+				propertyIdentifier: 'temperature',
+				category: PropertyCategory.TEMPERATURE,
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_WRITE],
+				unit: '°C',
+			},
+			// status
+			{
+				shelliesProperty: 'status',
+				channelIdentifier: 'heater_0',
+				propertyIdentifier: 'status',
+				category: PropertyCategory.STATUS,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+			},
+			// thermostat active (synthetic - always true)
+			{
+				shelliesProperty: 'targetTemperature', // Use targetTemperature as trigger
+				channelIdentifier: 'thermostat_0',
+				propertyIdentifier: 'active',
+				category: PropertyCategory.ACTIVE,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_ONLY],
+			},
+			// thermostat mode (synthetic - always 'heat')
+			{
+				shelliesProperty: 'targetTemperature', // Use targetTemperature as trigger
+				channelIdentifier: 'thermostat_0',
+				propertyIdentifier: 'mode',
+				category: PropertyCategory.MODE,
+				dataType: DataTypeType.ENUM,
+				permissions: [PermissionType.READ_ONLY],
+				format: ['heat'],
 			},
 			// battery
 			{

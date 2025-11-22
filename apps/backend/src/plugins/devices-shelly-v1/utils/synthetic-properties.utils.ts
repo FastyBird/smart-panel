@@ -112,6 +112,73 @@ export const SYNTHETIC_PROPERTIES: Partial<Record<ChannelCategory, SyntheticProp
 			},
 		},
 	],
+	[ChannelCategory.GAS]: [
+		{
+			propertyCategory: PropertyCategory.DETECTED,
+			sourcePropertyCategory: PropertyCategory.STATUS,
+			deriveValue: (
+				status: string | number | boolean | null,
+				_currentValue?: string | number | boolean | null,
+			): boolean => {
+				// Derive gas detected boolean from status
+				// Raw Shelly values: 'none', 'test', 'mild', 'heavy'
+				// Canonical values: 'normal', 'test', 'warning', 'alarm'
+				// Detected = true when status is 'warning' (mild) or 'alarm' (heavy)
+				// Detected = false when status is 'normal' (none) or 'test'
+				// Note: This always recalculates from source (doesn't preserve currentValue)
+				if (status === null || status === undefined) {
+					return false; // Default to not detected
+				}
+
+				const statusStr = String(status).toLowerCase();
+
+				// Return true if gas is detected at warning or alarm levels
+				return statusStr === 'warning' || statusStr === 'alarm';
+			},
+		},
+	],
+	[ChannelCategory.HEATER]: [
+		{
+			propertyCategory: PropertyCategory.ON,
+			sourcePropertyCategory: PropertyCategory.TEMPERATURE,
+			deriveValue: (
+				_temperature: string | number | boolean | null,
+				_currentValue?: string | number | boolean | null,
+			): boolean => {
+				// For Shelly TRV, the heater is always considered "on" when configured
+				// The actual heating state is reflected in the STATUS property
+				// This synthetic property is required by the heater channel schema
+				return true;
+			},
+		},
+	],
+	[ChannelCategory.THERMOSTAT]: [
+		{
+			propertyCategory: PropertyCategory.ACTIVE,
+			sourcePropertyCategory: PropertyCategory.TEMPERATURE,
+			deriveValue: (
+				_temperature: string | number | boolean | null,
+				_currentValue?: string | number | boolean | null,
+			): boolean => {
+				// For Shelly TRV, the thermostat is always active when configured
+				// This synthetic property is required by the thermostat channel schema
+				return true;
+			},
+		},
+		{
+			propertyCategory: PropertyCategory.MODE,
+			sourcePropertyCategory: PropertyCategory.TEMPERATURE,
+			deriveValue: (
+				_temperature: string | number | boolean | null,
+				_currentValue?: string | number | boolean | null,
+			): string => {
+				// For Shelly TRV, the thermostat only supports heat mode
+				// The device is a thermostatic radiator valve designed for heating only
+				// This synthetic property is required by the thermostat channel schema
+				return 'heat';
+			},
+		},
+	],
 	// Additional synthetic properties can be added here for other channel categories
 };
 

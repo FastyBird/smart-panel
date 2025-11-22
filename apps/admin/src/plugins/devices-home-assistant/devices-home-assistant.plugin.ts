@@ -74,7 +74,7 @@ export default {
 		pluginsManager.addPlugin(devicesHomeAssistantPluginKey, {
 			type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.devices-home-assistant',
-			name: 'Home Assistant Devices',
+			name: 'Home Assistant',
 			description: 'Connect and control your Home Assistant devices directly from the FastyBird Smart Panel',
 			links: {
 				documentation: 'http://www.fastybird.com',

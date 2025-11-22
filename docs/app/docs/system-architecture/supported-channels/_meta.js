@@ -7,6 +7,7 @@ export default {
   "air-particulate-channel": "Air Particulate",
   "carbon-dioxide-channel": "Carbon Dioxide",
   "carbon-monoxide-channel": "Carbon Monoxide",
+  "gas-channel": "Gas",
   "humidity-channel": "Humidity",
   "illuminance-channel": "Illuminance",
   "nitrogen-dioxide-channel": "Nitrogen Dioxide",
