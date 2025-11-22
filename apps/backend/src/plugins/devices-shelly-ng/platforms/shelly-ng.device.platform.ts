@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
-import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgNotImplementedException } from '../devices-shelly-ng.exceptions';
@@ -16,12 +15,10 @@ export type IShellyNgDevicePropertyData = IDevicePropertyData & {
 };
 
 @Injectable()
-export class ShellyNgDevicePlatform extends HttpDevicePlatform implements IDevicePlatform {
+export class ShellyNgDevicePlatform implements IDevicePlatform {
 	private readonly logger = new Logger(ShellyNgDevicePlatform.name);
 
-	constructor(private readonly delegatesManagerService: DelegatesManagerService) {
-		super();
-	}
+	constructor(private readonly delegatesManagerService: DelegatesManagerService) {}
 
 	getType(): string {
 		return DEVICES_SHELLY_NG_TYPE;

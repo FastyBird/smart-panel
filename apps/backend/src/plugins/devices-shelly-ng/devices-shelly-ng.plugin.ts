@@ -5,12 +5,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { getEnvValue } from '../../common/utils/config.utils';
 import { ConfigModule } from '../../modules/config/config.module';
-import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 
 import { ShellyNgDevicesController } from './controllers/shelly-ng-devices.controller';
 import { DelegatesManagerService } from './delegates/delegates-manager.service';
@@ -56,12 +56,13 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 export class DevicesShellyNgPlugin {
 	constructor(
 		private readonly configService: NestConfigService,
-		private readonly appConfigService: ConfigService,
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly shellyNgService: ShellyNgService,
 		private readonly devicesMapper: DevicesTypeMapperService,
 		private readonly channelsMapper: ChannelsTypeMapperService,
 		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
+		private readonly shellyNgDevicePlatform: ShellyNgDevicePlatform,
+		private readonly platformRegistryService: PlatformRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -95,6 +96,8 @@ export class DevicesShellyNgPlugin {
 			updateDto: UpdateShellyNgChannelPropertyDto,
 			class: ShellyNgChannelPropertyEntity,
 		});
+
+		this.platformRegistryService.register(this.shellyNgDevicePlatform);
 	}
 
 	async onApplicationBootstrap() {

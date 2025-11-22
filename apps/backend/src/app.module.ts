@@ -37,6 +37,8 @@ import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-ass
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant/devices-home-assistant.plugin';
 import { DEVICES_SHELLY_NG_PLUGIN_PREFIX } from './plugins/devices-shelly-ng/devices-shelly-ng.constants';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng/devices-shelly-ng.plugin';
+import { DEVICES_SHELLY_V1_PLUGIN_PREFIX } from './plugins/devices-shelly-v1/devices-shelly-v1.constants';
+import { DevicesShellyV1Plugin } from './plugins/devices-shelly-v1/devices-shelly-v1.plugin';
 import { DEVICES_THIRD_PARTY_PLUGIN_PREFIX } from './plugins/devices-third-party/devices-third-party.constants';
 import { DevicesThirdPartyPlugin } from './plugins/devices-third-party/devices-third-party.plugin';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-rotating-file.plugin';
@@ -160,6 +162,10 @@ export class AppModule {
 								path: DEVICES_SHELLY_NG_PLUGIN_PREFIX,
 								module: DevicesShellyNgPlugin,
 							},
+							{
+								path: DEVICES_SHELLY_V1_PLUGIN_PREFIX,
+								module: DevicesShellyV1Plugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -180,6 +186,7 @@ export class AppModule {
 				DevicesThirdPartyPlugin,
 				DevicesHomeAssistantPlugin,
 				DevicesShellyNgPlugin,
+				DevicesShellyV1Plugin,
 				PagesCardsPlugin,
 				PagesDeviceDetailPlugin,
 				PagesTilesPlugin,

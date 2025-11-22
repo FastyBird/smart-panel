@@ -42,18 +42,28 @@ export class DeviceConnectivityService {
 
 		const last = property.value;
 
-		if (last === String(state.state)) {
-			return;
+		let changed = false;
+
+		if (last !== String(state.state)) {
+			await this.channelsPropertiesService.update(property.id, {
+				type: property.type,
+				value: String(state.state),
+			});
+
+			changed = true;
 		}
 
-		await this.channelsPropertiesService.update(property.id, {
-			type: property.type,
-			value: String(state.state),
-		});
+		const connection = await this.deviceConnectionStateService.readLatest(device);
 
-		await this.deviceConnectionStateService.write(device, property, state.state);
+		if (connection.status !== state.state) {
+			await this.deviceConnectionStateService.write(device, property, state.state);
 
-		this.eventEmitter.emit(EventType.DEVICE_CONNECTION_CHANGED, { device, state: state.state, reason: state.reason });
+			changed = true;
+		}
+
+		if (changed) {
+			this.eventEmitter.emit(EventType.DEVICE_CONNECTION_CHANGED, { device, state: state.state, reason: state.reason });
+		}
 	}
 
 	private async findOrCreateConnectionChannel(device: DeviceEntity, create: boolean): Promise<ChannelEntity> {

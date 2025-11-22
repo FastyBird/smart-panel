@@ -1,0 +1,114 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
+import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { getEnvValue } from '../../common/utils/config.utils';
+import { ConfigModule } from '../../modules/config/config.module';
+import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
+import { DevicesModule } from '../../modules/devices/devices.module';
+import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
+import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
+import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
+
+import { ShellyV1DevicesController } from './controllers/shelly-v1-devices.controller';
+import { DEVICES_SHELLY_V1_PLUGIN_NAME, DEVICES_SHELLY_V1_TYPE } from './devices-shelly-v1.constants';
+import { CreateShellyV1ChannelPropertyDto } from './dto/create-channel-property.dto';
+import { CreateShellyV1ChannelDto } from './dto/create-channel.dto';
+import { CreateShellyV1DeviceDto } from './dto/create-device.dto';
+import { UpdateShellyV1ChannelPropertyDto } from './dto/update-channel-property.dto';
+import { UpdateShellyV1ChannelDto } from './dto/update-channel.dto';
+import { ShellyV1UpdatePluginConfigDto } from './dto/update-config.dto';
+import { UpdateShellyV1DeviceDto } from './dto/update-device.dto';
+import {
+	ShellyV1ChannelEntity,
+	ShellyV1ChannelPropertyEntity,
+	ShellyV1DeviceEntity,
+} from './entities/devices-shelly-v1.entity';
+import { ShellyV1ConfigModel } from './models/config.model';
+import { ShellyV1DevicePlatform } from './platforms/shelly-v1.device.platform';
+import { DeviceMapperService } from './services/device-mapper.service';
+import { ShelliesAdapterService } from './services/shellies-adapter.service';
+import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
+import { ShellyV1ProbeService } from './services/shelly-v1-probe.service';
+import { ShellyV1Service } from './services/shelly-v1.service';
+import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
+
+@Module({
+	imports: [
+		NestConfigModule,
+		TypeOrmModule.forFeature([ShellyV1DeviceEntity, ShellyV1ChannelEntity, ShellyV1ChannelPropertyEntity]),
+		DevicesModule,
+		ConfigModule,
+	],
+	providers: [
+		ShelliesAdapterService,
+		DeviceMapperService,
+		ShellyV1HttpClientService,
+		ShellyV1ProbeService,
+		ShellyV1DevicePlatform,
+		ShellyV1Service,
+		DeviceEntitySubscriber,
+	],
+	controllers: [ShellyV1DevicesController],
+})
+export class DevicesShellyV1Plugin {
+	constructor(
+		private readonly configService: NestConfigService,
+		private readonly configMapper: PluginsTypeMapperService,
+		private readonly shellyV1Service: ShellyV1Service,
+		private readonly devicesMapper: DevicesTypeMapperService,
+		private readonly channelsMapper: ChannelsTypeMapperService,
+		private readonly channelsPropertiesMapper: ChannelsPropertiesTypeMapperService,
+		private readonly shellyV1DevicePlatform: ShellyV1DevicePlatform,
+		private readonly platformRegistryService: PlatformRegistryService,
+	) {}
+
+	onModuleInit() {
+		this.configMapper.registerMapping<ShellyV1ConfigModel, ShellyV1UpdatePluginConfigDto>({
+			type: DEVICES_SHELLY_V1_PLUGIN_NAME,
+			class: ShellyV1ConfigModel,
+			configDto: ShellyV1UpdatePluginConfigDto,
+		});
+
+		this.devicesMapper.registerMapping<ShellyV1DeviceEntity, CreateShellyV1DeviceDto, UpdateShellyV1DeviceDto>({
+			type: DEVICES_SHELLY_V1_TYPE,
+			createDto: CreateShellyV1DeviceDto,
+			updateDto: UpdateShellyV1DeviceDto,
+			class: ShellyV1DeviceEntity,
+		});
+
+		this.channelsMapper.registerMapping<ShellyV1ChannelEntity, CreateShellyV1ChannelDto, UpdateShellyV1ChannelDto>({
+			type: DEVICES_SHELLY_V1_TYPE,
+			createDto: CreateShellyV1ChannelDto,
+			updateDto: UpdateShellyV1ChannelDto,
+			class: ShellyV1ChannelEntity,
+		});
+
+		this.channelsPropertiesMapper.registerMapping<
+			ShellyV1ChannelPropertyEntity,
+			CreateShellyV1ChannelPropertyDto,
+			UpdateShellyV1ChannelPropertyDto
+		>({
+			type: DEVICES_SHELLY_V1_TYPE,
+			createDto: CreateShellyV1ChannelPropertyDto,
+			updateDto: UpdateShellyV1ChannelPropertyDto,
+			class: ShellyV1ChannelPropertyEntity,
+		});
+
+		this.platformRegistryService.register(this.shellyV1DevicePlatform);
+	}
+
+	async onApplicationBootstrap() {
+		const isCli = getEnvValue<string>(this.configService, 'FB_CLI', null) === 'on';
+
+		if (!isCli) {
+			await this.shellyV1Service.requestStart();
+		}
+	}
+
+	async onModuleDestroy() {
+		await this.shellyV1Service.stop();
+	}
+}
