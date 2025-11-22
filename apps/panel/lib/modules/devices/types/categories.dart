@@ -122,6 +122,7 @@ enum ChannelPropertyCategory {
   fault('fault'),
   firmwareRevision('firmware_revision'),
   frequency('frequency'),
+  gas('gas'),
   hardwareRevision('hardware_revision'),
   hue('hue'),
   humidity('humidity'),
