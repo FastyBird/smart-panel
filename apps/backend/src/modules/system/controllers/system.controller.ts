@@ -9,7 +9,13 @@ import {
 	Logger,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiSuccessResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { Public } from '../../auth/guards/auth.guard';
 import {
@@ -20,6 +26,7 @@ import {
 import { SystemHealthModel, SystemInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { SystemService } from '../services/system.service';
 
+@ApiTags('system-module')
 @Controller('system')
 export class SystemController {
 	private readonly logger = new Logger(SystemController.name);
@@ -28,6 +35,9 @@ export class SystemController {
 
 	@Public()
 	@Get('health')
+	@ApiOperation({ summary: 'Get system health', description: 'Retrieve system health status and version' })
+	@ApiSuccessResponse(SystemHealthModel, 'System health retrieved successfully')
+	@ApiInternalServerErrorResponse()
 	getSystemHealth(): SystemHealthModel {
 		this.logger.debug('[LOOKUP] Health check');
 
@@ -46,6 +56,10 @@ export class SystemController {
 	}
 
 	@Get('info')
+	@ApiOperation({ summary: 'Get system information', description: 'Retrieve detailed system information' })
+	@ApiSuccessResponse(SystemInfoModel, 'System information retrieved successfully')
+	@ApiBadRequestResponse('Platform not supported')
+	@ApiInternalServerErrorResponse()
 	async getSystemInfo(): Promise<SystemInfoModel> {
 		this.logger.debug('[LOOKUP] Fetching system info');
 
@@ -61,6 +75,10 @@ export class SystemController {
 	}
 
 	@Get('throttle')
+	@ApiOperation({ summary: 'Get throttle status', description: 'Retrieve system throttling status' })
+	@ApiSuccessResponse(ThrottleStatusModel, 'Throttle status retrieved successfully')
+	@ApiBadRequestResponse('Platform not supported')
+	@ApiInternalServerErrorResponse()
 	async getThrottleStatus(): Promise<ThrottleStatusModel> {
 		this.logger.debug('[LOOKUP] Fetching throttle status');
 

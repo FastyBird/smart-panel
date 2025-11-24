@@ -1,5 +1,12 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Logger, Post, Query, Req } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiAcceptedSuccessResponse,
+	ApiBadRequestResponse,
+	ApiInternalServerErrorResponse,
+	ApiSuccessArrayResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { setResponseMeta } from '../../../common/utils/http.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ReqCreateLogEntriesDto } from '../dto/create-log-entry.dto';
@@ -7,6 +14,7 @@ import { LogEntryAcceptedModel, LogEntryModel } from '../models/system.model';
 import { SystemLoggerService } from '../services/system-logger.service';
 import { DEFAULT_PAGE_SIZE, LogEntryType } from '../system.constants';
 
+@ApiTags('system-module')
 @Controller('logs')
 export class LogsController {
 	private readonly logger = new Logger(LogsController.name);
@@ -14,6 +22,11 @@ export class LogsController {
 	constructor(private readonly appLogger: SystemLoggerService) {}
 
 	@Get()
+	@ApiOperation({ summary: 'List log entries', description: 'Retrieve a list of log entries with optional pagination' })
+	@ApiQuery({ name: 'after_id', required: false, description: 'Cursor for pagination', type: 'string' })
+	@ApiQuery({ name: 'limit', required: false, description: 'Number of entries to return', type: 'number' })
+	@ApiSuccessArrayResponse(LogEntryModel, 'Log entries retrieved successfully')
+	@ApiInternalServerErrorResponse()
 	list(
 		@Req() req: Request,
 		@Query('after_id') afterId?: string,
@@ -33,6 +46,11 @@ export class LogsController {
 
 	@Post()
 	@HttpCode(HttpStatus.ACCEPTED)
+	@ApiOperation({ summary: 'Create log entries', description: 'Submit new log entries to the system' })
+	@ApiBody({ type: ReqCreateLogEntriesDto, description: 'Log entries to create' })
+	@ApiAcceptedSuccessResponse(LogEntryAcceptedModel, 'Log entries accepted successfully')
+	@ApiBadRequestResponse('Invalid log entry data')
+	@ApiInternalServerErrorResponse()
 	create(@Body() createDto: ReqCreateLogEntriesDto): LogEntryAcceptedModel {
 		let accepted = 0;
 		let rejected = 0;

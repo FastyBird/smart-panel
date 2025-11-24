@@ -6,7 +6,12 @@ import path from 'node:path';
 import { DiscoveredAdminExtension } from '@fastybird/smart-panel-extension-sdk';
 import { Controller, Get, Logger, Param, Query, Req, Res } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config/dist/config.service';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiInternalServerErrorResponse,
+	ApiSuccessUnionResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { getDiscoveredExtensions } from '../../../common/extensions/extensions.discovery-cache';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -30,6 +35,7 @@ interface BundledManifest {
 	}>;
 }
 
+@ApiTags('system-module')
 @Controller('extensions')
 export class ExtensionsController {
 	private readonly logger = new Logger(ExtensionsController.name);
@@ -38,6 +44,18 @@ export class ExtensionsController {
 
 	@Public()
 	@Get()
+	@ApiOperation({
+		summary: 'List all extensions',
+		description: 'Retrieve a list of all registered extensions, optionally filtered by surface',
+	})
+	@ApiQuery({
+		name: 'surface',
+		required: false,
+		description: 'Filter by extension surface',
+		enum: [...Object.values(ExtensionSurfaceType), 'all'],
+	})
+	@ApiSuccessUnionResponse([ExtensionAdminModel, ExtensionBackendModel], 'Extensions retrieved successfully')
+	@ApiInternalServerErrorResponse()
 	async list(
 		@Query('surface') surface: ExtensionSurfaceType | 'all' = 'all',
 	): Promise<(ExtensionAdminModel | ExtensionBackendModel)[]> {

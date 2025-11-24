@@ -119,6 +119,43 @@ export const ApiCreatedSuccessResponse = <TModel extends Type<any> | (abstract n
 };
 
 /**
+ * Creates a Swagger decorator for successful accepted responses with typed data
+ * @param dataDto The DTO class for the response data
+ * @param description Optional description for the response
+ */
+export const ApiAcceptedSuccessResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	dataDto: TModel,
+	description?: string,
+) => {
+	return applyDecorators(
+		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
+		ApiResponse({
+			status: 202,
+			description: description || 'Request accepted successfully',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{
+						properties: {
+							status: {
+								type: 'string',
+								enum: ['success'],
+							},
+							data: {
+								$ref: getSchemaPath(dataDto),
+							},
+							metadata: {
+								$ref: getSchemaPath(SuccessMetadataDto),
+							},
+						},
+					},
+				],
+			},
+		}),
+	);
+};
+
+/**
  * Creates a Swagger decorator for successful responses with discriminated union data
  * @param discriminatorProperty The property name used for discrimination (e.g., 'type')
  * @param mapping Object mapping discriminator values to schema paths
