@@ -12,7 +12,7 @@ import {
 	NotFoundErrorDto,
 	ResponseMetadataDto,
 	SuccessMetadataDto,
-} from '../dto/error-response.dto';
+} from '../dto/response.dto';
 
 /**
  * Base response wrapper for API responses
@@ -320,46 +320,6 @@ export const ApiSuccessArrayResponse = <TModel extends Type<any> | (abstract new
 							},
 							metadata: {
 								$ref: getSchemaPath(SuccessMetadataDto),
-							},
-						},
-					},
-				],
-			},
-		}),
-	);
-};
-
-/**
- * Creates a Swagger decorator for paginated responses
- * @param dataDto The DTO class for the paginated items
- * @param description Optional description for the response
- */
-export const ApiPaginatedResponse = <TModel extends Type>(dataDto: TModel, description?: string) => {
-	return applyDecorators(
-		ApiExtraModels(PaginatedResponseDto, dataDto),
-		ApiOkResponse({
-			description: description || 'Paginated response',
-			schema: {
-				allOf: [
-					{ $ref: getSchemaPath(ApiResponseDto) },
-					{
-						properties: {
-							state: {
-								type: 'string',
-								enum: [RequestResultState.SUCCESS],
-							},
-							data: {
-								allOf: [
-									{ $ref: getSchemaPath(PaginatedResponseDto) },
-									{
-										properties: {
-											items: {
-												type: 'array',
-												items: { $ref: getSchemaPath(dataDto) },
-											},
-										},
-									},
-								],
 							},
 						},
 					},
