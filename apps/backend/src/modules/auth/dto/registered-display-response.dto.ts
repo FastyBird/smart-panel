@@ -3,6 +3,9 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 import { ApiProperty } from '@nestjs/swagger';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+
+@ApiSchema('AuthModuleResRegisterDisplay')
 export class RegisteredDisplayResponseDto {
 	@ApiProperty({
 		description: 'Display account secret',

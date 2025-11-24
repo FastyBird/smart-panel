@@ -16,7 +16,6 @@ import {
 import { ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
 
 import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
-
 import type { components } from '../../../openapi';
 import {
 	LanguageType,

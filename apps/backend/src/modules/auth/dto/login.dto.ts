@@ -3,11 +3,13 @@ import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty } from '@nestjs/swagger';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import type { components } from '../../../openapi';
 
 type ReqLogin = components['schemas']['AuthModuleReqLogin'];
 type Login = components['schemas']['AuthModuleLogin'];
 
+@ApiSchema('AuthModuleLogin')
 export class LoginDto implements Login {
 	@ApiProperty({
 		description: 'The username of the user.',
@@ -31,6 +33,7 @@ export class LoginDto implements Login {
 	password: string;
 }
 
+@ApiSchema('AuthModuleReqLogin')
 export class ReqLoginDto implements ReqLogin {
 	@ApiProperty({
 		description: 'Login credentials',

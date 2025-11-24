@@ -4,12 +4,14 @@ import { BeforeInsert, ChildEntity, Column, Entity, Index, ManyToOne, OneToMany,
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { UserEntity } from '../../users/entities/users.entity';
 import { TokenType } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
 import { hashToken } from '../utils/token.utils';
 
+@ApiSchema('AuthModuleToken')
 @Entity('auth_module_tokens')
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
 export abstract class TokenEntity extends BaseEntity {
@@ -89,6 +91,7 @@ export abstract class TokenEntity extends BaseEntity {
 	}
 }
 
+@ApiSchema('AuthModuleAccessToken')
 @ChildEntity()
 export class AccessTokenEntity extends TokenEntity {
 	@ApiProperty({
@@ -128,6 +131,7 @@ export class AccessTokenEntity extends TokenEntity {
 	}
 }
 
+@ApiSchema('AuthModuleRefreshToken')
 @ChildEntity()
 export class RefreshTokenEntity extends TokenEntity {
 	@ApiProperty({
@@ -171,6 +175,7 @@ export class RefreshTokenEntity extends TokenEntity {
 	}
 }
 
+@ApiSchema('AuthModuleLongLiveToken')
 @ChildEntity()
 export class LongLiveTokenEntity extends TokenEntity {
 	@ApiProperty({

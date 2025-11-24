@@ -3,6 +3,7 @@ import { IsDate, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateN
 
 import { ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import { TokenType } from '../auth.constants';
 
 const determineTokenDto = (obj: unknown): new () => object => {
@@ -34,6 +35,7 @@ const determineTokenDto = (obj: unknown): new () => object => {
 	throw new Error('Invalid object format for determining config DTO');
 };
 
+@ApiSchema('AuthModuleCreateToken')
 export abstract class CreateTokenDto {
 	@ApiPropertyOptional({
 		description: 'Token ID (optional, generated if not provided)',
@@ -84,6 +86,7 @@ export abstract class CreateTokenDto {
 	expiresAt: Date;
 }
 
+@ApiSchema('AuthModuleCreateAccessToken')
 export class CreateAccessTokenDto extends CreateTokenDto {
 	@ApiProperty({
 		description: 'Token type',
@@ -103,6 +106,7 @@ export class CreateAccessTokenDto extends CreateTokenDto {
 	owner: string;
 }
 
+@ApiSchema('AuthModuleCreateRefreshToken')
 export class CreateRefreshTokenDto extends CreateTokenDto {
 	@ApiProperty({
 		description: 'Token type',
@@ -132,6 +136,7 @@ export class CreateRefreshTokenDto extends CreateTokenDto {
 	parent: string;
 }
 
+@ApiSchema('AuthModuleCreateLongLiveToken')
 export class CreateLongLiveTokenDto extends CreateTokenDto {
 	@ApiProperty({
 		description: 'Token type',
@@ -174,6 +179,7 @@ export class CreateLongLiveTokenDto extends CreateTokenDto {
 	description: string | null;
 }
 
+@ApiSchema('AuthModuleReqCreateToken')
 export class ReqCreateTokenDto {
 	@ApiProperty({
 		description: 'Token creation data',

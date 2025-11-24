@@ -3,12 +3,14 @@ import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, 
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import type { components } from '../../../openapi';
 import { UserRole } from '../../users/users.constants';
 
 type ReqRegister = components['schemas']['AuthModuleReqRegister'];
 type Register = components['schemas']['AuthModuleRegister'];
 
+@ApiSchema('AuthModuleRegister')
 export class RegisterDto implements Register {
 	@ApiPropertyOptional({
 		description: 'Optional user ID (UUID v4)',
@@ -91,6 +93,7 @@ export class RegisterDto implements Register {
 	last_name?: string | null;
 }
 
+@ApiSchema('AuthModuleReqRegister')
 export class ReqRegisterDto implements ReqRegister {
 	@ApiProperty({
 		description: 'Registration data',

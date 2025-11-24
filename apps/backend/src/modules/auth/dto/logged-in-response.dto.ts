@@ -3,6 +3,9 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 import { ApiProperty } from '@nestjs/swagger';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+
+@ApiSchema('AuthModuleResLogin')
 export class LoggedInResponseDto {
 	@ApiProperty({
 		name: 'access_token',

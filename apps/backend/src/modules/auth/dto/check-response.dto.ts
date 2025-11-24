@@ -3,6 +3,9 @@ import { IsBoolean } from 'class-validator';
 
 import { ApiProperty } from '@nestjs/swagger';
 
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
+
+@ApiSchema('AuthModuleResCheck')
 export class CheckResponseDto {
 	@ApiProperty({
 		description: 'Indicates whether the provided validation field is valid.',
