@@ -1,14 +1,15 @@
 import { validate } from 'class-validator';
 
 import { BadRequestException, Body, Controller, Get, Logger, Param, Patch } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation, ApiParam, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
+	ApiSuccessArrayResponse,
 	ApiSuccessResponse,
+	ApiSuccessUnionResponse,
 } from '../../../common/decorators/api-documentation.decorator';
-import { BaseSuccessResponseDto, SuccessMetadataDto } from '../../../common/dto/error-response.dto';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { DevicesException } from '../../devices/devices.exceptions';
@@ -42,19 +43,6 @@ import { ConfigService } from '../services/config.service';
 import { PluginTypeMapping, PluginsTypeMapperService } from '../services/plugins-type-mapper.service';
 
 @ApiTags('config-module')
-@ApiExtraModels(
-	BaseSuccessResponseDto,
-	SuccessMetadataDto,
-	AudioConfigModel,
-	DisplayConfigModel,
-	LanguageConfigModel,
-	WeatherLatLonConfigModel,
-	WeatherCityNameConfigModel,
-	WeatherCityIdConfigModel,
-	WeatherZipCodeConfigModel,
-	SystemConfigModel,
-	PluginConfigModel,
-)
 @Controller('config')
 export class ConfigController {
 	private readonly logger = new Logger(ConfigController.name);
@@ -89,38 +77,19 @@ export class ConfigController {
 		enum: Object.values(SectionType),
 		example: SectionType.AUDIO,
 	})
-	@ApiResponse({
-		status: 200,
-		description: 'Section configuration retrieved successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							oneOf: [
-								{ $ref: getSchemaPath(AudioConfigModel) },
-								{ $ref: getSchemaPath(DisplayConfigModel) },
-								{ $ref: getSchemaPath(LanguageConfigModel) },
-								{ $ref: getSchemaPath(WeatherLatLonConfigModel) },
-								{ $ref: getSchemaPath(WeatherCityNameConfigModel) },
-								{ $ref: getSchemaPath(WeatherCityIdConfigModel) },
-								{ $ref: getSchemaPath(WeatherZipCodeConfigModel) },
-								{ $ref: getSchemaPath(SystemConfigModel) },
-							],
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
-		},
-	})
+	@ApiSuccessUnionResponse(
+		[
+			AudioConfigModel,
+			DisplayConfigModel,
+			LanguageConfigModel,
+			WeatherLatLonConfigModel,
+			WeatherCityNameConfigModel,
+			WeatherCityIdConfigModel,
+			WeatherZipCodeConfigModel,
+			SystemConfigModel,
+		],
+		'Section configuration retrieved successfully',
+	)
 	@ApiBadRequestResponse('Invalid section identifier')
 	@ApiInternalServerErrorResponse()
 	getConfigSection(@Param('section') section: keyof AppConfigModel): BaseConfigModel {
@@ -230,34 +199,10 @@ export class ConfigController {
 	@Patch(SectionType.WEATHER)
 	@ApiOperation({ summary: 'Update weather configuration', description: 'Update the weather section configuration' })
 	@ApiBody({ type: ReqUpdateSectionDto, description: 'Weather configuration data' })
-	@ApiResponse({
-		status: 200,
-		description: 'Weather configuration updated successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							oneOf: [
-								{ $ref: getSchemaPath(WeatherLatLonConfigModel) },
-								{ $ref: getSchemaPath(WeatherCityNameConfigModel) },
-								{ $ref: getSchemaPath(WeatherCityIdConfigModel) },
-								{ $ref: getSchemaPath(WeatherZipCodeConfigModel) },
-							],
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
-		},
-	})
+	@ApiSuccessUnionResponse(
+		[WeatherLatLonConfigModel, WeatherCityNameConfigModel, WeatherCityIdConfigModel, WeatherZipCodeConfigModel],
+		'Weather configuration updated successfully',
+	)
 	@ApiBadRequestResponse('Invalid weather configuration data')
 	@ApiInternalServerErrorResponse()
 	async updateWeatherConfig(
@@ -311,32 +256,7 @@ export class ConfigController {
 		summary: 'Get all plugin configurations',
 		description: 'Retrieve configuration for all registered plugins',
 	})
-	@ApiResponse({
-		status: 200,
-		description: 'Plugin configurations retrieved successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							type: 'array',
-							items: {
-								$ref: getSchemaPath(PluginConfigModel),
-							},
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
-		},
-	})
+	@ApiSuccessArrayResponse(PluginConfigModel, 'Plugin configurations retrieved successfully')
 	@ApiInternalServerErrorResponse()
 	getPluginsConfig(): PluginConfigModel[] {
 		this.logger.debug('[LOOKUP] Fetching configuration for all plugins');
@@ -351,29 +271,7 @@ export class ConfigController {
 	@Get('plugin/:plugin')
 	@ApiOperation({ summary: 'Get plugin configuration', description: 'Retrieve configuration for a specific plugin' })
 	@ApiParam({ name: 'plugin', description: 'Plugin identifier', type: 'string', example: 'devices-shelly' })
-	@ApiResponse({
-		status: 200,
-		description: 'Plugin configuration retrieved successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							$ref: getSchemaPath(PluginConfigModel),
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
-		},
-	})
+	@ApiSuccessResponse(PluginConfigModel, 'Plugin configuration retrieved successfully')
 	@ApiInternalServerErrorResponse()
 	getPluginConfig(@Param('plugin') plugin: string): PluginConfigModel {
 		this.logger.debug(`[LOOKUP] Fetching configuration plugin=${plugin}`);
@@ -392,29 +290,7 @@ export class ConfigController {
 		description: 'Plugin configuration data',
 		schema: { type: 'object', properties: { data: { type: 'object' } } },
 	})
-	@ApiResponse({
-		status: 200,
-		description: 'Plugin configuration updated successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							$ref: getSchemaPath(PluginConfigModel),
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
-		},
-	})
+	@ApiSuccessResponse(PluginConfigModel, 'Plugin configuration updated successfully')
 	@ApiBadRequestResponse('Invalid plugin configuration data or unsupported plugin type')
 	@ApiInternalServerErrorResponse()
 	async updatePluginConfig(

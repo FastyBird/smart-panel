@@ -17,51 +17,28 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
-import { ApiBody, ApiExtraModels, ApiOperation, ApiParam, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags, getSchemaPath } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
+	ApiCreatedDiscriminatedResponse,
 	ApiForbiddenResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
+	ApiSuccessArrayDiscriminatedResponse,
+	ApiSuccessDiscriminatedResponse,
 } from '../../../common/decorators/api-documentation.decorator';
-import { BaseSuccessResponseDto, SuccessMetadataDto } from '../../../common/dto/error-response.dto';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ValidationExceptionFactory } from '../../../common/validation/validation-exception-factory';
 import { AUTH_MODULE_PREFIX, AuthenticatedRequest } from '../auth.constants';
 import { AuthException } from '../auth.exceptions';
-import {
-	CreateAccessTokenDto,
-	CreateLongLiveTokenDto,
-	CreateRefreshTokenDto,
-	CreateTokenDto,
-	ReqCreateTokenDto,
-} from '../dto/create-token.dto';
-import {
-	ReqUpdateTokenDto,
-	UpdateAccessTokenDto,
-	UpdateLongLiveTokenDto,
-	UpdateRefreshTokenDto,
-	UpdateTokenDto,
-} from '../dto/update-token.dto';
+import { CreateTokenDto, ReqCreateTokenDto } from '../dto/create-token.dto';
+import { ReqUpdateTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { TokenTypeMapping, TokensTypeMapperService } from '../services/tokens-type-mapper.service';
 import { TokensService } from '../services/tokens.service';
 
 @ApiTags('auth-module')
-@ApiExtraModels(
-	BaseSuccessResponseDto,
-	SuccessMetadataDto,
-	AccessTokenEntity,
-	RefreshTokenEntity,
-	LongLiveTokenEntity,
-	CreateAccessTokenDto,
-	CreateRefreshTokenDto,
-	CreateLongLiveTokenDto,
-	UpdateAccessTokenDto,
-	UpdateRefreshTokenDto,
-	UpdateLongLiveTokenDto,
-)
 @Controller('tokens')
 export class TokensController {
 	private readonly logger = new Logger(TokensController.name);
@@ -73,44 +50,16 @@ export class TokensController {
 
 	@Get()
 	@ApiOperation({ summary: 'Get all tokens', description: 'Retrieve all authentication tokens' })
-	@ApiResponse({
-		status: 200,
-		description: 'Tokens retrieved successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							type: 'array',
-							items: {
-								discriminator: {
-									propertyName: 'type',
-									mapping: {
-										access: getSchemaPath(AccessTokenEntity),
-										refresh: getSchemaPath(RefreshTokenEntity),
-										long_live: getSchemaPath(LongLiveTokenEntity),
-									},
-								},
-								oneOf: [
-									{ $ref: getSchemaPath(AccessTokenEntity) },
-									{ $ref: getSchemaPath(RefreshTokenEntity) },
-									{ $ref: getSchemaPath(LongLiveTokenEntity) },
-								],
-							},
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
+	@ApiSuccessArrayDiscriminatedResponse(
+		'type',
+		{
+			access: getSchemaPath(AccessTokenEntity),
+			refresh: getSchemaPath(RefreshTokenEntity),
+			long_live: getSchemaPath(LongLiveTokenEntity),
 		},
-	})
+		[AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
+		'Tokens retrieved successfully',
+	)
 	@ApiInternalServerErrorResponse()
 	async findAll(): Promise<TokenEntity[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all tokens');
@@ -125,41 +74,16 @@ export class TokensController {
 	@Get(':id')
 	@ApiOperation({ summary: 'Get token by ID', description: 'Retrieve a specific authentication token by its ID' })
 	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
-	@ApiResponse({
-		status: 200,
-		description: 'Token retrieved successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							discriminator: {
-								propertyName: 'type',
-								mapping: {
-									access: getSchemaPath(AccessTokenEntity),
-									refresh: getSchemaPath(RefreshTokenEntity),
-									long_live: getSchemaPath(LongLiveTokenEntity),
-								},
-							},
-							oneOf: [
-								{ $ref: getSchemaPath(AccessTokenEntity) },
-								{ $ref: getSchemaPath(RefreshTokenEntity) },
-								{ $ref: getSchemaPath(LongLiveTokenEntity) },
-							],
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
+	@ApiSuccessDiscriminatedResponse(
+		'type',
+		{
+			access: getSchemaPath(AccessTokenEntity),
+			refresh: getSchemaPath(RefreshTokenEntity),
+			long_live: getSchemaPath(LongLiveTokenEntity),
 		},
-	})
+		[AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
+		'Token retrieved successfully',
+	)
 	@ApiNotFoundResponse('Token not found')
 	@ApiInternalServerErrorResponse()
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<TokenEntity> {
@@ -179,41 +103,16 @@ export class TokensController {
 		description: 'Token creation data with discriminated type',
 		type: ReqCreateTokenDto,
 	})
-	@ApiResponse({
-		status: 201,
-		description: 'Token created successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							discriminator: {
-								propertyName: 'type',
-								mapping: {
-									access: getSchemaPath(AccessTokenEntity),
-									refresh: getSchemaPath(RefreshTokenEntity),
-									long_live: getSchemaPath(LongLiveTokenEntity),
-								},
-							},
-							oneOf: [
-								{ $ref: getSchemaPath(AccessTokenEntity) },
-								{ $ref: getSchemaPath(RefreshTokenEntity) },
-								{ $ref: getSchemaPath(LongLiveTokenEntity) },
-							],
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
+	@ApiCreatedDiscriminatedResponse(
+		'type',
+		{
+			access: getSchemaPath(AccessTokenEntity),
+			refresh: getSchemaPath(RefreshTokenEntity),
+			long_live: getSchemaPath(LongLiveTokenEntity),
 		},
-	})
+		[AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
+		'Token created successfully',
+	)
 	@ApiBadRequestResponse('Invalid token data or unsupported token type')
 	@ApiInternalServerErrorResponse()
 	async create(@Body() createDto: ReqCreateTokenDto): Promise<TokenEntity> {
@@ -273,41 +172,16 @@ export class TokensController {
 		description: 'Token update data (only certain fields can be updated)',
 		type: ReqUpdateTokenDto,
 	})
-	@ApiResponse({
-		status: 200,
-		description: 'Token updated successfully',
-		schema: {
-			allOf: [
-				{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-				{
-					properties: {
-						status: {
-							type: 'string',
-							enum: ['success'],
-						},
-						data: {
-							discriminator: {
-								propertyName: 'type',
-								mapping: {
-									access: getSchemaPath(AccessTokenEntity),
-									refresh: getSchemaPath(RefreshTokenEntity),
-									long_live: getSchemaPath(LongLiveTokenEntity),
-								},
-							},
-							oneOf: [
-								{ $ref: getSchemaPath(AccessTokenEntity) },
-								{ $ref: getSchemaPath(RefreshTokenEntity) },
-								{ $ref: getSchemaPath(LongLiveTokenEntity) },
-							],
-						},
-						metadata: {
-							$ref: getSchemaPath(SuccessMetadataDto),
-						},
-					},
-				},
-			],
+	@ApiSuccessDiscriminatedResponse(
+		'type',
+		{
+			access: getSchemaPath(AccessTokenEntity),
+			refresh: getSchemaPath(RefreshTokenEntity),
+			long_live: getSchemaPath(LongLiveTokenEntity),
 		},
-	})
+		[AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
+		'Token updated successfully',
+	)
 	@ApiBadRequestResponse('Invalid token data or unsupported token type')
 	@ApiNotFoundResponse('Token not found')
 	@ApiInternalServerErrorResponse()
@@ -367,7 +241,7 @@ export class TokensController {
 	@HttpCode(204)
 	@ApiOperation({ summary: 'Delete token', description: 'Delete an authentication token' })
 	@ApiParam({ name: 'id', description: 'Token ID', type: 'string', format: 'uuid' })
-	@ApiResponse({ status: 204, description: 'Token deleted successfully' })
+	@ApiNoContentResponse({ description: 'Token deleted successfully' })
 	@ApiForbiddenResponse('Cannot delete your own access token')
 	@ApiNotFoundResponse('Token not found')
 	@ApiInternalServerErrorResponse()

@@ -50,7 +50,10 @@ export class PaginatedResponseDto<T> {
  * @param dataDto The DTO class for the response data
  * @param description Optional description for the response
  */
-export const ApiSuccessResponse = <TModel extends Type>(dataDto: TModel, description?: string) => {
+export const ApiSuccessResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	dataDto: TModel,
+	description?: string,
+) => {
 	return applyDecorators(
 		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
 		ApiOkResponse({
@@ -83,7 +86,10 @@ export const ApiSuccessResponse = <TModel extends Type>(dataDto: TModel, descrip
  * @param dataDto The DTO class for the response data
  * @param description Optional description for the response
  */
-export const ApiCreatedSuccessResponse = <TModel extends Type>(dataDto: TModel, description?: string) => {
+export const ApiCreatedSuccessResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	dataDto: TModel,
+	description?: string,
+) => {
 	return applyDecorators(
 		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
 		ApiResponse({
@@ -113,11 +119,186 @@ export const ApiCreatedSuccessResponse = <TModel extends Type>(dataDto: TModel, 
 };
 
 /**
+ * Creates a Swagger decorator for successful responses with discriminated union data
+ * @param discriminatorProperty The property name used for discrimination (e.g., 'type')
+ * @param mapping Object mapping discriminator values to schema paths
+ * @param schemas Array of DTO classes for the discriminated types
+ * @param description Optional description for the response
+ */
+export const ApiSuccessDiscriminatedResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	discriminatorProperty: string,
+	mapping: Record<string, string>,
+	schemas: TModel[],
+	description?: string,
+) => {
+	return applyDecorators(
+		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
+		ApiOkResponse({
+			description: description || 'Successful response',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{
+						properties: {
+							status: {
+								type: 'string',
+								enum: ['success'],
+							},
+							data: {
+								discriminator: {
+									propertyName: discriminatorProperty,
+									mapping,
+								},
+								oneOf: schemas.map((schema) => ({ $ref: getSchemaPath(schema) })),
+							},
+							metadata: {
+								$ref: getSchemaPath(SuccessMetadataDto),
+							},
+						},
+					},
+				],
+			},
+		}),
+	);
+};
+
+/**
+ * Creates a Swagger decorator for successful creation responses with discriminated union data
+ * @param discriminatorProperty The property name used for discrimination (e.g., 'type')
+ * @param mapping Object mapping discriminator values to schema paths
+ * @param schemas Array of DTO classes for the discriminated types
+ * @param description Optional description for the response
+ */
+export const ApiCreatedDiscriminatedResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	discriminatorProperty: string,
+	mapping: Record<string, string>,
+	schemas: TModel[],
+	description?: string,
+) => {
+	return applyDecorators(
+		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
+		ApiResponse({
+			status: 201,
+			description: description || 'Resource created successfully',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{
+						properties: {
+							status: {
+								type: 'string',
+								enum: ['success'],
+							},
+							data: {
+								discriminator: {
+									propertyName: discriminatorProperty,
+									mapping,
+								},
+								oneOf: schemas.map((schema) => ({ $ref: getSchemaPath(schema) })),
+							},
+							metadata: {
+								$ref: getSchemaPath(SuccessMetadataDto),
+							},
+						},
+					},
+				],
+			},
+		}),
+	);
+};
+
+/**
+ * Creates a Swagger decorator for successful responses with array of discriminated union data
+ * @param discriminatorProperty The property name used for discrimination (e.g., 'type')
+ * @param mapping Object mapping discriminator values to schema paths
+ * @param schemas Array of DTO classes for the discriminated types
+ * @param description Optional description for the response
+ */
+export const ApiSuccessArrayDiscriminatedResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	discriminatorProperty: string,
+	mapping: Record<string, string>,
+	schemas: TModel[],
+	description?: string,
+) => {
+	return applyDecorators(
+		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
+		ApiOkResponse({
+			description: description || 'Successful response',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{
+						properties: {
+							status: {
+								type: 'string',
+								enum: ['success'],
+							},
+							data: {
+								type: 'array',
+								items: {
+									discriminator: {
+										propertyName: discriminatorProperty,
+										mapping,
+									},
+									oneOf: schemas.map((schema) => ({ $ref: getSchemaPath(schema) })),
+								},
+							},
+							metadata: {
+								$ref: getSchemaPath(SuccessMetadataDto),
+							},
+						},
+					},
+				],
+			},
+		}),
+	);
+};
+
+/**
+ * Creates a Swagger decorator for successful responses with union type data (oneOf without discriminator)
+ * @param schemas Array of DTO classes for the union types
+ * @param description Optional description for the response
+ */
+export const ApiSuccessUnionResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	schemas: TModel[],
+	description?: string,
+) => {
+	return applyDecorators(
+		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
+		ApiOkResponse({
+			description: description || 'Successful response',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{
+						properties: {
+							status: {
+								type: 'string',
+								enum: ['success'],
+							},
+							data: {
+								oneOf: schemas.map((schema) => ({ $ref: getSchemaPath(schema) })),
+							},
+							metadata: {
+								$ref: getSchemaPath(SuccessMetadataDto),
+							},
+						},
+					},
+				],
+			},
+		}),
+	);
+};
+
+/**
  * Creates a Swagger decorator for successful responses with array data
  * @param dataDto The DTO class for the array items
  * @param description Optional description for the response
  */
-export const ApiSuccessArrayResponse = <TModel extends Type>(dataDto: TModel, description?: string) => {
+export const ApiSuccessArrayResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	dataDto: TModel,
+	description?: string,
+) => {
 	return applyDecorators(
 		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
 		ApiOkResponse({
