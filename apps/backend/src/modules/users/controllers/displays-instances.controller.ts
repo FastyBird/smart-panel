@@ -31,7 +31,7 @@ import { UsersService } from '../services/users.service';
 import { UserRole } from '../users.constants';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 
-@ApiTags('Display Instances')
+@ApiTags('users-module')
 @Controller('displays-instances')
 export class DisplaysInstancesController {
 	private readonly logger = new Logger(DisplaysInstancesController.name);

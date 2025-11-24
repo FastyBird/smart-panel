@@ -30,7 +30,7 @@ import { UserEntity } from '../entities/users.entity';
 import { UsersService } from '../services/users.service';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 
-@ApiTags('Users')
+@ApiTags('users-module')
 @Controller('users')
 export class UsersController {
 	private readonly logger = new Logger(UsersController.name);
