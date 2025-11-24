@@ -13,7 +13,16 @@ import {
 	Req,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiNoContentResponse, ApiOperation, ApiTags, ApiUnprocessableEntityResponse } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { AuthenticatedRequest } from '../../auth/auth.constants';
 import { ReqCreateUserDto } from '../dto/create-user.dto';
 import { ReqUpdateUserDto } from '../dto/update-user.dto';
@@ -21,6 +30,7 @@ import { UserEntity } from '../entities/users.entity';
 import { UsersService } from '../services/users.service';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
 	private readonly logger = new Logger(UsersController.name);
@@ -28,6 +38,12 @@ export class UsersController {
 	constructor(private readonly usersService: UsersService) {}
 
 	@Get()
+	@ApiOperation({
+		summary: 'Get all users',
+		description: 'Retrieve a list of all registered users',
+	})
+	@ApiSuccessArrayResponse(UserEntity, 'Users retrieved successfully')
+	@ApiInternalServerErrorResponse()
 	async findAll(): Promise<UserEntity[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all users');
 
@@ -39,6 +55,14 @@ export class UsersController {
 	}
 
 	@Get(':id')
+	@ApiOperation({
+		summary: 'Get user by ID',
+		description: 'Retrieve a specific user by their ID',
+	})
+	@ApiSuccessResponse(UserEntity, 'User retrieved successfully')
+	@ApiNotFoundResponse('User not found')
+	@ApiBadRequestResponse('Invalid user ID format')
+	@ApiInternalServerErrorResponse()
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<UserEntity> {
 		this.logger.debug(`[LOOKUP] Fetching page id=${id}`);
 
@@ -51,6 +75,14 @@ export class UsersController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${USERS_MODULE_PREFIX}/users/:id`)
+	@ApiOperation({
+		summary: 'Create a new user',
+		description: 'Create a new user account',
+	})
+	@ApiCreatedSuccessResponse(UserEntity, 'User created successfully')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiUnprocessableEntityResponse({ description: 'Username or email already exists' })
+	@ApiInternalServerErrorResponse()
 	async create(@Body() createDto: ReqCreateUserDto): Promise<UserEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new user');
 
@@ -80,6 +112,15 @@ export class UsersController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({
+		summary: 'Update a user',
+		description: 'Update an existing user',
+	})
+	@ApiSuccessResponse(UserEntity, 'User updated successfully')
+	@ApiNotFoundResponse('User not found')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiUnprocessableEntityResponse({ description: 'Email already exists' })
+	@ApiInternalServerErrorResponse()
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateUserDto,
@@ -106,6 +147,15 @@ export class UsersController {
 	}
 
 	@Delete(':id')
+	@ApiOperation({
+		summary: 'Delete a user',
+		description: 'Delete an existing user',
+	})
+	@ApiNoContentResponse({ description: 'User deleted successfully' })
+	@ApiNotFoundResponse('User not found')
+	@ApiBadRequestResponse('Invalid user ID format')
+	@ApiUnprocessableEntityResponse({ description: 'Cannot delete your own account' })
+	@ApiInternalServerErrorResponse()
 	async remove(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Req() req: AuthenticatedRequest,

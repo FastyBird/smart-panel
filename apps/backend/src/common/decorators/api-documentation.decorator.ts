@@ -79,6 +79,76 @@ export const ApiSuccessResponse = <TModel extends Type>(dataDto: TModel, descrip
 };
 
 /**
+ * Creates a Swagger decorator for successful creation responses with typed data
+ * @param dataDto The DTO class for the response data
+ * @param description Optional description for the response
+ */
+export const ApiCreatedSuccessResponse = <TModel extends Type>(dataDto: TModel, description?: string) => {
+	return applyDecorators(
+		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
+		ApiResponse({
+			status: 201,
+			description: description || 'Resource created successfully',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{
+						properties: {
+							status: {
+								type: 'string',
+								enum: ['success'],
+							},
+							data: {
+								$ref: getSchemaPath(dataDto),
+							},
+							metadata: {
+								$ref: getSchemaPath(SuccessMetadataDto),
+							},
+						},
+					},
+				],
+			},
+		}),
+	);
+};
+
+/**
+ * Creates a Swagger decorator for successful responses with array data
+ * @param dataDto The DTO class for the array items
+ * @param description Optional description for the response
+ */
+export const ApiSuccessArrayResponse = <TModel extends Type>(dataDto: TModel, description?: string) => {
+	return applyDecorators(
+		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
+		ApiOkResponse({
+			description: description || 'Successful response',
+			schema: {
+				allOf: [
+					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
+					{
+						properties: {
+							status: {
+								type: 'string',
+								enum: ['success'],
+							},
+							data: {
+								type: 'array',
+								items: {
+									$ref: getSchemaPath(dataDto),
+								},
+							},
+							metadata: {
+								$ref: getSchemaPath(SuccessMetadataDto),
+							},
+						},
+					},
+				],
+			},
+		}),
+	);
+};
+
+/**
  * Creates a Swagger decorator for paginated responses
  * @param dataDto The DTO class for the paginated items
  * @param description Optional description for the response

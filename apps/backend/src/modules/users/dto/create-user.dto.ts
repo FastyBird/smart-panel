@@ -1,28 +1,55 @@
 import { Expose, Type } from 'class-transformer';
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, ValidateIf, ValidateNested } from 'class-validator';
 
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+import { ApiSchema } from '../../../common/decorators/api-schema.decorator';
 import type { components } from '../../../openapi';
 import { UserRole } from '../users.constants';
 
 type ReqCreateUser = components['schemas']['UsersModuleReqCreateUser'];
 type CreateUser = components['schemas']['UsersModuleCreateUser'];
 
+@ApiSchema('UsersModuleCreateUser')
 export class CreateUserDto implements CreateUser {
+	@ApiPropertyOptional({
+		description: 'Optional user ID (UUID v4)',
+		format: 'uuid',
+		example: 'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	})
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	id?: string;
 
+	@ApiProperty({
+		description: 'Unique identifier for the user.',
+		type: 'string',
+		example: 'johndoe',
+	})
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"username","reason":"Username must be a non-empty string."}]' })
 	username: string;
 
+	@ApiProperty({
+		description: "User's password. Must be at least 6 characters long.",
+		type: 'string',
+		format: 'password',
+		example: 'superstrongpassword',
+	})
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"password","reason":"Password must be a non-empty string."}]' })
 	password: string;
 
+	@ApiPropertyOptional({
+		description: "Optional user's email address.",
+		type: 'string',
+		format: 'email',
+		example: 'john@doe.com',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsEmail(
@@ -32,6 +59,13 @@ export class CreateUserDto implements CreateUser {
 	@ValidateIf((_, value) => value !== null)
 	email?: string | null;
 
+	@ApiPropertyOptional({
+		name: 'first_name',
+		description: "Optional user's first name.",
+		type: 'string',
+		example: 'John',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"first_name","reason":"First name must be a non-empty string."}]' })
@@ -39,6 +73,13 @@ export class CreateUserDto implements CreateUser {
 	@ValidateIf((_, value) => value !== null)
 	first_name?: string | null;
 
+	@ApiPropertyOptional({
+		name: 'last_name',
+		description: "Optional user's last name.",
+		type: 'string',
+		example: 'Doe',
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"last_name","reason":"Last name must be a non-empty string."}]' })
@@ -46,6 +87,11 @@ export class CreateUserDto implements CreateUser {
 	@ValidateIf((_, value) => value !== null)
 	last_name?: string | null;
 
+	@ApiPropertyOptional({
+		description: 'User role',
+		enum: UserRole,
+		nullable: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsEnum(UserRole, { message: '[{"field":"role","reason":"Role must be one of the valid roles."}]' })
@@ -53,7 +99,12 @@ export class CreateUserDto implements CreateUser {
 	role?: UserRole;
 }
 
+@ApiSchema('UsersModuleReqCreateUser')
 export class ReqCreateUserDto implements ReqCreateUser {
+	@ApiProperty({
+		description: 'User creation data',
+		type: () => CreateUserDto,
+	})
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateUserDto)

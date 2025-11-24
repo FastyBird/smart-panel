@@ -12,7 +12,16 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import { ApiNoContentResponse, ApiOperation, ApiTags, ApiUnprocessableEntityResponse } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessArrayResponse,
+	ApiSuccessResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { ReqCreateDisplayInstanceDto } from '../dto/create-display-instance.dto';
 import { ReqUpdateDisplayInstanceDto } from '../dto/update-display-instance.dto';
 import { DisplayInstanceEntity } from '../entities/users.entity';
@@ -22,6 +31,7 @@ import { UsersService } from '../services/users.service';
 import { UserRole } from '../users.constants';
 import { USERS_MODULE_PREFIX } from '../users.constants';
 
+@ApiTags('Display Instances')
 @Controller('displays-instances')
 export class DisplaysInstancesController {
 	private readonly logger = new Logger(DisplaysInstancesController.name);
@@ -32,6 +42,12 @@ export class DisplaysInstancesController {
 	) {}
 
 	@Get()
+	@ApiOperation({
+		summary: 'Get all display instances',
+		description: 'Retrieve a list of all display instances',
+	})
+	@ApiSuccessArrayResponse(DisplayInstanceEntity, 'Display instances retrieved successfully')
+	@ApiInternalServerErrorResponse()
 	async findAll(): Promise<DisplayInstanceEntity[]> {
 		this.logger.debug('[LOOKUP ALL] Fetching all displays instances');
 
@@ -43,6 +59,14 @@ export class DisplaysInstancesController {
 	}
 
 	@Get(':id')
+	@ApiOperation({
+		summary: 'Get display instance by ID',
+		description: 'Retrieve a specific display instance by its ID',
+	})
+	@ApiSuccessResponse(DisplayInstanceEntity, 'Display instance retrieved successfully')
+	@ApiNotFoundResponse('Display instance not found')
+	@ApiBadRequestResponse('Invalid display instance ID format')
+	@ApiInternalServerErrorResponse()
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<DisplayInstanceEntity> {
 		this.logger.debug(`[LOOKUP] Fetching display instance id=${id}`);
 
@@ -54,6 +78,14 @@ export class DisplaysInstancesController {
 	}
 
 	@Get('by-uid/:uid')
+	@ApiOperation({
+		summary: 'Get display instance by UID',
+		description: 'Retrieve a specific display instance by its unique identifier (UID)',
+	})
+	@ApiSuccessResponse(DisplayInstanceEntity, 'Display instance retrieved successfully')
+	@ApiNotFoundResponse('Display instance not found')
+	@ApiBadRequestResponse('Invalid UID format')
+	@ApiInternalServerErrorResponse()
 	async findOneByUid(@Param('uid', new ParseUUIDPipe({ version: '4' })) uid: string): Promise<DisplayInstanceEntity> {
 		this.logger.debug(`[LOOKUP] Fetching display instance uid=${uid}`);
 
@@ -73,6 +105,14 @@ export class DisplaysInstancesController {
 	@Post()
 	@Header('Location', `:baseUrl/${USERS_MODULE_PREFIX}/displays/:id`)
 	@Roles(UserRole.DISPLAY)
+	@ApiOperation({
+		summary: 'Create a new display instance',
+		description: 'Register a new display instance',
+	})
+	@ApiCreatedSuccessResponse(DisplayInstanceEntity, 'Display instance created successfully')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiUnprocessableEntityResponse({ description: 'UID already exists or user not found' })
+	@ApiInternalServerErrorResponse()
 	async create(@Body() createDto: ReqCreateDisplayInstanceDto): Promise<DisplayInstanceEntity> {
 		this.logger.debug('[CREATE] Incoming request to create a new display instance');
 
@@ -101,6 +141,14 @@ export class DisplaysInstancesController {
 
 	@Patch(':id')
 	@Roles(UserRole.DISPLAY, UserRole.OWNER)
+	@ApiOperation({
+		summary: 'Update a display instance',
+		description: 'Update an existing display instance',
+	})
+	@ApiSuccessResponse(DisplayInstanceEntity, 'Display instance updated successfully')
+	@ApiNotFoundResponse('Display instance not found')
+	@ApiBadRequestResponse('Invalid request data')
+	@ApiInternalServerErrorResponse()
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateDisplayInstanceDto,
@@ -118,6 +166,14 @@ export class DisplaysInstancesController {
 
 	@Delete(':id')
 	@Roles(UserRole.DISPLAY, UserRole.OWNER)
+	@ApiOperation({
+		summary: 'Delete a display instance',
+		description: 'Delete an existing display instance',
+	})
+	@ApiNoContentResponse({ description: 'Display instance deleted successfully' })
+	@ApiNotFoundResponse('Display instance not found')
+	@ApiBadRequestResponse('Invalid display instance ID format')
+	@ApiInternalServerErrorResponse()
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[DELETE] Incoming request to delete display instance id=${id}`);
 
