@@ -10,7 +10,15 @@ import {
 	Post,
 	Req,
 } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+import {
+	ApiBadRequestResponse,
+	ApiForbiddenResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiSuccessResponse,
+} from '../../../common/decorators/api-documentation.decorator';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { CreateDisplayInstanceDto } from '../../users/dto/create-display-instance.dto';
 import { UserEntity } from '../../users/entities/users.entity';
@@ -33,6 +41,7 @@ import { Public } from '../guards/auth.guard';
 import { AuthService } from '../services/auth.service';
 import { CryptoService } from '../services/crypto.service';
 
+@ApiTags('auth-module')
 @Controller('auth')
 export class AuthController {
 	private readonly logger = new Logger(AuthController.name);
@@ -46,6 +55,11 @@ export class AuthController {
 
 	@Public()
 	@Post('login')
+	@ApiOperation({ summary: 'User login', description: 'Authenticate user and return access tokens' })
+	@ApiBody({ type: ReqLoginDto, description: 'Login credentials' })
+	@ApiSuccessResponse(LoggedInResponseDto, 'Successfully authenticated')
+	@ApiNotFoundResponse('User not found')
+	@ApiInternalServerErrorResponse()
 	async login(@Body() body: ReqLoginDto): Promise<LoggedInResponseDto> {
 		try {
 			this.logger.debug(`[LOGIN] Attempting login for username=${body.data.username}`);
@@ -67,6 +81,12 @@ export class AuthController {
 	@Public()
 	@HttpCode(204)
 	@Post('register')
+	@ApiOperation({ summary: 'Register new user', description: 'Register the application owner account' })
+	@ApiBody({ type: ReqRegisterDto, description: 'User registration data' })
+	@ApiResponse({ status: 204, description: 'User successfully registered' })
+	@ApiBadRequestResponse('Invalid input data')
+	@ApiForbiddenResponse('Owner already exists')
+	@ApiInternalServerErrorResponse()
 	async register(@Body() body: ReqRegisterDto): Promise<void> {
 		const owner = await this.userService.findOwner();
 
@@ -85,6 +105,12 @@ export class AuthController {
 
 	@Public()
 	@Post('refresh')
+	@ApiOperation({ summary: 'Refresh access token', description: 'Get a new access token using a refresh token' })
+	@ApiBody({ type: ReqRefreshDto, description: 'Refresh token' })
+	@ApiSuccessResponse(RefreshTokenResponseDto, 'Token successfully refreshed')
+	@ApiBadRequestResponse()
+	@ApiForbiddenResponse('Invalid or expired refresh token')
+	@ApiInternalServerErrorResponse()
 	async refreshAccessToken(@Body() body: ReqRefreshDto): Promise<RefreshTokenResponseDto> {
 		try {
 			const response = await this.authService.refreshAccessToken(body.data.token);
@@ -103,6 +129,15 @@ export class AuthController {
 
 	@Public()
 	@Post('register-display')
+	@ApiOperation({
+		summary: 'Register display device',
+		description: 'Register a new display device and get credentials',
+	})
+	@ApiBody({ type: ReqRegisterDisplayDto, description: 'Display device information' })
+	@ApiSuccessResponse(RegisteredDisplayResponseDto, 'Display successfully registered')
+	@ApiBadRequestResponse()
+	@ApiForbiddenResponse('Access denied or display already registered')
+	@ApiInternalServerErrorResponse()
 	async registerDisplay(@Headers('User-Agent') userAgent: string, @Body() createDto: ReqRegisterDisplayDto) {
 		this.logger.debug(`[REGISTER DISPLAY] User-Agent: ${userAgent}`);
 
@@ -153,6 +188,14 @@ export class AuthController {
 
 	@Public()
 	@Post('check/username')
+	@ApiOperation({
+		summary: 'Check username availability',
+		description: 'Verify if a username is available for registration',
+	})
+	@ApiBody({ type: ReqCheckUsernameDto, description: 'Username to check' })
+	@ApiSuccessResponse(CheckResponseDto, 'Username availability result')
+	@ApiBadRequestResponse()
+	@ApiInternalServerErrorResponse()
 	async checkUsername(@Body() body: ReqCheckUsernameDto): Promise<CheckResponseDto> {
 		this.logger.debug(`[CHECK] Checking availability for username=${body.data.username}`);
 
@@ -165,6 +208,14 @@ export class AuthController {
 
 	@Public()
 	@Post('check/email')
+	@ApiOperation({
+		summary: 'Check email availability',
+		description: 'Verify if an email is available for registration',
+	})
+	@ApiBody({ type: ReqCheckEmailDto, description: 'Email to check' })
+	@ApiSuccessResponse(CheckResponseDto, 'Email availability result')
+	@ApiBadRequestResponse()
+	@ApiInternalServerErrorResponse()
 	async checkEmail(@Body() body: ReqCheckEmailDto): Promise<CheckResponseDto> {
 		this.logger.debug(`[CHECK] Checking availability for email=${body.data.email}`);
 
@@ -176,6 +227,11 @@ export class AuthController {
 	}
 
 	@Get('profile')
+	@ApiOperation({ summary: 'Get user profile', description: 'Retrieve the authenticated user profile information' })
+	@ApiSuccessResponse(UserEntity, 'User profile retrieved')
+	@ApiNotFoundResponse('User not found')
+	@ApiForbiddenResponse('User not authenticated')
+	@ApiInternalServerErrorResponse()
 	async getProfile(@Req() req: AuthenticatedRequest): Promise<UserEntity> {
 		const { user } = req;
 

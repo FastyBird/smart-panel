@@ -1,7 +1,16 @@
 import { Expose, Transform } from 'class-transformer';
 import { IsNotEmpty, IsString } from 'class-validator';
 
+import { ApiProperty } from '@nestjs/swagger';
+
 export class RefreshTokenResponseDto {
+	@ApiProperty({
+		name: 'access_token',
+		description: 'The JWT access token for authenticated sessions.',
+		type: 'string',
+		example:
+			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+	})
 	@Expose({ name: 'access_token' })
 	@IsNotEmpty()
 	@IsString()
@@ -11,6 +20,13 @@ export class RefreshTokenResponseDto {
 	)
 	accessToken: string;
 
+	@ApiProperty({
+		name: 'refresh_token',
+		description: 'The JWT refresh token for authenticated sessions.',
+		type: 'string',
+		example:
+			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDMyfQ.ysGR_iIUp1O2wrUaKzIlr0eKufYUhdNFV156bA_FoFw',
+	})
 	@Expose({ name: 'refresh_token' })
 	@IsNotEmpty()
 	@IsString()
@@ -20,6 +36,12 @@ export class RefreshTokenResponseDto {
 	)
 	refreshToken: string;
 
+	@ApiProperty({
+		description: 'The JWT access token expiration date.',
+		type: 'string',
+		format: 'date-time',
+		example: '2025-01-18T12:00:00Z',
+	})
 	@Expose()
 	@IsNotEmpty()
 	@IsString()
@@ -35,6 +57,12 @@ export class RefreshTokenResponseDto {
 	})
 	expiration: Date;
 
+	@ApiProperty({
+		description: 'Token type',
+		type: 'string',
+		default: 'Bearer',
+		example: 'Bearer',
+	})
 	@Expose()
 	@IsNotEmpty()
 	@IsString()
