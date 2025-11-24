@@ -29,35 +29,23 @@ export class ApiResponseDto<T> {
 }
 
 /**
- * Decorator for paginated API responses
- */
-export class PaginatedResponseDto<T> {
-	@ApiProperty()
-	items!: T[];
-
-	@ApiProperty()
-	total!: number;
-
-	@ApiProperty()
-	page!: number;
-
-	@ApiProperty()
-	pageSize!: number;
-}
-
-/**
- * Creates a Swagger decorator for successful responses with typed data
+ * Helper function to create a success response decorator with a specific status code
+ * @param status HTTP status code
+ * @param defaultDescription Default description for the response
  * @param dataDto The DTO class for the response data
- * @param description Optional description for the response
+ * @param description Optional custom description for the response
  */
-export const ApiSuccessResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+const createSuccessResponseDecorator = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	status: number,
+	defaultDescription: string,
 	dataDto: TModel,
 	description?: string,
 ) => {
 	return applyDecorators(
 		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
-		ApiOkResponse({
-			description: description || 'Successful response',
+		ApiResponse({
+			status,
+			description: description || defaultDescription,
 			schema: {
 				allOf: [
 					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
@@ -79,6 +67,18 @@ export const ApiSuccessResponse = <TModel extends Type<any> | (abstract new (...
 			},
 		}),
 	);
+};
+
+/**
+ * Creates a Swagger decorator for successful responses with typed data
+ * @param dataDto The DTO class for the response data
+ * @param description Optional description for the response
+ */
+export const ApiSuccessResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	dataDto: TModel,
+	description?: string,
+) => {
+	return createSuccessResponseDecorator(200, 'Successful response', dataDto, description);
 };
 
 /**
@@ -90,32 +90,7 @@ export const ApiCreatedSuccessResponse = <TModel extends Type<any> | (abstract n
 	dataDto: TModel,
 	description?: string,
 ) => {
-	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
-		ApiResponse({
-			status: 201,
-			description: description || 'Resource created successfully',
-			schema: {
-				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-					{
-						properties: {
-							status: {
-								type: 'string',
-								enum: ['success'],
-							},
-							data: {
-								$ref: getSchemaPath(dataDto),
-							},
-							metadata: {
-								$ref: getSchemaPath(SuccessMetadataDto),
-							},
-						},
-					},
-				],
-			},
-		}),
-	);
+	return createSuccessResponseDecorator(201, 'Resource created successfully', dataDto, description);
 };
 
 /**
@@ -127,11 +102,31 @@ export const ApiAcceptedSuccessResponse = <TModel extends Type<any> | (abstract 
 	dataDto: TModel,
 	description?: string,
 ) => {
+	return createSuccessResponseDecorator(202, 'Request accepted successfully', dataDto, description);
+};
+
+/**
+ * Helper function to create a discriminated response decorator with a specific status code
+ * @param status HTTP status code
+ * @param defaultDescription Default description for the response
+ * @param discriminatorProperty The property name used for discrimination (e.g., 'type')
+ * @param mapping Object mapping discriminator values to schema paths
+ * @param schemas Array of DTO classes for the discriminated types
+ * @param description Optional custom description for the response
+ */
+const createDiscriminatedResponseDecorator = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+	status: number,
+	defaultDescription: string,
+	discriminatorProperty: string,
+	mapping: Record<string, string>,
+	schemas: TModel[],
+	description?: string,
+) => {
 	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, dataDto),
+		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
 		ApiResponse({
-			status: 202,
-			description: description || 'Request accepted successfully',
+			status,
+			description: description || defaultDescription,
 			schema: {
 				allOf: [
 					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
@@ -142,7 +137,11 @@ export const ApiAcceptedSuccessResponse = <TModel extends Type<any> | (abstract 
 								enum: ['success'],
 							},
 							data: {
-								$ref: getSchemaPath(dataDto),
+								discriminator: {
+									propertyName: discriminatorProperty,
+									mapping,
+								},
+								oneOf: schemas.map((schema) => ({ $ref: getSchemaPath(schema) })),
 							},
 							metadata: {
 								$ref: getSchemaPath(SuccessMetadataDto),
@@ -168,34 +167,13 @@ export const ApiSuccessDiscriminatedResponse = <TModel extends Type<any> | (abst
 	schemas: TModel[],
 	description?: string,
 ) => {
-	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
-		ApiOkResponse({
-			description: description || 'Successful response',
-			schema: {
-				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-					{
-						properties: {
-							status: {
-								type: 'string',
-								enum: ['success'],
-							},
-							data: {
-								discriminator: {
-									propertyName: discriminatorProperty,
-									mapping,
-								},
-								oneOf: schemas.map((schema) => ({ $ref: getSchemaPath(schema) })),
-							},
-							metadata: {
-								$ref: getSchemaPath(SuccessMetadataDto),
-							},
-						},
-					},
-				],
-			},
-		}),
+	return createDiscriminatedResponseDecorator(
+		200,
+		'Successful response',
+		discriminatorProperty,
+		mapping,
+		schemas,
+		description,
 	);
 };
 
@@ -206,41 +184,21 @@ export const ApiSuccessDiscriminatedResponse = <TModel extends Type<any> | (abst
  * @param schemas Array of DTO classes for the discriminated types
  * @param description Optional description for the response
  */
-export const ApiCreatedDiscriminatedResponse = <TModel extends Type<any> | (abstract new (...args: any[]) => any)>(
+export const ApiCreatedSuccessDiscriminatedResponse = <
+	TModel extends Type<any> | (abstract new (...args: any[]) => any),
+>(
 	discriminatorProperty: string,
 	mapping: Record<string, string>,
 	schemas: TModel[],
 	description?: string,
 ) => {
-	return applyDecorators(
-		ApiExtraModels(BaseSuccessResponseDto, SuccessMetadataDto, ...schemas),
-		ApiResponse({
-			status: 201,
-			description: description || 'Resource created successfully',
-			schema: {
-				allOf: [
-					{ $ref: getSchemaPath(BaseSuccessResponseDto) },
-					{
-						properties: {
-							status: {
-								type: 'string',
-								enum: ['success'],
-							},
-							data: {
-								discriminator: {
-									propertyName: discriminatorProperty,
-									mapping,
-								},
-								oneOf: schemas.map((schema) => ({ $ref: getSchemaPath(schema) })),
-							},
-							metadata: {
-								$ref: getSchemaPath(SuccessMetadataDto),
-							},
-						},
-					},
-				],
-			},
-		}),
+	return createDiscriminatedResponseDecorator(
+		201,
+		'Resource created successfully',
+		discriminatorProperty,
+		mapping,
+		schemas,
+		description,
 	);
 };
 

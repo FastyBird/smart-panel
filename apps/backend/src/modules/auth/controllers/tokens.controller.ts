@@ -21,7 +21,7 @@ import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags, getSche
 
 import {
 	ApiBadRequestResponse,
-	ApiCreatedDiscriminatedResponse,
+	ApiCreatedSuccessDiscriminatedResponse,
 	ApiForbiddenResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
@@ -103,7 +103,7 @@ export class TokensController {
 		description: 'Token creation data with discriminated type',
 		type: ReqCreateTokenDto,
 	})
-	@ApiCreatedDiscriminatedResponse(
+	@ApiCreatedSuccessDiscriminatedResponse(
 		'type',
 		{
 			access: getSchemaPath(AccessTokenEntity),
