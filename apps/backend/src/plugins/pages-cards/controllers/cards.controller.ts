@@ -13,6 +13,18 @@ import {
 	Query,
 	UnprocessableEntityException,
 } from '@nestjs/common';
+import {
+	ApiBody,
+	ApiCreatedResponse,
+	ApiNotFoundResponse,
+	ApiOkResponse,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiResponse,
+	ApiTags,
+	ApiUnprocessableEntityResponse,
+} from '@nestjs/swagger';
 
 import { DashboardException } from '../../../modules/dashboard/dashboard.exceptions';
 import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
@@ -23,6 +35,7 @@ import { CardEntity } from '../entities/pages-cards.entity';
 import { PAGES_CARDS_PLUGIN_PREFIX } from '../pages-cards.constants';
 import { CardsService } from '../services/cards.service';
 
+@ApiTags('pages-cards-plugin')
 @Controller('cards')
 export class CardsController {
 	private readonly logger = new Logger(CardsController.name);
@@ -33,6 +46,9 @@ export class CardsController {
 	) {}
 
 	@Get()
+	@ApiOperation({ summary: 'Get all cards', description: 'Retrieve all cards, optionally filtered by page' })
+	@ApiQuery({ name: 'page', required: false, type: 'string', description: 'Filter cards by page ID' })
+	@ApiOkResponse({ description: 'Cards retrieved successfully', type: [CardEntity] })
 	async findAll(@Query('page') page?: string): Promise<CardEntity[]> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Fetching all page cards`);
 
@@ -46,6 +62,10 @@ export class CardsController {
 	}
 
 	@Get(':id')
+	@ApiOperation({ summary: 'Get card by ID', description: 'Retrieve a single card by its unique identifier' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
+	@ApiOkResponse({ description: 'Card retrieved successfully', type: CardEntity })
+	@ApiNotFoundResponse({ description: 'Card not found' })
 	async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<CardEntity> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Fetching page card id=${id}`);
 
@@ -58,6 +78,10 @@ export class CardsController {
 
 	@Post()
 	@Header('Location', `:baseUrl/${PAGES_CARDS_PLUGIN_PREFIX}/cards/:id`)
+	@ApiOperation({ summary: 'Create card', description: 'Create a new card' })
+	@ApiBody({ type: ReqCreateCardDto })
+	@ApiCreatedResponse({ description: 'Card created successfully', type: CardEntity })
+	@ApiUnprocessableEntityResponse({ description: 'Card could not be created' })
 	async create(@Body() createDto: ReqCreateCardDto): Promise<CardEntity> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to create a new page card`);
 
@@ -77,6 +101,12 @@ export class CardsController {
 	}
 
 	@Patch(':id')
+	@ApiOperation({ summary: 'Update card', description: 'Update an existing card by ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
+	@ApiBody({ type: ReqUpdateCardDto })
+	@ApiOkResponse({ description: 'Card updated successfully', type: CardEntity })
+	@ApiNotFoundResponse({ description: 'Card not found' })
+	@ApiUnprocessableEntityResponse({ description: 'Card could not be updated' })
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Body() updateDto: ReqUpdateCardDto,
@@ -101,6 +131,10 @@ export class CardsController {
 	}
 
 	@Delete(':id')
+	@ApiOperation({ summary: 'Delete card', description: 'Delete a card by ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Card unique identifier' })
+	@ApiResponse({ status: 204, description: 'Card deleted successfully' })
+	@ApiNotFoundResponse({ description: 'Card not found' })
 	async remove(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string): Promise<void> {
 		this.logger.debug(`[PAGES CARDS][CARDS CONTROLLER] Incoming request to delete page card id=${id}`);
 

@@ -10,6 +10,8 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+
 import { CreateDataSourceDto } from '../../../modules/dashboard/dto/create-data-source.dto';
 import { CreateTileDto } from '../../../modules/dashboard/dto/create-tile.dto';
 import { ValidateDataSourceType } from '../../../modules/dashboard/validators/data-source-type-constraint.validator';
@@ -19,17 +21,35 @@ import type { components } from '../../../openapi';
 type ReqCreateCard = components['schemas']['PagesCardsPluginReqCreateCard'];
 type CreateCard = components['schemas']['PagesCardsPluginCreateCard'];
 
+@ApiSchema({ name: 'PagesCardsPluginCreateCard' })
 export class CreateCardDto implements CreateCard {
+	@ApiPropertyOptional({
+		description: 'Card unique identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
 	@Expose()
 	@IsOptional()
 	@IsUUID('4', { message: '[{"field":"id","reason":"ID must be a valid UUID (version 4)."}]' })
 	readonly id?: string;
 
+	@ApiProperty({
+		description: 'Card title',
+		type: 'string',
+		example: 'Living Room',
+	})
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	@IsString({ message: '[{"field":"title","reason":"Title must be a non-empty string."}]' })
 	title: string;
 
+	@ApiPropertyOptional({
+		description: 'Card icon name',
+		type: 'string',
+		nullable: true,
+		example: 'mdi-home',
+	})
 	@Expose()
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"icon","reason":"Icon must be a valid icon name."}]' })
@@ -37,6 +57,11 @@ export class CreateCardDto implements CreateCard {
 	@ValidateIf((_, value) => value !== null)
 	icon?: string | null;
 
+	@ApiProperty({
+		description: 'Card order position',
+		type: 'number',
+		example: 1,
+	})
 	@Expose()
 	@IsNumber(
 		{ allowNaN: false, allowInfinity: false },
@@ -44,6 +69,11 @@ export class CreateCardDto implements CreateCard {
 	)
 	order: number;
 
+	@ApiPropertyOptional({
+		description: 'Card tiles',
+		type: [CreateTileDto],
+		isArray: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"tiles","reason":"Tiles must be a valid array."}]' })
@@ -52,6 +82,12 @@ export class CreateCardDto implements CreateCard {
 	@Type(() => CreateTileDto)
 	tiles?: CreateTileDto[] = [];
 
+	@ApiPropertyOptional({
+		description: 'Card data sources',
+		name: 'data_source',
+		type: [CreateDataSourceDto],
+		isArray: true,
+	})
 	@Expose()
 	@IsOptional()
 	@IsArray({ message: '[{"field":"data_source","reason":"Data source must be an array."}]' })
@@ -61,13 +97,25 @@ export class CreateCardDto implements CreateCard {
 	data_source?: CreateDataSourceDto[] = [];
 }
 
+@ApiSchema({ name: 'PagesCardsPluginCreateSingleCard' })
 export class CreateSingleCardDto extends CreateCardDto {
+	@ApiProperty({
+		description: 'Page identifier',
+		type: 'string',
+		format: 'uuid',
+		example: '550e8400-e29b-41d4-a716-446655440000',
+	})
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"page","reason":"Page ID must be a valid UUID (version 4)."}]' })
 	readonly page: string;
 }
 
+@ApiSchema({ name: 'PagesCardsPluginReqCreateCard' })
 export class ReqCreateCardDto implements ReqCreateCard {
+	@ApiProperty({
+		description: 'Card creation data',
+		type: CreateSingleCardDto,
+	})
 	@Expose()
 	@ValidateNested()
 	@Type(() => CreateSingleCardDto)
